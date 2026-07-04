@@ -1,0 +1,12 @@
+{
+  "name": "SAM — Smart Artificial Mind",
+  "short_name": "SAM",
+  "description": "the user's personal AI assistant — answers, drafts, searches, and takes action.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFBF9",
+  "theme_color": "#E8673A",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

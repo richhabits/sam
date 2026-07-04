@@ -1,0 +1,3 @@
+[
+  { "id": "sample-cafe", "name": "Sample Café", "domain": "example.com", "status": "live", "branch": "ops", "tag": "a local coffee shop", "summary": "Copy me to vault/brands.json and add your real brands. This file stays on your machine." }
+]
