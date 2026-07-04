@@ -40,22 +40,10 @@ function startTicker() {
   raf = requestAnimationFrame(tick);
 }
 
-function tapAudio(audio: HTMLAudioElement) {
-  try {
-    if (tapped === audio) return;
-    audioCtx = audioCtx || new ((window as any).AudioContext || (window as any).webkitAudioContext)();
-    const src = audioCtx.createMediaElementSource(audio); tapped = audio;
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.75;
-    src.connect(analyser); analyser.connect(audioCtx.destination);
-    if (audioCtx.state === "suspended") void audioCtx.resume();
-  } catch { analyser = null; }   // tap failed → fall back to synthesized wobble
-}
-
 export function stopSpeaking() {
   try { speechSynthesis.cancel(); } catch {}
   if (current) { try { current.pause(); current.src = ""; } catch {}; current = null; }
-  _speaking = false; analyser = null; tapped = null;
+  _speaking = false;
 }
 
 function clean(text: string) { return text.replace(/[*#`_>\[\]]/g, "").slice(0, 900); }
@@ -88,7 +76,10 @@ export async function speak(text: string, onDone?: () => void) {
       audio.onended = () => { current = null; _speaking = false; onDone?.(); };
       audio.onerror = () => { current = null; browserSpeak(t, onDone); };
       await audio.play();
-      _speaking = true; tapAudio(audio); startTicker();   // → moving mouth
+      // NOTE: we intentionally do NOT route the audio through an AudioContext —
+      // tapping a playing <audio> can suppress its 'ended' event, which would
+      // break the speak→listen handoff. The mouth uses a synthesized wobble.
+      _speaking = true; startTicker();   // → moving mouth (wobble)
       return;
     }
   } catch { /* fall through to free voice */ }

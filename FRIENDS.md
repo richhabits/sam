@@ -17,15 +17,17 @@ Go to **[nodejs.org](https://nodejs.org)**, download the big green "LTS" button,
 
 ## Get SAM onto your computer
 
-Open **Terminal** (Mac: press `⌘ + Space`, type "Terminal", hit enter) and paste these one at a time:
+Open **Terminal** (Mac: press `⌘ + Space`, type "Terminal", hit enter) and paste this whole block:
 
 ```bash
-git clone <MY-REPO-LINK-HERE> sam
+git clone https://github.com/richhabits/sam.git
 cd sam
-npm install
+./setup.sh
 ```
 
-*(That last one takes a minute — it's downloading the bits. Grab a coffee.)*
+That's it — **`setup.sh` does everything for you**: installs it, sets it up, and offers to start it. (Takes a minute — grab a coffee.)
+
+> ⚠️ **Get a "repository not found" or password prompt?** The repo is private — ask me (the owner) to invite you, and make sure you're logged into GitHub in Terminal (`gh auth login`). Once you're invited, the clone works.
 
 ---
 
@@ -43,8 +45,9 @@ SAM needs one free "AI key" to think. **Groq** is the quickest:
 
 ## Run it 🚀
 
+If you let `setup.sh` start it, it's already running. Otherwise, any time:
+
 ```bash
-cp .env.example .env
 npm start
 ```
 
