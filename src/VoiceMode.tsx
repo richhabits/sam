@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
+import { speak as ttsSpeak, stopSpeaking, voiceLevel } from "./lib/tts";
 
 // Hands-free two-way voice: SAM greets, listens, you speak, it answers OUT LOUD,
 // then listens again — a real back-and-forth. Browser-native, free, cross-platform.
@@ -23,6 +23,29 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   const [said, setSaid] = useState("");
   const recRef = useRef<any>(null);
   const active = useRef(true);
+  const mouthRef = useRef<HTMLDivElement>(null);
+  const stateRef = useRef<State>(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
+  // Drive the mouth every frame — real voice amplitude when speaking, a gentle
+  // idle breath when listening/thinking. Direct DOM (no React re-render per frame).
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      const el = mouthRef.current;
+      if (el) {
+        const s = stateRef.current; const now = performance.now();
+        let v = 0;
+        if (s === "speaking") v = voiceLevel();
+        else if (s === "listening") v = 0.12 + 0.09 * Math.abs(Math.sin(now / 360));
+        else if (s === "thinking") v = 0.10 + 0.12 * Math.abs(Math.sin(now / 220));
+        el.style.setProperty("--v", v.toFixed(3));
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   function stopAll() { try { recRef.current?.stop(); } catch {} stopSpeaking(); }
 
@@ -70,7 +93,13 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   return (
     <div className="vm-wrap">
       <button className="vm-close" onClick={onClose} aria-label="Close voice mode">✕</button>
-      <div className={`vm-orb ${state}`}><div className="vm-orb-core" /></div>
+      <div className={`vm-orb ${state}`} ref={mouthRef}>
+        <div className="vm-mouth">
+          {[0.5, 0.78, 1, 0.78, 0.5].map((m, i) => (
+            <span key={i} className="vm-bar" style={{ ["--m" as any]: m }} />
+          ))}
+        </div>
+      </div>
       <div className="vm-state">{label}</div>
       <div className="vm-text">{state === "speaking" ? said : heard}</div>
       {state === "unsupported"
