@@ -1,0 +1,37 @@
+{
+  "name": "sam",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "S.A.M. \u2014 Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
+  "scripts": {
+    "dev": "concurrently -k -n \"SERVER,HUD\" -c \"#E8673A,#C4A882\" \"npm:dev:server\" \"npm:dev:hud\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:hud": "vite",
+    "build": "vite build",
+    "start": "vite build && tsx server/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "skill:new": "node scripts/new-skill.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}
