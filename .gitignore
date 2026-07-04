@@ -1,0 +1,46 @@
+# dependencies & build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# secrets & local config  — NEVER commit
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# runtime memory (personal — keep folders, ignore contents)
+vault/daily/*.md
+!vault/daily/.gitkeep
+vault/memory.json
+vault/authorized.json
+
+# logs & caches
+*.log
+.cache/
+coverage/
+.vitest/
+
+# os / editor
+.DS_Store
+._*
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+
+# Personal data — stays on YOUR machine, never shipped (each user has their own)
+vault/brands.json
+vault/memory.json
+vault/socials.json
+vault/authorized.json
+vault/projects/*.md
+vault/daily/*
+!vault/**/.gitkeep
+
+# bulletproof: no vault data ships
+vault/**/*.json
+vault/**/*.md
+!vault/brands.sample.json
+!vault/**/.gitkeep
