@@ -33,22 +33,19 @@ Most "AI assistants" just talk. SAM works:
 
 **Prerequisites:** [Node.js 20+](https://nodejs.org) · macOS (Windows/Linux work too; some Mac-only tools degrade gracefully).
 
+Paste these into Terminal **exactly as-is** (they're clean — no comments to trip up zsh):
+
 ```bash
-# 1. clone
-git clone <your-repo-url> sam && cd sam
-
-# 2. install
+git clone https://github.com/richhabits/sam.git
+cd sam
 npm install
-
-# 3. add at least one free API key (see below)
 cp .env.example .env
-#    ...open .env and paste one free key (Groq is the quickest to grab)
-
-# 4. run
 npm start
 ```
 
-Then open **http://localhost:8787**, tell SAM your name, and go.
+Then open **http://localhost:8787**, tell SAM your name, add a free key in **⚙ Settings**, and go.
+
+> **Access:** this repo is private — you'll need to be invited by the owner and signed in to GitHub (`gh auth login`, or use a token) for the `git clone` to work. If it's been made public, the command above just works.
 
 > No keys yet? SAM still runs fully offline via [Ollama](https://ollama.com) if you have it — otherwise grab one free key below (60 seconds).
 
