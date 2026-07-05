@@ -86,11 +86,14 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
       "Content-Type": "application/json",
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1500,
-      system,
+      // Cache the (large, repeated) system prompt so every call after the first in
+      // a multi-step task pays ~90% less on those input tokens. 5-min ephemeral TTL.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -186,7 +189,13 @@ export async function runModel(tier: Tier, system: string, prompt: string): Prom
     try {
       const text = await callOllama(system, prompt);
       if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" };
-    } catch { /* fall through to cloud */ }
+    } catch { /* handled just below */ }
+    // PRIVACY GUARANTEE: Private/local mode must NEVER send data to a cloud provider.
+    // If the local model isn't up, say so honestly — do not silently go off-machine.
+    return {
+      text: `🔒 Private mode is on — nothing leaves your Mac — but the local model isn't responding right now. Start it with \`ollama serve\` (and \`ollama pull ${OLLAMA_MODEL}\` if needed), or switch to Auto/Best to use the free cloud brains.`,
+      provider: "local-unavailable", tier: "local",
+    };
   }
 
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to

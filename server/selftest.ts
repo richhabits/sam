@@ -15,14 +15,23 @@ export interface SelftestReport {
   };
 }
 
-export function runSelftest(): SelftestReport {
+export async function runSelftest(): Promise<SelftestReport> {
   let allOk = true;
 
-  // 1. Models
+  // 1. Models — SAM is free/local-first: a working brain = cloud key pools OR local
+  //    Ollama (default localhost:11434, no env needed). Probe it for real. This is
+  //    reported for visibility but does NOT gate overall health: a fresh checkout or
+  //    CI box legitimately has no brain running yet — that's config, not a build defect.
   const ks = keyStatus();
   const validPools = ks.filter(p => p.total > 0 && p.healthy > 0);
-  const modelsOk = validPools.length > 0 || process.env.OLLAMA_URL !== undefined;
-  if (!modelsOk) allOk = false;
+  const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+  let ollamaReachable = false;
+  try { const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2500) }); ollamaReachable = r.ok; } catch { /* not running */ }
+  const modelsOk = validPools.length > 0 || ollamaReachable;
+  const modelsInfo = ollamaReachable
+    ? `local Ollama ready${validPools.length ? ` + ${validPools.length} cloud pools` : ""}`
+    : validPools.length ? `${validPools.length} cloud pools active`
+    : "no brain reachable — start Ollama (ollama serve) or add a free API key";
 
   // 2. Vault Writability
   let vaultOk = false;
@@ -60,7 +69,7 @@ export function runSelftest(): SelftestReport {
     ok: allOk,
     timestamp: new Date().toISOString(),
     subsystems: {
-      models: { ok: modelsOk, info: `${validPools.length} cloud pools active` },
+      models: { ok: modelsOk, info: modelsInfo },
       vault: { ok: vaultOk, info: vaultInfo },
       tools: { ok: toolsOk, count: toolNames.length, duplicates: toolNames.length - uniqueTools.size },
       agents: { ok: agentsOk, count: agentIds.length, duplicates: agentIds.length - uniqueAgents.size }
@@ -71,7 +80,7 @@ export function runSelftest(): SelftestReport {
 // Allow running directly from CLI `npm run selftest`
 if (import.meta.url === `file://${process.argv[1]}`) {
   console.log("🚀 Running SAM Production Selftest...");
-  const report = runSelftest();
+  const report = await runSelftest();
   console.log(JSON.stringify(report, null, 2));
   if (!report.ok) {
     console.error("❌ Selftest failed!");

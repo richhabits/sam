@@ -37,7 +37,7 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 32. ✅ Read Reminders / to-dos
 33. ✅ Read recent emails (senders + subjects)
 34. ✅ Read a PDF (extract text)
-35. ✅ OCR / read text from an image or screen
+35. ✅ Read text from an image you attach (via free Gemini vision)
 36. ✅ Rename / move files
 37. ✅ Create folder / organise Desktop
 38. ✅ Compress / unzip
@@ -68,7 +68,7 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 - ✅ One-tap speaker toggle (SAM talks back in normal chat too)
 - ✅ Whistle OR double-clap to wake (fixed clap; whistle added)
 - ✅ Contextual time-of-day greeting with swagger on wake
-- ✅ Music: play a song/artist/mix (play tool) + swag persona
+- ✅ Music: pull up a song/artist/mix in your player (opens + best-effort play) + swag persona
 - ✅ Fast & free on low-RAM machines: default = free cloud (Groq), local optional
 
 ## 💬 Chat / UX

@@ -156,12 +156,16 @@ describe("runModel fallback", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns a graceful offline message when every provider fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 500 })));
+  it("PRIVACY: local/private mode never falls through to cloud when the local model is down", async () => {
+    const fetchSpy = vi.fn(async () => new Response("", { status: 500 }));
+    vi.stubGlobal("fetch", fetchSpy);
     const { runModel } = await import("./models.ts");
     const r = await runModel("local", "sys", "hello");
-    expect(r.provider).toBe("none");
-    expect(r.text).toMatch(/offline/i);
+    expect(r.provider).toBe("local-unavailable");        // stayed local, didn't escalate
+    expect(r.text).toMatch(/private|ollama/i);
+    // The prompt must NOT have been sent to any non-local (cloud) endpoint.
+    const cloudCalls = fetchSpy.mock.calls.filter((c: any) => { const u = String(c?.[0]); return !u.includes("11434") && !u.includes("localhost") && !u.includes("127.0.0.1"); });
+    expect(cloudCalls.length).toBe(0);
     vi.unstubAllGlobals();
   });
 
