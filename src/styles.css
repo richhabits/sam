@@ -639,3 +639,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* footer landing link */
 .hint-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .hint-link:hover { text-decoration: underline; }
+
+/* ── Syntax highlighting for code blocks (zero-dep, from md.ts) ── */
+pre.code { position: relative; }
+pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top: 5px; right: 10px; font-size: 10px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; opacity: .55; }
+.tok-c { color: #8a9199; font-style: italic; }
+.tok-s { color: #3f9153; }
+.tok-k { color: #c2410c; font-weight: 600; }
+.tok-n { color: #b5713b; }
+:root[data-theme="dark"] .tok-c { color: #6b737c; }
+:root[data-theme="dark"] .tok-s { color: #7ee787; }
+:root[data-theme="dark"] .tok-k { color: #ff9d5c; }
+:root[data-theme="dark"] .tok-n { color: #d19a66; }
+:root[data-skin="jarvis"] .tok-s { color: #6bd6ff; }
+:root[data-skin="jarvis"] .tok-k { color: #29C6F6; }
+:root[data-skin="stealth"] .tok-k { color: #4ADE80; }
+:root[data-skin="ember"] .tok-k { color: #F0824E; }
