@@ -28,6 +28,8 @@ import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
+import { startSwarm, loadSwarms } from "./swarm.ts";
+import { PROJECTS } from "./projects.ts";
 
 const sh = promisify(exec);
 
@@ -1246,6 +1248,19 @@ end tell`);
     activity: (i) => `Removing schedule ${i.id}`, run: async (i) => removeSchedule(i.id) ? `Removed schedule ${i.id}.` : `Schedule ${i.id} not found.` },
   { name: "toggle_schedule", safe: true, description: "Pause or resume a scheduled task by ID. input: {id}.", params: "{id}",
     activity: (i) => `Toggling schedule ${i.id}`, run: async (i) => { const s = toggleSchedule(i.id); return s ? `Schedule ${s.id} is now ${s.enabled ? "enabled" : "paused"}.` : `Schedule ${i.id} not found.`; } },
+  { name: "start_swarm", safe: true, description: "Spin up a continuous background Swarm of agents for a massive, multi-step task. input: {goal, system}.", params: "{goal, system}",
+    activity: () => `Spawning Swarm`, run: async (i) => { const s = await startSwarm(i.goal, i.system, "free"); return `Swarm '${s.id}' launched. Run list_swarms to check status.`; } },
+  { name: "list_swarms", safe: true, description: "List all active or completed background Swarms.", params: "(none)",
+    activity: () => `Listing Swarms`, run: async () => {
+      const swarms = loadSwarms();
+      if (!swarms.length) return "No swarms exist.";
+      return swarms.map(s => `[${s.id}] ${s.goal} | status: ${s.status} | agents: ${s.agents.length}`).join("\n");
+    } },
+  { name: "list_projects", safe: true, description: "List all active brands, projects, and concepts SAM is managing.", params: "(none)",
+    activity: () => `Reading Project Registry`, run: async () => {
+      if (!PROJECTS.length) return "No projects in registry.";
+      return PROJECTS.map(p => `[${p.id}] ${p.name} (${p.status}) - ${p.summary}`).join("\n");
+    } },
 ];
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);

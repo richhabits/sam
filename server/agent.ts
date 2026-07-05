@@ -42,6 +42,9 @@ RULES:
 - Tools marked [asks first] will pause for the user's approval automatically — just call them normally when needed.
 - Never claim you did something unless a tool actually did it. If a tool failed, say so.
 - One tool per reply. Keep going until the job is done, then give the final answer.
+- UI WIDGETS: You can render native UI widgets in your final answer by outputting a markdown block labeled "widget" containing pure JSON.
+  Chart: \`\`\`widget\n{"type":"chart","title":"Sales","series":[{"label":"Jan","value":10}]}\n\`\`\`
+  Kanban: \`\`\`widget\n{"type":"kanban","title":"Project","columns":[{"name":"Todo","tasks":["Task 1"]},{"name":"Done","tasks":[]}]}\n\`\`\`
 `.trim();
 }
 
