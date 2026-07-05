@@ -148,27 +148,33 @@ export function startScheduler(run: (command: string) => Promise<string>) {
   running = true;
   executor = run;
 
-  // Check every 60 seconds
-  setInterval(async () => {
+  // Check every 60 seconds. The tick itself stays SYNCHRONOUS: it decides which
+  // schedules are due up front (so one slow job can't push others past their
+  // exact-minute window), CLAIMS them by writing lastRun before firing (so neither
+  // a crash nor the next tick can double-fire), then runs them without awaiting
+  // (so a long agent job never blocks the loop).
+  setInterval(() => {
     if (!executor) return;
-    const schedules = load();
     const now = new Date();
-
-    for (const s of schedules) {
-      if (!s.enabled) continue;
+    const due = load().filter((s) => {
+      if (!s.enabled) return false;
       const parsed = parseCron(s.cron);
-      if (!parsed) continue;
+      return !!parsed && parsed.shouldRun(now, s.lastRun ? new Date(s.lastRun) : null);
+    });
+    if (!due.length) return;
 
-      const lastRun = s.lastRun ? new Date(s.lastRun) : null;
-      if (!parsed.shouldRun(now, lastRun)) continue;
+    // Claim all due schedules in one write (set lastRun) — this is what stops the
+    // next tick, or a crash-restart, from re-firing them.
+    const all = load();
+    const nowIso = now.toISOString();
+    for (const d of due) { const s = all.find((x) => x.id === d.id); if (s) s.lastRun = nowIso; }
+    save(all);
 
-      // Fire it
-      try {
-        const result = await executor(s.command);
-        markRan(s.id, result);
-      } catch (e: any) {
-        markRan(s.id, `Error: ${e?.message || e}`);
-      }
+    // Fire each without blocking the scheduler.
+    for (const d of due) {
+      executor!(d.command)
+        .then((result) => markRan(d.id, result))
+        .catch((e: any) => markRan(d.id, `Error: ${e?.message || e}`));
     }
   }, 60_000);
 
