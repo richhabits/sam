@@ -30,7 +30,7 @@ jobs:
       - name: Generate landing from live code
         run: node scripts/gen-landing.mjs
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
       - id: deployment
