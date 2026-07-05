@@ -773,7 +773,7 @@ export default function App() {
             <button className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">⚡ Elon Mode {elon ? "· ON" : ""}</span><span className="pop-opt-sub">{elon ? "OFF-LEASH — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses EVERY safety prompt. Deletes go to a trash bin; catastrophic commands still blocked."}</span></button>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
-              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"]].map(([id, label, ic]) => (
+              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"], ["aurora", "Aurora", "🌌"]].map(([id, label, ic]) => (
                 <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>
                   <div className={`skin-prev prev-${id}`}></div>
                   <div className="skin-chip-label">{ic} {label}</div>
@@ -1160,6 +1160,7 @@ export default function App() {
           { icon: "❄️", label: "Skin: Nord", run: () => setSkin("nord") },
           { icon: "🧛", label: "Skin: Dracula", run: () => setSkin("dracula") },
           { icon: "📜", label: "Skin: Linen", run: () => setSkin("linen") },
+          { icon: "🌌", label: "Skin: Aurora (dark glass)", run: () => setSkin("aurora") },
           { icon: mode === "business" ? "🏠" : "💼", label: mode === "business" ? "Switch to Personal" : "Switch to Business", run: () => setMode((m) => (m === "business" ? "personal" : "business")) },
         ];
         const q = pq.trim().toLowerCase();
