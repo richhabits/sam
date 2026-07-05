@@ -11,7 +11,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ["playwright-core", "pdf-parse", "mammoth", "fsevents"],
+              external: ["playwright-core", "pdf-parse", "mammoth", "fsevents", "better-sqlite3"],
             },
           },
         },
