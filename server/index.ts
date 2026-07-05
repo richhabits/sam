@@ -217,12 +217,12 @@ function worthRemembering(msg: string): boolean {
 async function learnFrom(userMsg: string, samMsg: string, name: string) {
   if (!worthRemembering(userMsg)) return;
   try {
-    const sys = "You extract durable, long-term facts from a conversation. Output ONLY a JSON array of short fact strings, or [] if nothing is worth remembering.";
+    const sys = "You pull DURABLE, long-term facts about a person out of a conversation and return clean, atomic statements. Output ONLY a JSON array of strings, or [] when nothing is worth keeping. Be strict — most exchanges yield [].";
     const prompt =
-      `Extract 0-3 atomic facts worth remembering long-term about ${name} or their world ` +
-      `(preferences, people, projects, decisions, recurring details, contacts). ` +
-      `Ignore small talk, one-off questions, and transient things. Each fact must stand alone (include the name/subject).\n\n` +
-      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nFacts (JSON array of strings):`;
+      `From the exchange below, extract 0-3 facts worth remembering about ${name} long-term — things still true and useful next week: preferences, people in their life, projects/brands, decisions, recurring details, contacts, constraints.\n` +
+      `STRICT — return [] unless something genuinely qualifies. Skip: small talk, questions, one-off tasks, transient state ("tired today"), anything ${name} didn't actually reveal, and anything obvious or already generic.\n` +
+      `Each fact must stand alone — name the subject ("${name} prefers X", never just "prefers X") — and be one clean statement.\n\n` +
+      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nFacts (JSON array of strings, or []):`;
     const r = await runModel("local", sys, prompt);   // local first — don't spend cloud quota on background work
     const m = r.text.match(/\[[\s\S]*\]/);
     if (!m) return;
