@@ -174,6 +174,7 @@ export default function App() {
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
+  const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("sam.dark") === "1"; } catch { return false; } });
   const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
@@ -310,7 +311,7 @@ export default function App() {
   }
   function speakText(text: string) { ttsSpeak(text); }
 
-  function onScroll() { const el = chatRef.current; if (!el) return; setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80); }
+  function onScroll() { const el = chatRef.current; if (!el) return; setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80); const max = el.scrollHeight - el.clientHeight; setScrollPct(max > 40 ? Math.min(100, (el.scrollTop / max) * 100) : 0); }
 
   function handleResult(r: AgentResult) {
     if (r.kind === "pending") { setPending(r); return; }
@@ -842,6 +843,8 @@ export default function App() {
             <div ref={msgEnd} />
           </div>
         )}
+        {started && scrollPct > 2 && <div className="read-progress" style={{ width: `${scrollPct}%` }} />}
+        {started && scrollPct > 28 && <button className="scroll-btn top" onClick={() => chatRef.current?.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Scroll to top">↑</button>}
         {started && !atBottom && <button className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
       </main>
 
