@@ -44,3 +44,7 @@ vault/**/*.json
 vault/**/*.md
 !vault/brands.sample.json
 !vault/**/.gitkeep
+
+# proactive local data
+vault/nudges.json
+vault/proactive-state.json

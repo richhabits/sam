@@ -17,6 +17,7 @@ import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
 import { logSecurity, securityStatus } from "./security.ts";
+import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 
 const sh = promisify(exec);
 
@@ -455,6 +456,17 @@ export const TOOLS: Tool[] = [
       const pick = i?.brand ? keys.filter((k) => k.toLowerCase().includes(String(i.brand).toLowerCase())) : keys;
       return pick.map((k) => { const links = Object.entries(s[k]).filter(([, v]) => v).map(([p, v]) => `${p}: ${v}`).join(" · "); return `${k} — ${links || "no links on file"}`; }).join("\n");
     } },
+  // ── Proactive nudges (SAM reminds you — and pings you when due) ──
+  { name: "add_nudge", safe: true, description: "Set a reminder/nudge SAM will proactively ping you about. input: {text, when?} (when = ISO date-time, optional).", params: "{text, when?}",
+    activity: (i) => `Setting a nudge: “${i.text ?? i}”`,
+    run: async (i) => { const n = addNudge(i.text ?? i, i.when || i.due); return `Got it — I'll nudge you${n.due ? ` at ${n.due}` : ""}: “${n.text}”.`; } },
+  { name: "list_nudges", safe: true, description: "List your pending nudges/reminders.", params: "(none)",
+    activity: () => `Checking your nudges`,
+    run: async () => { const l = listNudges(); return l.length ? l.map((n) => `• ${n.text}${n.due ? ` (due ${n.due})` : ""}`).join("\n") : "No pending nudges."; } },
+  { name: "complete_nudge", safe: true, description: "Mark a nudge done. input: text or id.", params: "text",
+    activity: (i) => `Ticking off a nudge`,
+    run: async (i) => completeNudge(i.text ?? i.id ?? i) },
+
   // ── File utilities (quick wins) ──
   { name: "move_file", safe: false, description: "Move or rename a file/folder. input: {from, to}.", params: "{from, to}",
     activity: (i) => `Moving ${i.from} → ${i.to}`,
