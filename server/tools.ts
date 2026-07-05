@@ -546,12 +546,44 @@ export const TOOLS: Tool[] = [
       for (let j = 0; j < len; j++) pass += chars[bytes[j] % chars.length];
       return `Generated password (length ${len}): ${pass}`;
     } },
-  { name: "system_info", safe: true, description: "Get physical hardware stats of this Mac (CPU cores, RAM usage, Uptime).", params: "(none)",
-    activity: () => `Checking system hardware stats`,
+  { name: "wifi_info", safe: true, description: "Get current Wi-Fi network name and details.", params: "(none)",
+    activity: () => `Checking Wi-Fi`,
     run: async () => {
-      const gbs = (b: number) => (b / 1024 / 1024 / 1024).toFixed(2);
-      const hrs = (s: number) => (s / 3600).toFixed(2);
-      return `CPU: ${cpus().length} cores\nRAM: ${gbs(totalmem() - freemem())} GB used / ${gbs(totalmem())} GB total\nUptime: ${hrs(uptime())} hours`;
+      if (!IS_MAC) return "Wi-Fi info only works on macOS.";
+      try {
+        const { stdout } = await sh("networksetup -getairportnetwork en0");
+        return stdout.trim();
+      } catch (e: any) { return `Failed to get Wi-Fi: ${e.message}`; }
+    } },
+  { name: "lock_screen", safe: false, description: "Lock the Mac immediately.", params: "(none)",
+    activity: () => `Locking the screen`, preview: () => `Lock the screen`,
+    run: async () => {
+      if (!IS_MAC) return "Lock screen only works on macOS.";
+      try { await sh("pmset displaysleepnow"); return "Screen locked."; } catch (e: any) { return `Failed to lock: ${e.message}`; }
+    } },
+  { name: "empty_trash", safe: false, description: "Permanently empty the macOS Trash.", params: "(none)",
+    activity: () => `Emptying the Trash`, preview: () => `Permanently delete all files in ~/.Trash`,
+    run: async () => {
+      if (!IS_MAC) return "Trash only works on macOS.";
+      try { await sh("rm -rf ~/.Trash/*"); return "Trash emptied."; } catch (e: any) { return `Failed to empty trash: ${e.message}`; }
+    } },
+  { name: "eject_disk", safe: false, description: "Eject a mounted disk/volume. input: {volume_name}.", params: "{volume_name}",
+    activity: (i) => `Ejecting ${i.volume_name}`, preview: (i) => `Eject volume: ${i.volume_name}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Eject only works on macOS.";
+      try { await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`); return `Ejected ${i.volume_name}.`; } catch (e: any) { return `Failed to eject: ${e.message}`; }
+    } },
+  { name: "caffeinate", safe: true, description: "Prevent the Mac from sleeping for a duration. input: {minutes}.", params: "{minutes}",
+    activity: (i) => `Keeping Mac awake for ${i.minutes}m`,
+    run: async (i) => {
+      if (!IS_MAC) return "Caffeinate only works on macOS.";
+      const min = Number(i.minutes);
+      if (isNaN(min) || min <= 0) return "Invalid minutes.";
+      try {
+        // Run in background detached
+        sh(`caffeinate -d -t ${min * 60} &`);
+        return `Mac will stay awake for ${min} minute(s).`;
+      } catch (e: any) { return `Failed to caffeinate: ${e.message}`; }
     } },
   { name: "volume_brightness_control", safe: false, description: "Set the volume or brightness of the Mac hardware. input: {type: 'volume' | 'brightness', level: number} (level is 0-100).", params: "{type, level}",
     activity: (i) => `Setting ${i.type} to ${i.level}%`,
