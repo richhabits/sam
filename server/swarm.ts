@@ -13,7 +13,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const FILE = join(ROOT, "vault", "swarms.json");
+const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "swarms.json");
 
 export interface SwarmAgent {
   id: string;
