@@ -15,6 +15,7 @@ import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
+import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
 import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode } from "./authz.ts";
@@ -164,7 +165,17 @@ function recallMemory(): string {
 interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
 
 // The core SAM persona — addresses whoever is actually using SAM.
-function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false): string {
+// Pull the best-matching passages from the ingested document library (roadmap #93:
+// SAM knows your docs). Reuses the query vector already computed for memory recall.
+function recallDocs(qvec: { model: string; vec: number[] } | null): string {
+  if (!qvec || !docsStats().chunks) return "";
+  const clip = (s: string, n = 420) => (s.length > n ? s.slice(0, n) + "…" : s);
+  return searchDocsWith(qvec, 4)
+    .map((h) => `- [${h.source.split("/").pop()}] ${clip(h.text)}`)
+    .join("\n");
+}
+
+function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false, docs?: string): string {
   const project = projectId ? projectById(projectId) : undefined;
   const note = projectId ? readProjectNote(projectId) : "";
   const name = (user?.name || "there").trim();
@@ -206,6 +217,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
       : `## No specific brand flagged — answer at the top level.`,
     note ? `\n## Vault note for this brand\n${note}` : ``,
     recalled ? `\n## What you KNOW about ${name} (from memory — trust these facts; they're true and specific, prefer them over general assumptions)\n${recalled}` : ``,
+    docs ? `\n## From ${name}'s documents (indexed library — real excerpts; cite the file in [brackets] when you use one; use search_docs to dig deeper)\n${docs}` : ``,
     interactive ? recallMemory() : ``,   // recent-exchange context only helps live turns, not Team/swarm/background jobs
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
   ].filter(Boolean).join("\n");
@@ -265,8 +277,9 @@ app.post("/api/command", async (req, res) => {
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
 
   const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
+  const docs = fast ? "" : recallDocs(qvec);
   const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled, true);
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
   const userName = (user?.name || "the user").trim();
 
   // Photos → free Gemini vision (no tool loop needed to look at an image).
@@ -313,8 +326,9 @@ app.post("/api/stream", async (req, res) => {
   const semanticSkillId = selectSkillId(qvec);
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
   const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
+  const docs = fast ? "" : recallDocs(qvec);
   const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled, true);
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
   const userName = (user?.name || "the user").trim();
 
   try {
@@ -606,6 +620,7 @@ app.get("/api/status", (_req, res) =>
     defaultTier: process.env.DEFAULT_TIER || "local",
     voice: { elevenlabs: !!process.env.ELEVENLABS_API_KEY },
     memory: memoryStats(),
+    docs: docsStats(),
     models: providersStatus(),
     vault: vaultStats(),
   })
