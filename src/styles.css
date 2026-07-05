@@ -513,6 +513,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .team-member.active .tm-status { color: var(--accent-text); }
 .tm-task { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 
+/* ── WIDGETS ── */
+.widget-feed { display: flex; flex-direction: column; gap: 12px; }
+.widget-error { background: rgba(255,50,50,0.1); color: #ff4a4a; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px; }
+
+/* Chart Widget */
+.widget-chart { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.wc-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+.wc-bars { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding-bottom: 24px; }
+.wc-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+.wc-bar { width: 100%; max-width: 40px; background: var(--accent); border-radius: 4px 4px 0 0; transition: height 0.4s ease-out; opacity: 0.9; }
+.wc-bar:hover { opacity: 1; filter: brightness(1.1); }
+.wc-bar-val { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.wc-bar-label { position: absolute; bottom: -22px; font-size: 11px; font-weight: 500; color: var(--muted); text-align: center; white-space: nowrap; }
+
+/* Kanban Widget */
+.widget-kanban { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); overflow-x: auto; }
+.wk-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+.wk-board { display: flex; gap: 12px; align-items: flex-start; }
+.wk-col { flex: 1; min-width: 200px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.wk-col-head { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+.wk-count { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 2px 6px; border-radius: 10px; border: 1px solid var(--border); }
+.wk-tasks { display: flex; flex-direction: column; gap: 8px; }
+.wk-task { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 13px; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.05); line-height: 1.4; }
+
 /* ══ SKINS PACK — full palette overrides via data-skin on <html> ══
    Skins win over light/dark (applied per-token). Classic = no attr. */
 

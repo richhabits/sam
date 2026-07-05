@@ -3,6 +3,7 @@ import { command, confirm as confirmAction, streamCommand, setUser, getProjects,
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
+import WidgetRenderer from "./WidgetRenderer";
 // Heavy panels are lazy-loaded — they only download when you actually open them,
 // so the initial app is slimmer and paints faster.
 const VoiceMode = lazy(() => import("./VoiceMode"));
@@ -737,7 +738,7 @@ export default function App() {
                 <div className="who">{m.role === "sam" ? "SAM" : "You"}{m.at && <span className="at"> · {m.at}</span>}</div>
                 {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
                 {m.text && (m.role === "sam"
-                  ? <div className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }} />
+                  ? <WidgetRenderer text={m.text} />
                   : <div className="bubble">{m.text}</div>)}
                 {m.role === "sam" && m.text && (
                   <div className="msg-actions">
@@ -784,7 +785,7 @@ export default function App() {
                 <div className="who">SAM</div>
                 {live.trace.length > 0 && <ProgressTracker steps={live.trace} answering={!!live.text} />}
                 {live.text
-                  ? <div className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(live.text) }} />
+                  ? <WidgetRenderer text={live.text} />
                   : live.trace.length === 0 && <div className="bubble thinking"><span></span><span></span><span></span></div>}
               </div>
             )}
