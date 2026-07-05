@@ -85,6 +85,18 @@ initContext();
 void grabWorld().then((s) => console.log(`  ${s}\n`));
 resumeOrphanedSwarms();
 
+// Non-blocking background selfupdate — replaces the old blocking prestart hook.
+// SAM launches instantly; update check happens silently 5s later.
+setTimeout(async () => {
+  try {
+    const local = await git("rev-parse HEAD");
+    await git("fetch --quiet origin", 10000);
+    let remote: string;
+    try { remote = await git("rev-parse @{u}"); } catch { return; }
+    if (local !== remote) console.log(`\n  ✨ Update available — run 'git pull' to get the latest SAM.\n`);
+  } catch { /* offline or not a clone — no drama */ }
+}, 5000);
+
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
 startDropWatcher(async (d) => {
   console.log(`  📱 drop received · ${d.file} (${d.kind})`);
