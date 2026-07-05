@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, AgentResult, Attachment } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -158,6 +158,8 @@ export default function App() {
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
   const [guardian, setGuardian] = useState(false);
+  const [autopilot, setAutopilot] = useState(false);
+  useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
   const guardStream = useRef<MediaStream | null>(null);
   const guardIv = useRef<any>(null);
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
@@ -548,6 +550,7 @@ export default function App() {
             ))}
             <div className="pop-title" style={{ marginTop: 6 }}>Preferences</div>
             <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
+            <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">✈️ Autopilot {autopilot ? "· ON" : ""}</span><span className="pop-opt-sub">{autopilot ? "SAM handles routine work without asking (serious stuff still asks)" : "Off — SAM asks before anything risky"}</span></button>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"]].map(([id, label, ic]) => (
