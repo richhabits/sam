@@ -94,6 +94,20 @@ function howAnswered(provider?: string): string {
   return "fast";   // cerebras / groq / nvidia / mistral / github / gemini — all free & quick
 }
 
+const COMMANDS: [string, string][] = [
+  ["/team", "🤝 Assemble the crew — big jobs, run in parallel"],
+  ["/ninjas", "🥷 Deploy the problem squad — find & deal with it"],
+  ["/private", "🔒 100% on your computer (local only)"],
+  ["/best", "✨ Best quality"],
+  ["/auto", "⚡ Free & capable (default)"],
+  ["/tools", "🧰 Everything SAM can do"],
+  ["/history", "🕑 Past conversations"],
+  ["/export", "📤 Download this chat"],
+  ["/share", "📣 Copy the SAM link to share"],
+  ["/new", "✏️ Start a new chat"],
+  ["/help", "❓ All commands"],
+];
+
 const SUGGESTIONS = [
   "Draft a friendly reply to a customer asking for a refund",
   "Search the web for the best free tools for small businesses",
@@ -342,6 +356,7 @@ export default function App() {
     if (cmd === "/tools") { setToolsOpen(true); return true; }
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
+    if (cmd === "/share") { try { navigator.clipboard.writeText("SAM — a free, private AI with a team of agents that runs on your Mac. https://richhabits.github.io/sam/"); sysNote("📣 Copied the SAM pitch + link — paste it anywhere to share."); } catch { sysNote("Couldn't copy — the link is: https://richhabits.github.io/sam/"); } return true; }
     if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6), "team"); return true; }
     if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
     if (v.toLowerCase().startsWith("/ninjas ")) { runTheTeam(v.slice(8), "ninjas"); return true; }
@@ -685,6 +700,15 @@ export default function App() {
                 <span className="attach-name">{a.name}</span>
                 <button className="attach-x" onClick={() => setAttachments((as) => as.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
               </div>
+            ))}
+          </div>
+        )}
+        {input.startsWith("/") && !input.includes(" ") && COMMANDS.some(([c]) => c.startsWith(input.toLowerCase())) && (
+          <div className="cmd-hints">
+            {COMMANDS.filter(([c]) => c.startsWith(input.toLowerCase())).map(([c, d]) => (
+              <button key={c} className="cmd-hint" onClick={() => { const takesArg = c === "/team" || c === "/ninjas"; setInput(takesArg ? c + " " : c); inputRef.current?.focus(); if (!takesArg) { setTimeout(() => send(c), 0); } }}>
+                <span className="ch-cmd">{c}</span><span className="ch-desc">{d}</span>
+              </button>
             ))}
           </div>
         )}
