@@ -12,7 +12,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { resolve, dirname, basename } from "node:path";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
@@ -455,6 +455,29 @@ export const TOOLS: Tool[] = [
       const pick = i?.brand ? keys.filter((k) => k.toLowerCase().includes(String(i.brand).toLowerCase())) : keys;
       return pick.map((k) => { const links = Object.entries(s[k]).filter(([, v]) => v).map(([p, v]) => `${p}: ${v}`).join(" · "); return `${k} — ${links || "no links on file"}`; }).join("\n");
     } },
+  // ── File utilities (quick wins) ──
+  { name: "move_file", safe: false, description: "Move or rename a file/folder. input: {from, to}.", params: "{from, to}",
+    activity: (i) => `Moving ${i.from} → ${i.to}`,
+    preview: (i) => `Move / rename:\n${i.from}\n→ ${i.to}`,
+    run: (i) => sh(`mv ${shq(safePath(i.from))} ${shq(safePath(i.to))}`).then(() => `Moved to ${i.to}`).catch((e: any) => `Couldn't move: ${e?.message}`) },
+  { name: "make_folder", safe: false, description: "Create a folder (and any parent folders). input: path.", params: "path",
+    activity: (i) => `Creating folder ${i.path ?? i}`,
+    preview: (i) => `Create folder: ${i.path ?? i}`,
+    run: (i) => sh(`mkdir -p ${shq(safePath(i.path ?? i))}`).then(() => `Created ${i.path ?? i}`).catch((e: any) => `Couldn't: ${e?.message}`) },
+  { name: "compress", safe: false, description: "Zip a file or folder. input: {path, out?}.", params: "{path, out?}",
+    activity: (i) => `Zipping ${i.path}`,
+    preview: (i) => `Zip: ${i.path}`,
+    run: (i) => { const src = safePath(i.path); const out = safePath(i.out || i.path + ".zip"); return sh(`cd ${shq(dirname(src))} && zip -rq ${shq(out)} ${shq(basename(src))}`).then(() => `Zipped to ${out}`).catch((e: any) => `Couldn't zip: ${e?.message}`); } },
+  { name: "unzip_file", safe: false, description: "Unzip an archive. input: {path, to?}.", params: "{path, to?}",
+    activity: (i) => `Unzipping ${i.path}`,
+    preview: (i) => `Unzip: ${i.path}`,
+    run: (i) => sh(`unzip -oq ${shq(safePath(i.path))} ${i.to ? `-d ${shq(safePath(i.to))}` : `-d ${shq(dirname(safePath(i.path)))}`}`).then(() => `Unzipped ${i.path}`).catch((e: any) => `Couldn't unzip: ${e?.message}`) },
+  { name: "directions", safe: true, description: "Open directions / a map lookup. input: {to, from?}.", params: "{to, from?}",
+    activity: (i) => `Getting directions to ${i.to ?? i}`,
+    run: (i) => { const to = encodeURIComponent(i.to ?? i); const from = i.from ? `&origin=${encodeURIComponent(i.from)}` : ""; return openUrl(`https://www.google.com/maps/dir/?api=1&destination=${to}${from}`).then(() => `Opened directions to ${i.to ?? i}`); } },
+  { name: "backup_vault", safe: true, description: "Back up SAM's memory vault to a timestamped folder on the Desktop.", params: "(none)",
+    activity: () => `Backing up your SAM memory`,
+    run: async () => { const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12); const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`); try { await sh(`cp -R ${shq(safePath("./vault"))} ${shq(dest)}`); return `Backed up your vault to ${dest}`; } catch (e: any) { return `Backup failed: ${e?.message}`; } } },
   { name: "security_check", safe: true, description: "Report SAM's security watchdog — anything dodgy it flagged/blocked (bad commands, unexpected origins), or all-clear.", params: "(none)",
     activity: () => `Running a security check`,
     run: async () => {
