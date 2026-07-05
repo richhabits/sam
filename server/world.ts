@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { PROJECTS } from "./projects.ts";
 
 const sh = promisify(exec);
-const ROOT = fileURLToPath(new URL("..", import.meta.url));   // spaces-safe
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");   // spaces-safe
 const SOCIALS_PATH = join(process.env.VAULT_DIR || join(ROOT, "vault"), "socials.json");
 
 export interface App { name: string; desc: string; visibility: string; updated?: string }

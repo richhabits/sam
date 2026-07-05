@@ -10,7 +10,9 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export interface Project {
   id: string;
@@ -44,7 +46,7 @@ const SAMPLE: Project[] = [
 // world stays local & unshipped); otherwise fall back to the generic samples.
 function loadBrands(): Project[] {
   try {
-    const p = join(process.env.VAULT_DIR || join(fileURLToPath(new URL("..", import.meta.url)), "vault"), "brands.json");
+    const p = join(process.env.VAULT_DIR || join(ROOT, "vault"), "brands.json");
     if (existsSync(p)) {
       const d = JSON.parse(readFileSync(p, "utf8"));
       if (Array.isArray(d) && d.length) return d as Project[];
