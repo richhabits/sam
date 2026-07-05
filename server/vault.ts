@@ -3,6 +3,9 @@
 //  Plain markdown becomes long-term memory. No database.
 //  Every exchange lands as an Obsidian-compatible .md file with
 //  [[wikilinks]] so notes form a graph SAM can traverse.
+//
+//  OPTIMISATION: graph results are cached in memory and only
+//  recomputed when logExchange writes a new entry.
 // ─────────────────────────────────────────────────────────────
 
 import {
@@ -41,6 +44,7 @@ export function pruneOldLogs(): { removed: number } {
       try { if (statSync(p).mtimeMs < cutoff) { unlinkSync(p); removed++; } } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
+  if (removed) graphCache = null; // pruning invalidates graph
   return { removed };
 }
 ensure(PROJECTS_DIR);
@@ -75,6 +79,7 @@ export function logExchange(opts: {
     `**the user:** ${opts.user}\n\n` +
     `**SAM** (${opts.provider}): ${opts.sam}\n\n---\n\n`;
   appendFileSync(file, entry);
+  graphCache = null; // invalidate graph on new write
 }
 
 // Read a project note (used to give SAM deep context on demand)
@@ -110,9 +115,16 @@ export function recentExchanges(limit = 5): { user: string; sam: string }[] {
   return out.slice(-limit);
 }
 
+// ── In-memory graph cache ────────────────────────────────────
+// Avoids scanning every .md file on the SSD for every HUD render.
+// Invalidated by logExchange() and pruneOldLogs().
+let graphCache: { nodes: { id: string; group: string }[]; edges: { from: string; to: string }[] } | null = null;
+
 // Build a lightweight graph: notes = nodes, [[links]] = edges.
 // Powers the HUD memory visual without any external DB.
 export function buildGraph() {
+  if (graphCache) return graphCache;
+
   const nodes: { id: string; group: string }[] = [];
   const edges: { from: string; to: string }[] = [];
   const seen = new Set<string>();
@@ -133,7 +145,8 @@ export function buildGraph() {
 
   scan(PROJECTS_DIR, "project");
   scan(DAILY_DIR, "daily");
-  return { nodes, edges };
+  graphCache = { nodes, edges };
+  return graphCache;
 }
 
 export function vaultStats() {
@@ -145,3 +158,4 @@ export function vaultStats() {
     path: VAULT_DIR,
   };
 }
+
