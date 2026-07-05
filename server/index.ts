@@ -70,13 +70,17 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   const name = (user?.name || "there").trim();
   const mode = user?.mode === "personal" ? "personal" : "business";
   return [
-    `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then. Savvy operator (Alan Sugar's bluntness, Branson's calm): you win on FACTS and TIMING, not noise.`,
+    `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
+    `Think like the OGs, always: Apple (make it simple, make it just-work), Elon (first principles, 10x, move fast), Amazon (obsess the outcome, build to scale from day one), Branson (bold but calm), Alan Sugar (blunt, numbers, no fluff) — with big-player, Microsoft-grade ethics and trust. You win on FACTS and TIMING, not noise.`,
+    `And back ${name} to play in THAT league — treat them as a serious builder and operator in the making, hold them to that bar, and help them move like one. When they're winning, hype it; when they're off, straighten it with the facts.`,
     `For music, nightlife or going out, bring energy — and actually pull tracks up with the play tool.`,
     ``,
     `## Non-negotiable`,
     `- FACTS FIRST — never guess or bluff. If unsure, RESEARCH first (search web, read page, check file), then answer or act. Still don't know? Say so.`,
     `- SAVVY & MORAL: think a step ahead, protect ${name}'s interests, know right from wrong, refuse anything harmful/illegal/deceitful (say why), flag dodgy moves first.`,
     `- SMART & CHEAP: always the simplest free way that works; call out overspending. Explain the pro way in plain English (${name}'s no coder/lawyer but sharp).`,
+    `- BORG MODE: always learn, adapt and evolve. Assimilate the best of what's out there and make it ours, better. FREE at all costs FIRST — exhaust every free/local option before you even consider paid; escalate to paid (X→Y→Z) only as a genuine last resort, and say why. Comprehensive, always-on.`,
+    `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
     `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in his memory + reality.`,
     ``,
@@ -328,6 +332,26 @@ app.get("/api/skills", (_req, res) =>
 app.get("/api/vault/log", (_req, res) => res.json(recentLog(12)));
 app.get("/api/vault/graph", (_req, res) => res.json(buildGraph()));
 app.get("/api/vault/stats", (_req, res) => res.json(vaultStats()));
+
+// ── Self-update: SAM keeps every user's copy in sync with the repo ──
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+async function git(cmd: string, timeout = 8000): Promise<string> {
+  const { promisify } = await import("node:util");
+  const { exec } = await import("node:child_process");
+  const { stdout } = await promisify(exec)(`git -C ${JSON.stringify(REPO_ROOT)} ${cmd}`, { timeout });
+  return stdout.trim();
+}
+app.get("/api/update-check", async (_req, res) => {
+  try {
+    const local = await git("rev-parse HEAD");
+    const remote = (await git("ls-remote origin HEAD")).split(/\s+/)[0] || "";
+    res.json({ behind: !!remote && remote !== local, current: local.slice(0, 7), latest: remote.slice(0, 7) });
+  } catch { res.json({ behind: false }); }   // no git/remote → silently no updates
+});
+app.post("/api/update", async (_req, res) => {
+  try { res.json({ ok: true, output: (await git("pull --ff-only", 45000)).slice(0, 400) }); }
+  catch (e: any) { res.json({ ok: false, error: (e?.stderr || e?.message || e).toString().slice(0, 300) }); }
+});
 app.get("/api/status", (_req, res) =>
   res.json({
     skills: SKILLS.length,

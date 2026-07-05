@@ -88,3 +88,11 @@ export const saveKeys = (provider: string, keys: string) =>
   fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, keys }) }).then((r) => r.json());
 export const saveConfig = (key: string, value: string) =>
   fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) }).then((r) => r.json());
+
+// Self-update — SAM checks the repo and can pull the latest (evolve, for free).
+export async function checkUpdate(): Promise<{ behind: boolean; current?: string; latest?: string }> {
+  try { const r = await fetch("/api/update-check"); return await r.json(); } catch { return { behind: false }; }
+}
+export async function runUpdate(): Promise<{ ok: boolean; output?: string; error?: string }> {
+  try { const r = await fetch("/api/update", { method: "POST" }); return await r.json(); } catch (e: any) { return { ok: false, error: String(e) }; }
+}
