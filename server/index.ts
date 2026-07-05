@@ -14,7 +14,7 @@ import { setPool, poolSize, keyStatus } from "./keys.ts";
 import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
-import { remember, recallWith, memoryStats } from "./memory.ts";
+import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
 import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn } from "./authz.ts";
@@ -151,7 +151,7 @@ function recallMemory(): string {
 interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
 
 // The core SAM persona — addresses whoever is actually using SAM.
-function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string): string {
+function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false): string {
   const project = projectId ? projectById(projectId) : undefined;
   const note = projectId ? readProjectNote(projectId) : "";
   const name = (user?.name || "there").trim();
@@ -193,7 +193,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
       : `## No specific brand flagged — answer at the top level.`,
     note ? `\n## Vault note for this brand\n${note}` : ``,
     recalled ? `\n## What you KNOW about ${name} (from memory — trust these facts; they're true and specific, prefer them over general assumptions)\n${recalled}` : ``,
-    recallMemory(),
+    interactive ? recallMemory() : ``,   // recent-exchange context only helps live turns, not Team/swarm/background jobs
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
   ].filter(Boolean).join("\n");
 }
@@ -242,17 +242,18 @@ app.post("/api/command", async (req, res) => {
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
 
+  try {
   // SPEED: quick chat/drafting skips embedding, recall and routing entirely.
   const fast = !!message && isFastPath(message);
-  const qvec = (!fast && message) ? await embedOne(message, true) : null;
+  const qvec = (!fast && message) ? await embedOne(message, true, pinnedModel()) : null;
 
   let { skill, chosen } = pickTier(message || "look at this", tier);
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
 
   const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
-  const toolNames = fast ? undefined : selectTools(qvec, 8);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled);
+  const toolNames = fast ? undefined : selectTools(qvec, 8, message);
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true);
   const userName = (user?.name || "the user").trim();
 
   // Photos → free Gemini vision (no tool loop needed to look at an image).
@@ -277,6 +278,9 @@ app.post("/api/command", async (req, res) => {
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
   }
   res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
+  }
 });
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
@@ -291,13 +295,13 @@ app.post("/api/stream", async (req, res) => {
   const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
 
   const fast = isFastPath(message);
-  const qvec = fast ? null : await embedOne(message, true);
+  const qvec = fast ? null : await embedOne(message, true, pinnedModel());
   let { skill, chosen } = pickTier(message, tier);
   const semanticSkillId = selectSkillId(qvec);
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
   const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
-  const toolNames = fast ? undefined : selectTools(qvec, 8);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled);
+  const toolNames = fast ? undefined : selectTools(qvec, 8, message);
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true);
   const userName = (user?.name || "the user").trim();
 
   try {
@@ -319,14 +323,17 @@ app.post("/api/stream", async (req, res) => {
 app.post("/api/confirm", async (req, res) => {
   const { message, projectId, tier, transcript, tool, input, approved, trace, user, always } = req.body as any;
   if (approved && always && tool) allow(tool);   // "yes, and always allow this"
-  const { skill } = pickTier(message || "", tier);
-  const system = buildSystem(skill?.body || "", projectId, user);
-  const r = await resumeAgent(system, transcript || "", tier || "local", !!approved, tool, input, trace || []);
-
-  if (r.kind === "final") {
-    logExchange({ user: message || `[approved ${tool}]`, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
+  try {
+    const { skill } = pickTier(message || "", tier);
+    const system = buildSystem(skill?.body || "", projectId, user, undefined, true);
+    const r = await resumeAgent(system, transcript || "", tier || "local", !!approved, tool, input, trace || []);
+    if (r.kind === "final") {
+      logExchange({ user: message || `[approved ${tool}]`, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
+    }
+    res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: tier || "local", message });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: String(e?.message || e) });
   }
-  res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: tier || "local", message });
 });
 
 // What can SAM actually do? (for the UI / transparency)
