@@ -28,7 +28,8 @@ import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { startSwarm, loadSwarms } from "./swarm.ts";
+import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
+import { listAllowed, allow, disallow, setAutopilot, autopilotOn } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 
 const sh = promisify(exec);
@@ -1296,6 +1297,36 @@ end tell`);
         await fs.writeFile(envPath, content.trim() + "\n", "utf8");
         return `Saved ${varName} to .env. IMPORTANT: Please restart SAM for the new keys to be loaded into the pools.`;
       } catch (e: any) { return `Failed to update .env: ${e.message}`; }
+    } },
+  // ─── ADMIN SUITE ────────────────────────────────────────────────────────────
+  { name: "manage_autopilot", safe: false, description: "Turn SAM's autopilot mode on or off. When on, SAM runs low-risk tools without asking. input: {action: 'on' | 'off' | 'status'}.", params: "{action}",
+    activity: (i) => `Autopilot: ${i.action}`, preview: (i) => i.action === "off" ? `Turn OFF autopilot — SAM will ask permission for every action?` : `Turn ON autopilot — SAM runs safe tools without asking?`,
+    run: async (i) => {
+      if (i.action === "status") return `Autopilot is currently ${autopilotOn() ? "ON ✅" : "OFF 🔴"}.`;
+      if (i.action === "on") { setAutopilot(true); return "Autopilot is now ON. SAM will handle safe tasks autonomously."; }
+      if (i.action === "off") { setAutopilot(false); return "Autopilot is now OFF. SAM will ask before every action."; }
+      return `Unknown action '${i.action}'. Use: on, off, or status.`;
+    } },
+  { name: "manage_authorizations", safe: false, description: "View, grant, or revoke SAM's standing 'always allow' permissions for specific tools. input: {action: 'list' | 'grant' | 'revoke', tool?: string}.", params: "{action, tool?}",
+    activity: (i) => `Permissions: ${i.action} ${i.tool ?? ""}`.trim(), preview: (i) => i.action === "revoke" ? `Revoke permanent permission for '${i.tool}'?` : `Grant permanent permission for '${i.tool}'?`,
+    run: async (i) => {
+      if (i.action === "list") {
+        const tools = listAllowed();
+        return tools.length ? `Always-allowed tools:\n${tools.map((t: string) => `  • ${t}`).join("\n")}` : "No tools are permanently authorized — SAM asks for every action.";
+      }
+      if (!i.tool) return "Please specify a tool name.";
+      if (i.action === "grant") { allow(i.tool); return `Granted permanent permission for '${i.tool}'.`; }
+      if (i.action === "revoke") { disallow(i.tool); return `Revoked permanent permission for '${i.tool}'.`; }
+      return `Unknown action '${i.action}'. Use: list, grant, or revoke.`;
+    } },
+  { name: "stop_swarm", safe: false, description: "Emergency kill-switch for a running Swarm. Immediately halts all agents. input: {id}.", params: "{id}",
+    activity: (i) => `Killing swarm ${i.id}`, preview: (i) => `KILL swarm ${i.id}? All running agents will be stopped immediately.`,
+    run: async (i) => stopSwarm(i.id) ? `Swarm '${i.id}' has been killed. All agents halted.` : `Swarm '${i.id}' not found.` },
+  { name: "self_restart", safe: false, description: "Cleanly restart SAM's server process. Useful after updating API keys or source code. input: (none).", params: "(none)",
+    activity: () => `Restarting SAM...`, preview: () => `Restart SAM's server process now?`,
+    run: async () => {
+      setTimeout(() => process.exit(0), 500);
+      return "SAM is restarting... I'll be back in a moment. 👋";
     } },
   { name: "kill_process", safe: false, description: "Force quit a misbehaving app or process by name. input: {process_name}.", params: "{process_name}",
     activity: (i) => `Killing process ${i.process_name}`, preview: (i) => `Force quit ${i.process_name}?`, run: async (i) => {
