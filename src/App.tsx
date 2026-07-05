@@ -182,6 +182,10 @@ export default function App() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
+  const [palette, setPalette] = useState(false);
+  const [pq, setPq] = useState("");        // palette query
+  const [pi, setPi] = useState(0);         // palette highlighted index
+  const paletteRef = useRef<HTMLInputElement>(null);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
@@ -242,11 +246,13 @@ export default function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === "t") { e.preventDefault(); setInput("/team "); inputRef.current?.focus(); }
       else if (mod && e.shiftKey && e.key.toLowerCase() === "n") { e.preventDefault(); setInput("/ninjas "); inputRef.current?.focus(); }
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
-      else if (e.key === "Escape") { if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
+      else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
+      else if (e.key === "Escape") { if (palette) setPalette(false); else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [loading]);
+  }, [loading, palette]);
+  useEffect(() => { if (palette) setTimeout(() => paletteRef.current?.focus(), 30); }, [palette]);
 
   useEffect(() => {
     const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -882,6 +888,60 @@ export default function App() {
           </aside>
         </div>
       )}
+
+      {palette && (() => {
+        const acts: { icon: string; label: string; hint?: string; run: () => void }[] = [
+          { icon: "💬", label: "New chat", hint: "⌘K", run: () => newChat() },
+          { icon: "🤝", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
+          { icon: "🥷", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
+          { icon: "🎙", label: "Voice mode", run: () => setVoiceMode(true) },
+          { icon: "👁️", label: "Look through the camera", run: () => lookThroughCamera() },
+          { icon: "🛡️", label: guardian ? "Stop Guardian" : "Start Guardian", run: () => toggleGuardian() },
+          { icon: "📊", label: "Open Dashboard", run: () => setDashOpen(true) },
+          { icon: "🧰", label: "What SAM can do", run: () => setToolsOpen(true) },
+          { icon: "🕑", label: "Chat history", run: () => setHistoryOpen(true) },
+          { icon: "🧠", label: "Memory", run: () => setMemoryOpen(true) },
+          { icon: "🔑", label: "API keys & providers", run: () => setAdminOpen(true) },
+          { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
+          { icon: "🔒", label: "Private mode — local only", run: () => setQuality("private") },
+          { icon: "⚡", label: "Auto — free brains", run: () => setQuality("auto") },
+          { icon: "✨", label: "Best quality", run: () => setQuality("best") },
+          { icon: dark ? "☀️" : "🌙", label: dark ? "Light theme" : "Dark theme", run: () => setDark((v) => !v) },
+          { icon: "🎨", label: "Skin: Classic", run: () => setSkin("classic") },
+          { icon: "🦾", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
+          { icon: "🔥", label: "Skin: Ember", run: () => setSkin("ember") },
+          { icon: "🥷", label: "Skin: Stealth", run: () => setSkin("stealth") },
+          { icon: mode === "business" ? "🏠" : "💼", label: mode === "business" ? "Switch to Personal" : "Switch to Business", run: () => setMode((m) => (m === "business" ? "personal" : "business")) },
+        ];
+        const q = pq.trim().toLowerCase();
+        const filtered = q ? acts.filter((a) => a.label.toLowerCase().includes(q)) : acts;
+        const go = (a?: { run: () => void }) => { if (!a) return; setPalette(false); a.run(); };
+        return (
+          <div className="cmdp-scrim" onMouseDown={() => setPalette(false)}>
+            <div className="cmdp" onMouseDown={(e) => e.stopPropagation()}>
+              <input ref={paletteRef} className="cmdp-input" value={pq} placeholder="Run a command…  ↑↓ move · ↵ run · esc close"
+                onChange={(e) => { setPq(e.target.value); setPi(0); }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setPi((i) => Math.min(filtered.length - 1, i + 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setPi((i) => Math.max(0, i - 1)); }
+                  else if (e.key === "Enter") { e.preventDefault(); go(filtered[pi]); }
+                }} />
+              <div className="cmdp-list">
+                {filtered.length === 0
+                  ? <div className="cmdp-empty">No matching command.</div>
+                  : filtered.map((a, i) => (
+                    <div key={a.label} className={`cmdp-item ${i === pi ? "on" : ""}`} onMouseEnter={() => setPi(i)} onMouseDown={() => go(a)}>
+                      <span className="cmdp-ic">{a.icon}</span>
+                      <span className="cmdp-label">{a.label}</span>
+                      {a.hint && <span className="cmdp-hint">{a.hint}</span>}
+                    </div>
+                  ))}
+              </div>
+              <div className="cmdp-foot">⌘P anytime · {filtered.length} action{filtered.length === 1 ? "" : "s"}</div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Suspense fallback={null}>
         {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
