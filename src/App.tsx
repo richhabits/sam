@@ -261,6 +261,11 @@ export default function App() {
     const n = !elon; setElon(n); setElonMode(n).catch(() => {});
     sysNote(n ? "⚡ Elon Mode ON — SAM's off the leash. Deletes are recoverable; outward actions aren't." : "⚡ Elon Mode off — back to ask-first.");
   }
+  function openStudio() {
+    const sd = (window as any).samDesktop;
+    if (sd?.openStudio) sd.openStudio();                              // dedicated Electron window
+    else window.open(location.pathname + "?app=studio", "_blank");   // browser tab fallback
+  }
   const guardStream = useRef<MediaStream | null>(null);
   const guardIv = useRef<any>(null);
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
@@ -713,6 +718,7 @@ export default function App() {
           {deferredPrompt && <button className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
+          <button className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation">🎨 Studio</button>
           
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
