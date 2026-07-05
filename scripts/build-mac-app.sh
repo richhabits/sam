@@ -2,12 +2,14 @@
 # Builds SAM.app on the Desktop — a one-click launcher (no Terminal window).
 # Double-click SAM.app: starts Ollama (if present) + SAM, opens it in the browser.
 set -e
+# Repo root = one level up from this script, wherever it's checked out.
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$HOME/Desktop/SAM.app"
-SVG="/Volumes/ROMEO HQ/SAM/public/icon.svg"
+SVG="$REPO/public/icon.svg"
 
 cat > /tmp/sam-app.applescript <<'AS'
 on run
-	set samDir to "/Volumes/ROMEO HQ/SAM"
+	set samDir to "__SAMDIR__"
 	set nodeBin to ""
 	try
 		set nodeBin to do shell script "ls -d $HOME/.nvm/versions/node/*/bin 2>/dev/null | tail -1"
@@ -21,6 +23,10 @@ on run
 	display notification "SAM is running — enjoy." with title "S.A.M."
 end run
 AS
+
+# Substitute the real repo path into the compiled AppleScript (heredoc is quoted
+# so it stays literal above — no accidental $HOME expansion in the AppleScript body).
+sed -i '' "s#__SAMDIR__#$REPO#g" /tmp/sam-app.applescript
 
 rm -rf "$APP"
 osacompile -o "$APP" /tmp/sam-app.applescript
