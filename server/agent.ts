@@ -11,7 +11,7 @@
 
 import { runModel, streamModel, Tier } from "./models.ts";
 import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
-import { isAllowed } from "./authz.ts";
+import { mayAutoRun } from "./authz.ts";
 
 const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token limits
 
@@ -106,7 +106,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[])
       continue;
     }
 
-    if (!tool.safe && !isAllowed(tool.name)) {
+    if (!tool.safe && !mayAutoRun(tool.name)) {
       // ask-first: pause and hand the decision to the user (unless pre-authorized)
       return {
         kind: "pending", trace, provider: res.provider,
@@ -192,7 +192,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
     if (call) {
       const tool = toolByName(call.tool);
       if (!tool) { prompt += `\n\n[SAM tried tool "${call.tool}" — no such tool.]`; continue; }
-      if (!tool.safe && !isAllowed(tool.name)) {
+      if (!tool.safe && !mayAutoRun(tool.name)) {
         emit({ type: "pending", tool: tool.name, input: call.input, preview: tool.preview?.(call.input) || tool.description, activity: tool.activity(call.input), transcript: prompt, trace, provider: res.provider });
         return;
       }

@@ -123,3 +123,7 @@ export async function streamTeam(message: string, projectId: string | undefined,
   }
 }
 export const getRoster = () => fetch("/api/team/roster").then((r) => r.json());
+
+// Autopilot — SAM lifts the silly work autonomously (serious actions still ask).
+export const getAutopilot = () => fetch("/api/autopilot").then((r) => r.json());
+export const setAutopilotMode = (on: boolean) => fetch("/api/autopilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) }).then((r) => r.json());

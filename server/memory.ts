@@ -15,7 +15,7 @@ import { embedOne, cosine } from "./embeddings.ts";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");
 const STORE = join(VAULT_DIR, "memory.json");
-const MAX_ITEMS = 4000;
+const MAX_ITEMS = 2500;   // hard cap — plenty of durable facts, keeps memory.json lean
 const DEDUP_SIM = 0.92;   // skip near-duplicate facts (research: dedup on write)
 
 interface Mem { id: string; text: string; vec: number[]; model: string; kind: string; ts: number; hits: number }
@@ -42,7 +42,9 @@ export async function remember(text: string, kind = "fact"): Promise<boolean> {
   for (let i = items.length - 1, seen = 0; i >= 0 && seen < 300; i--, seen++) {
     if (items[i].model === e.model && cosine(items[i].vec, e.vec) > DEDUP_SIM) return false;
   }
-  items.push({ id: Date.now().toString(36) + items.length, text: clean, vec: e.vec, model: e.model, kind, ts: Date.now(), hits: 0 });
+  // Round the vector to 4 dp — identical for cosine matching, ~60% smaller on disk.
+  const vec = e.vec.map((v) => Math.round(v * 1e4) / 1e4);
+  items.push({ id: Date.now().toString(36) + items.length, text: clean, vec, model: e.model, kind, ts: Date.now(), hits: 0 });
   if (items.length > MAX_ITEMS) items = items.slice(items.length - MAX_ITEMS);
   save();
   return true;

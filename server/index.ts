@@ -17,7 +17,7 @@ import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats } from "./memory.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -33,6 +33,7 @@ import {
   buildGraph,
   vaultStats,
   readProjectNote,
+  pruneOldLogs,
 } from "./vault.ts";
 
 const app = express();
@@ -60,6 +61,8 @@ console.log(`  vault mounted   · ${vaultStats().path}\n`);
 // Build semantic tool/skill indexes + warm date-time/location context (non-blocking).
 void buildIndexes(SKILLS).then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"));
 initContext();
+// Self-containment: prune ancient daily logs so the vault stays lean forever (free).
+{ const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 void grabWorld().then((s) => console.log(`  ${s}\n`));
@@ -379,6 +382,10 @@ app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), eve
 
 // ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
 app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges: listNudges() }));
+
+// ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
+app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
+app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
 
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
