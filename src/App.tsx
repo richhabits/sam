@@ -32,7 +32,7 @@ function greeting(name: string) {
 function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
 interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean }
-interface Convo { id: string; title: string; messages: Msg[]; at: number }
+interface Convo { id: string; title: string; messages: Msg[]; at: number; folder?: string }
 
 const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -195,6 +195,11 @@ export default function App() {
   const [tools, setTools] = useState<{ name: string; safe: boolean; description: string }[]>([]);
 
   const [convos, setConvos] = useState<Convo[]>(init.convos);
+  const [folders, setFolders] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("sam.folders") || "[]"); } catch { return []; } });
+  const [folderFilter, setFolderFilter] = useState("");
+  useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch {} }, [folders]);
+  function addFolder() { const n = window.prompt("New folder name")?.trim(); if (n && !folders.includes(n)) setFolders((f) => [...f, n]); }
+  function moveToFolder(id: string, folder: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, folder: folder || undefined } : c))); }
   const [activeId, setActiveId] = useState<string>(init.activeId);
   const [messages, setMessages] = useState<Msg[]>(init.convos.find((c) => c.id === init.activeId)?.messages || []);
 
@@ -836,14 +841,27 @@ export default function App() {
       <div className="shell">
       <aside className="side">
         <div className="side-head"><span className="side-title">Chats</span><button className="side-new" onClick={newChat} title="New chat">＋</button></div>
+        <div className="side-folders">
+          <button className={`side-folder ${!folderFilter ? "on" : ""}`} onClick={() => setFolderFilter("")}>All</button>
+          {folders.map((f) => (
+            <button key={f} className={`side-folder ${folderFilter === f ? "on" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}>📁 {f}</button>
+          ))}
+          <button className="side-folder add" onClick={addFolder} title="New folder">＋</button>
+        </div>
         <ul className="side-list">
-          {convos.map((c) => (
+          {convos.filter((c) => !folderFilter || c.folder === folderFilter).map((c) => (
             <li key={c.id} className={c.id === activeId ? "active" : ""}>
               <button className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
+              {folders.length > 0 && (
+                <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => moveToFolder(c.id, e.target.value)} title="Move to folder">
+                  <option value="">📁</option>
+                  {folders.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              )}
               <button className="side-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
             </li>
           ))}
-          {convos.length === 0 && <li className="side-empty">No chats yet — start typing.</li>}
+          {convos.filter((c) => !folderFilter || c.folder === folderFilter).length === 0 && <li className="side-empty">{folderFilter ? "No chats in this folder." : "No chats yet — start typing."}</li>}
         </ul>
         <button className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
       </aside>
@@ -1070,8 +1088,17 @@ export default function App() {
         <button className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
         <button className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
         <button className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
-        <div className="ctx-label">Brains</div>
-        {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-status">{n ? `✓ ${n} free ${n === 1 ? "brain" : "brains"} — rotates, never a limit` : "Local Ollama · free & private"}</div>; })()}
+        <div className="ctx-label">Live status</div>
+        <div className="ctx-live">
+          <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
+          {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic">🧠</span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
+          {(() => { const active = swarms.filter((s) => s.status === "running" || s.status === "planning").length; return active > 0 ? <div className="ctx-row"><span className="ctx-ic">🐝</span>{active} swarm{active === 1 ? "" : "s"} running</div> : null; })()}
+          {status?.vault?.count != null && <div className="ctx-row"><span className="ctx-ic">📚</span>{status.vault.count} memories</div>}
+          <div className="ctx-row"><span className="ctx-ic">{quality === "private" ? "🔒" : quality === "best" ? "✨" : "⚡"}</span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
+          {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
+          {elon && <div className="ctx-row danger"><span className="ctx-ic">⚡</span>Elon Mode ON</div>}
+          {guardian && <div className="ctx-row"><span className="ctx-ic">🛡️</span>Guardian watching</div>}
+        </div>
       </aside>
       </div>
 
