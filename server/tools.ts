@@ -1279,6 +1279,24 @@ end tell`);
       if (!PROJECTS.length) return "No projects in registry.";
       return PROJECTS.map(p => `[${p.id}] ${p.name} (${p.status}) - ${p.summary}`).join("\n");
     } },
+  { name: "manage_api_keys", safe: false, description: "Add or update an API key in SAM's .env file. input: {provider, key}. Providers: ANTHROPIC, OPENAI, GEMINI, GROQ, etc.", params: "{provider, key}",
+    activity: (i) => `Updating ${i.provider} API key`, preview: (i) => `Save ${i.provider} API key to .env?`, run: async (i) => {
+      try {
+        const fs = await import("node:fs/promises");
+        const envPath = resolve(process.cwd(), ".env");
+        let content = "";
+        try { content = await fs.readFile(envPath, "utf8"); } catch {}
+        const varName = `${i.provider.toUpperCase()}_API_KEYS`;
+        const regex = new RegExp(`^${varName}=.*$`, "m");
+        if (regex.test(content)) {
+          content = content.replace(regex, `${varName}=${i.key}`);
+        } else {
+          content += `\n${varName}=${i.key}\n`;
+        }
+        await fs.writeFile(envPath, content.trim() + "\n", "utf8");
+        return `Saved ${varName} to .env. IMPORTANT: Please restart SAM for the new keys to be loaded into the pools.`;
+      } catch (e: any) { return `Failed to update .env: ${e.message}`; }
+    } },
   { name: "kill_process", safe: false, description: "Force quit a misbehaving app or process by name. input: {process_name}.", params: "{process_name}",
     activity: (i) => `Killing process ${i.process_name}`, preview: (i) => `Force quit ${i.process_name}?`, run: async (i) => {
       try {
