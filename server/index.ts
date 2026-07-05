@@ -6,7 +6,7 @@
 
 import "dotenv/config";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
@@ -433,7 +433,7 @@ app.get("/api/vault/graph", (_req, res) => res.json(buildGraph()));
 app.get("/api/vault/stats", (_req, res) => res.json(vaultStats()));
 
 // ── Self-update: SAM keeps every user's copy in sync with the repo ──
-const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function git(cmd: string, timeout = 8000): Promise<string> {
   const { promisify } = await import("node:util");
   const { exec } = await import("node:child_process");

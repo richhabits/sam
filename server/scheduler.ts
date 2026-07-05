@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "schedules.json");
 
 export interface Schedule {
