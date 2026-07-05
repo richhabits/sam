@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "description": "S.A.M. — Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -k -n \"SERVER,HUD\" -c \"#E8673A,#C4A882\" \"npm:dev:server\" \"npm:dev:hud\"",
     "dev:server": "tsx watch server/index.ts",
@@ -65,6 +68,16 @@
     "directories": {
       "output": "dist-app"
     },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json",
+      "!**/vault/**",
+      "!**/.env",
+      "!**/.env.*",
+      "!**/*.test.*",
+      "!**/creative-space/**"
+    ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**",
       "**/node_modules/playwright-core/**"
