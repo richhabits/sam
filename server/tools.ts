@@ -72,7 +72,7 @@ async function currentBranch(dir: string): Promise<string> {
 export const OS = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "windows" : "linux";
 const IS_MAC = OS === "mac";
 function notSupported(feature: string): string {
-  return `“${feature}” is not currently supported natively on ${OS}. (Web, files, terminal, and weather work on any laptop.)`;
+  return `“${feature}” is not currently supported natively on ${OS}.`;
 }
 // Cross-platform "open this URL/app/file with the system default".
 function openCmd(target: string): string {
@@ -235,6 +235,7 @@ async function pressKey(input: { key: string; modifiers?: string[] }): Promise<s
     await osa(`tell application "System Events" to key code ${input.key}${using}`);
     return `Pressed key ${input.key}${using}`;
   } else if (OS === "windows") {
+    // Basic fallback for Windows using SendKeys. Key codes map differently.
     const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{${input.key}}');`;
     await sh(`powershell -command "${ps}"`);
     return `Pressed key ${input.key}`;
@@ -337,6 +338,7 @@ async function getBattery(): Promise<string> {
     return stdout.trim();
   } catch { return "Battery info unavailable on this system."; }
 }
+
 async function speak(text: string): Promise<string> {
   if (!IS_MAC) return "SAM can speak in the browser instead (turn on 'Read replies aloud' in settings).";
   await sh(`say ${JSON.stringify(text)}`); return `Said: ${text}`;
@@ -614,63 +616,46 @@ export const TOOLS: Tool[] = [
   { name: "wifi_info", safe: true, description: "Get current Wi-Fi network name and details.", params: "(none)",
     activity: () => `Checking Wi-Fi`,
     run: async () => {
+      if (!IS_MAC) return "Wi-Fi info only works on macOS.";
       try {
-        if (IS_MAC) { const { stdout } = await sh("networksetup -getairportnetwork en0"); return stdout.trim(); }
-        if (OS === "windows") { const { stdout } = await sh("netsh wlan show interfaces | findstr /C:\"SSID\""); return stdout.trim(); }
-        const { stdout } = await sh("nmcli -t -f active,ssid,bssid dev wifi | grep '^yes' || echo 'No Wi-Fi'"); return stdout.trim();
+        const { stdout } = await sh("networksetup -getairportnetwork en0");
+        return stdout.trim();
       } catch (e: any) { return `Failed to get Wi-Fi: ${e.message}`; }
     } },
   { name: "lock_screen", safe: false, description: "Lock the Mac immediately.", params: "(none)",
     activity: () => `Locking the screen`, preview: () => `Lock the screen`,
     run: async () => {
-      try {
-        if (IS_MAC) await sh("pmset displaysleepnow");
-        else if (OS === "windows") await sh("rundll32.exe user32.dll,LockWorkStation");
-        else await sh("xdg-screensaver lock");
-        return "Screen locked.";
-      } catch (e: any) { return `Failed to lock: ${e.message}`; }
+      if (!IS_MAC) return "Lock screen only works on macOS.";
+      try { await sh("pmset displaysleepnow"); return "Screen locked."; } catch (e: any) { return `Failed to lock: ${e.message}`; }
     } },
   { name: "empty_trash", safe: false, description: "Permanently empty the macOS Trash.", params: "(none)",
     activity: () => `Emptying the Trash`, preview: () => `Permanently delete all files in ~/.Trash`,
     run: async () => {
-      try {
-        if (IS_MAC) await sh("rm -rf ~/.Trash/*");
-        else if (OS === "windows") await sh("powershell -command Clear-RecycleBin -Force");
-        else await sh("rm -rf ~/.local/share/Trash/*");
-        return "Trash emptied.";
-      } catch (e: any) { return `Failed to empty trash: ${e.message}`; }
+      if (!IS_MAC) return "Trash only works on macOS.";
+      try { await sh("rm -rf ~/.Trash/*"); return "Trash emptied."; } catch (e: any) { return `Failed to empty trash: ${e.message}`; }
     } },
   { name: "eject_disk", safe: false, description: "Eject a mounted disk/volume. input: {volume_name}.", params: "{volume_name}",
     activity: (i) => `Ejecting ${i.volume_name}`, preview: (i) => `Eject volume: ${i.volume_name}`,
     run: async (i) => {
-      try {
-        if (IS_MAC) await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`);
-        else if (OS === "windows") await sh(`powershell -command "(New-Object -comObject Shell.Application).Namespace(17).ParseName('${i.volume_name.replace(/'/g, "")}').InvokeVerb('Eject')"`);
-        else await sh(`umount "/media/${process.env.USER}/${i.volume_name.replace(/"/g, "")}"`);
-        return `Ejected ${i.volume_name}.`;
-      } catch (e: any) { return `Failed to eject: ${e.message}`; }
+      if (!IS_MAC) return "Eject only works on macOS.";
+      try { await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`); return `Ejected ${i.volume_name}.`; } catch (e: any) { return `Failed to eject: ${e.message}`; }
     } },
   { name: "caffeinate", safe: true, description: "Prevent the Mac from sleeping for a duration. input: {minutes}.", params: "{minutes}",
     activity: (i) => `Keeping Mac awake for ${i.minutes}m`,
     run: async (i) => {
+      if (!IS_MAC) return "Caffeinate only works on macOS.";
       const min = Number(i.minutes);
       if (isNaN(min) || min <= 0) return "Invalid minutes.";
       try {
-        if (IS_MAC) { sh(`caffeinate -d -t ${min * 60} &`); }
-        else if (OS === "windows") {
-          const ps = `$wshell = New-Object -ComObject wscript.shell; for($i=0; $i -lt ${min}; $i++) { Start-Sleep -Seconds 60; $wshell.SendKeys('{F15}') }`;
-          sh(`powershell -command "${ps}" &`);
-        } else {
-          sh(`xdotool key F15 && sleep ${min * 60} &`);
-        }
-        return `System will stay awake for ${min} minute(s).`;
+        // Run in background detached
+        sh(`caffeinate -d -t ${min * 60} &`);
+        return `Mac will stay awake for ${min} minute(s).`;
       } catch (e: any) { return `Failed to caffeinate: ${e.message}`; }
     } },
   { name: "disk_usage", safe: true, description: "Check exactly how much free space is left on the main drive.", params: "(none)",
     activity: () => `Checking disk usage`,
     run: async () => {
       try {
-        if (OS === "windows") { const { stdout } = await sh("wmic logicaldisk get size,freespace,caption"); return stdout.trim(); }
         const { stdout } = await sh("df -h /");
         return stdout.trim();
       } catch (e: any) { return `Failed to read disk usage: ${e.message}`; }
@@ -678,22 +663,18 @@ export const TOOLS: Tool[] = [
   { name: "app_switcher", safe: false, description: "Bring an installed macOS application to the foreground. input: {app_name}.", params: "{app_name}",
     activity: (i) => `Switching to ${i.app_name}`, preview: (i) => `Bring app to front: ${i.app_name}`,
     run: async (i) => {
+      if (!IS_MAC) return "App switching only works on macOS.";
       try {
-        if (IS_MAC) await osa(`tell application "${i.app_name}" to activate`);
-        else if (OS === "windows") await sh(`powershell -command "(New-Object -ComObject WScript.Shell).AppActivate('${i.app_name.replace(/'/g, "")}')"`);
-        else await sh(`wmctrl -a "${i.app_name.replace(/"/g, "")}"`);
+        await osa(`tell application "${i.app_name}" to activate`);
         return `Activated ${i.app_name}.`;
       } catch (e: any) { return `Failed to activate app: ${e.message}`; }
     } },
   { name: "set_wallpaper", safe: false, description: "Set the macOS desktop wallpaper. input: {image_path}. Note: Path must be absolute.", params: "{image_path}",
     activity: () => `Changing wallpaper`, preview: (i) => `Set wallpaper to:\n${i.image_path}`,
     run: async (i) => {
+      if (!IS_MAC) return "Wallpaper control only works on macOS.";
       try {
-        if (IS_MAC) await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
-        else if (OS === "windows") {
-          const ps = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WP { [DllImport("user32.dll", CharSet=CharSet.Auto)] public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni); }'; [WP]::SystemParametersInfo(20, 0, '${i.image_path.replace(/'/g, "")}', 3)`;
-          await sh(`powershell -command "${ps}"`);
-        } else await sh(`gsettings set org.gnome.desktop.background picture-uri "file://${i.image_path.replace(/"/g, "")}" || feh --bg-scale "${i.image_path.replace(/"/g, "")}"`);
+        await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
         return "Wallpaper updated successfully.";
       } catch (e: any) { return `Failed to set wallpaper: ${e.message}`; }
     } },
@@ -746,9 +727,7 @@ export const TOOLS: Tool[] = [
         return "Brightness control requires external CLI tools (like 'brightness') on macOS. Skipping to keep dependencies zero.";
       } else {
         try {
-          if (IS_MAC) await osa(`set volume output volume ${lvl}`);
-          else if (OS === "windows") await sh(`powershell -command "$obj = new-object -com wscript.shell; $obj.SendKeys([char]174 * 50); $obj.SendKeys([char]175 * ${Math.round(lvl / 2)})"`);
-          else await sh(`amixer sset Master ${lvl}%`);
+          await osa(`set volume output volume ${lvl}`);
           return `Hardware volume set to ${lvl}%.`;
         } catch (e: any) { return `Failed to set volume: ${e.message}`; }
       }
@@ -893,111 +872,110 @@ export const TOOLS: Tool[] = [
         return out.trim() || "No duplicates found.";
       } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
-  { name: "add_calendar_event", safe: false, description: "Create a scheduled event in the native macOS Calendar app. input: {title, start_date, end_date} (Dates must be parseable by AppleScript like '12/25/2026 14:00').", params: "{title, start_date, end_date}",
+  { name: "add_calendar_event", safe: false, description: "Create a scheduled event in Calendar. input: {title, start_date, end_date} (Dates parseable like '12/25/2026 14:00').", params: "{title, start_date, end_date}",
     activity: (i) => `Scheduling ${i.title} on Calendar`, preview: (i) => `Add to Calendar:\n${i.title}\nFrom: ${i.start_date}\nTo: ${i.end_date}`,
     run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        await osa(`tell application "Calendar" to tell calendar "Home" to make new event at end of events with properties {summary:"${i.title.replace(/"/g, "")}", start date:date "${i.start_date}", end date:date "${i.end_date}"}`);
-        return "Event created successfully in Calendar.";
-      } catch (e: any) {
-        try {
+        if (IS_MAC) {
           await osa(`tell application "Calendar" to tell calendar 1 to make new event at end of events with properties {summary:"${i.title.replace(/"/g, "")}", start date:date "${i.start_date}", end date:date "${i.end_date}"}`);
           return "Event created successfully in default Calendar.";
-        } catch (err: any) { return `Failed to create event: ${err.message}`; }
-      }
+        } else {
+          return notSupported("Calendar");
+        }
+      } catch (err: any) { return `Failed to create event: ${err.message}`; }
     } },
 
-  { name: "create_apple_note", safe: true, description: "Create a new note in the native Apple Notes app. input: {title, body}.", params: "{title, body}",
-    activity: (i) => `Creating Apple Note: ${i.title}`,
+  { name: "create_note", safe: true, description: "Create a new note. input: {title, body}.", params: "{title, body}",
+    activity: (i) => `Creating Note: ${i.title}`,
     run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        const content = `<h1>${i.title}</h1><p>${i.body.replace(/\\n/g, "<br>")}</p>`;
-        await osa(`tell application "Notes" to make new note with properties {body:"${content.replace(/"/g, "\\\"")}"}`);
-        return "Note created successfully in Apple Notes.";
+        if (IS_MAC) {
+          const content = `<h1>${i.title}</h1><p>${i.body.replace(/\n/g, "<br>")}</p>`;
+          await osa(`tell application "Notes" to make new note with properties {body:"${content.replace(/"/g, "\\\"")}"}`);
+          return "Note created successfully.";
+        } else {
+          const notesDir = resolve(homedir(), "SAM_Notes");
+          await sh(`mkdir -p "${notesDir}"`);
+          const file = resolve(notesDir, `${i.title.replace(/[^a-z0-9]/gi, '_')}.txt`);
+          await writeFile(file, i.body);
+          return `Note saved to ${file}.`;
+        }
       } catch (e: any) { return `Failed to create note: ${e.message}`; }
     } },
-  { name: "search_apple_notes", safe: true, description: "Search Apple Notes and return content of matches. input: {query}.", params: "{query}",
-    activity: (i) => `Searching Apple Notes for "${i.query}"`,
+  { name: "search_notes", safe: true, description: "Search Notes and return content of matches. input: {query}.", params: "{query}",
+    activity: (i) => `Searching Notes for "${i.query}"`,
     run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        const script = `
-tell application "Notes"
-	set matchNotes to notes whose name contains "${i.query.replace(/"/g, "")}" or body contains "${i.query.replace(/"/g, "")}"
-	set out to ""
-	repeat with n in matchNotes
-		set out to out & "Title: " & name of n & "\n" & body of n & "\n\n"
-	end repeat
-	return out
-end tell`;
-        const result = await osa(script);
-        return result.trim() || "No matching notes found.";
+        if (IS_MAC) {
+          const script = `tell application "Notes"\nset matchNotes to notes whose name contains "${i.query.replace(/"/g, "")}" or body contains "${i.query.replace(/"/g, "")}"\nset out to ""\nrepeat with n in matchNotes\nset out to out & "Title: " & name of n & "\\n" & body of n & "\\n\\n"\nend repeat\nreturn out\nend tell`;
+          const result = await osa(script);
+          return result.trim() || "No matching notes found.";
+        } else {
+          const notesDir = resolve(homedir(), "SAM_Notes");
+          const { stdout } = await sh(`grep -ri "${i.query.replace(/"/g, "")}" "${notesDir}" 2>/dev/null || true`);
+          return stdout.trim() || "No matching notes found.";
+        }
       } catch (e: any) { return `Failed to search notes: ${e.message}`; }
     } },
-  { name: "send_email", safe: false, description: "Draft and send an email natively through the macOS Apple Mail app. input: {to_email, subject, body}.", params: "{to_email, subject, body}",
-    activity: (i) => `Sending email to ${i.to_email}`, preview: (i) => `Send email to ${i.to_email}:\nSubject: ${i.subject}\n${i.body}`,
+  { name: "send_email", safe: false, description: "Draft an email in the default mail client. input: {to_email, subject, body}.", params: "{to_email, subject, body}",
+    activity: (i) => `Drafting email to ${i.to_email}`, preview: (i) => `Draft email to ${i.to_email}:\nSubject: ${i.subject}\n${i.body}`,
     run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        const script = `tell application "Mail"
-	set theMessage to make new outgoing message with properties {subject:"${i.subject.replace(/"/g, "\\\"")}", content:"${i.body.replace(/"/g, "\\\"")}", visible:false}
-	tell theMessage
-		make new to recipient at end of to recipients with properties {address:"${i.to_email.replace(/"/g, "\\\"")}"}
-		send
-	end tell
-end tell`;
-        await osa(script);
-        return `Email sent successfully to ${i.to_email}.`;
+        if (IS_MAC) {
+          const script = `tell application "Mail"\nset theMessage to make new outgoing message with properties {subject:"${i.subject.replace(/"/g, "\\\"")}", content:"${i.body.replace(/"/g, "\\\"")}", visible:false}\ntell theMessage\nmake new to recipient at end of to recipients with properties {address:"${i.to_email.replace(/"/g, "\\\"")}"}\nsend\nend tell\nend tell`;
+          await osa(script);
+          return `Email sent successfully to ${i.to_email}.`;
+        } else {
+          await openUrl(`mailto:${i.to_email}?subject=${encodeURIComponent(i.subject)}&body=${encodeURIComponent(i.body)}`);
+          return `Opened email draft to ${i.to_email} in the default mail client.`;
+        }
       } catch (e: any) { return `Failed to send email: ${e.message}`; }
     } },
-  { name: "open_apple_maps", safe: true, description: "Instantly launch Apple Maps with a specific address or search query. input: {address_or_query}.", params: "{address_or_query}",
-    activity: (i) => `Opening Apple Maps for ${i.address_or_query}`,
-    run: (i) => openUrl(`maps://?q=${encodeURIComponent(i.address_or_query)}`).then(() => `Apple Maps opened for: ${i.address_or_query}`) },
-  { name: "add_apple_contact", safe: false, description: "Programmatically add a new person to your native macOS Contacts. input: {first_name, last_name?, phone?, email?}.", params: "{first_name, last_name?, phone?, email?}",
+  { name: "open_maps", safe: true, description: "Instantly launch Maps with a specific address or search query. input: {address_or_query}.", params: "{address_or_query}",
+    activity: (i) => `Opening Maps for ${i.address_or_query}`,
+    run: async (i) => {
+      const q = encodeURIComponent(i.address_or_query);
+      if (IS_MAC) return openUrl(`maps://?q=${q}`).then(() => `Apple Maps opened for: ${i.address_or_query}`);
+      else return openUrl(`https://www.google.com/maps/search/?api=1&query=${q}`).then(() => `Google Maps opened for: ${i.address_or_query}`);
+    } },
+  { name: "add_contact", safe: false, description: "Programmatically add a new person to your native Contacts. input: {first_name, last_name?, phone?, email?}.", params: "{first_name, last_name?, phone?, email?}",
     activity: (i) => `Adding contact: ${i.first_name}`, preview: (i) => `Add to Contacts:\nName: ${i.first_name} ${i.last_name || ""}\nPhone: ${i.phone || ""}\nEmail: ${i.email || ""}`,
     run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        const lastStr = i.last_name ? `last name:"${i.last_name.replace(/"/g, "\\\"")}", ` : "";
-        let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${i.first_name.replace(/"/g, "\\\"")}", ${lastStr}}\n`;
-        if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${i.phone.replace(/"/g, "\\\"")}"}\n`;
-        if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${i.email.replace(/"/g, "\\\"")}"}\n`;
-        script += `save\nend tell`;
-        await osa(script);
-        return "Contact added successfully.";
+        if (IS_MAC) {
+          const lastStr = i.last_name ? `last name:"${i.last_name.replace(/"/g, "\\\"")}", ` : "";
+          let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${i.first_name.replace(/"/g, "\\\"")}", ${lastStr}}\n`;
+          if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${i.phone.replace(/"/g, "\\\"")}"}\n`;
+          if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${i.email.replace(/"/g, "\\\"")}"}\n`;
+          script += `save\nend tell`;
+          await osa(script);
+          return "Contact added successfully.";
+        } else {
+          const vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${i.last_name || ""};${i.first_name};;;\nFN:${i.first_name} ${i.last_name || ""}\nTEL;TYPE=CELL:${i.phone || ""}\nEMAIL;TYPE=WORK:${i.email || ""}\nEND:VCARD`;
+          const contactsDir = resolve(homedir(), "SAM_Contacts");
+          await sh(`mkdir -p "${contactsDir}"`);
+          const file = resolve(contactsDir, `${i.first_name}_${i.last_name || ""}.vcf`.trim());
+          await writeFile(file, vcf);
+          return `Contact saved as VCF in ${file}.`;
+        }
       } catch (e: any) { return `Failed to add contact: ${e.message}`; }
     } },
   { name: "toggle_dark_mode", safe: true, description: "Flip the macOS system appearance between Dark Mode and Light Mode natively.", params: "(none)",
     activity: () => `Toggling Dark Mode`,
     run: async () => {
+      if (!IS_MAC) return "Requires macOS.";
       try {
-        if (IS_MAC) await osa(`tell application "System Events" to tell appearance preferences to set dark mode to not dark mode`);
-        else if (OS === "windows") {
-          const ps = `$p='HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'; $v=(Get-ItemProperty $p).AppsUseLightTheme; if($v -eq 0){Set-ItemProperty $p -Name AppsUseLightTheme -Value 1; Set-ItemProperty $p -Name SystemUsesLightTheme -Value 1}else{Set-ItemProperty $p -Name AppsUseLightTheme -Value 0; Set-ItemProperty $p -Name SystemUsesLightTheme -Value 0}`;
-          await sh(`powershell -command "${ps}"`);
-        } else {
-          await sh(`gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'`);
-        }
-        return "Toggled Dark Mode successfully.";
+        await osa(`tell application "System Events" to tell appearance preferences to set dark mode to not dark mode`);
+        return "Toggled macOS Dark Mode successfully.";
       } catch (e: any) { return `Failed to toggle Dark Mode: ${e.message}`; }
     } },
   { name: "get_frontmost_app", safe: true, description: "Get the name of the macOS application you are currently looking at on screen.", params: "(none)",
     activity: () => `Checking frontmost app`,
     run: async () => {
+      if (!IS_MAC) return "Requires macOS.";
       try {
-        if (IS_MAC) {
-          const result = await osa(`tell application "System Events" to get name of first application process whose frontmost is true`);
-          return `Frontmost app: ${result.trim()}`;
-        } else if (OS === "windows") {
-          const ps = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Win { [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId); }'; $hwnd = [Win]::GetForegroundWindow(); $pid = 0; [Win]::GetWindowThreadProcessId($hwnd, [ref]$pid) | Out-Null; (Get-Process -Id $pid).ProcessName`;
-          const { stdout } = await sh(`powershell -command "${ps}"`);
-          return `Frontmost app: ${stdout.trim()}`;
-        } else {
-          const { stdout } = await sh(`xdotool getwindowfocus getwindowname`);
-          return `Frontmost app: ${stdout.trim()}`;
-        }
+        const result = await osa(`tell application "System Events" to get name of first application process whose frontmost is true`);
+        return `Frontmost app: ${result.trim()}`;
       } catch (e: any) { return `Failed to get frontmost app: ${e.message}`; }
     } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
@@ -1225,78 +1203,50 @@ end tell`);
     activity: (i) => `Clicking ${i.selector ?? i}`, preview: (i) => `Browser: Click '${i.selector ?? i}'`, run: (i) => browserClick(i.selector ?? i) },
   { name: "browser_type", safe: false, description: "Type text into an element in the active Chrome tab. input: {selector, text, submit?}.", params: "{selector, text, submit?}",
     activity: (i) => `Typing into ${i.selector}`, preview: (i) => `Browser: Type into '${i.selector}'\n${i.text}`, run: (i) => browserType(i) },
-  { name: "add_reminder", safe: false, description: "Add a new Apple Reminder. Mac only. input: {text, list?}. list defaults to 'Reminders'.", params: "{text, list?}",
+  { name: "add_reminder", safe: false, description: "Add a new Reminder. input: {text, list?}. list defaults to 'Reminders'.", params: "{text, list?}",
     activity: (i) => `Adding reminder: ${i.text}`, preview: (i) => `Add Reminder to ${i.list || 'Reminders'}:\n${i.text}`,
     run: async (i) => {
-      if (!IS_MAC) return "Apple Reminders only works on macOS.";
+      if (!IS_MAC) return notSupported("Reminders");
       try {
         const l = i.list || "Reminders";
-        await osa(`tell application "Reminders"
-  tell list "${esc(l)}"
-    make new reminder with properties {name:"${esc(i.text)}"}
-  end tell
-end tell`);
+        await osa(`tell application "Reminders"\ntell list "${esc(l)}"\nmake new reminder with properties {name:"${esc(i.text)}"}\nend tell\nend tell`);
         return `Added reminder '${i.text}'.`;
       } catch (e: any) { return `Couldn't add reminder: ${e.message}`; }
     } },
-  { name: "read_apple_mail", safe: true, description: "Read unread emails from Apple Mail on macOS. Returns the sender, subject, date, and body snippet. input: {limit?: number}.", params: "{limit}",
-    activity: () => `Checking Apple Mail inbox`,
+  { name: "read_email", safe: true, description: "Read unread emails from the inbox. Returns the sender, subject, date, and body snippet. input: {limit?: number}.", params: "{limit}",
+    activity: () => `Checking inbox`,
     run: async (i) => {
-      if (!IS_MAC) return "Apple Mail integration only works on macOS.";
+      if (!IS_MAC) return notSupported("Read Mail");
       const limit = i.limit || 5;
-      const script = `
-        tell application "Mail"
-          set unreadMsgs to (messages of inbox whose read status is false)
-          set out to ""
-          set counter to 0
-          repeat with msg in unreadMsgs
-            if counter is ${limit} then exit repeat
-            set out to out & "---" & return
-            set out to out & "From: " & sender of msg & return
-            set out to out & "Subject: " & subject of msg & return
-            set out to out & "Date: " & date sent of msg & return
-            set bodyText to content of msg
-            if (length of bodyText) > 500 then
-              set out to out & "Body: " & (text 1 thru 500 of bodyText) & "..." & return
-            else
-              set out to out & "Body: " & bodyText & return
-            end if
-            set counter to counter + 1
-          end repeat
-          if out is "" then return "No unread emails."
-          return out
-        end tell
-      `;
+      const script = `tell application "Mail"\nset unreadMsgs to (messages of inbox whose read status is false)\nset out to ""\nset counter to 0\nrepeat with msg in unreadMsgs\nif counter is ${limit} then exit repeat\nset out to out & "---" & return\nset out to out & "From: " & sender of msg & return\nset out to out & "Subject: " & subject of msg & return\nset out to out & "Date: " & date sent of msg & return\nset bodyText to content of msg\nif (length of bodyText) > 500 then\nset out to out & "Body: " & (text 1 thru 500 of bodyText) & "..." & return\nelse\nset out to out & "Body: " & bodyText & return\nend if\nset counter to counter + 1\nend repeat\nif out is "" then return "No unread emails."\nreturn out\nend tell`;
       try { return await osa(script); } catch (e: any) { return `Failed to read Mail: ${e.message}`; }
     } },
-  { name: "draft_apple_mail", safe: false, description: "Draft a new email in Apple Mail (does not send it, just opens the draft window). input: {recipient, subject, body}.", params: "{recipient, subject, body}",
+  { name: "draft_email", safe: false, description: "Draft a new email. input: {recipient, subject, body}.", params: "{recipient, subject, body}",
     activity: (i) => `Drafting email to ${i.recipient}`, preview: (i) => `To: ${i.recipient}\nSubject: ${i.subject}\n\n${i.body}`,
     run: async (i) => {
-      if (!IS_MAC) return "Apple Mail integration only works on macOS.";
-      const script = `
-        tell application "Mail"
-          set newMsg to make new outgoing message with properties {subject:"${esc(i.subject)}", content:"${esc(i.body)}", visible:true}
-          tell newMsg
-            make new to recipient at end of to recipients with properties {address:"${esc(i.recipient)}"}
-          end tell
-          activate
-        end tell
-      `;
-      try { await osa(script); return "Draft created and opened in Apple Mail."; } catch (e: any) { return `Failed to draft Mail: ${e.message}`; }
+      try {
+        if (IS_MAC) {
+          const script = `tell application "Mail"\nset newMsg to make new outgoing message with properties {subject:"${esc(i.subject)}", content:"${esc(i.body)}", visible:true}\ntell newMsg\nmake new to recipient at end of to recipients with properties {address:"${esc(i.recipient)}"}\nend tell\nactivate\nend tell`;
+          await osa(script); return "Draft created and opened in Apple Mail.";
+        } else {
+          await openUrl(`mailto:${i.recipient}?subject=${encodeURIComponent(i.subject)}&body=${encodeURIComponent(i.body)}`);
+          return `Opened email draft in default client.`;
+        }
+      } catch (e: any) { return `Failed to draft Mail: ${e.message}`; }
     } },
-  { name: "run_shortcut", safe: false, description: "Run an Apple Shortcut by name (HomeKit, Automations, etc). input: {name}.", params: "{name}",
+  { name: "run_shortcut", safe: false, description: "Run a native OS Shortcut/script by name. input: {name}.", params: "{name}",
     activity: (i) => `Running Shortcut: ${i.name}`, preview: (i) => `Run Shortcut:\n${i.name}`,
     run: async (i) => {
-      if (!IS_MAC) return "Shortcuts only work on macOS.";
+      if (!IS_MAC) return notSupported("Shortcuts");
       try {
         const { stdout } = await sh(`shortcuts run "${esc(i.name)}"`);
         return stdout || `Ran shortcut '${i.name}'.`;
       } catch (e: any) { return `Shortcut failed: ${e.message}`; }
     } },
-  { name: "list_shortcuts", safe: true, description: "List all available Apple Shortcuts on this Mac.", params: "(none)",
+  { name: "list_shortcuts", safe: true, description: "List all available OS Shortcuts.", params: "(none)",
     activity: () => `Listing available Shortcuts`,
     run: async () => {
-      if (!IS_MAC) return "Shortcuts only work on macOS.";
+      if (!IS_MAC) return notSupported("Shortcuts");
       try { const { stdout } = await sh("shortcuts list"); return stdout; } catch (e: any) { return `Failed: ${e.message}`; }
     } },
   { name: "media_control", safe: false, description: "Control media playback (play/pause, next, previous). input: {action: 'playpause' | 'next' | 'prev'}.", params: "{action}",
