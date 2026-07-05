@@ -15,7 +15,7 @@
     "build:mac": "npm run build && electron-builder --mac",
     "start": "npm run build && node dist/server.mjs",
     "start:fast": "node dist/server.mjs",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'creative-space/**'",
     "test:watch": "vitest",
     "selftest": "tsx server/selftest.ts",
     "skill:new": "node scripts/new-skill.mjs",
