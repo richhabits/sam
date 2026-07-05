@@ -585,6 +585,69 @@ export const TOOLS: Tool[] = [
         return `Mac will stay awake for ${min} minute(s).`;
       } catch (e: any) { return `Failed to caffeinate: ${e.message}`; }
     } },
+  { name: "disk_usage", safe: true, description: "Check exactly how much free space is left on the main drive.", params: "(none)",
+    activity: () => `Checking disk usage`,
+    run: async () => {
+      try {
+        const { stdout } = await sh("df -h /");
+        return stdout.trim();
+      } catch (e: any) { return `Failed to read disk usage: ${e.message}`; }
+    } },
+  { name: "app_switcher", safe: false, description: "Bring an installed macOS application to the foreground. input: {app_name}.", params: "{app_name}",
+    activity: (i) => `Switching to ${i.app_name}`, preview: (i) => `Bring app to front: ${i.app_name}`,
+    run: async (i) => {
+      if (!IS_MAC) return "App switching only works on macOS.";
+      try {
+        await osa(`tell application "${i.app_name}" to activate`);
+        return `Activated ${i.app_name}.`;
+      } catch (e: any) { return `Failed to activate app: ${e.message}`; }
+    } },
+  { name: "set_wallpaper", safe: false, description: "Set the macOS desktop wallpaper. input: {image_path}. Note: Path must be absolute.", params: "{image_path}",
+    activity: () => `Changing wallpaper`, preview: (i) => `Set wallpaper to:\n${i.image_path}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Wallpaper control only works on macOS.";
+      try {
+        await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
+        return "Wallpaper updated successfully.";
+      } catch (e: any) { return `Failed to set wallpaper: ${e.message}`; }
+    } },
+  { name: "shorten_url", safe: true, description: "Shorten a long URL using the free is.gd service. input: {url}.", params: "{url}",
+    activity: () => `Shortening URL`,
+    run: async (i) => {
+      try {
+        const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(i.url)}`);
+        if (!res.ok) throw new Error("API returned " + res.status);
+        return await res.text();
+      } catch (e: any) { return `Failed to shorten URL: ${e.message}`; }
+    } },
+  { name: "currency_convert", safe: true, description: "Convert an amount between standard global currencies (e.g., USD to EUR). input: {amount, from_currency, to_currency}.", params: "{amount, from, to}",
+    activity: (i) => `Converting ${i.amount} ${i.from} to ${i.to}`,
+    run: async (i) => {
+      try {
+        const base = (i.from || "USD").toUpperCase();
+        const target = (i.to || "EUR").toUpperCase();
+        const res = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+        if (!res.ok) throw new Error("Currency API returned " + res.status);
+        const data = await res.json();
+        const rate = data.rates[target];
+        if (!rate) return `Unknown currency code: ${target}`;
+        const final = (Number(i.amount) * rate).toFixed(2);
+        return `${i.amount} ${base} = ${final} ${target} (Rate: ${rate})`;
+      } catch (e: any) { return `Failed to convert: ${e.message}`; }
+    } },
+  { name: "qr_generate", safe: true, description: "Generate a QR code PNG and save it to the Desktop. input: {text_or_url}.", params: "{text_or_url}",
+    activity: () => `Generating a QR code`,
+    run: async (i) => {
+      try {
+        const text = i.text_or_url || i.text || i.url;
+        const res = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`);
+        if (!res.ok) throw new Error("QR API returned " + res.status);
+        const arrayBuffer = await res.arrayBuffer();
+        const path = resolve(homedir(), "Desktop", `QR_${Date.now()}.png`);
+        await writeFile(path, Buffer.from(arrayBuffer));
+        return `QR code generated and saved to: ${path}`;
+      } catch (e: any) { return `Failed to generate QR code: ${e.message}`; }
+    } },
   { name: "volume_brightness_control", safe: false, description: "Set the volume or brightness of the Mac hardware. input: {type: 'volume' | 'brightness', level: number} (level is 0-100).", params: "{type, level}",
     activity: (i) => `Setting ${i.type} to ${i.level}%`,
     preview: (i) => `Set ${i.type} hardware to ${i.level}%`,
