@@ -742,7 +742,11 @@ export default function App() {
   const customAccent = mode === "business" && activeBrand?.themeColor ? activeBrand.themeColor : undefined;
 
   return (
-    <div className="app" style={customAccent ? { "--accent": customAccent, "--accent-2": customAccent } as React.CSSProperties : undefined}>
+    <div className="app" style={customAccent ? { "--accent": customAccent, "--accent-2": customAccent } as React.CSSProperties : undefined}
+      onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!dragOver) setDragOver(true); } }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}>
+      {dragOver && <div className="app-drop"><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span></div></div>}
       <header className="bar">
         <div className="brandmark">
           <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
@@ -992,11 +996,7 @@ export default function App() {
         {started && !atBottom && <button className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
       </main>
 
-      <footer className={`composer ${dragOver ? "drag-over" : ""}`}
-        onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!dragOver) setDragOver(true); } }}
-        onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}>
-        {dragOver && <div className="drop-hint">📎 Drop files or photos to attach</div>}
+      <footer className="composer">
         {attachments.length > 0 && (
           <div className="attach-row">
             {attachments.map((a, i) => (
