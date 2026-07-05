@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
+import { logSecurity, securityStatus } from "./security.ts";
 
 const sh = promisify(exec);
 
@@ -78,7 +79,10 @@ const HARD_DENY = [
   /\bchmod\s+-R\s+000\b/, /\bsudo\s+rm\b/,
 ];
 function denied(cmd: string): string | null {
-  for (const re of HARD_DENY) if (re.test(cmd)) return `Blocked for safety: "${cmd}" matches a catastrophic-command guard. SAM will never run this.`;
+  for (const re of HARD_DENY) if (re.test(cmd)) {
+    logSecurity("alert", "blocked-command", `Refused a catastrophic command: ${cmd}`, "agent");
+    return `Blocked for safety: "${cmd}" matches a catastrophic-command guard. SAM will never run this.`;
+  }
   return null;
 }
 
@@ -445,11 +449,19 @@ export const TOOLS: Tool[] = [
     run: (i) => sh(`cd ${shq(i.dir)} && npm run ${shq(i.script)} 2>&1 | tail -40`, { timeout: 180000 }).then((r: any) => (r.stdout || "(done)").toString().slice(0, 4000)).catch((e: any) => `failed: ${(e?.stderr || e?.message || e).toString().slice(0, 400)}`) },
   { name: "my_socials", safe: true, description: "Show the user's social profiles/links on file (optionally for one brand). input: {brand?}.", params: "{brand?}",
     activity: () => `Pulling up your socials`,
-    run: (i) => {
+    run: async (i) => {
       const s = loadSocials(); const keys = Object.keys(s);
       if (!keys.length) return "No socials on file yet. Add handles in vault/socials.json (or ask me to find them).";
       const pick = i?.brand ? keys.filter((k) => k.toLowerCase().includes(String(i.brand).toLowerCase())) : keys;
       return pick.map((k) => { const links = Object.entries(s[k]).filter(([, v]) => v).map(([p, v]) => `${p}: ${v}`).join(" · "); return `${k} — ${links || "no links on file"}`; }).join("\n");
+    } },
+  { name: "security_check", safe: true, description: "Report SAM's security watchdog — anything dodgy it flagged/blocked (bad commands, unexpected origins), or all-clear.", params: "(none)",
+    activity: () => `Running a security check`,
+    run: async () => {
+      const s = securityStatus();
+      if (s.clear) return "🛡️ All clear — nothing dodgy. No blocked commands, no unexpected access. SAM's watching.";
+      const lines = s.latest.map((e) => `• [${e.at}] ${e.type}: ${e.detail}${e.source ? ` (from ${e.source})` : ""}`).join("\n");
+      return `🛡️ ${s.headline}. ${s.alerts} blocked, ${s.warns} flagged.\nRecent:\n${lines}`;
     } },
   { name: "git_status", safe: true, description: "Show git status of a local repo folder (branch + changed files). input: {dir}.", params: "{dir}",
     activity: (i) => `Checking git status in ${i.dir}`,

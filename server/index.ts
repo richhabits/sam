@@ -20,6 +20,7 @@ import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routin
 import { isAllowed, allow, disallow, listAllowed } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
+import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import {
@@ -32,7 +33,16 @@ import {
 } from "./vault.ts";
 
 const app = express();
-app.use(cors());
+// SECURITY: only allow same-origin + localhost (dev HUD on :5273). This stops a
+// random website you visit from reaching SAM's powerful local API (CSRF-style abuse).
+// Any blocked origin gets logged so SAM can call it out.
+app.use(cors({
+  origin: (o, cb) => {
+    const ok = !o || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+    if (!ok) logSecurity("alert", "blocked-origin", `Blocked an API request from an unexpected website`, o);
+    cb(null, ok);
+  },
+}));
 app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
 
 const PORT = process.env.PORT || 8787;
@@ -61,7 +71,7 @@ function recallMemory(): string {
   return `\n## Recent conversation (remember this for continuity)\n${lines}`;
 }
 
-interface User { name?: string; about?: string; mode?: "business" | "personal" }
+interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
 
 // The core SAM persona — addresses whoever is actually using SAM.
 function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string): string {
@@ -83,6 +93,8 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
     `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in his memory + reality.`,
+    ``,
+    user?.language && !/^en|english/i.test(user.language) ? `## Language\nAlways reply to ${name} in ${user.language}, naturally and fluently — no matter what language they write in.` : ``,
     ``,
     `## Right now`,
     `- Today & current time: ${nowText()}`,
@@ -341,6 +353,9 @@ async function git(cmd: string, timeout = 8000): Promise<string> {
   const { stdout } = await promisify(exec)(`git -C ${JSON.stringify(REPO_ROOT)} ${cmd}`, { timeout });
   return stdout.trim();
 }
+// ── Security watchdog: what SAM has flagged/blocked (Jeeves on the door) ──
+app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), events: securityEvents() }));
+
 app.get("/api/update-check", async (_req, res) => {
   try {
     const local = await git("rev-parse HEAD");
