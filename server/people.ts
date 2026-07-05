@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
-const FILE = join(fileURLToPath(new URL("..", import.meta.url)), "vault", "people.json");
+const FILE = join(process.env.VAULT_DIR || join(fileURLToPath(new URL("..", import.meta.url)), "vault"), "people.json");
 
 export interface Person { name: string; look: string; relation?: string; added: string }
 

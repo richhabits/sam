@@ -12,8 +12,8 @@ import { join, dirname } from "node:path";
 import { exec } from "node:child_process";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const NUDGES = join(ROOT, "vault", "nudges.json");
-const STATE = join(ROOT, "vault", "proactive-state.json");
+const NUDGES = join(process.env.VAULT_DIR || join(ROOT, "vault"), "nudges.json");
+const STATE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "proactive-state.json");
 
 export interface Nudge { id: string; text: string; due?: string; done: boolean; notified: boolean; created: string }
 

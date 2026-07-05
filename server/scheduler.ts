@@ -10,7 +10,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const FILE = join(ROOT, "vault", "schedules.json");
+const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "schedules.json");
 
 export interface Schedule {
   id: string;
