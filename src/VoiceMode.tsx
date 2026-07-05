@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { speak as ttsSpeak, stopSpeaking, voiceLevel } from "./lib/tts";
 
-type State = "connecting" | "listening" | "thinking" | "speaking" | "unsupported";
+type State = "connecting" | "listening" | "thinking" | "speaking" | "unsupported" | "blocked";
 
 function wakeGreeting(name?: string): string {
   const h = new Date().getHours();
@@ -105,7 +105,9 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       await pc.setRemoteDescription(answer);
 
       setState("listening");
-    } catch (e) {
+    } catch (e: any) {
+      // Mic blocked / no device → show a clear BLOCKED state; do NOT loop trying.
+      if (e?.name === "NotAllowedError" || e?.name === "SecurityError" || e?.name === "NotFoundError") { setState("blocked"); return; }
       console.warn("WebRTC Realtime failed, falling back to legacy...", e);
       fallbackInit();
     }
@@ -123,15 +125,20 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     const rec = new SR(); recRef.current = rec;
     rec.lang = "en-GB"; rec.interimResults = true; rec.continuous = false;
     setState("listening"); setHeard("");
-    let final = "";
+    let final = "", blocked = false;
     rec.onresult = (e: any) => {
       let t = "";
       for (const r of e.results) { t += r[0].transcript; if (r.isFinal) final += r[0].transcript; }
       setHeard(t);
     };
-    rec.onend = () => { if (!active.current) return; const q = final.trim(); if (q) fallbackHandle(q); else fallbackListen(); };
-    rec.onerror = () => { if (active.current) setTimeout(() => active.current && fallbackListen(), 600); };
-    try { rec.start(); } catch {}
+    rec.onerror = (e: any) => {
+      const err = e?.error;
+      // Blocked / no mic → STOP (no retry loop, no fake "listening").
+      if (err === "not-allowed" || err === "service-not-allowed" || err === "audio-capture") { blocked = true; setState("blocked"); }
+      // "no-speech"/"network"/"aborted" are transient — onend re-listens.
+    };
+    rec.onend = () => { if (!active.current || blocked) return; const q = final.trim(); if (q) fallbackHandle(q); else fallbackListen(); };
+    try { rec.start(); } catch { setState("blocked"); }
   }
 
   async function fallbackHandle(q: string) {
@@ -153,7 +160,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   }, []);
 
   const label = state === "listening" ? "Listening…" : state === "thinking" ? "Thinking…"
-    : state === "speaking" ? "SAM" : state === "unsupported" ? "Voice needs Chrome" : "Connecting…";
+    : state === "speaking" ? "SAM" : state === "blocked" ? "Mic blocked" : state === "unsupported" ? "Voice needs Chrome" : "Connecting…";
 
   return (
     <div className="vm-wrap">
@@ -167,7 +174,9 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       </div>
       <div className="vm-state">{label}</div>
       <div className="vm-text">{state === "speaking" ? said : heard}</div>
-      {state === "unsupported"
+      {state === "blocked"
+        ? <div className="vm-hint">🎤 Your mic is blocked. Click the 🔒/camera icon in the address bar → <b>Always allow</b> the microphone → reopen Voice. You can always type in the chat instead.</div>
+        : state === "unsupported"
         ? <div className="vm-hint">Voice conversation works in Chrome. You can still type in the chat.</div>
         : <button className="vm-end" onClick={onClose}>End voice</button>}
     </div>
