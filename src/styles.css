@@ -974,3 +974,11 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .side-list li.dragging { opacity: .4; }
 .side-folder.droppable { border-style: dashed; border-color: var(--accent); }
 .side-folder.droppable:hover { background: var(--accent-soft); color: var(--accent-text); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Folder delete + live swarm details */
+.side-folder.del-folder { color: #EF4444; border-color: transparent; }
+.side-folder.del-folder:hover { background: rgba(239,68,68,.1); border-color: #EF4444; }
+.ctx-swarm { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; border: 0; padding: 3px 0; color: var(--text); font-size: 12.5px; cursor: pointer; }
+.ctx-swarm:hover .ctx-swarm-goal { color: var(--accent-text); }
+.ctx-swarm-goal { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-swarm-prog { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11px; }
