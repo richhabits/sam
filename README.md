@@ -22,12 +22,16 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 
 Most "AI assistants" just talk. SAM works:
 
-- 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends and *deals with them*.
-- 🧠 **6 free AI brains, auto-rotating** — NVIDIA · Groq · Cerebras · Mistral · GitHub Models · Gemini. One hits a limit, it hops to the next. You never run out, never pay a penny by default.
-- 🖐️ **65+ real tools** — web, files, terminal, email, iMessage, calls (iPhone Continuity), calendar, music, screenshots, **GitHub (read, commit, push, open PRs)** — risky ones always ask first.
+- 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends.
+- 🐝 **The Swarm** — long-running, continuous background agents that survive restarts and pause to ask for your approval on risky actions.
+- 🧠 **6 free AI brains, auto-rotating** — NVIDIA · Groq · Cerebras · Mistral · GitHub Models · Gemini. One hits a limit, it hops to the next.
+- 🖐️ **65+ real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
+- ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
+- 📱 **iOS Companion** — talk to SAM from your iPhone/Watch via iCloud Drop folder; SAM processes your notes/voice memos instantly.
+- 💻 **Native macOS App** — runs a native desktop UI with a global `⌥Space` hotkey to summon SAM anywhere.
 - ✈️ **Autopilot** — lifts the routine work autonomously; the serious stuff still asks. And it reaches out first with a **morning brief** + nudges.
-- 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Alex"*), and **🛡️ Guardian** mode watches for anyone it doesn't recognise.
-- 🧭 **Semantic memory** · 💼🏠 **Business & Personal minds** · 📍 **live progress tracker** · 🗣️ **two-way voice** (whistle/clap to wake).
+- 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Alex"*), and **🛡️ Guardian** mode watches for intruders.
+- 🧭 **Semantic memory** · 💼🏠 **Business & Personal minds** · 📍 **live progress tracker** · 🗣️ **two-way voice**.
 - 🎨 **Skins** — Jarvis HUD, Ember, Stealth. Clean premium UI, light/dark, streams as it types.
 - 🔒 **Private & self-updating** — runs on your machine, your data never leaves it, and it evolves itself.
 

@@ -48,7 +48,13 @@ export function loadSwarms(): Swarm[] {
 }
 
 function saveSwarms(swarms: Swarm[]) {
-  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(swarms, null, 2)); } catch {}
+  let toSave = swarms;
+  if (swarms.length > 50) {
+    const active = swarms.filter((s) => s.status === "running" || s.status === "paused" || s.status === "planning");
+    const finished = swarms.filter((s) => s.status === "done" || s.status === "error").sort((a, b) => b.created - a.created);
+    toSave = [...active, ...finished.slice(0, Math.max(0, 50 - active.length))];
+  }
+  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(toSave, null, 2)); } catch {}
 }
 
 function getSwarm(id: string): Swarm | undefined {
