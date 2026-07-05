@@ -15,14 +15,31 @@ function inline(s: string): string {
     .replace(/(^|[\s(])((https?:\/\/[^\s<)]+))/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
 }
 
+// Lightweight, dependency-free syntax highlighting for fenced code blocks.
+// Runs on already-escaped code; single-pass alternation (first-match-wins) so a
+// keyword inside a string/comment isn't wrongly highlighted. Covers the common
+// languages SAM emits (JS/TS/Python/shell/JSON/etc.).
+const HL = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("[^"\n]*"|'[^'\n]*'|`[^`]*`)|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|import|export|from|default|class|extends|new|this|super|async|await|try|catch|finally|throw|typeof|instanceof|yield|def|lambda|print|echo|func|package|public|private|protected|static|void|type|interface|enum|struct|true|false|null|None|True|False|undefined|and|or|not|in|of|with|as|pass)\b|(\b\d+\.?\d*\b)/g;
+function highlight(code: string): string {
+  return code.replace(HL, (m, c, s, k, n) =>
+    c ? `<span class="tok-c">${c}</span>` :
+    s ? `<span class="tok-s">${s}</span>` :
+    k ? `<span class="tok-k">${k}</span>` :
+    n ? `<span class="tok-n">${n}</span>` : m
+  );
+}
+
 export function renderMarkdown(text: string): string {
-  // Pull out ```fenced code blocks``` first (rendered verbatim).
+  // Pull out ```fenced code blocks``` first (highlighted, with a language tag).
   const parts = (text || "").split("```");
   if (parts.length > 1) {
     let html = "";
     for (let i = 0; i < parts.length; i++) {
-      if (i % 2 === 1) html += `<pre class="code"><code>${escapeHtml(parts[i].replace(/^[a-zA-Z0-9]*\n/, ""))}</code></pre>`;
-      else html += renderBlock(parts[i]);
+      if (i % 2 === 1) {
+        const lang = (parts[i].match(/^([a-zA-Z0-9+#.]*)\n/) || [, ""])[1] || "";
+        const code = escapeHtml(parts[i].replace(/^[a-zA-Z0-9+#.]*\n/, ""));
+        html += `<pre class="code"${lang ? ` data-lang="${lang}"` : ""}><code>${highlight(code)}</code></pre>`;
+      } else html += renderBlock(parts[i]);
     }
     return html;
   }
