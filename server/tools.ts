@@ -209,7 +209,14 @@ async function listDir(path: string): Promise<string> {
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   if (!IS_MAC) throw new Error("maconly");
-  const { stdout } = await sh(`osascript -e "${esc(script)}"`, { timeout: 30000 });
+  // Escape \, " for the double-quoted shell context; replace bare newlines with
+  // AppleScript line-continuation (¬ + newline) so user data can't inject new
+  // AppleScript statements via embedded newlines.
+  const safeScript = script
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, " \u00AC\\\n");
+  const { stdout } = await sh(`osascript -e "${safeScript}"`, { timeout: 30000 });
   return stdout.trim();
 }
 async function openApp(name: string): Promise<string> {

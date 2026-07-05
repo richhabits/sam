@@ -49,11 +49,14 @@ function markNotified(ids: string[]) {
 }
 
 // ── Delivery (cross-platform) ──
-function desktopNotify(title: string, msg: string) {
+export function desktopNotify(title: string, msg: string) {
   const clean = msg.replace(/[#*`]/g, "").slice(0, 220);
-  const esc = (s: string) => s.replace(/"/g, '\\"').replace(/\n/g, " ");
+  // esc: for double-quote context inside AppleScript strings — escapes " and \
+  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
+  // sq: strip/replace single-quotes so they can't break the outer shell single-quote context
+  const sq = (s: string) => s.replace(/'/g, "\u2019"); // ' → '
   if (process.platform === "darwin") {
-    exec(`osascript -e 'display notification "${esc(clean)}" with title "${esc(title)}"'`, () => {});
+    exec(`osascript -e 'display notification "${esc(sq(clean))}" with title "${esc(sq(title))}"'`, () => {});
   } else if (process.platform === "win32") {
     // PowerShell toast notification (Windows 10+)
     const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${esc(title)}</text><text id="2">${esc(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
