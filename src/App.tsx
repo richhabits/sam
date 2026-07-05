@@ -188,6 +188,7 @@ export default function App() {
   const paletteRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
   const toggleExpand = (i: number) => setExpanded((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  const [convoSearch, setConvoSearch] = useState("");
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
@@ -872,13 +873,19 @@ export default function App() {
               <div><div className="drawer-title">Chats</div><div className="drawer-sub">Your conversations, saved on this computer.</div></div>
               <button className="icon-btn" onClick={() => { newChat(); setHistoryOpen(false); }} title="New chat">＋</button>
             </div>
+            {convos.length > 4 && (
+              <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="🔍 Search chats…" />
+            )}
             <ul className="convo-list">
-              {convos.map((c) => (
+              {convos.filter((c) => !convoSearch.trim() || (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).map((c) => (
                 <li key={c.id} className={c.id === activeId ? "active" : ""}>
                   <button className="convo-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
                   <button className="convo-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
                 </li>
               ))}
+              {convoSearch.trim() && convos.filter((c) => (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).length === 0 && (
+                <li className="convo-empty">No chats match “{convoSearch}”.</li>
+              )}
             </ul>
           </aside>
         </div>
