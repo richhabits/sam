@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve, dirname, basename, extname } from "node:path";
+// @ts-ignore
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import { chromium, Page } from "playwright-core";
@@ -714,15 +715,15 @@ end tell`);
     run: async (i) => {
       if (!IS_MAC) return "Shortcuts only work on macOS.";
       try {
-        const out = await sh(`shortcuts run "${esc(i.name)}"`);
-        return out || `Ran shortcut '${i.name}'.`;
+        const { stdout } = await sh(`shortcuts run "${esc(i.name)}"`);
+        return stdout || `Ran shortcut '${i.name}'.`;
       } catch (e: any) { return `Shortcut failed: ${e.message}`; }
     } },
   { name: "list_shortcuts", safe: true, description: "List all available Apple Shortcuts on this Mac.", params: "(none)",
     activity: () => `Listing available Shortcuts`,
     run: async () => {
       if (!IS_MAC) return "Shortcuts only work on macOS.";
-      try { return await sh("shortcuts list"); } catch (e: any) { return `Failed: ${e.message}`; }
+      try { const { stdout } = await sh("shortcuts list"); return stdout; } catch (e: any) { return `Failed: ${e.message}`; }
     } },
   { name: "media_control", safe: false, description: "Control media playback (play/pause, next, previous). input: {action: 'playpause' | 'next' | 'prev'}.", params: "{action}",
     activity: (i) => `Controlling media (${i.action})`, preview: (i) => `Media: ${i.action}`,
