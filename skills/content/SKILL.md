@@ -1,8 +1,7 @@
 ---
-name: "Content Playbook"
-brief: "Drafts newsletters and tweets matching the user's specific voice and format."
-author: "HECTIC"
-version: "1.0"
+name: Content Playbook
+tier: free
+triggers: content, tweet, thread, newsletter, post, caption, write, draft, copy, blog, social, x post, hook, publish
 ---
 
 # Content Playbook
@@ -38,4 +37,4 @@ When drafting a thread:
 1. Read the user's raw notes or ask them what the core topic is.
 2. Draft the content strictly adhering to the Voice & Tone rules.
 3. Present the draft.
-4. Ask if they want you to automatically append this draft to their Content Calendar Notion database.
+4. Offer to save it — e.g. write it to a file (`write_file`) or drop it in their content vault — so it's ready to schedule.
