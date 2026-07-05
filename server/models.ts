@@ -304,7 +304,41 @@ export async function runVision(system: string, prompt: string, images: ImagePar
       if (text) { reportSuccess("gemini", key); return { text: text.trim(), provider: "gemini-2.5-flash (vision)", tier: "free" }; }
     } catch (e: any) { reportFailure("gemini", key, e?.status); }
   }
-  return { text: "To read photos, SAM needs a free Gemini key (it's multimodal). Add GEMINI_API_KEYS to .env — everything else works without it.", provider: "none", tier: "free" };
+  
+  // Fully Local Zero-Cloud Fallback via Ollama (llava)
+  if (process.env.OLLAMA_URL) {
+    try {
+      const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+      const ollamaModel = process.env.OLLAMA_VISION_MODEL || "llava";
+      const res = await fetch(`${ollamaUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: ollamaModel,
+          stream: false,
+          messages: [
+            { role: "system", content: system },
+            { 
+              role: "user", 
+              content: prompt || "Describe this and answer any question about it.",
+              images: images.map(im => im.data) 
+            },
+          ],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.message?.content?.trim() || "";
+        if (text) {
+          return { text, provider: `ollama (${ollamaModel})`, tier: "local" };
+        }
+      }
+    } catch (e: any) {
+      // Fall through to the offline message below if Ollama fails/isn't running
+    }
+  }
+
+  return { text: "To read photos, SAM needs a free Gemini key (add GEMINI_API_KEYS to .env) or Ollama running with the 'llava' model locally. Everything else works without it.", provider: "none", tier: "free" };
 }
 
 // For the HUD / status endpoint: which providers are wired.
