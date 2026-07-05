@@ -17,6 +17,7 @@
     "start:fast": "node dist/server.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "selftest": "tsx server/selftest.ts",
     "skill:new": "node scripts/new-skill.mjs",
     "prestart": "node scripts/selfupdate.mjs",
     "ship": "node scripts/ship.mjs",

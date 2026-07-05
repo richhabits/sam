@@ -17,6 +17,11 @@ jobs:
       # so type errors slip through the build. This catches them.
       - run: npx tsc --noEmit
       - run: npm run build
+      
+      # Selftest — checks tools, agents, vault, and model availability.
+      - name: Live Boot Selftest
+        run: npm run selftest
+        
       # Boot smoke test — catches runtime crashes that typecheck/build miss
       # (e.g. a bad ESM import that only fails when the server actually starts).
       - name: Boot smoke test
