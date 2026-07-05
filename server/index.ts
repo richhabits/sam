@@ -52,7 +52,19 @@ app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
 const PORT = process.env.PORT || 8787;
 const SKILLS = loadSkills();
 
-console.log(`\n  S.A.M. booting…`);
+// ── Brand ──────────────────────────────────────────────
+const C = { o: "\x1b[38;5;208m", d: "\x1b[2m", b: "\x1b[1m", r: "\x1b[0m" };
+console.log(`
+${C.o}${C.b}   ███████╗  █████╗  ███╗   ███╗
+   ██╔════╝ ██╔══██╗ ████╗ ████║
+   ███████╗ ███████║ ██╔████╔██║
+   ╚════██║ ██╔══██║ ██║╚██╔╝██║
+   ███████║ ██║  ██║ ██║ ╚═╝ ██║
+   ╚══════╝ ╚═╝  ╚═╝ ╚═╝     ╚═╝${C.r}
+${C.d}   Smart Artificial Mind${C.r}  ${C.o}·${C.r}  ${C.d}it doesn't just answer, it handles it${C.r}
+${C.d}   ${C.r}${C.o}◆${C.r}${C.d} by HECTIC · free · local · yours${C.r}
+`);
+console.log(`  ${C.b}booting…${C.r}`);
 console.log(`  skills linked   · ${SKILLS.map((s) => s.id).join(", ")}`);
 console.log(`  tools linked    · ${TOOLS.length} (${TOOLS.filter((t) => t.safe).length} auto, ${TOOLS.filter((t) => !t.safe).length} ask-first)`);
 console.log(`  brands tracked  · ${PROJECTS.length}`);
