@@ -216,7 +216,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 
     // 2. Run agent
     const s = byId(item.specialist)!;
-    emit({ type: "agent-start", id: s.id, name: s.name, emoji: s.emoji, task: item.task });
+    emit({ type: "agent-start", id: item.id, name: s.name, emoji: s.emoji, task: item.task });
     const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, at world-class level. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
 
     let output = "";
@@ -225,7 +225,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
       output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`;
     } catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
 
-    emit({ type: "agent-done", id: s.id, name: s.name, emoji: s.emoji, output });
+    emit({ type: "agent-done", id: item.id, name: s.name, emoji: s.emoji, output });
     results.push({ s, task: item.task, output });
     settle.get(item.id)!(output);
     return output;
@@ -244,7 +244,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 // 🥷 Deploy the Ninjas: Hawk hunts problems → Reaper & Chaser deal with them → hit-list.
 export async function runNinjas(target: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
   const hawk = NINJAS[0];
-  emit({ type: "plan", plan: NINJAS.map((n) => ({ specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
+  emit({ type: "plan", plan: NINJAS.map((n) => ({ id: n.id, specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
 
   // 1) Hawk hunts.
   emit({ type: "agent-start", id: hawk.id, name: hawk.name, emoji: hawk.emoji, task: "hunting problems" });
