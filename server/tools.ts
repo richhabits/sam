@@ -665,6 +665,77 @@ export const TOOLS: Tool[] = [
         } catch (e: any) { return `Failed to set volume: ${e.message}`; }
       }
     } },
+  { name: "ip_geolocate", safe: true, description: "Get the physical location, ISP, and timezone of an IP address. input: {ip}.", params: "{ip}",
+    activity: (i) => `Geolocating IP ${i.ip}`,
+    run: async (i) => {
+      try {
+        const res = await fetch(`http://ip-api.com/json/${i.ip}`);
+        if (!res.ok) throw new Error("API returned " + res.status);
+        const data = await res.json();
+        if (data.status === "fail") return `Geolocation failed: ${data.message}`;
+        return `IP: ${data.query}\nLocation: ${data.city}, ${data.regionName}, ${data.country}\nISP: ${data.isp}\nTimezone: ${data.timezone}`;
+      } catch (e: any) { return `Failed to geolocate: ${e.message}`; }
+    } },
+  { name: "whois", safe: true, description: "Fetch domain registration info natively. input: {domain}.", params: "{domain}",
+    activity: (i) => `Running whois on ${i.domain}`,
+    run: async (i) => {
+      try {
+        const { stdout } = await sh(`whois ${shq(i.domain)}`);
+        // WHOIS outputs can be massive, slice to top 2000 chars to save token context
+        return stdout.trim().slice(0, 2000) + (stdout.length > 2000 ? "\n...(truncated)" : "");
+      } catch (e: any) { return `WHOIS failed: ${e.message}`; }
+    } },
+  { name: "unit_convert", safe: true, description: "Convert standard measurement units (C/F, kg/lb, mi/km, m/ft). input: {amount, from, to}.", params: "{amount, from, to}",
+    activity: (i) => `Converting ${i.amount} ${i.from} to ${i.to}`,
+    run: async (i) => {
+      const v = Number(i.amount);
+      if (isNaN(v)) return "Invalid amount.";
+      const f = String(i.from).toLowerCase();
+      const t = String(i.to).toLowerCase();
+      let res = 0;
+      if ((f === "c" || f === "celsius") && (t === "f" || t === "fahrenheit")) res = (v * 9/5) + 32;
+      else if ((f === "f" || f === "fahrenheit") && (t === "c" || t === "celsius")) res = (v - 32) * 5/9;
+      else if ((f === "kg" || f === "kilograms") && (t === "lb" || t === "pounds")) res = v * 2.20462;
+      else if ((f === "lb" || f === "pounds") && (t === "kg" || t === "kilograms")) res = v / 2.20462;
+      else if ((f === "mi" || f === "miles") && (t === "km" || t === "kilometers")) res = v * 1.60934;
+      else if ((f === "km" || f === "kilometers") && (t === "mi" || t === "miles")) res = v / 1.60934;
+      else if ((f === "m" || f === "meters") && (t === "ft" || t === "feet")) res = v * 3.28084;
+      else if ((f === "ft" || f === "feet") && (t === "m" || t === "meters")) res = v / 3.28084;
+      else return `Unsupported conversion: ${f} to ${t}. Use standard C/F, kg/lb, mi/km, m/ft.`;
+      return `${v} ${f} = ${res.toFixed(2)} ${t}`;
+    } },
+  { name: "color_tools", safe: true, description: "Convert a color between HEX and RGB format. input: {color} e.g. '#FF0000' or '255,0,0'.", params: "{color}",
+    activity: () => `Converting color`,
+    run: async (i) => {
+      const c = String(i.color).trim();
+      if (c.startsWith("#")) {
+        const hex = c.replace("#", "");
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `HEX ${c} = RGB(${r}, ${g}, ${b})`;
+      } else {
+        const parts = c.split(/[ ,]+/).map(Number);
+        if (parts.length >= 3) {
+          const hex = "#" + parts.slice(0, 3).map(x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+          return `RGB(${parts.slice(0,3).join(", ")}) = HEX ${hex}`;
+        }
+        return "Invalid format. Provide HEX (#RRGGBB) or RGB (R,G,B).";
+      }
+    } },
+  { name: "translate", safe: true, description: "Translate text using the free Google Translate API. input: {text, target_lang_code} (e.g. 'es', 'fr', 'ja').", params: "{text, target_lang_code}",
+    activity: (i) => `Translating to ${i.target_lang_code}`,
+    run: async (i) => {
+      try {
+        const target = encodeURIComponent(i.target_lang_code || "en");
+        const text = encodeURIComponent(i.text);
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${text}`);
+        if (!res.ok) throw new Error("Translate API failed");
+        const data = await res.json();
+        const translated = data[0].map((chunk: any) => chunk[0]).join("");
+        return translated;
+      } catch (e: any) { return `Failed to translate: ${e.message}`; }
+    } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
   { name: "notify", safe: true, description: "Show a macOS notification. input: {title?, message}.", params: "{title?, message}",
