@@ -22,7 +22,7 @@ import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, set
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
-import { startProactive, takePending, listNudges } from "./proactive.ts";
+import { startProactive, takePending, listNudges, desktopNotify } from "./proactive.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, takeDrop, dropFolderPath } from "./ios.ts";
@@ -107,7 +107,6 @@ startDropWatcher(async (d) => {
     const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free");
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
-      const { desktopNotify } = await import("./proactive.ts") as any;
       desktopNotify("SAM — iOS Drop Processed", r.text);
     }
   } catch {}
@@ -118,7 +117,6 @@ startScheduler(async (command: string) => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
   const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
   if (r.kind === "final" && r.text) {
-    const { desktopNotify } = await import("./proactive.ts") as any;
     desktopNotify("SAM — Scheduled Task", r.text);
     return r.text;
   }
@@ -193,7 +191,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- BORG MODE: always learn, adapt and evolve. Assimilate the best of what's out there and make it ours, better. FREE at all costs FIRST — exhaust every free/local option before you even consider paid; escalate to paid (X→Y→Z) only as a genuine last resort, and say why. Comprehensive, always-on.`,
     `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
-    `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in his memory + reality.`,
+    `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in their memory + reality.`,
     ``,
     operatingDoctrine(name),
     ``,
@@ -207,8 +205,8 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     user?.about ? `## About ${name}\n${user.about}` : ``,
     ``,
     mode === "personal"
-      ? `## Mode: PERSONAL 🏠\n${name}'s in PERSONAL mode — life outside work: family, friends, health, home, personal admin, downtime, sorting his own stuff. Be his mate — warm, relaxed, real. Don't lead with business or brands unless ${name} brings them up.`
-      : `## Mode: BUSINESS 💼\n${name}'s in BUSINESS mode — brands, work, money, growth, ops. Sharp operator energy: think about what actually moves the needle for his businesses.`,
+      ? `## Mode: PERSONAL 🏠\n${name}'s in PERSONAL mode — life outside work: family, friends, health, home, personal admin, downtime, sorting their own stuff. Be a mate — warm, relaxed, real. Don't lead with business or brands unless ${name} brings them up.`
+      : `## Mode: BUSINESS 💼\n${name}'s in BUSINESS mode — brands, work, money, growth, ops. Sharp operator energy: think about what actually moves the needle for their businesses.`,
     ``,
     mode === "business" && projectsContext() ? `## ${name}'s brands (context)\n${projectsContext()}\n${worldContext()}` : ``,
     ``,
@@ -665,4 +663,7 @@ if (existsSync(DIST)) {
   console.log(`  app served     · http://localhost:${PORT}  (single process)`);
 }
 
-app.listen(PORT, () => console.log(`  SAM online · http://localhost:${PORT}\n`));
+// Bind strictly to loopback — prevents network peers on the same Wi-Fi/LAN
+// from reaching the API. The CORS check catches browser-origin abuse; this
+// is the second layer that stops raw TCP connections from other devices.
+app.listen(Number(PORT), "127.0.0.1", () => console.log(`  SAM online · http://localhost:${PORT}\n`));

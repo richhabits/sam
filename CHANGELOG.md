@@ -10,6 +10,12 @@ All notable changes to SAM. Newest first.
   a huge drive is indexed in cheap passes (per-run file cap, junk/system dirs skipped, size caps). New tools:
   `ingest_folder` (ask-first — uses embedding quota) · `search_docs` · `docs_library` · `forget_docs`.
   `/api/status` shows the library size. Fully offline test suite (8 tests, mocked embeddings — no quota).
+- **Security hardening** — loopback-only bind (`127.0.0.1`), osascript single-quote injection patched (notification strings), AppleScript newline injection patched (multi-line `osa()` bodies).
+- **Universality sweep** — all gendered pronouns (`he/him/his`) replaced with gender-neutral `they/them/their` throughout the system prompt and operating doctrine; SAM now works for everyone out of the box.
+- **De-bloat** — `desktopNotify` properly exported; two duplicate dynamic `import(…) as any` call-sites in `index.ts` replaced with a single top-level import.
+- **Truth sweep** — SECURITY.md updated with loopback binding bullet + accurate injection-defence description; CHANGELOG counts corrected.
+
+## Unreleased (previous)
 - **Hardened to production-grade** — full 4-dimension audit (bugs · efficiency · integrity · hygiene): fixed a
   Private-mode→cloud fallthrough, a swarm lost-update race, memory-loss on embedding-provider rotation, request
   hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
@@ -18,7 +24,7 @@ All notable changes to SAM. Newest first.
   prompt-injection defense, verify-before-claiming), plus 78 specialists and a searchable "Meet the team" browser.
 - **UX pass** — ⌘P command palette, ⌘F find-in-chat, 8 skins, syntax highlighting, per-block code-copy, drag-drop
   + paste, collapse-long messages, quote-reply, reading-progress, export/copy chat, text-size. Landing auto-builds from live code.
-- **128 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
+- **144 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
 - **Control-centre Dashboard** — live view of free brains, tools, skills, memory, brands + recent activity.
 - **Listen button** on every message — hear what SAM did out loud (per-message TTS).
 - **Self-update** — SAM checks the repo and shows "new version available → Update now" (git pull). Evolves for free.
@@ -29,7 +35,7 @@ All notable changes to SAM. Newest first.
 - **Business/Personal minds**, grab-your-world startup, Uber-style progress tracker.
 - **Brain/DNA**: think like the OGs (Apple/Elon/Amazon/Branson/Sugar + MS ethics), Borg mode (learn/adapt/evolve, free-first), builder's instinct (10x in-house).
 - **Shipped clean to GitHub** — generic code, personal data in gitignored local files, secret-scanned, proprietary license.
-- **6 free model lanes** (NVIDIA · Groq · Cerebras · Mistral · GitHub Models · Gemini) that
+- **30+ free model lanes** (Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks + 20 more) that
   rotate on rate-limit → never drops to weak local unless ALL are spent. Kills credit-limit issues.
 - **Semantic memory (RAG)** + **embeddings tool/skill routing** (leaner prompts) + **SSE streaming**
   + **standing authorizations** ("always allow") + **get-a-free-key links** in Admin.
@@ -48,8 +54,6 @@ All notable changes to SAM. Newest first.
 - `server/embeddings.ts` + `server/memory.ts`; `/api/status` shows memory count.
 - **Enterprise/GitHub-ready**: LICENSE, CI (`.github/workflows/ci.yml`), `.editorconfig`,
   `.nvmrc`, hardened `.gitignore`; secret-scanned history (clean).
-- **Runs from internal disk** (`~/Developer/SAM`) — `node_modules` 1.8 GB → 126 MB, faster.
-  ROMEO HQ keeps a slim source-only backup.
 - **Faster & cheaper**: agent fast-path (plain chat skips the tool protocol);
   single-process serve (`npm start`, one port `:8787`, no separate dev server).
 - **Bugfix**: space-safe paths (`fileURLToPath`) — fixed admin key-saving on "ROMEO HQ".
