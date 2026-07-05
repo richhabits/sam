@@ -20,9 +20,14 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [voice, setVoice] = useState("");
   const [saved, setSaved] = useState("");
   const [allowed, setAllowed] = useState<string[]>([]);
+  const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
 
   const refresh = () => {
-    getAdminConfig().then((c) => { setCfg(c); setVoice(c.elevenVoice || ""); }).catch(() => {});
+    getAdminConfig().then((c) => {
+      setCfg(c);
+      setVoice(c.elevenVoice || "");
+      setIntegrations((prev) => ({ ...prev, linearTeam: c.linearTeam || "" }));
+    }).catch(() => {});
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
   };
   useEffect(() => { refresh(); }, []);
@@ -40,6 +45,18 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     setEleven(""); flash("elevenlabs"); refresh();
   }
   async function setService(v: string) { await saveConfig("musicService", v); refresh(); }
+
+  async function saveIntegrations() {
+    if (integrations.notion) await saveConfig("notion", integrations.notion.trim());
+    if (integrations.slack) await saveConfig("slack", integrations.slack.trim());
+    if (integrations.discord) await saveConfig("discord", integrations.discord.trim());
+    if (integrations.twitter) await saveConfig("twitter", integrations.twitter.trim());
+    if (integrations.linear) await saveConfig("linear", integrations.linear.trim());
+    if (integrations.linearTeam) await saveConfig("linearTeam", integrations.linearTeam.trim());
+    setIntegrations({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: integrations.linearTeam });
+    flash("integrations");
+    refresh();
+  }
 
   const totalKeys = (cfg?.providers || []).reduce((a: number, p: any) => a + p.keys, 0);
 
@@ -79,6 +96,19 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             {["apple", "spotify", "youtube"].map((s) => (
               <button key={s} className={cfg?.musicService === s ? "on" : ""} onClick={() => setService(s)}>{s}</button>
             ))}
+          </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">3rd-Party Integrations</span><span className="admin-note">keys for Notion, Slack, etc.</span></div>
+          <div style={{display:"flex", gap: 8, flexDirection:"column", marginTop:12}}>
+            <input className="admin-input" placeholder={`Notion API Key ${cfg?.notion ? "(Saved)" : ""}`} value={integrations.notion} onChange={(e) => setIntegrations(i => ({...i, notion: e.target.value}))} />
+            <input className="admin-input" placeholder={`Slack Bot Token ${cfg?.slack ? "(Saved)" : ""}`} value={integrations.slack} onChange={(e) => setIntegrations(i => ({...i, slack: e.target.value}))} />
+            <input className="admin-input" placeholder={`Discord Webhook URL ${cfg?.discord ? "(Saved)" : ""}`} value={integrations.discord} onChange={(e) => setIntegrations(i => ({...i, discord: e.target.value}))} />
+            <input className="admin-input" placeholder={`X (Twitter) Bearer Token ${cfg?.twitter ? "(Saved)" : ""}`} value={integrations.twitter} onChange={(e) => setIntegrations(i => ({...i, twitter: e.target.value}))} />
+            <input className="admin-input" placeholder={`Linear API Key ${cfg?.linear ? "(Saved)" : ""}`} value={integrations.linear} onChange={(e) => setIntegrations(i => ({...i, linear: e.target.value}))} />
+            <input className="admin-input" placeholder="Linear Team ID" value={integrations.linearTeam} onChange={(e) => setIntegrations(i => ({...i, linearTeam: e.target.value}))} />
+            <button className="admin-save" onClick={saveIntegrations} style={{width:"auto", alignSelf:"flex-start"}}>{saved === "integrations" ? "Saved ✓" : "Save Integrations"}</button>
           </div>
         </div>
 
