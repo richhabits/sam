@@ -67,7 +67,7 @@ button { font-family: inherit; cursor: pointer; }
 .onboard-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .onboard-go { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 16px; font-weight: 700; margin-top: 4px; }
 .onboard-go:disabled { background: var(--border-strong); }
-.onboard-go:not(:disabled):hover { background: #d55a2f; }
+.onboard-go:not(:disabled):hover { filter: brightness(1.08); }
 .onboard-note { font-size: 13px; color: var(--muted); margin-top: 16px; }
 
 /* ── Header ─────────────────────────────────── */
@@ -184,7 +184,7 @@ button { font-family: inherit; cursor: pointer; }
 .bubble.md pre.code code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: none; border: none; padding: 0; }
 
 /* stop + scroll buttons */
-.send.stop { background: #9A3412; }
+.send.stop { background: var(--c-err); }
 .scroll-btn { position: sticky; float: right; bottom: 12px; right: 16px; margin-right: 16px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 16px; box-shadow: var(--shadow); }
 
 /* header ghost button (history) */
@@ -201,7 +201,7 @@ button { font-family: inherit; cursor: pointer; }
 .convo-list li.active .convo-open { color: var(--accent-text); font-weight: 600; }
 .convo-del { background: none; border: none; color: var(--muted); padding: 8px 10px; opacity: 0; font-size: 13px; }
 .convo-list li:hover .convo-del { opacity: 1; }
-.convo-del:hover { color: #9A3412; }
+.convo-del:hover { color: var(--c-err); }
 
 /* tool list (What SAM can do) */
 .tool-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -218,9 +218,9 @@ button { font-family: inherit; cursor: pointer; }
 .confirm-preview { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; white-space: pre-wrap; word-break: break-word; overflow-x: auto; color: var(--text); }
 .confirm-actions { display: flex; gap: 10px; }
 .btn-approve { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 9px 20px; font-size: 15px; font-weight: 600; }
-.btn-approve:hover { background: #d55a2f; }
+.btn-approve:hover { filter: brightness(1.08); }
 .btn-allow { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent); border-radius: 10px; padding: 9px 16px; font-size: 15px; font-weight: 600; }
-.btn-allow:hover { background: #fbe0d3; }
+.btn-allow:hover { background: var(--accent-soft); }
 .btn-cancel { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; padding: 9px 18px; font-size: 15px; }
 .btn-cancel:hover { background: var(--bg); }
 
@@ -270,7 +270,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--accent); color: #fff; font-size: 20px; font-weight: 700; line-height: 1;
 }
 .send:disabled { background: var(--border-strong); color: #fff; cursor: default; }
-.send:not(:disabled):hover { background: #d55a2f; }
+.send:not(:disabled):hover { filter: brightness(1.08); }
 .hint { max-width: 760px; margin: 8px auto 0; text-align: center; font-size: 12px; color: var(--muted); }
 
 /* ── Memory drawer ──────────────────────────── */
@@ -365,7 +365,7 @@ button { font-family: inherit; cursor: pointer; }
 .attach-file { width: 34px; height: 34px; display: grid; place-items: center; background: var(--bg); border-radius: 8px; font-size: 16px; }
 .attach-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attach-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 4px; }
-.attach-x:hover { color: #9A3412; }
+.attach-x:hover { color: var(--c-err); }
 
 /* buttons/inputs share a calm focus ring */
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; box-shadow: var(--ring); }
@@ -418,7 +418,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .allow-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .allow-list li { display: flex; align-items: center; justify-content: space-between; font-size: 14px; text-transform: capitalize; }
 .allow-list button { background: none; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--muted); font-size: 12px; padding: 3px 10px; cursor: pointer; }
-.allow-list button:hover { color: #9A3412; border-color: #9A3412; }
+.allow-list button:hover { color: var(--c-err); border-color: var(--c-err); }
 
 /* free-lanes indicator in settings */
 .pop-lanes { font-size: 12px; font-weight: 600; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 10px; margin: 6px 6px 0; }

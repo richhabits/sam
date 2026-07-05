@@ -320,6 +320,7 @@ export default function App() {
   const chatRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recRef = useRef<any>(null);
+  const sendRef = useRef<(text?: string) => void>(() => {});   // always the latest send() — memoized rows call through this
 
   useEffect(() => {
     getProjects().then(setProjects).catch(() => {});
@@ -759,6 +760,7 @@ export default function App() {
     );
   }
 
+  sendRef.current = send;   // keep the ref current so old (memoized) message rows never fire a stale send
   const activeBrand = projects.find((p) => p.id === brand);
   const customAccent = mode === "business" && activeBrand?.themeColor ? activeBrand.themeColor : undefined;
 
@@ -982,7 +984,7 @@ export default function App() {
                 isPinned={m.pinned}
                 isPlaying={playing === i}
                 isLast={i === messages.length - 1}
-                onFollowUp={(q: string) => send(q)}
+                onFollowUp={(q: string) => sendRef.current(q)}
                 onExpand={(idx: number) => toggleExpand(idx)}
                 onCopy={(text: string, idx: number) => copyMsg(text, idx)}
                 onCopyMarkdown={(text: string, idx: number) => copyMsg(text, idx)}
