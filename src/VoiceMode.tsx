@@ -1,34 +1,34 @@
 import { useState, useEffect, useRef } from "react";
 import { speak as ttsSpeak, stopSpeaking, voiceLevel } from "./lib/tts";
 
-// Hands-free two-way voice: SAM greets, listens, you speak, it answers OUT LOUD,
-// then listens again — a real back-and-forth. Browser-native, free, cross-platform.
 type State = "connecting" | "listening" | "thinking" | "speaking" | "unsupported";
 
-// A greeting with swagger, based on the time of day.
 function wakeGreeting(name?: string): string {
   const h = new Date().getHours();
   const n = name ? ` ${name}` : "";
-  const morning = [`Morning${n}. What's the mission today?`, `Rise and grind${n} — what we sorting first?`];
-  const afternoon = [`What now${n}... what needs doing?`, `Yeah${n}, I'm here — what do you need?`];
-  const evening = [`Evening${n}. Everything sorted, or something you need handled?`, `What's good${n}? Say the word.`];
-  const night = [`Still up${n}? What do you need?`, `Late one${n} — what's on your mind?`];
-  const pool = h < 12 ? morning : h < 17 ? afternoon : h < 22 ? evening : night;
-  return pool[Math.floor((Date.now() / 1000) % pool.length)];
+  const pool = h < 12 ? [`Morning${n}. What's the mission today?`] : h < 17 ? [`What now${n}?`] : [`Evening${n}. Say the word.`];
+  return pool[0];
 }
 
 export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: (q: string) => Promise<string>; onClose: () => void }) {
   const [state, setState] = useState<State>("connecting");
   const [heard, setHeard] = useState("");
   const [said, setSaid] = useState("");
-  const recRef = useRef<any>(null);
   const active = useRef(true);
   const mouthRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<State>(state);
+  
+  // Realtime WebRTC refs
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fallback refs
+  const recRef = useRef<any>(null);
+
   useEffect(() => { stateRef.current = state; }, [state]);
 
-  // Drive the mouth every frame — real voice amplitude when speaking, a gentle
-  // idle breath when listening/thinking. Direct DOM (no React re-render per frame).
+  // Visuals loop
   useEffect(() => {
     let raf = 0;
     const loop = () => {
@@ -47,14 +47,77 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  function stopAll() { try { recRef.current?.stop(); } catch {} stopSpeaking(); }
+  function stopAll() {
+    try { recRef.current?.stop(); } catch {}
+    stopSpeaking();
+    pcRef.current?.close();
+  }
 
-  function speak(text: string, after?: () => void) {
+  // ── OPENAI REALTIME WEBRTC ──
+  async function initWebRTC() {
+    try {
+      // 1. Get ephemeral token from backend
+      const res = await fetch("http://localhost:8787/api/voice/token").catch(() => null);
+      if (!res || !res.ok) throw new Error("No token");
+      const { client_secret: { value: token } } = await res.json();
+
+      // 2. Setup WebRTC
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+      
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      audioElRef.current = audioEl;
+      pc.ontrack = e => { audioEl.srcObject = e.streams[0]; };
+
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+      pc.addTrack(ms.getTracks()[0]);
+
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
+      dc.addEventListener("message", (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "response.audio_transcript.delta") {
+          setState("speaking");
+          setSaid(prev => prev + msg.delta);
+        }
+        if (msg.type === "response.audio_transcript.done") {
+           setState("listening");
+        }
+        if (msg.type === "conversation.item.input_audio_transcription.completed") {
+           setHeard(msg.transcript);
+           setState("thinking");
+           setSaid("");
+        }
+      });
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const sdpResponse = await fetch(`https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`, {
+        method: "POST",
+        body: offer.sdp,
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/sdp" }
+      });
+      if (!sdpResponse.ok) throw new Error("SDP failed");
+
+      const answer = { type: "answer" as const, sdp: await sdpResponse.text() };
+      await pc.setRemoteDescription(answer);
+
+      setState("listening");
+    } catch (e) {
+      console.warn("WebRTC Realtime failed, falling back to legacy...", e);
+      fallbackInit();
+    }
+  }
+
+  // ── LEGACY FALLBACK ──
+  function fallbackSpeak(text: string, after?: () => void) {
     setState("speaking"); setSaid(text);
     ttsSpeak(text, () => { if (active.current) after?.(); });
   }
 
-  function listen() {
+  function fallbackListen() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setState("unsupported"); return; }
     const rec = new SR(); recRef.current = rec;
@@ -66,24 +129,26 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       for (const r of e.results) { t += r[0].transcript; if (r.isFinal) final += r[0].transcript; }
       setHeard(t);
     };
-    rec.onend = () => { if (!active.current) return; const q = final.trim(); if (q) handle(q); else listen(); };
-    rec.onerror = () => { if (active.current) setTimeout(() => active.current && listen(), 600); };
+    rec.onend = () => { if (!active.current) return; const q = final.trim(); if (q) fallbackHandle(q); else fallbackListen(); };
+    rec.onerror = () => { if (active.current) setTimeout(() => active.current && fallbackListen(), 600); };
     try { rec.start(); } catch {}
   }
 
-  async function handle(q: string) {
+  async function fallbackHandle(q: string) {
     setState("thinking"); setHeard(q);
     let reply = "";
     try { reply = await ask(q); } catch { reply = "Sorry, I didn't catch that — try again."; }
     if (!active.current) return;
-    speak(reply, () => active.current && listen());
+    fallbackSpeak(reply, () => active.current && fallbackListen());
+  }
+
+  function fallbackInit() {
+    fallbackSpeak(wakeGreeting(name), () => active.current && fallbackListen());
   }
 
   useEffect(() => {
     active.current = true;
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { setState("unsupported"); return; }
-    speak(wakeGreeting(name), () => active.current && listen());
+    initWebRTC();
     return () => { active.current = false; stopAll(); };
   }, []);
 
