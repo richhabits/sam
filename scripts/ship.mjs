@@ -15,6 +15,7 @@ try {
   if (!quiet("git status --porcelain")) { console.log("Nothing to ship — no changes."); process.exit(0); }
 
   console.log("\n🧪 testing…");   run("npm test");
+  console.log("\n🎨 refreshing landing…"); run("node scripts/gen-landing.mjs");
   console.log("\n🏗️  building…");  run("npm run build");
 
   console.log("\n🚀 shipping…");
