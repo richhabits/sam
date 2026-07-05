@@ -24,6 +24,7 @@ import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges } from "./proactive.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
+import { startDropWatcher, takeDrop, dropFolderPath } from "./ios.ts";
 import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
@@ -81,15 +82,40 @@ initContext();
 void grabWorld().then((s) => console.log(`  ${s}\n`));
 resumeOrphanedSwarms();
 
+// iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
+startDropWatcher(async (d) => {
+  console.log(`  📱 drop received · ${d.file} (${d.kind})`);
+  // Process the drop as a standard command (SAM answers it autonomously).
+  try {
+    const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
+    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free");
+    if (r.kind === "final" && r.text) {
+      // Queue the result for the app to show + send a notification.
+      const { desktopNotify } = await import("./proactive.ts") as any;
+    }
+  } catch {}
+});
+
 // Proactive layer: SAM reaches out first — a once-a-day morning brief (composed
 // with its own tools: weather + nudges) and nudge reminders. Slim: a 5-min timer.
 startProactive(async () => {
   const nudges = listNudges();
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
-  const prompt = `Give me my morning brief — short, warm, punchy (3-5 lines). It's ${nowText()}.` +
+
+  // ── Jarvis Layer: gather real data from the ecosystem before composing ──
+  let calendarData = "", emailData = "", weatherData = "";
+  const { toolByName } = await import("./tools.ts");
+  try { const cal = toolByName("read_calendar"); if (cal) calendarData = await cal.run({}); } catch {}
+  try { const mail = toolByName("read_emails"); if (mail) emailData = await mail.run({}); } catch {}
+  try { const wx = toolByName("get_weather"); if (wx) weatherData = await wx.run({ place: locationText() || "" }); } catch {}
+
+  const prompt = `Give me my morning brief — short, warm, punchy (5-8 lines). It's ${nowText()}.` +
     `${locationText() ? ` I'm near ${locationText()}.` : ""}` +
-    `${nudges.length ? ` My pending nudges: ${nudges.map((n) => n.text).join("; ")}.` : " No pending nudges."}` +
-    ` Check today's weather here and flag anything useful for the day. Start with a quick hello.`;
+    `\n\n## Today's Calendar\n${calendarData || "Nothing on the calendar today."}` +
+    `\n\n## Latest Emails\n${emailData || "Inbox is quiet."}` +
+    `\n\n## Weather\n${weatherData || "Couldn't get the weather."}` +
+    `${nudges.length ? `\n\n## Pending Nudges\n${nudges.map((n) => `- ${n.text}${n.due ? ` (due ${n.due})` : ""}`).join("\n")}` : "\n\nNo pending nudges."}` +
+    `\n\nSynthesise all of this into a single, warm, punchy morning brief. Lead with the most important thing. Don't just list — weave it into a narrative.`;
   try {
     const qvec = await embedOne(prompt, true);
     const r = await runAgent(system, prompt, (process.env.DEFAULT_TIER as Tier) || "free", selectTools(qvec, 6));
