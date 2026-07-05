@@ -17,7 +17,7 @@ import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -402,6 +402,7 @@ app.get("/api/admin/config", (_req, res) => {
     twitter: !!process.env.TWITTER_BEARER_TOKEN,
     linear: !!process.env.LINEAR_API_KEY,
     linearTeam: process.env.LINEAR_TEAM_ID || "",
+    elonMode: isElonMode(),
     pools,
   });
 });
@@ -443,6 +444,13 @@ app.post("/api/admin/import-context", async (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message || "Failed to process import" });
   }
+});
+
+// Toggle Elon Mode (ruthless automation override).
+app.post("/api/admin/elon-mode", (req, res) => {
+  const { on } = req.body as { on: boolean };
+  setElonMode(on);
+  res.json({ ok: true, elonMode: isElonMode() });
 });
 
 // ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──
