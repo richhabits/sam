@@ -29,6 +29,7 @@ import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSched
 import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
+import { operatingDoctrine } from "./persona.ts";
 import {
   logExchange,
   recentLog,
@@ -169,6 +170,8 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
     `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in his memory + reality.`,
+    ``,
+    operatingDoctrine(name),
     ``,
     user?.language && !/^en|english/i.test(user.language) ? `## Language\nAlways reply to ${name} in ${user.language}, naturally and fluently — no matter what language they write in.` : ``,
     ``,
