@@ -30,6 +30,7 @@ import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine } from "./persona.ts";
+import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import {
   logExchange,
   recentLog,
@@ -411,6 +412,25 @@ app.post("/api/admin/config", (req, res) => {
   if (!envVar) return res.status(400).json({ error: "unknown config key" });
   writeEnv(envVar, String(value || ""));
   res.json({ ok: true, key });
+});
+
+// Ingest user context (pasted from ChatGPT/Claude/Gemini) during onboarding or settings updates.
+app.post("/api/admin/import-context", async (req, res) => {
+  const { name, externalContext, tier } = req.body as { name: string; externalContext?: string; tier?: Tier };
+  if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
+  try {
+    const contextText = externalContext || "";
+    if (contextText.trim().length > 0) {
+      const chosenTier = tier || (process.env.DEFAULT_TIER as Tier) || "free";
+      const facts = await extractFactsFromTranscript(name, contextText, chosenTier);
+      const savedCount = await saveImportedFacts(facts);
+      res.json({ ok: true, factsExtracted: facts.length, factsSaved: savedCount });
+    } else {
+      res.json({ ok: true, factsExtracted: 0, factsSaved: 0 });
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to process import" });
+  }
 });
 
 // ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──

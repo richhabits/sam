@@ -35,6 +35,7 @@ import { keyStatus } from "./keys.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
+import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
 const sh = promisify(exec);
 
@@ -1435,6 +1436,16 @@ end tell`);
         await fs.writeFile(brandsPath, JSON.stringify(brands, null, 2), "utf8");
         return `Updated project '${i.id}'.`;
       } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
+  { name: "import_context", safe: false, description: "Extract and import user persona/facts from a pasted ChatGPT/Claude/Gemini chat history or text profile. input: {text}.", params: "{text}",
+    activity: () => `Importing user context`, preview: () => `Extract and save facts from imported context?`,
+    run: async (i) => {
+      try {
+        const name = process.env.SAM_USER_NAME || "the user";
+        const facts = await extractFactsFromTranscript(name, i.text, "free");
+        const count = await saveImportedFacts(facts);
+        return `Successfully processed context. Extracted ${facts.length} facts, saved ${count} new facts to memory.`;
+      } catch (e: any) { return `Failed to import context: ${e.message}`; }
     } },
 ];
 
