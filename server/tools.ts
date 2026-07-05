@@ -12,8 +12,8 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
-import { randomBytes } from "node:crypto";
-import { resolve, dirname, basename, extname } from "node:path";
+import { randomBytes, createHash } from "node:crypto";
+import { resolve, dirname, basename, extname, join } from "node:path";
 import { createRequire } from "node:module";
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
 // time via require — importing them as ESM at the top crashed boot, and this also
@@ -735,6 +735,75 @@ export const TOOLS: Tool[] = [
         const translated = data[0].map((chunk: any) => chunk[0]).join("");
         return translated;
       } catch (e: any) { return `Failed to translate: ${e.message}`; }
+    } },
+  { name: "weather_forecast_7day", safe: true, description: "Get a rich 7-day weather forecast (JSON). input: {location}.", params: "{location}",
+    activity: (i) => `Pulling 7-day forecast for ${i.location}`,
+    run: async (i) => {
+      try {
+        const res = await fetch(`https://wttr.in/${encodeURIComponent(i.location || "")}?format=j1`);
+        if (!res.ok) throw new Error("Weather API failed");
+        const data = await res.json();
+        const current = data.current_condition[0];
+        const future = data.weather.slice(0, 7).map((w: any) => `${w.date}: ${w.maxtempC}C/${w.mintempC}C (Rain: ${w.hourly[0]?.chanceofrain || 0}%)`).join("\\n");
+        return `Current: ${current.temp_C}C, ${current.weatherDesc[0].value}\\nForecast:\\n${future}`;
+      } catch (e: any) { return `Failed to get forecast: ${e.message}`; }
+    } },
+  { name: "stock_price", safe: true, description: "Get live market data for a stock ticker symbol (e.g. AAPL, TSLA). input: {ticker}.", params: "{ticker}",
+    activity: (i) => `Checking stock price for ${i.ticker}`,
+    run: async (i) => {
+      try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(i.ticker)}`);
+        if (!res.ok) throw new Error("Finance API returned " + res.status);
+        const data = await res.json();
+        const meta = data.chart.result[0].meta;
+        return `${meta.symbol}: $${meta.regularMarketPrice} (Prev Close: $${meta.previousClose})`;
+      } catch (e: any) { return `Failed to fetch stock: ${e.message}`; }
+    } },
+  { name: "news_rss", safe: true, description: "Fetch the top 5 global news headlines from Google News RSS.", params: "(none)",
+    activity: () => `Fetching top news`,
+    run: async () => {
+      try {
+        const res = await fetch("https://news.google.com/rss");
+        if (!res.ok) throw new Error("News API failed");
+        const xml = await res.text();
+        const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+        const top = items.slice(0, 5).map(item => {
+          const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
+          const linkMatch = item.match(/<link>([\s\S]*?)<\/link>/);
+          return `- ${titleMatch ? titleMatch[1] : "No Title"}\\n  ${linkMatch ? linkMatch[1] : "No Link"}`;
+        });
+        return top.length ? top.join("\\n\\n") : "No news found.";
+      } catch (e: any) { return `Failed to fetch news: ${e.message}`; }
+    } },
+  { name: "dedupe_files", safe: true, description: "Recursively scan a directory, hash all files, and list exact duplicates (read-only, does not delete). input: {dir}.", params: "{dir}",
+    activity: (i) => `Scanning ${i.dir} for duplicates`,
+    run: async (i) => {
+      try {
+        const dir = resolve(i.dir);
+        const map = new Map<string, string[]>();
+        async function walk(currentDir: string) {
+          const files = await readdir(currentDir);
+          for (const file of files) {
+            const filepath = join(currentDir, file);
+            const stats = await stat(filepath);
+            if (stats.isDirectory()) await walk(filepath);
+            else if (stats.isFile()) {
+              const buffer = await readFile(filepath);
+              const hash = createHash("sha256").update(buffer).digest("hex");
+              if (!map.has(hash)) map.set(hash, []);
+              map.get(hash)!.push(filepath);
+            }
+          }
+        }
+        await walk(dir);
+        let out = "";
+        for (const [hash, paths] of map.entries()) {
+          if (paths.length > 1) {
+            out += `Duplicate Group:\\n` + paths.map(p => `  - ${p}`).join("\\n") + "\\n\\n";
+          }
+        }
+        return out.trim() || "No duplicates found.";
+      } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
