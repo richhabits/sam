@@ -22,7 +22,15 @@ export const SPECIALISTS: Specialist[] = [
   { id: "judge",  name: "Judge",  emoji: "⚖️", modeledOn: "a ruthless editor & fact-checker", brief: "Review & verify. Catch errors, hallucinations and weak logic; sharpen it before it ships. The quality gate." },
 ];
 
-const byId = (id: string) => SPECIALISTS.find((s) => s.id === id);
+// 🥷 THE NINJAS — the problem squad. You point them at something; they find what's
+// wrong and deal with it straight up. No hand-holding — they smell trouble coming.
+export const NINJAS: Specialist[] = [
+  { id: "hawk",   name: "Hawk",   emoji: "🦅", modeledOn: "a paranoid ops chief", brief: "Find the problems — blockers, risks, debts, overdue, loose ends, weak points. Smell trouble before it lands. Rank by severity." },
+  { id: "reaper", name: "Reaper", emoji: "🥷", modeledOn: "a no-nonsense fixer", brief: "Deal with it. For each problem: fix the safe ones now (use tools), and give the decisive move on the rest. Done, not described." },
+  { id: "chaser", name: "Chaser", emoji: "💼", modeledOn: "a relentless debt collector", brief: "Chase what's owed, overdue or unfinished — follow-ups, invoices, promises. Draft the message that closes it." },
+];
+
+const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id);
 
 // Pull a JSON array of {specialist, task} out of a model reply.
 function parsePlan(text: string): { specialist: string; task: string }[] {
@@ -72,6 +80,39 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
   const synthSys = `${baseSystem}\n\nYour specialists just did the work below. Combine it into ONE clear, punchy answer for the user — lead with the outcome, weave the pieces together, briefly credit the crew. Don't just list their outputs; synthesise.`;
   const brief = results.map((r) => `## ${r.s.name} ${r.s.emoji} — ${r.task}\n${r.output}`).join("\n\n");
   const r = await runModel(tier, synthSys, `Original request: ${request}\n\n${brief}\n\nSAM's final answer:`);
+  emit({ type: "final", text: r.text, provider: r.provider });
+  return r.text;
+}
+
+// 🥷 Deploy the Ninjas: Hawk hunts problems → Reaper & Chaser deal with them → hit-list.
+export async function runNinjas(target: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
+  const hawk = NINJAS[0];
+  emit({ type: "plan", plan: NINJAS.map((n) => ({ specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
+
+  // 1) Hawk hunts.
+  emit({ type: "agent-start", id: hawk.id, name: hawk.name, emoji: hawk.emoji, task: "hunting problems" });
+  const hawkSys = `${baseSystem}\n\n## You are Hawk 🦅 — ${hawk.modeledOn}. ${hawk.brief}\nUse your tools to check reality (files, repos, calendar, etc.) where it helps. Return a tight, ranked list of the REAL problems.`;
+  let found = "";
+  try { const r = await runAgent(hawkSys, `Hunt down every problem, risk, blocker, overdue item, loose end or weak point in: ${target}`, tier); found = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
+  catch (e: any) { found = `(couldn't complete: ${e?.message || e})`; }
+  emit({ type: "agent-done", id: hawk.id, name: hawk.name, emoji: hawk.emoji, output: found });
+
+  // 2) Reaper + Chaser deal with what Hawk found — in parallel.
+  const closers = [NINJAS[1], NINJAS[2]];
+  const dealt = await Promise.all(closers.map(async (n) => {
+    emit({ type: "agent-start", id: n.id, name: n.name, emoji: n.emoji, task: n.id === "reaper" ? "fixing what can be fixed" : "chasing what's owed" });
+    const sys = `${baseSystem}\n\n## You are ${n.name} ${n.emoji} — ${n.modeledOn}. ${n.brief}\nWork ONLY from the problems Hawk found below. Be decisive and concrete — fix/act where safe, draft what closes it. No waffle.`;
+    let out = "";
+    try { const r = await runAgent(sys, `Problems Hawk found:\n${found}\n\nTarget: ${target}\n\nYour move:`, tier); out = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
+    catch (e: any) { out = `(couldn't complete: ${e?.message || e})`; }
+    emit({ type: "agent-done", id: n.id, name: n.name, emoji: n.emoji, output: out });
+    return { n, out };
+  }));
+
+  // 3) SAM's hit-list.
+  const synthSys = `${baseSystem}\n\nThe Ninjas just ran. Give the user a straight HIT-LIST: the problems found, what got dealt with, and the decisive next moves. Blunt, ranked, no fluff.`;
+  const brief = `Hawk 🦅 found:\n${found}\n\n${dealt.map((d) => `${d.n.name} ${d.n.emoji}:\n${d.out}`).join("\n\n")}`;
+  const r = await runModel(tier, synthSys, `Target: ${target}\n\n${brief}\n\nThe hit-list:`);
   emit({ type: "final", text: r.text, provider: r.provider });
   return r.text;
 }

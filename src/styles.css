@@ -497,3 +497,59 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .tm-status { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 6px; }
 .team-member.active .tm-status { color: var(--accent-text); }
 .tm-task { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+/* ══ SKINS PACK — full palette overrides via data-skin on <html> ══
+   Skins win over light/dark (applied per-token). Classic = no attr. */
+
+/* 🤖 JARVIS — arc-reactor HUD: deep navy-black, cyan glow, hologram vibes */
+:root[data-skin="jarvis"] {
+  --bg: #060B12; --surface: #0B1420; --text: #D8F4FF; --muted: #6FA8C4;
+  --border: #12293C; --border-strong: #1B3E5A;
+  --accent: #29C6F6; --accent-text: #64D9FF; --accent-soft: #0A2436;
+  --user-bubble: #0E1E2E;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(41,198,246,.06);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 14px 44px rgba(41,198,246,.10);
+  --shadow-accent: 0 4px 18px rgba(41,198,246,.35);
+  --accent-2: #64D9FF; --ring: 0 0 0 3.5px rgba(41,198,246,.22);
+}
+:root[data-skin="jarvis"] .app {
+  background:
+    radial-gradient(1100px 500px at 50% -10%, rgba(41,198,246,.10), transparent 60%),
+    radial-gradient(700px 400px at 90% 110%, rgba(41,198,246,.05), transparent 60%), var(--bg);
+}
+:root[data-skin="jarvis"] .name { text-shadow: 0 0 14px rgba(41,198,246,.55); letter-spacing: .06em; }
+:root[data-skin="jarvis"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 0 3px var(--accent-soft); }
+:root[data-skin="jarvis"] .bubble, :root[data-skin="jarvis"] .composer { backdrop-filter: blur(6px); }
+:root[data-skin="jarvis"] .vm-orb { background: radial-gradient(circle at 40% 35%, #9AE8FF, var(--accent) 55%, #0E5C7E); box-shadow: 0 0 60px rgba(41,198,246,.5); }
+
+/* 🔥 EMBER — the landing-page look: warm near-black, terracotta glow */
+:root[data-skin="ember"] {
+  --bg: #100E0C; --surface: #1C1712; --text: #F3EDE4; --muted: #9A9187;
+  --border: #2A221A; --border-strong: #3D3226;
+  --accent: #F0824E; --accent-text: #F9A87A; --accent-soft: #2B1A10;
+  --user-bubble: #221C16;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(240,130,78,.08);
+}
+:root[data-skin="ember"] .app { background: radial-gradient(1200px 520px at 50% -10%, rgba(240,130,78,.08), transparent 60%), var(--bg); }
+
+/* 🥷 STEALTH — blackout minimal, sharp green signal */
+:root[data-skin="stealth"] {
+  --bg: #000000; --surface: #0C0C0C; --text: #EDEDED; --muted: #7E7E7E;
+  --border: #1D1D1D; --border-strong: #2E2E2E;
+  --accent: #4ADE80; --accent-text: #7CEBA5; --accent-soft: #0C1F13;
+  --user-bubble: #121212;
+  --shadow: none; --shadow-lg: 0 10px 40px rgba(0,0,0,.7);
+  --radius: 12px;
+}
+:root[data-skin="stealth"] .app { background: var(--bg); }
+:root[data-skin="stealth"] .name { letter-spacing: .12em; }
+
+/* skin picker in settings */
+.skin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 6px 6px; }
+.skin-chip { font-size: 13px; font-weight: 600; text-align: left; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); transition: all .15s; }
+.skin-chip:hover { border-color: var(--accent); }
+.skin-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+
+/* active guardian button */
+.icon-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
