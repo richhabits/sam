@@ -109,14 +109,14 @@ const COMMANDS: [string, string][] = [
 ];
 
 const SUGGESTIONS = [
-  "Draft a friendly reply to a customer asking for a refund",
+  "/team research 3 competitors and draft me a launch post",
+  "/ninjas my to-do list — find what's slipping and sort it",
+  "What's on my calendar today, and anything urgent in my emails?",
   "Search the web for the best free tools for small businesses",
-  "What's on my calendar today?",
-  "Call my accountant",
-  "Research 5 competitors and what they charge",
-  "What's the weather today?",
-  "Read my latest emails and tell me what's urgent",
+  "Draft a friendly reply to a customer asking for a refund",
   "Take a screenshot and tell me what's on my screen",
+  "Look through my camera — what do you see?",
+  "What's the weather today, and directions to the nearest coffee?",
 ];
 
 type Quality = "auto" | "private" | "best";
