@@ -805,6 +805,67 @@ export const TOOLS: Tool[] = [
         return out.trim() || "No duplicates found.";
       } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
+  { name: "add_calendar_event", safe: false, description: "Create a scheduled event in the native macOS Calendar app. input: {title, start_date, end_date} (Dates must be parseable by AppleScript like '12/25/2026 14:00').", params: "{title, start_date, end_date}",
+    activity: (i) => `Scheduling ${i.title} on Calendar`, preview: (i) => `Add to Calendar:\n${i.title}\nFrom: ${i.start_date}\nTo: ${i.end_date}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        await osa(`tell application "Calendar" to tell calendar "Home" to make new event at end of events with properties {summary:"${i.title.replace(/"/g, "")}", start date:date "${i.start_date}", end date:date "${i.end_date}"}`);
+        return "Event created successfully in Calendar.";
+      } catch (e: any) {
+        try {
+          await osa(`tell application "Calendar" to tell calendar 1 to make new event at end of events with properties {summary:"${i.title.replace(/"/g, "")}", start date:date "${i.start_date}", end date:date "${i.end_date}"}`);
+          return "Event created successfully in default Calendar.";
+        } catch (err: any) { return `Failed to create event: ${err.message}`; }
+      }
+    } },
+  { name: "add_reminder", safe: true, description: "Add a task to the native macOS Reminders app. input: {task_name, list_name?}.", params: "{task_name, list_name?}",
+    activity: (i) => `Adding reminder: ${i.task_name}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        const listStr = i.list_name ? `list "${i.list_name.replace(/"/g, "")}"` : "default list";
+        await osa(`tell application "Reminders" to make new reminder in ${listStr} with properties {name:"${i.task_name.replace(/"/g, "")}"}`);
+        return "Reminder added successfully.";
+      } catch (e: any) { return `Failed to add reminder: ${e.message}`; }
+    } },
+  { name: "create_apple_note", safe: true, description: "Create a new note in the native Apple Notes app. input: {title, body}.", params: "{title, body}",
+    activity: (i) => `Creating Apple Note: ${i.title}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        const content = `<h1>${i.title}</h1><p>${i.body.replace(/\\n/g, "<br>")}</p>`;
+        await osa(`tell application "Notes" to make new note with properties {body:"${content.replace(/"/g, "\\\"")}"}`);
+        return "Note created successfully in Apple Notes.";
+      } catch (e: any) { return `Failed to create note: ${e.message}`; }
+    } },
+  { name: "search_apple_notes", safe: true, description: "Search Apple Notes and return content of matches. input: {query}.", params: "{query}",
+    activity: (i) => `Searching Apple Notes for "${i.query}"`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        const script = `
+tell application "Notes"
+	set matchNotes to notes whose name contains "${i.query.replace(/"/g, "")}" or body contains "${i.query.replace(/"/g, "")}"
+	set out to ""
+	repeat with n in matchNotes
+		set out to out & "Title: " & name of n & "\n" & body of n & "\n\n"
+	end repeat
+	return out
+end tell`;
+        const result = await osa(script);
+        return result.trim() || "No matching notes found.";
+      } catch (e: any) { return `Failed to search notes: ${e.message}`; }
+    } },
+  { name: "send_imessage", safe: false, description: "Send an iMessage/SMS natively through macOS Messages app. input: {phone_or_email, message}.", params: "{phone_or_email, message}",
+    activity: (i) => `Sending iMessage to ${i.phone_or_email}`, preview: (i) => `Send iMessage to ${i.phone_or_email}:\n${i.message}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        await osa(`tell application "Messages" to send "${i.message.replace(/"/g, "\\\"")}" to buddy "${i.phone_or_email.replace(/"/g, "")}"`);
+        return `Message sent to ${i.phone_or_email}.`;
+      } catch (e: any) { return `Failed to send iMessage: ${e.message}`; }
+    } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
   { name: "notify", safe: true, description: "Show a macOS notification. input: {title?, message}.", params: "{title?, message}",
