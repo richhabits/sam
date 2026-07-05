@@ -1179,22 +1179,26 @@ export const TOOLS: Tool[] = [
     activity: () => `Copying to clipboard`, preview: (i) => `Copy to clipboard:\n  ${i.text ?? i}`, run: (i) => clipboardSet(i.text ?? i) },
   { name: "send_imessage", safe: false, description: "Send an iMessage/text. input: {to, message}.", params: "{to, message}",
     activity: (i) => `Texting ${i.to}`, preview: (i) => `Send iMessage\n  To: ${i.to}\n  ${i.message}`, run: (i) => sendIMessage(i) },
-  { name: "read_apple_notes", safe: true, description: "Read the user's recently modified Apple Notes. Mac only.", params: "(none)",
-    activity: () => `Reading Apple Notes`, run: async () => { if (!IS_MAC) return "Apple Notes only works on macOS."; return await readAppleNotes(); } },
-  { name: "append_apple_note", safe: false, description: "Append text to an Apple Note by title. Mac only. input: {title, text}.", params: "{title, text}",
+  { name: "read_notes", safe: true, description: "Read the user's recently modified Notes.", params: "(none)",
+    activity: () => `Reading Notes`, run: async () => { if (!IS_MAC) return notSupported("Read Notes"); return await readAppleNotes(); } },
+  { name: "append_note", safe: false, description: "Append text to a note by title. input: {title, text}.", params: "{title, text}",
     activity: (i) => `Appending to note: ${i.title}`, preview: (i) => `Append to Note '${i.title}':\n${clip(i.text, 100)}`,
     run: async (i) => {
-      if (!IS_MAC) return "Apple Notes only works on macOS.";
       try {
-        await osa(`tell application "Notes"
-  set n to first note whose name contains "${esc(i.title)}"
-  set body HTML of n to (body HTML of n) & "<br><br>${esc(i.text).replace(/\n/g, "<br>")}"
-end tell`);
-        return `Appended to note '${i.title}'.`;
-      } catch (e: any) { return `Couldn't append to Note: ${e.message}`; }
+        if (IS_MAC) {
+          await osa(`tell application "Notes"\nset n to first note whose name contains "${esc(i.title)}"\nset body HTML of n to (body HTML of n) & "<br><br>${esc(i.text).replace(/\n/g, "<br>")}"\nend tell`);
+          return `Appended to note '${i.title}'.`;
+        } else {
+          const notesDir = resolve(homedir(), "SAM_Notes");
+          const { stdout } = await sh(`ls "${notesDir}" 2>/dev/null | grep -i "${i.title.replace(/"/g, "")}" | head -1`);
+          const file = resolve(notesDir, stdout.trim() || `${i.title.replace(/[^a-z0-9]/gi, '_')}.txt`);
+          await sh(`printf "\n\n${i.text.replace(/"/g, '\\"')}" >> "${file}"`);
+          return `Appended to ${file}.`;
+        }
+      } catch (e: any) { return `Couldn't append to note: ${e.message}`; }
     } },
-  { name: "read_reminders", safe: true, description: "Read the user's pending Apple Reminders. Mac only.", params: "(none)",
-    activity: () => `Checking Apple Reminders`, run: async () => { if (!IS_MAC) return "Apple Reminders only works on macOS."; return await readReminders(); } },
+  { name: "read_reminders", safe: true, description: "Read pending Reminders.", params: "(none)",
+    activity: () => `Checking Reminders`, run: async () => { if (!IS_MAC) return notSupported("Reminders"); return await readReminders(); } },
   { name: "browser_navigate", safe: false, description: "Open a Chrome browser tab and navigate to a URL. Returns page title.", params: "url",
     activity: (i) => `Navigating to ${i.url ?? i}`, preview: (i) => `Browser: Go to ${i.url ?? i}`, run: (i) => browserNavigate(i.url ?? i) },
   { name: "browser_read", safe: true, description: "Read the visible text from the currently open Chrome tab.", params: "(none)",
