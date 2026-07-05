@@ -511,8 +511,8 @@ export default function App() {
         <div className="brandmark">
           <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
           <span className="dot-live" title={status ? "Connected" : "Starting…"} />
-          <span className="name">SAM</span>
-          <span className="tag">your assistant</span>
+          <span className="wordmark">SAM<span className="wm-dot">.</span></span>
+          <span className="tag">by <b>HECTIC</b></span>
         </div>
         <div className="bar-right">
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
