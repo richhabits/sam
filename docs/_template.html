@@ -188,7 +188,7 @@
         </div>
         <div class="card">
           <h3><span class="g">👁️</span>It can see — and guard</h3>
-          <p>Looks through your camera, knows your people by sight (“hey Alex”), and <b>Guardian</b> mode flags anyone it doesn't recognise — all processed on your machine, nothing uploaded.</p>
+          <p>Looks through your camera, learns the people you introduce it to, and <b>Guardian</b> mode flags anyone it doesn't recognise. Motion detection runs locally on your machine; frames are read by the vision brain you choose (a free cloud model, or fully local with Ollama).</p>
           <div class="vs">Them: text only · <b>SAM: eyes on your world</b></div>
         </div>
         <div class="card">
@@ -267,10 +267,10 @@
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const steps = [
     { ic:"📍", t:"Checking your location", ms:700 },
-    { ic:"🌤️", t:"Checking the weather in London", ms:900 },
+    { ic:"🌤️", t:"Checking the weather", ms:900 },
     { ic:"📅", t:"Reading today's calendar", ms:800 },
   ];
-  const answer = 'Morning, Romeo. London\'s clear, 21°C — good one. You\'ve got <span class="tag">2 meetings</span> today and a follow-up due with the accountant. Want me to draft it?';
+  const answer = 'Morning. Clear skies, 21°C — good one. You\'ve got <span class="tag">2 meetings</span> today and a follow-up due with the accountant. Want me to draft it?';
 
   function run(){
     term.innerHTML = '<div class="t-you">you › <span class="u">brief me for the day</span></div>';
