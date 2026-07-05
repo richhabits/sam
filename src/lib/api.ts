@@ -128,6 +128,10 @@ export const getRoster = () => fetch("/api/team/roster").then((r) => r.json());
 export const getAutopilot = () => fetch("/api/autopilot").then((r) => r.json());
 export const setAutopilotMode = (on: boolean) => fetch("/api/autopilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) }).then((r) => r.json());
 
+// Elon Mode — ruthless autopilot: bypasses ALL ask-first gates. Deletes go to a 30-day trash bin;
+// outward actions (send/post/pay) are NOT recoverable. Dangerous — gated behind a confirm in the UI.
+export const setElonMode = (on: boolean) => fetch("/api/admin/elon-mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) }).then((r) => r.json());
+
 // ── The Continuous Swarm ──
 export interface SwarmAgent { id: string; specialistId: string; name: string; emoji: string; task: string; status: "pending" | "running" | "paused" | "done" | "error"; output?: string; pendingActivity?: string; pendingTool?: string; pendingPreview?: string; }
 export interface Swarm { id: string; goal: string; status: "planning" | "running" | "paused" | "done" | "error"; agents: SwarmAgent[]; synthesis?: string; created: number; }
