@@ -23,6 +23,7 @@ import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges } from "./proactive.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
+import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
@@ -78,6 +79,7 @@ initContext();
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 void grabWorld().then((s) => console.log(`  ${s}\n`));
+resumeOrphanedSwarms();
 
 // Proactive layer: SAM reaches out first — a once-a-day morning brief (composed
 // with its own tools: weather + nudges) and nudge reminders. Slim: a 5-min timer.
@@ -422,6 +424,25 @@ async function runSquad(kind: "team" | "ninjas", req: any, res: any) {
 }
 app.post("/api/team", (req, res) => runSquad("team", req, res));
 app.post("/api/ninjas", (req, res) => runSquad("ninjas", req, res));
+
+// ── The Continuous Swarm (Background Agents) ──
+app.get("/api/swarms", (_req, res) => res.json(loadSwarms()));
+app.post("/api/swarms", async (req, res) => {
+  const { goal, projectId, tier, user } = req.body;
+  if (!goal) return res.status(400).json({ error: "missing goal" });
+  const system = buildSystem("", projectId, user, "");
+  const swarm = await startSwarm(goal, system, tier || process.env.DEFAULT_TIER || "free");
+  res.json(swarm);
+});
+app.post("/api/swarms/approve", async (req, res) => {
+  const { swarmId, agentId, approved } = req.body;
+  try {
+    await approveAgent(swarmId, agentId, !!approved);
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 app.get("/api/update-check", async (_req, res) => {
   try {

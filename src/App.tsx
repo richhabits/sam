@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -181,6 +181,7 @@ export default function App() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
+  const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
   const [guardian, setGuardian] = useState(false);
@@ -219,7 +220,10 @@ export default function App() {
     // keep the connection dot honest + check for proactive messages (light: every 3 min)
     const iv = setInterval(() => getStatus().then(setStatus).catch(() => setStatus(null)), 12000);
     const pv = setInterval(showProactive, 180000);
-    return () => { clearInterval(iv); clearInterval(pv); };
+    // Continuous Swarm polling
+    const sv = setInterval(() => getSwarms().then(setSwarms).catch(() => {}), 5000);
+    getSwarms().then(setSwarms).catch(() => {});
+    return () => { clearInterval(iv); clearInterval(pv); clearInterval(sv); };
   }, []);
   useEffect(() => { if (atBottom) msgEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, pending]);
   useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }, [input]);
@@ -388,7 +392,9 @@ export default function App() {
     if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
     if (v.toLowerCase().startsWith("/ninjas ")) { runTheTeam(v.slice(8), "ninjas"); return true; }
     if (cmd === "/ninjas") { sysNote("Deploy the Ninjas 🥷 at a problem: /ninjas <target> — e.g. /ninjas my hectictv repo, or /ninjas my overdue invoices"); return true; }
-    if (cmd === "/help") { sysNote("Commands: /team <request> (assemble the AI crew), /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
+    if (v.toLowerCase().startsWith("/swarm ")) { runSwarm(v.slice(7)); return true; }
+    if (cmd === "/swarm") { sysNote("Start a persistent background swarm: /swarm <massive goal>"); return true; }
+    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
   }
 
@@ -409,6 +415,21 @@ export default function App() {
     } catch { setMessages((m) => [...m, { role: "sam", text: `The ${kind} couldn't assemble just now — try again.`, at: now() }]); }
     setTeam(null); setLoading(false); inputRef.current?.focus();
   }
+
+  // The Continuous Swarm
+  async function runSwarm(text: string) {
+    const value = text.trim();
+    if (!value || loading) return;
+    setInput(""); setPending(null);
+    setMessages((m) => [...m, { role: "user", text: "🐝 Swarm: " + value, at: now() }]);
+    try {
+      await startSwarm(value, brand || undefined, QUALITY_TIER[quality]);
+      sysNote("The Swarm has been dispatched. They will run in the background and pause if they need your approval. Keep an eye on the Swarm panel above.");
+      getSwarms().then(setSwarms).catch(() => {});
+    } catch { sysNote("Couldn't start the swarm just now."); }
+    inputRef.current?.focus();
+  }
+
   function sysNote(text: string) { setMessages((m) => [...m, { role: "sam", text, at: now() }]); }
 
   const readFile = (f: File) => new Promise<Attachment>((resolve) => {
@@ -642,6 +663,37 @@ export default function App() {
                   <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: false } : msg))}>Unpin</button>
                 </div>
               ) : null)}
+            </div>
+          </div>
+        )}
+        {started && swarms.some(s => s.status === "running" || s.status === "paused" || s.status === "planning") && (
+          <div className="pinned-bar" style={{ borderColor: "var(--c-blue)" }}>
+            <div className="pb-head"><span className="pb-title">🐝 Active Swarm</span></div>
+            <div className="pb-list">
+              {swarms.filter(s => s.status !== "done" && s.status !== "error").map(s => (
+                <div key={s.id} className="pb-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                  <div><strong>Goal:</strong> {s.goal}</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
+                    {s.agents.map(a => (
+                      <div key={a.id} className="chip" style={{ background: a.status === 'paused' ? 'var(--c-err-bg)' : 'var(--c-bg2)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 200, flex: 1 }}>
+                        <div style={{ fontWeight: 500 }}>{a.emoji} {a.name} <span style={{ opacity: 0.5, fontSize: 12, fontWeight: 'normal', marginLeft: 4 }}>{a.status}</span></div>
+                        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{a.task}</div>
+                        {a.status === 'paused' && a.pendingTool && (
+                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.1)', borderRadius: 4, width: '100%', boxSizing: 'border-box' }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--c-err)' }}>Requires Approval: {a.pendingTool}</div>
+                            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{a.pendingPreview || a.pendingActivity}</div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                              <button className="mini" onClick={() => approveSwarmAgent(s.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
+                              <button className="mini" style={{ opacity: 0.7 }} onClick={() => approveSwarmAgent(s.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
+                            </div>
+                          </div>
+                        )}
+                        {a.status === 'running' && <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{a.pendingActivity || "Working..."}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
