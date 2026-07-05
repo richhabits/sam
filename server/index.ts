@@ -348,6 +348,9 @@ const CONFIG_ENV: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",
   defaultTier: "DEFAULT_TIER", musicService: "MUSIC_SERVICE",
   groqModel: "GROQ_MODEL", claudeModel: "CLAUDE_MODEL",
+  notion: "NOTION_API_KEY", slack: "SLACK_BOT_TOKEN",
+  discord: "DISCORD_WEBHOOK_URL", twitter: "TWITTER_BEARER_TOKEN",
+  linear: "LINEAR_API_KEY", linearTeam: "LINEAR_TEAM_ID",
 };
 const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces (ROMEO HQ)
 
@@ -370,6 +373,12 @@ app.get("/api/admin/config", (_req, res) => {
     elevenVoice: process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM",
     defaultTier: process.env.DEFAULT_TIER || "free",
     musicService: process.env.MUSIC_SERVICE || "apple",
+    notion: !!process.env.NOTION_API_KEY,
+    slack: !!process.env.SLACK_BOT_TOKEN,
+    discord: !!process.env.DISCORD_WEBHOOK_URL,
+    twitter: !!process.env.TWITTER_BEARER_TOKEN,
+    linear: !!process.env.LINEAR_API_KEY,
+    linearTeam: process.env.LINEAR_TEAM_ID || "",
     pools,
   });
 });
