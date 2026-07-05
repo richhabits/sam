@@ -655,3 +655,20 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 :root[data-skin="jarvis"] .tok-k { color: #29C6F6; }
 :root[data-skin="stealth"] .tok-k { color: #4ADE80; }
 :root[data-skin="ember"] .tok-k { color: #F0824E; }
+
+/* ── ⌘P Command palette ── */
+.cmdp-scrim { position: fixed; inset: 0; z-index: 200; background: rgba(10,12,16,.42); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; animation: cmdp-fade .12s ease; }
+@keyframes cmdp-fade { from { opacity: 0; } to { opacity: 1; } }
+.cmdp { width: min(560px, 92vw); background: var(--surface); border: 1px solid var(--border-strong); border-radius: calc(var(--radius) + 4px); box-shadow: var(--shadow-lg); overflow: hidden; animation: cmdp-pop .14s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes cmdp-pop { from { transform: translateY(-8px) scale(.98); opacity: .6; } to { transform: none; opacity: 1; } }
+.cmdp-input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--text); font: 500 16px var(--sans); padding: 17px 20px; border-bottom: 1px solid var(--border); }
+.cmdp-input::placeholder { color: var(--muted); font-weight: 400; }
+.cmdp-list { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.cmdp-item { display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: var(--radius); cursor: pointer; user-select: none; }
+.cmdp-item.on { background: var(--accent-soft); }
+.cmdp-ic { font-size: 17px; width: 22px; text-align: center; flex: none; }
+.cmdp-label { flex: 1; color: var(--text); font-size: 14px; }
+.cmdp-item.on .cmdp-label { color: var(--accent-text); font-weight: 600; }
+.cmdp-hint { font-size: 11px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
+.cmdp-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 14px; }
+.cmdp-foot { padding: 8px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
