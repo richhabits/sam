@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, AgentResult, Attachment } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak } from "./lib/tts";
@@ -148,6 +148,8 @@ export default function App() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
+  const [updating, setUpdating] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const msgEnd = useRef<HTMLDivElement>(null);
@@ -159,6 +161,7 @@ export default function App() {
     getProjects().then(setProjects).catch(() => {});
     getStatus().then(setStatus).catch(() => setStatus(null));
     getTools().then(setTools).catch(() => {});
+    checkUpdate().then((u) => u.behind && setUpdate(u)).catch(() => {});
     refreshLog();
     inputRef.current?.focus();
     // keep the connection dot honest (brain up/down) without any noise
@@ -428,6 +431,22 @@ export default function App() {
           </div>
         )}
       </header>
+
+      {update?.behind && (
+        <div className="update-bar">
+          {updating === "done" ? (
+            <><span>✨ Updated — restart SAM to apply the new version.</span>
+              <button className="update-go" onClick={() => location.reload()}>Reload</button></>
+          ) : (
+            <><span>✨ A new version of SAM is available.</span>
+              <button className="update-go" disabled={!!updating} onClick={async () => {
+                setUpdating("…"); const r = await runUpdate();
+                setUpdating(r.ok ? "done" : ""); if (!r.ok) sysNote("Update failed: " + (r.error || "unknown"));
+              }}>{updating ? "Evolving…" : "Update now"}</button></>
+          )}
+          <button className="update-x" onClick={() => setUpdate(null)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
 
       <main className="chat" ref={chatRef} onScroll={onScroll}>
         {!started ? (
