@@ -12,6 +12,8 @@ import {
   existsSync,
   mkdirSync,
   appendFileSync,
+  statSync,
+  unlinkSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +27,22 @@ function ensure(dir: string) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 ensure(DAILY_DIR);
+
+// Self-containment: daily logs auto-expire. Keeps the vault lean forever, for free.
+// Recent context stays; ancient chatter is pruned. Override window with SAM_LOG_DAYS.
+export function pruneOldLogs(): { removed: number } {
+  const days = Number(process.env.SAM_LOG_DAYS) || 90;
+  const cutoff = Date.now() - days * 86_400_000;
+  let removed = 0;
+  try {
+    for (const f of readdirSync(DAILY_DIR)) {
+      if (!f.endsWith(".md")) continue;
+      const p = join(DAILY_DIR, f);
+      try { if (statSync(p).mtimeMs < cutoff) { unlinkSync(p); removed++; } } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
+  return { removed };
+}
 ensure(PROJECTS_DIR);
 
 const today = () => new Date().toISOString().slice(0, 10);
