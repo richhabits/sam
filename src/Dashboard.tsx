@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm, getSchedules, toggleSchedule, removeSchedule, Schedule } from "./lib/api";
+import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm, getSchedules, toggleSchedule, removeSchedule, Schedule, getPeople } from "./lib/api";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
 const PROVIDER_LABEL: Record<string, string> = {
@@ -14,6 +14,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
   const [sec, setSec] = useState<any>(null);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [people, setPeople] = useState<any[]>([]);
 
   useEffect(() => {
     const load = () => {
@@ -21,6 +22,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
       getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
       getSecurity().then((d) => setSec(d.status)).catch(() => {});
       getSwarms().then(setSwarms).catch(() => {});
+      getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {});
       getSchedules().then(setSchedules).catch(() => {});
     };
     load();
@@ -129,6 +131,18 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             )}
+
+            {/* people SAM knows by sight */}
+            <div className="dash-sec">👥 People SAM knows ({people.length})</div>
+            {people.length === 0
+              ? <div className="dash-empty">No one yet — show SAM someone via 👁️ Look and say "remember this is …".</div>
+              : <div className="dash-lanes">{people.map((p, i) => (
+                  <div key={i} className="dash-lane on">
+                    <span className="tm-emoji">🙂</span>
+                    <span className="dash-lane-name">{p.name}{p.relation ? ` · ${p.relation}` : ""}</span>
+                    <span className="dash-lane-keys" style={{ minWidth: "auto", opacity: .7 }}>{(p.look || "").slice(0, 40)}</span>
+                  </div>
+                ))}</div>}
 
             {/* activity */}
             <div className="dash-sec">Recent activity</div>
