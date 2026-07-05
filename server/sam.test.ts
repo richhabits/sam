@@ -164,7 +164,7 @@ describe("runModel fallback", () => {
     expect(r.provider).toBe("local-unavailable");        // stayed local, didn't escalate
     expect(r.text).toMatch(/private|ollama/i);
     // The prompt must NOT have been sent to any non-local (cloud) endpoint.
-    const cloudCalls = fetchSpy.mock.calls.filter((c) => { const u = String(c[0]); return !u.includes("11434") && !u.includes("localhost") && !u.includes("127.0.0.1"); });
+    const cloudCalls = fetchSpy.mock.calls.filter((c: any) => { const u = String(c?.[0]); return !u.includes("11434") && !u.includes("localhost") && !u.includes("127.0.0.1"); });
     expect(cloudCalls.length).toBe(0);
     vi.unstubAllGlobals();
   });
