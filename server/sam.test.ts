@@ -185,6 +185,48 @@ describe("runModel fallback", () => {
     vi.unstubAllGlobals();
     delete process.env.GROQ_API_KEYS;
   });
+
+  it("burn-down router: gracefully cascades through 10 rate-limited providers to find a working one", async () => {
+    // Populate 11 providers with fake keys
+    process.env.CEREBRAS_API_KEYS = "key1";
+    process.env.GROQ_API_KEYS = "key2";
+    process.env.SAMBANOVA_API_KEYS = "key3";
+    process.env.TOGETHER_API_KEYS = "key4";
+    process.env.DEEPSEEK_API_KEYS = "key5";
+    process.env.FIREWORKS_API_KEYS = "key6";
+    process.env.NVIDIA_API_KEYS = "key7";
+    process.env.SILICONFLOW_API_KEYS = "key8";
+    process.env.XAI_API_KEYS = "key9";
+    process.env.HUGGINGFACE_API_KEYS = "key10";
+    process.env.HYPERBOLIC_API_KEYS = "key11";
+    
+    vi.resetModules();
+
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("11434")) return new Response("", { status: 500 }); // Local down
+      attempts++;
+      // Fail everything except hyperbolic
+      if (!String(url).includes("hyperbolic")) {
+        return new Response("Too Many Requests", { status: 429 });
+      }
+      return new Response(JSON.stringify({ choices: [{ message: { content: "hyperbolic survived" } }] }), { status: 200 });
+    }));
+
+    const { runModel } = await import("./models.ts");
+    const r = await runModel("free", "sys", "hello cascade");
+    
+    expect(r.text).toBe("hyperbolic survived");
+    expect(r.provider).toContain("hyperbolic");
+    expect(attempts).toBeGreaterThan(5); // Proves it cascaded through multiple providers
+
+    vi.unstubAllGlobals();
+    // Cleanup
+    delete process.env.CEREBRAS_API_KEYS; delete process.env.GROQ_API_KEYS; delete process.env.SAMBANOVA_API_KEYS;
+    delete process.env.TOGETHER_API_KEYS; delete process.env.DEEPSEEK_API_KEYS; delete process.env.FIREWORKS_API_KEYS;
+    delete process.env.NVIDIA_API_KEYS; delete process.env.SILICONFLOW_API_KEYS; delete process.env.XAI_API_KEYS;
+    delete process.env.HUGGINGFACE_API_KEYS; delete process.env.HYPERBOLIC_API_KEYS;
+  });
 });
 
 // ── THE KEY VAULT · rotation + pooling (no network) ──────────
