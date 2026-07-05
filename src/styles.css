@@ -813,3 +813,9 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .rc-brief { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 .roster-empty { grid-column: 1/-1; text-align: center; color: var(--muted); padding: 30px; }
 .linkish { background: none; border: 0; color: var(--accent-text); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; padding: 0; }
+
+/* ── ⚡ Elon Mode toggle — danger styling when armed ── */
+.pop-opt.elon.on { background: #FEE2E2; border-color: #EF4444; }
+.pop-opt.elon.on .pop-opt-name { color: #B91C1C; }
+:root[data-theme="dark"] .pop-opt.elon.on { background: #3A1414; border-color: #EF4444; }
+:root[data-theme="dark"] .pop-opt.elon.on .pop-opt-name { color: #FCA5A5; }
