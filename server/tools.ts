@@ -819,16 +819,7 @@ export const TOOLS: Tool[] = [
         } catch (err: any) { return `Failed to create event: ${err.message}`; }
       }
     } },
-  { name: "add_reminder", safe: true, description: "Add a task to the native macOS Reminders app. input: {task_name, list_name?}.", params: "{task_name, list_name?}",
-    activity: (i) => `Adding reminder: ${i.task_name}`,
-    run: async (i) => {
-      if (!IS_MAC) return "Requires macOS.";
-      try {
-        const listStr = i.list_name ? `list "${i.list_name.replace(/"/g, "")}"` : "default list";
-        await osa(`tell application "Reminders" to make new reminder in ${listStr} with properties {name:"${i.task_name.replace(/"/g, "")}"}`);
-        return "Reminder added successfully.";
-      } catch (e: any) { return `Failed to add reminder: ${e.message}`; }
-    } },
+
   { name: "create_apple_note", safe: true, description: "Create a new note in the native Apple Notes app. input: {title, body}.", params: "{title, body}",
     activity: (i) => `Creating Apple Note: ${i.title}`,
     run: async (i) => {
@@ -857,14 +848,56 @@ end tell`;
         return result.trim() || "No matching notes found.";
       } catch (e: any) { return `Failed to search notes: ${e.message}`; }
     } },
-  { name: "send_imessage", safe: false, description: "Send an iMessage/SMS natively through macOS Messages app. input: {phone_or_email, message}.", params: "{phone_or_email, message}",
-    activity: (i) => `Sending iMessage to ${i.phone_or_email}`, preview: (i) => `Send iMessage to ${i.phone_or_email}:\n${i.message}`,
+  { name: "send_email", safe: false, description: "Draft and send an email natively through the macOS Apple Mail app. input: {to_email, subject, body}.", params: "{to_email, subject, body}",
+    activity: (i) => `Sending email to ${i.to_email}`, preview: (i) => `Send email to ${i.to_email}:\nSubject: ${i.subject}\n${i.body}`,
     run: async (i) => {
       if (!IS_MAC) return "Requires macOS.";
       try {
-        await osa(`tell application "Messages" to send "${i.message.replace(/"/g, "\\\"")}" to buddy "${i.phone_or_email.replace(/"/g, "")}"`);
-        return `Message sent to ${i.phone_or_email}.`;
-      } catch (e: any) { return `Failed to send iMessage: ${e.message}`; }
+        const script = `tell application "Mail"
+	set theMessage to make new outgoing message with properties {subject:"${i.subject.replace(/"/g, "\\\"")}", content:"${i.body.replace(/"/g, "\\\"")}", visible:false}
+	tell theMessage
+		make new to recipient at end of to recipients with properties {address:"${i.to_email.replace(/"/g, "\\\"")}"}
+		send
+	end tell
+end tell`;
+        await osa(script);
+        return `Email sent successfully to ${i.to_email}.`;
+      } catch (e: any) { return `Failed to send email: ${e.message}`; }
+    } },
+  { name: "open_apple_maps", safe: true, description: "Instantly launch Apple Maps with a specific address or search query. input: {address_or_query}.", params: "{address_or_query}",
+    activity: (i) => `Opening Apple Maps for ${i.address_or_query}`,
+    run: (i) => openUrl(`maps://?q=${encodeURIComponent(i.address_or_query)}`).then(() => `Apple Maps opened for: ${i.address_or_query}`) },
+  { name: "add_apple_contact", safe: false, description: "Programmatically add a new person to your native macOS Contacts. input: {first_name, last_name?, phone?, email?}.", params: "{first_name, last_name?, phone?, email?}",
+    activity: (i) => `Adding contact: ${i.first_name}`, preview: (i) => `Add to Contacts:\nName: ${i.first_name} ${i.last_name || ""}\nPhone: ${i.phone || ""}\nEmail: ${i.email || ""}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        const lastStr = i.last_name ? `last name:"${i.last_name.replace(/"/g, "\\\"")}", ` : "";
+        let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${i.first_name.replace(/"/g, "\\\"")}", ${lastStr}}\n`;
+        if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${i.phone.replace(/"/g, "\\\"")}"}\n`;
+        if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${i.email.replace(/"/g, "\\\"")}"}\n`;
+        script += `save\nend tell`;
+        await osa(script);
+        return "Contact added successfully.";
+      } catch (e: any) { return `Failed to add contact: ${e.message}`; }
+    } },
+  { name: "toggle_dark_mode", safe: true, description: "Flip the macOS system appearance between Dark Mode and Light Mode natively.", params: "(none)",
+    activity: () => `Toggling Dark Mode`,
+    run: async () => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        await osa(`tell application "System Events" to tell appearance preferences to set dark mode to not dark mode`);
+        return "Toggled macOS Dark Mode successfully.";
+      } catch (e: any) { return `Failed to toggle Dark Mode: ${e.message}`; }
+    } },
+  { name: "get_frontmost_app", safe: true, description: "Get the name of the macOS application you are currently looking at on screen.", params: "(none)",
+    activity: () => `Checking frontmost app`,
+    run: async () => {
+      if (!IS_MAC) return "Requires macOS.";
+      try {
+        const result = await osa(`tell application "System Events" to get name of first application process whose frontmost is true`);
+        return `Frontmost app: ${result.trim()}`;
+      } catch (e: any) { return `Failed to get frontmost app: ${e.message}`; }
     } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
