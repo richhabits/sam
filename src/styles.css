@@ -715,3 +715,10 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .msg-collapsed .show-more { position: absolute; left: 0; bottom: 6px; }
 .show-more, .show-less { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--border); border-radius: 999px; padding: 4px 13px; font: 600 12px var(--sans); cursor: pointer; margin-top: 8px; }
 .show-more:hover, .show-less:hover { border-color: var(--accent); }
+
+/* ── Code-block copy button ── */
+.code-wrap { position: relative; }
+.code-copy { position: absolute; top: 6px; right: 7px; z-index: 2; font: 600 11px var(--sans); color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; opacity: 0; transition: opacity .12s, color .12s, border-color .12s; }
+.code-wrap:hover .code-copy { opacity: .9; }
+.code-copy:hover { opacity: 1; color: var(--accent-text); border-color: var(--accent); }
+.code-wrap:hover pre.code[data-lang]::before { opacity: 0; }
