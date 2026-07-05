@@ -12,7 +12,10 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { resolve, dirname, basename } from "node:path";
+import { resolve, dirname, basename, extname } from "node:path";
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
+import { chromium, Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
@@ -143,8 +146,26 @@ async function runCommand(cmd: string): Promise<string> {
 // ── FILES ────────────────────────────────────────────────────
 const safePath = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 async function readFileTool(path: string): Promise<string> {
-  try { return clip(await readFile(safePath(path), "utf8")); }
-  catch (e: any) { return `Could not read ${path}: ${e?.message}`; }
+  try {
+    const sp = safePath(path);
+    const ext = extname(sp).toLowerCase();
+    
+    if (ext === ".pdf") {
+      const data = await readFile(sp);
+      const res = await pdfParse(data);
+      return clip(res.text);
+    }
+    
+    if (ext === ".docx") {
+      const data = await readFile(sp);
+      const res = await mammoth.extractRawText({ buffer: data });
+      return clip(res.value);
+    }
+
+    return clip(await readFile(sp, "utf8")); 
+  } catch (e: any) { 
+    return `Could not read ${path}: ${e?.message}`; 
+  }
 }
 async function writeFileTool(input: { path: string; content: string }): Promise<string> {
   try { await writeFile(safePath(input.path), input.content, "utf8"); return `Wrote ${input.content.length} chars to ${input.path}`; }
@@ -417,6 +438,63 @@ end tell`);
 
 
 
+// ── BROWSER AUTOMATION (PLAYWRIGHT) ─────────────────────────
+let activeBrowser: any = null;
+let activePage: Page | null = null;
+
+async function getPage(): Promise<Page> {
+  if (!activePage || activePage.isClosed()) {
+    let executablePath = "";
+    if (IS_MAC) executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    else if (process.platform === "win32") executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    else executablePath = "/usr/bin/google-chrome"; 
+
+    try {
+      activeBrowser = await chromium.launch({ executablePath, headless: false });
+      const ctx = await activeBrowser.newContext();
+      activePage = await ctx.newPage();
+    } catch (e: any) {
+      throw new Error(`Could not launch Chrome. Ensure it's installed. Error: ${e.message}`);
+    }
+  }
+  return activePage;
+}
+
+async function browserNavigate(url: string) {
+  try {
+    const p = await getPage();
+    await p.goto(url, { waitUntil: "domcontentloaded" });
+    return `Navigated to ${url}. Title: ${await p.title()}`;
+  } catch (e: any) { return `Failed to navigate: ${e.message}`; }
+}
+
+async function browserClick(selector: string) {
+  try {
+    const p = await getPage();
+    await p.click(selector);
+    return `Clicked '${selector}'.`;
+  } catch (e: any) { return `Failed to click: ${e.message}`; }
+}
+
+async function browserType(input: { selector: string; text: string; submit?: boolean }) {
+  try {
+    const p = await getPage();
+    await p.fill(input.selector, input.text);
+    if (input.submit) await p.press(input.selector, "Enter");
+    return `Typed into '${input.selector}'.`;
+  } catch (e: any) { return `Failed to type: ${e.message}`; }
+}
+
+async function browserRead() {
+  try {
+    if (!activePage || activePage.isClosed()) return "No browser tab is currently open. Navigate somewhere first.";
+    const p = activePage;
+    const text = await p.evaluate(() => document.body.innerText);
+    return clip(`[${await p.title()}]\n${text}`, 20000);
+  } catch (e: any) { return `Failed to read page: ${e.message}`; }
+}
+
+
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
@@ -609,6 +687,14 @@ end tell`);
     } },
   { name: "read_reminders", safe: true, description: "Read the user's pending Apple Reminders. Mac only.", params: "(none)",
     activity: () => `Checking Apple Reminders`, run: async () => { if (!IS_MAC) return "Apple Reminders only works on macOS."; return await readReminders(); } },
+  { name: "browser_navigate", safe: false, description: "Open a Chrome browser tab and navigate to a URL. Returns page title.", params: "url",
+    activity: (i) => `Navigating to ${i.url ?? i}`, preview: (i) => `Browser: Go to ${i.url ?? i}`, run: (i) => browserNavigate(i.url ?? i) },
+  { name: "browser_read", safe: true, description: "Read the visible text from the currently open Chrome tab.", params: "(none)",
+    activity: () => `Reading active browser tab`, run: browserRead },
+  { name: "browser_click", safe: false, description: "Click an element in the active Chrome tab using a CSS selector.", params: "selector",
+    activity: (i) => `Clicking ${i.selector ?? i}`, preview: (i) => `Browser: Click '${i.selector ?? i}'`, run: (i) => browserClick(i.selector ?? i) },
+  { name: "browser_type", safe: false, description: "Type text into an element in the active Chrome tab. input: {selector, text, submit?}.", params: "{selector, text, submit?}",
+    activity: (i) => `Typing into ${i.selector}`, preview: (i) => `Browser: Type into '${i.selector}'\n${i.text}`, run: (i) => browserType(i) },
   { name: "add_reminder", safe: false, description: "Add a new Apple Reminder. Mac only. input: {text, list?}. list defaults to 'Reminders'.", params: "{text, list?}",
     activity: (i) => `Adding reminder: ${i.text}`, preview: (i) => `Add Reminder to ${i.list || 'Reminders'}:\n${i.text}`,
     run: async (i) => {
