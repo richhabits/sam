@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,6 +34,27 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
+  ipcMain.on("open-studio", () => {
+    const studioWin = new BrowserWindow({
+      width: 1400,
+      height: 900,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.mjs"),
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+      titleBarStyle: 'hiddenInset',
+      vibrancy: 'sidebar',
+      backgroundColor: '#00000000', // transparent for vibrancy
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      studioWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=studio`);
+    } else {
+      studioWin.loadFile(path.join(__dirname, "../dist/index.html"), { search: "app=studio" });
+    }
+  });
 
   // Global hotkey to summon SAM
   globalShortcut.register("Option+Space", () => {
