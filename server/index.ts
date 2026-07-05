@@ -499,6 +499,32 @@ app.post("/api/speak", async (req, res) => {
   } catch (e: any) { res.status(502).json({ error: String(e?.message || e) }); }
 });
 
+// ── SAM Creative Space (Proxy to Muapi) ──────────────────────
+app.all("/api/creative/*", async (req, res) => {
+  const apiKey = process.env.MUAPI_API_KEY || process.env.OPENAI_API_KEY; // fallback if needed, or specific key
+  if (!apiKey) return res.status(503).json({ error: "No API key configured for SAM Creative Space" });
+
+  const targetPath = req.params[0];
+  const targetUrl = `https://api.muapi.ai/api/v1/${targetPath}`;
+  
+  try {
+    const headers: Record<string, string> = { "x-api-key": apiKey };
+    if (req.headers["content-type"]) headers["content-type"] = req.headers["content-type"] as string;
+    
+    const query = new URLSearchParams(req.query as Record<string, string>).toString();
+    const finalUrl = query ? `${targetUrl}?${query}` : targetUrl;
+
+    const body = ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body);
+
+    const r = await fetch(finalUrl, { method: req.method, headers, body });
+    const text = await r.text();
+    res.status(r.status);
+    try { res.json(JSON.parse(text)); } catch { res.send(text); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── HUD DATA ENDPOINTS ───────────────────────────────────────
 app.get("/api/projects", (_req, res) => res.json(PROJECTS));
 app.get("/api/skills", (_req, res) =>
