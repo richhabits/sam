@@ -201,6 +201,19 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch {} }, [folders]);
   function addFolder() { const n = window.prompt("New folder name")?.trim(); if (n && !folders.includes(n)) setFolders((f) => [...f, n]); }
   function moveToFolder(id: string, folder: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, folder: folder || undefined } : c))); }
+  function renameFolder(old: string) {
+    const n = window.prompt("Rename folder", old)?.trim();
+    if (!n || n === old || folders.includes(n)) return;
+    setFolders((f) => f.map((x) => (x === old ? n : x)));
+    setConvos((cs) => cs.map((c) => (c.folder === old ? { ...c, folder: n } : c)));
+    if (folderFilter === old) setFolderFilter(n);
+  }
+  function deleteFolder(name: string) {
+    if (!window.confirm(`Delete folder "${name}"? Its chats stay — just unfiled.`)) return;
+    setFolders((f) => f.filter((x) => x !== name));
+    setConvos((cs) => cs.map((c) => (c.folder === name ? { ...c, folder: undefined } : c)));
+    if (folderFilter === name) setFolderFilter("");
+  }
   const [activeId, setActiveId] = useState<string>(init.activeId);
   const [messages, setMessages] = useState<Msg[]>(init.convos.find((c) => c.id === init.activeId)?.messages || []);
 
@@ -848,10 +861,14 @@ export default function App() {
             onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) moveToFolder(id, ""); setDragChat(""); }}>All</button>
           {folders.map((f) => (
             <button key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
+              onDoubleClick={() => renameFolder(f)} title="Click to filter · double-click to rename"
               onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
               onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}>📁 {f}</button>
           ))}
           <button className="side-folder add" onClick={addFolder} title="New folder">＋</button>
+          {folderFilter && folders.includes(folderFilter) && (
+            <button className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}>🗑</button>
+          )}
         </div>
         <ul className="side-list">
           {convos.filter((c) => !folderFilter || c.folder === folderFilter).map((c) => (
@@ -1100,7 +1117,13 @@ export default function App() {
         <div className="ctx-live">
           <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
           {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic">🧠</span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
-          {(() => { const active = swarms.filter((s) => s.status === "running" || s.status === "planning").length; return active > 0 ? <div className="ctx-row"><span className="ctx-ic">🐝</span>{active} swarm{active === 1 ? "" : "s"} running</div> : null; })()}
+          {swarms.filter((s) => s.status === "running" || s.status === "planning" || s.status === "paused").slice(0, 3).map((s) => {
+            const done = s.agents.filter((a) => a.status === "done").length;
+            return <button key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
+              <span className="ctx-ic">🐝</span><span className="ctx-swarm-goal">{s.goal}</span>
+              <span className="ctx-swarm-prog">{s.status === "planning" ? "…" : s.status === "paused" ? "⏸" : `${done}/${s.agents.length}`}</span>
+            </button>;
+          })}
           {status?.vault?.count != null && <div className="ctx-row"><span className="ctx-ic">📚</span>{status.vault.count} memories</div>}
           <div className="ctx-row"><span className="ctx-ic">{quality === "private" ? "🔒" : quality === "best" ? "✨" : "⚡"}</span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
           {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
