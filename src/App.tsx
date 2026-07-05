@@ -541,7 +541,6 @@ export default function App() {
   }
 
   function stop() { abortRef.current?.abort(); setLive(null); setLoading(false); }
-  function regenerate() { const last = [...messages].reverse().find((m) => m.role === "user"); if (last && !loading) send(last.text); }
   function editResend(i: number) { const m = messages[i]; if (!m) return; setInput(m.text); setMessages((ms) => ms.slice(0, i)); inputRef.current?.focus(); }
 
   async function decide(approved: boolean, always = false) {
@@ -575,6 +574,14 @@ export default function App() {
     const md = messages.map((m) => `**${m.role === "sam" ? "SAM" : "You"}**${m.at ? ` (${m.at})` : ""}:\n\n${m.text}`).join("\n\n---\n\n");
     const blob = new Blob([`# SAM chat\n\n${md}\n`], { type: "text/markdown" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `SAM-chat-${new Date().toISOString().slice(0, 10)}.md`; a.click();
+  }
+  // Re-run the last question: drop the trailing SAM reply + the user turn, then re-send it.
+  function regenerate() {
+    if (loading) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
+    setMessages((m) => { const c = [...m]; while (c.length && c[c.length - 1].role === "sam") c.pop(); if (c.length && c[c.length - 1].role === "user") c.pop(); return c; });
+    setTimeout(() => send(lastUser.text), 30);
   }
 
   const started = messages.length > 0 || !!pending || loading;
@@ -910,6 +917,7 @@ export default function App() {
       {palette && (() => {
         const acts: { icon: string; label: string; hint?: string; run: () => void }[] = [
           { icon: "💬", label: "New chat", hint: "⌘K", run: () => newChat() },
+          { icon: "🔄", label: "Regenerate last answer", run: () => regenerate() },
           { icon: "🤝", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
           { icon: "🥷", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
           { icon: "🎙", label: "Voice mode", run: () => setVoiceMode(true) },
