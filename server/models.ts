@@ -314,8 +314,11 @@ export async function runVision(system: string, prompt: string, images: ImagePar
     } catch (e: any) { reportFailure("gemini", key, e?.status); }
   }
   
-  // Fully Local Zero-Cloud Fallback via Ollama (llava)
-  if (process.env.OLLAMA_URL) {
+  // Fully Local Zero-Cloud Fallback via Ollama (llava). Always attempt it — Ollama
+  // runs on the default localhost URL without any env var set, so gating on
+  // process.env.OLLAMA_URL meant this never fired on a normal local install. If
+  // Ollama's down or llava isn't pulled, the fetch fails and we fall through below.
+  {
     try {
       const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
       const ollamaModel = process.env.OLLAMA_VISION_MODEL || "llava";
