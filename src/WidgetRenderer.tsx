@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { renderMarkdown } from "./lib/md";
 
 // ── WIDGET COMPONENTS ──
@@ -44,7 +44,7 @@ function KanbanWidget({ data }: { data: any }) {
 
 // ── WIDGET RENDERER ──
 
-export default function WidgetRenderer({ text, onFollowUp }: { text: string; onFollowUp?: (q: string) => void }) {
+const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: { text: string; onFollowUp?: (q: string) => void }) {
   if (!text) return null;
 
   // Split text by ```widget blocks
@@ -100,4 +100,6 @@ export default function WidgetRenderer({ text, onFollowUp }: { text: string; onF
   }
 
   return <div className="widget-feed">{out}</div>;
-}
+});
+
+export default WidgetRenderer;
