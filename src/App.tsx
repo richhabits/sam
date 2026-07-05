@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -252,6 +252,15 @@ export default function App() {
   const [guardian, setGuardian] = useState(false);
   const [autopilot, setAutopilot] = useState(false);
   useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
+  const [elon, setElon] = useState(false);
+  function toggleElon() {
+    if (!elon) {
+      const ok = window.confirm("⚡ ELON MODE — SAM will act on its own with NO ask-first prompts.\n\n• Deletes go to a 30-day trash bin (recoverable)\n• BUT sent emails/messages/posts/payments are NOT recoverable\n• Catastrophic commands are still blocked\n\nTurn it on?");
+      if (!ok) return;
+    }
+    const n = !elon; setElon(n); setElonMode(n).catch(() => {});
+    sysNote(n ? "⚡ Elon Mode ON — SAM's off the leash. Deletes are recoverable; outward actions aren't." : "⚡ Elon Mode off — back to ask-first.");
+  }
   const guardStream = useRef<MediaStream | null>(null);
   const guardIv = useRef<any>(null);
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
@@ -733,6 +742,7 @@ export default function App() {
             <div className="pop-title" style={{ marginTop: 6 }}>Preferences</div>
             <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
             <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">✈️ Autopilot {autopilot ? "· ON" : ""}</span><span className="pop-opt-sub">{autopilot ? "SAM handles routine work without asking (serious stuff still asks)" : "Off — SAM asks before anything risky"}</span></button>
+            <button className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">⚡ Elon Mode {elon ? "· ON" : ""}</span><span className="pop-opt-sub">{elon ? "OFF-LEASH — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses EVERY safety prompt. Deletes go to a trash bin; catastrophic commands still blocked."}</span></button>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"]].map(([id, label, ic]) => (
