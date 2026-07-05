@@ -95,6 +95,12 @@ npm test       # run the test suite
 
 ---
 
+## Auto-updates
+
+SAM keeps itself current — every time it launches it quietly pulls the latest version (safe fast-forward only; it never touches your local edits). While running, a banner tells you if a new version lands. Turn it off with `SAM_NO_AUTOUPDATE=1` if you're developing.
+
+---
+
 ## Privacy & safety
 
 - **Local-first.** Your keys, memory and data stay on your machine.

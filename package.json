@@ -12,7 +12,8 @@
     "start": "vite build && tsx server/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "skill:new": "node scripts/new-skill.mjs"
+    "skill:new": "node scripts/new-skill.mjs",
+    "prestart": "node scripts/selfupdate.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
