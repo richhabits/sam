@@ -13,10 +13,12 @@ import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve, dirname, basename, extname } from "node:path";
-// @ts-ignore
-import pdfParse from "pdf-parse";
-import mammoth from "mammoth";
-import { chromium, Page } from "playwright-core";
+import { createRequire } from "node:module";
+// Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
+// time via require — importing them as ESM at the top crashed boot, and this also
+// keeps startup fast/slim (they only load if you actually use them).
+const require = createRequire(import.meta.url);
+import type { Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
@@ -152,12 +154,14 @@ async function readFileTool(path: string): Promise<string> {
     const ext = extname(sp).toLowerCase();
     
     if (ext === ".pdf") {
+      const pdfParse = require("pdf-parse");
       const data = await readFile(sp);
       const res = await pdfParse(data);
       return clip(res.text);
     }
-    
+
     if (ext === ".docx") {
+      const mammoth = require("mammoth");
       const data = await readFile(sp);
       const res = await mammoth.extractRawText({ buffer: data });
       return clip(res.value);
@@ -451,6 +455,7 @@ async function getPage(): Promise<Page> {
     else executablePath = "/usr/bin/google-chrome"; 
 
     try {
+      const { chromium } = require("playwright-core");
       activeBrowser = await chromium.launch({ executablePath, headless: false });
       const ctx = await activeBrowser.newContext();
       activePage = await ctx.newPage();

@@ -14,3 +14,16 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # Boot smoke test — catches runtime crashes that typecheck/build miss
+      # (e.g. a bad ESM import that only fails when the server actually starts).
+      - name: Boot smoke test
+        run: |
+          npx tsx server/index.ts &
+          PID=$!
+          for i in $(seq 1 25); do
+            if curl -sf http://localhost:8787/api/health >/dev/null 2>&1; then
+              echo "✓ SAM booted and answered /api/health"; kill $PID 2>/dev/null; exit 0
+            fi
+            sleep 1
+          done
+          echo "✗ SAM failed to boot within 25s"; kill $PID 2>/dev/null; exit 1
