@@ -71,8 +71,8 @@ async function currentBranch(dir: string): Promise<string> {
 // ── Portability: works on any laptop; Mac-only tools degrade gracefully.
 export const OS = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "windows" : "linux";
 const IS_MAC = OS === "mac";
-function needsMac(feature: string): string {
-  return `“${feature}” uses macOS-only automation, and SAM is running on ${OS}. It works on a Mac. (Web, files, terminal, and weather work on any laptop.)`;
+function notSupported(feature: string): string {
+  return `“${feature}” is not currently supported natively on ${OS}. (Web, files, terminal, and weather work on any laptop.)`;
 }
 // Cross-platform "open this URL/app/file with the system default".
 function openCmd(target: string): string {
@@ -218,18 +218,40 @@ async function openApp(name: string): Promise<string> {
   return `Opened ${name}.`;
 }
 async function typeText(text: string): Promise<string> {
-  await osa(`tell application "System Events" to keystroke "${esc(text)}"`);
+  if (IS_MAC) {
+    await osa(`tell application "System Events" to keystroke "${esc(text)}"`);
+  } else if (OS === "windows") {
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${text.replace(/'/g, "''")}');`;
+    await sh(`powershell -command "${ps}"`);
+  } else {
+    await sh(`xdotool type ${JSON.stringify(text)}`);
+  }
   return `Typed: ${text}`;
 }
 async function pressKey(input: { key: string; modifiers?: string[] }): Promise<string> {
-  const mods = (input.modifiers || []).map((m) => `${m} down`).join(", ");
-  const using = mods ? ` using {${mods}}` : "";
-  await osa(`tell application "System Events" to key code ${input.key}${using}`);
-  return `Pressed key ${input.key}${using}`;
+  if (IS_MAC) {
+    const mods = (input.modifiers || []).map((m) => `${m} down`).join(", ");
+    const using = mods ? ` using {${mods}}` : "";
+    await osa(`tell application "System Events" to key code ${input.key}${using}`);
+    return `Pressed key ${input.key}${using}`;
+  } else if (OS === "windows") {
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{${input.key}}');`;
+    await sh(`powershell -command "${ps}"`);
+    return `Pressed key ${input.key}`;
+  } else {
+    await sh(`xdotool key ${input.key}`);
+    return `Pressed key ${input.key}`;
+  }
 }
 async function clickAt(input: { x: number; y: number }): Promise<string> {
-  // Uses System Events click at coordinates (no external deps).
-  await osa(`tell application "System Events" to click at {${input.x}, ${input.y}}`);
+  if (IS_MAC) {
+    await osa(`tell application "System Events" to click at {${input.x}, ${input.y}}`);
+  } else if (OS === "windows") {
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${input.x}, ${input.y}); Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int buttons, int extrainfo);' -Name Mouse -Namespace Win32; [Win32.Mouse]::mouse_event(0x0002 -bor 0x0004, 0, 0, 0, 0);`;
+    await sh(`powershell -command "${ps}"`);
+  } else {
+    await sh(`xdotool mousemove ${input.x} ${input.y} click 1`);
+  }
   return `Clicked at ${input.x},${input.y}`;
 }
 async function appleScript(script: string): Promise<string> {
@@ -237,17 +259,27 @@ async function appleScript(script: string): Promise<string> {
   catch (e: any) { return `AppleScript failed: ${e?.message}`; }
 }
 async function screenshot(): Promise<string> {
-  if (!IS_MAC) return needsMac("screenshot");
   const path = resolve(homedir(), "Desktop", `SAM-screenshot-${Date.now()}.png`);
-  await sh(`screencapture -x ${JSON.stringify(path)}`);
-  return `Saved a screenshot to ${path}`;
+  try {
+    if (IS_MAC) {
+      await sh(`screencapture -x ${JSON.stringify(path)}`);
+    } else if (OS === "windows") {
+      const ps = `Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height; $gfx = [System.Drawing.Graphics]::FromImage($bmp); $gfx.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size); $bmp.Save('${path}', [System.Drawing.Imaging.ImageFormat]::Png); $gfx.Dispose(); $bmp.Dispose()`;
+      await sh(`powershell -command "${ps}"`);
+    } else {
+      await sh(`import -window root ${JSON.stringify(path)} 2>/dev/null || scrot ${JSON.stringify(path)}`);
+    }
+    return `Saved a screenshot to ${path}`;
+  } catch (e: any) {
+    return `Failed to take screenshot: ${e.message}`;
+  }
 }
 async function clipboardGet(): Promise<string> {
   try {
     if (IS_MAC) { const { stdout } = await sh("pbpaste"); return clip(stdout, 4000); }
     if (OS === "windows") { const { stdout } = await sh("powershell -command Get-Clipboard"); return clip(stdout, 4000); }
     const { stdout } = await sh("xclip -selection clipboard -o"); return clip(stdout, 4000);
-  } catch { return needsMac("read clipboard"); }
+  } catch { return notSupported("read clipboard"); }
 }
 async function clipboardSet(text: string): Promise<string> {
   try {
@@ -255,10 +287,20 @@ async function clipboardSet(text: string): Promise<string> {
     else if (OS === "windows") await sh(`echo ${JSON.stringify(text)} | clip`);
     else await sh(`printf %s ${JSON.stringify(text)} | xclip -selection clipboard`);
     return "Copied to clipboard.";
-  } catch { return needsMac("set clipboard"); }
+  } catch { return notSupported("set clipboard"); }
 }
 async function notify(input: { title?: string; message: string }): Promise<string> {
-  await osa(`display notification "${esc(input.message)}" with title "${esc(input.title || "SAM")}"`);
+  const title = input.title || "SAM";
+  const clean = input.message.replace(/[#*`]/g, "").slice(0, 220);
+  const e = (s: string) => s.replace(/"/g, '\\"').replace(/\n/g, " ");
+  if (IS_MAC) {
+    await sh(`osascript -e 'display notification "${e(clean)}" with title "${e(title)}"' `);
+  } else if (OS === "windows") {
+    const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${e(title)}</text><text id="2">${e(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
+    await sh(`powershell -command "${ps}"`);
+  } else {
+    await sh(`notify-send "${e(title)}" "${e(clean)}" 2>/dev/null || true`);
+  }
   return "Notification shown.";
 }
 
@@ -290,6 +332,7 @@ async function systemInfo(): Promise<string> {
 async function getBattery(): Promise<string> {
   try {
     if (IS_MAC) { const { stdout } = await sh("pmset -g batt | tail -1"); return stdout.trim(); }
+    if (OS === "windows") { const { stdout } = await sh("WMIC Path Win32_Battery Get EstimatedChargeRemaining"); return `Battery: ${stdout.replace(/[^0-9]/g, "")}%`; }
     const { stdout } = await sh("acpi -b 2>/dev/null || cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo 'battery info unavailable'");
     return stdout.trim();
   } catch { return "Battery info unavailable on this system."; }
@@ -364,13 +407,13 @@ async function playMusic(query: string): Promise<string> {
 
 // ── CALLING (via iPhone Continuity — free) ───────────────────
 async function makeCall(number: string): Promise<string> {
-  if (!IS_MAC) return needsMac("phone calls");
+  if (!IS_MAC) return notSupported("phone calls");
   const n = String(number).replace(/[^\d+*#]/g, "");
   await sh(`open ${JSON.stringify("tel://" + n)}`);
   return `Calling ${number} — pick up on your Mac or iPhone. (Needs 'Calls from iPhone' on in FaceTime settings.)`;
 }
 async function faceTime(who: string): Promise<string> {
-  if (!IS_MAC) return needsMac("FaceTime");
+  if (!IS_MAC) return notSupported("FaceTime");
   await sh(`open ${JSON.stringify("facetime://" + who)}`);
   return `Starting a FaceTime with ${who}.`;
 }
@@ -571,46 +614,63 @@ export const TOOLS: Tool[] = [
   { name: "wifi_info", safe: true, description: "Get current Wi-Fi network name and details.", params: "(none)",
     activity: () => `Checking Wi-Fi`,
     run: async () => {
-      if (!IS_MAC) return "Wi-Fi info only works on macOS.";
       try {
-        const { stdout } = await sh("networksetup -getairportnetwork en0");
-        return stdout.trim();
+        if (IS_MAC) { const { stdout } = await sh("networksetup -getairportnetwork en0"); return stdout.trim(); }
+        if (OS === "windows") { const { stdout } = await sh("netsh wlan show interfaces | findstr /C:\"SSID\""); return stdout.trim(); }
+        const { stdout } = await sh("nmcli -t -f active,ssid,bssid dev wifi | grep '^yes' || echo 'No Wi-Fi'"); return stdout.trim();
       } catch (e: any) { return `Failed to get Wi-Fi: ${e.message}`; }
     } },
   { name: "lock_screen", safe: false, description: "Lock the Mac immediately.", params: "(none)",
     activity: () => `Locking the screen`, preview: () => `Lock the screen`,
     run: async () => {
-      if (!IS_MAC) return "Lock screen only works on macOS.";
-      try { await sh("pmset displaysleepnow"); return "Screen locked."; } catch (e: any) { return `Failed to lock: ${e.message}`; }
+      try {
+        if (IS_MAC) await sh("pmset displaysleepnow");
+        else if (OS === "windows") await sh("rundll32.exe user32.dll,LockWorkStation");
+        else await sh("xdg-screensaver lock");
+        return "Screen locked.";
+      } catch (e: any) { return `Failed to lock: ${e.message}`; }
     } },
   { name: "empty_trash", safe: false, description: "Permanently empty the macOS Trash.", params: "(none)",
     activity: () => `Emptying the Trash`, preview: () => `Permanently delete all files in ~/.Trash`,
     run: async () => {
-      if (!IS_MAC) return "Trash only works on macOS.";
-      try { await sh("rm -rf ~/.Trash/*"); return "Trash emptied."; } catch (e: any) { return `Failed to empty trash: ${e.message}`; }
+      try {
+        if (IS_MAC) await sh("rm -rf ~/.Trash/*");
+        else if (OS === "windows") await sh("powershell -command Clear-RecycleBin -Force");
+        else await sh("rm -rf ~/.local/share/Trash/*");
+        return "Trash emptied.";
+      } catch (e: any) { return `Failed to empty trash: ${e.message}`; }
     } },
   { name: "eject_disk", safe: false, description: "Eject a mounted disk/volume. input: {volume_name}.", params: "{volume_name}",
     activity: (i) => `Ejecting ${i.volume_name}`, preview: (i) => `Eject volume: ${i.volume_name}`,
     run: async (i) => {
-      if (!IS_MAC) return "Eject only works on macOS.";
-      try { await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`); return `Ejected ${i.volume_name}.`; } catch (e: any) { return `Failed to eject: ${e.message}`; }
+      try {
+        if (IS_MAC) await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`);
+        else if (OS === "windows") await sh(`powershell -command "(New-Object -comObject Shell.Application).Namespace(17).ParseName('${i.volume_name.replace(/'/g, "")}').InvokeVerb('Eject')"`);
+        else await sh(`umount "/media/${process.env.USER}/${i.volume_name.replace(/"/g, "")}"`);
+        return `Ejected ${i.volume_name}.`;
+      } catch (e: any) { return `Failed to eject: ${e.message}`; }
     } },
   { name: "caffeinate", safe: true, description: "Prevent the Mac from sleeping for a duration. input: {minutes}.", params: "{minutes}",
     activity: (i) => `Keeping Mac awake for ${i.minutes}m`,
     run: async (i) => {
-      if (!IS_MAC) return "Caffeinate only works on macOS.";
       const min = Number(i.minutes);
       if (isNaN(min) || min <= 0) return "Invalid minutes.";
       try {
-        // Run in background detached
-        sh(`caffeinate -d -t ${min * 60} &`);
-        return `Mac will stay awake for ${min} minute(s).`;
+        if (IS_MAC) { sh(`caffeinate -d -t ${min * 60} &`); }
+        else if (OS === "windows") {
+          const ps = `$wshell = New-Object -ComObject wscript.shell; for($i=0; $i -lt ${min}; $i++) { Start-Sleep -Seconds 60; $wshell.SendKeys('{F15}') }`;
+          sh(`powershell -command "${ps}" &`);
+        } else {
+          sh(`xdotool key F15 && sleep ${min * 60} &`);
+        }
+        return `System will stay awake for ${min} minute(s).`;
       } catch (e: any) { return `Failed to caffeinate: ${e.message}`; }
     } },
   { name: "disk_usage", safe: true, description: "Check exactly how much free space is left on the main drive.", params: "(none)",
     activity: () => `Checking disk usage`,
     run: async () => {
       try {
+        if (OS === "windows") { const { stdout } = await sh("wmic logicaldisk get size,freespace,caption"); return stdout.trim(); }
         const { stdout } = await sh("df -h /");
         return stdout.trim();
       } catch (e: any) { return `Failed to read disk usage: ${e.message}`; }
@@ -618,18 +678,22 @@ export const TOOLS: Tool[] = [
   { name: "app_switcher", safe: false, description: "Bring an installed macOS application to the foreground. input: {app_name}.", params: "{app_name}",
     activity: (i) => `Switching to ${i.app_name}`, preview: (i) => `Bring app to front: ${i.app_name}`,
     run: async (i) => {
-      if (!IS_MAC) return "App switching only works on macOS.";
       try {
-        await osa(`tell application "${i.app_name}" to activate`);
+        if (IS_MAC) await osa(`tell application "${i.app_name}" to activate`);
+        else if (OS === "windows") await sh(`powershell -command "(New-Object -ComObject WScript.Shell).AppActivate('${i.app_name.replace(/'/g, "")}')"`);
+        else await sh(`wmctrl -a "${i.app_name.replace(/"/g, "")}"`);
         return `Activated ${i.app_name}.`;
       } catch (e: any) { return `Failed to activate app: ${e.message}`; }
     } },
   { name: "set_wallpaper", safe: false, description: "Set the macOS desktop wallpaper. input: {image_path}. Note: Path must be absolute.", params: "{image_path}",
     activity: () => `Changing wallpaper`, preview: (i) => `Set wallpaper to:\n${i.image_path}`,
     run: async (i) => {
-      if (!IS_MAC) return "Wallpaper control only works on macOS.";
       try {
-        await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
+        if (IS_MAC) await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
+        else if (OS === "windows") {
+          const ps = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WP { [DllImport("user32.dll", CharSet=CharSet.Auto)] public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni); }'; [WP]::SystemParametersInfo(20, 0, '${i.image_path.replace(/'/g, "")}', 3)`;
+          await sh(`powershell -command "${ps}"`);
+        } else await sh(`gsettings set org.gnome.desktop.background picture-uri "file://${i.image_path.replace(/"/g, "")}" || feh --bg-scale "${i.image_path.replace(/"/g, "")}"`);
         return "Wallpaper updated successfully.";
       } catch (e: any) { return `Failed to set wallpaper: ${e.message}`; }
     } },
@@ -682,7 +746,9 @@ export const TOOLS: Tool[] = [
         return "Brightness control requires external CLI tools (like 'brightness') on macOS. Skipping to keep dependencies zero.";
       } else {
         try {
-          await osa(`set volume output volume ${lvl}`);
+          if (IS_MAC) await osa(`set volume output volume ${lvl}`);
+          else if (OS === "windows") await sh(`powershell -command "$obj = new-object -com wscript.shell; $obj.SendKeys([char]174 * 50); $obj.SendKeys([char]175 * ${Math.round(lvl / 2)})"`);
+          else await sh(`amixer sset Master ${lvl}%`);
           return `Hardware volume set to ${lvl}%.`;
         } catch (e: any) { return `Failed to set volume: ${e.message}`; }
       }
@@ -906,19 +972,32 @@ end tell`;
   { name: "toggle_dark_mode", safe: true, description: "Flip the macOS system appearance between Dark Mode and Light Mode natively.", params: "(none)",
     activity: () => `Toggling Dark Mode`,
     run: async () => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        await osa(`tell application "System Events" to tell appearance preferences to set dark mode to not dark mode`);
-        return "Toggled macOS Dark Mode successfully.";
+        if (IS_MAC) await osa(`tell application "System Events" to tell appearance preferences to set dark mode to not dark mode`);
+        else if (OS === "windows") {
+          const ps = `$p='HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'; $v=(Get-ItemProperty $p).AppsUseLightTheme; if($v -eq 0){Set-ItemProperty $p -Name AppsUseLightTheme -Value 1; Set-ItemProperty $p -Name SystemUsesLightTheme -Value 1}else{Set-ItemProperty $p -Name AppsUseLightTheme -Value 0; Set-ItemProperty $p -Name SystemUsesLightTheme -Value 0}`;
+          await sh(`powershell -command "${ps}"`);
+        } else {
+          await sh(`gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'`);
+        }
+        return "Toggled Dark Mode successfully.";
       } catch (e: any) { return `Failed to toggle Dark Mode: ${e.message}`; }
     } },
   { name: "get_frontmost_app", safe: true, description: "Get the name of the macOS application you are currently looking at on screen.", params: "(none)",
     activity: () => `Checking frontmost app`,
     run: async () => {
-      if (!IS_MAC) return "Requires macOS.";
       try {
-        const result = await osa(`tell application "System Events" to get name of first application process whose frontmost is true`);
-        return `Frontmost app: ${result.trim()}`;
+        if (IS_MAC) {
+          const result = await osa(`tell application "System Events" to get name of first application process whose frontmost is true`);
+          return `Frontmost app: ${result.trim()}`;
+        } else if (OS === "windows") {
+          const ps = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Win { [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId); }'; $hwnd = [Win]::GetForegroundWindow(); $pid = 0; [Win]::GetWindowThreadProcessId($hwnd, [ref]$pid) | Out-Null; (Get-Process -Id $pid).ProcessName`;
+          const { stdout } = await sh(`powershell -command "${ps}"`);
+          return `Frontmost app: ${stdout.trim()}`;
+        } else {
+          const { stdout } = await sh(`xdotool getwindowfocus getwindowname`);
+          return `Frontmost app: ${stdout.trim()}`;
+        }
       } catch (e: any) { return `Failed to get frontmost app: ${e.message}`; }
     } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
@@ -934,7 +1013,7 @@ end tell`;
     run: (i) => openUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(i.text ?? i))}`).then(() => `📱 QR code opened for: ${i.text ?? i}`) },
   { name: "battery_status", safe: true, description: "Check the Mac's battery level and charging state.", params: "(none)",
     activity: () => `Checking battery`,
-    run: async () => { if (!IS_MAC) return needsMac("Battery"); const { stdout } = await sh(`pmset -g batt | grep -Eo '[0-9]+%[^;]*' | head -1`); return `🔋 ${stdout.trim() || "unknown"}`; } },
+    run: async () => { if (!IS_MAC) return notSupported("Battery"); const { stdout } = await sh(`pmset -g batt | grep -Eo '[0-9]+%[^;]*' | head -1`); return `🔋 ${stdout.trim() || "unknown"}`; } },
   { name: "disk_space", safe: true, description: "How much disk space is free.", params: "(none)",
     activity: () => `Checking disk space`,
     run: async () => { const { stdout } = await sh(`df -h / | tail -1 | awk '{print $4" free of "$2" ("$5" used)"}'`); return `💾 ${stdout.trim()}`; } },
