@@ -376,14 +376,20 @@ return out`);
 }
 async function readEmails(): Promise<string> {
   try {
-    const out = await osa(`set out to ""
-tell application "Mail"
-  set msgs to messages 1 thru 10 of inbox
-  repeat with m in msgs
-    set out to out & (sender of m) & " — " & (subject of m) & linefeed
+    const out = await osa(`tell application "Mail"
+  set out to ""
+  set unreadMsgs to (messages of inbox whose read status is false)
+  set msgCount to count of unreadMsgs
+  if msgCount > 15 then set msgCount to 15
+  repeat with i from 1 to msgCount
+    set m to item i of unreadMsgs
+    set s to sender of m
+    set sub to subject of m
+    set b to content of m
+    set out to out & s & " | " & sub & " | " & (text 1 thru (if length of b > 100 then 100 else length of b) of b) & "\\n"
   end repeat
-end tell
-return out`);
+  return out
+end tell`);
     return clip(out.trim()) || "Inbox looks empty (or Mail isn't set up).";
   } catch (e: any) { return `Couldn't read Mail: ${e?.message}`; }
 }
