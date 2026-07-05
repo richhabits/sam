@@ -135,7 +135,30 @@ function parsePlan(text: string): PlanItem[] {
 
 // Orchestrator: break the request into a dynamic dependency graph.
 async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
-  const roster = SPECIALISTS.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
+  const reqLower = request.toLowerCase();
+  const words = reqLower.split(/\W+/).filter(w => w.length > 2);
+  
+  // Cheap keyword match to filter the 80+ agent roster down to the ~15 most relevant
+  const scored = SPECIALISTS.map(s => {
+    let score = 0;
+    const text = (s.id + " " + s.name + " " + s.brief).toLowerCase();
+    for (const w of words) { if (text.includes(w)) score++; }
+    return { s, score };
+  });
+  
+  scored.sort((a, b) => b.score - a.score);
+  const top15 = scored.slice(0, 15).map(x => x.s);
+  
+  // Always include the core startup crew just in case
+  const CORE = ["scout", "forge", "quill", "judge", "envoy"];
+  for (const c of CORE) {
+    if (!top15.some(x => x.id === c)) {
+      const agent = SPECIALISTS.find(x => x.id === c);
+      if (agent) top15.push(agent);
+    }
+  }
+
+  const roster = top15.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
   const sys = `You are SAM's orchestrator. Break the user's request into up to 7 focused subtasks and assign each to the ONE best specialist. 
 You MUST provide a JSON array of tasks. Each task needs an 'id' (e.g. 't1'), a 'specialist', a 'task' description, and an array of 'dependsOn' task IDs if it needs the output of prior tasks. 
 Example: [{"id":"t1","specialist":"scout","task":"search web","dependsOn":[]}, {"id":"t2","specialist":"quill","task":"write report","dependsOn":["t1"]}]
