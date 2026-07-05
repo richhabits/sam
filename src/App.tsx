@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -265,6 +265,20 @@ export default function App() {
     const sd = (window as any).samDesktop;
     if (sd?.openStudio) sd.openStudio();                              // dedicated Electron window
     else window.open(location.pathname + "?app=studio", "_blank");   // browser tab fallback
+  }
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importResult, setImportResult] = useState("");
+  async function runImport() {
+    if (!importText.trim() || importBusy) return;
+    setImportBusy(true); setImportResult("");
+    try {
+      const r = await importContext(profile.name || "there", importText);
+      setImportResult(r?.ok ? `✅ Imported ${r.factsSaved ?? 0} durable facts into SAM's memory (from ${r.factsExtracted ?? 0} found).` : `Couldn't import: ${r?.error || "unknown"}`);
+      if (r?.ok && (r.factsSaved ?? 0) > 0) { setImportText(""); refreshLog(); }
+    } catch (e: any) { setImportResult("Import failed: " + (e?.message || e)); }
+    finally { setImportBusy(false); }
   }
   const guardStream = useRef<MediaStream | null>(null);
   const guardIv = useRef<any>(null);
@@ -861,7 +875,7 @@ export default function App() {
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
-            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <kbd>⌘K</kbd> for a new chat · <button className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button></div>
+            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <button className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button> · <button className="linkish" onClick={() => setImportOpen(true)}>📥 Import your history</button></div>
           </div>
         ) : (
           <div className="thread">
@@ -1069,6 +1083,28 @@ export default function App() {
         </div>
       )}
 
+      {importOpen && (
+        <div className="roster-scrim" onMouseDown={() => !importBusy && setImportOpen(false)}>
+          <div className="roster" style={{ maxWidth: "640px" }} onMouseDown={(e) => e.stopPropagation()}>
+            <div className="roster-head">
+              <div>
+                <div className="roster-title">📥 Bring your history into SAM</div>
+                <div className="roster-sub">Paste an export or a chunk of your ChatGPT / Claude / Gemini chats. SAM pulls out the durable facts about you (privately, on your machine) so it knows you from day one.</div>
+              </div>
+              <button className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <textarea className="convo-search" style={{ width: "auto", margin: "0 20px", minHeight: "220px", resize: "vertical", fontFamily: "var(--sans)" }}
+              value={importText} onChange={(e) => setImportText(e.target.value)}
+              placeholder="Paste your chat history here… (SAM ignores any instructions inside it — it only extracts facts about you)" />
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 20px 20px" }}>
+              <button className="studio-go" style={{ padding: "11px 22px", fontSize: "15px" }} onClick={runImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Reading…" : "Import my history"}</button>
+              {importResult && <span style={{ fontSize: "13px", color: "var(--muted)" }}>{importResult}</span>}
+              {!importResult && <span style={{ fontSize: "12px", color: "var(--muted)" }}>Runs on your free/local brain — private, no cloud needed.</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && <div className="toast" role="status">{toast}</div>}
 
       {palette && (() => {
@@ -1077,6 +1113,8 @@ export default function App() {
           { icon: "🔄", label: "Regenerate last answer", run: () => regenerate() },
           { icon: "🤝", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
           { icon: "👥", label: "Meet the team (browse specialists)", run: () => setRosterOpen(true) },
+          { icon: "📥", label: "Import my ChatGPT/Claude history", run: () => setImportOpen(true) },
+          { icon: "🎨", label: "Open SAM Studio (image/video)", run: () => openStudio() },
           { icon: "🥷", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
           { icon: "🎙", label: "Voice mode", run: () => setVoiceMode(true) },
           { icon: "👁️", label: "Look through the camera", run: () => lookThroughCamera() },
