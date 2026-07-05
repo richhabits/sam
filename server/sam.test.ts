@@ -85,8 +85,9 @@ describe("tools", () => {
 
 // ── brand context ────────────────────────────────────────────
 describe("projects", () => {
-  it("tracks the user's brands and resolves by id", () => {
-    expect(PROJECTS.length).toBeGreaterThanOrEqual(10);
+  it("tracks brands and resolves by id", () => {
+    // Ships with generic samples; a user's real brands load from a gitignored vault/brands.json.
+    expect(PROJECTS.length).toBeGreaterThanOrEqual(1);
     const first = PROJECTS[0];
     expect(projectById(first.id)?.name).toBe(first.name);
     expect(projectById("does-not-exist")).toBeUndefined();
