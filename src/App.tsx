@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -241,6 +241,10 @@ export default function App() {
   const findRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState("");
   const showToast = (msg: string) => { setToast(msg); window.setTimeout(() => setToast((t) => (t === msg ? "" : t)), 1900); };
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [roster, setRoster] = useState<{ id: string; name: string; emoji: string; modeledOn: string; brief: string }[]>([]);
+  const [rosterSearch, setRosterSearch] = useState("");
+  useEffect(() => { if (rosterOpen && !roster.length) getRoster().then((d) => setRoster(d.crew || d || [])).catch(() => {}); }, [rosterOpen]);
   useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
@@ -829,7 +833,7 @@ export default function App() {
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
-            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <kbd>⌘K</kbd> for a new chat</div>
+            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <kbd>⌘K</kbd> for a new chat · <button className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button></div>
           </div>
         ) : (
           <div className="thread">
@@ -1008,6 +1012,34 @@ export default function App() {
         </div>
       )}
 
+      {rosterOpen && (
+        <div className="roster-scrim" onMouseDown={() => setRosterOpen(false)}>
+          <div className="roster" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="roster-head">
+              <div>
+                <div className="roster-title">🤝 Meet the team</div>
+                <div className="roster-sub">{roster.length} specialists SAM can call on. Say <b>/team &lt;job&gt;</b> and it assembles the right ones.</div>
+              </div>
+              <button className="icon-btn" onClick={() => setRosterOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <input className="roster-search" value={rosterSearch} onChange={(e) => setRosterSearch(e.target.value)} placeholder="🔍 Search the roster — name, discipline, skill…" autoFocus />
+            <div className="roster-grid">
+              {roster.filter((a) => { const q = rosterSearch.trim().toLowerCase(); return !q || `${a.name} ${a.modeledOn} ${a.brief}`.toLowerCase().includes(q); }).map((a) => (
+                <div key={a.id} className="roster-card">
+                  <div className="rc-emoji">{a.emoji}</div>
+                  <div className="rc-body">
+                    <div className="rc-name">{a.name}</div>
+                    <div className="rc-modeled">{a.modeledOn}</div>
+                    <div className="rc-brief">{a.brief}</div>
+                  </div>
+                </div>
+              ))}
+              {roster.length === 0 && <div className="roster-empty">Loading the roster…</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && <div className="toast" role="status">{toast}</div>}
 
       {palette && (() => {
@@ -1015,6 +1047,7 @@ export default function App() {
           { icon: "💬", label: "New chat", hint: "⌘K", run: () => newChat() },
           { icon: "🔄", label: "Regenerate last answer", run: () => regenerate() },
           { icon: "🤝", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
+          { icon: "👥", label: "Meet the team (browse specialists)", run: () => setRosterOpen(true) },
           { icon: "🥷", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
           { icon: "🎙", label: "Voice mode", run: () => setVoiceMode(true) },
           { icon: "👁️", label: "Look through the camera", run: () => lookThroughCamera() },
