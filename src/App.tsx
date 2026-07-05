@@ -189,7 +189,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
 
 export default function App() {
   const init = loadState();
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; themeColor?: string }[]>([]);
   const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [status, setStatus] = useState<any>(null);
   const [tools, setTools] = useState<{ name: string; safe: boolean; description: string }[]>([]);
@@ -235,6 +235,12 @@ export default function App() {
   const [convoSearch, setConvoSearch] = useState("");
   const [fontSize, setFontSize] = useState(() => { try { return localStorage.getItem("sam.fontsize") || "normal"; } catch { return "normal"; } });
   const [dragOver, setDragOver] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQ, setFindQ] = useState("");
+  const [findIdx, setFindIdx] = useState(0);
+  const findRef = useRef<HTMLInputElement>(null);
+  const [toast, setToast] = useState("");
+  const showToast = (msg: string) => { setToast(msg); window.setTimeout(() => setToast((t) => (t === msg ? "" : t)), 1900); };
   useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
@@ -297,12 +303,16 @@ export default function App() {
       else if (mod && e.shiftKey && e.key.toLowerCase() === "n") { e.preventDefault(); setInput("/ninjas "); inputRef.current?.focus(); }
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
-      else if (e.key === "Escape") { if (palette) setPalette(false); else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
+      else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
+      else if (e.key === "Escape") { if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [loading, palette]);
+  }, [loading, palette, findOpen, messages.length]);
   useEffect(() => { if (palette) setTimeout(() => paletteRef.current?.focus(), 30); }, [palette]);
+  // Matching message indices for ⌘F find-in-chat.
+  const findMatches = findQ.trim() ? messages.map((m, i) => (m.text || "").toLowerCase().includes(findQ.toLowerCase()) ? i : -1).filter((i) => i >= 0) : [];
+  useEffect(() => { if (findOpen && findMatches.length) { const el = document.getElementById(`msg-${findMatches[Math.min(findIdx, findMatches.length - 1)]}`); el?.scrollIntoView({ behavior: "smooth", block: "center" }); } }, [findIdx, findQ, findOpen]);
 
   useEffect(() => {
     const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -750,6 +760,21 @@ export default function App() {
         const code = btn.parentElement?.querySelector("code")?.textContent || "";
         navigator.clipboard.writeText(code).then(() => { btn.textContent = "Copied ✓"; setTimeout(() => { if (btn) btn.textContent = "Copy"; }, 1400); }).catch(() => {});
       }}>
+        {findOpen && (
+          <div className="find-bar" onClick={(e) => e.stopPropagation()}>
+            <span className="find-ic">🔍</span>
+            <input ref={findRef} className="find-input" value={findQ} placeholder="Find in conversation…"
+              onChange={(e) => { setFindQ(e.target.value); setFindIdx(0); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); if (findMatches.length) setFindIdx((x) => (e.shiftKey ? (x - 1 + findMatches.length) : (x + 1)) % findMatches.length); }
+                else if (e.key === "Escape") { setFindOpen(false); setFindQ(""); }
+              }} />
+            <span className="find-count">{findQ.trim() ? (findMatches.length ? `${Math.min(findIdx, findMatches.length - 1) + 1}/${findMatches.length}` : "0") : ""}</span>
+            <button className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x - 1 + findMatches.length) % findMatches.length)} aria-label="Previous">↑</button>
+            <button className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x + 1) % findMatches.length)} aria-label="Next">↓</button>
+            <button className="find-nav" onClick={() => { setFindOpen(false); setFindQ(""); }} aria-label="Close">✕</button>
+          </div>
+        )}
         {started && messages.some((m) => m.pinned) && (
           <div className="pinned-bar">
             <div className="pb-head"><span className="pb-title">📌 Pinned</span></div>
@@ -809,8 +834,8 @@ export default function App() {
         ) : (
           <div className="thread">
             {messages.map((m, i) => (
+              <div key={i} id={`msg-${i}`} className={`msg-anchor ${findMatches.includes(i) ? (i === findMatches[Math.min(findIdx, findMatches.length - 1)] ? "find-current" : "find-match") : ""}`}>
               <MemoizedMessageRow
-                key={i}
                 m={m}
                 i={i}
                 isExpanded={expanded.has(i)}
@@ -831,6 +856,7 @@ export default function App() {
                 onRegenerate={regenerate}
                 onEdit={(idx: number) => editResend(idx)}
               />
+              </div>
             ))}
             {team && (
               <div className="row sam">
@@ -982,6 +1008,8 @@ export default function App() {
         </div>
       )}
 
+      {toast && <div className="toast" role="status">{toast}</div>}
+
       {palette && (() => {
         const acts: { icon: string; label: string; hint?: string; run: () => void }[] = [
           { icon: "💬", label: "New chat", hint: "⌘K", run: () => newChat() },
@@ -997,8 +1025,9 @@ export default function App() {
           { icon: "🧠", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "🔑", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
-          { icon: "⬇️", label: "Export this chat (download)", run: () => exportChat() },
-          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).catch(() => {}); } },
+          { icon: "🔍", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
+          { icon: "⬇️", label: "Export this chat (download)", run: () => { exportChat(); showToast("⬇️ Chat downloaded"); } },
+          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).then(() => showToast("📋 Chat copied")).catch(() => {}); } },
           { icon: "🔒", label: "Private mode — local only", run: () => setQuality("private") },
           { icon: "⚡", label: "Auto — free brains", run: () => setQuality("auto") },
           { icon: "✨", label: "Best quality", run: () => setQuality("best") },

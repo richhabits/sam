@@ -13,6 +13,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # Type-check — `vite build` uses esbuild which strips types WITHOUT checking them,
+      # so type errors slip through the build. This catches them.
+      - run: npx tsc --noEmit
       - run: npm run build
       # Boot smoke test — catches runtime crashes that typecheck/build miss
       # (e.g. a bad ESM import that only fails when the server actually starts).
