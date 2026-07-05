@@ -27,6 +27,7 @@ import { logSecurity, securityStatus } from "./security.ts";
 import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
+import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 
 const sh = promisify(exec);
 
@@ -1233,6 +1234,18 @@ end tell`);
     activity: (i) => `Forgetting memory ${i.id}`, run: async (i) => forget(i.id) ? `Deleted memory ${i.id}.` : `Memory ${i.id} not found.` },
   { name: "clear_all_memories", safe: false, description: "NUCLEAR OPTION: Wipes the entire semantic memory vault clean.", params: "(none)",
     activity: () => `Wiping memory vault`, preview: () => `Wipe entire memory vault?`, run: async () => { clearAll(); return "Memory vault wiped clean."; } },
+  { name: "add_schedule", safe: true, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
+    activity: () => `Adding scheduled task`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
+  { name: "list_schedules", safe: true, description: "List all active background routines and scheduled tasks SAM is maintaining.", params: "(none)",
+    activity: () => `Listing schedules`, run: async () => {
+      const list = listSchedules();
+      if (!list.length) return "No active schedules.";
+      return list.map(s => `[${s.id}] ${s.cron} | ${s.command} | runs: ${s.runCount} | enabled: ${s.enabled} | last: ${s.lastResult || "never"}`).join("\n");
+    } },
+  { name: "remove_schedule", safe: true, description: "Delete a specific scheduled task by ID. input: {id}.", params: "{id}",
+    activity: (i) => `Removing schedule ${i.id}`, run: async (i) => removeSchedule(i.id) ? `Removed schedule ${i.id}.` : `Schedule ${i.id} not found.` },
+  { name: "toggle_schedule", safe: true, description: "Pause or resume a scheduled task by ID. input: {id}.", params: "{id}",
+    activity: (i) => `Toggling schedule ${i.id}`, run: async (i) => { const s = toggleSchedule(i.id); return s ? `Schedule ${s.id} is now ${s.enabled ? "enabled" : "paused"}.` : `Schedule ${i.id} not found.`; } },
 ];
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);
