@@ -14,6 +14,8 @@
   --accent-text: #C2410C; /* darkened terracotta — AA for small text on white */
   --accent-soft: #FBEDE7; /* tinted accent background */
   --user-bubble: #F5F0EB; /* your messages */
+  /* Semantic colors (swarm panel, dashboard) — legible on light AND dark grounds */
+  --c-blue: #3B82F6; --c-ok: #22C55E; --c-err: #EF4444; --c-err-bg: rgba(239,68,68,.12); --c-bg2: var(--surface);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
   --display: "SF Pro Display", var(--sans);
   --radius: 22px;
@@ -80,7 +82,7 @@ button { font-family: inherit; cursor: pointer; }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 0 3px var(--accent-soft); }
 .name { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .tag { font-size: 13px; color: var(--muted); }
-.bar-right { display: flex; align-items: center; gap: 10px; }
+.bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 
 .biz { display: flex; align-items: center; gap: 8px; }
 .biz-label { font-size: 13px; color: var(--muted); }
@@ -129,7 +131,7 @@ button { font-family: inherit; cursor: pointer; }
 .chip:active { transform: translateY(1px); }
 
 /* thread */
-.thread { max-width: 760px; margin: 0 auto; padding: 24px 24px 140px; display: flex; flex-direction: column; gap: 32px; }
+.thread { max-width: 760px; margin: 0 auto; padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 32px; }
 .row { display: flex; flex-direction: column; gap: 6px; }
 .row.user { align-items: flex-end; }
 .who { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .01em; margin-bottom: 2px; }
@@ -186,7 +188,6 @@ button { font-family: inherit; cursor: pointer; }
 .scroll-btn { position: sticky; float: right; bottom: 12px; right: 16px; margin-right: 16px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 16px; box-shadow: var(--shadow); }
 
 /* header ghost button (history) */
-.brandmark { gap: 10px; }
 .icon-btn.ghost { border: none; background: none; font-size: 18px; padding: 4px 8px; }
 .icon-btn.ghost:hover { background: var(--bg); color: var(--accent-text); }
 
@@ -211,8 +212,8 @@ button { font-family: inherit; cursor: pointer; }
 /* trace styles removed, using tracker now */
 
 /* confirm card — ask before risky actions */
-.confirm { max-width: 88%; background: #FFF7ED; border: 1px solid #FDBA74; border-radius: var(--radius); border-top-left-radius: 4px; padding: 14px 16px; box-shadow: var(--shadow); }
-.confirm-head { font-size: 15px; font-weight: 700; color: #9A3412; margin-bottom: 6px; }
+.confirm { max-width: 88%; background: color-mix(in srgb, #F59E0B 12%, var(--surface)); border: 1px solid color-mix(in srgb, #F59E0B 55%, var(--border)); border-radius: var(--radius); border-top-left-radius: 4px; padding: 14px 16px; box-shadow: var(--shadow); }
+.confirm-head { font-size: 15px; font-weight: 700; color: #D97706; margin-bottom: 6px; }
 .confirm-what { font-size: 15px; color: var(--text); margin-bottom: 8px; }
 .confirm-preview { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; white-space: pre-wrap; word-break: break-word; overflow-x: auto; color: var(--text); }
 .confirm-actions { display: flex; gap: 10px; }
@@ -247,8 +248,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ── Composer ───────────────────────────────── */
 .composer {
-  position: absolute; bottom: 24px; left: 0; right: 0; pointer-events: none;
-  padding: 0 24px; display: flex; flex-direction: column; align-items: center; z-index: 30;
+  padding: 0 24px 16px; display: flex; flex-direction: column; align-items: center;
 }
 .composer-inner {
   width: 100%; max-width: 760px; pointer-events: auto;
@@ -383,7 +383,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-orb { width: 180px; height: 180px; border-radius: 50%; display: grid; place-items: center;
   background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent) 60%, var(--accent-2));
   box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 0 var(--accent-soft); }
-.vm-orb-core { width: 100%; height: 100%; border-radius: 50%; }
 .vm-orb.listening { animation: vmListen 1.4s ease-in-out infinite; }
 .vm-orb.speaking { animation: vmSpeak .6s ease-in-out infinite; }
 .vm-orb.thinking { animation: vmThink 1s linear infinite; filter: saturate(.7); }
@@ -451,7 +450,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .tstep.done { opacity: 0.7; }
 .tstep.active { background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .tstep.active .tlabel { color: var(--text); font-weight: 600; }
-.tico-sm { font-size: 11px; margin-right: 4px; }
 
 /* ── Business / Personal mind toggle ── */
 .mode-toggle { display: inline-flex; background: var(--user-bubble); border: 1px solid var(--border); border-radius: 11px; padding: 2px; gap: 2px; }
@@ -676,6 +674,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .prev-ember { background: linear-gradient(135deg, #1C1712, #F0824E); }
 .prev-stealth { background: linear-gradient(135deg, #0C0C0C, #4ADE80); }
 .prev-midnight { background: linear-gradient(135deg, #110E1C, #A78BFA); }
+.prev-nord { background: linear-gradient(135deg, #2E3440, #88C0D0); }
+.prev-dracula { background: linear-gradient(135deg, #282A36, #BD93F9); }
+.prev-linen { background: linear-gradient(135deg, #FAF6EF, #A8907A); }
+.prev-aurora { background: linear-gradient(135deg, #0A0A0F, #FF7A3D, #A855F7); }
 
 /* active guardian button */
 .icon-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -924,7 +926,6 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .ctx-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-top: 8px; }
 .ctx-act { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13.5px; cursor: pointer; }
 .ctx-act:hover { border-color: var(--accent); color: var(--accent-text); }
-.ctx-status { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
 @media (max-width: 1080px) { .shell { grid-template-columns: 1fr; } .side, .ctx { display: none; } }
 
 /* Sidebar folders */
