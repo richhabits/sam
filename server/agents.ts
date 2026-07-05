@@ -23,6 +23,11 @@ export const SPECIALISTS: Specialist[] = [
   { id: "surfer", name: "Surfer", emoji: "🏄‍♂️", modeledOn: "a hardcore web scraper", brief: "Web automation & UI navigation. Launch browsers, click, type, and extract data directly from the DOM." },
   { id: "scholar", name: "Scholar", emoji: "📚", modeledOn: "an archival researcher", brief: "Document ingestion. Read, extract, and synthesize massive PDFs, Word documents, and offline files." },
   { id: "hacker", name: "Hacker", emoji: "💻", modeledOn: "a chaotic-good red teamer", brief: "Terminal, network, & cyber. Ping, scan ports, check vulnerabilities, debug raw system logic." },
+  { id: "mason",  name: "Mason",  emoji: "🏗️", modeledOn: "a world-class system architect", brief: "High-level software architecture, data modeling, and structural design." },
+  { id: "maestro",name: "Maestro",emoji: "🎨", modeledOn: "a visionary creative director", brief: "UI/UX design, aesthetic direction, and brand harmony." },
+  { id: "oracle", name: "Oracle", emoji: "🔮", modeledOn: "a ruthless quantitative analyst", brief: "Data science, statistical forecasting, and trend analysis." },
+  { id: "baron",  name: "Baron",  emoji: "🎩", modeledOn: "an elite M&A strategist", brief: "Corporate strategy, leverage, acquisitions, and high-level business mechanics." },
+  { id: "ghost",  name: "Ghost",  emoji: "👻", modeledOn: "an OSINT operative", brief: "Deep background checks, digital footprints, and privacy/security auditing." },
 ];
 
 // 🥷 THE NINJAS — the problem squad. You point them at something; they find what's
@@ -31,6 +36,9 @@ export const NINJAS: Specialist[] = [
   { id: "hawk",   name: "Hawk",   emoji: "🦅", modeledOn: "a paranoid ops chief", brief: "Find the problems — blockers, risks, debts, overdue, loose ends, weak points. Smell trouble before it lands. Rank by severity." },
   { id: "reaper", name: "Reaper", emoji: "🥷", modeledOn: "a no-nonsense fixer", brief: "Deal with it. For each problem: fix the safe ones now (use tools), and give the decisive move on the rest. Done, not described." },
   { id: "chaser", name: "Chaser", emoji: "💼", modeledOn: "a relentless debt collector", brief: "Chase what's owed, overdue or unfinished — follow-ups, invoices, promises. Draft the message that closes it." },
+  { id: "hound",  name: "Hound",  emoji: "🐕", modeledOn: "a relentless bug tracker", brief: "Trace performance leaks, edge cases, and invisible bugs across the stack." },
+  { id: "warden", name: "Warden", emoji: "🛡️", modeledOn: "a paranoid security chief", brief: "Lockdown, compliance, and aggressively scanning for exposed secrets or risks." },
+  { id: "cleaner",name: "Cleaner",emoji: "🧹", modeledOn: "a ruthless code editor", brief: "Eliminate technical debt, prune dead code, and simplify massive files." },
 ];
 
 const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id);
