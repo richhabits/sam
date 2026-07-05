@@ -262,3 +262,19 @@ export function resumeOrphanedSwarms() {
     }
   }
 }
+
+export function stopSwarm(id: string): boolean {
+  const s = getSwarm(id);
+  if (!s) return false;
+  updateSwarm(id, (sw) => {
+    sw.status = "error";
+    sw.synthesis = "Swarm was manually killed by admin.";
+    for (const a of sw.agents) {
+      if (a.status === "running" || a.status === "pending" || a.status === "paused") {
+        a.status = "error";
+        a.output = "Killed by admin.";
+      }
+    }
+  });
+  return true;
+}
