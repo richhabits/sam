@@ -1232,20 +1232,20 @@ end tell`);
       if (!recent.length) return "Vault is empty.";
       return recent.map(r => `[ID: ${r.id}] ${new Date(r.ts).toLocaleString()}: ${r.text}`).join("\n");
     } },
-  { name: "forget_memory", safe: true, description: "Delete a specific memory by its unique ID. input: {id}.", params: "{id}",
-    activity: (i) => `Forgetting memory ${i.id}`, run: async (i) => forget(i.id) ? `Deleted memory ${i.id}.` : `Memory ${i.id} not found.` },
+  { name: "forget_memory", safe: false, description: "Delete a specific memory by its unique ID. input: {id}.", params: "{id}",
+    activity: (i) => `Forgetting memory ${i.id}`, preview: (i) => `Permanently delete memory ${i.id}?`, run: async (i) => forget(i.id) ? `Deleted memory ${i.id}.` : `Memory ${i.id} not found.` },
   { name: "clear_all_memories", safe: false, description: "NUCLEAR OPTION: Wipes the entire semantic memory vault clean.", params: "(none)",
     activity: () => `Wiping memory vault`, preview: () => `Wipe entire memory vault?`, run: async () => { clearAll(); return "Memory vault wiped clean."; } },
-  { name: "add_schedule", safe: true, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
-    activity: () => `Adding scheduled task`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
+  { name: "add_schedule", safe: false, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
+    activity: () => `Adding scheduled task`, preview: (i) => `Set up a recurring task — run "${i.command}" ${i.cron}?`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
   { name: "list_schedules", safe: true, description: "List all active background routines and scheduled tasks SAM is maintaining.", params: "(none)",
     activity: () => `Listing schedules`, run: async () => {
       const list = listSchedules();
       if (!list.length) return "No active schedules.";
       return list.map(s => `[${s.id}] ${s.cron} | ${s.command} | runs: ${s.runCount} | enabled: ${s.enabled} | last: ${s.lastResult || "never"}`).join("\n");
     } },
-  { name: "remove_schedule", safe: true, description: "Delete a specific scheduled task by ID. input: {id}.", params: "{id}",
-    activity: (i) => `Removing schedule ${i.id}`, run: async (i) => removeSchedule(i.id) ? `Removed schedule ${i.id}.` : `Schedule ${i.id} not found.` },
+  { name: "remove_schedule", safe: false, description: "Delete a specific scheduled task by ID. input: {id}.", params: "{id}",
+    activity: (i) => `Removing schedule ${i.id}`, preview: (i) => `Delete scheduled task ${i.id}?`, run: async (i) => removeSchedule(i.id) ? `Removed schedule ${i.id}.` : `Schedule ${i.id} not found.` },
   { name: "toggle_schedule", safe: true, description: "Pause or resume a scheduled task by ID. input: {id}.", params: "{id}",
     activity: (i) => `Toggling schedule ${i.id}`, run: async (i) => { const s = toggleSchedule(i.id); return s ? `Schedule ${s.id} is now ${s.enabled ? "enabled" : "paused"}.` : `Schedule ${i.id} not found.`; } },
   { name: "start_swarm", safe: true, description: "Spin up a continuous background Swarm of agents for a massive, multi-step task. input: {goal, system}.", params: "{goal, system}",
