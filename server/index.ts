@@ -21,6 +21,7 @@ import { isAllowed, allow, disallow, listAllowed } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
+import { startProactive, takePending, listNudges } from "./proactive.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import {
@@ -60,6 +61,22 @@ initContext();
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 void grabWorld().then((s) => console.log(`  ${s}\n`));
+
+// Proactive layer: SAM reaches out first — a once-a-day morning brief (composed
+// with its own tools: weather + nudges) and nudge reminders. Slim: a 5-min timer.
+startProactive(async () => {
+  const nudges = listNudges();
+  const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
+  const prompt = `Give me my morning brief — short, warm, punchy (3-5 lines). It's ${nowText()}.` +
+    `${locationText() ? ` I'm near ${locationText()}.` : ""}` +
+    `${nudges.length ? ` My pending nudges: ${nudges.map((n) => n.text).join("; ")}.` : " No pending nudges."}` +
+    ` Check today's weather here and flag anything useful for the day. Start with a quick hello.`;
+  try {
+    const qvec = await embedOne(prompt, true);
+    const r = await runAgent(system, prompt, (process.env.DEFAULT_TIER as Tier) || "free", selectTools(qvec, 6));
+    return r.kind === "final" ? (r.text || "") : "";
+  } catch { return ""; }
+});
 
 // Pull the last few exchanges from the vault so SAM actually remembers
 // what was just discussed (real continuity across messages/sessions).
@@ -355,6 +372,9 @@ async function git(cmd: string, timeout = 8000): Promise<string> {
 }
 // ── Security watchdog: what SAM has flagged/blocked (Jeeves on the door) ──
 app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), events: securityEvents() }));
+
+// ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
+app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges: listNudges() }));
 
 app.get("/api/update-check", async (_req, res) => {
   try {
