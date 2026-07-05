@@ -30,7 +30,7 @@ function greeting(name: string) {
 }
 function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
-interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string }
+interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean }
 interface Convo { id: string; title: string; messages: Msg[]; at: number }
 
 const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -191,6 +191,7 @@ export default function App() {
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
   const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
   const [updating, setUpdating] = useState("");
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const msgEnd = useRef<HTMLDivElement>(null);
@@ -207,7 +208,12 @@ export default function App() {
     inputRef.current?.focus();
     // SAM reaching out first — morning brief / due nudges appear as messages.
     const showProactive = () => getProactive().then((p) => {
-      if (p.items?.length) setMessages((m) => [...m, ...p.items.map((it) => ({ role: "sam" as const, text: it.text, how: it.type === "brief" ? "morning brief" : "nudge", at: now() }))]);
+      if (p.items?.length) {
+        setMessages((m) => [...m, ...p.items.map((it) => ({ role: "sam" as const, text: it.text, how: it.type === "brief" ? "morning brief" : "nudge", at: now() }))]);
+        if ("Notification" in window && Notification.permission === "granted") {
+          try { new Notification("SAM", { body: p.items[0].text }); } catch {}
+        }
+      }
     }).catch(() => {});
     showProactive();
     // keep the connection dot honest + check for proactive messages (light: every 3 min)
@@ -236,6 +242,12 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [loading]);
+
+  useEffect(() => {
+    const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
 
   useEffect(() => { try { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark]);
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
@@ -545,6 +557,7 @@ export default function App() {
           <span className="tag">by <b>HECTIC</b></span>
         </div>
         <div className="bar-right">
+          {deferredPrompt && <button className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
           <button className="icon-btn" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} title="Assemble SAM's team of AI agents">🤝 Team</button>
@@ -584,11 +597,15 @@ export default function App() {
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"]].map(([id, label, ic]) => (
-                <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>{ic} {label}</button>
+                <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>
+                  <div className={`skin-prev prev-${id}`}></div>
+                  <div className="skin-chip-label">{ic} {label}</div>
+                </button>
               ))}
             </div>
             <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">Read replies aloud</span><span className="pop-opt-sub">{speakReplies ? "On" : "Off"}</span></button>
             <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">🎵 Whistle / clap to wake</span><span className="pop-opt-sub">{wakeOn ? "On — whistle or double-clap for SAM" : "Off"}</span></button>
+            <button className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
             <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
             <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
             <button className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">Switch user</span><span className="pop-opt-sub">Signed in as {profile.name}</span></button>
@@ -615,6 +632,19 @@ export default function App() {
       )}
 
       <main className="chat" ref={chatRef} onScroll={onScroll}>
+        {started && messages.some((m) => m.pinned) && (
+          <div className="pinned-bar">
+            <div className="pb-head"><span className="pb-title">📌 Pinned</span></div>
+            <div className="pb-list">
+              {messages.map((m, i) => m.pinned ? (
+                <div key={i} className="pb-item">
+                  <div className="pb-text md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }} />
+                  <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: false } : msg))}>Unpin</button>
+                </div>
+              ) : null)}
+            </div>
+          </div>
+        )}
         {!started ? (
           <div className="welcome">
             <div className="hello">{greeting(profile.name)}</div>
@@ -639,6 +669,7 @@ export default function App() {
                   <div className="msg-actions">
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>{copied === i ? "Copied ✓" : "Copy"}</button>
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>📋 Markdown</button>
+                    <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: !msg.pinned } : msg))}>{m.pinned ? "Unpin" : "📌 Pin"}</button>
                     <button className="mini" onClick={() => {
                       if (playing === i) { stopSpeaking(); setPlaying(null); }
                       else { stopSpeaking(); setPlaying(i); ttsSpeak(m.text, () => setPlaying((p) => (p === i ? null : p))); }
