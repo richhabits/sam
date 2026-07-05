@@ -757,3 +757,13 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* ── Timestamps: subtle by default, brighten on hover · quote-reply ── */
 .row .at { opacity: .5; transition: opacity .15s; }
 .row:hover .at { opacity: 1; }
+
+/* ── Onboarding + empty-state polish ── */
+.onboard-card { animation: onboard-in .42s cubic-bezier(.2,.9,.3,1.05); }
+@keyframes onboard-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.onboard-by { font-size: 14px; color: var(--muted); margin-top: 3px; }
+.onboard-by b { color: var(--accent-text); }
+.onboard-pills { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0 20px; }
+.onboard-pills span { font-size: 12.5px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px; }
+.welcome-keys { margin-top: 14px; font-size: 13px; color: var(--muted); }
+.welcome-keys kbd { font: 600 11px var(--sans); background: var(--surface); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; padding: 2px 6px; color: var(--text); }

@@ -608,7 +608,9 @@ export default function App() {
         <div className="onboard-card">
           <div className="onboard-emoji">👋</div>
           <div className="onboard-title">Hi, I'm SAM.</div>
-          <div className="onboard-sub">Your own AI assistant — I can answer, draft, search the web, and take action on your computer. First up, what should I call you?</div>
+          <div className="onboard-by">by <b>HECTIC</b></div>
+          <div className="onboard-sub">Your own AI assistant — I answer, draft, search the web, and take action on your computer. First up, what should I call you?</div>
+          <div className="onboard-pills"><span>🔒 Private</span><span>💸 Free</span><span>🖐️ Takes action</span><span>🎨 Yours</span></div>
           <input className="onboard-input" autoFocus value={onboardName} onChange={(e) => setOnboardName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="Your name" />
           <input className="onboard-input" value={onboardAbout} onChange={(e) => setOnboardAbout(e.target.value)}
@@ -762,6 +764,7 @@ export default function App() {
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
+            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <kbd>⌘K</kbd> for a new chat</div>
           </div>
         ) : (
           <div className="thread">
