@@ -48,11 +48,20 @@ function markNotified(ids: string[]) {
   save(NUDGES, list);
 }
 
-// ── Delivery ──
-function macNotify(title: string, msg: string) {
-  if (process.platform !== "darwin") return;
+// ── Delivery (cross-platform) ──
+function desktopNotify(title: string, msg: string) {
+  const clean = msg.replace(/[#*`]/g, "").slice(0, 220);
   const esc = (s: string) => s.replace(/"/g, '\\"').replace(/\n/g, " ");
-  exec(`osascript -e 'display notification "${esc(msg).slice(0, 220)}" with title "${esc(title)}"'`, () => {});
+  if (process.platform === "darwin") {
+    exec(`osascript -e 'display notification "${esc(clean)}" with title "${esc(title)}"'`, () => {});
+  } else if (process.platform === "win32") {
+    // PowerShell toast notification (Windows 10+)
+    const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${esc(title)}</text><text id="2">${esc(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
+    exec(`powershell -command "${ps.replace(/"/g, '\\"')}"`, () => {});
+  } else {
+    // Linux — notify-send (most distros have it)
+    exec(`notify-send "${esc(title)}" "${esc(clean)}" 2>/dev/null || true`, () => {});
+  }
 }
 
 // Queue of things for the app to show next time it checks.
@@ -71,7 +80,7 @@ export function startProactive(composeBrief: () => Promise<string>) {
       // 1) due nudges → notify + queue
       const due = dueNudges();
       if (due.length) {
-        for (const n of due) { macNotify("SAM — reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); }
+        for (const n of due) { desktopNotify("SAM — reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); }
         markNotified(due.map((n) => n.id));
       }
       // 2) morning brief — once per day, at/after the brief time
@@ -79,7 +88,7 @@ export function startProactive(composeBrief: () => Promise<string>) {
       if (st.lastBrief !== today() && hhmm() >= briefTime()) {
         save(STATE, { ...st, lastBrief: today() });   // mark first (avoid double-fire)
         const brief = await composeBrief().catch(() => "");
-        if (brief) { macNotify("SAM — morning brief", brief.replace(/[#*`]/g, "").slice(0, 200)); pending.push({ type: "brief", text: brief, at: hhmm() }); }
+        if (brief) { desktopNotify("SAM — morning brief", brief.replace(/[#*`]/g, "").slice(0, 200)); pending.push({ type: "brief", text: brief, at: hhmm() }); }
       }
     } catch { /* never let the timer crash the app */ }
   };
