@@ -604,6 +604,43 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 :root[data-skin="midnight"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 0 3px var(--accent-soft); }
 :root[data-skin="midnight"] .vm-orb { background: radial-gradient(circle at 40% 35%, #DDD6FE, var(--accent) 55%, #5B21B6); box-shadow: 0 0 60px rgba(167,139,250,.5); }
 
+/* ❄️ NORD — arctic frost: cool slate, glacier blue */
+:root[data-skin="nord"] {
+  --bg: #2E3440; --surface: #3B4252; --text: #ECEFF4; --muted: #8893A5;
+  --border: #434C5E; --border-strong: #4C566A;
+  --accent: #88C0D0; --accent-text: #A3D4E0; --accent-soft: #29343F;
+  --user-bubble: #3B4252;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.4), 0 16px 48px rgba(136,192,208,.08);
+  --accent-2: #A3D4E0; --ring: 0 0 0 3.5px rgba(136,192,208,.22);
+}
+:root[data-skin="nord"] .app { background: radial-gradient(1100px 500px at 50% -10%, rgba(136,192,208,.06), transparent 60%), var(--bg); }
+
+/* 🧛 DRACULA — moonlit purple with a pink signal */
+:root[data-skin="dracula"] {
+  --bg: #21222C; --surface: #282A36; --text: #F8F8F2; --muted: #8A8DA8;
+  --border: #343746; --border-strong: #44475A;
+  --accent: #BD93F9; --accent-text: #D6BEFC; --accent-soft: #2B2440;
+  --user-bubble: #2E3040;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(189,147,249,.06);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 14px 44px rgba(189,147,249,.12);
+  --accent-2: #FF79C6; --ring: 0 0 0 3.5px rgba(189,147,249,.22);
+}
+:root[data-skin="dracula"] .app { background: radial-gradient(1100px 500px at 50% -10%, rgba(189,147,249,.08), transparent 60%), radial-gradient(700px 400px at 88% 108%, rgba(255,121,198,.05), transparent 60%), var(--bg); }
+:root[data-skin="dracula"] .name { text-shadow: 0 0 14px rgba(189,147,249,.5); }
+
+/* 📜 LINEN — warm paper, sepia ink: a soft, bright light mode */
+:root[data-skin="linen"] {
+  --bg: #F4EFE6; --surface: #FBF8F1; --text: #3B352C; --muted: #8A8172;
+  --border: #E7DFCE; --border-strong: #D6CAB3;
+  --accent: #B0703C; --accent-text: #8F5A2E; --accent-soft: #EFE4D3;
+  --user-bubble: #EDE5D5;
+  --shadow: 0 1px 2px rgba(120,100,70,.08), 0 4px 16px rgba(120,100,70,.06);
+  --shadow-lg: 0 2px 8px rgba(120,100,70,.1), 0 16px 48px rgba(120,100,70,.08);
+  --accent-2: #C98A54; --ring: 0 0 0 3.5px rgba(176,112,60,.2);
+}
+:root[data-skin="linen"] .app { background: var(--bg); }
+
 /* skin picker in settings */
 .skin-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; padding: 4px 6px 6px; }
 .skin-chip { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; padding: 10px 8px; text-align: center; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); transition: all .15s; }
@@ -672,3 +709,9 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .cmdp-hint { font-size: 11px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
 .cmdp-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 14px; }
 .cmdp-foot { padding: 8px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+
+/* ── Collapse long messages ── */
+.msg-collapsed { position: relative; max-height: 360px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent 99%); mask-image: linear-gradient(180deg, #000 74%, transparent 99%); }
+.msg-collapsed .show-more { position: absolute; left: 0; bottom: 6px; }
+.show-more, .show-less { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--border); border-radius: 999px; padding: 4px 13px; font: 600 12px var(--sans); cursor: pointer; margin-top: 8px; }
+.show-more:hover, .show-less:hover { border-color: var(--accent); }
