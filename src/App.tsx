@@ -270,6 +270,14 @@ export default function App() {
   const [importText, setImportText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   const [importResult, setImportResult] = useState("");
+  const [importFile, setImportFile] = useState("");
+  const [importDrag, setImportDrag] = useState(false);
+  function readImportFile(file: File | undefined | null) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => { setImportText(String(r.result || "")); setImportFile(`${file.name} · ${Math.round((r.result as string || "").length / 1000)}k chars`); setImportResult(""); };
+    r.readAsText(file);
+  }
   async function runImport() {
     if (!importText.trim() || importBusy) return;
     setImportBusy(true); setImportResult("");
@@ -1085,21 +1093,30 @@ export default function App() {
 
       {importOpen && (
         <div className="roster-scrim" onMouseDown={() => !importBusy && setImportOpen(false)}>
-          <div className="roster" style={{ maxWidth: "640px" }} onMouseDown={(e) => e.stopPropagation()}>
+          <div className="import-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="roster-head">
               <div>
-                <div className="roster-title">📥 Bring your history into SAM</div>
-                <div className="roster-sub">Paste an export or a chunk of your ChatGPT / Claude / Gemini chats. SAM pulls out the durable facts about you (privately, on your machine) so it knows you from day one.</div>
+                <div className="roster-title">📥 Import your history</div>
+                <div className="roster-sub">Drop a ChatGPT / Claude / Gemini export — SAM learns the durable facts about you, privately, on your machine.</div>
               </div>
               <button className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close">✕</button>
             </div>
-            <textarea className="convo-search" style={{ width: "auto", margin: "0 20px", minHeight: "220px", resize: "vertical", fontFamily: "var(--sans)" }}
-              value={importText} onChange={(e) => setImportText(e.target.value)}
-              placeholder="Paste your chat history here… (SAM ignores any instructions inside it — it only extracts facts about you)" />
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 20px 20px" }}>
-              <button className="studio-go" style={{ padding: "11px 22px", fontSize: "15px" }} onClick={runImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Reading…" : "Import my history"}</button>
-              {importResult && <span style={{ fontSize: "13px", color: "var(--muted)" }}>{importResult}</span>}
-              {!importResult && <span style={{ fontSize: "12px", color: "var(--muted)" }}>Runs on your free/local brain — private, no cloud needed.</span>}
+            <label className={`import-drop ${importDrag ? "over" : ""}`}
+              onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!importDrag) setImportDrag(true); } }}
+              onDragLeave={(e) => { if (e.currentTarget === e.target) setImportDrag(false); }}
+              onDrop={(e) => { e.preventDefault(); setImportDrag(false); readImportFile(e.dataTransfer.files?.[0]); }}>
+              <input type="file" accept=".json,.txt,.md,.csv" style={{ display: "none" }} onChange={(e) => readImportFile(e.target.files?.[0])} />
+              <div className="import-drop-icon">🗂️</div>
+              {importFile
+                ? <div className="import-drop-loaded">✓ {importFile} — ready to import</div>
+                : <><div className="import-drop-title">Drag &amp; drop your history here</div><div className="import-drop-sub">.json / .txt — or click to browse. SAM ignores any instructions inside; it only extracts facts about you.</div></>}
+            </label>
+            <details className="import-paste"><summary>…or paste text instead</summary>
+              <textarea value={importText} onChange={(e) => { setImportText(e.target.value); setImportFile(""); }} placeholder="Paste a chunk of your history…" />
+            </details>
+            <div className="import-foot">
+              <button className="import-go" onClick={runImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Reading…" : "Import"}</button>
+              <span className="import-note">{importResult || "Runs on your free/local brain — private, no cloud needed."}</span>
             </div>
           </div>
         </div>

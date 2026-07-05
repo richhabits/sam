@@ -1,76 +1,104 @@
 import { useState } from "react";
 
-// 🎨 SAM Studio — the Creative Space. A lean generation surface: type a prompt,
-// SAM proxies it (keys hidden) to whatever image provider you've configured, and
-// shows the result. Degrades honestly when no provider key is set. Opened either
-// as a dedicated Electron window (?app=studio) or a browser tab.
-const EXAMPLES = [
-  "A cinematic wide shot of a lone lighthouse in a storm, moody, film grain",
-  "Minimal logo for a coffee brand called 'Ember', warm, vector",
-  "Isometric 3D bedroom, cozy, soft light, pastel palette",
-  "Product shot of a matte-black smartwatch on marble, studio lighting",
+// 🎨 SAM Studio — Higgsfield-style Creative Space, our own slim build.
+// Two-pane: left command center (30%) + right immersive canvas (70%). Visual
+// template cards instead of raw CFG/steps/seed. Routes through SAM's key-hiding
+// /api/creative proxy; degrades honestly when no image key is set.
+
+const STYLES = [
+  { id: "cinematic", label: "Cinematic", emoji: "🎬", suffix: "cinematic, film grain, dramatic lighting, 35mm" },
+  { id: "photoreal", label: "Photoreal", emoji: "📷", suffix: "photorealistic, ultra-detailed, natural light, 8k" },
+  { id: "anime", label: "Anime", emoji: "🌸", suffix: "anime style, cel-shaded, vibrant, studio quality" },
+  { id: "3d", label: "3D Render", emoji: "🧊", suffix: "3D render, octane, soft global illumination, isometric" },
+  { id: "logo", label: "Logo / Vector", emoji: "✏️", suffix: "clean vector logo, flat, minimal, high contrast" },
+  { id: "neon", label: "Cyberpunk", emoji: "🌆", suffix: "cyberpunk, neon, moody, volumetric fog" },
 ];
 
 export default function StudioView() {
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"image" | "video">("image");
+  const [style, setStyle] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  const [media, setMedia] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   async function generate() {
     if (!prompt.trim() || busy) return;
     setBusy(true); setError("");
+    const suffix = STYLES.find((s) => s.id === style)?.suffix;
+    const full = suffix ? `${prompt.trim()}, ${suffix}` : prompt.trim();
     try {
-      // Routes through SAM's /api/creative/* proxy (keys injected server-side).
       const path = mode === "video" ? "videos/generations" : "images/generations";
       const r = await fetch(`/api/creative/${path}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, n: 1 }),
+        body: JSON.stringify({ prompt: full, n: 1 }),
       });
-      if (r.status === 503) { setError("🔑 Studio needs an image key. Add MUAPI_API_KEY (or a free HuggingFace / SiliconFlow key) in Admin → API keys, then try again."); return; }
+      if (r.status === 503) { setError("🔑 Add an image key (MUAPI, or a free HuggingFace / SiliconFlow key) in Admin → API keys."); return; }
       const d = await r.json().catch(() => ({}));
-      // Accept the common response shapes so it works across providers.
       const urls: string[] = (
         d?.data?.map((x: any) => x.url || (x.b64_json && `data:image/png;base64,${x.b64_json}`)) ||
         d?.images || (d?.url ? [d.url] : [])
       ).filter(Boolean);
-      if (urls.length) setImages((g) => [...urls, ...g]);
-      else setError("The provider replied, but not with an image I recognised — check the key/endpoint for your provider.");
-    } catch (e: any) {
-      setError("Couldn't reach the Studio backend: " + (e?.message || e));
-    } finally { setBusy(false); }
+      if (urls.length) setMedia((g) => [...urls, ...g]);
+      else setError("The provider replied without media in a shape I recognised — check the key/endpoint.");
+    } catch (e: any) { setError("Couldn't reach the Studio backend: " + (e?.message || e)); }
+    finally { setBusy(false); }
   }
 
+  const isVideo = (src: string) => /\.(mp4|webm|mov)(\?|$)/i.test(src);
+  const latest = media[0];
+
   return (
-    <div className="studio">
-      <header className="studio-bar">
-        <div className="studio-brand">🎨 SAM <b>Studio</b></div>
-        <div className="studio-sub">Create images & video — keys hidden by SAM's proxy, free-first.</div>
-      </header>
-      <div className="studio-modes">
-        <button className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>🖼️ Image</button>
-        <button className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>🎬 Video</button>
-      </div>
-      <div className="studio-compose">
-        <textarea className="studio-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
-          placeholder={`Describe the ${mode} to create…  (⌘↵ to generate)`} rows={2}
+    <div className="studio2">
+      {/* ── LEFT: command center ── */}
+      <aside className="st-panel">
+        <div className="st-brand">🎨 SAM <b>Studio</b></div>
+
+        <div className="st-tabs">
+          <button className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>Image</button>
+          <button className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>Video</button>
+        </div>
+
+        <div className="st-label">Style</div>
+        <div className="st-styles">
+          {STYLES.map((s) => (
+            <button key={s.id} className={`st-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(style === s.id ? "" : s.id)}>
+              <span className="st-style-emoji">{s.emoji}</span>{s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="st-label">Prompt</div>
+        <textarea className="st-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
+          placeholder={`Describe the ${mode}…  (⌘↵ to generate)`}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }} autoFocus />
-        <button className="studio-go" onClick={generate} disabled={busy || !prompt.trim()}>{busy ? "Generating…" : "Generate"}</button>
-      </div>
-      {images.length === 0 && !busy && (
-        <div className="studio-chips">{EXAMPLES.map((ex) => (
-          <button key={ex} className="studio-chip" onClick={() => setPrompt(ex)}>{ex}</button>
-        ))}</div>
-      )}
-      {error && <div className="studio-error">{error}</div>}
-      <div className="studio-gallery">
-        {images.length === 0 && !busy && <div className="studio-empty">Your creations will appear here.</div>}
-        {busy && <div className="studio-skeleton" />}
-        {images.map((src, i) => (/\.(mp4|webm|mov)(\?|$)/i.test(src)
-          ? <video key={i} src={src} controls className="studio-img" />
-          : <img key={i} src={src} alt="generated" className="studio-img" />))}
-      </div>
+
+        {error && <div className="st-error">{error}</div>}
+
+        <button className="st-generate" onClick={generate} disabled={busy || !prompt.trim()}>
+          {busy ? "GENERATING…" : "GENERATE"}
+        </button>
+      </aside>
+
+      {/* ── RIGHT: immersive canvas ── */}
+      <main className="st-canvas">
+        <div className="st-stage">
+          {busy && !latest && <div className="st-loading">Conjuring your {mode}…</div>}
+          {!busy && !latest && <div className="st-hint">Your canvas awaits. Pick a style, write a prompt, hit <b>GENERATE</b>.</div>}
+          {latest && (isVideo(latest)
+            ? <video src={latest} controls autoPlay loop className="st-hero" />
+            : <img src={latest} alt="" className="st-hero" />)}
+        </div>
+        {media.length > 1 && (
+          <div className="st-carousel">
+            {media.map((src, i) => (
+              <button key={i} className={`st-thumb ${i === 0 ? "on" : ""}`} onClick={() => setMedia((m) => [src, ...m.filter((x) => x !== src)])}>
+                {isVideo(src) ? <video src={src} muted /> : <img src={src} alt="" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
