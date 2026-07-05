@@ -112,7 +112,7 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 ## ⚙️ Brains / infra
 91. ✅ Real memory recall (recent exchanges → context)
 92. ✅ Semantic memory search (embeddings — live)
-93. ⬜ ROMEO HQ drive ingestion (knows your docs)
+93. ✅ Drive/docs ingestion (knows your docs — `ingest_folder` any drive/folder, incremental, recalled by meaning at chat time)
 94. ✅ Per-brand accent/theme (reskin)
 95. ✅ Streaming tokens end-to-end
 96. ✅ Usage/cost transparency panel (Dashboard)

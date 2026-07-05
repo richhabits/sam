@@ -3,6 +3,13 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **SAM knows your documents (roadmap #93 — the 100th item, board complete 🏁)** — point SAM at any folder or
+  drive ("index my drive") and it walks it, extracts text (md/txt/pdf/docx/csv/json/html), chunks + embeds it
+  into the vault (`docs` tables in memory.db, same free embedding lanes + model-pinning as memory), and recalls
+  the best passages by meaning in every chat — source file cited. INCREMENTAL: re-runs skip unchanged files, so
+  a huge drive is indexed in cheap passes (per-run file cap, junk/system dirs skipped, size caps). New tools:
+  `ingest_folder` (ask-first — uses embedding quota) · `search_docs` · `docs_library` · `forget_docs`.
+  `/api/status` shows the library size. Fully offline test suite (8 tests, mocked embeddings — no quota).
 - **Hardened to production-grade** — full 4-dimension audit (bugs · efficiency · integrity · hygiene): fixed a
   Private-mode→cloud fallthrough, a swarm lost-update race, memory-loss on embedding-provider rotation, request
   hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
