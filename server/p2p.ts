@@ -26,6 +26,13 @@ let bonjour: Bonjour | null = null;
 const NODE_ID = `sam-${hostname()}-${Math.floor(Math.random() * 10000)}`;
 const P2P_PORT = Number(process.env.P2P_PORT || 8788);
 
+// P2P is OFF by default: it binds to the LAN and lets peers drive this SAM's
+// agent loop, so it must be explicitly opted into AND authenticated. Enable with
+// SAM_P2P=1 and share SAM_P2P_TOKEN with the machines you trust. Without a token,
+// incoming tasks are refused (discovery/ping still work).
+export const P2P_ENABLED = /^(1|true|on|yes)$/i.test(process.env.SAM_P2P || "");
+const P2P_TOKEN = process.env.SAM_P2P_TOKEN || "";
+
 // ── Discovery ────────────────────────────────────────────────
 
 export function startP2PDiscovery() {
@@ -91,7 +98,7 @@ export async function dispatchToPeer(
   try {
     const res = await fetch(`http://${peer.ip}:${peer.port}/p2p/task`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-sam-p2p-token": P2P_TOKEN },
       body: JSON.stringify({ from: NODE_ID, message, project }),
       signal: AbortSignal.timeout(120_000), // 2 min max
     });
@@ -136,8 +143,12 @@ export function startP2PServer(
     res.json({ id: NODE_ID, name: hostname(), ts: Date.now() });
   });
 
-  // Receive a task from another SAM
+  // Receive a task from another SAM — token-gated: this runs our agent loop, so an
+  // unauthenticated LAN caller must never reach it.
   p2p.post("/p2p/task", async (req, res) => {
+    if (!P2P_TOKEN || req.get("x-sam-p2p-token") !== P2P_TOKEN) {
+      return res.status(403).json({ ok: false, error: "unauthorized peer" });
+    }
     const { from, message, project } = req.body || {};
     if (!message?.trim()) return res.status(400).json({ ok: false, error: "empty" });
     console.log(`  📨 P2P task from ${from || "unknown"}: ${message.slice(0, 80)}…`);
