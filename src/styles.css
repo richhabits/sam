@@ -728,3 +728,8 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 :root[data-fontsize="large"] .bubble, :root[data-fontsize="large"] .md { font-size: 18px; line-height: 1.68; }
 :root[data-fontsize="large"] .welcome .hello-sub, :root[data-fontsize="large"] .chip { font-size: 17px; }
 :root[data-fontsize="compact"] .bubble, :root[data-fontsize="compact"] .md { font-size: 14.5px; line-height: 1.5; }
+
+/* ── Drag-drop files onto the composer ── */
+.composer { position: relative; }
+.composer.drag-over { outline: 2px dashed var(--accent); outline-offset: -6px; border-radius: var(--radius); }
+.drop-hint { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-soft) 80%, transparent); color: var(--accent-text); font-weight: 700; font-size: 15px; border-radius: var(--radius); backdrop-filter: blur(2px); pointer-events: none; }

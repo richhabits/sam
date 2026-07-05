@@ -195,6 +195,7 @@ export default function App() {
   const toggleExpand = (i: number) => setExpanded((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const [convoSearch, setConvoSearch] = useState("");
   const [fontSize, setFontSize] = useState(() => { try { return localStorage.getItem("sam.fontsize") || "normal"; } catch { return "normal"; } });
+  const [dragOver, setDragOver] = useState(false);
   useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
@@ -844,7 +845,11 @@ export default function App() {
         {started && !atBottom && <button className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
       </main>
 
-      <footer className="composer">
+      <footer className={`composer ${dragOver ? "drag-over" : ""}`}
+        onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!dragOver) setDragOver(true); } }}
+        onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}>
+        {dragOver && <div className="drop-hint">📎 Drop files or photos to attach</div>}
         {attachments.length > 0 && (
           <div className="attach-row">
             {attachments.map((a, i) => (
@@ -870,6 +875,7 @@ export default function App() {
           <button className="plus" onClick={() => fileRef.current?.click()} title="Add files or photos" aria-label="Add attachment">+</button>
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+            onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => dt.items.add(f)); onFiles(dt.files); } }}
             placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
           <button className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
           <button className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>
