@@ -107,13 +107,13 @@ export async function getProactive(): Promise<{ items: { type: string; text: str
   try { const r = await fetch("/api/proactive"); return await r.json(); } catch { return { items: [], nudges: [] }; }
 }
 
-// The Team — SSE: emits plan → agent-start → agent-done → final.
-export async function streamTeam(message: string, projectId: string | undefined, onEvent: (e: any) => void): Promise<void> {
-  const res = await fetch("/api/team", {
+// The Team / The Ninjas — SSE: emits plan → agent-start → agent-done → final.
+export async function streamTeam(message: string, projectId: string | undefined, onEvent: (e: any) => void, kind: "team" | "ninjas" = "team"): Promise<void> {
+  const res = await fetch(kind === "ninjas" ? "/api/ninjas" : "/api/team", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, projectId, user: USER }),
   });
-  if (!res.ok || !res.body) throw new Error("team failed");
+  if (!res.ok || !res.body) throw new Error(kind + " failed");
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
   for (;;) {
     const { done, value } = await reader.read(); if (done) break;

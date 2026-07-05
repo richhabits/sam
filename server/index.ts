@@ -22,7 +22,8 @@ import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges } from "./proactive.ts";
-import { runTeam, SPECIALISTS } from "./agents.ts";
+import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
+import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import {
@@ -197,6 +198,8 @@ app.post("/api/command", async (req, res) => {
   // Photos → free Gemini vision (no tool loop needed to look at an image).
   if (images.length) {
     let prompt = message || "Look at this and tell me what's useful.";
+    const pc = peopleContext();
+    if (pc) prompt = `${pc}\n\n${prompt}`;   // so SAM recognises your people (and flags strangers)
     if (texts.length) prompt += "\n\n" + texts.map((t) => `[File: ${t.name}]\n${t.text}`).join("\n\n");
     const v = await runVision(system, prompt, images.map((im) => ({ mime: im.mime || "image/jpeg", data: String(im.data).replace(/^data:[^,]+,/, "") })));
     logExchange({ user: (message || "[photo]"), sam: v.text, skill: skill?.id, project: projectId, provider: v.provider });
@@ -377,9 +380,13 @@ app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), eve
 // ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
 app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges: listNudges() }));
 
-// ── The Team: SAM assembles specialists, runs them in parallel, synthesises (SSE) ──
-app.get("/api/team/roster", (_req, res) => res.json(SPECIALISTS));
-app.post("/api/team", async (req, res) => {
+// ── People SAM knows by sight (local, private) ──
+app.get("/api/people", (_req, res) => res.json(listPeople()));
+app.post("/api/people", (req, res) => { const { name, look, relation } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation)); });
+
+// ── The Team + The Ninjas: parallel specialists, synthesised (SSE) ──
+app.get("/api/team/roster", (_req, res) => res.json({ crew: SPECIALISTS, ninjas: NINJAS }));
+async function runSquad(kind: "team" | "ninjas", req: any, res: any) {
   const { message, projectId, user } = req.body as { message: string; projectId?: string; user?: User };
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -387,14 +394,15 @@ app.post("/api/team", async (req, res) => {
   const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
   try {
     const system = buildSystem(routeSkill(message, SKILLS)?.body || "", projectId, user, "");
-    const text = await runTeam(message, (process.env.DEFAULT_TIER as Tier) || "free", system, send);
-    logExchange({ user: message, sam: text, skill: "team", project: projectId, provider: "team" });
-  } catch (e: any) {
-    send({ type: "final", text: "The team hit a snag: " + (e?.message || e) });
-  }
+    const run = kind === "ninjas" ? runNinjas : runTeam;
+    const text = await run(message, (process.env.DEFAULT_TIER as Tier) || "free", system, send);
+    logExchange({ user: `[${kind}] ${message}`, sam: text, skill: kind, project: projectId, provider: kind });
+  } catch (e: any) { send({ type: "final", text: `The ${kind} hit a snag: ` + (e?.message || e) }); }
   send({ type: "end" });
   res.end();
-});
+}
+app.post("/api/team", (req, res) => runSquad("team", req, res));
+app.post("/api/ninjas", (req, res) => runSquad("ninjas", req, res));
 
 app.get("/api/update-check", async (_req, res) => {
   try {
