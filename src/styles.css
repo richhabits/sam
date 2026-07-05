@@ -722,3 +722,8 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .code-wrap:hover .code-copy { opacity: .9; }
 .code-copy:hover { opacity: 1; color: var(--accent-text); border-color: var(--accent); }
 .code-wrap:hover pre.code[data-lang]::before { opacity: 0; }
+
+/* ── Chat search ── */
+.convo-search { width: calc(100% - 24px); margin: 0 12px 8px; font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 9px 12px; }
+.convo-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.convo-empty { list-style: none; padding: 14px 12px; color: var(--muted); font-size: 13px; }
