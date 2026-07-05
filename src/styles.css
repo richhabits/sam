@@ -968,3 +968,9 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .ctx-ic { width: 16px; text-align: center; font-size: 13px; }
 .ctx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); flex: none; }
 .ctx-dot.on { background: #22C55E; box-shadow: 0 0 8px #22C55E; }
+
+/* Drag a chat into a folder */
+.side-list li[draggable] .side-open { cursor: grab; }
+.side-list li.dragging { opacity: .4; }
+.side-folder.droppable { border-style: dashed; border-color: var(--accent); }
+.side-folder.droppable:hover { background: var(--accent-soft); color: var(--accent-text); box-shadow: 0 0 0 3px var(--accent-soft); }

@@ -197,6 +197,7 @@ export default function App() {
   const [convos, setConvos] = useState<Convo[]>(init.convos);
   const [folders, setFolders] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("sam.folders") || "[]"); } catch { return []; } });
   const [folderFilter, setFolderFilter] = useState("");
+  const [dragChat, setDragChat] = useState("");   // id of the chat being dragged into a folder
   useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch {} }, [folders]);
   function addFolder() { const n = window.prompt("New folder name")?.trim(); if (n && !folders.includes(n)) setFolders((f) => [...f, n]); }
   function moveToFolder(id: string, folder: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, folder: folder || undefined } : c))); }
@@ -842,15 +843,22 @@ export default function App() {
       <aside className="side">
         <div className="side-head"><span className="side-title">Chats</span><button className="side-new" onClick={newChat} title="New chat">＋</button></div>
         <div className="side-folders">
-          <button className={`side-folder ${!folderFilter ? "on" : ""}`} onClick={() => setFolderFilter("")}>All</button>
+          <button className={`side-folder ${!folderFilter ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter("")}
+            onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
+            onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) moveToFolder(id, ""); setDragChat(""); }}>All</button>
           {folders.map((f) => (
-            <button key={f} className={`side-folder ${folderFilter === f ? "on" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}>📁 {f}</button>
+            <button key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
+              onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
+              onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}>📁 {f}</button>
           ))}
           <button className="side-folder add" onClick={addFolder} title="New folder">＋</button>
         </div>
         <ul className="side-list">
           {convos.filter((c) => !folderFilter || c.folder === folderFilter).map((c) => (
-            <li key={c.id} className={c.id === activeId ? "active" : ""}>
+            <li key={c.id} className={`${c.id === activeId ? "active" : ""} ${dragChat === c.id ? "dragging" : ""}`}
+              draggable
+              onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); e.dataTransfer.effectAllowed = "move"; setDragChat(c.id); }}
+              onDragEnd={() => setDragChat("")}>
               <button className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
               {folders.length > 0 && (
                 <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => moveToFolder(c.id, e.target.value)} title="Move to folder">
