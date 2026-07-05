@@ -88,8 +88,13 @@ function ProgressTracker({ steps, answering }: { steps: string[]; answering: boo
 // Compact completed journey for finished/paused messages (icons, no animation).
 function TraceStrip({ steps }: { steps: string[] }) {
   return (
-    <div className="trace">
-      {steps.map((t, j) => <div key={j} className="trace-line"><span className="tico-sm">{stepIcon(t)}</span> {traceLine(t.replace(/^✓\s*/, ""))}</div>)}
+    <div className="tracker">
+      {steps.map((t, j) => (
+        <div key={j} className="tstep done">
+          <span className="tdot"><span className="tico">{stepIcon(t)}</span></span>
+          <span className="tlabel">{traceLine(t.replace(/^✓\s*/, ""))}</span>
+        </div>
+      ))}
     </div>
   );
 }
