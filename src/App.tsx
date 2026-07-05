@@ -264,6 +264,7 @@ export default function App() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const recRef = useRef<any>(null);
 
   useEffect(() => {
     getProjects().then(setProjects).catch(() => {});
@@ -352,14 +353,22 @@ export default function App() {
   // Voice input — cross-platform, browser-native (no install, free).
   function toggleVoice() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { sysNote("Voice input needs Chrome. Everything else works in any browser."); return; }
-    if (listening) { setListening(false); return; }
-    const rec = new SR(); rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1;
-    rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((v) => (v ? v + " " : "") + t); };
+    if (!SR) { sysNote("🎤 Voice input needs Chrome or Edge. Everything else works in any browser."); return; }
+    if (listening) { try { recRef.current?.stop(); } catch {} setListening(false); return; }
+    const rec = new SR(); recRef.current = rec;
+    rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((v) => (v ? v + " " : "") + t); inputRef.current?.focus(); };
     rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    setListening(true); rec.start();
-    inputRef.current?.focus();
+    rec.onerror = (e: any) => {
+      setListening(false);
+      const err = e?.error;
+      if (err === "not-allowed" || err === "service-not-allowed") sysNote("🎤 Mic is blocked. Click the camera/lock icon in your browser's address bar → allow the Microphone, then hit 🎤 again.");
+      else if (err === "audio-capture") sysNote("🎤 No microphone found — check it's plugged in and selected in your system sound settings.");
+      else if (err === "network") sysNote("🎤 Voice recognition needs internet (Chrome transcribes audio via Google). Check your connection.");
+      // "no-speech"/"aborted" are normal — stay quiet.
+    };
+    try { setListening(true); rec.start(); inputRef.current?.focus(); }
+    catch { setListening(false); sysNote("🎤 Couldn't start the mic — try again, or check the browser's mic permission."); }
   }
   function speakText(text: string) { ttsSpeak(text); }
 
