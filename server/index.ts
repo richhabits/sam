@@ -432,6 +432,22 @@ app.get("/api/vault/log", (_req, res) => res.json(recentLog(12)));
 app.get("/api/vault/graph", (_req, res) => res.json(buildGraph()));
 app.get("/api/vault/stats", (_req, res) => res.json(vaultStats()));
 
+app.get("/api/voice/token", async (_req, res) => {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return res.status(401).json({ error: "No OPENAI_API_KEY" });
+  try {
+    const r = await fetch("https://api.openai.com/v1/realtime/sessions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-realtime-preview-2024-12-17",
+        voice: "ash", // Ash is a great agent voice
+      })
+    });
+    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    res.json(await r.json());
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 // ── Self-update: SAM keeps every user's copy in sync with the repo ──
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function git(cmd: string, timeout = 8000): Promise<string> {
