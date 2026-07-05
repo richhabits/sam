@@ -189,39 +189,49 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
   emit({ type: "plan", plan: plan.map((p) => { const s = byId(p.specialist)!; return { id: p.id, specialist: p.specialist, name: s.name, emoji: s.emoji, task: p.task, dependsOn: p.dependsOn }; }) });
 
   const results: { s: Specialist; task: string; output: string }[] = [];
+
+  // Break any dependency cycle up front (a bad plan could make t1↔t2 deadlock).
+  const idSet = new Set(plan.map((p) => p.id));
+  const reaches = (from: string, target: string, seen = new Set<string>()): boolean => {
+    if (from === target) return true;
+    if (seen.has(from)) return false;
+    seen.add(from);
+    const it = plan.find((p) => p.id === from);
+    return !!it && (it.dependsOn || []).some((d) => reaches(d, target, seen));
+  };
+  const deps = new Map<string, string[]>();
+  for (const item of plan) deps.set(item.id, (item.dependsOn || []).filter((d) => d !== item.id && idSet.has(d) && !reaches(d, item.id)));
+
+  // Create a deferred promise for EVERY task FIRST, so a task can depend on one
+  // that appears later in the plan (forward reference) without silently losing it.
   const taskPromises = new Map<string, Promise<string>>();
+  const settle = new Map<string, (v: string) => void>();
+  for (const item of plan) taskPromises.set(item.id, new Promise<string>((r) => settle.set(item.id, r)));
 
-  for (const item of plan) {
-    const runner = async () => {
-      // 1. Wait for dependencies
-      const depOutputs: string[] = [];
-      for (const dep of item.dependsOn) {
-        if (taskPromises.has(dep)) {
-          depOutputs.push(`=== Output from ${dep} ===\n${await taskPromises.get(dep)}`);
-        }
-      }
-      const depContext = depOutputs.length ? `\n\n## DEPENDENCY OUTPUTS:\n${depOutputs.join("\n\n")}` : "";
+  const runners = plan.map((item) => (async () => {
+    // 1. Wait for dependencies (resolvable regardless of plan order)
+    const depOutputs: string[] = [];
+    for (const dep of deps.get(item.id)!) depOutputs.push(`=== Output from ${dep} ===\n${await taskPromises.get(dep)}`);
+    const depContext = depOutputs.length ? `\n\n## DEPENDENCY OUTPUTS:\n${depOutputs.join("\n\n")}` : "";
 
-      // 2. Run agent
-      const s = byId(item.specialist)!;
-      emit({ type: "agent-start", id: s.id, name: s.name, emoji: s.emoji, task: item.task });
-      const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, at world-class level. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
-      
-      let output = "";
-      try { 
-        const r = await runAgent(sys, item.task, tier); 
-        output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`; 
-      }
-      catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
-      
-      emit({ type: "agent-done", id: s.id, name: s.name, emoji: s.emoji, output });
-      results.push({ s, task: item.task, output });
-      return output;
-    };
-    taskPromises.set(item.id, runner());
-  }
+    // 2. Run agent
+    const s = byId(item.specialist)!;
+    emit({ type: "agent-start", id: item.id, name: s.name, emoji: s.emoji, task: item.task });
+    const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, at world-class level. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
 
-  await Promise.allSettled(Array.from(taskPromises.values()));
+    let output = "";
+    try {
+      const r = await runAgent(sys, item.task, tier);
+      output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`;
+    } catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
+
+    emit({ type: "agent-done", id: item.id, name: s.name, emoji: s.emoji, output });
+    results.push({ s, task: item.task, output });
+    settle.get(item.id)!(output);
+    return output;
+  })());
+
+  await Promise.allSettled(runners);
 
   // SAM synthesises the crew's work into one answer.
   const synthSys = `${baseSystem}\n\nYour specialists just did the work below. Combine it into ONE clear, punchy answer for the user — lead with the outcome, weave the pieces together, briefly credit the crew. Don't just list their outputs; synthesise.`;
@@ -234,7 +244,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 // 🥷 Deploy the Ninjas: Hawk hunts problems → Reaper & Chaser deal with them → hit-list.
 export async function runNinjas(target: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
   const hawk = NINJAS[0];
-  emit({ type: "plan", plan: NINJAS.map((n) => ({ specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
+  emit({ type: "plan", plan: NINJAS.map((n) => ({ id: n.id, specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
 
   // 1) Hawk hunts.
   emit({ type: "agent-start", id: hawk.id, name: hawk.name, emoji: hawk.emoji, task: "hunting problems" });

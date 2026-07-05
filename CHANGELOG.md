@@ -3,12 +3,21 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Hardened to production-grade** — full 4-dimension audit (bugs · efficiency · integrity · hygiene): fixed a
+  Private-mode→cloud fallthrough, a swarm lost-update race, memory-loss on embedding-provider rotation, request
+  hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
+  a 46-test suite + typecheck/selftest/boot CI gates.
+- **World-class brain** — an operating doctrine distilled from the best public system prompts (agentic persistence,
+  prompt-injection defense, verify-before-claiming), plus 78 specialists and a searchable "Meet the team" browser.
+- **UX pass** — ⌘P command palette, ⌘F find-in-chat, 8 skins, syntax highlighting, per-block code-copy, drag-drop
+  + paste, collapse-long messages, quote-reply, reading-progress, export/copy chat, text-size. Landing auto-builds from live code.
+- **128 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
 - **Control-centre Dashboard** — live view of free brains, tools, skills, memory, brands + recent activity.
 - **Listen button** on every message — hear what SAM did out loud (per-message TTS).
 - **Self-update** — SAM checks the repo and shows "new version available → Update now" (git pull). Evolves for free.
 - **Language at setup** — pick your language in onboarding; SAM replies in it.
 - **Auto-setup** — `./setup.sh` does everything (Node check, install, .env, key guidance, start). Paste-proof install docs.
-- **Dev tools** — git diff/log/branches + run npm scripts. 53 tools total.
+- **Dev tools** — git diff/log/branches + run npm scripts.
 - **Living voice mouth** — animated bars that move with SAM's voice (voice listen bug fixed).
 - **Business/Personal minds**, grab-your-world startup, Uber-style progress tracker.
 - **Brain/DNA**: think like the OGs (Apple/Elon/Amazon/Branson/Sugar + MS ethics), Borg mode (learn/adapt/evolve, free-first), builder's instinct (10x in-house).
