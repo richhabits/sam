@@ -22,6 +22,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);   // getUserMedia stream — must be stopped on teardown
 
   // Fallback refs
   const recRef = useRef<any>(null);
@@ -51,6 +52,10 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     try { recRef.current?.stop(); } catch {}
     stopSpeaking();
     pcRef.current?.close();
+    // Closing the RTCPeerConnection does NOT stop the mic track — kill it explicitly
+    // so the browser's recording indicator turns off.
+    try { micStreamRef.current?.getTracks().forEach((t) => t.stop()); } catch {}
+    micStreamRef.current = null;
   }
 
   // ── OPENAI REALTIME WEBRTC ──
@@ -71,6 +76,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       pc.ontrack = e => { audioEl.srcObject = e.streams[0]; };
 
       const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = ms;
       pc.addTrack(ms.getTracks()[0]);
 
       const dc = pc.createDataChannel("oai-events");
