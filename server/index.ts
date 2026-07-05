@@ -242,6 +242,7 @@ app.post("/api/command", async (req, res) => {
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
 
+  try {
   // SPEED: quick chat/drafting skips embedding, recall and routing entirely.
   const fast = !!message && isFastPath(message);
   const qvec = (!fast && message) ? await embedOne(message, true) : null;
@@ -277,6 +278,9 @@ app.post("/api/command", async (req, res) => {
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
   }
   res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
+  }
 });
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
