@@ -480,3 +480,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 :root[data-theme="dark"] .dash-security.clear { background: #0f2417; border-color: #1e4630; color: #86efac; }
 :root[data-theme="dark"] .dash-security.flagged { background: #2a1414; border-color: #4a1e1e; color: #fca5a5; }
 .dash-shield { font-size: 16px; }
+
+/* ── The Team — live crew panel ── */
+.team-panel { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); max-width: 88%; }
+.team-planning { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); padding: 4px 2px; }
+.team-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.team-member { display: flex; align-items: flex-start; gap: 11px; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); transition: all .2s; }
+.team-member.active { border-color: var(--accent); background: var(--accent-soft); }
+.team-member.done { opacity: .82; }
+.team-member.waiting { opacity: .6; }
+.tm-emoji { font-size: 19px; line-height: 1.4; flex: 0 0 auto; }
+.team-member.active .tm-emoji { animation: pulse-e 1.2s ease-in-out infinite; }
+@keyframes pulse-e { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+.tm-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.tm-status { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+.team-member.active .tm-status { color: var(--accent-text); }
+.tm-task { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "skill:new": "node scripts/new-skill.mjs",
-    "prestart": "node scripts/selfupdate.mjs"
+    "prestart": "node scripts/selfupdate.mjs",
+    "ship": "node scripts/ship.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

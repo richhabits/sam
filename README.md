@@ -2,13 +2,11 @@
 
 # S.A.M. — Smart Artificial Mind
 
-**Your private, free, local-first AI assistant that actually *does* things.**
+**A free, private team of AI agents that lives on your Mac, remembers everything, and actually does the work. No API keys required, no cloud, no cost.**
 
-Not a chatbot. A doer. SAM researches, remembers, and takes real action on your Mac —
-web, files, terminal, email, calls, GitHub — with an ask-first safety layer so nothing
-risky happens without your OK.
+Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes real action on your Mac (web, files, terminal, email, calls, GitHub), and when a job's big it assembles a **team of specialist agents** to tackle it in parallel — all running free on your own machine.
 
-`Free by default` · `Runs on your machine` · `6 free AI brains` · `Ask-first safety`
+`Free forever` · `100% local & private` · `6 free AI brains` · `A team of agents` · `Ask-first safe`
 
 </div>
 

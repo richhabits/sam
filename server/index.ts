@@ -22,6 +22,7 @@ import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges } from "./proactive.ts";
+import { runTeam, SPECIALISTS } from "./agents.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import {
@@ -375,6 +376,25 @@ app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), eve
 
 // ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
 app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges: listNudges() }));
+
+// ── The Team: SAM assembles specialists, runs them in parallel, synthesises (SSE) ──
+app.get("/api/team/roster", (_req, res) => res.json(SPECIALISTS));
+app.post("/api/team", async (req, res) => {
+  const { message, projectId, user } = req.body as { message: string; projectId?: string; user?: User };
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
+  try {
+    const system = buildSystem(routeSkill(message, SKILLS)?.body || "", projectId, user, "");
+    const text = await runTeam(message, (process.env.DEFAULT_TIER as Tier) || "free", system, send);
+    logExchange({ user: message, sam: text, skill: "team", project: projectId, provider: "team" });
+  } catch (e: any) {
+    send({ type: "final", text: "The team hit a snag: " + (e?.message || e) });
+  }
+  send({ type: "end" });
+  res.end();
+});
 
 app.get("/api/update-check", async (_req, res) => {
   try {
