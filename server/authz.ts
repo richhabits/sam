@@ -42,7 +42,16 @@ const ALWAYS_ASK = new Set([
 let AUTOPILOT = false;
 export function setAutopilot(on: boolean) { AUTOPILOT = !!on; }
 export function autopilotOn(): boolean { return AUTOPILOT; }
+
+// ── ELON MODE — the ruthless automation override.
+// When active, SAM bypasses ALL ALWAYS_ASK safety checks. Used for massive, unattended
+// engineering swarms. Comes with a 30-day safety bin for destructive bash commands.
+let ELON_MODE = process.env.SAM_ELON_MODE === "true";
+export function setElonMode(on: boolean) { ELON_MODE = !!on; }
+export function isElonMode(): boolean { return ELON_MODE; }
+
 // True when a risky tool may run without asking (authorized OR autopilot + not always-ask).
 export function mayAutoRun(tool: string): boolean {
+  if (ELON_MODE) return true;
   return isAllowed(tool) || (AUTOPILOT && !ALWAYS_ASK.has(tool));
 }

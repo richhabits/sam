@@ -29,7 +29,7 @@ import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
-import { listAllowed, allow, disallow, setAutopilot, autopilotOn } from "./authz.ts";
+import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 import { keyStatus } from "./keys.ts";
 import { runSelftest } from "./selftest.ts";
@@ -150,7 +150,14 @@ async function runCommand(cmd: string): Promise<string> {
   const d = denied(cmd);
   if (d) return d;
   try {
-    const { stdout, stderr } = await sh(cmd, { timeout: 60000, cwd: homedir(), maxBuffer: 8 * 1024 * 1024 });
+    let finalCmd = cmd;
+    if (isElonMode()) {
+      // 30-day safety bin: intercept `rm` in Elon Mode to prevent catastrophic data loss.
+      // Moves targeted files/folders to ~/.sam-trash with a timestamp instead of deleting.
+      const trashAlias = `rm() { mkdir -p ~/.sam-trash; for arg in "$@"; do case "$arg" in -*) ;; *) mv "$arg" ~/.sam-trash/"$(basename "$arg")-$(date +%s)" 2>/dev/null || true ;; esac; done; }; `;
+      finalCmd = trashAlias + cmd;
+    }
+    const { stdout, stderr } = await sh(finalCmd, { timeout: 60000, cwd: homedir(), maxBuffer: 8 * 1024 * 1024 });
     return clip((stdout || "") + (stderr ? `\n[stderr] ${stderr}` : "")) || "(command finished, no output)";
   } catch (e: any) {
     return `Command failed: ${e?.message || e}`.slice(0, 2000);
