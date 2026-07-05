@@ -31,6 +31,10 @@ import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./sc
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
+import { keyStatus } from "./keys.ts";
+import { runSelftest } from "./selftest.ts";
+import { loadSkills } from "./skills.ts";
+import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 
 const sh = promisify(exec);
 
@@ -1348,6 +1352,89 @@ end tell`);
         const { stdout } = await sh(`macocr ${shq(i.image_path)}`);
         return stdout.trim() || "No text found.";
       } catch (e: any) { return `OCR failed. If macOCR isn't installed, run: brew install schappim/macocr/macocr\nError: ${e.message}`; }
+    } },
+  // ─── ADMIN: VAULT ─────────────────────────────────────────────────────────
+  { name: "vault_status", safe: true, description: "Show the Obsidian vault stats: daily note count, project note count, disk path, and recent log entries.", params: "(none)",
+    activity: () => `Checking vault status`, run: async () => {
+      const s = vaultStats();
+      const log = recentLog(5);
+      const lines = [`📁 Vault: ${s.path}`, `  • Daily notes: ${s.dailyNotes}`, `  • Project notes: ${s.projectNotes}`];
+      if (log.length) { lines.push("", "Recent log entries:"); log.forEach((l) => lines.push(`  ${l.time}  ${l.msg}`)); }
+      return lines.join("\n");
+    } },
+  { name: "read_today_log", safe: true, description: "Read today's conversation log from the vault.", params: "(none)",
+    activity: () => `Reading today's vault log`, run: async () => {
+      const entries = recentLog(20);
+      if (!entries.length) return "Nothing logged today yet.";
+      return entries.map((l) => `${l.time}  ${l.msg}`).join("\n");
+    } },
+  { name: "prune_vault", safe: false, description: "Manually purge daily log files older than SAM_LOG_DAYS (default 90 days).", params: "(none)",
+    activity: () => `Pruning old vault logs`, preview: () => `Delete vault daily notes older than 90 days?`,
+    run: async () => { const r = pruneOldLogs(); return `Pruned ${r.removed} old log file${r.removed !== 1 ? "s" : ""}.`; } },
+  // ─── ADMIN: KEY POOL HEALTH ────────────────────────────────────────────────
+  { name: "key_pool_status", safe: true, description: "Live dashboard showing every AI provider's key pool: how many keys are healthy vs cooling down.", params: "(none)",
+    activity: () => `Checking key pool health`, run: async () => {
+      const pools = keyStatus();
+      const active = pools.filter((p) => p.total > 0);
+      if (!active.length) return "No API keys configured. Add *_API_KEYS to .env and restart SAM.";
+      const lines = active.map((p) => {
+        const status = p.healthy === 0 ? "🔴 all cooling" : p.cooling > 0 ? `🟡 ${p.healthy} healthy, ${p.cooling} cooling` : `🟢 ${p.healthy} healthy`;
+        return `  ${p.provider.padEnd(14)} ${status}  (${p.uses} total uses)`;
+      });
+      return `Provider key pool status:\n${lines.join("\n")}`;
+    } },
+  // ─── ADMIN: SELFTEST ──────────────────────────────────────────────────────
+  { name: "run_selftest", safe: true, description: "Run SAM's full production health check: models, vault, tools, agents. Returns green/red per subsystem.", params: "(none)",
+    activity: () => `Running production selftest`, run: async () => {
+      const r = await runSelftest();
+      const lines = [`SAM Selftest — ${r.ok ? "✅ ALL GREEN" : "❌ ISSUES FOUND"} (${r.timestamp})`];
+      const s = r.subsystems;
+      lines.push(`  Models  ${s.models.ok ? "✅" : "⚠️ "}  ${s.models.info}`);
+      lines.push(`  Vault   ${s.vault.ok ? "✅" : "❌"}  ${s.vault.info}`);
+      lines.push(`  Tools   ${s.tools.ok ? "✅" : "❌"}  ${s.tools.count} registered${s.tools.duplicates ? `, ${s.tools.duplicates} duplicates!` : ""}`);
+      lines.push(`  Agents  ${s.agents.ok ? "✅" : "❌"}  ${s.agents.count} registered${s.agents.duplicates ? `, ${s.agents.duplicates} duplicates!` : ""}`);
+      return lines.join("\n");
+    } },
+  // ─── ADMIN: SKILLS ────────────────────────────────────────────────────────
+  { name: "list_skills", safe: true, description: "List all SAM skill packs loaded from /skills — their names, tiers, and trigger keywords.", params: "(none)",
+    activity: () => `Listing skill packs`, run: async () => {
+      const skills = loadSkills();
+      if (!skills.length) return "No skill packs found in /skills directory.";
+      return skills.map((s) => `  [${s.tier}] ${s.name} — triggers: ${s.triggers.join(", ") || "(none)"}`).join("\n");
+    } },
+  // ─── ADMIN: PROJECTS ──────────────────────────────────────────────────────
+  { name: "add_project", safe: false, description: "Add a new brand/project to the Project Registry (writes to vault/brands.json). input: {id, name, status, summary, domain?}.", params: "{id, name, status, summary, domain?}",
+    activity: (i) => `Adding project: ${i.name}`, preview: (i) => `Add project '${i.name}' to vault/brands.json?`,
+    run: async (i) => {
+      try {
+        const fs = await import("node:fs/promises");
+        const brandsPath = resolve(process.cwd(), "vault", "brands.json");
+        let brands: any[] = [];
+        try { brands = JSON.parse(await fs.readFile(brandsPath, "utf8")); } catch { brands = [...PROJECTS]; }
+        if (brands.find((p: any) => p.id === i.id)) return `Project '${i.id}' already exists. Use update_project to change it.`;
+        brands.push({ id: i.id, name: i.name, domain: i.domain, status: i.status || "concept", branch: "ops", summary: i.summary });
+        await fs.mkdir(resolve(process.cwd(), "vault"), { recursive: true });
+        await fs.writeFile(brandsPath, JSON.stringify(brands, null, 2), "utf8");
+        return `Added project '${i.name}'. Restart SAM for it to appear in the project context.`;
+      } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
+  { name: "update_project", safe: false, description: "Update an existing project's status or summary in vault/brands.json. input: {id, status?, summary?, domain?}.", params: "{id, status?, summary?, domain?}",
+    activity: (i) => `Updating project: ${i.id}`, preview: (i) => `Update project '${i.id}'?`,
+    run: async (i) => {
+      try {
+        const fs = await import("node:fs/promises");
+        const brandsPath = resolve(process.cwd(), "vault", "brands.json");
+        let brands: any[] = [];
+        try { brands = JSON.parse(await fs.readFile(brandsPath, "utf8")); } catch { brands = [...PROJECTS]; }
+        const idx = brands.findIndex((p: any) => p.id === i.id);
+        if (idx < 0) return `Project '${i.id}' not found. Use list_projects to see IDs.`;
+        if (i.status) brands[idx].status = i.status;
+        if (i.summary) brands[idx].summary = i.summary;
+        if (i.domain) brands[idx].domain = i.domain;
+        await fs.mkdir(resolve(process.cwd(), "vault"), { recursive: true });
+        await fs.writeFile(brandsPath, JSON.stringify(brands, null, 2), "utf8");
+        return `Updated project '${i.id}'.`;
+      } catch (e: any) { return `Failed: ${e.message}`; }
     } },
 ];
 
