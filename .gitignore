@@ -27,6 +27,7 @@ coverage/
 # os / editor
 .DS_Store
 ._*
+Thumbs.db
 .idea/
 .vscode/
 __pycache__/
