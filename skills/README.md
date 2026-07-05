@@ -51,7 +51,7 @@ Or by hand: `mkdir skills/legal && $EDITOR skills/legal/SKILL.md`.
 
 ## Porting a skill from GitHub / elsewhere
 1. Read what the original does.
-2. Strip its branding — in SAM it's **SAM**, speaking to Romeo.
+2. Strip its branding — in SAM it's **SAM**, speaking to the user.
 3. Map its behaviour into `# playbook` + `## Rules` + `## Output`.
 4. Pick `tier` by cost/quality need; add sharp `triggers`.
 5. Drop the folder in, `npm test`, `npm run dev`, try it.

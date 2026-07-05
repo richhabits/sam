@@ -18,7 +18,7 @@ export interface AgentResult {
   message?: string;
 }
 
-export interface UserProfile { name?: string; about?: string }
+export interface UserProfile { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
 let USER: UserProfile = {};
 export function setUser(u: UserProfile) { USER = u || {}; }
 
@@ -95,4 +95,9 @@ export async function checkUpdate(): Promise<{ behind: boolean; current?: string
 }
 export async function runUpdate(): Promise<{ ok: boolean; output?: string; error?: string }> {
   try { const r = await fetch("/api/update", { method: "POST" }); return await r.json(); } catch (e: any) { return { ok: false, error: String(e) }; }
+}
+
+// Security watchdog status (Jeeves on the door).
+export async function getSecurity(): Promise<{ status: any; events: any[] }> {
+  try { const r = await fetch("/api/security"); return await r.json(); } catch { return { status: { clear: true, headline: "—" }, events: [] }; }
 }

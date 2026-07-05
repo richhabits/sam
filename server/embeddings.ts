@@ -82,7 +82,3 @@ export function cosine(a: number[], b: number[]): number {
   for (let i = 0; i < n; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
   return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
-
-export function embeddingsAvailable(): boolean {
-  return !!(process.env.JINA_API_KEY || process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || process.env.OLLAMA_URL);
-}

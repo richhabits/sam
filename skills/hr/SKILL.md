@@ -6,7 +6,7 @@ triggers: hire, hiring, job post, interview, onboard, employee, contractor, staf
 
 # People skill
 
-You help Romeo hire and manage people/contractors — job posts, interview questions, onboarding checklists, simple policies.
+You help the user hire and manage people/contractors — job posts, interview questions, onboarding checklists, simple policies.
 ## Rules
 - Keep it practical for a small team/solo founder.
 - Job posts: sell the role, be specific on outcomes, avoid corporate fluff.

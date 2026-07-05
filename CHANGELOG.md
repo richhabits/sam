@@ -3,6 +3,16 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Control-centre Dashboard** — live view of free brains, tools, skills, memory, brands + recent activity.
+- **Listen button** on every message — hear what SAM did out loud (per-message TTS).
+- **Self-update** — SAM checks the repo and shows "new version available → Update now" (git pull). Evolves for free.
+- **Language at setup** — pick your language in onboarding; SAM replies in it.
+- **Auto-setup** — `./setup.sh` does everything (Node check, install, .env, key guidance, start). Paste-proof install docs.
+- **Dev tools** — git diff/log/branches + run npm scripts. 53 tools total.
+- **Living voice mouth** — animated bars that move with SAM's voice (voice listen bug fixed).
+- **Business/Personal minds**, grab-your-world startup, Uber-style progress tracker.
+- **Brain/DNA**: think like the OGs (Apple/Elon/Amazon/Branson/Sugar + MS ethics), Borg mode (learn/adapt/evolve, free-first), builder's instinct (10x in-house).
+- **Shipped clean to GitHub** — generic code, personal data in gitignored local files, secret-scanned, proprietary license.
 - **6 free model lanes** (NVIDIA · Groq · Cerebras · Mistral · GitHub Models · Gemini) that
   rotate on rate-limit → never drops to weak local unless ALL are spent. Kills credit-limit issues.
 - **Semantic memory (RAG)** + **embeddings tool/skill routing** (leaner prompts) + **SSE streaming**

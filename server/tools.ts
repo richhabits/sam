@@ -2,7 +2,7 @@
 //  S.A.M. · TOOLS  (THE HANDS)
 //  Every real-world action SAM can take. Each tool declares
 //  whether it's `safe` (runs automatically) or risky (needs
-//  Romeo's OK first — the ask-first safety gate).
+//  the user's OK first — the ask-first safety gate).
 //
 //  100% local / free: uses macOS built-ins (osascript, System
 //  Events, screencapture, open) + Node + fetch. No paid APIs.
@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
+import { logSecurity, securityStatus } from "./security.ts";
 
 const sh = promisify(exec);
 
@@ -63,7 +64,7 @@ function openCmd(target: string): string {
 
 export interface Tool {
   name: string;
-  safe: boolean;                 // true = auto-run, false = ask Romeo first
+  safe: boolean;                 // true = auto-run, false = ask the user first
   description: string;           // shown to the model
   params: string;               // human/model hint for the input shape
   activity: (input: any) => string;   // plain-language "what SAM is doing"
@@ -78,7 +79,10 @@ const HARD_DENY = [
   /\bchmod\s+-R\s+000\b/, /\bsudo\s+rm\b/,
 ];
 function denied(cmd: string): string | null {
-  for (const re of HARD_DENY) if (re.test(cmd)) return `Blocked for safety: "${cmd}" matches a catastrophic-command guard. SAM will never run this.`;
+  for (const re of HARD_DENY) if (re.test(cmd)) {
+    logSecurity("alert", "blocked-command", `Refused a catastrophic command: ${cmd}`, "agent");
+    return `Blocked for safety: "${cmd}" matches a catastrophic-command guard. SAM will never run this.`;
+  }
   return null;
 }
 
@@ -399,7 +403,7 @@ export const TOOLS: Tool[] = [
     activity: () => `Reading the clipboard`, run: clipboardGet },
   { name: "get_datetime", safe: true, description: "Get the current date and time.", params: "(none)",
     activity: () => `Checking the time`, run: async () => nowText() },
-  { name: "get_location", safe: true, description: "Get Romeo's current approximate location (city/region).", params: "(none)",
+  { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
   { name: "notify", safe: true, description: "Show a macOS notification. input: {title?, message}.", params: "{title?, message}",
     activity: (i) => `Sending a notification`, run: (i) => notify(i) },
@@ -410,8 +414,8 @@ export const TOOLS: Tool[] = [
   { name: "search_files", safe: true, description: "Search the Mac for files by name/content (Spotlight). input: query.", params: "query",
     activity: (i) => `Searching your files for “${i.query ?? i}”`, run: (i) => searchFiles(i.query ?? i) },
 
-  // ── GitHub (via the gh CLI Romeo's already logged into) ──
-  { name: "github_repos", safe: true, description: "List Romeo's GitHub repositories (name, visibility, description). input: {limit?}.", params: "{limit?}",
+  // ── GitHub (via the gh CLI the user's already logged into) ──
+  { name: "github_repos", safe: true, description: "List the user's GitHub repositories (name, visibility, description). input: {limit?}.", params: "{limit?}",
     activity: () => `Listing your GitHub repos`,
     run: (i) => gh(`repo list --limit ${Math.min(Number(i?.limit) || 30, 100)}`) },
   { name: "github_repo", safe: true, description: "View a repo's overview + README. input: {repo} e.g. 'owner/repo'.", params: "{repo}",
@@ -445,11 +449,19 @@ export const TOOLS: Tool[] = [
     run: (i) => sh(`cd ${shq(i.dir)} && npm run ${shq(i.script)} 2>&1 | tail -40`, { timeout: 180000 }).then((r: any) => (r.stdout || "(done)").toString().slice(0, 4000)).catch((e: any) => `failed: ${(e?.stderr || e?.message || e).toString().slice(0, 400)}`) },
   { name: "my_socials", safe: true, description: "Show the user's social profiles/links on file (optionally for one brand). input: {brand?}.", params: "{brand?}",
     activity: () => `Pulling up your socials`,
-    run: (i) => {
+    run: async (i) => {
       const s = loadSocials(); const keys = Object.keys(s);
       if (!keys.length) return "No socials on file yet. Add handles in vault/socials.json (or ask me to find them).";
       const pick = i?.brand ? keys.filter((k) => k.toLowerCase().includes(String(i.brand).toLowerCase())) : keys;
       return pick.map((k) => { const links = Object.entries(s[k]).filter(([, v]) => v).map(([p, v]) => `${p}: ${v}`).join(" · "); return `${k} — ${links || "no links on file"}`; }).join("\n");
+    } },
+  { name: "security_check", safe: true, description: "Report SAM's security watchdog — anything dodgy it flagged/blocked (bad commands, unexpected origins), or all-clear.", params: "(none)",
+    activity: () => `Running a security check`,
+    run: async () => {
+      const s = securityStatus();
+      if (s.clear) return "🛡️ All clear — nothing dodgy. No blocked commands, no unexpected access. SAM's watching.";
+      const lines = s.latest.map((e) => `• [${e.at}] ${e.type}: ${e.detail}${e.source ? ` (from ${e.source})` : ""}`).join("\n");
+      return `🛡️ ${s.headline}. ${s.alerts} blocked, ${s.warns} flagged.\nRecent:\n${lines}`;
     } },
   { name: "git_status", safe: true, description: "Show git status of a local repo folder (branch + changed files). input: {dir}.", params: "{dir}",
     activity: (i) => `Checking git status in ${i.dir}`,

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · WORLD  — on startup SAM grabs Romeo's whole operation
+//  S.A.M. · WORLD  — on startup SAM grabs the user's whole operation
 //  so it walks in already knowing his apps, brands and socials.
 //  Kept LEAN: repos are pulled async + cached (never blocks boot),
 //  and only a one-line summary goes into the prompt. Details load
@@ -22,7 +22,7 @@ export interface App { name: string; desc: string; visibility: string; updated?:
 let APPS: App[] = [];
 let grabbedAt = 0;
 
-// ── In-house apps = Romeo's GitHub repos (pulled via gh, cached ~30min) ──
+// ── In-house apps = the user's GitHub repos (pulled via gh, cached ~30min) ──
 export async function grabRepos(force = false): Promise<App[]> {
   if (APPS.length && !force && Date.now() - grabbedAt < 30 * 60_000) return APPS;
   try {
@@ -44,7 +44,7 @@ export function saveSocials(data: Record<string, any>) {
   try { mkdirSync(dirname(SOCIALS_PATH), { recursive: true }); writeFileSync(SOCIALS_PATH, JSON.stringify(data, null, 2)); } catch { /* ignore */ }
 }
 
-// Seed from the brands (website known; handle slots blank for Romeo to fill / SAM to find).
+// Seed from the brands (website known; handle slots blank for the user to fill / SAM to find).
 export function seedSocials(): Record<string, any> {
   const existing = loadSocials();
   if (Object.keys(existing).length) return existing;

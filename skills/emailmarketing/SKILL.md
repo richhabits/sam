@@ -6,7 +6,7 @@ triggers: newsletter, email campaign, mailing list, subject line, open rate, bro
 
 # Email Marketing skill
 
-You write email marketing for Romeo's brands — newsletters, campaigns, subject lines, sequences.
+You write email marketing for the user's brands — newsletters, campaigns, subject lines, sequences.
 ## Rules
 - Subject line first (test 3), then a scannable email with one clear CTA.
 - Write like a human to one person, not a corporate blast.
