@@ -101,3 +101,8 @@ export async function runUpdate(): Promise<{ ok: boolean; output?: string; error
 export async function getSecurity(): Promise<{ status: any; events: any[] }> {
   try { const r = await fetch("/api/security"); return await r.json(); } catch { return { status: { clear: true, headline: "—" }, events: [] }; }
 }
+
+// Proactive — briefs & nudges SAM wants to show you (drained on read).
+export async function getProactive(): Promise<{ items: { type: string; text: string; at: string }[]; nudges: any[] }> {
+  try { const r = await fetch("/api/proactive"); return await r.json(); } catch { return { items: [], nudges: [] }; }
+}

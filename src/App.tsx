@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, AgentResult, Attachment } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -171,9 +171,15 @@ export default function App() {
     checkUpdate().then((u) => u.behind && setUpdate(u)).catch(() => {});
     refreshLog();
     inputRef.current?.focus();
-    // keep the connection dot honest (brain up/down) without any noise
+    // SAM reaching out first — morning brief / due nudges appear as messages.
+    const showProactive = () => getProactive().then((p) => {
+      if (p.items?.length) setMessages((m) => [...m, ...p.items.map((it) => ({ role: "sam" as const, text: it.text, how: it.type === "brief" ? "morning brief" : "nudge", at: now() }))]);
+    }).catch(() => {});
+    showProactive();
+    // keep the connection dot honest + check for proactive messages (light: every 3 min)
     const iv = setInterval(() => getStatus().then(setStatus).catch(() => setStatus(null)), 12000);
-    return () => clearInterval(iv);
+    const pv = setInterval(showProactive, 180000);
+    return () => { clearInterval(iv); clearInterval(pv); };
   }, []);
   useEffect(() => { if (atBottom) msgEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, pending]);
   useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }, [input]);
