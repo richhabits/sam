@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStatus, getLog, getSecurity } from "./lib/api";
+import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm } from "./lib/api";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
 const PROVIDER_LABEL: Record<string, string> = {
@@ -12,12 +12,14 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<any>(null);
   const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [sec, setSec] = useState<any>(null);
+  const [swarms, setSwarms] = useState<Swarm[]>([]);
 
   useEffect(() => {
     const load = () => {
       getStatus().then(setS).catch(() => {});
       getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
       getSecurity().then((d) => setSec(d.status)).catch(() => {});
+      getSwarms().then(setSwarms).catch(() => {});
     };
     load();
     const iv = setInterval(load, 5000);
@@ -70,6 +72,38 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
               <span className="dash-shield">{sec && !sec.clear ? "⚠️" : "🛡️"}</span>
               <span>{sec ? sec.headline : "Checking…"}</span>
             </div>
+
+            {/* swarm monitor */}
+            <div className="dash-sec">🐝 Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>
+            {swarms.length === 0 ? <div className="dash-empty">No swarms yet — use /swarm &lt;goal&gt; to launch one.</div> : (
+              <div className="dash-lanes">
+                {swarms.slice(-6).reverse().map((sw) => (
+                  <div key={sw.id} className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 600 }}>{sw.goal.slice(0, 60)}{sw.goal.length > 60 ? "…" : ""}</span>
+                      <span className={`dash-lane-tier`} style={{ background: sw.status === "done" ? "var(--c-ok)" : sw.status === "error" ? "var(--c-err)" : sw.status === "paused" ? "#f59e0b" : "var(--c-blue)", color: "#fff", padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{sw.status}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                      {sw.agents.map((a) => (
+                        <div key={a.id} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 4, background: a.status === "paused" ? "rgba(245,158,11,0.15)" : a.status === "done" ? "rgba(34,197,94,0.1)" : a.status === "error" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", gap: 2, minWidth: 120 }}>
+                          <span>{a.emoji} {a.name} <span style={{ opacity: 0.5 }}>{a.status}</span></span>
+                          {a.status === "paused" && a.pendingTool && (
+                            <div style={{ marginTop: 4 }}>
+                              <div style={{ fontSize: 11, color: "var(--c-err)", fontWeight: 500 }}>⏸ {a.pendingTool}</div>
+                              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                                <button className="mini" onClick={() => approveSwarmAgent(sw.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
+                                <button className="mini" style={{ opacity: 0.6 }} onClick={() => approveSwarmAgent(sw.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {sw.synthesis && <div style={{ fontSize: 12, marginTop: 6, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6 }}>{sw.synthesis.slice(0, 200)}{sw.synthesis.length > 200 ? "…" : ""}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* activity */}
             <div className="dash-sec">Recent activity</div>
