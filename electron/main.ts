@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,6 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import "../server/index.ts";
 
 let win: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 function createWindow() {
   win = new BrowserWindow({
@@ -30,10 +32,39 @@ function createWindow() {
     // In production, load the built index.html from dist
     win.loadFile(path.join(__dirname, "../dist/index.html"));
   }
+
+  // Hide instead of close to stay alive in background
+  win.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      win?.hide();
+    }
+  });
+}
+
+function createTray() {
+  // Use a native empty icon or a tiny colored dot for the tray
+  // For a real app, you would load an image file here
+  const icon = nativeImage.createEmpty();
+  tray = new Tray(icon);
+  tray.setToolTip('SAM');
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Open SAM', click: () => { win?.show(); win?.focus(); } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => {
+    win?.show();
+    win?.focus();
+  });
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   ipcMain.on("open-studio", () => {
     const studioWin = new BrowserWindow({
@@ -71,12 +102,16 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      win?.show();
     }
   });
 });
 
+app.on("before-quit", () => {
+  isQuitting = true;
+});
+
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  // Overridden to stay alive in background mode
 });
