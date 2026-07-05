@@ -20,6 +20,9 @@ export const SPECIALISTS: Specialist[] = [
   { id: "spark",  name: "Spark",  emoji: "📣", modeledOn: "a viral growth marketer", brief: "Marketing & growth. Hooks, distribution, what spreads and why." },
   { id: "envoy",  name: "Envoy",  emoji: "🤝", modeledOn: "Chris Voss & Richard Branson", brief: "Deals, outreach, negotiation. Calm, persuasive, gets the yes." },
   { id: "judge",  name: "Judge",  emoji: "⚖️", modeledOn: "a ruthless editor & fact-checker", brief: "Review & verify. Catch errors, hallucinations and weak logic; sharpen it before it ships. The quality gate." },
+  { id: "surfer", name: "Surfer", emoji: "🏄‍♂️", modeledOn: "a hardcore web scraper", brief: "Web automation & UI navigation. Launch browsers, click, type, and extract data directly from the DOM." },
+  { id: "scholar", name: "Scholar", emoji: "📚", modeledOn: "an archival researcher", brief: "Document ingestion. Read, extract, and synthesize massive PDFs, Word documents, and offline files." },
+  { id: "hacker", name: "Hacker", emoji: "💻", modeledOn: "a chaotic-good red teamer", brief: "Terminal, network, & cyber. Ping, scan ports, check vulnerabilities, debug raw system logic." },
 ];
 
 // 🥷 THE NINJAS — the problem squad. You point them at something; they find what's
@@ -32,49 +35,85 @@ export const NINJAS: Specialist[] = [
 
 const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id);
 
-// Pull a JSON array of {specialist, task} out of a model reply.
-function parsePlan(text: string): { specialist: string; task: string }[] {
+export type PlanItem = { id: string; specialist: string; task: string; dependsOn: string[] };
+
+// Pull a JSON array of {id, specialist, task, dependsOn} out of a model reply.
+function parsePlan(text: string): PlanItem[] {
   const m = text.match(/\[[\s\S]*\]/);
   if (!m) return [];
   try {
     const arr = JSON.parse(m[0]);
     return Array.isArray(arr)
-      ? arr.filter((x) => x && byId(x.specialist) && x.task).map((x) => ({ specialist: x.specialist, task: String(x.task) })).slice(0, 4)
+      ? arr.filter((x) => x && x.id && byId(x.specialist) && x.task).map((x) => ({
+          id: String(x.id),
+          specialist: String(x.specialist),
+          task: String(x.task),
+          dependsOn: Array.isArray(x.dependsOn) ? x.dependsOn.map(String) : []
+        })).slice(0, 7) // Cap at 7 agents
       : [];
   } catch { return []; }
 }
 
-// Orchestrator: break the request into 2-4 specialist subtasks.
-async function makePlan(request: string, tier: Tier): Promise<{ specialist: string; task: string }[]> {
+// Orchestrator: break the request into a dynamic dependency graph.
+async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
   const roster = SPECIALISTS.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
-  const sys = `You are SAM's orchestrator. Break the user's request into 2-4 focused subtasks and assign each to the ONE best specialist. Only use specialists that genuinely help. Reply with ONLY a JSON array, nothing else: [{"specialist":"<id>","task":"<clear instruction>"}].\n\nSpecialists:\n${roster}`;
+  const sys = `You are SAM's orchestrator. Break the user's request into up to 7 focused subtasks and assign each to the ONE best specialist. 
+You MUST provide a JSON array of tasks. Each task needs an 'id' (e.g. 't1'), a 'specialist', a 'task' description, and an array of 'dependsOn' task IDs if it needs the output of prior tasks. 
+Example: [{"id":"t1","specialist":"scout","task":"search web","dependsOn":[]}, {"id":"t2","specialist":"quill","task":"write report","dependsOn":["t1"]}]
+Reply with ONLY the JSON array.
+
+Specialists:
+${roster}`;
   const r = await runModel(tier, sys, `Request: ${request}\n\nJSON plan:`);
   const plan = parsePlan(r.text);
-  return plan.length ? plan : [{ specialist: "scout", task: request }];   // fallback: one Scout pass
+  return plan.length ? plan : [{ id: "t1", specialist: "scout", task: request, dependsOn: [] }];
 }
 
 export type TeamEvent =
-  | { type: "plan"; plan: { specialist: string; name: string; emoji: string; task: string }[] }
+  | { type: "plan"; plan: { id?: string; specialist: string; name: string; emoji: string; task: string; dependsOn?: string[] }[] }
   | { type: "agent-start"; id: string; name: string; emoji: string; task: string }
   | { type: "agent-done"; id: string; name: string; emoji: string; output: string }
   | { type: "final"; text: string; provider?: string };
 
-// Run the whole team on a request. `baseSystem` = SAM's system prompt (persona/context).
+// Run the whole team on a request using topological dependency execution.
 export async function runTeam(request: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
   const plan = await makePlan(request, tier);
-  emit({ type: "plan", plan: plan.map((p) => { const s = byId(p.specialist)!; return { specialist: p.specialist, name: s.name, emoji: s.emoji, task: p.task }; }) });
+  emit({ type: "plan", plan: plan.map((p) => { const s = byId(p.specialist)!; return { id: p.id, specialist: p.specialist, name: s.name, emoji: s.emoji, task: p.task, dependsOn: p.dependsOn }; }) });
 
-  // Dispatch specialists IN PARALLEL — each a focused agent that can use tools.
-  const results = await Promise.all(plan.map(async (item) => {
-    const s = byId(item.specialist)!;
-    emit({ type: "agent-start", id: s.id, name: s.name, emoji: s.emoji, task: item.task });
-    const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — one of SAM's specialists, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part of the job only, brilliantly. Be concise and concrete. If you need live info, use your tools.`;
-    let output = "";
-    try { const r = await runAgent(sys, item.task, tier); output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`; }
-    catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
-    emit({ type: "agent-done", id: s.id, name: s.name, emoji: s.emoji, output });
-    return { s, task: item.task, output };
-  }));
+  const results: { s: Specialist; task: string; output: string }[] = [];
+  const taskPromises = new Map<string, Promise<string>>();
+
+  for (const item of plan) {
+    const runner = async () => {
+      // 1. Wait for dependencies
+      const depOutputs: string[] = [];
+      for (const dep of item.dependsOn) {
+        if (taskPromises.has(dep)) {
+          depOutputs.push(`=== Output from ${dep} ===\n${await taskPromises.get(dep)}`);
+        }
+      }
+      const depContext = depOutputs.length ? `\n\n## DEPENDENCY OUTPUTS:\n${depOutputs.join("\n\n")}` : "";
+
+      // 2. Run agent
+      const s = byId(item.specialist)!;
+      emit({ type: "agent-start", id: s.id, name: s.name, emoji: s.emoji, task: item.task });
+      const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — one of SAM's specialists, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part of the job only, brilliantly. Be concise and concrete. If you need live info, use your tools.${depContext}`;
+      
+      let output = "";
+      try { 
+        const r = await runAgent(sys, item.task, tier); 
+        output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`; 
+      }
+      catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
+      
+      emit({ type: "agent-done", id: s.id, name: s.name, emoji: s.emoji, output });
+      results.push({ s, task: item.task, output });
+      return output;
+    };
+    taskPromises.set(item.id, runner());
+  }
+
+  await Promise.allSettled(Array.from(taskPromises.values()));
 
   // SAM synthesises the crew's work into one answer.
   const synthSys = `${baseSystem}\n\nYour specialists just did the work below. Combine it into ONE clear, punchy answer for the user — lead with the outcome, weave the pieces together, briefly credit the crew. Don't just list their outputs; synthesise.`;
