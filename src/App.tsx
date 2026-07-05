@@ -833,6 +833,21 @@ export default function App() {
         </div>
       )}
 
+      <div className="shell">
+      <aside className="side">
+        <div className="side-head"><span className="side-title">Chats</span><button className="side-new" onClick={newChat} title="New chat">＋</button></div>
+        <ul className="side-list">
+          {convos.map((c) => (
+            <li key={c.id} className={c.id === activeId ? "active" : ""}>
+              <button className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
+              <button className="side-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
+            </li>
+          ))}
+          {convos.length === 0 && <li className="side-empty">No chats yet — start typing.</li>}
+        </ul>
+        <button className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
+      </aside>
+      <div className="center">
       <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
         const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
         if (!btn) return;
@@ -1044,6 +1059,21 @@ export default function App() {
         </div>
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
+      </div>
+      <aside className="ctx">
+        <div className="ctx-title">Context</div>
+        <div className="ctx-brand">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</div>
+        <div className="ctx-label">Quick actions</div>
+        <button className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>🤝 Assemble the Team</button>
+        <button className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>🥷 Deploy the Ninjas</button>
+        <button className="ctx-act" onClick={openStudio}>🎨 Open Studio</button>
+        <button className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
+        <button className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
+        <button className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
+        <div className="ctx-label">Brains</div>
+        {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-status">{n ? `✓ ${n} free ${n === 1 ? "brain" : "brains"} — rotates, never a limit` : "Local Ollama · free & private"}</div>; })()}
+      </aside>
+      </div>
 
       {historyOpen && (
         <div className="drawer-wrap left" onClick={() => setHistoryOpen(false)}>
