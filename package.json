@@ -13,6 +13,9 @@
     "build": "NODE_OPTIONS=--max-old-space-size=8192 vite build && npm run build:server",
     "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.mjs",
     "build:mac": "npm run build && electron-builder --mac",
+    "build:win": "npm run build && electron-builder --win",
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:all": "npm run build && electron-builder -mwl",
     "start": "npm run build && node dist/server.mjs",
     "start:fast": "node dist/server.mjs",
     "test": "vitest run --exclude 'creative-space/**'",
@@ -54,5 +57,17 @@
     "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^2.1.8",
     "ws": "^8.21.0"
+  },
+  "build": {
+    "appId": "com.hectic.sam",
+    "productName": "SAM",
+    "directories": { "output": "dist-app" },
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
+      "**/node_modules/playwright-core/**"
+    ],
+    "mac": { "target": "dmg", "category": "public.app-category.productivity" },
+    "win": { "target": "nsis" },
+    "linux": { "target": ["AppImage", "deb"], "category": "Utility", "maintainer": "HECTIC" }
   }
 }
