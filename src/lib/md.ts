@@ -38,7 +38,7 @@ export function renderMarkdown(text: string): string {
       if (i % 2 === 1) {
         const lang = (parts[i].match(/^([a-zA-Z0-9+#.]*)\n/) || [, ""])[1] || "";
         const code = escapeHtml(parts[i].replace(/^[a-zA-Z0-9+#.]*\n/, ""));
-        html += `<pre class="code"${lang ? ` data-lang="${lang}"` : ""}><code>${highlight(code)}</code></pre>`;
+        html += `<div class="code-wrap"><button class="code-copy" type="button" aria-label="Copy code">Copy</button><pre class="code"${lang ? ` data-lang="${lang}"` : ""}><code>${highlight(code)}</code></pre></div>`;
       } else html += renderBlock(parts[i]);
     }
     return html;
