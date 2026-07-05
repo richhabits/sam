@@ -154,3 +154,6 @@ export async function getSchedules() { return api<Schedule[]>("/api/schedules");
 export async function addSchedule(command: string, cron: string) { return api<Schedule>("/api/schedules", { method: "POST", body: JSON.stringify({ command, cron }) }); }
 export async function removeSchedule(id: string) { return api<{ok: boolean}>(`/api/schedules/${id}`, { method: "DELETE" }); }
 export async function toggleSchedule(id: string) { return api<Schedule>(`/api/schedules/${id}/toggle`, { method: "POST" }); }
+
+// People SAM knows by sight (face memory).
+export const getPeople = () => fetch("/api/people").then((r) => r.json());
