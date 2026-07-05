@@ -380,7 +380,9 @@ export default function App() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  useEffect(() => { try { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark]);
+  // Dark skins carry their own dark ground — so they must also drive the [data-theme=dark] rules
+  // (syntax colors, badges), not just the manual Dark toggle.
+  useEffect(() => { try { const darkSkin = ["jarvis","ember","stealth","midnight","nord","dracula","aurora"].includes(skin); document.documentElement.setAttribute("data-theme", (dark || darkSkin) ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark, skin]);
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
   useEffect(() => { setUser({ ...profile, mode }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); } catch {} }, [profile, mode]);
