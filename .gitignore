@@ -16,8 +16,7 @@ release/
 vault/daily/*.md
 !vault/daily/.gitkeep
 vault/memory.json
-vault/memory.db
-vault/memory.db-journal
+vault/memory.db*
 vault/authorized.json
 
 # logs & caches
