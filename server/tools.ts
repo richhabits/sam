@@ -18,6 +18,7 @@ import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
 import { logSecurity, securityStatus } from "./security.ts";
 import { addNudge, listNudges, completeNudge } from "./proactive.ts";
+import { addPerson, listPeople } from "./people.ts";
 
 const sh = promisify(exec);
 
@@ -490,6 +491,13 @@ export const TOOLS: Tool[] = [
   { name: "backup_vault", safe: true, description: "Back up SAM's memory vault to a timestamped folder on the Desktop.", params: "(none)",
     activity: () => `Backing up your SAM memory`,
     run: async () => { const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12); const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`); try { await sh(`cp -R ${shq(safePath("./vault"))} ${shq(dest)}`); return `Backed up your vault to ${dest}`; } catch (e: any) { return `Backup failed: ${e?.message}`; } } },
+  // ── People SAM knows by sight ──
+  { name: "remember_person", safe: true, description: "Remember a person by sight. input: {name, look, relation?} — look = short description of their appearance.", params: "{name, look, relation?}",
+    activity: (i) => `Remembering ${i.name}`,
+    run: async (i) => { const p = addPerson(i.name, i.look || "", i.relation); return `Got it — I'll recognise ${p.name}${p.relation ? ` (${p.relation})` : ""} next time I see them.`; } },
+  { name: "who_i_know", safe: true, description: "List the people SAM can recognise by sight.", params: "(none)",
+    activity: () => `Checking who I know`,
+    run: async () => { const l = listPeople(); return l.length ? l.map((p) => `• ${p.name}${p.relation ? ` (${p.relation})` : ""} — ${p.look}`).join("\n") : "I don't know anyone by sight yet. Show me someone and say 'remember this is <name>'."; } },
   { name: "security_check", safe: true, description: "Report SAM's security watchdog — anything dodgy it flagged/blocked (bad commands, unexpected origins), or all-clear.", params: "(none)",
     activity: () => `Running a security check`,
     run: async () => {

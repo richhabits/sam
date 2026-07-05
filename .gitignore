@@ -48,3 +48,5 @@ vault/**/*.md
 # proactive local data
 vault/nudges.json
 vault/proactive-state.json
+
+vault/people.json

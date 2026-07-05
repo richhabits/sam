@@ -144,6 +144,7 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [listening, setListening] = useState(false);
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("sam.dark") === "1"; } catch { return false; } });
+  const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
   const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") === "1"; } catch { return false; } });
   const [profile, setProfile] = useState<Profile>(loadProfile);
@@ -156,6 +157,10 @@ export default function App() {
   const [dashOpen, setDashOpen] = useState(false);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
+  const [guardian, setGuardian] = useState(false);
+  const guardStream = useRef<MediaStream | null>(null);
+  const guardIv = useRef<any>(null);
+  const guardPrev = useRef<Uint8ClampedArray | null>(null);
   const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
   const [updating, setUpdating] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -202,6 +207,7 @@ export default function App() {
   }, [loading]);
 
   useEffect(() => { try { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark]);
+  useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
   useEffect(() => { setUser({ ...profile, mode }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); } catch {} }, [profile, mode]);
 
@@ -248,6 +254,58 @@ export default function App() {
     refreshLog();
   }
 
+  // 🛡️ Guardian — watches the camera. Free/slim: in-browser motion detection gates the
+  // vision call, so SAM only "looks" when something actually moves. Flags people it
+  // doesn't recognise (notification + message + speaks it).
+  function stopGuardian() {
+    if (guardIv.current) { clearInterval(guardIv.current); guardIv.current = null; }
+    guardStream.current?.getTracks().forEach((t) => t.stop());
+    guardStream.current = null; guardPrev.current = null; setGuardian(false);
+  }
+  async function toggleGuardian() {
+    if (guardian) { stopGuardian(); sysNote("🛡️ Guardian off."); return; }
+    try {
+      guardStream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      setGuardian(true);
+      try { if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission(); } catch {}
+      sysNote("🛡️ Guardian is watching. It only looks when something moves — I'll flag anyone I don't recognise. (Uses free vision; keep this tab open.)");
+      const video = document.createElement("video"); video.srcObject = guardStream.current; video.muted = true; await video.play();
+      const small = document.createElement("canvas"); small.width = 32; small.height = 24;
+      const big = document.createElement("canvas");
+      let busy = false;
+      const tick = async () => {
+        if (!guardStream.current || busy) return;
+        try {
+          small.getContext("2d")!.drawImage(video, 0, 0, 32, 24);
+          const cur = small.getContext("2d")!.getImageData(0, 0, 32, 24).data;
+          let moved = false;
+          if (guardPrev.current) {
+            let diff = 0; for (let i = 0; i < cur.length; i += 4) diff += Math.abs(cur[i] - guardPrev.current[i]);
+            moved = diff / (cur.length / 4) > 12;   // mean brightness change threshold
+          }
+          guardPrev.current = new Uint8ClampedArray(cur);
+          if (!moved) return;                        // nothing moved → no vision call (saves quota)
+          busy = true;
+          big.width = video.videoWidth || 640; big.height = video.videoHeight || 480;
+          big.getContext("2d")!.drawImage(video, 0, 0, big.width, big.height);
+          const data = big.toDataURL("image/jpeg", 0.7);
+          const r = await command(
+            "GUARDIAN CHECK. Is there a PERSON in view? If yes and you do NOT recognise them from the people I know, START your reply with 'ALERT' then describe who/where. If it's someone you know, greet them. If no person, reply only 'clear'.",
+            brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "guard.jpg", mime: "image/jpeg", data }]);
+          const txt = (r.text || "").trim();
+          if (/^alert/i.test(txt)) {
+            setMessages((m) => [...m, { role: "sam", text: "🛡️ " + txt, how: "guardian", at: now() }]);
+            try { if ("Notification" in window && Notification.permission === "granted") new Notification("🛡️ SAM Guardian", { body: txt.slice(0, 140) }); } catch {}
+            if (speakReplies) speakText(txt);
+          } else if (txt && !/^clear/i.test(txt)) {
+            setMessages((m) => [...m, { role: "sam", text: txt, how: "guardian", at: now() }]);
+          }
+        } catch {} finally { busy = false; }
+      };
+      guardIv.current = setInterval(tick, 4000);   // sample every 4s; vision only fires on motion
+    } catch { sysNote("Couldn't start Guardian — allow camera access and try again."); }
+  }
+
   // 👁️ SAM looks through the webcam — captures one frame → its vision describes it.
   async function lookThroughCamera() {
     if (loading) return;
@@ -282,27 +340,29 @@ export default function App() {
     if (cmd === "/tools") { setToolsOpen(true); return true; }
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
-    if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6)); return true; }
+    if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6), "team"); return true; }
     if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
+    if (v.toLowerCase().startsWith("/ninjas ")) { runTheTeam(v.slice(8), "ninjas"); return true; }
+    if (cmd === "/ninjas") { sysNote("Deploy the Ninjas 🥷 at a problem: /ninjas <target> — e.g. /ninjas my hectictv repo, or /ninjas my overdue invoices"); return true; }
     if (cmd === "/help") { sysNote("Commands: /team <request> (assemble the AI crew), /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
   }
 
-  // The Team — SAM assembles specialists, runs them in parallel, synthesises.
-  async function runTheTeam(text?: string) {
+  // The Team / The Ninjas — specialists run in parallel, SAM synthesises.
+  async function runTheTeam(text?: string, kind: "team" | "ninjas" = "team") {
     const value = (text ?? input).trim();
     if (!value || loading) return;
     setInput(""); setPending(null);
-    setMessages((m) => [...m, { role: "user", text: "🤝 " + value, at: now() }]);
+    setMessages((m) => [...m, { role: "user", text: (kind === "ninjas" ? "🥷 " : "🤝 ") + value, at: now() }]);
     setLoading(true); setTeam({ crew: [], done: {}, active: {} });
     try {
       await streamTeam(value, brand || undefined, (e) => {
         if (e.type === "plan") setTeam({ crew: e.plan, done: {}, active: {} });
         else if (e.type === "agent-start") setTeam((t) => (t ? { ...t, active: { ...t.active, [e.id]: true } } : t));
         else if (e.type === "agent-done") setTeam((t) => (t ? { ...t, active: { ...t.active, [e.id]: false }, done: { ...t.done, [e.id]: e.output } } : t));
-        else if (e.type === "final") setMessages((m) => [...m, { role: "sam", text: e.text || "", how: "the team", at: now() }]);
-      });
-    } catch { setMessages((m) => [...m, { role: "sam", text: "The team couldn't assemble just now — try again.", at: now() }]); }
+        else if (e.type === "final") setMessages((m) => [...m, { role: "sam", text: e.text || "", how: kind === "ninjas" ? "the ninjas" : "the team", at: now() }]);
+      }, kind);
+    } catch { setMessages((m) => [...m, { role: "sam", text: `The ${kind} couldn't assemble just now — try again.`, at: now() }]); }
     setTeam(null); setLoading(false); inputRef.current?.focus();
   }
   function sysNote(text: string) { setMessages((m) => [...m, { role: "sam", text, at: now() }]); }
@@ -456,7 +516,9 @@ export default function App() {
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
           <button className="icon-btn" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} title="Assemble SAM's team of AI agents">🤝 Team</button>
+          <button className="icon-btn" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }} title="Deploy the Ninjas at a problem">🥷 Ninjas</button>
           <button className="icon-btn" onClick={lookThroughCamera} title="Let SAM see through your camera">👁️ Look</button>
+          <button className={`icon-btn ${guardian ? "on" : ""}`} onClick={toggleGuardian} title="Guardian — watch the camera, flag strangers">{guardian ? "🛡️ Watching" : "🛡️ Guardian"}</button>
           <button className="icon-btn" onClick={() => setToolsOpen(true)} title="What SAM can do">What I can do</button>
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
@@ -486,6 +548,12 @@ export default function App() {
             ))}
             <div className="pop-title" style={{ marginTop: 6 }}>Preferences</div>
             <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
+            <div className="pop-title">Skin</div>
+            <div className="skin-row">
+              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"]].map(([id, label, ic]) => (
+                <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>{ic} {label}</button>
+              ))}
+            </div>
             <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">Read replies aloud</span><span className="pop-opt-sub">{speakReplies ? "On" : "Off"}</span></button>
             <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">🎵 Whistle / clap to wake</span><span className="pop-opt-sub">{wakeOn ? "On — whistle or double-clap for SAM" : "Off"}</span></button>
             <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
