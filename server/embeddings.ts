@@ -10,6 +10,22 @@ import { getKey } from "./keys.ts";
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 
+// Bounded-concurrency mapper — runs at most `limit` promises at once.
+// Prevents CPU/thermal spikes on low-end laptops while still being
+// dramatically faster than sequential loops.
+async function mapConcurrent<T, R>(items: T[], fn: (item: T) => Promise<R>, limit = 8): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let idx = 0;
+  const worker = async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
 export interface Embedded { model: string; vectors: number[][] }
 
 async function viaJina(texts: string[], isQuery: boolean): Promise<Embedded | null> {
@@ -32,17 +48,30 @@ async function viaGemini(texts: string[]): Promise<Embedded | null> {
   const key = getKey("gemini");
   if (!key) return null;
   try {
+    // Batch API: pack up to 100 texts into ONE HTTP round-trip.
+    const BATCH = 100;
     const vectors: number[][] = [];
-    for (const text of texts) {
+    for (let i = 0; i < texts.length; i += BATCH) {
+      const chunk = texts.slice(i, i + BATCH);
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${key}`,
         { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: { parts: [{ text }] }, outputDimensionality: 768 }) }
+          body: JSON.stringify({
+            requests: chunk.map((text) => ({
+              model: "models/gemini-embedding-001",
+              content: { parts: [{ text }] },
+              outputDimensionality: 768,
+            })),
+          }) }
       );
       if (!r.ok) return null;
       const d = await r.json();
-      if (!d?.embedding?.values) return null;
-      vectors.push(d.embedding.values);
+      const embs = d?.embeddings;
+      if (!Array.isArray(embs) || embs.length !== chunk.length) return null;
+      for (const e of embs) {
+        if (!e?.values) return null;
+        vectors.push(e.values);
+      }
     }
     return { model: "gemini-001-768", vectors };
   } catch { return null; }
@@ -50,18 +79,19 @@ async function viaGemini(texts: string[]): Promise<Embedded | null> {
 
 async function viaOllama(texts: string[]): Promise<Embedded | null> {
   try {
-    const vectors: number[][] = [];
-    for (const text of texts) {
+    // Bounded concurrency — 8 parallel requests max (safe for any laptop).
+    const embedModel = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
+    const vectors = await mapConcurrent(texts, async (text) => {
       const r = await fetch(`${OLLAMA_URL}/api/embeddings`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text", prompt: text }),
+        body: JSON.stringify({ model: embedModel, prompt: text }),
       });
       if (!r.ok) return null;
       const d = await r.json();
-      if (!d?.embedding) return null;
-      vectors.push(d.embedding);
-    }
-    return vectors.length ? { model: "nomic", vectors } : null;
+      return d?.embedding as number[] | null;
+    }, 8);
+    if (vectors.some((v) => !v)) return null;
+    return vectors.length ? { model: "nomic", vectors: vectors as number[][] } : null;
   } catch { return null; }
 }
 
