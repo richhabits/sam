@@ -890,3 +890,21 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .import-go { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 12px 28px; font: 700 15px var(--sans); cursor: pointer; }
 .import-go:disabled { background: var(--border-strong); cursor: default; }
 .import-note { font-size: 12.5px; color: var(--muted); }
+
+/* 🌌 AURORA — the Higgsfield/Arc vibe: charcoal glass + orange→purple neon */
+:root[data-skin="aurora"] {
+  --bg: #0A0A0F; --surface: #14141C; --text: #F5F5F7; --muted: #8B8B98;
+  --border: #22222E; --border-strong: #333342;
+  --accent: #FF7A3D; --accent-text: #FF9D6E; --accent-soft: #241612;
+  --user-bubble: #1A1A24;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 20px rgba(168,85,247,.06);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 18px 50px rgba(168,85,247,.12);
+  --accent-2: #A855F7; --ring: 0 0 0 3.5px rgba(255,122,61,.22);
+}
+:root[data-skin="aurora"] .app { background: radial-gradient(1200px 520px at 18% -12%, rgba(255,122,61,.10), transparent 55%), radial-gradient(1000px 520px at 92% 112%, rgba(168,85,247,.13), transparent 55%), var(--bg); }
+:root[data-skin="aurora"] .wordmark { background: linear-gradient(90deg, #FF7A3D, #A855F7); -webkit-background-clip: text; background-clip: text; color: transparent; }
+:root[data-skin="aurora"] .bar { background: rgba(20,20,28,0.6); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); }
+:root[data-skin="aurora"] .row.sam .bubble { background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.08); backdrop-filter: blur(8px); }
+:root[data-skin="aurora"] .composer { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+:root[data-skin="aurora"] .drawer, :root[data-skin="aurora"] .popover { background: rgba(20,20,28,0.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+:root[data-skin="aurora"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent-2); }
