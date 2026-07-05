@@ -710,6 +710,51 @@ end tell`);
         return `Added reminder '${i.text}'.`;
       } catch (e: any) { return `Couldn't add reminder: ${e.message}`; }
     } },
+  { name: "read_apple_mail", safe: true, description: "Read unread emails from Apple Mail on macOS. Returns the sender, subject, date, and body snippet. input: {limit?: number}.", params: "{limit}",
+    activity: () => `Checking Apple Mail inbox`,
+    run: async (i) => {
+      if (!IS_MAC) return "Apple Mail integration only works on macOS.";
+      const limit = i.limit || 5;
+      const script = `
+        tell application "Mail"
+          set unreadMsgs to (messages of inbox whose read status is false)
+          set out to ""
+          set counter to 0
+          repeat with msg in unreadMsgs
+            if counter is ${limit} then exit repeat
+            set out to out & "---" & return
+            set out to out & "From: " & sender of msg & return
+            set out to out & "Subject: " & subject of msg & return
+            set out to out & "Date: " & date sent of msg & return
+            set bodyText to content of msg
+            if (length of bodyText) > 500 then
+              set out to out & "Body: " & (text 1 thru 500 of bodyText) & "..." & return
+            else
+              set out to out & "Body: " & bodyText & return
+            end if
+            set counter to counter + 1
+          end repeat
+          if out is "" then return "No unread emails."
+          return out
+        end tell
+      `;
+      try { return await osa(script); } catch (e: any) { return `Failed to read Mail: ${e.message}`; }
+    } },
+  { name: "draft_apple_mail", safe: false, description: "Draft a new email in Apple Mail (does not send it, just opens the draft window). input: {recipient, subject, body}.", params: "{recipient, subject, body}",
+    activity: (i) => `Drafting email to ${i.recipient}`, preview: (i) => `To: ${i.recipient}\nSubject: ${i.subject}\n\n${i.body}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Apple Mail integration only works on macOS.";
+      const script = `
+        tell application "Mail"
+          set newMsg to make new outgoing message with properties {subject:"${esc(i.subject)}", content:"${esc(i.body)}", visible:true}
+          tell newMsg
+            make new to recipient at end of to recipients with properties {address:"${esc(i.recipient)}"}
+          end tell
+          activate
+        end tell
+      `;
+      try { await osa(script); return "Draft created and opened in Apple Mail."; } catch (e: any) { return `Failed to draft Mail: ${e.message}`; }
+    } },
   { name: "run_shortcut", safe: false, description: "Run an Apple Shortcut by name (HomeKit, Automations, etc). input: {name}.", params: "{name}",
     activity: (i) => `Running Shortcut: ${i.name}`, preview: (i) => `Run Shortcut:\n${i.name}`,
     run: async (i) => {
