@@ -59,6 +59,22 @@ const POOLS: Record<string, KeyPool> = {
   openrouter: readPool("openrouter", "OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"),
   openai: readPool("openai", "OPENAI_API_KEYS", "OPENAI_API_KEY"),
   anthropic: readPool("anthropic", "ANTHROPIC_API_KEYS", "ANTHROPIC_API_KEY"),
+  // New "Invincible" free/cheap providers
+  together: readPool("together", "TOGETHER_API_KEYS", "TOGETHER_API_KEY"),
+  sambanova: readPool("sambanova", "SAMBANOVA_API_KEYS", "SAMBANOVA_API_KEY"),
+  deepseek: readPool("deepseek", "DEEPSEEK_API_KEYS", "DEEPSEEK_API_KEY"),
+  fireworks: readPool("fireworks", "FIREWORKS_API_KEYS", "FIREWORKS_API_KEY"),
+  xai: readPool("xai", "XAI_API_KEYS", "XAI_API_KEY"),
+  huggingface: readPool("huggingface", "HUGGINGFACE_API_KEYS", "HUGGINGFACE_API_KEY"),
+  hyperbolic: readPool("hyperbolic", "HYPERBOLIC_API_KEYS", "HYPERBOLIC_API_KEY"),
+  novita: readPool("novita", "NOVITA_API_KEYS", "NOVITA_API_KEY"),
+  siliconflow: readPool("siliconflow", "SILICONFLOW_API_KEYS", "SILICONFLOW_API_KEY"),
+  glhf: readPool("glhf", "GLHF_API_KEYS", "GLHF_API_KEY"),
+  ai21: readPool("ai21", "AI21_API_KEYS", "AI21_API_KEY"),
+  upstage: readPool("upstage", "UPSTAGE_API_KEYS", "UPSTAGE_API_KEY"),
+  nebius: readPool("nebius", "NEBIUS_API_KEYS", "NEBIUS_API_KEY"),
+  cohere: readPool("cohere", "COHERE_API_KEYS", "COHERE_API_KEY"),
+  perplexity: readPool("perplexity", "PERPLEXITY_API_KEYS", "PERPLEXITY_API_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).
