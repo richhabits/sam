@@ -35,6 +35,7 @@ function save(schedules: Schedule[]) {
 export function listSchedules(): Schedule[] { return load(); }
 
 export function addSchedule(command: string, cron: string): Schedule {
+  if (!parseCron(cron)) throw new Error(`Invalid cron format: ${cron}`);
   const schedules = load();
   const s: Schedule = {
     id: "sch-" + Math.random().toString(36).slice(2, 9),
