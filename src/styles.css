@@ -559,3 +559,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .wm-dot { color: var(--accent); }
 :root[data-skin="jarvis"] .wordmark { text-shadow: 0 0 16px rgba(41,198,246,.6); }
 .tag b { color: var(--accent-text); font-weight: 700; letter-spacing: .01em; }
+
+/* ── Slash-command hints ── */
+.cmd-hints { display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; margin-bottom: 8px; max-height: 260px; overflow-y: auto; }
+.cmd-hint { display: flex; align-items: baseline; gap: 10px; text-align: left; background: none; border: none; padding: 9px 11px; border-radius: 9px; width: 100%; }
+.cmd-hint:hover { background: var(--bg); }
+.ch-cmd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; color: var(--accent-text); min-width: 74px; }
+.ch-desc { font-size: 13px; color: var(--muted); }
