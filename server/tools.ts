@@ -1279,6 +1279,43 @@ end tell`);
       if (!PROJECTS.length) return "No projects in registry.";
       return PROJECTS.map(p => `[${p.id}] ${p.name} (${p.status}) - ${p.summary}`).join("\n");
     } },
+  { name: "add_apple_reminder", safe: false, description: "Add a task to macOS Reminders natively. input: {task}.", params: "{task}",
+    activity: (i) => `Adding reminder: ${i.task}`, preview: (i) => `Add to Reminders: ${i.task}`, run: async (i) => {
+      try {
+        const script = `tell application "Reminders"\nmake new reminder with properties {name:"${String(i.task).replace(/"/g, '\\"')}"}\nend tell`;
+        await osa(script);
+        return `Added "${i.task}" to Reminders.`;
+      } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
+  { name: "list_apple_reminders", safe: true, description: "Read pending tasks for the day from macOS Reminders.", params: "(none)",
+    activity: () => `Reading Reminders`, run: async () => {
+      try {
+        const stdout = await osa(`tell application "Reminders" to get name of every reminder whose completed is false`);
+        const items = stdout.trim().split(", ").filter(Boolean);
+        return items.length ? items.map((x: string) => `- ${x}`).join("\n") : "No pending reminders.";
+      } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
+  { name: "kill_process", safe: false, description: "Force quit a misbehaving app or process by name. input: {process_name}.", params: "{process_name}",
+    activity: (i) => `Killing process ${i.process_name}`, preview: (i) => `Force quit ${i.process_name}?`, run: async (i) => {
+      try {
+        await sh(`pkill -i -f ${shq(i.process_name)}`);
+        return `Terminated process matching "${i.process_name}".`;
+      } catch (e: any) { return `Failed to kill (or not found): ${e.message}`; }
+    } },
+  { name: "kill_port", safe: false, description: "Instantly kill whatever is blocking a specific port. input: {port}.", params: "{port}",
+    activity: (i) => `Killing port ${i.port}`, preview: (i) => `Kill process on port ${i.port}?`, run: async (i) => {
+      try {
+        await sh(`lsof -ti:${Number(i.port)} | xargs kill -9`);
+        return `Killed process on port ${i.port}.`;
+      } catch (e: any) { return `Failed (port might be empty): ${e.message}`; }
+    } },
+  { name: "local_ocr", safe: true, description: "Extract text from a local image file. input: {image_path}.", params: "{image_path}",
+    activity: () => `Extracting text from image`, run: async (i) => {
+      try {
+        const { stdout } = await sh(`macocr ${shq(i.image_path)}`);
+        return stdout.trim() || "No text found.";
+      } catch (e: any) { return `OCR failed. If macOCR isn't installed, run: brew install schappim/macocr/macocr\nError: ${e.message}`; }
+    } },
 ];
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);
