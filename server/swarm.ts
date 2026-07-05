@@ -42,9 +42,17 @@ export interface Swarm {
   tier: string;
 }
 
+// In-memory authoritative store. Concurrent agents all mutate the SAME live
+// objects (single source of truth) instead of each read-modify-writing a fresh
+// disk copy — which is what let one agent's status overwrite another's (the
+// lost-update race that hung multi-agent swarms). Disk is a write-only mirror.
+let CACHE: Swarm[] | null = null;
+
 export function loadSwarms(): Swarm[] {
-  try { if (existsSync(FILE)) return JSON.parse(readFileSync(FILE, "utf8")); } catch {}
-  return [];
+  if (CACHE) return CACHE;
+  try { if (existsSync(FILE)) CACHE = JSON.parse(readFileSync(FILE, "utf8")); } catch {}
+  if (!CACHE) CACHE = [];
+  return CACHE;
 }
 
 function saveSwarms(swarms: Swarm[]) {
@@ -54,6 +62,7 @@ function saveSwarms(swarms: Swarm[]) {
     const finished = swarms.filter((s) => s.status === "done" || s.status === "error").sort((a, b) => b.created - a.created);
     toSave = [...active, ...finished.slice(0, Math.max(0, 50 - active.length))];
   }
+  CACHE = toSave;   // keep the in-memory store authoritative
   try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(toSave, null, 2)); } catch {}
 }
 

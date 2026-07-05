@@ -57,11 +57,21 @@ if (existsSync(OLD_STORE)) {
 // ── CORE LOGIC ──
 
 // Store one atomic fact. Embeds it, skips near-duplicates.
+// The embedding model this vault already uses (most memories). Pin to it so a
+// provider rotation between sessions doesn't orphan everything stored under the
+// old model. `undefined` = not computed yet; `null` = empty vault.
+let _pinned: string | null | undefined = undefined;
+export function pinnedModel(): string | null {
+  if (_pinned !== undefined) return _pinned;
+  try { const row = db.prepare(`SELECT model FROM memories GROUP BY model ORDER BY COUNT(*) DESC LIMIT 1`).get() as { model?: string } | undefined; _pinned = row?.model ?? null; } catch { _pinned = null; }
+  return _pinned;
+}
+
 export async function remember(text: string, kind = "fact"): Promise<boolean> {
   const clean = (text || "").trim();
   if (clean.length < 8) return false;
-  
-  const e = await embedOne(clean, false);
+
+  const e = await embedOne(clean, false, pinnedModel());   // pin to the vault's model
   if (!e) return false; // no embeddings available — skip silently
 
   // Dedup: fetch recent memories with the same model to check for duplicates.
@@ -79,6 +89,7 @@ export async function remember(text: string, kind = "fact"): Promise<boolean> {
   db.prepare(`INSERT INTO memories (id, text, vec, model, kind, ts, hits) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
     id, clean, JSON.stringify(vec), e.model, kind, Date.now(), 0
   );
+  _pinned = e.model;   // once we've written under a model, pin the vault to it
   return true;
 }
 
@@ -125,7 +136,7 @@ export function recallWith(e: { model: string; vec: number[] } | null, k = 5, fl
 
 // Convenience: embed the query then recall (when you don't already have a vector).
 export async function recall(query: string, k = 5, floor = 0.35): Promise<{ id?: string, text: string; score: number }[]> {
-  return recallWith(await embedOne(query, true), k, floor);
+  return recallWith(await embedOne(query, true, pinnedModel()), k, floor);   // pin so recall matches stored memories
 }
 
 export function memoryStats() {

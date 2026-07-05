@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { embed, cosine } from "./embeddings.ts";
+import { pinnedModel } from "./memory.ts";
 import { TOOLS } from "./tools.ts";
 import type { Skill } from "./skills.ts";
 
@@ -23,22 +24,33 @@ export async function buildIndexes(skills: Skill[]): Promise<void> {
   if (built || building) return;
   building = true;
   try {
-    const te = await embed(TOOLS.map((t) => `${t.name}: ${t.description}`), false);
+    // Pin the tool index to the vault's embedding model so ONE query vector serves
+    // both memory recall and tool routing (mixing models = neither matches).
+    const pin = pinnedModel();
+    const te = await embed(TOOLS.map((t) => `${t.name}: ${t.description}`), false, pin);
     if (te?.vectors.length) { model = te.model; toolIdx = TOOLS.map((t, i) => ({ name: t.name, vec: te.vectors[i] })); }
-    const se = await embed(skills.map((s) => `${s.name}. ${s.triggers.join(", ")}`), false);
+    const se = await embed(skills.map((s) => `${s.name}. ${s.triggers.join(", ")}`), false, model || pin);
     if (se?.vectors.length && se.model === model) skillIdx = skills.map((s, i) => ({ id: s.id, vec: se.vectors[i] }));
     built = toolIdx.length > 0;
   } catch { /* routing falls back to keyword + all tools */ }
   building = false;
 }
 
-// Relevant tools for this query vector: core + top-k. Falls back to ALL tools.
-export function selectTools(q: { model: string; vec: number[] } | null, k = 8): string[] {
-  if (!q || q.model !== model || !toolIdx.length) return TOOLS.map((t) => t.name);
-  const top = toolIdx
-    .map((t) => ({ name: t.name, s: cosine(t.vec, q.vec) }))
-    .sort((a, b) => b.s - a.s).slice(0, k).map((x) => x.name);
-  return Array.from(new Set([...CORE, ...top]));
+// Relevant tools for this query vector: core + top-k semantic matches. On a miss
+// (no index yet / model mismatch), falls back to CORE + a keyword-matched subset
+// of the query — NOT all 128 tools, which is a ~5k-token bomb on a free 3B model.
+export function selectTools(q: { model: string; vec: number[] } | null, k = 8, text = ""): string[] {
+  if (q && q.model === model && toolIdx.length) {
+    const top = toolIdx
+      .map((t) => ({ name: t.name, s: cosine(t.vec, q.vec) }))
+      .sort((a, b) => b.s - a.s).slice(0, k).map((x) => x.name);
+    return Array.from(new Set([...CORE, ...top]));
+  }
+  const words = text.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+  const matched = words.length
+    ? TOOLS.filter((t) => { const hay = (t.name + " " + t.description).toLowerCase(); return words.some((w) => hay.includes(w)); }).map((t) => t.name).slice(0, 12)
+    : [];
+  return Array.from(new Set([...CORE, ...matched]));
 }
 
 // Best skill id by semantic similarity (beats keyword on paraphrases). null → no clear match.

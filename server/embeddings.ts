@@ -65,14 +65,27 @@ async function viaOllama(texts: string[]): Promise<Embedded | null> {
   } catch { return null; }
 }
 
+// Route a request to the exact provider that produces a given model tag, so the
+// vault can PIN one embedding model. Mixing models (dims differ) makes older
+// memories unretrievable when the available provider rotates between sessions.
+function viaFor(tag: string, texts: string[], isQuery: boolean): Promise<Embedded | null> {
+  if (tag === "jina-v3-512") return viaJina(texts, isQuery);
+  if (tag === "gemini-001-768") return viaGemini(texts);
+  if (tag === "nomic") return viaOllama(texts);
+  return Promise.resolve(null);
+}
+
 // Embed a batch — returns tagged vectors, or null if no provider available.
-export async function embed(texts: string[], isQuery = false): Promise<Embedded | null> {
+// `prefer` pins to the vault's existing model when set (falls back only if that
+// provider is genuinely down — a switch would silently orphan stored memories).
+export async function embed(texts: string[], isQuery = false, prefer?: string | null): Promise<Embedded | null> {
   if (!texts.length) return { model: "none", vectors: [] };
+  if (prefer) { const p = await viaFor(prefer, texts, isQuery); if (p) return p; }
   return (await viaJina(texts, isQuery)) || (await viaGemini(texts)) || (await viaOllama(texts));
 }
 
-export async function embedOne(text: string, isQuery = false): Promise<{ model: string; vec: number[] } | null> {
-  const r = await embed([text], isQuery);
+export async function embedOne(text: string, isQuery = false, prefer?: string | null): Promise<{ model: string; vec: number[] } | null> {
+  const r = await embed([text], isQuery, prefer);
   return r?.vectors?.[0] ? { model: r.model, vec: r.vectors[0] } : null;
 }
 

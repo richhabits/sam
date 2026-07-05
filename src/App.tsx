@@ -560,9 +560,9 @@ export default function App() {
 
     // Normal message → STREAM tokens live.
     setLive({ text: "", trace: [] });
-    let produced = false;
+    let produced = false, acc = "";
     const onEvent = (e: any) => {
-      if (e.type === "token") { produced = true; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace || [] })); }
+      if (e.type === "token") { produced = true; acc += e.t; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace || [] })); }
       else if (e.type === "tool") { produced = true; setLive((l) => ({ text: l?.text || "", trace: [...(l?.trace || []), e.activity] })); }
       else if (e.type === "pending") { produced = true; setLive(null); setPending({ ...e, message: value, projectId: brand || "", tier: QUALITY_TIER[quality] } as AgentResult); }
       else if (e.type === "done") {
@@ -579,7 +579,10 @@ export default function App() {
         if (err?.name === "AbortError") { setLive(null); break; }
         if (!produced && attempt === 0) { await new Promise((r) => setTimeout(r, 900)); setLive({ text: "", trace: [] }); continue; }
         setLive(null);
-        setMessages((m) => [...m, { role: "sam", text: "I couldn't reach my brain — make sure SAM's running, then try again.", at: now() }]);
+        // If a partial answer already streamed, KEEP it rather than throwing it away.
+        setMessages((m) => [...m, acc.trim()
+          ? { role: "sam" as const, text: acc + "\n\n_(connection dropped mid-reply)_", at: now() }
+          : { role: "sam" as const, text: "I couldn't reach my brain — make sure SAM's running, then try again.", at: now() }]);
         break;
       }
     }
