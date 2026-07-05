@@ -25,6 +25,7 @@ import { startProactive, takePending, listNudges } from "./proactive.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, takeDrop, dropFolderPath } from "./ios.ts";
+import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { addPerson, listPeople, peopleContext } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
@@ -92,8 +93,21 @@ startDropWatcher(async (d) => {
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
       const { desktopNotify } = await import("./proactive.ts") as any;
+      desktopNotify("SAM — iOS Drop Processed", r.text);
     }
   } catch {}
+});
+
+// Scheduler — Recurring background tasks
+startScheduler(async (command: string) => {
+  const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
+  const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
+  if (r.kind === "final" && r.text) {
+    const { desktopNotify } = await import("./proactive.ts") as any;
+    desktopNotify("SAM — Scheduled Task", r.text);
+    return r.text;
+  }
+  return "Finished.";
 });
 
 // Proactive layer: SAM reaches out first — a once-a-day morning brief (composed
@@ -468,6 +482,21 @@ app.post("/api/swarms/approve", async (req, res) => {
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// ── Scheduled Tasks ──
+app.get("/api/schedules", (_req, res) => res.json(listSchedules()));
+app.post("/api/schedules", (req, res) => {
+  const { command, cron } = req.body;
+  if (!command || !cron) return res.status(400).json({ error: "missing command or cron" });
+  res.json(addSchedule(command, cron));
+});
+app.delete("/api/schedules/:id", (req, res) => res.json({ ok: removeSchedule(req.params.id) }));
+app.post("/api/schedules/:id/toggle", (req, res) => res.json(toggleSchedule(req.params.id)));
+
+app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
+app.get("/api/ios/status", (_req, res) => {
+  res.json({ folder: dropFolderPath(), enabled: true });
 });
 
 app.get("/api/update-check", async (_req, res) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm } from "./lib/api";
+import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm, getSchedules, toggleSchedule, removeSchedule, Schedule } from "./lib/api";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
 const PROVIDER_LABEL: Record<string, string> = {
@@ -13,6 +13,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
   const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [sec, setSec] = useState<any>(null);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   useEffect(() => {
     const load = () => {
@@ -20,6 +21,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
       getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
       getSecurity().then((d) => setSec(d.status)).catch(() => {});
       getSwarms().then(setSwarms).catch(() => {});
+      getSchedules().then(setSchedules).catch(() => {});
     };
     load();
     const iv = setInterval(load, 5000);
@@ -100,6 +102,29 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
                       ))}
                     </div>
                     {sw.synthesis && <div style={{ fontSize: 12, marginTop: 6, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6 }}>{sw.synthesis.slice(0, 200)}{sw.synthesis.length > 200 ? "…" : ""}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* schedules monitor */}
+            <div className="dash-sec">⏰ Scheduled Tasks ({schedules.filter(s => s.enabled).length} active)</div>
+            {schedules.length === 0 ? <div className="dash-empty">No scheduled tasks. Use /schedule to add one.</div> : (
+              <div className="dash-lanes">
+                {schedules.map((s) => (
+                  <div key={s.id} className={`dash-lane ${s.enabled ? "on" : ""}`} style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 600 }}>{s.command.slice(0, 60)}{s.command.length > 60 ? "…" : ""}</span>
+                      <span className="dash-lane-tier">{s.cron}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, opacity: 0.7 }}>
+                      <span>Ran {s.runCount} times {s.lastRun && `(last: ${new Date(s.lastRun).toLocaleTimeString()})`}</span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="mini" onClick={() => toggleSchedule(s.id).then(() => getSchedules().then(setSchedules))}>{s.enabled ? "Pause" : "Resume"}</button>
+                        <button className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }} onClick={() => removeSchedule(s.id).then(() => getSchedules().then(setSchedules))}>Delete</button>
+                      </div>
+                    </div>
+                    {s.lastResult && <div style={{ fontSize: 12, marginTop: 2, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>{s.lastResult}</div>}
                   </div>
                 ))}
               </div>
