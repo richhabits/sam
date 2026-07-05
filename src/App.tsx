@@ -683,7 +683,12 @@ export default function App() {
         </div>
       )}
 
-      <main className="chat" ref={chatRef} onScroll={onScroll}>
+      <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
+        const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
+        if (!btn) return;
+        const code = btn.parentElement?.querySelector("code")?.textContent || "";
+        navigator.clipboard.writeText(code).then(() => { btn.textContent = "Copied ✓"; setTimeout(() => { if (btn) btn.textContent = "Copy"; }, 1400); }).catch(() => {});
+      }}>
         {started && messages.some((m) => m.pinned) && (
           <div className="pinned-bar">
             <div className="pb-head"><span className="pb-title">📌 Pinned</span></div>
