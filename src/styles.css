@@ -545,8 +545,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 :root[data-skin="stealth"] .app { background: var(--bg); }
 :root[data-skin="stealth"] .name { letter-spacing: .12em; }
 
+/* 🌙 MIDNIGHT — deep indigo-purple, violet accents, dreamy glow */
+:root[data-skin="midnight"] {
+  --bg: #0A0812; --surface: #110E1C; --text: #E8E2F4; --muted: #8E83A6;
+  --border: #1E1836; --border-strong: #2E264A;
+  --accent: #A78BFA; --accent-text: #C4B5FD; --accent-soft: #1A1430;
+  --user-bubble: #16112A;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(167,139,250,.06);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 14px 44px rgba(167,139,250,.10);
+  --shadow-accent: 0 4px 18px rgba(167,139,250,.30);
+  --accent-2: #C4B5FD; --ring: 0 0 0 3.5px rgba(167,139,250,.22);
+}
+:root[data-skin="midnight"] .app {
+  background:
+    radial-gradient(1100px 500px at 50% -10%, rgba(167,139,250,.09), transparent 60%),
+    radial-gradient(700px 400px at 85% 105%, rgba(139,92,246,.05), transparent 60%), var(--bg);
+}
+:root[data-skin="midnight"] .name { text-shadow: 0 0 14px rgba(167,139,250,.5); }
+:root[data-skin="midnight"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 0 3px var(--accent-soft); }
+:root[data-skin="midnight"] .vm-orb { background: radial-gradient(circle at 40% 35%, #DDD6FE, var(--accent) 55%, #5B21B6); box-shadow: 0 0 60px rgba(167,139,250,.5); }
+
 /* skin picker in settings */
-.skin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 6px 6px; }
+.skin-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; padding: 4px 6px 6px; }
 .skin-chip { font-size: 13px; font-weight: 600; text-align: left; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); transition: all .15s; }
 .skin-chip:hover { border-color: var(--accent); }
 .skin-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
@@ -566,3 +586,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .cmd-hint:hover { background: var(--bg); }
 .ch-cmd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; color: var(--accent-text); min-width: 74px; }
 .ch-desc { font-size: 13px; color: var(--muted); }
+
+/* welcome tip of the day */
+.tip { font-size: 14px; color: var(--muted); text-align: center; margin-top: 24px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; animation: rowIn .4s ease both; }
+
+/* footer landing link */
+.hint-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
+.hint-link:hover { text-decoration: underline; }
