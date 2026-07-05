@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { exec } from "node:child_process";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NUDGES = join(process.env.VAULT_DIR || join(ROOT, "vault"), "nudges.json");
 const STATE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "proactive-state.json");
 

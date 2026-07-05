@@ -394,6 +394,29 @@ end tell`);
   } catch (e: any) { return `Couldn't read Mail: ${e?.message}`; }
 }
 
+async function readAppleNotes(): Promise<string> {
+  try {
+    const out = await osa(`tell application "Notes"
+  set out to ""
+  set myNotes to sort notes by modification date descending
+  set limit to 8
+  set c to 0
+  repeat with n in myNotes
+    if name of container of n is not "Recently Deleted" then
+      set c to c + 1
+      if c > limit then exit repeat
+      set b to plaintext of n
+      set out to out & "== " & (name of n) & " ==\\n" & (text 1 thru (if length of b > 300 then 300 else length of b) of b) & "\\n\\n"
+    end if
+  end repeat
+  return out
+end tell`);
+    return clip(out.trim()) || "No notes found.";
+  } catch (e: any) { return `Couldn't read Notes: ${e?.message}`; }
+}
+
+
+
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
@@ -547,8 +570,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Looking up ${i.name ?? i} in Contacts`, run: (i) => findContact(i.name ?? i) },
   { name: "read_calendar", safe: true, description: "Read today's calendar events.", params: "(none)",
     activity: () => `Checking your calendar`, run: readCalendar },
-  { name: "read_reminders", safe: true, description: "Read your open reminders / to-dos.", params: "(none)",
-    activity: () => `Checking your reminders`, run: readReminders },
+
   { name: "read_emails", safe: true, description: "Read the latest emails in your inbox (senders + subjects).", params: "(none)",
     activity: () => `Checking your inbox`, run: readEmails },
 
@@ -569,14 +591,70 @@ export const TOOLS: Tool[] = [
     activity: () => `Automating an app`, preview: (i) => `Run AppleScript:\n${i.script ?? i}`, run: (i) => appleScript(i.script ?? i) },
   { name: "clipboard_set", safe: false, description: "Put text on the clipboard. input: text.", params: "text",
     activity: () => `Copying to clipboard`, preview: (i) => `Copy to clipboard:\n  ${i.text ?? i}`, run: (i) => clipboardSet(i.text ?? i) },
-  { name: "send_email", safe: false, description: "Send an email via Mail. input: {to, subject?, body}.", params: "{to, subject?, body}",
-    activity: (i) => `Sending an email to ${i.to}`, preview: (i) => `Send email\n  To: ${i.to}\n  Subject: ${i.subject || "(none)"}\n\n${i.body}`, run: (i) => sendEmail(i) },
   { name: "send_imessage", safe: false, description: "Send an iMessage/text. input: {to, message}.", params: "{to, message}",
     activity: (i) => `Texting ${i.to}`, preview: (i) => `Send iMessage\n  To: ${i.to}\n  ${i.message}`, run: (i) => sendIMessage(i) },
-  { name: "add_reminder", safe: false, description: "Add a reminder. input: {text, list?}.", params: "{text, list?}",
-    activity: (i) => `Adding a reminder`, preview: (i) => `Add reminder: ${i.text}${i.list?` (list: ${i.list})`:""}`, run: (i) => addReminder(i) },
-  { name: "add_calendar_event", safe: false, description: "Add a calendar event. input: {title, start?, calendar?}. start like \"January 5, 2026 3:00 PM\".", params: "{title, start?, calendar?}",
-    activity: (i) => `Adding a calendar event`, preview: (i) => `Add event: ${i.title}${i.start?` at ${i.start}`:""}`, run: (i) => addCalendarEvent(i) },
+  { name: "read_apple_notes", safe: true, description: "Read the user's recently modified Apple Notes. Mac only.", params: "(none)",
+    activity: () => `Reading Apple Notes`, run: async () => { if (!IS_MAC) return "Apple Notes only works on macOS."; return await readAppleNotes(); } },
+  { name: "append_apple_note", safe: false, description: "Append text to an Apple Note by title. Mac only. input: {title, text}.", params: "{title, text}",
+    activity: (i) => `Appending to note: ${i.title}`, preview: (i) => `Append to Note '${i.title}':\n${clip(i.text, 100)}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Apple Notes only works on macOS.";
+      try {
+        await osa(`tell application "Notes"
+  set n to first note whose name contains "${esc(i.title)}"
+  set body HTML of n to (body HTML of n) & "<br><br>${esc(i.text).replace(/\n/g, "<br>")}"
+end tell`);
+        return `Appended to note '${i.title}'.`;
+      } catch (e: any) { return `Couldn't append to Note: ${e.message}`; }
+    } },
+  { name: "read_reminders", safe: true, description: "Read the user's pending Apple Reminders. Mac only.", params: "(none)",
+    activity: () => `Checking Apple Reminders`, run: async () => { if (!IS_MAC) return "Apple Reminders only works on macOS."; return await readReminders(); } },
+  { name: "add_reminder", safe: false, description: "Add a new Apple Reminder. Mac only. input: {text, list?}. list defaults to 'Reminders'.", params: "{text, list?}",
+    activity: (i) => `Adding reminder: ${i.text}`, preview: (i) => `Add Reminder to ${i.list || 'Reminders'}:\n${i.text}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Apple Reminders only works on macOS.";
+      try {
+        const l = i.list || "Reminders";
+        await osa(`tell application "Reminders"
+  tell list "${esc(l)}"
+    make new reminder with properties {name:"${esc(i.text)}"}
+  end tell
+end tell`);
+        return `Added reminder '${i.text}'.`;
+      } catch (e: any) { return `Couldn't add reminder: ${e.message}`; }
+    } },
+  { name: "run_shortcut", safe: false, description: "Run an Apple Shortcut by name (HomeKit, Automations, etc). input: {name}.", params: "{name}",
+    activity: (i) => `Running Shortcut: ${i.name}`, preview: (i) => `Run Shortcut:\n${i.name}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Shortcuts only work on macOS.";
+      try {
+        const out = await sh(`shortcuts run "${esc(i.name)}"`);
+        return out || `Ran shortcut '${i.name}'.`;
+      } catch (e: any) { return `Shortcut failed: ${e.message}`; }
+    } },
+  { name: "list_shortcuts", safe: true, description: "List all available Apple Shortcuts on this Mac.", params: "(none)",
+    activity: () => `Listing available Shortcuts`,
+    run: async () => {
+      if (!IS_MAC) return "Shortcuts only work on macOS.";
+      try { return await sh("shortcuts list"); } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
+  { name: "media_control", safe: false, description: "Control media playback (play/pause, next, previous). input: {action: 'playpause' | 'next' | 'prev'}.", params: "{action}",
+    activity: (i) => `Controlling media (${i.action})`, preview: (i) => `Media: ${i.action}`,
+    run: async (i) => {
+      try {
+        if (IS_MAC) {
+          const key = i.action === "next" ? 101 : i.action === "prev" ? 98 : 100;
+          await osa(`tell application "System Events" to key code ${key}`);
+        } else if (OS === "windows") {
+          const key = i.action === "next" ? "^{MEDIA_NEXT_TRACK}" : i.action === "prev" ? "^{MEDIA_PREV_TRACK}" : "^{MEDIA_PLAY_PAUSE}";
+          await sh(`powershell -c "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('${key}')"`);
+        } else {
+          const key = i.action === "next" ? "next" : i.action === "prev" ? "previous" : "play-pause";
+          await sh(`playerctl ${key}`);
+        }
+        return `Triggered ${i.action}.`;
+      } catch (e: any) { return `Failed: ${e.message}`; }
+    } },
   { name: "append_file", safe: false, description: "Append text to a file (e.g. a notes/log). input: {path, content}.", params: "{path, content}",
     activity: (i) => `Adding to ${i.path}`, preview: (i) => `Append to ${i.path}:\n${i.content}`, run: (i) => appendFile(i) },
   { name: "trash_file", safe: false, description: "Move a file to the Trash (recoverable). input: path.", params: "path",
