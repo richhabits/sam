@@ -1,7 +1,7 @@
 ---
 name: Events
 tier: free
-triggers: event, gig, party, mixitup, launch, guestlist, venue, booking, ticket, promo, dj set, run of show, hospitality, night
+triggers: event, gig, party, launch, guestlist, venue, booking, ticket, promo, dj set, run of show, hospitality, night
 ---
 
 # Events skill
