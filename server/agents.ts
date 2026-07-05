@@ -159,10 +159,16 @@ async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
   }
 
   const roster = top15.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
-  const sys = `You are SAM's orchestrator. Break the user's request into up to 7 focused subtasks and assign each to the ONE best specialist. 
-You MUST provide a JSON array of tasks. Each task needs an 'id' (e.g. 't1'), a 'specialist', a 'task' description, and an array of 'dependsOn' task IDs if it needs the output of prior tasks. 
-Example: [{"id":"t1","specialist":"scout","task":"search web","dependsOn":[]}, {"id":"t2","specialist":"quill","task":"write report","dependsOn":["t1"]}]
-Reply with ONLY the JSON array.
+  const sys = `You are SAM's orchestrator. Break the request into the FEWEST subtasks that fully cover it, and assign each to the ONE best-fit specialist.
+
+Rules:
+- Minimal by default. A simple request = ONE specialist, one task. Only split when the work genuinely spans different lanes. 7 is a hard ceiling, never a target — don't pad the plan.
+- Best fit only: match each subtask to the specialist whose lane it lands in; never hand a coding job to a writer or vice versa.
+- Use "dependsOn" ONLY when a task truly needs a prior task's output (research → then write). Independent tasks run in parallel, so leave their dependsOn empty.
+- Each "task" must be a sharp, concrete instruction naming what to PRODUCE — not a vague topic.
+- Output ONLY the JSON array, nothing else.
+
+Example: [{"id":"t1","specialist":"scout","task":"Find the top 3 competitors and their pricing","dependsOn":[]},{"id":"t2","specialist":"quill","task":"Write a one-page positioning brief from t1's findings","dependsOn":["t1"]}]
 
 Specialists:
 ${roster}`;
@@ -199,7 +205,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
       // 2. Run agent
       const s = byId(item.specialist)!;
       emit({ type: "agent-start", id: s.id, name: s.name, emoji: s.emoji, task: item.task });
-      const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — one of SAM's specialists, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part of the job only, brilliantly. Be concise and concrete. If you need live info, use your tools.${depContext}`;
+      const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, at world-class level. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
       
       let output = "";
       try { 
