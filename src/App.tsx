@@ -625,8 +625,11 @@ export default function App() {
     );
   }
 
+  const activeBrand = projects.find((p) => p.id === brand);
+  const customAccent = mode === "business" && activeBrand?.themeColor ? activeBrand.themeColor : undefined;
+
   return (
-    <div className="app">
+    <div className="app" style={customAccent ? { "--accent": customAccent, "--accent-2": customAccent } as React.CSSProperties : undefined}>
       <header className="bar">
         <div className="brandmark">
           <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
@@ -774,8 +777,8 @@ export default function App() {
                 {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
                 {m.text && (m.role === "sam"
                   ? (m.text.length > 1600 && !expanded.has(i)
-                      ? <div className="msg-collapsed"><WidgetRenderer text={m.text} /><button className="show-more" onClick={() => toggleExpand(i)}>Show more ▾</button></div>
-                      : <div><WidgetRenderer text={m.text} />{m.text.length > 1600 && <button className="show-less" onClick={() => toggleExpand(i)}>Show less ▴</button>}</div>)
+                      ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={(q) => send(q)} /><button className="show-more" onClick={() => toggleExpand(i)}>Show more ▾</button></div>
+                      : <div><WidgetRenderer text={m.text} onFollowUp={(q) => send(q)} />{m.text.length > 1600 && <button className="show-less" onClick={() => toggleExpand(i)}>Show less ▴</button>}</div>)
                   : <div className="bubble">{m.text}</div>)}
                 {m.role === "sam" && m.text && (
                   <div className="msg-actions">

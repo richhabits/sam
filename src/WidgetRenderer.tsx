@@ -44,26 +44,34 @@ function KanbanWidget({ data }: { data: any }) {
 
 // ── WIDGET RENDERER ──
 
-export default function WidgetRenderer({ text }: { text: string }) {
+export default function WidgetRenderer({ text, onFollowUp }: { text: string; onFollowUp?: (q: string) => void }) {
   if (!text) return null;
 
   // Split text by ```widget blocks
   const segments = text.split("```widget\n");
   
+  // Custom Markdown renderer to turn [ ] and [x] into beautiful checkboxes
+  const renderWithCheckboxes = (raw: string) => {
+    let html = renderMarkdown(raw);
+    // Replace markdown checkboxes with styled spans
+    html = html.replace(/<li>\[ \] (.*?)<\/li>/g, '<li class="check-item"><span class="check-box"></span><span class="check-text">$1</span></li>');
+    html = html.replace(/<li>\[x\] (.*?)<\/li>/gi, '<li class="check-item done"><span class="check-box checked">✓</span><span class="check-text">$1</span></li>');
+    return html;
+  };
+
   if (segments.length === 1) {
-    return <div className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }} />;
+    return <div className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(text) }} />;
   }
 
   const out = [];
-  // The first segment is always raw text before the first widget
   if (segments[0].trim()) {
-    out.push(<div key="t0" className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(segments[0]) }} />);
+    out.push(<div key="t0" className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(segments[0]) }} />);
   }
 
   for (let i = 1; i < segments.length; i++) {
     const split = segments[i].split("\n```");
     const widgetJson = split[0];
-    const remainingText = split.slice(1).join("\n```"); // In case of nested/multiple backticks
+    const remainingText = split.slice(1).join("\n```");
 
     try {
       const w = JSON.parse(widgetJson);
@@ -71,16 +79,23 @@ export default function WidgetRenderer({ text }: { text: string }) {
         out.push(<ChartWidget key={`w${i}`} data={w} />);
       } else if (w.type === "kanban") {
         out.push(<KanbanWidget key={`w${i}`} data={w} />);
+      } else if (w.type === "followup" && onFollowUp) {
+        out.push(
+          <div key={`w${i}`} className="widget-followup">
+            {w.questions.map((q: string, j: number) => (
+              <button key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
+            ))}
+          </div>
+        );
       } else {
         out.push(<div key={`w${i}`} className="widget-error">Unknown widget type: {w.type}</div>);
       }
     } catch (e) {
-      // If parsing fails, just render it as a code block
-      out.push(<div key={`w${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(`\`\`\`json\n${widgetJson}\n\`\`\``) }} />);
+      out.push(<div key={`w${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(`\`\`\`json\n${widgetJson}\n\`\`\``) }} />);
     }
 
     if (remainingText && remainingText.trim()) {
-      out.push(<div key={`t${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderMarkdown(remainingText) }} />);
+      out.push(<div key={`t${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(remainingText) }} />);
     }
   }
 
