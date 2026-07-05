@@ -189,6 +189,8 @@ export default function App() {
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
   const toggleExpand = (i: number) => setExpanded((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const [convoSearch, setConvoSearch] = useState("");
+  const [fontSize, setFontSize] = useState(() => { try { return localStorage.getItem("sam.fontsize") || "normal"; } catch { return "normal"; } });
+  useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
@@ -919,10 +921,15 @@ export default function App() {
           { icon: "🧠", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "🔑", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
+          { icon: "⬇️", label: "Export this chat (download)", run: () => exportChat() },
+          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).catch(() => {}); } },
           { icon: "🔒", label: "Private mode — local only", run: () => setQuality("private") },
           { icon: "⚡", label: "Auto — free brains", run: () => setQuality("auto") },
           { icon: "✨", label: "Best quality", run: () => setQuality("best") },
           { icon: dark ? "☀️" : "🌙", label: dark ? "Light theme" : "Dark theme", run: () => setDark((v) => !v) },
+          { icon: "🔠", label: "Text size: Large", run: () => setFontSize("large") },
+          { icon: "🔡", label: "Text size: Normal", run: () => setFontSize("normal") },
+          { icon: "🔻", label: "Text size: Compact", run: () => setFontSize("compact") },
           { icon: "🎨", label: "Skin: Classic", run: () => setSkin("classic") },
           { icon: "🦾", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
           { icon: "🔥", label: "Skin: Ember", run: () => setSkin("ember") },
