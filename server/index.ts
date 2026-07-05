@@ -364,8 +364,20 @@ app.post("/api/allow", (req, res) => {
 // ── ADMIN · manage API keys & config from inside the app ─────
 // Providers → their .env variable. Rolling pools accept many keys (comma list).
 const PROVIDER_ENV: Record<string, string> = {
-  nvidia: "NVIDIA_API_KEYS", cerebras: "CEREBRAS_API_KEYS", mistral: "MISTRAL_API_KEYS", github: "GITHUB_API_KEYS", gemini: "GEMINI_API_KEYS", groq: "GROQ_API_KEYS", openrouter: "OPENROUTER_API_KEYS",
-  anthropic: "ANTHROPIC_API_KEYS", openai: "OPENAI_API_KEYS",
+  // Core
+  nvidia: "NVIDIA_API_KEYS", cerebras: "CEREBRAS_API_KEYS", mistral: "MISTRAL_API_KEYS",
+  github: "GITHUB_API_KEYS", gemini: "GEMINI_API_KEYS", groq: "GROQ_API_KEYS",
+  openrouter: "OPENROUTER_API_KEYS", anthropic: "ANTHROPIC_API_KEYS", openai: "OPENAI_API_KEYS",
+  // Invincible expansion
+  together: "TOGETHER_API_KEYS", sambanova: "SAMBANOVA_API_KEYS", deepseek: "DEEPSEEK_API_KEYS",
+  fireworks: "FIREWORKS_API_KEYS", xai: "XAI_API_KEYS", huggingface: "HUGGINGFACE_API_KEYS",
+  hyperbolic: "HYPERBOLIC_API_KEYS", novita: "NOVITA_API_KEYS", siliconflow: "SILICONFLOW_API_KEYS",
+  glhf: "GLHF_API_KEYS", ai21: "AI21_API_KEYS", upstage: "UPSTAGE_API_KEYS",
+  nebius: "NEBIUS_API_KEYS", cohere: "COHERE_API_KEYS", perplexity: "PERPLEXITY_API_KEYS",
+  // Infinite Compute — Asian Heavyweights
+  alibaba: "ALIBABA_API_KEYS", volcengine: "VOLCENGINE_API_KEYS", zhipu: "ZHIPU_API_KEYS",
+  moonshot: "MOONSHOT_API_KEYS", minimax: "MINIMAX_API_KEYS", stepfun: "STEPFUN_API_KEYS",
+  baidu: "BAIDU_API_KEYS", tencent: "TENCENT_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",
