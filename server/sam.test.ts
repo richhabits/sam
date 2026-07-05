@@ -85,7 +85,7 @@ describe("tools", () => {
 
 // ── brand context ────────────────────────────────────────────
 describe("projects", () => {
-  it("tracks Romeo's brands and resolves by id", () => {
+  it("tracks the user's brands and resolves by id", () => {
     expect(PROJECTS.length).toBeGreaterThanOrEqual(10);
     const first = PROJECTS[0];
     expect(projectById(first.id)?.name).toBe(first.name);

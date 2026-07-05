@@ -1,7 +1,7 @@
 {
   "name": "SAM — Smart Artificial Mind",
   "short_name": "SAM",
-  "description": "Romeo's personal AI assistant — answers, drafts, searches, and takes action.",
+  "description": "Your personal AI assistant — answers, drafts, searches, and takes action.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FDFBF9",

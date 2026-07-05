@@ -19,7 +19,7 @@ beforeEach(() => { replies.length = 0; });
 describe("agent loop", () => {
   it("auto-runs a SAFE tool then returns the final answer", async () => {
     replies.push('{"tool":"get_datetime","input":{}}');   // step 1: call safe tool
-    replies.push("Here is the time, Romeo.");              // step 2: final answer
+    replies.push("Here is the time, the user.");              // step 2: final answer
     const r = await runAgent("SYS", "what time is it?", "local");
     expect(r.kind).toBe("final");
     expect(r.text).toContain("time");
@@ -39,7 +39,7 @@ describe("agent loop", () => {
 
   it("resumes and runs the action after approval", async () => {
     replies.push("Done — I ran it.");                      // after the tool runs, final answer
-    const r = await resumeAgent("SYS", "Romeo: run echo", "local", true, "run_command", { command: "echo hi" });
+    const r = await resumeAgent("SYS", "the user: run echo", "local", true, "run_command", { command: "echo hi" });
     expect(r.kind).toBe("final");
     expect(r.trace.length).toBe(1);
     expect(r.text).toMatch(/done/i);
@@ -47,7 +47,7 @@ describe("agent loop", () => {
 
   it("respects a decline — does not run the action", async () => {
     replies.push("No problem, I won't run it.");
-    const r = await resumeAgent("SYS", "Romeo: run echo", "local", false, "run_command", { command: "echo hi" });
+    const r = await resumeAgent("SYS", "the user: run echo", "local", false, "run_command", { command: "echo hi" });
     expect(r.kind).toBe("final");
     expect(r.trace.length).toBe(0);                        // nothing executed
   });

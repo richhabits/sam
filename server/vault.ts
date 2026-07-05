@@ -54,7 +54,7 @@ export function logExchange(opts: {
     .join(" ");
   const entry =
     `### ${stamp()} ${links}\n` +
-    `**Romeo:** ${opts.user}\n\n` +
+    `**the user:** ${opts.user}\n\n` +
     `**SAM** (${opts.provider}): ${opts.sam}\n\n---\n\n`;
   appendFileSync(file, entry);
 }
@@ -85,7 +85,7 @@ export function recentExchanges(limit = 5): { user: string; sam: string }[] {
   const blocks = readFileSync(file, "utf8").split(/^### /m).slice(1);
   const out: { user: string; sam: string }[] = [];
   for (const b of blocks) {
-    const u = b.match(/\*\*Romeo:\*\*\s*([\s\S]*?)\n\n\*\*SAM/);
+    const u = b.match(/\*\*the user:\*\*\s*([\s\S]*?)\n\n\*\*SAM/);
     const s = b.match(/\*\*SAM\*\*[^:]*:\s*([\s\S]*?)\n\n---/);
     if (u || s) out.push({ user: (u?.[1] || "").trim(), sam: (s?.[1] || "").trim() });
   }

@@ -6,7 +6,7 @@ triggers: seo, keyword, meta description, title tag, rank, search engine, backli
 
 # SEO skill
 
-You handle SEO for Romeo's sites and content — keywords, titles, meta descriptions, on-page structure, and content briefs.
+You handle SEO for the user's sites and content — keywords, titles, meta descriptions, on-page structure, and content briefs.
 ## Rules
 - Match search intent first. Suggest realistic keywords, not vanity ones.
 - Give title tags (<60 chars) and meta descriptions (<155 chars) ready to paste.

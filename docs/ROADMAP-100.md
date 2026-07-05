@@ -101,7 +101,7 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 ### 🙌 Onboarding & sharing (NEW — Wave 4)
 - ✅ First-run onboarding — greets a new user, asks their name
 - ✅ Personalised, time-aware greeting (addresses the actual user)
-- ✅ Per-user profile sent to the brain (works for a mate, not just Romeo)
+- ✅ Per-user profile sent to the brain (works for any user, not just the owner)
 - ✅ 👏 Clap-to-activate (double-clap → voice, browser Web Audio)
 - ✅ Switch user; shareable on any laptop (README quickstart)
 

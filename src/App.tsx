@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
-import { speak as ttsSpeak } from "./lib/tts";
+import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
 import VoiceMode from "./VoiceMode";
 import Admin from "./Admin";
+import Dashboard from "./Dashboard";
 
-interface Profile { name: string; about?: string }
+interface Profile { name: string; about?: string; language?: string }
+const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
 function greeting(name: string) {
   const h = new Date().getHours();
@@ -145,9 +147,12 @@ export default function App() {
   const [profile, setProfile] = useState<Profile>(loadProfile);
   const [onboardName, setOnboardName] = useState("");
   const [onboardAbout, setOnboardAbout] = useState("");
+  const [onboardLang, setOnboardLang] = useState("English");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [dashOpen, setDashOpen] = useState(false);
+  const [playing, setPlaying] = useState<number | null>(null);
   const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
   const [updating, setUpdating] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -181,7 +186,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
-      else if (e.key === "Escape") { if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); } }
+      else if (e.key === "Escape") { if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -205,8 +210,8 @@ export default function App() {
   function finishOnboarding() {
     const name = onboardName.trim();
     if (!name) return;
-    const p = { name, about: onboardAbout.trim() || undefined };
-    setProfile(p); setUser(p);
+    const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
+    setProfile(p); setUser({ ...p, mode });
   }
 
   const refreshLog = () => getLog().then(setLog).catch(() => {});
@@ -374,6 +379,9 @@ export default function App() {
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="Your name" />
           <input className="onboard-input" value={onboardAbout} onChange={(e) => setOnboardAbout(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="What do you do? (optional — helps me help you)" />
+          <select className="onboard-input" value={onboardLang} onChange={(e) => setOnboardLang(e.target.value)} aria-label="Language">
+            {LANGUAGES.map((l) => <option key={l} value={l}>{l === "English" ? "Language: English" : l}</option>)}
+          </select>
           <button className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
           <div className="onboard-note">Private &amp; free — SAM runs on your computer.</div>
         </div>
@@ -407,6 +415,7 @@ export default function App() {
               </select>
             </label>
           )}
+          <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
           <button className="icon-btn" onClick={() => setMemoryOpen(true)} title="What SAM remembers">Memory</button>
           <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
@@ -471,6 +480,10 @@ export default function App() {
                 {m.role === "sam" && m.text && (
                   <div className="msg-actions">
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>{copied === i ? "Copied ✓" : "Copy"}</button>
+                    <button className="mini" onClick={() => {
+                      if (playing === i) { stopSpeaking(); setPlaying(null); }
+                      else { stopSpeaking(); setPlaying(i); ttsSpeak(m.text, () => setPlaying((p) => (p === i ? null : p))); }
+                    }}>{playing === i ? "⏹ Stop" : "🔊 Listen"}</button>
                     {i === messages.length - 1 && <button className="mini" onClick={regenerate}>Regenerate</button>}
                     {m.how && <span className="how">answered {m.how}</span>}
                   </div>
@@ -576,6 +589,7 @@ export default function App() {
 
       {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
       {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
+      {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
 
       {toolsOpen && (
         <div className="drawer-wrap" onClick={() => setToolsOpen(false)}>

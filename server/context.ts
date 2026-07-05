@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · LIVE CONTEXT  — SAM always knows the date/time and
-//  roughly where Romeo is (so "today", "tonight", "near me",
+//  roughly where the user is (so "today", "tonight", "near me",
 //  "the weather" all just work). Date/time is exact; location is
 //  free IP-based (approximate), overridable via SAM_LOCATION.
 // ─────────────────────────────────────────────────────────────

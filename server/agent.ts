@@ -47,7 +47,7 @@ RULES:
 
 export interface AgentResult {
   kind: "final" | "pending";
-  text?: string;                 // final answer to Romeo
+  text?: string;                 // final answer to the user
   trace: string[];               // plain-language "what SAM did"
   provider?: string;
   // pending (risky action awaiting approval):
@@ -107,7 +107,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[])
     }
 
     if (!tool.safe && !isAllowed(tool.name)) {
-      // ask-first: pause and hand the decision to Romeo (unless pre-authorized)
+      // ask-first: pause and hand the decision to the user (unless pre-authorized)
       return {
         kind: "pending", trace, provider: res.provider,
         tool: tool.name, input: call.input,
@@ -213,7 +213,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
   emit({ type: "done", text: wrap.text, provider: wrap.provider, trace });
 }
 
-// Resume after Romeo approves (or rejects) a risky action.
+// Resume after the user approves (or rejects) a risky action.
 export async function resumeAgent(
   system: string, transcript: string, tier: Tier,
   approved: boolean, toolName: string, input: any, trace: string[] = []

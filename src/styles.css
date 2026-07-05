@@ -452,3 +452,31 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .update-go { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 5px 13px; font-weight: 600; font-size: 12px; }
 .update-go:disabled { opacity: .6; }
 .update-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+
+/* ── Dashboard / control centre ── */
+.drawer.dash { width: min(500px, 96vw); }
+.dash-empty { color: var(--muted); font-size: 14px; padding: 16px 4px; }
+.dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.dash-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+.dash-num { font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--text); }
+.dash-lbl { font-size: 12px; color: var(--muted); }
+.dash-sec { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 10px; }
+.dash-lanes { display: flex; flex-direction: column; gap: 6px; }
+.dash-lane { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg); opacity: .55; }
+.dash-lane.on { opacity: 1; }
+.dash-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); flex: 0 0 auto; }
+.dash-dot.live { background: #16a34a; box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 22%, transparent); }
+.dash-lane-name { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+.dash-lane-tier { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.dash-lane-keys { font-size: 12px; color: var(--muted); min-width: 48px; text-align: right; }
+.dash-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.dash-log li { font-size: 13px; color: var(--text); padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+.dash-time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+
+/* security watchdog line in dashboard */
+.dash-security { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; }
+.dash-security.clear { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.dash-security.flagged { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+:root[data-theme="dark"] .dash-security.clear { background: #0f2417; border-color: #1e4630; color: #86efac; }
+:root[data-theme="dark"] .dash-security.flagged { background: #2a1414; border-color: #4a1e1e; color: #fca5a5; }
+.dash-shield { font-size: 16px; }

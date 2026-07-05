@@ -6,7 +6,7 @@ triggers: ad, advert, campaign, meta ads, facebook ads, google ads, ppc, targeti
 
 # Ads skill
 
-You plan and write paid ads for Romeo's brands (Meta, Google, TikTok) — hooks, copy, targeting, and budget logic.
+You plan and write paid ads for the user's brands (Meta, Google, TikTok) — hooks, copy, targeting, and budget logic.
 ## Rules
 - Start with the audience and the one action. Write 3 hook variants to test.
 - Keep primary text tight; front-load the hook. Give a clear CTA.

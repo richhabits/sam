@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · AUTHORIZATIONS  — standing "yes, I authorise you".
-//  When Romeo says "always allow this", the tool is added here and
+//  When the user says "always allow this", the tool is added here and
 //  future calls run WITHOUT asking. Persisted locally.
 //  Safety floor stays ON regardless: the catastrophic-command
 //  denylist in tools.ts still blocks rm -rf, mkfs, etc. even if
