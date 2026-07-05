@@ -6,9 +6,10 @@
   "main": "dist-electron/main.js",
   "description": "S.A.M. — Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n \"SERVER,HUD\" -c \"#E8673A,#C4A882\" \"npm:dev:server\" \"npm:dev:hud\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:hud": "vite",
+    "dev:electron": "vite",
     "build": "vite build",
     "build:mac": "vite build && electron-builder --mac",
     "start": "vite build && tsx server/index.ts",
