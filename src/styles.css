@@ -727,3 +727,8 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .convo-search { width: calc(100% - 24px); margin: 0 12px 8px; font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 9px 12px; }
 .convo-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .convo-empty { list-style: none; padding: 14px 12px; color: var(--muted); font-size: 13px; }
+
+/* ── Text size control (scales the conversation text) ── */
+:root[data-fontsize="large"] .bubble, :root[data-fontsize="large"] .md { font-size: 18px; line-height: 1.68; }
+:root[data-fontsize="large"] .welcome .hello-sub, :root[data-fontsize="large"] .chip { font-size: 17px; }
+:root[data-fontsize="compact"] .bubble, :root[data-fontsize="compact"] .md { font-size: 14.5px; line-height: 1.5; }
