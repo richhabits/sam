@@ -871,11 +871,12 @@ export default function App() {
                 <div className="team-panel">
                   {team.crew.length === 0
                     ? <div className="team-planning"><span className="team-spin" /> Breaking this down…</div>
-                    : team.crew.map((c: any) => {
-                        const done = team.done[c.specialist] !== undefined;
-                        const active = team.active[c.specialist];
+                    : team.crew.map((c: any, ci: number) => {
+                        const key = c.id ?? c.specialist ?? ci;   // task id (unique) — 2 tasks can share a specialist
+                        const done = team.done[key] !== undefined;
+                        const active = team.active[key];
                         return (
-                          <div key={c.specialist} className={`team-member ${done ? "done" : active ? "active" : "waiting"}`}>
+                          <div key={key} className={`team-member ${done ? "done" : active ? "active" : "waiting"}`}>
                             <span className="tm-emoji">{c.emoji}</span>
                             <div className="tm-body">
                               <div className="tm-name">{c.name} <span className="tm-status">{done ? "✓ done" : active ? "working…" : "queued"}</span></div>
