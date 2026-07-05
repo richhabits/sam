@@ -1,8 +1,7 @@
 ---
-name: "Finance Playbook"
-brief: "Tracks runway, categorizes expenses from bank exports, and flags anomalies."
-author: "HECTIC"
-version: "1.0"
+name: Finance Playbook
+tier: free
+triggers: finance, runway, expenses, bank, csv, budget, cashflow, cash flow, bookkeeping, cfo, spending, invoice, accounts, burn
 ---
 
 # Finance Playbook
@@ -28,10 +27,10 @@ Process bank statement CSVs, categorize expenses, calculate runway, and flag any
 4. Divide cash balance by total monthly expenses to calculate **Months of Runway**.
 
 ## Step 3: Anomaly Detection
-1. Flag any single transaction over £1,000.
+1. Flag any single unusually large transaction (use the user's own threshold and currency — ask if you don't know it).
 2. Flag any duplicate transactions on the same day.
 3. Flag any new recurring SaaS subscriptions that weren't present last month.
 
 ## Step 4: Report
 Generate a clean, professional summary. If there are anomalies, highlight them with ⚠️.
-Always end the report by asking if you should log this summary to Notion using the `notion_append_block` tool.
+Offer to save the summary — e.g. `write_file` to a finance note, or `remember_fact` for the key figures — so it's on record.
