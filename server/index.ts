@@ -32,6 +32,7 @@ import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
+import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm } from "./p2p.ts";
 import {
   logExchange,
   recentLog,
@@ -85,6 +86,15 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 void grabWorld().then((s) => console.log(`  ${s}\n`));
 resumeOrphanedSwarms();
+
+// ── P2P Swarm: discover other SAM instances on the LAN ──────
+startP2PDiscovery();
+startP2PServer(async (message, from, project) => {
+  // When a remote SAM sends us a task, run it through the agent loop
+  const system = buildSystem("", project, { name: from, mode: "business" }, "");
+  const r = await runAgent(system, message, (process.env.DEFAULT_TIER as Tier) || "free");
+  return r.kind === "final" ? (r.text || "Done.") : "Task requires approval — skipped on P2P.";
+});
 
 // Non-blocking background selfupdate — replaces the old blocking prestart hook.
 // SAM launches instantly; update check happens silently 5s later.
@@ -618,6 +628,15 @@ app.post("/api/schedules", (req, res) => {
 });
 app.delete("/api/schedules/:id", (req, res) => res.json({ ok: removeSchedule(req.params.id) }));
 app.post("/api/schedules/:id/toggle", (req, res) => res.json(toggleSchedule(req.params.id)));
+
+// ── P2P Network — expose peer list to frontend ──
+app.get("/api/p2p/peers", (_req, res) => res.json({ self: getNodeId(), peers: getActivePeers() }));
+app.post("/api/p2p/broadcast", async (req, res) => {
+  const { message, project } = req.body || {};
+  if (!message?.trim()) return res.status(400).json({ error: "empty" });
+  const results = await broadcastToSwarm(message, project);
+  res.json({ ok: true, sent: results.length, results });
+});
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 app.get("/api/ios/status", (_req, res) => {

@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "bonjour-service": "^1.4.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
@@ -61,13 +62,27 @@
   "build": {
     "appId": "com.hectic.sam",
     "productName": "SAM",
-    "directories": { "output": "dist-app" },
+    "directories": {
+      "output": "dist-app"
+    },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**",
       "**/node_modules/playwright-core/**"
     ],
-    "mac": { "target": "dmg", "category": "public.app-category.productivity" },
-    "win": { "target": "nsis" },
-    "linux": { "target": ["AppImage", "deb"], "category": "Utility", "maintainer": "HECTIC" }
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "maintainer": "HECTIC"
+    }
   }
 }
