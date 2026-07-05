@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
 import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -149,6 +149,43 @@ function loadState(): { convos: Convo[]; activeId: string; brand: string; qualit
   const id = uid();
   return { convos: [{ id, title: "New chat", messages: [], at: Date.now() }], activeId: id, brand: "", quality: "auto" };
 }
+const MemoizedMessageRow = memo(function MemoizedMessageRow({
+  m, i, isExpanded, isCopied, isPinned, isPlaying, isLast,
+  onFollowUp, onExpand, onCopy, onCopyMarkdown, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit
+}: any) {
+  return (
+    <div className={`row ${m.role}`}>
+      <div className="who">{m.role === "sam" ? "SAM" : "You"}{m.at && <span className="at"> · {m.at}</span>}</div>
+      {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
+      {m.text && (m.role === "sam"
+        ? (m.text.length > 1600 && !isExpanded
+            ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={onFollowUp} /><button className="show-more" onClick={() => onExpand(i)}>Show more ▾</button></div>
+            : <div><WidgetRenderer text={m.text} onFollowUp={onFollowUp} />{m.text.length > 1600 && <button className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>}</div>)
+        : <div className="bubble">{m.text}</div>)}
+      {m.role === "sam" && m.text && (
+        <div className="msg-actions">
+          <button className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
+          <button className="mini" onClick={() => onCopyMarkdown(m.text, i)}>📋 Markdown</button>
+          <button className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "📌 Pin"}</button>
+          <button className="mini" onClick={() => onQuote(m.text)}>↩ Reply</button>
+          <button className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "⏹ Stop" : "🔊 Listen"}</button>
+          {isLast && <button className="mini" onClick={onRegenerate}>Regenerate</button>}
+          {m.how && <span className="how">answered {m.how}</span>}
+        </div>
+      )}
+      {m.role === "user" && (
+        <div className="msg-actions"><button className="mini" onClick={() => onEdit(i)}>Edit</button></div>
+      )}
+    </div>
+  );
+}, (prev: any, next: any) => {
+  return prev.m === next.m &&
+         prev.isExpanded === next.isExpanded &&
+         prev.isCopied === next.isCopied &&
+         prev.isPinned === next.isPinned &&
+         prev.isPlaying === next.isPlaying &&
+         prev.isLast === next.isLast;
+});
 
 export default function App() {
   const init = loadState();
@@ -772,32 +809,28 @@ export default function App() {
         ) : (
           <div className="thread">
             {messages.map((m, i) => (
-              <div key={i} className={`row ${m.role}`}>
-                <div className="who">{m.role === "sam" ? "SAM" : "You"}{m.at && <span className="at"> · {m.at}</span>}</div>
-                {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
-                {m.text && (m.role === "sam"
-                  ? (m.text.length > 1600 && !expanded.has(i)
-                      ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={(q) => send(q)} /><button className="show-more" onClick={() => toggleExpand(i)}>Show more ▾</button></div>
-                      : <div><WidgetRenderer text={m.text} onFollowUp={(q) => send(q)} />{m.text.length > 1600 && <button className="show-less" onClick={() => toggleExpand(i)}>Show less ▴</button>}</div>)
-                  : <div className="bubble">{m.text}</div>)}
-                {m.role === "sam" && m.text && (
-                  <div className="msg-actions">
-                    <button className="mini" onClick={() => copyMsg(m.text, i)}>{copied === i ? "Copied ✓" : "Copy"}</button>
-                    <button className="mini" onClick={() => copyMsg(m.text, i)}>📋 Markdown</button>
-                    <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: !msg.pinned } : msg))}>{m.pinned ? "Unpin" : "📌 Pin"}</button>
-                    <button className="mini" onClick={() => quoteReply(m.text)}>↩ Reply</button>
-                    <button className="mini" onClick={() => {
-                      if (playing === i) { stopSpeaking(); setPlaying(null); }
-                      else { stopSpeaking(); setPlaying(i); ttsSpeak(m.text, () => setPlaying((p) => (p === i ? null : p))); }
-                    }}>{playing === i ? "⏹ Stop" : "🔊 Listen"}</button>
-                    {i === messages.length - 1 && <button className="mini" onClick={regenerate}>Regenerate</button>}
-                    {m.how && <span className="how">answered {m.how}</span>}
-                  </div>
-                )}
-                {m.role === "user" && (
-                  <div className="msg-actions"><button className="mini" onClick={() => editResend(i)}>Edit</button></div>
-                )}
-              </div>
+              <MemoizedMessageRow
+                key={i}
+                m={m}
+                i={i}
+                isExpanded={expanded.has(i)}
+                isCopied={copied === i}
+                isPinned={m.pinned}
+                isPlaying={playing === i}
+                isLast={i === messages.length - 1}
+                onFollowUp={(q: string) => send(q)}
+                onExpand={(idx: number) => toggleExpand(idx)}
+                onCopy={(text: string, idx: number) => copyMsg(text, idx)}
+                onCopyMarkdown={(text: string, idx: number) => copyMsg(text, idx)}
+                onTogglePin={(idx: number) => setMessages((ms) => ms.map((msg, midx) => midx === idx ? { ...msg, pinned: !msg.pinned } : msg))}
+                onQuote={(text: string) => quoteReply(text)}
+                onTogglePlay={(text: string, idx: number) => {
+                  if (playing === idx) { stopSpeaking(); setPlaying(null); }
+                  else { stopSpeaking(); setPlaying(idx); ttsSpeak(text, () => setPlaying((p) => (p === idx ? null : p))); }
+                }}
+                onRegenerate={regenerate}
+                onEdit={(idx: number) => editResend(idx)}
+              />
             ))}
             {team && (
               <div className="row sam">
