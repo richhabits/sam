@@ -32,7 +32,7 @@ import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
-import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm } from "./p2p.ts";
+import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
 import {
   logExchange,
   recentLog,
@@ -88,13 +88,21 @@ void grabWorld().then((s) => console.log(`  ${s}\n`));
 resumeOrphanedSwarms();
 
 // ── P2P Swarm: discover other SAM instances on the LAN ──────
-startP2PDiscovery();
-startP2PServer(async (message, from, project) => {
-  // When a remote SAM sends us a task, run it through the agent loop
-  const system = buildSystem("", project, { name: from, mode: "business" }, "");
-  const r = await runAgent(system, message, (process.env.DEFAULT_TIER as Tier) || "free");
-  return r.kind === "final" ? (r.text || "Done.") : "Task requires approval — skipped on P2P.";
-});
+// Off unless SAM_P2P=1 — it binds to the LAN and lets authenticated peers drive
+// this SAM's agent, so it's opt-in and token-gated (see p2p.ts). The main API
+// stays on 127.0.0.1 regardless.
+if (P2P_ENABLED) {
+  startP2PDiscovery();
+  startP2PServer(async (message, from, project) => {
+    // A trusted peer's task runs through our agent loop. Risky tools still can't
+    // auto-run (no approver on a remote turn) — they're skipped here.
+    const system = buildSystem("", project, { name: from, mode: "business" }, "");
+    const r = await runAgent(system, message, (process.env.DEFAULT_TIER as Tier) || "free");
+    return r.kind === "final" ? (r.text || "Done.") : "Task requires approval — skipped on P2P.";
+  });
+} else {
+  console.log("  🌐 P2P swarm    · disabled (set SAM_P2P=1 + SAM_P2P_TOKEN to enable)");
+}
 
 // Non-blocking background selfupdate — replaces the old blocking prestart hook.
 // SAM launches instantly; update check happens silently 5s later.

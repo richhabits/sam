@@ -8,7 +8,7 @@
 //  Events, screencapture, open) + Node + fetch. No paid APIs.
 // ─────────────────────────────────────────────────────────────
 
-import { exec } from "node:child_process";
+import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
@@ -39,6 +39,9 @@ import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
 const sh = promisify(exec);
+// No-shell exec for anything carrying model/user text — args go straight to the
+// binary, so $(…)/backticks/quotes can never reach a shell.
+const execFile = promisify(execFileCb);
 
 // Shell-safe single-quote wrapping for untrusted args.
 const shq = (s: any) => `'${String(s ?? "").replace(/'/g, "'\\''")}'`;
@@ -93,10 +96,17 @@ export interface Tool {
 }
 
 // Never run these, even if approved — catastrophic / irreversible.
+// Matches flag order both ways, absolute-path rm (sidesteps the Elon trash alias),
+// find -delete, and raw disk writes — the old list missed rm -fr, /bin/rm, find -delete.
 const HARD_DENY = [
-  /\brm\s+-rf\s+[~/]\s*($|\S)/, /\bmkfs\b/, /\bdd\s+if=/, /:\(\)\s*\{/,
-  /\bshutdown\b/, /\breboot\b/, /\bkillall\s+-9\b/, />\s*\/dev\/sd/,
-  /\bchmod\s+-R\s+000\b/, /\bsudo\s+rm\b/,
+  /\brm\s+(-[a-z]*[rf][a-z]*\s+)+(-[a-z]*\s+)*["']?[~/]\/?["']?\s*($|[\s;])/i,
+  /\brm\s+(-[a-z]*\s+)*["']?\/(Users|home|System|Library|Applications|Volumes)\b/i,
+  /\/(usr\/)?bin\/rm\b/i,
+  /\bfind\s+["']?[~/]["']?(\s|$).*(-delete|-exec\s+rm)/i,
+  /\bmkfs\b/, /\bdd\s+(if|of)=/, /:\(\)\s*\{/,
+  /\bshutdown\b/i, /\breboot\b/i, /\bhalt\b/i, /\bkillall\s+-9\b/, />\s*\/dev\/(sd|disk|rdisk)/,
+  /\bchmod\s+-R\s+000\b/, /\bsudo\s+(rm|dd|mkfs|chmod|chown|shutdown|reboot)\b/,
+  /\bdiskutil\s+(erase|partition|apfs\s+delete)/i, /\bcsrutil\b/, /\blaunchctl\s+bootout\b/,
 ];
 function denied(cmd: string): string | null {
   for (const re of HARD_DENY) if (re.test(cmd)) {
@@ -110,6 +120,31 @@ const clip = (s: string, n = 6000) => (s.length > n ? s.slice(0, n) + `\n…[tri
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
 // ── INTERNET ─────────────────────────────────────────────────
+// Outbound requests get a hard timeout (free providers stall) and web_fetch —
+// which auto-runs on a model-chosen URL — gets an SSRF guard so internal/LAN
+// targets (router admin, cloud metadata, localhost services) are unreachable.
+const WEB_TIMEOUT = 15000;
+const webSignal = () => AbortSignal.timeout(WEB_TIMEOUT);
+function isPrivateIp(ip: string): boolean {
+  if (/^::1$|^f[cd]|^fe80:/i.test(ip)) return true;                   // v6 loopback / ULA / link-local
+  const m = ip.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+}
+async function assertPublicUrl(url: string): Promise<void> {
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
+  if (/^(localhost|.*\.local|.*\.internal|.*\.lan)$/i.test(host)) throw new Error(`blocked: ${host} is an internal address`);
+  if (isPrivateIp(host)) throw new Error(`blocked: ${host} is a private address`);
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(host, { all: true });
+    if (addrs.some((a) => isPrivateIp(a.address))) throw new Error(`blocked: ${host} resolves to a private address`);
+  } catch (e: any) {
+    if (String(e?.message).startsWith("blocked")) throw e;           // DNS failure itself → let fetch report it
+  }
+}
+
 // Prefers Jina (clean, reliable) when a key is set; falls back to a
 // free DuckDuckGo scrape so the web always works.
 async function webSearch(q: string): Promise<string> {
@@ -117,7 +152,7 @@ async function webSearch(q: string): Promise<string> {
     try { return clip(await jinaSearch(q), 1800); } catch { /* fall back */ }   // tight — keeps the whole loop under free-tier token limits
   }
   const r = await fetch("https://duckduckgo.com/html/?q=" + encodeURIComponent(q), {
-    headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" },
+    headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal(),
   });
   const html = await r.text();
   const out: string[] = [];
@@ -132,10 +167,11 @@ async function webSearch(q: string): Promise<string> {
 
 async function webFetch(url: string): Promise<string> {
   if (!/^https?:\/\//.test(url)) url = "https://" + url;
+  await assertPublicUrl(url);
   if (hasJina()) {
     try { return clip(await jinaRead(url), 5000); } catch { /* fall back */ }
   }
-  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" } });
+  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal() });
   const html = await r.text();
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -209,18 +245,11 @@ async function listDir(path: string): Promise<string> {
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   if (!IS_MAC) throw new Error("maconly");
-  // Escape \, " for the double-quoted shell context; replace bare newlines with
-  // AppleScript line-continuation (¬ + newline) so user data can't inject new
-  // AppleScript statements via embedded newlines.
-  const safeScript = script
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, " \u00AC\\\n");
-  const { stdout } = await sh(`osascript -e "${safeScript}"`, { timeout: 30000 });
+  const { stdout } = await execFile("osascript", ["-e", script], { timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   return stdout.trim();
 }
 async function openApp(name: string): Promise<string> {
-  if (IS_MAC) await sh(`open -a ${JSON.stringify(name)}`);
+  if (IS_MAC) await execFile("open", ["-a", name]);
   else if (OS === "windows") await sh(`start "" ${JSON.stringify(name)}`);
   else await sh(`${JSON.stringify(name)} &`).catch(() => {});
   return `Opened ${name}.`;
@@ -301,14 +330,16 @@ async function clipboardSet(text: string): Promise<string> {
 async function notify(input: { title?: string; message: string }): Promise<string> {
   const title = input.title || "SAM";
   const clean = input.message.replace(/[#*`]/g, "").slice(0, 220);
-  const e = (s: string) => s.replace(/"/g, '\\"').replace(/\n/g, " ");
+  // Quotes/angle-brackets are stripped, not escaped — they break the AppleScript/
+  // PowerShell/XML string contexts differently and add nothing to a notification.
+  const e = (s: string) => s.replace(/["'<>&\\]/g, "").replace(/\n/g, " ");
   if (IS_MAC) {
-    await sh(`osascript -e 'display notification "${e(clean)}" with title "${e(title)}"' `);
+    await execFile("osascript", ["-e", `display notification "${e(clean)}" with title "${e(title.slice(0, 60))}"`]);
   } else if (OS === "windows") {
     const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${e(title)}</text><text id="2">${e(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
-    await sh(`powershell -command "${ps}"`);
+    await execFile("powershell", ["-command", ps]);
   } else {
-    await sh(`notify-send "${e(title)}" "${e(clean)}" 2>/dev/null || true`);
+    await execFile("notify-send", [e(title), e(clean)]).catch(() => {});
   }
   return "Notification shown.";
 }
