@@ -24,15 +24,16 @@
   --accent-2: #F0824E;
   --ring: 0 0 0 3.5px var(--accent-soft);
 }
-:root[data-theme="dark"] { --shadow-lg: 0 20px 60px rgba(0,0,0,.4); }
 
-/* dark theme — toggled via [data-theme="dark"] on <html> */
+/* dark theme — toggled via [data-theme="dark"] on <html>. Now uses Ember vibe default. */
 :root[data-theme="dark"] {
-  --bg: #1A1714; --surface: #242019; --text: #F5F1EA; --muted: #A8A29A;
-  --border: #37322B; --border-strong: #4A443B; --accent: #F0824E;
-  --accent-text: #F9A87A; --accent-soft: #3A2A20; --user-bubble: #2E2820;
-  --shadow: 0 1px 2px rgba(0,0,0,.2), 0 4px 16px rgba(0,0,0,.3);
+  --bg: #100E0C; --surface: #1C1712; --text: #F3EDE4; --muted: #9A9187;
+  --border: #2A221A; --border-strong: #3D3226; --accent: #F0824E;
+  --accent-text: #F9A87A; --accent-soft: #2B1A10; --user-bubble: #221C16;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(240,130,78,.08);
 }
+:root[data-theme="dark"] .app { background: radial-gradient(1200px 520px at 50% -10%, rgba(240,130,78,.08), transparent 60%), var(--bg); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -334,8 +335,23 @@ button { font-family: inherit; cursor: pointer; }
   transition: box-shadow .2s;
 }
 .composer-inner:focus-within { box-shadow: var(--shadow-lg), var(--ring); border-color: transparent; }
-.plus { flex: none; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); font-size: 22px; font-weight: 400; line-height: 1; transition: transform .12s, background .15s, border-color .15s; }
-.plus:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); transform: translateY(-1px) rotate(90deg); }
+.plus-wrap { position: relative; display: flex; align-items: flex-end; }
+.plus { flex: none; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 22px; font-weight: 400; line-height: 1; transition: transform .12s, background .15s, border-color .15s; }
+.plus.open { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); transform: rotate(45deg); }
+.plus:hover:not(.open) { background: color-mix(in srgb, var(--surface) 90%, var(--text)); transform: translateY(-1px); }
+
+.plus-menu {
+  position: absolute; bottom: 50px; left: 0; width: 220px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid var(--border); border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 8px;
+  display: flex; flex-direction: column; gap: 2px; z-index: 50;
+  animation: rowIn .2s cubic-bezier(.2,.7,.2,1) both;
+}
+.plus-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: none; border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--text); width: 100%; text-align: left; }
+.plus-opt:hover { background: var(--bg); color: var(--accent-text); }
+.plus-opt .icon { font-size: 16px; }
 .send { box-shadow: var(--shadow-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s, filter .15s, box-shadow .15s; }
 .send:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.05); }
 .send:disabled { background: var(--border-strong); box-shadow: none; }

@@ -171,6 +171,7 @@ export default function App() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pending, setPending] = useState<AgentResult | null>(null);
+  const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -635,11 +636,7 @@ export default function App() {
           {deferredPrompt && <button className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
-          <button className="icon-btn" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} title="Assemble SAM's team of AI agents">🤝 Team</button>
-          <button className="icon-btn" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }} title="Deploy the Ninjas at a problem">🥷 Ninjas</button>
-          <button className="icon-btn" onClick={lookThroughCamera} title="Let SAM see through your camera">👁️ Look</button>
-          <button className={`icon-btn ${guardian ? "on" : ""}`} onClick={toggleGuardian} title="Guardian — watch the camera, flag strangers">{guardian ? "🛡️ Watching" : "🛡️ Guardian"}</button>
-          <button className="icon-btn" onClick={() => setToolsOpen(true)} title="What SAM can do">What I can do</button>
+          
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
             <button role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}>🏠 Personal</button>
@@ -654,7 +651,6 @@ export default function App() {
             </label>
           )}
           <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
-          <button className="icon-btn" onClick={() => setMemoryOpen(true)} title="What SAM remembers">Memory</button>
           <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
         {settingsOpen && (
@@ -882,7 +878,19 @@ export default function App() {
         )}
         <div className="composer-inner">
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-          <button className="plus" onClick={() => fileRef.current?.click()} title="Add files or photos" aria-label="Add attachment">+</button>
+          <div className="plus-wrap" onMouseLeave={() => setPlusOpen(false)}>
+            <button className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
+            {plusOpen && (
+              <div className="plus-menu">
+                <button className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
+                <button className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
+                <button className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
+                <button className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon">👁️</span> Look (Vision)</button>
+                <button className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
+                <button className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
+              </div>
+            )}
+          </div>
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => dt.items.add(f)); onFiles(dt.files); } }}
