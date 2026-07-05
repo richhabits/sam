@@ -27,6 +27,7 @@ import { logSecurity, securityStatus } from "./security.ts";
 import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
+import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
@@ -1300,6 +1301,26 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Forgetting memory ${i.id}`, preview: (i) => `Permanently delete memory ${i.id}?`, run: async (i) => forget(i.id) ? `Deleted memory ${i.id}.` : `Memory ${i.id} not found.` },
   { name: "clear_all_memories", safe: false, description: "NUCLEAR OPTION: Wipes the entire semantic memory vault clean.", params: "(none)",
     activity: () => `Wiping memory vault`, preview: () => `Wipe entire memory vault?`, run: async () => { clearAll(); return "Memory vault wiped clean."; } },
+  { name: "ingest_folder", safe: false, description: "Index every readable document in a folder (recursively — md/txt/pdf/docx/csv/json/html) into SAM's document library so SAM knows their contents and can recall them by meaning. Re-running skips unchanged files. input: {path, max_files?}.", params: "{path, max_files?}",
+    activity: (i) => `Indexing documents in ${i.path ?? i}`,
+    preview: (i) => `Scan ${i.path ?? i} and index its documents into SAM's library (uses free embedding quota; unchanged files are skipped; ~${Number(i.max_files) || 300} files max this run)`,
+    run: async (i) => reportText(await ingestFolder(i.path ?? i, Number(i.max_files) || 300)) },
+  { name: "search_docs", safe: true, description: "Search the user's ingested document library by meaning — returns the best-matching passages with their source files. input: {query}.", params: "{query}",
+    activity: (i) => `Searching your documents for "${i.query ?? i}"`, run: async (i) => {
+      const hits = await searchDocs(i.query ?? i);
+      if (!hits.length) return docsStats().chunks ? "No matching passages in the document library." : "The document library is empty — ingest a folder first (ingest_folder).";
+      return hits.map((h) => `[${h.source}] (${h.score.toFixed(2)})\n${h.text}`).join("\n\n");
+    } },
+  { name: "docs_library", safe: true, description: "Show what's in SAM's document library — counts + the most recently indexed files. input: (none).", params: "(none)",
+    activity: () => `Checking the document library`, run: async () => {
+      const s = docsStats();
+      if (!s.files) return "The document library is empty. Point me at a folder and I'll learn it (ingest_folder).";
+      const recent = recentDocs(12).map((r) => `- ${r.path} (${r.chunks} chunks, ${new Date(r.ts).toLocaleDateString()})`).join("\n");
+      return `${s.files} files · ${s.chunks} searchable chunks.\nMost recent:\n${recent}`;
+    } },
+  { name: "forget_docs", safe: false, description: "Remove a file or a whole folder from SAM's document library. input: {path}.", params: "{path}",
+    activity: (i) => `Removing ${i.path ?? i} from the library`, preview: (i) => `Forget everything indexed under ${i.path ?? i}?`,
+    run: async (i) => { const n = forgetDoc(i.path ?? i); return n ? `Forgot ${n} indexed chunk(s) under ${i.path ?? i}.` : `Nothing in the library under ${i.path ?? i}.`; } },
   { name: "add_schedule", safe: false, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
     activity: () => `Adding scheduled task`, preview: (i) => `Set up a recurring task — run "${i.command}" ${i.cron}?`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
   { name: "list_schedules", safe: true, description: "List all active background routines and scheduled tasks SAM is maintaining.", params: "(none)",
