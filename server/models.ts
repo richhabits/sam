@@ -86,11 +86,14 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
       "Content-Type": "application/json",
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1500,
-      system,
+      // Cache the (large, repeated) system prompt so every call after the first in
+      // a multi-step task pays ~90% less on those input tokens. 5-min ephemeral TTL.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: prompt }],
     }),
   });
