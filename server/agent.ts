@@ -45,6 +45,8 @@ RULES:
 - UI WIDGETS: You can render native UI widgets in your final answer by outputting a markdown block labeled "widget" containing pure JSON.
   Chart: \`\`\`widget\n{"type":"chart","title":"Sales","series":[{"label":"Jan","value":10}]}\n\`\`\`
   Kanban: \`\`\`widget\n{"type":"kanban","title":"Project","columns":[{"name":"Todo","tasks":["Task 1"]},{"name":"Done","tasks":[]}]}\n\`\`\`
+- PROACTIVE ENGAGEMENT: To keep the momentum flowing, optionally append 2-3 short, highly relevant follow-up questions the user might want to ask next, using the followup widget at the very bottom of your answer.
+  Followups: \`\`\`widget\n{"type":"followup","questions":["Tell me more?","What's the cost?"]}\n\`\`\`
 `.trim();
 }
 

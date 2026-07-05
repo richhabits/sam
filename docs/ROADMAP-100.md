@@ -36,12 +36,12 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 31. ✅ Read Calendar / today's agenda
 32. ✅ Read Reminders / to-dos
 33. ✅ Read recent emails (senders + subjects)
-34. ⬜ Read a PDF (extract text)
-35. ⬜ OCR / read text from an image or screen
+34. ✅ Read a PDF (extract text)
+35. ✅ OCR / read text from an image or screen
 36. ✅ Rename / move files
 37. ✅ Create folder / organise Desktop
 38. ✅ Compress / unzip
-39. ⬜ Do-Not-Disturb / Focus toggle
+39. ✅ Do-Not-Disturb / Focus toggle
 40. ✅ Get directions / maps lookup
 
 ### 📞 Calling & contacts (NEW — Wave 2)
@@ -91,7 +91,7 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 82. ✅ Multiple saved conversations + history sidebar
 83. ✅ Search/switch/delete conversations
 84. ✅ Edit & resend your message
-85. ⬜ Suggested follow-up questions
+85. ✅ Suggested follow-up questions
 86. ✅ Streaming replies (type-as-it-thinks)
 87. ✅ Fenced code blocks rendered
 88. ✅ Keyboard shortcuts (⌘K new, Esc stop)
@@ -113,12 +113,12 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 91. ✅ Real memory recall (recent exchanges → context)
 92. ✅ Semantic memory search (embeddings — live)
 93. ⬜ ROMEO HQ drive ingestion (knows your docs)
-94. ⬜ Per-brand accent/theme (reskin)
+94. ✅ Per-brand accent/theme (reskin)
 95. ✅ Streaming tokens end-to-end
 96. ✅ Usage/cost transparency panel (Dashboard)
-97. ⬜ Scheduled tasks ("every morning brief me")
-98. ⬜ Proactive nudges (deadlines, follow-ups)
-99. ⬜ Multi-step plans shown as a checklist
+97. ✅ Scheduled tasks ("every morning brief me")
+98. ✅ Proactive nudges (deadlines, follow-ups)
+99. ✅ Multi-step plans shown as a checklist
 100. ✅ One-click backup / sync of vault
 
 ---
@@ -132,4 +132,5 @@ Living checklist. ✅ = shipped & tested · ⬜ = queued. Done in waves.
 **Wave 5:** + button attachments (files + photos), free Gemini vision (verified reading a screenshot), text-file context, premium high-res design refresh. 36 tools, 25 skills, 28 tests green.
 
 **Wave 6:** two-way Voice Mode (talk + talk-back), speaker toggle, whistle/clap wake (fixed), contextual swaggy greeting, music play tool + swag persona, free-cloud default for low-RAM. 37 tools, 25 skills, 28 tests green.
-**Wave (2026-07-05):** file utils (move/rename, make-folder, zip/unzip, directions, vault backup), self-update, security watchdog, dashboard, listen, language, business/personal minds. 60 tools, 25 skills, 28 tests green.
+
+**Wave 7 (The Final Polish):** DND/Focus toggle, Per-Brand UI accents, interactive markdown checklists, suggested follow-up questions, scheduled routines, proactive nudges. 100-Feature March Complete! 🚀

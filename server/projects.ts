@@ -22,6 +22,7 @@ export interface Project {
   branch: string;            // which skill branch it leans on most
   summary: string;
   tag?: string;              // one-line "what it is" so SAM never mixes brands up
+  themeColor?: string;       // HEX color to dynamically reskin SAM's UI
   hooks?: {                  // optional live hooks SAM can reach into
     supabaseProjectId?: string;
     vercelProjectId?: string;
@@ -35,10 +36,12 @@ const SAMPLE: Project[] = [
   {
     id: "sample-cafe", name: "Sample Café", domain: "example.com", status: "live", branch: "ops",
     tag: "a local coffee shop", summary: "A sample brand so you can see how SAM uses brand context. Edit or replace me.",
+    themeColor: "#10B981" // Emerald green
   },
   {
     id: "sample-store", name: "Sample Store", status: "building", branch: "brand",
     tag: "an online shop", summary: "Another sample. Add your real brands here or in vault/brands.json.",
+    themeColor: "#6366F1" // Indigo
   },
 ];
 

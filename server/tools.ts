@@ -920,6 +920,19 @@ end tell`;
   { name: "disk_space", safe: true, description: "How much disk space is free.", params: "(none)",
     activity: () => `Checking disk space`,
     run: async () => { const { stdout } = await sh(`df -h / | tail -1 | awk '{print $4" free of "$2" ("$5" used)"}'`); return `💾 ${stdout.trim()}`; } },
+  { name: "toggle_dnd", safe: false, description: "Toggle Mac Do Not Disturb / Focus on or off. input: {on: boolean}.", params: "{on: boolean}",
+    activity: (i) => `Turning Do Not Disturb ${i.on ? "on" : "off"}`,
+    run: async (i) => {
+      if (!IS_MAC) return "Do Not Disturb toggle only supported on macOS.";
+      try {
+        const s = await sh(`shortcuts run "Turn Do Not Disturb ${i.on ? "On" : "Off"}" 2>/dev/null || echo "failed"`).catch(() => ({stdout: "failed"}));
+        if (!s.stdout.includes("failed")) return `DND is now ${i.on ? "on" : "off"}.`;
+        const script = `tell application "System Events" to tell application process "Control Center"\n  try\n    click menu bar item "Focus" of menu bar 1\n    delay 0.3\n    click checkbox 1 of scroll area 1 of window "Control Center"\n    delay 0.3\n    click menu bar item "Focus" of menu bar 1\n    return "Toggled Do Not Disturb via GUI."\n  on error\n    return "Failed to toggle DND. You may need to grant Accessibility permissions or create a 'Turn Do Not Disturb On/Off' Apple Shortcut."\n  end try\nend tell`;
+        const res = await osa(script);
+        return res.trim();
+      } catch (e: any) { return `Failed: ${e.message}`; }
+    }
+  },
   { name: "quick_note", safe: true, description: "Jot a quick note into SAM's vault. input: text.", params: "text",
     activity: () => `Saving a note`,
     run: async (i) => { const p = safePath("./vault/notes/quick.md"); await sh(`mkdir -p ${shq(dirname(p))}`); await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" }); return `📝 Noted to your vault.`; } },
