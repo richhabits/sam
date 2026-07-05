@@ -248,6 +248,31 @@ export default function App() {
     refreshLog();
   }
 
+  // 👁️ SAM looks through the webcam — captures one frame → its vision describes it.
+  async function lookThroughCamera() {
+    if (loading) return;
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      const video = document.createElement("video");
+      video.srcObject = stream; video.muted = true; await video.play();
+      await new Promise((r) => setTimeout(r, 450));   // let the camera expose
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+      canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const data = canvas.toDataURL("image/jpeg", 0.82);
+      stream.getTracks().forEach((t) => t.stop());
+      setMessages((m) => [...m, { role: "user", text: "👁️ (looking through the camera)", at: now() }]);
+      setLoading(true);
+      try { handleResult(await command("Look through my webcam — tell me what and who you can see, naturally and warmly.", brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "camera.jpg", mime: "image/jpeg", data }])); }
+      catch { sysNote("Couldn't see through the camera just now — need a Gemini key for vision (Settings → API keys)."); }
+      setLoading(false); inputRef.current?.focus();
+    } catch {
+      stream?.getTracks().forEach((t) => t.stop());
+      sysNote("I couldn't open the camera — allow camera access in your browser and try again.");
+    }
+  }
+
   function handleSlash(v: string): boolean {
     const cmd = v.toLowerCase();
     if (cmd === "/new" || cmd === "/clear") { newChat(); return true; }
@@ -431,6 +456,7 @@ export default function App() {
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
           <button className="icon-btn" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} title="Assemble SAM's team of AI agents">🤝 Team</button>
+          <button className="icon-btn" onClick={lookThroughCamera} title="Let SAM see through your camera">👁️ Look</button>
           <button className="icon-btn" onClick={() => setToolsOpen(true)} title="What SAM can do">What I can do</button>
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
