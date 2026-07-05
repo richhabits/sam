@@ -6,6 +6,7 @@
 // browser voice (which can't be analysed).
 
 let current: HTMLAudioElement | null = null;
+let currentUrl: string | null = null;    // object URL to revoke when done/stopped
 let _level = 0;          // live amplitude 0..1
 let _speaking = false;
 let raf = 0;
@@ -42,7 +43,14 @@ function startTicker() {
 
 export function stopSpeaking() {
   try { speechSynthesis.cancel(); } catch {}
-  if (current) { try { current.pause(); current.src = ""; } catch {}; current = null; }
+  if (current) {
+    // Detach handlers FIRST: setting src="" fires the element's 'error' event, and a
+    // live onerror would re-speak the text we're trying to stop (zombie audio).
+    current.onended = null; current.onerror = null;
+    try { current.pause(); current.src = ""; } catch {}
+    current = null;
+  }
+  if (currentUrl) { try { URL.revokeObjectURL(currentUrl); } catch {}; currentUrl = null; }
   _speaking = false;
 }
 
@@ -51,7 +59,7 @@ function clean(text: string) { return text.replace(/[*#`_>\[\]]/g, "").slice(0, 
 function browserSpeak(text: string, onDone?: () => void) {
   try {
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-GB";
+    u.lang = navigator.language || "en-GB";   // match the user's locale, not always British
     analyser = null;                     // synthesize the wobble for the mouth
     _speaking = true; startTicker();
     u.onend = () => { _speaking = false; onDone?.(); };
@@ -72,9 +80,10 @@ export async function speak(text: string, onDone?: () => void) {
     if (r.ok && (r.headers.get("content-type") || "").includes("audio")) {
       const url = URL.createObjectURL(await r.blob());
       const audio = new Audio(url);
-      current = audio;
-      audio.onended = () => { current = null; _speaking = false; onDone?.(); };
-      audio.onerror = () => { current = null; browserSpeak(t, onDone); };
+      current = audio; currentUrl = url;
+      const revoke = () => { if (currentUrl === url) { try { URL.revokeObjectURL(url); } catch {}; currentUrl = null; } };
+      audio.onended = () => { current = null; revoke(); _speaking = false; onDone?.(); };
+      audio.onerror = () => { current = null; revoke(); browserSpeak(t, onDone); };
       await audio.play();
       // NOTE: we intentionally do NOT route the audio through an AudioContext —
       // tapping a playing <audio> can suppress its 'ended' event, which would
