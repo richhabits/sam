@@ -11,7 +11,8 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
+import { randomBytes } from "node:crypto";
 import { resolve, dirname, basename, extname } from "node:path";
 import { createRequire } from "node:module";
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
@@ -518,6 +519,57 @@ export const TOOLS: Tool[] = [
     activity: () => `Reading the clipboard`, run: clipboardGet },
   { name: "get_datetime", safe: true, description: "Get the current date and time.", params: "(none)",
     activity: () => `Checking the time`, run: async () => nowText() },
+  { name: "set_timer", safe: true, description: "Set a short local timer (minutes). SAM will notify the OS when time is up. input: {minutes, reason?}.", params: "{minutes, reason?}",
+    activity: (i) => `Setting a timer for ${i.minutes}m`, 
+    run: async (i) => {
+      const min = Number(i.minutes);
+      if (isNaN(min) || min <= 0) return "Invalid minutes.";
+      setTimeout(() => {
+        notify({ title: "Timer Done", message: i.reason || "Time is up!" });
+      }, min * 60000);
+      return `Timer set for ${min} minute(s). I will notify you when it's done.`;
+    } },
+  { name: "world_clock", safe: true, description: "Get the current time in a specific timezone (e.g. 'America/New_York', 'Asia/Tokyo'). input: {timezone}.", params: "{timezone}",
+    activity: (i) => `Checking time in ${i.timezone}`,
+    run: async (i) => {
+      try {
+        return new Intl.DateTimeFormat("en-US", { timeZone: i.timezone, dateStyle: "full", timeStyle: "long" }).format(new Date());
+      } catch (e: any) { return `Invalid timezone or error: ${e.message}`; }
+    } },
+  { name: "password_generate", safe: true, description: "Generate a cryptographically secure random password. input: {length?}.", params: "{length?}",
+    activity: () => `Generating a secure password`,
+    run: async (i) => {
+      const len = Number(i?.length) || 16;
+      const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+      const bytes = randomBytes(len);
+      let pass = "";
+      for (let j = 0; j < len; j++) pass += chars[bytes[j] % chars.length];
+      return `Generated password (length ${len}): ${pass}`;
+    } },
+  { name: "system_info", safe: true, description: "Get physical hardware stats of this Mac (CPU cores, RAM usage, Uptime).", params: "(none)",
+    activity: () => `Checking system hardware stats`,
+    run: async () => {
+      const gbs = (b: number) => (b / 1024 / 1024 / 1024).toFixed(2);
+      const hrs = (s: number) => (s / 3600).toFixed(2);
+      return `CPU: ${cpus().length} cores\nRAM: ${gbs(totalmem() - freemem())} GB used / ${gbs(totalmem())} GB total\nUptime: ${hrs(uptime())} hours`;
+    } },
+  { name: "volume_brightness_control", safe: false, description: "Set the volume or brightness of the Mac hardware. input: {type: 'volume' | 'brightness', level: number} (level is 0-100).", params: "{type, level}",
+    activity: (i) => `Setting ${i.type} to ${i.level}%`,
+    preview: (i) => `Set ${i.type} hardware to ${i.level}%`,
+    run: async (i) => {
+      if (!IS_MAC) return "Hardware control only works on macOS.";
+      const lvl = Math.min(100, Math.max(0, Number(i.level) || 0));
+      if (i.type === "brightness") {
+        // Brightness via AppleScript uses displays slider (1-10 scale usually, tricky without 3rd party tools, but we can try System Events)
+        // Safer universal way without external tools:
+        return "Brightness control requires external CLI tools (like 'brightness') on macOS. Skipping to keep dependencies zero.";
+      } else {
+        try {
+          await osa(`set volume output volume ${lvl}`);
+          return `Hardware volume set to ${lvl}%.`;
+        } catch (e: any) { return `Failed to set volume: ${e.message}`; }
+      }
+    } },
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
   { name: "notify", safe: true, description: "Show a macOS notification. input: {title?, message}.", params: "{title?, message}",
