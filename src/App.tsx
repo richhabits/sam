@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, AgentResult, Attachment } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -155,6 +155,7 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
   const [playing, setPlaying] = useState<number | null>(null);
+  const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
   const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
   const [updating, setUpdating] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -256,8 +257,28 @@ export default function App() {
     if (cmd === "/tools") { setToolsOpen(true); return true; }
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
-    if (cmd === "/help") { sysNote("Commands: /new, /private, /best, /auto, /tools, /history, /export. Shortcuts: ⌘K new chat, Esc stop. Or just talk — I can search, draft, plan, call people, and act on your Mac."); return true; }
+    if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6)); return true; }
+    if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
+    if (cmd === "/help") { sysNote("Commands: /team <request> (assemble the AI crew), /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
+  }
+
+  // The Team — SAM assembles specialists, runs them in parallel, synthesises.
+  async function runTheTeam(text?: string) {
+    const value = (text ?? input).trim();
+    if (!value || loading) return;
+    setInput(""); setPending(null);
+    setMessages((m) => [...m, { role: "user", text: "🤝 " + value, at: now() }]);
+    setLoading(true); setTeam({ crew: [], done: {}, active: {} });
+    try {
+      await streamTeam(value, brand || undefined, (e) => {
+        if (e.type === "plan") setTeam({ crew: e.plan, done: {}, active: {} });
+        else if (e.type === "agent-start") setTeam((t) => (t ? { ...t, active: { ...t.active, [e.id]: true } } : t));
+        else if (e.type === "agent-done") setTeam((t) => (t ? { ...t, active: { ...t.active, [e.id]: false }, done: { ...t.done, [e.id]: e.output } } : t));
+        else if (e.type === "final") setMessages((m) => [...m, { role: "sam", text: e.text || "", how: "the team", at: now() }]);
+      });
+    } catch { setMessages((m) => [...m, { role: "sam", text: "The team couldn't assemble just now — try again.", at: now() }]); }
+    setTeam(null); setLoading(false); inputRef.current?.focus();
   }
   function sysNote(text: string) { setMessages((m) => [...m, { role: "sam", text, at: now() }]); }
 
@@ -409,6 +430,7 @@ export default function App() {
         <div className="bar-right">
           {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
+          <button className="icon-btn" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} title="Assemble SAM's team of AI agents">🤝 Team</button>
           <button className="icon-btn" onClick={() => setToolsOpen(true)} title="What SAM can do">What I can do</button>
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
@@ -501,6 +523,28 @@ export default function App() {
                 )}
               </div>
             ))}
+            {team && (
+              <div className="row sam">
+                <div className="who">SAM · assembling the team</div>
+                <div className="team-panel">
+                  {team.crew.length === 0
+                    ? <div className="team-planning"><span className="team-spin" /> Breaking this down…</div>
+                    : team.crew.map((c: any) => {
+                        const done = team.done[c.specialist] !== undefined;
+                        const active = team.active[c.specialist];
+                        return (
+                          <div key={c.specialist} className={`team-member ${done ? "done" : active ? "active" : "waiting"}`}>
+                            <span className="tm-emoji">{c.emoji}</span>
+                            <div className="tm-body">
+                              <div className="tm-name">{c.name} <span className="tm-status">{done ? "✓ done" : active ? "working…" : "queued"}</span></div>
+                              <div className="tm-task">{c.task}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                </div>
+              </div>
+            )}
             {live && (
               <div className="row sam">
                 <div className="who">SAM</div>
