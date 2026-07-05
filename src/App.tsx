@@ -215,7 +215,7 @@ export default function App() {
   const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("sam.dark") === "1"; } catch { return false; } });
-  const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
+  const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "aurora"; } catch { return "aurora"; } });
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
   const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") === "1"; } catch { return false; } });
   const [profile, setProfile] = useState<Profile>(loadProfile);
@@ -371,7 +371,7 @@ export default function App() {
     if (!wakeOn) { try { localStorage.setItem("sam.wake", "0"); } catch {}; return; }
     let stop: (() => void) | null = null;
     startWakeListener(() => setVoiceMode(true)).then((s) => (stop = s)).catch(() => {
-      setWakeOn(false); sysNote("I couldn't access the mic for hands-free wake. Allow mic access and try again.");
+      setWakeOn(false); showToast("🎤 Couldn't access the mic — turned wake off");
     });
     try { localStorage.setItem("sam.wake", "1"); } catch {}
     return () => { stop?.(); };
@@ -389,24 +389,38 @@ export default function App() {
   // Voice input — cross-platform, browser-native (no install, free).
   function toggleVoice() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { sysNote("🎤 Voice input needs Chrome or Edge. Everything else works in any browser."); return; }
-    if (listening) { try { recRef.current?.stop(); } catch {} setListening(false); return; }
+    if (!SR) { showToast("🎤 Voice input needs Chrome or Edge"); return; }
+    // Toggle OFF — you're always in control: one click stops it.
+    if (listening) { try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {} setListening(false); showToast("🎤 Mic off"); return; }
     const rec = new SR(); recRef.current = rec;
-    rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
     rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((v) => (v ? v + " " : "") + t); inputRef.current?.focus(); };
-    rec.onend = () => setListening(false);
+    rec.onend = () => setListening(false);   // stops after one phrase — never loops on its own
     rec.onerror = (e: any) => {
       setListening(false);
       const err = e?.error;
-      if (err === "not-allowed" || err === "service-not-allowed") sysNote("🎤 Mic is blocked. Click the camera/lock icon in your browser's address bar → allow the Microphone, then hit 🎤 again.");
-      else if (err === "audio-capture") sysNote("🎤 No microphone found — check it's plugged in and selected in your system sound settings.");
-      else if (err === "network") sysNote("🎤 Voice recognition needs internet (Chrome transcribes audio via Google). Check your connection.");
-      // "no-speech"/"aborted" are normal — stay quiet.
+      // Transient TOASTS, never chat messages — so a blocked mic can't spam the thread.
+      if (err === "not-allowed" || err === "service-not-allowed") showToast("🎤 Mic blocked — allow it via the 🔒 icon in the address bar");
+      else if (err === "audio-capture") showToast("🎤 No microphone found");
+      else if (err === "network") showToast("🎤 Voice needs internet (Chrome transcribes via Google)");
+      // "no-speech"/"aborted" are normal — stay silent.
     };
     try { setListening(true); rec.start(); inputRef.current?.focus(); }
-    catch { setListening(false); sysNote("🎤 Couldn't start the mic — try again, or check the browser's mic permission."); }
+    catch { setListening(false); showToast("🎤 Couldn't start the mic — try again"); }
   }
   function speakText(text: string) { ttsSpeak(text); }
+  // One button to kill EVERYTHING audio/visual — you're always in control.
+  function stopAllAV() {
+    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {}
+    setListening(false);
+    try { stopSpeaking(); } catch {}
+    setPlaying(null);
+    setSpeakReplies(false);
+    if (wakeOn) setWakeOn(false);
+    if (guardian) stopGuardian();
+    setVoiceMode(false);
+    showToast("🔇 All audio & camera stopped");
+  }
 
   function onScroll() { const el = chatRef.current; if (!el) return; setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80); const max = el.scrollHeight - el.clientHeight; setScrollPct(max > 40 ? Math.min(100, (el.scrollTop / max) * 100) : 0); }
 
@@ -755,6 +769,9 @@ export default function App() {
               </select>
             </label>
           )}
+          {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
+            <button className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now">🔇 Stop</button>
+          )}
           <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
           <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
@@ -767,6 +784,12 @@ export default function App() {
                 <span className="pop-opt-sub">{q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
               </button>
             ))}
+            <div className="pop-title" style={{ marginTop: 6 }}>🎛️ Audio &amp; Camera — you're in control</div>
+            <button className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">🔇 Stop ALL audio &amp; camera</span><span className="pop-opt-sub">Instantly kills mic, voice, wake word &amp; Guardian</span></button>
+            <button className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">🎤 Mic — dictate {listening ? "· LISTENING" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off — click to talk (or the 🎤 in the message box)"}</span></button>
+            <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">🔊 SAM talks back {speakReplies ? "· ON" : ""}</span><span className="pop-opt-sub">{speakReplies ? "On — reads replies aloud" : "Off"}</span></button>
+            <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">🎵 Wake word {wakeOn ? "· ON" : ""}</span><span className="pop-opt-sub">{wakeOn ? "On — mic listens for a whistle/clap" : "Off — NOTHING listens unless you tap 🎤"}</span></button>
+            <button className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">🛡️ Guardian camera {guardian ? "· ON" : ""}</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off — camera is not active"}</span></button>
             <div className="pop-title" style={{ marginTop: 6 }}>Preferences</div>
             <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
             <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">✈️ Autopilot {autopilot ? "· ON" : ""}</span><span className="pop-opt-sub">{autopilot ? "SAM handles routine work without asking (serious stuff still asks)" : "Off — SAM asks before anything risky"}</span></button>
@@ -780,8 +803,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">Read replies aloud</span><span className="pop-opt-sub">{speakReplies ? "On" : "Off"}</span></button>
-            <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">🎵 Whistle / clap to wake</span><span className="pop-opt-sub">{wakeOn ? "On — whistle or double-clap for SAM" : "Off"}</span></button>
             <button className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
             <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
             <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
