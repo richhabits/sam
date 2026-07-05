@@ -1,6 +1,8 @@
 # dependencies & build
 node_modules/
 dist/
+dist-electron/
+release/
 *.tsbuildinfo
 
 # secrets & local config  — NEVER commit
