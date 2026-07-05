@@ -12,11 +12,23 @@ const Dashboard = lazy(() => import("./Dashboard"));
 interface Profile { name: string; about?: string; language?: string }
 const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
+const TIPS = [
+  "💡 Try /team <big request> — SAM assembles a crew of specialists.",
+  "🥷 Try /ninjas <problem> — a squad finds and fixes it.",
+  "📸 Click 👁️ Look to let SAM see through your camera.",
+  "🎙 Hit Voice to go hands-free — talk and listen.",
+  "🛡️ Guardian mode watches your camera and flags strangers.",
+  "⌨️ ⌘⇧T opens Team, ⌘⇧N opens Ninjas — power user moves.",
+  "🔒 Type /private to go fully local — nothing leaves your Mac.",
+  "📣 Type /share to copy your SAM pitch + link.",
+  "✈️ Turn on Autopilot in settings — SAM handles routine stuff silently.",
+];
 function greeting(name: string) {
   const h = new Date().getHours();
-  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  return name ? `${part}, ${name} 👋 I'm SAM.` : "Hi 👋 I'm SAM.";
+  const part = h < 5 ? "Late night" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : h < 21 ? "Good evening" : "Late night";
+  return name ? `${part}, ${name} 👋` : "Hi there 👋";
 }
+function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
 interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string }
 interface Convo { id: string; title: string; messages: Msg[]; at: number }
@@ -215,7 +227,10 @@ export default function App() {
   // keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "t") { e.preventDefault(); setInput("/team "); inputRef.current?.focus(); }
+      else if (mod && e.shiftKey && e.key.toLowerCase() === "n") { e.preventDefault(); setInput("/ninjas "); inputRef.current?.focus(); }
+      else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (e.key === "Escape") { if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
@@ -568,7 +583,7 @@ export default function App() {
             <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">✈️ Autopilot {autopilot ? "· ON" : ""}</span><span className="pop-opt-sub">{autopilot ? "SAM handles routine work without asking (serious stuff still asks)" : "Off — SAM asks before anything risky"}</span></button>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
-              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"]].map(([id, label, ic]) => (
+              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"]].map(([id, label, ic]) => (
                 <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>{ic} {label}</button>
               ))}
             </div>
@@ -603,12 +618,13 @@ export default function App() {
         {!started ? (
           <div className="welcome">
             <div className="hello">{greeting(profile.name)}</div>
-            <div className="hello-sub">I can answer, draft, search the web, call people, and take action on your computer. Ask me anything, or start with one of these:</div>
+            <div className="hello-sub">I can answer, draft, search the web, call people, and take action on your computer. Ask me anything, or try one of these:</div>
             <div className="chips">
               {SUGGESTIONS.map((s) => (
                 <button key={s} className="chip" onClick={() => { setInput(s); inputRef.current?.focus(); }}>{s}</button>
               ))}
             </div>
+            <div className="tip">{randomTip()}</div>
           </div>
         ) : (
           <div className="thread">
@@ -622,6 +638,7 @@ export default function App() {
                 {m.role === "sam" && m.text && (
                   <div className="msg-actions">
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>{copied === i ? "Copied ✓" : "Copy"}</button>
+                    <button className="mini" onClick={() => copyMsg(m.text, i)}>📋 Markdown</button>
                     <button className="mini" onClick={() => {
                       if (playing === i) { stopSpeaking(); setPlaying(null); }
                       else { stopSpeaking(); setPlaying(i); ttsSpeak(m.text, () => setPlaying((p) => (p === i ? null : p))); }
@@ -724,7 +741,7 @@ export default function App() {
             ? <button className="send stop" onClick={stop} aria-label="Stop">■</button>
             : <button className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send">↑</button>}
         </div>
-        <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky</div>
+        <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
 
       {historyOpen && (
