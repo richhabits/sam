@@ -106,3 +106,20 @@ export async function getSecurity(): Promise<{ status: any; events: any[] }> {
 export async function getProactive(): Promise<{ items: { type: string; text: string; at: string }[]; nudges: any[] }> {
   try { const r = await fetch("/api/proactive"); return await r.json(); } catch { return { items: [], nudges: [] }; }
 }
+
+// The Team — SSE: emits plan → agent-start → agent-done → final.
+export async function streamTeam(message: string, projectId: string | undefined, onEvent: (e: any) => void): Promise<void> {
+  const res = await fetch("/api/team", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, projectId, user: USER }),
+  });
+  if (!res.ok || !res.body) throw new Error("team failed");
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const parts = buf.split("\n\n"); buf = parts.pop() || "";
+    for (const p of parts) { const line = p.trim(); if (!line.startsWith("data:")) continue; try { onEvent(JSON.parse(line.slice(5).trim())); } catch {} }
+  }
+}
+export const getRoster = () => fetch("/api/team/roster").then((r) => r.json());
