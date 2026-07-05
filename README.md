@@ -2,16 +2,16 @@
 
 # S.A.M. — Smart Artificial Mind
 
-**A free, private team of AI agents that lives on your Mac, remembers everything, and actually does the work. No API keys required, no cloud, no cost.**
+**A free, private team of AI agents that lives on your Mac, remembers everything, and actually does the work. No subscription, no cost — runs on free cloud AI tiers by default, or 100% offline on Ollama.**
 
 Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes real action on your Mac (web, files, terminal, email, calls, GitHub), and when a job's big it assembles a **team of specialist agents** to tackle it in parallel — all running free on your own machine.
 
-`Free forever` · `100% local & private` · `30+ free AI brains` · `A team of agents` · `Ask-first safe`
+`Free forever` · `Local-first & private` · `30+ free AI brains` · `A team of agents` · `Ask-first safe`
 
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-100%25%20local-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-30%2B-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-30%2B-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 
@@ -25,7 +25,7 @@ Most "AI assistants" just talk. SAM works:
 - 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends.
 - 🐝 **The Swarm** — long-running, continuous background agents that survive restarts and pause to ask for your approval on risky actions.
 - 🧠 **30+ free AI brains, auto-rotating** — Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks · and 20 more. One hits a limit, it hops to the next.
-- 📐️ **144 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
+- 📐️ **149 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
 - 💻 **Native macOS App** — runs a native desktop UI with a global `⌥Space` hotkey to summon SAM anywhere.
@@ -33,7 +33,7 @@ Most "AI assistants" just talk. SAM works:
 - 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Alex"*), and **🛡️ Guardian** mode watches for intruders.
 - 🧭 **Semantic memory** · 💼🏠 **Business & Personal minds** · 📍 **live progress tracker** · 🗣️ **two-way voice**.
 - 🎨 **Skins** — Jarvis HUD, Ember, Stealth. Clean premium UI, light/dark, streams as it types.
-- 🔒 **Private & self-updating** — runs on your machine, your data never leaves it, and it evolves itself.
+- 🔒 **Private by design** — your keys, memory, vault and documents stay on your machine. Only the prompt you send goes to the brain you pick (and nothing at all in offline/Ollama mode).
 
 ---
 
@@ -105,7 +105,7 @@ npm test       # run the test suite
 
 ## Auto-updates
 
-SAM keeps itself current — every time it launches it quietly pulls the latest version (safe fast-forward only; it never touches your local edits). While running, a banner tells you if a new version lands. Turn it off with `SAM_NO_AUTOUPDATE=1` if you're developing.
+SAM checks for updates on launch — a few seconds after boot it compares your checkout against the remote and, if a newer version exists, prints an "✨ Update available" note (and shows a banner in the app). Getting it is one `git pull` (or the in-app **Update now** button, which does a safe fast-forward). It never pulls behind your back or touches your local edits.
 
 ---
 
