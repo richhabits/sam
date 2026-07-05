@@ -835,3 +835,11 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .studio-empty { grid-column: 1/-1; color: var(--muted); padding: 44px; text-align: center; }
 .studio-skeleton { aspect-ratio: 1; border-radius: 14px; background: linear-gradient(90deg, var(--surface), var(--bg), var(--surface)); background-size: 200% 100%; animation: studio-shimmer 1.2s infinite; }
 @keyframes studio-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Studio modes + example chips */
+.studio-modes { display: flex; gap: 8px; }
+.studio-modes button { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; padding: 7px 16px; font: 600 14px var(--sans); color: var(--muted); }
+.studio-modes button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+.studio-chips { display: flex; flex-wrap: wrap; gap: 8px; max-width: 920px; }
+.studio-chip { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 13px; color: var(--text); }
+.studio-chip:hover { border-color: var(--accent); color: var(--accent-text); }

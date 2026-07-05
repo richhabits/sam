@@ -4,8 +4,16 @@ import { useState } from "react";
 // SAM proxies it (keys hidden) to whatever image provider you've configured, and
 // shows the result. Degrades honestly when no provider key is set. Opened either
 // as a dedicated Electron window (?app=studio) or a browser tab.
+const EXAMPLES = [
+  "A cinematic wide shot of a lone lighthouse in a storm, moody, film grain",
+  "Minimal logo for a coffee brand called 'Ember', warm, vector",
+  "Isometric 3D bedroom, cozy, soft light, pastel palette",
+  "Product shot of a matte-black smartwatch on marble, studio lighting",
+];
+
 export default function StudioView() {
   const [prompt, setPrompt] = useState("");
+  const [mode, setMode] = useState<"image" | "video">("image");
   const [busy, setBusy] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -15,7 +23,8 @@ export default function StudioView() {
     setBusy(true); setError("");
     try {
       // Routes through SAM's /api/creative/* proxy (keys injected server-side).
-      const r = await fetch("/api/creative/images/generations", {
+      const path = mode === "video" ? "videos/generations" : "images/generations";
+      const r = await fetch(`/api/creative/${path}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, n: 1 }),
       });
@@ -39,17 +48,28 @@ export default function StudioView() {
         <div className="studio-brand">🎨 SAM <b>Studio</b></div>
         <div className="studio-sub">Create images & video — keys hidden by SAM's proxy, free-first.</div>
       </header>
+      <div className="studio-modes">
+        <button className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>🖼️ Image</button>
+        <button className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>🎬 Video</button>
+      </div>
       <div className="studio-compose">
         <textarea className="studio-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe what to create — a cinematic shot, a logo, a scene…  (⌘↵ to generate)" rows={2}
+          placeholder={`Describe the ${mode} to create…  (⌘↵ to generate)`} rows={2}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }} autoFocus />
         <button className="studio-go" onClick={generate} disabled={busy || !prompt.trim()}>{busy ? "Generating…" : "Generate"}</button>
       </div>
+      {images.length === 0 && !busy && (
+        <div className="studio-chips">{EXAMPLES.map((ex) => (
+          <button key={ex} className="studio-chip" onClick={() => setPrompt(ex)}>{ex}</button>
+        ))}</div>
+      )}
       {error && <div className="studio-error">{error}</div>}
       <div className="studio-gallery">
         {images.length === 0 && !busy && <div className="studio-empty">Your creations will appear here.</div>}
         {busy && <div className="studio-skeleton" />}
-        {images.map((src, i) => <img key={i} src={src} alt="generated" className="studio-img" />)}
+        {images.map((src, i) => (/\.(mp4|webm|mov)(\?|$)/i.test(src)
+          ? <video key={i} src={src} controls className="studio-img" />
+          : <img key={i} src={src} alt="generated" className="studio-img" />))}
       </div>
     </div>
   );
