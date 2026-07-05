@@ -75,6 +75,15 @@ const POOLS: Record<string, KeyPool> = {
   nebius: readPool("nebius", "NEBIUS_API_KEYS", "NEBIUS_API_KEY"),
   cohere: readPool("cohere", "COHERE_API_KEYS", "COHERE_API_KEY"),
   perplexity: readPool("perplexity", "PERPLEXITY_API_KEYS", "PERPLEXITY_API_KEY"),
+  // ── "Infinite Compute" Global Mesh — Asian Heavyweights ──
+  alibaba: readPool("alibaba", "ALIBABA_API_KEYS", "ALIBABA_API_KEY"),
+  volcengine: readPool("volcengine", "VOLCENGINE_API_KEYS", "VOLCENGINE_API_KEY"),
+  zhipu: readPool("zhipu", "ZHIPU_API_KEYS", "ZHIPU_API_KEY"),
+  moonshot: readPool("moonshot", "MOONSHOT_API_KEYS", "MOONSHOT_API_KEY"),
+  minimax: readPool("minimax", "MINIMAX_API_KEYS", "MINIMAX_API_KEY"),
+  stepfun: readPool("stepfun", "STEPFUN_API_KEYS", "STEPFUN_API_KEY"),
+  baidu: readPool("baidu", "BAIDU_API_KEYS", "BAIDU_API_KEY"),
+  tencent: readPool("tencent", "TENCENT_API_KEYS", "TENCENT_API_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).

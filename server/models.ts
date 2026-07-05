@@ -136,30 +136,62 @@ const NEBIUS_MODEL = process.env.NEBIUS_MODEL || "meta-llama/Meta-Llama-3.1-70B-
 const COHERE_MODEL = process.env.COHERE_MODEL || "command-r-plus-08-2024";
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || "llama-3.1-sonar-small-128k-chat";
 
-// Free order = FASTEST capable first (Cerebras & Groq), followed by SambaNova, Together, DeepSeek
+// ── "Infinite Compute" Global Mesh — Asian Heavyweights ──
+const ALIBABA_MODEL = process.env.ALIBABA_MODEL || "qwen-plus";
+const VOLCENGINE_MODEL = process.env.VOLCENGINE_MODEL || "doubao-1.5-pro-32k";
+const ZHIPU_MODEL = process.env.ZHIPU_MODEL || "glm-4-flash";
+const MOONSHOT_MODEL = process.env.MOONSHOT_MODEL || "moonshot-v1-8k";
+const MINIMAX_MODEL = process.env.MINIMAX_MODEL || "abab6.5s-chat";
+const STEPFUN_MODEL = process.env.STEPFUN_MODEL || "step-1-8k";
+const BAIDU_MODEL = process.env.BAIDU_MODEL || "ernie-speed-128k";
+const TENCENT_MODEL = process.env.TENCENT_MODEL || "hunyuan-lite";
+
+// ═══════════════════════════════════════════════════════════════
+//  THE BURN-DOWN ENGINE — 30+ providers, tiered for maximum
+//  free throughput. SAM sprays across Tier 1 first (speed),
+//  cascades to Tier 2 (bottomless), then Tier 3 (Asian mesh),
+//  and only touches Tier 4 (premium paid) as last resort.
+// ═══════════════════════════════════════════════════════════════
 const PROVIDERS: Provider[] = [
+  // ── TIER 1: Speed Demons (sub-200ms TTFT) ──────────────────
   { id: "cerebras", tier: "free", label: `cerebras:${CEREBRAS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cerebras.ai/v1", CEREBRAS_MODEL, s, p, k) },
   { id: "groq", tier: "free", label: `groq:${GROQ_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.groq.com/openai/v1", GROQ_MODEL, s, p, k) },
   { id: "sambanova", tier: "free", label: `sambanova:${SAMBANOVA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.sambanova.ai/v1", SAMBANOVA_MODEL, s, p, k) },
+
+  // ── TIER 2: Bottomless Wells (huge free quotas) ────────────
   { id: "together", tier: "free", label: `together:${TOGETHER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.together.xyz/v1", TOGETHER_MODEL, s, p, k) },
   { id: "deepseek", tier: "free", label: `deepseek:${DEEPSEEK_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.deepseek.com", DEEPSEEK_MODEL, s, p, k) },
   { id: "fireworks", tier: "free", label: `fireworks:${FIREWORKS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.fireworks.ai/inference/v1", FIREWORKS_MODEL, s, p, k) },
+  { id: "nvidia", tier: "free", label: `nvidia:${NVIDIA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://integrate.api.nvidia.com/v1", NVIDIA_MODEL, s, p, k) },
+  { id: "siliconflow", tier: "free", label: `siliconflow:${SILICONFLOW_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.siliconflow.cn/v1", SILICONFLOW_MODEL, s, p, k) },
   { id: "xai", tier: "free", label: `xai:${XAI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.x.ai/v1", XAI_MODEL, s, p, k) },
   { id: "huggingface", tier: "free", label: `huggingface:${HUGGINGFACE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api-inference.huggingface.co/v1", HUGGINGFACE_MODEL, s, p, k) },
   { id: "hyperbolic", tier: "free", label: `hyperbolic:${HYPERBOLIC_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.hyperbolic.xyz/v1", HYPERBOLIC_MODEL, s, p, k) },
   { id: "novita", tier: "free", label: `novita:${NOVITA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.novita.ai/v3/openai", NOVITA_MODEL, s, p, k) },
-  { id: "siliconflow", tier: "free", label: `siliconflow:${SILICONFLOW_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.siliconflow.cn/v1", SILICONFLOW_MODEL, s, p, k) },
+  { id: "nebius", tier: "free", label: `nebius:${NEBIUS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.studio.nebius.ai/v1/", NEBIUS_MODEL, s, p, k) },
+
+  // ── TIER 3: Asian Heavyweights (massive free-tier new user quotas) ──
+  { id: "alibaba", tier: "free", label: `alibaba:${ALIBABA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", ALIBABA_MODEL, s, p, k) },
+  { id: "volcengine", tier: "free", label: `volcengine:${VOLCENGINE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://ark.cn-beijing.volces.com/api/v3", VOLCENGINE_MODEL, s, p, k) },
+  { id: "zhipu", tier: "free", label: `zhipu:${ZHIPU_MODEL}`, run: (s, p, k) => callOpenAICompat("https://open.bigmodel.cn/api/paas/v4", ZHIPU_MODEL, s, p, k) },
+  { id: "moonshot", tier: "free", label: `moonshot:${MOONSHOT_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.moonshot.cn/v1", MOONSHOT_MODEL, s, p, k) },
+  { id: "minimax", tier: "free", label: `minimax:${MINIMAX_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.minimax.chat/v1", MINIMAX_MODEL, s, p, k) },
+  { id: "stepfun", tier: "free", label: `stepfun:${STEPFUN_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.stepfun.com/v1", STEPFUN_MODEL, s, p, k) },
+  { id: "baidu", tier: "free", label: `baidu:${BAIDU_MODEL}`, run: (s, p, k) => callOpenAICompat("https://qianfan.baidubce.com/v2", BAIDU_MODEL, s, p, k) },
+  { id: "tencent", tier: "free", label: `tencent:${TENCENT_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.lkeap.cloud.tencent.com/v1", TENCENT_MODEL, s, p, k) },
+
+  // ── TIER 3b: Aggregators & Specialty ───────────────────────
   { id: "glhf", tier: "free", label: `glhf:${GLHF_MODEL}`, run: (s, p, k) => callOpenAICompat("https://glhf.chat/api/openai/v1", GLHF_MODEL, s, p, k) },
   { id: "ai21", tier: "free", label: `ai21:${AI21_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.ai21.com/studio/v1", AI21_MODEL, s, p, k) },
   { id: "upstage", tier: "free", label: `upstage:${UPSTAGE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.upstage.ai/v1/solar", UPSTAGE_MODEL, s, p, k) },
-  { id: "nebius", tier: "free", label: `nebius:${NEBIUS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.studio.nebius.ai/v1/", NEBIUS_MODEL, s, p, k) },
   { id: "cohere", tier: "free", label: `cohere:${COHERE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cohere.com/v1", COHERE_MODEL, s, p, k) },
   { id: "perplexity", tier: "free", label: `perplexity:${PERPLEXITY_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.perplexity.ai", PERPLEXITY_MODEL, s, p, k) },
-  { id: "nvidia", tier: "free", label: `nvidia:${NVIDIA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://integrate.api.nvidia.com/v1", NVIDIA_MODEL, s, p, k) },
   { id: "mistral", tier: "free", label: `mistral:${MISTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.mistral.ai/v1", MISTRAL_MODEL, s, p, k) },
   { id: "github", tier: "free", label: `github:${GITHUB_MODEL}`, run: (s, p, k) => callOpenAICompat("https://models.inference.ai.azure.com", GITHUB_MODEL, s, p, k) },
   { id: "gemini", tier: "free", label: "gemini-2.5-flash", run: callGemini },
   { id: "openrouter", tier: "free", label: `openrouter:${OPENROUTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://openrouter.ai/api/v1", OPENROUTER_MODEL, s, p, k) },
+
+  // ── TIER 4: Premium (paid, last resort) ────────────────────
   { id: "anthropic", tier: "premium", label: CLAUDE_MODEL, run: callAnthropic },
   { id: "openai", tier: "premium", label: OPENAI_MODEL, run: (s, p, k) => callOpenAICompat("https://api.openai.com/v1", OPENAI_MODEL, s, p, k) },
 ];
