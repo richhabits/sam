@@ -560,9 +560,9 @@ export default function App() {
 
     // Normal message → STREAM tokens live.
     setLive({ text: "", trace: [] });
-    let produced = false;
+    let produced = false, acc = "";
     const onEvent = (e: any) => {
-      if (e.type === "token") { produced = true; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace || [] })); }
+      if (e.type === "token") { produced = true; acc += e.t; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace || [] })); }
       else if (e.type === "tool") { produced = true; setLive((l) => ({ text: l?.text || "", trace: [...(l?.trace || []), e.activity] })); }
       else if (e.type === "pending") { produced = true; setLive(null); setPending({ ...e, message: value, projectId: brand || "", tier: QUALITY_TIER[quality] } as AgentResult); }
       else if (e.type === "done") {
@@ -579,7 +579,10 @@ export default function App() {
         if (err?.name === "AbortError") { setLive(null); break; }
         if (!produced && attempt === 0) { await new Promise((r) => setTimeout(r, 900)); setLive({ text: "", trace: [] }); continue; }
         setLive(null);
-        setMessages((m) => [...m, { role: "sam", text: "I couldn't reach my brain — make sure SAM's running, then try again.", at: now() }]);
+        // If a partial answer already streamed, KEEP it rather than throwing it away.
+        setMessages((m) => [...m, acc.trim()
+          ? { role: "sam" as const, text: acc + "\n\n_(connection dropped mid-reply)_", at: now() }
+          : { role: "sam" as const, text: "I couldn't reach my brain — make sure SAM's running, then try again.", at: now() }]);
         break;
       }
     }
@@ -868,11 +871,12 @@ export default function App() {
                 <div className="team-panel">
                   {team.crew.length === 0
                     ? <div className="team-planning"><span className="team-spin" /> Breaking this down…</div>
-                    : team.crew.map((c: any) => {
-                        const done = team.done[c.specialist] !== undefined;
-                        const active = team.active[c.specialist];
+                    : team.crew.map((c: any, ci: number) => {
+                        const key = c.id ?? c.specialist ?? ci;   // task id (unique) — 2 tasks can share a specialist
+                        const done = team.done[key] !== undefined;
+                        const active = team.active[key];
                         return (
-                          <div key={c.specialist} className={`team-member ${done ? "done" : active ? "active" : "waiting"}`}>
+                          <div key={key} className={`team-member ${done ? "done" : active ? "active" : "waiting"}`}>
                             <span className="tm-emoji">{c.emoji}</span>
                             <div className="tm-body">
                               <div className="tm-name">{c.name} <span className="tm-status">{done ? "✓ done" : active ? "working…" : "queued"}</span></div>
