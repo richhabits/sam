@@ -8,6 +8,13 @@ export default defineConfig({
     electron({
       main: {
         entry: "electron/main.ts",
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ["playwright-core", "pdf-parse", "mammoth", "fsevents"],
+            },
+          },
+        },
       },
       preload: {
         input: "electron/preload.ts",

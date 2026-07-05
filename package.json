@@ -24,6 +24,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "playwright-core": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -31,8 +34,10 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
     "electron": "^43.0.0",
@@ -42,6 +47,7 @@
     "vite": "^6.0.5",
     "vite-plugin-electron": "^1.1.0",
     "vite-plugin-electron-renderer": "^1.0.0",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "ws": "^8.21.0"
   }
 }
