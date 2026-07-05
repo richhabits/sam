@@ -77,16 +77,19 @@ export async function runSelftest(): Promise<SelftestReport> {
   };
 }
 
-// Allow running directly from CLI `npm run selftest`
+// Allow running directly from CLI `npm run selftest` (async IIFE — no top-level await,
+// so this file is safe to bundle under any esbuild target).
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log("🚀 Running SAM Production Selftest...");
-  const report = await runSelftest();
-  console.log(JSON.stringify(report, null, 2));
-  if (!report.ok) {
-    console.error("❌ Selftest failed!");
-    process.exit(1);
-  } else {
-    console.log("✅ All subsystems green!");
-    process.exit(0);
-  }
+  (async () => {
+    console.log("🚀 Running SAM Production Selftest...");
+    const report = await runSelftest();
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.ok) {
+      console.error("❌ Selftest failed!");
+      process.exit(1);
+    } else {
+      console.log("✅ All subsystems green!");
+      process.exit(0);
+    }
+  })();
 }
