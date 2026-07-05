@@ -846,7 +846,7 @@ export default function App() {
           <button className="plus" onClick={() => fileRef.current?.click()} title="Add files or photos" aria-label="Add attachment">+</button>
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Message SAM…  (try /help)" rows={1} />
+            placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
           <button className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
           <button className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>
           {loading
