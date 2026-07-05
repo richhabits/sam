@@ -26,6 +26,7 @@ import { grabRepos, loadSocials } from "./world.ts";
 import { logSecurity, securityStatus } from "./security.ts";
 import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
+import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 
 const sh = promisify(exec);
 
@@ -1214,6 +1215,24 @@ end tell`);
     activity: (i) => `Calling ${i.number ?? i}`, preview: (i) => `📞 Call ${i.number ?? i}`, run: (i) => makeCall(i.number ?? i) },
   { name: "facetime", safe: false, description: "Start a FaceTime call. input: a phone number, email, or contact.", params: "who",
     activity: (i) => `FaceTiming ${i.who ?? i}`, preview: (i) => `FaceTime ${i.who ?? i}`, run: (i) => faceTime(i.who ?? i) },
+  { name: "remember_fact", safe: true, description: "Explicitly save a core fact (preference, detail, rule) into SAM's long-term semantic vault. input: {fact}.", params: "{fact}",
+    activity: () => `Storing fact in semantic memory`, run: async (i) => (await remember(i.fact)) ? "Fact saved." : "Fact ignored (too short or duplicate)." },
+  { name: "search_memory", safe: true, description: "Search the semantic vault for a specific topic, returning the raw facts and their IDs. input: {query}.", params: "{query}",
+    activity: (i) => `Searching memory for "${i.query}"`, run: async (i) => {
+      const results = await recall(i.query, 10, 0.2);
+      if (!results.length) return "No matching memories found.";
+      return results.map(r => `[ID: ${r.id}] ${r.text} (score: ${r.score.toFixed(2)})`).join("\n");
+    } },
+  { name: "list_recent_memories", safe: true, description: "Pull the last 10 facts added to the vault chronologically. input: (none).", params: "(none)",
+    activity: () => `Listing recent memories`, run: async () => {
+      const recent = listRecent(10);
+      if (!recent.length) return "Vault is empty.";
+      return recent.map(r => `[ID: ${r.id}] ${new Date(r.ts).toLocaleString()}: ${r.text}`).join("\n");
+    } },
+  { name: "forget_memory", safe: true, description: "Delete a specific memory by its unique ID. input: {id}.", params: "{id}",
+    activity: (i) => `Forgetting memory ${i.id}`, run: async (i) => forget(i.id) ? `Deleted memory ${i.id}.` : `Memory ${i.id} not found.` },
+  { name: "clear_all_memories", safe: false, description: "NUCLEAR OPTION: Wipes the entire semantic memory vault clean.", params: "(none)",
+    activity: () => `Wiping memory vault`, preview: () => `Wipe entire memory vault?`, run: async () => { clearAll(); return "Memory vault wiped clean."; } },
 ];
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);
