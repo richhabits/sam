@@ -132,16 +132,25 @@ export const setAutopilotMode = (on: boolean) => fetch("/api/autopilot", { metho
 export interface SwarmAgent { id: string; specialistId: string; name: string; emoji: string; task: string; status: "pending" | "running" | "paused" | "done" | "error"; output?: string; pendingActivity?: string; pendingTool?: string; pendingPreview?: string; }
 export interface Swarm { id: string; goal: string; status: "planning" | "running" | "paused" | "done" | "error"; agents: SwarmAgent[]; synthesis?: string; created: number; }
 
-export async function getSwarms(): Promise<Swarm[]> {
-  const r = await fetch("/api/swarms");
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
+  if (!r.ok) throw new Error(`API failed: ${path}`);
   return r.json();
 }
-export async function startSwarm(goal: string, projectId?: string, tier?: string): Promise<Swarm> {
-  const r = await fetch("/api/swarms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal, projectId, tier, user: USER }) });
-  if (!r.ok) throw new Error("startSwarm failed");
-  return r.json();
+
+export async function getSwarms() { return api<any>("/api/swarms"); }
+export async function startSwarm(goal: string, projectId?: string, tier?: "local"|"free"|"premium") {
+  return api<any>("/api/swarms", { method: "POST", body: JSON.stringify({ goal, projectId, tier }) });
 }
-export async function approveSwarmAgent(swarmId: string, agentId: string, approved: boolean): Promise<void> {
-  const r = await fetch("/api/swarms/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ swarmId, agentId, approved }) });
-  if (!r.ok) throw new Error("approveSwarmAgent failed");
+export async function approveSwarmAgent(swarmId: string, agentId: string, approved: boolean) {
+  return api<any>("/api/swarms/approve", { method: "POST", body: JSON.stringify({ swarmId, agentId, approved }) });
 }
+
+export interface Schedule {
+  id: string; command: string; cron: string; enabled: boolean;
+  lastRun?: string; lastResult?: string; created: string; runCount: number;
+}
+export async function getSchedules() { return api<Schedule[]>("/api/schedules"); }
+export async function addSchedule(command: string, cron: string) { return api<Schedule>("/api/schedules", { method: "POST", body: JSON.stringify({ command, cron }) }); }
+export async function removeSchedule(id: string) { return api<{ok: boolean}>(`/api/schedules/${id}`, { method: "DELETE" }); }
+export async function toggleSchedule(id: string) { return api<Schedule>(`/api/schedules/${id}/toggle`, { method: "POST" }); }
