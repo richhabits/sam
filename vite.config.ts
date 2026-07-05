@@ -10,6 +10,7 @@ export default defineConfig({
         entry: "electron/main.ts",
         vite: {
           build: {
+            target: "es2022",   // electron main is Node — allow top-level await etc.
             rollupOptions: {
               external: ["playwright-core", "pdf-parse", "mammoth", "fsevents", "better-sqlite3"],
             },
