@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, AgentResult, Attachment } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
-import VoiceMode from "./VoiceMode";
-import Admin from "./Admin";
-import Dashboard from "./Dashboard";
+// Heavy panels are lazy-loaded — they only download when you actually open them,
+// so the initial app is slimmer and paints faster.
+const VoiceMode = lazy(() => import("./VoiceMode"));
+const Admin = lazy(() => import("./Admin"));
+const Dashboard = lazy(() => import("./Dashboard"));
 
 interface Profile { name: string; about?: string; language?: string }
 const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
@@ -587,9 +589,11 @@ export default function App() {
         </div>
       )}
 
-      {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
-      {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
-      {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
+      <Suspense fallback={null}>
+        {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
+        {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
+        {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
+      </Suspense>
 
       {toolsOpen && (
         <div className="drawer-wrap" onClick={() => setToolsOpen(false)}>
