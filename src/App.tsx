@@ -582,6 +582,12 @@ export default function App() {
     const blob = new Blob([`# SAM chat\n\n${md}\n`], { type: "text/markdown" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `SAM-chat-${new Date().toISOString().slice(0, 10)}.md`; a.click();
   }
+  // Quote a message into the composer so you can reply referencing it.
+  function quoteReply(text: string) {
+    const snip = text.replace(/\s+/g, " ").trim().slice(0, 160);
+    setInput((prev) => `> ${snip}${text.length > 160 ? "…" : ""}\n\n${prev}`);
+    inputRef.current?.focus();
+  }
   // Re-run the last question: drop the trailing SAM reply + the user turn, then re-send it.
   function regenerate() {
     if (loading) return;
@@ -777,6 +783,7 @@ export default function App() {
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>{copied === i ? "Copied ✓" : "Copy"}</button>
                     <button className="mini" onClick={() => copyMsg(m.text, i)}>📋 Markdown</button>
                     <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: !msg.pinned } : msg))}>{m.pinned ? "Unpin" : "📌 Pin"}</button>
+                    <button className="mini" onClick={() => quoteReply(m.text)}>↩ Reply</button>
                     <button className="mini" onClick={() => {
                       if (playing === i) { stopSpeaking(); setPlaying(null); }
                       else { stopSpeaking(); setPlaying(i); ttsSpeak(m.text, () => setPlaying((p) => (p === i ? null : p))); }
