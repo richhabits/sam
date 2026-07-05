@@ -186,7 +186,13 @@ export async function runModel(tier: Tier, system: string, prompt: string): Prom
     try {
       const text = await callOllama(system, prompt);
       if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" };
-    } catch { /* fall through to cloud */ }
+    } catch { /* handled just below */ }
+    // PRIVACY GUARANTEE: Private/local mode must NEVER send data to a cloud provider.
+    // If the local model isn't up, say so honestly — do not silently go off-machine.
+    return {
+      text: `🔒 Private mode is on — nothing leaves your Mac — but the local model isn't responding right now. Start it with \`ollama serve\` (and \`ollama pull ${OLLAMA_MODEL}\` if needed), or switch to Auto/Best to use the free cloud brains.`,
+      provider: "local-unavailable", tier: "local",
+    };
   }
 
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to
