@@ -340,8 +340,13 @@ async function playMusic(query: string): Promise<string> {
     : svc === "youtube" ? `https://music.youtube.com/search?q=${q}`
     : `https://music.apple.com/search?term=${q}`;
   await sh(openCmd(url));
-  // Terminal confirmation — do NOT invite another tool call (prevents loops).
-  return `DONE — ${query} is now playing (latest first). Confirm it's on in ONE short line with a bit of swagger. Do not call any more tools.`;
+  const label = svc === "spotify" ? "Spotify" : svc === "youtube" ? "YouTube Music" : "Apple Music";
+  // On macOS + Apple Music, best-effort nudge playback to actually start.
+  let nudged = false;
+  if (IS_MAC && svc === "apple") { try { await osa(`tell application "Music" to play`); nudged = true; } catch { /* not installed / nothing queued */ } }
+  // Report the TRUTH — we opened a search (and maybe nudged play). Never claim it's
+  // definitely playing when we only opened a results page. No more tool calls.
+  return `Opened "${query}" in ${label}${nudged ? " and started Music playing" : ` — tap the track to start it if it doesn't auto-play`}. Tell the user in one short line, with swagger but honestly. Do not call any more tools.`;
 }
 
 // ── CALLING (via iPhone Continuity — free) ───────────────────
@@ -652,7 +657,7 @@ export const TOOLS: Tool[] = [
         return `QR code generated and saved to: ${path}`;
       } catch (e: any) { return `Failed to generate QR code: ${e.message}`; }
     } },
-  { name: "volume_brightness_control", safe: false, description: "Set the volume or brightness of the Mac hardware. input: {type: 'volume' | 'brightness', level: number} (level is 0-100).", params: "{type, level}",
+  { name: "volume_brightness_control", safe: false, description: "Set the Mac's hardware output volume, 0-100. input: {type: 'volume', level}. (Brightness is NOT supported — it needs an external CLI tool and we keep deps at zero.)", params: "{type, level}",
     activity: (i) => `Setting ${i.type} to ${i.level}%`,
     preview: (i) => `Set ${i.type} hardware to ${i.level}%`,
     run: async (i) => {

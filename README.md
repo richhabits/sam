@@ -27,7 +27,7 @@ Most "AI assistants" just talk. SAM works:
 - 🧠 **6 free AI brains, auto-rotating** — NVIDIA · Groq · Cerebras · Mistral · GitHub Models · Gemini. One hits a limit, it hops to the next.
 - 🖐️ **65+ real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
-- 📱 **iOS Companion** — talk to SAM from your iPhone/Watch via iCloud Drop folder; SAM processes your notes/voice memos instantly.
+- 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
 - 💻 **Native macOS App** — runs a native desktop UI with a global `⌥Space` hotkey to summon SAM anywhere.
 - ✈️ **Autopilot** — lifts the routine work autonomously; the serious stuff still asks. And it reaches out first with a **morning brief** + nudges.
 - 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Shady"*), and **🛡️ Guardian** mode watches for intruders.
