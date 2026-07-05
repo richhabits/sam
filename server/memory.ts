@@ -83,7 +83,7 @@ export async function remember(text: string, kind = "fact"): Promise<boolean> {
 }
 
 // Retrieve using an ALREADY-COMPUTED query embedding (reused across recall + routing).
-export function recallWith(e: { model: string; vec: number[] } | null, k = 5, floor = 0.35): { text: string; score: number }[] {
+export function recallWith(e: { model: string; vec: number[] } | null, k = 5, floor = 0.35): { id?: string, text: string; score: number }[] {
   if (!e) return [];
   const now = Date.now();
   
@@ -116,7 +116,7 @@ export function recallWith(e: { model: string; vec: number[] } | null, k = 5, fl
     const row = getStmt.get(t.id) as { text: string };
     if (row) {
       hitStmt.run(t.id);
-      results.push({ text: row.text, score: t.score });
+      results.push({ id: t.id, text: row.text, score: t.score });
     }
   }
 
@@ -124,11 +124,24 @@ export function recallWith(e: { model: string; vec: number[] } | null, k = 5, fl
 }
 
 // Convenience: embed the query then recall (when you don't already have a vector).
-export async function recall(query: string, k = 5, floor = 0.35): Promise<{ text: string; score: number }[]> {
+export async function recall(query: string, k = 5, floor = 0.35): Promise<{ id?: string, text: string; score: number }[]> {
   return recallWith(await embedOne(query, true), k, floor);
 }
 
 export function memoryStats() {
   const count = db.prepare("SELECT COUNT(*) as c FROM memories").get() as { c: number };
   return { count: count.c };
+}
+
+export function forget(id: string): boolean {
+  const result = db.prepare("DELETE FROM memories WHERE id = ?").run(id);
+  return result.changes > 0;
+}
+
+export function listRecent(limit = 10): { id: string; text: string; ts: number }[] {
+  return db.prepare("SELECT id, text, ts FROM memories ORDER BY ts DESC LIMIT ?").all(limit) as { id: string; text: string; ts: number }[];
+}
+
+export function clearAll(): void {
+  db.prepare("DELETE FROM memories").run();
 }
