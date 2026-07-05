@@ -80,7 +80,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .brandmark { display: flex; align-items: baseline; gap: 10px; }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 0 3px var(--accent-soft); }
-.name { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .tag { font-size: 13px; color: var(--muted); }
 .bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 
@@ -304,7 +303,6 @@ button { font-family: inherit; cursor: pointer; }
   -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
-.name { font-weight: 800; letter-spacing: 0.5px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .icon-btn { border-radius: 11px; transition: transform .12s ease, background .15s, border-color .15s, box-shadow .15s; }
 .icon-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .icon-btn:active { transform: translateY(0); }
@@ -577,7 +575,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     radial-gradient(1100px 500px at 50% -10%, rgba(41,198,246,.10), transparent 60%),
     radial-gradient(700px 400px at 90% 110%, rgba(41,198,246,.05), transparent 60%), var(--bg);
 }
-:root[data-skin="jarvis"] .name { text-shadow: 0 0 14px rgba(41,198,246,.55); letter-spacing: .06em; }
 :root[data-skin="jarvis"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 0 3px var(--accent-soft); }
 :root[data-skin="jarvis"] .bubble, :root[data-skin="jarvis"] .composer { backdrop-filter: blur(6px); }
 :root[data-skin="jarvis"] .vm-orb { background: radial-gradient(circle at 40% 35%, #9AE8FF, var(--accent) 55%, #0E5C7E); box-shadow: 0 0 60px rgba(41,198,246,.5); }
@@ -603,7 +600,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --radius: 12px;
 }
 :root[data-skin="stealth"] .app { background: var(--bg); }
-:root[data-skin="stealth"] .name { letter-spacing: .12em; }
 
 /* 🌙 MIDNIGHT — deep indigo-purple, violet accents, dreamy glow */
 :root[data-skin="midnight"] {
@@ -621,7 +617,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     radial-gradient(1100px 500px at 50% -10%, rgba(167,139,250,.09), transparent 60%),
     radial-gradient(700px 400px at 85% 105%, rgba(139,92,246,.05), transparent 60%), var(--bg);
 }
-:root[data-skin="midnight"] .name { text-shadow: 0 0 14px rgba(167,139,250,.5); }
 :root[data-skin="midnight"] .dot-live { box-shadow: 0 0 10px var(--accent), 0 0 0 3px var(--accent-soft); }
 :root[data-skin="midnight"] .vm-orb { background: radial-gradient(circle at 40% 35%, #DDD6FE, var(--accent) 55%, #5B21B6); box-shadow: 0 0 60px rgba(167,139,250,.5); }
 
@@ -648,7 +643,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --accent-2: #FF79C6; --ring: 0 0 0 3.5px rgba(189,147,249,.22);
 }
 :root[data-skin="dracula"] .app { background: radial-gradient(1100px 500px at 50% -10%, rgba(189,147,249,.08), transparent 60%), radial-gradient(700px 400px at 88% 108%, rgba(255,121,198,.05), transparent 60%), var(--bg); }
-:root[data-skin="dracula"] .name { text-shadow: 0 0 14px rgba(189,147,249,.5); }
 
 /* 📜 LINEN — warm paper, sepia ink: a soft, bright light mode */
 :root[data-skin="linen"] {
