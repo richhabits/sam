@@ -733,3 +733,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .composer { position: relative; }
 .composer.drag-over { outline: 2px dashed var(--accent); outline-offset: -6px; border-radius: var(--radius); }
 .drop-hint { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-soft) 80%, transparent); color: var(--accent-text); font-weight: 700; font-size: 15px; border-radius: var(--radius); backdrop-filter: blur(2px); pointer-events: none; }
+
+/* ── Reading progress + jump-to-top ── */
+.read-progress { position: fixed; top: 0; left: 0; height: 3px; z-index: 100; background: linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent))); border-radius: 0 3px 3px 0; transition: width .12s ease-out; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent); }
+.scroll-btn.top { bottom: 54px; }
