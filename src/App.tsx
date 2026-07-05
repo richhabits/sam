@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -394,7 +394,9 @@ export default function App() {
     if (cmd === "/ninjas") { sysNote("Deploy the Ninjas 🥷 at a problem: /ninjas <target> — e.g. /ninjas my hectictv repo, or /ninjas my overdue invoices"); return true; }
     if (v.toLowerCase().startsWith("/swarm ")) { runSwarm(v.slice(7)); return true; }
     if (cmd === "/swarm") { sysNote("Start a persistent background swarm: /swarm <massive goal>"); return true; }
-    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
+    if (v.toLowerCase().startsWith("/schedule ")) { runSchedule(v.slice(10)); return true; }
+    if (cmd === "/schedule") { sysNote("Schedule a recurring task: /schedule <cron> | <command> — e.g. /schedule daily 09:00 | check my email"); return true; }
+    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /schedule, /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
   }
 
@@ -423,10 +425,30 @@ export default function App() {
     setInput(""); setPending(null);
     setMessages((m) => [...m, { role: "user", text: "🐝 Swarm: " + value, at: now() }]);
     try {
-      await startSwarm(value, brand || undefined, QUALITY_TIER[quality]);
+      await startSwarm(value, brand || undefined, QUALITY_TIER[quality] as any);
       sysNote("The Swarm has been dispatched. They will run in the background and pause if they need your approval. Keep an eye on the Swarm panel above.");
       getSwarms().then(setSwarms).catch(() => {});
     } catch { sysNote("Couldn't start the swarm just now."); }
+    inputRef.current?.focus();
+  }
+
+  // Scheduled Tasks
+  async function runSchedule(text: string) {
+    const parts = text.split("|").map(s => s.trim());
+    if (parts.length < 2) {
+      sysNote("Please provide a schedule and a command, separated by |. Example: /schedule daily 09:00 | check my email");
+      return;
+    }
+    const cron = parts[0];
+    const commandText = parts.slice(1).join("|");
+    setInput(""); setPending(null);
+    setMessages((m) => [...m, { role: "user", text: "⏰ Schedule: " + text, at: now() }]);
+    try {
+      await addSchedule(commandText, cron);
+      sysNote(`Scheduled task added: "${commandText}" (${cron}). See the Dashboard to manage your schedules.`);
+    } catch {
+      sysNote("Couldn't add the schedule. Make sure SAM is running.");
+    }
     inputRef.current?.focus();
   }
 
