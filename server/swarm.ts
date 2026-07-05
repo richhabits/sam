@@ -72,13 +72,13 @@ const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id
 // Orchestrator: break goal into subtasks
 async function makePlan(goal: string, tier: Tier): Promise<{ specialist: string; task: string }[]> {
   const roster = SPECIALISTS.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
-  const sys = `You are SAM's orchestrator. Break the user's massive goal into 2-5 focused subtasks and assign each to the ONE best specialist. Reply with ONLY a JSON array, nothing else: [{"specialist":"<id>","task":"<clear instruction>"}].\n\nSpecialists:\n${roster}`;
+  const sys = `You are SAM's orchestrator. Break the user's massive goal into up to 7 focused subtasks and assign each to the ONE best specialist. Reply with ONLY a JSON array, nothing else: [{"specialist":"<id>","task":"<clear instruction>"}].\n\nSpecialists:\n${roster}`;
   const r = await runModel(tier, sys, `Goal: ${goal}\n\nJSON plan:`);
   const m = r.text.match(/\[[\s\S]*\]/);
   if (!m) return [{ specialist: "scout", task: goal }];
   try {
     const arr = JSON.parse(m[0]);
-    const plan = Array.isArray(arr) ? arr.filter((x) => x && byId(x.specialist) && x.task).map((x) => ({ specialist: x.specialist, task: String(x.task) })) : [];
+    const plan = Array.isArray(arr) ? arr.filter((x) => x && byId(x.specialist) && x.task).map((x) => ({ specialist: x.specialist, task: String(x.task) })).slice(0, 7) : [];
     return plan.length ? plan : [{ specialist: "scout", task: goal }];
   } catch { return [{ specialist: "scout", task: goal }]; }
 }
