@@ -1,0 +1,37 @@
+name: Deploy landing page
+# Regenerates the landing from the live code on every push and deploys it to
+# GitHub Pages. So the public site ALWAYS reflects what SAM does — fully automated,
+# and docs/index.html no longer needs to be committed (kills the merge conflicts).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate landing from live code
+        run: node scripts/gen-landing.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
