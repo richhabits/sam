@@ -27,7 +27,6 @@ cd sam
 
 That's it — **`setup.sh` does everything for you**: installs it, sets it up, and offers to start it. (Takes a minute — grab a coffee.)
 
-> ⚠️ **Get a "repository not found" or password prompt?** The repo is private — ask me (the owner) to invite you, and make sure you're logged into GitHub in Terminal (`gh auth login`). Once you're invited, the clone works.
 
 ---
 

@@ -45,7 +45,7 @@ npm start
 
 Then open **http://localhost:8787**, tell SAM your name, add a free key in **⚙ Settings**, and go.
 
-> **Access:** this repo is private — you'll need to be invited by the owner and signed in to GitHub (`gh auth login`, or use a token) for the `git clone` to work. If it's been made public, the command above just works.
+> Prefer one command? `git clone https://github.com/richhabits/sam.git && cd sam && ./setup.sh`
 
 > No keys yet? SAM still runs fully offline via [Ollama](https://ollama.com) if you have it — otherwise grab one free key below (60 seconds).
 
@@ -105,7 +105,7 @@ npm test       # run the test suite
 
 ## License
 
-**Proprietary — © 2026 Romeo Valentine. All rights reserved.** See [LICENSE](LICENSE).
+**Proprietary — © 2026 HECTIC. All rights reserved.** See [LICENSE](LICENSE).
 Shared for personal use and testing; not for redistribution or commercial use without permission.
 
 <div align="center">
