@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📷 Camera — accessibility + find-my-thing** — 🔈 *Read this aloud* (camera → text → spoken, for menus/
+  mail/labels), 🔎 *Find my…* (name an object, sweep the camera, SAM guides you warmer/colder and shouts
+  'Found it — on the left!' with voice). Plus on-device face-descriptor storage is ready server-side
+  (128-float vectors, /api/faces) — images never leave the machine — while today's free vision-based
+  recognition keeps doing the greeting.
 - **📷 Camera scaled further** — 🔳 QR/barcode scan (native BarcodeDetector, instant; vision fallback),
   ⏱️ Timelapse watch (snaps every 30s, only pings when the scene NOTABLY changes — deliveries, arrivals),
   📸 photo roll SAM can browse + reason over (list_photos / view_photo tools — 'where did I leave my keys?'
