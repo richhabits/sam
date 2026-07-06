@@ -162,9 +162,10 @@ export function isFastPath(message: string): boolean {
 }
 
 // Fresh request. `toolNames` = the relevant tools to expose (semantic routing).
-export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[]): Promise<AgentResult> {
-  // Fast path ONLY when it's clearly generation AND has no live-info signal.
-  if (isFastPath(message)) {
+// `forceFast` (Turbo) forces the single-call path even for tool-shaped messages.
+export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false): Promise<AgentResult> {
+  // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
+  if (forceFast || isFastPath(message)) {
     return runModel(tier, system, `User: ${message}\n\nAnswer directly.`)
       .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
   }
@@ -179,11 +180,11 @@ export type StreamEvent =
   | { type: "pending"; tool: string; input: any; preview: string; activity: string; transcript: string; trace: string[]; provider?: string }
   | { type: "done"; text: string; provider?: string; trace: string[] };
 
-export async function runAgentStream(system: string, message: string, tier: Tier, toolNames: string[] | undefined, emit: (e: StreamEvent) => void): Promise<void> {
+export async function runAgentStream(system: string, message: string, tier: Tier, toolNames: string[] | undefined, emit: (e: StreamEvent) => void, forceFast = false): Promise<void> {
   const trace: string[] = [];
 
-  // Fast path — only clearly self-contained generation (no live-info signal).
-  if (isFastPath(message)) {
+  // Fast path — only clearly self-contained generation (no live-info signal) — or Turbo.
+  if (forceFast || isFastPath(message)) {
     let full = "";
     const r = await streamModel(tier, system, `User: ${message}\n\nAnswer directly.`, (c) => { full += c; emit({ type: "token", t: c }); });
     emit({ type: "done", text: r.text || full, provider: r.provider, trace: [] });

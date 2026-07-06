@@ -43,6 +43,15 @@ describe("agent loop", () => {
     expect(r.trace[0]).toMatch(/time/i);
   });
 
+  it("TURBO (forceFast) answers in ONE call — no tool loop even on a tool-shaped message", async () => {
+    replies.push('{"tool":"get_datetime","input":{}}');   // a tool-shaped reply that would loop in normal mode
+    replies.push("SHOULD NOT be consumed");
+    const r = await runAgent("SYS", "what time is it?", "free", undefined, true);   // forceFast = turbo
+    expect(r.kind).toBe("final");
+    expect(r.trace.length).toBe(0);            // no tools ran
+    expect(replies.length).toBe(1);            // exactly ONE model call consumed
+  });
+
   it("PAUSES on a risky tool and does not execute it", async () => {
     replies.push('{"tool":"run_command","input":{"command":"echo hi"}}');
     const r = await runAgent("SYS", "run echo", "local");
