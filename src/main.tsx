@@ -3,6 +3,19 @@ import { lazy, Suspense } from "react";
 import App from "./App";
 import "./styles.css";
 
+// A packaged Electron build loads the UI from file://, where a root-relative URL
+// like "/api/command" resolves to file:///api/command and fails — so every server
+// call would break. When (and only when) we're on file://, point root-relative
+// requests at the local SAM server. In the browser and dev/single-process the page
+// is served over http(s), so same-origin relative URLs already work (Vite proxies
+// /api in dev). This one shim covers every fetch in the app — no per-call-site base.
+if (typeof location !== "undefined" && location.protocol === "file:") {
+  const BASE = "http://localhost:8787";
+  const orig = window.fetch.bind(window);
+  window.fetch = (input: any, init?: any) =>
+    orig(typeof input === "string" && input.startsWith("/") ? BASE + input : input, init);
+}
+
 // ?app=studio (dedicated Electron window or a tab) → the Creative Space, else the chat.
 const StudioView = lazy(() => import("./StudioView"));
 const isStudio = new URLSearchParams(location.search).get("app") === "studio";
