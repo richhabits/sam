@@ -32,6 +32,17 @@ db.exec(`
     hits INTEGER NOT NULL DEFAULT 0
   )
 `);
+// Multi-user: each person's memories live under their own namespace (their name).
+try { db.exec(`ALTER TABLE memories ADD COLUMN user TEXT NOT NULL DEFAULT ''`); } catch { /* already there */ }
+const normUser = (u?: string) => (u || "").toLowerCase().trim().slice(0, 60);
+let _adopted = false;
+// One-time: the first named user "adopts" all pre-existing untagged memories (the owner's
+// history) so it isn't lost; everyone added afterwards starts with a clean, private namespace.
+function adoptLegacy(ns: string) {
+  if (_adopted || !ns) return;
+  _adopted = true;
+  try { const r = db.prepare(`UPDATE memories SET user = ? WHERE user = '' OR user IS NULL`).run(ns); if (r.changes) _vecCache.clear(); } catch {}
+}
 
 // ── MIGRATION (memory.json -> SQLite) ──
 // Only touch the (up to 155KB) legacy file when the DB is EMPTY — once migrated, don't
@@ -72,19 +83,20 @@ export function pinnedModel(): string | null {
 // In-memory Float32 vector index per model — each stored vector is parsed ONCE, then
 // recall and dedup iterate typed arrays instead of JSON.parse-ing the whole table every
 // turn (~22x faster at 1000+ memories). Kept in sync on every write/delete below.
-type VecRow = { id: string; vec: Float32Array; ts: number };
+type VecRow = { id: string; vec: Float32Array; ts: number; user: string };
 const _vecCache = new Map<string, VecRow[]>();
 function vecIndex(model: string): VecRow[] {
   let idx = _vecCache.get(model);
   if (idx) return idx;
   idx = [];
-  const rows = db.prepare(`SELECT id, vec, ts FROM memories WHERE model = ?`).all(model) as { id: string; vec: string; ts: number }[];
-  for (const r of rows) { try { idx.push({ id: r.id, vec: Float32Array.from(JSON.parse(r.vec)), ts: r.ts }); } catch { /* skip corrupt row */ } }
+  const rows = db.prepare(`SELECT id, vec, ts, user FROM memories WHERE model = ?`).all(model) as { id: string; vec: string; ts: number; user: string }[];
+  for (const r of rows) { try { idx.push({ id: r.id, vec: Float32Array.from(JSON.parse(r.vec)), ts: r.ts, user: r.user || "" }); } catch { /* skip corrupt row */ } }
   _vecCache.set(model, idx);
   return idx;
 }
 
-export async function remember(text: string, kind = "fact"): Promise<boolean> {
+export async function remember(text: string, kind = "fact", user?: string): Promise<boolean> {
+  const ns = normUser(user); adoptLegacy(ns);
   const clean = (text || "").trim();
   if (clean.length < 8) return false;
 
@@ -93,23 +105,24 @@ export async function remember(text: string, kind = "fact"): Promise<boolean> {
 
   // Dedup against the in-memory index (no per-write full-table JSON.parse).
   const index = vecIndex(e.model);
-  for (const row of index) if (cosine(row.vec, e.vec) > DEDUP_SIM) return false; // Duplicate
+  for (const row of index) if (row.user === ns && cosine(row.vec, e.vec) > DEDUP_SIM) return false; // Duplicate (same user)
 
   // Round the vector to 4 dp — identical for cosine matching, ~60% smaller on disk.
   const vec = e.vec.map((v) => Math.round(v * 1e4) / 1e4);
   const id = Date.now().toString(36) + Math.floor(Math.random() * 1000);
   const ts = Date.now();
 
-  db.prepare(`INSERT INTO memories (id, text, vec, model, kind, ts, hits) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
-    id, clean, JSON.stringify(vec), e.model, kind, ts, 0
+  db.prepare(`INSERT INTO memories (id, text, vec, model, kind, ts, hits, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    id, clean, JSON.stringify(vec), e.model, kind, ts, 0, ns
   );
-  index.push({ id, vec: Float32Array.from(vec), ts });   // keep the index in sync
+  index.push({ id, vec: Float32Array.from(vec), ts, user: ns });   // keep the index in sync
   _pinned = e.model;   // once we've written under a model, pin the vault to it
   return true;
 }
 
 // Retrieve using an ALREADY-COMPUTED query embedding (reused across recall + routing).
-export function recallWith(e: { model: string; vec: number[] } | null, k = 5, floor = 0.35): { id?: string, text: string; score: number }[] {
+export function recallWith(e: { model: string; vec: number[] } | null, k = 5, floor = 0.35, user?: string): { id?: string, text: string; score: number }[] {
+  const ns = normUser(user); adoptLegacy(ns);
   if (!e) return [];
   const now = Date.now();
 
@@ -118,6 +131,7 @@ export function recallWith(e: { model: string; vec: number[] } | null, k = 5, fl
 
   const scored = [];
   for (const row of index) {
+    if (row.user !== ns) continue;   // only THIS person's memories
     const sim = cosine(row.vec, e.vec);
     const ageDays = (now - row.ts) / 86400000;
     const recency = 1 - Math.min(0.25, ageDays * 0.004);  // gentle decay, capped at -25%
