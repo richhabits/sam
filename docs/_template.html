@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>S.A.M. — Smart Artificial Mind · by HECTIC</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
 <meta name="description" content="A free, private team of AI agents that lives on your Mac and actually does the work. No subscription — runs free on rotating cloud tiers, or 100% offline on Ollama.">
 <meta property="og:title" content="S.A.M. — a free, private team of AI agents on your Mac">
 <meta property="og:description" content="It doesn't just answer, it handles it. Free, local, yours — by HECTIC.">
@@ -47,7 +49,8 @@
 
   /* ── top bar ── */
   .top{display:flex; align-items:center; justify-content:space-between; padding:22px 0}
-  .brand{display:flex; align-items:baseline; gap:10px}
+  .brand{display:flex; align-items:center; gap:11px}
+  .mark{border-radius:9px; flex:0 0 auto; box-shadow:0 2px 10px rgba(217,83,31,.3)}
   .logo{font-family:var(--mono); font-weight:700; font-size:19px; letter-spacing:.14em; color:var(--paper)}
   .logo .dot{color:var(--ember)}
   .brand small{color:var(--ash); font-size:12.5px; letter-spacing:.02em}
@@ -160,6 +163,12 @@
 
     <div class="top">
       <div class="brand">
+        <svg class="mark" viewBox="0 0 192 192" width="30" height="30" aria-hidden="true">
+          <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0824E"/><stop offset="1" stop-color="#D9531F"/></linearGradient></defs>
+          <rect width="192" height="192" rx="44" fill="url(#mg)"/>
+          <text x="84" y="132" font-family="-apple-system,'SF Pro Display',system-ui,sans-serif" font-size="112" font-weight="800" letter-spacing="-5" fill="#FDF6EF" text-anchor="middle">S</text>
+          <circle cx="140" cy="118" r="10" fill="#FDF6EF"/>
+        </svg>
         <span class="logo">S<span class="dot">.</span>A<span class="dot">.</span>M</span>
         <small>Smart Artificial Mind · by HECTIC</small>
       </div>
