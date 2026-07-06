@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Repo slimmed 16× — cheaper clones & CI forever** — purged the old `creative-space/` app
+  (18 MB of dead binary blobs — demo.mp4, webp assets — deleted from the tree long ago but still
+  dragged along in git history) from ALL history. `.git` **18 MB → 1.1 MB**; a fresh clone is now
+  ~844 KB, so every `git clone` and CI checkout downloads ~16× less data. Also stopped `og.png`
+  (a 364 KB image) from being regenerated on every `ship` — that quietly added a new blob each time;
+  it's `npm run og` on demand now. (History was rewritten + force-pushed; safe — 0 forks/stars.)
 - **Faster — per-request quick wins** — three hot-path allocations removed from the code that runs on
   *every* message: `people.json` is now mtime-cached (was a disk read + JSON.parse per request),
   `projectsContext()` is memoised (constant string, was rebuilt each turn), and `recentExchanges()`

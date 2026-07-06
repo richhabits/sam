@@ -16,7 +16,8 @@ try {
 
   console.log("\n🧪 testing…");   run("npm test");
   console.log("\n🎨 refreshing landing…"); run("node scripts/gen-landing.mjs");
-  console.log("\n🖼️  refreshing share image…"); run("node scripts/gen-og.mjs"); // skips gracefully if no Chrome
+  // NOTE: og.png is NOT regenerated here on purpose — each render is a new ~364KB binary
+  // blob in git history, and the counts rarely change. Run `npm run og` by hand when they do.
   console.log("\n🏗️  building…");  run("npm run build");
 
   console.log("\n🚀 shipping…");
