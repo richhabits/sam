@@ -97,11 +97,15 @@ resumeOrphanedSwarms();
 if (P2P_ENABLED) {
   startP2PDiscovery();
   startP2PServer(async (message, from, project) => {
-    // A trusted peer's task runs through our agent loop. Risky tools still can't
-    // auto-run (no approver on a remote turn) — they're skipped here.
+    // A trusted LAN peer's task runs through our agent loop. We expose ONLY safe
+    // (read-only/benign) tools to a P2P turn, so risky actions aren't offered to a remote
+    // peer. Under normal/Autopilot mode any risky tool the model still names is skipped for
+    // lack of an approver; the ONE exception is Elon Mode (the owner's explicit global
+    // "bypass all gates" override) — don't run P2P with Elon Mode on.
+    const safeTools = TOOLS.filter((t) => t.safe).map((t) => t.name);
     const system = buildSystem("", project, { name: from, mode: "business" }, "");
-    const r = await runAgent(system, message, (process.env.DEFAULT_TIER as Tier) || "free");
-    return r.kind === "final" ? (r.text || "Done.") : "Task requires approval — skipped on P2P.";
+    const r = await runAgent(system, message, (process.env.DEFAULT_TIER as Tier) || "free", safeTools);
+    return r.kind === "final" ? (r.text || "Done.") : "That needs a risky action — not allowed over P2P.";
   });
 } else {
   console.log("  🌐 P2P swarm    · disabled (set SAM_P2P=1 + SAM_P2P_TOKEN to enable)");
@@ -724,7 +728,7 @@ app.get("/api/status", (_req, res) =>
     projects: PROJECTS.length,
     tools: TOOLS.length,
     platform: process.platform,
-    defaultTier: process.env.DEFAULT_TIER || "local",
+    defaultTier: process.env.DEFAULT_TIER || "free",
     voice: { elevenlabs: !!process.env.ELEVENLABS_API_KEY },
     memory: memoryStats(),
     docs: docsStats(),

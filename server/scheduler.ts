@@ -100,6 +100,7 @@ export function parseCron(cron: string): ParsedSchedule | null {
   const everyMatch = c.match(/^every\s+(\d+)\s*(m|min|h|hr|hours?)$/);
   if (everyMatch) {
     const val = parseInt(everyMatch[1]);
+    if (val <= 0) return null;   // "every 0m" would fire every tick — reject as invalid
     const unit = everyMatch[2].startsWith("h") ? 3600_000 : 60_000;
     const ms = val * unit;
     return { intervalMs: ms, shouldRun: (_now, last) => !last || Date.now() - last.getTime() >= ms - 30_000 };

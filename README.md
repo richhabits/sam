@@ -39,7 +39,7 @@ Most "AI assistants" just talk. SAM works:
 
 ## Quick start
 
-**Prerequisites:** [Node.js 20+](https://nodejs.org) · macOS (Windows/Linux work too; some Mac-only tools degrade gracefully).
+**Prerequisites:** [Node.js 20.19+ or 22.12+](https://nodejs.org) · macOS (Windows/Linux work too; some Mac-only tools degrade gracefully).
 
 Paste these into Terminal **exactly as-is** (they're clean — no comments to trip up zsh):
 

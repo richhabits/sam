@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 
 // Fully OFFLINE: deterministic fake embeddings (word counts over a tiny vocab)
 // so ingestion + retrieval are testable without any provider or network call.
-const VOCAB = ["bulldog", "breeding", "radio", "hectic", "invoice", "supplier", "sam"];
+const VOCAB = ["garden", "weather", "radio", "busy", "invoice", "supplier", "sam"];
 function fakeVec(text: string): number[] {
   const t = text.toLowerCase();
   const v = VOCAB.map((w) => t.split(w).length - 1);
@@ -83,7 +83,7 @@ describe("ingestFolder", () => {
 
   it("retrieves the right passage by meaning with the source cited", async () => {
     writeFileSync(join(docsDir, "breeding.md"), "The bulldog breeding programme has three litters planned for the autumn season this year.");
-    writeFileSync(join(docsDir, "station.md"), "The radio station runs a hectic weekend schedule with guest DJs on rotation every Friday night.");
+    writeFileSync(join(docsDir, "station.md"), "The radio station runs a busy weekend schedule with guest DJs on rotation every Friday night.");
     await ingestFolder(docsDir);
 
     const hits = await searchDocs("bulldog breeding", 2, 0.1);
@@ -103,7 +103,7 @@ describe("ingestFolder", () => {
   });
 
   it("respects the per-run file cap and reports the remainder", async () => {
-    for (let i = 0; i < 4; i++) writeFileSync(join(docsDir, `f${i}.md`), `Document number ${i} — long enough content about the example invoice supplier world to index properly.`);
+    for (let i = 0; i < 4; i++) writeFileSync(join(docsDir, `f${i}.md`), `Document number ${i} — long enough content about the busy radio invoice supplier world to index properly.`);
     const r = await ingestFolder(docsDir, 2);
     expect(r.ingested).toBe(2);
     expect(r.remaining).toBe(2);
