@@ -49,6 +49,11 @@ import {
   pruneOldLogs,
 } from "./vault.ts";
 
+// RESILIENCE: a single unhandled async error must never take SAM down. Log it and stay up —
+// an always-on personal assistant that dies on one bad request/response is worse than useless.
+process.on("unhandledRejection", (reason) => { try { console.error("[SAM] unhandledRejection:", reason instanceof Error ? reason.message : reason); } catch {} });
+process.on("uncaughtException", (err) => { try { console.error("[SAM] uncaughtException:", err?.message || err); } catch {} });
+
 const app = express();
 // SECURITY: only allow same-origin + localhost (dev HUD on :5273). This stops a
 // random website you visit from reaching SAM's powerful local API (CSRF-style abuse).
@@ -61,6 +66,24 @@ app.use(cors({
   },
 }));
 app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
+
+// SECURITY · anti-DNS-rebinding. CORS blocks a cross-origin site from READING our responses, but
+// a DNS-rebinding attack (attacker.com re-pointed to 127.0.0.1) reaches us as "same-origin" — its
+// only tell is the Host header, which is still the ATTACKER'S DOMAIN. Legit requests always carry a
+// localhost/LAN-IP Host. So: allow loopback + private-LAN IP hosts (covers phone access), reject any
+// domain-name Host outright. This closes the classic local-server takeover from a malicious webpage.
+function hostAllowed(hostHeader: string): boolean {
+  const h = (hostHeader || "").split(":")[0].replace(/^\[|\]$/g, "").toLowerCase();
+  if (h === "localhost" || h === "::1") return true;
+  return /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h);
+}
+app.use((req, res, next) => {
+  if (!hostAllowed(req.headers.host || "")) {
+    logSecurity("alert", "blocked-host", `Blocked a request with an unexpected Host header (possible DNS-rebinding)`, req.headers.host || "");
+    return res.status(403).json({ error: "bad host" });
+  }
+  next();
+});
 
 // ── REMOTE-MODE token gate (phone access) ─────────────────────
 // Active only when SAM_REMOTE=1 + a strong SAM_REMOTE_TOKEN are set (see listen() below).
