@@ -271,7 +271,9 @@ async function listDir(path: string): Promise<string> {
 
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
-  if (!IS_MAC) throw new Error("maconly");
+  // Graceful cross-platform degrade: the model reads this and tells the user honestly
+  // (instead of a cryptic failure), usually offering the nearest thing it CAN do here.
+  if (!IS_MAC) throw new Error(`this action needs macOS — this machine runs ${OS}, so tell the user it isn't available here`);
   const { stdout } = await execFile("osascript", ["-e", script], { timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   return stdout.trim();
 }
