@@ -5,7 +5,8 @@ export interface AgentResult {
   text?: string;
   trace: string[];
   provider?: string;
-  // pending (a risky action awaiting approval):
+  // pending (a risky action awaiting approval — held server-side, approved by id):
+  pendingId?: string;
   tool?: string;
   input?: any;
   preview?: string;
@@ -38,16 +39,13 @@ export async function command(message: string, projectId?: string, tier?: string
 // Approve (or decline) a pending risky action and continue the agent.
 // `always` = "yes, and always allow this action" (standing authorization).
 export async function confirm(pending: AgentResult, approved: boolean, always = false): Promise<AgentResult> {
+  // The action itself is held server-side — we only send its id + the verdict.
   const res = await fetch("/api/confirm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: pending.message, projectId: pending.projectId, tier: pending.tier,
-      transcript: pending.transcript, tool: pending.tool, input: pending.input,
-      trace: pending.trace, approved, always, user: USER,
-    }),
+    body: JSON.stringify({ pendingId: pending.pendingId, approved, always }),
   });
-  if (!res.ok) throw new Error("confirm failed");
+  if (!res.ok && res.status !== 410) throw new Error("confirm failed");
   return res.json();
 }
 
