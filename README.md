@@ -39,9 +39,11 @@ Most "AI assistants" just talk. SAM works:
 
 ## Quick start
 
-### 🍎 Easiest — download the Mac app (no terminal, nothing to install)
+### ⬇️ Easiest — download the app (no terminal, nothing to install)
 
-**[⬇️ Download SAM for Mac](https://github.com/richhabits/sam/releases/latest)** → open the `.dmg` → drag **SAM** to Applications → **right-click SAM → Open** (once, because it's unsigned). Done. Works free out of the box — no API key needed. *(Apple Silicon M1–M4.)*
+**[Download SAM](https://github.com/richhabits/sam/releases/latest)** — works free out of the box, no API key needed:
+- **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → **right-click → Open** (once — it's unsigned)
+- **Windows**: run `SAM-Setup-…exe` → if SmartScreen appears, click **More info → Run anyway** (once — it's unsigned)
 
 ### 🛠️ Or run from source (Mac · Windows · Linux)
 
