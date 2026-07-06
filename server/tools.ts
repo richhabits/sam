@@ -125,6 +125,12 @@ const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 // targets (router admin, cloud metadata, localhost services) are unreachable.
 const WEB_TIMEOUT = 15000;
 const webSignal = () => AbortSignal.timeout(WEB_TIMEOUT);
+// Every outbound fetch in this file goes through tfetch so a stalled public API
+// (weather, translate, finance, HN…) can't hang the agent loop forever. Node's
+// fetch has NO default timeout. Callers may pass their own signal (kept as-is).
+function tfetch(url: any, opts: any = {}): Promise<Response> {
+  return fetch(url, { ...opts, signal: opts.signal || AbortSignal.timeout(WEB_TIMEOUT) });
+}
 function isPrivateIp(ip: string): boolean {
   if (/^::1$|^f[cd]|^fe80:/i.test(ip)) return true;                   // v6 loopback / ULA / link-local
   const m = ip.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
@@ -151,7 +157,7 @@ async function webSearch(q: string): Promise<string> {
   if (hasJina()) {
     try { return clip(await jinaSearch(q), 1800); } catch { /* fall back */ }   // tight — keeps the whole loop under free-tier token limits
   }
-  const r = await fetch("https://duckduckgo.com/html/?q=" + encodeURIComponent(q), {
+  const r = await tfetch("https://duckduckgo.com/html/?q=" + encodeURIComponent(q), {
     headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal(),
   });
   const html = await r.text();
@@ -171,7 +177,7 @@ async function webFetch(url: string): Promise<string> {
   if (hasJina()) {
     try { return clip(await jinaRead(url), 5000); } catch { /* fall back */ }
   }
-  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal() });
+  const r = await tfetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal() });
   const html = await r.text();
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -346,7 +352,7 @@ async function notify(input: { title?: string; message: string }): Promise<strin
 
 // ── MORE INTERNET / INFO (safe) ──────────────────────────────
 async function getWeather(place: string): Promise<string> {
-  const r = await fetch("https://wttr.in/" + encodeURIComponent(place || "") + "?format=%l:+%C+%t,+feels+%f,+wind+%w,+humidity+%h");
+  const r = await tfetch("https://wttr.in/" + encodeURIComponent(place || "") + "?format=%l:+%C+%t,+feels+%f,+wind+%w,+humidity+%h");
   return (await r.text()).trim() || "Couldn't get the weather.";
 }
 async function openUrl(url: string): Promise<string> {
@@ -563,6 +569,7 @@ async function getPage(): Promise<Page> {
 
     try {
       const { chromium } = require("playwright-core");
+      await activeBrowser?.close().catch(() => {});   // close the previous browser first — a closed page left the old process orphaned
       activeBrowser = await chromium.launch({ executablePath, headless: false });
       const ctx = await activeBrowser.newContext();
       activePage = await ctx.newPage();
@@ -721,7 +728,7 @@ export const TOOLS: Tool[] = [
     activity: () => `Shortening URL`,
     run: async (i) => {
       try {
-        const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(i.url)}`);
+        const res = await tfetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(i.url)}`);
         if (!res.ok) throw new Error("API returned " + res.status);
         return await res.text();
       } catch (e: any) { return `Failed to shorten URL: ${e.message}`; }
@@ -732,7 +739,7 @@ export const TOOLS: Tool[] = [
       try {
         const base = (i.from || "USD").toUpperCase();
         const target = (i.to || "EUR").toUpperCase();
-        const res = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+        const res = await tfetch(`https://open.er-api.com/v6/latest/${base}`);
         if (!res.ok) throw new Error("Currency API returned " + res.status);
         const data = await res.json();
         const rate = data.rates[target];
@@ -746,7 +753,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         const text = i.text_or_url || i.text || i.url;
-        const res = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`);
+        const res = await tfetch(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`);
         if (!res.ok) throw new Error("QR API returned " + res.status);
         const arrayBuffer = await res.arrayBuffer();
         const path = resolve(homedir(), "Desktop", `QR_${Date.now()}.png`);
@@ -775,7 +782,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Geolocating IP ${i.ip}`,
     run: async (i) => {
       try {
-        const res = await fetch(`http://ip-api.com/json/${i.ip}`);
+        const res = await tfetch(`http://ip-api.com/json/${i.ip}`);
         if (!res.ok) throw new Error("API returned " + res.status);
         const data = await res.json();
         if (data.status === "fail") return `Geolocation failed: ${data.message}`;
@@ -835,7 +842,7 @@ export const TOOLS: Tool[] = [
       try {
         const target = encodeURIComponent(i.target_lang_code || "en");
         const text = encodeURIComponent(i.text);
-        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${text}`);
+        const res = await tfetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${text}`);
         if (!res.ok) throw new Error("Translate API failed");
         const data = await res.json();
         const translated = data[0].map((chunk: any) => chunk[0]).join("");
@@ -846,7 +853,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Pulling 7-day forecast for ${i.location}`,
     run: async (i) => {
       try {
-        const res = await fetch(`https://wttr.in/${encodeURIComponent(i.location || "")}?format=j1`);
+        const res = await tfetch(`https://wttr.in/${encodeURIComponent(i.location || "")}?format=j1`);
         if (!res.ok) throw new Error("Weather API failed");
         const data = await res.json();
         const current = data.current_condition[0];
@@ -858,7 +865,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Checking stock price for ${i.ticker}`,
     run: async (i) => {
       try {
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(i.ticker)}`);
+        const res = await tfetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(i.ticker)}`);
         if (!res.ok) throw new Error("Finance API returned " + res.status);
         const data = await res.json();
         const meta = data.chart.result[0].meta;
@@ -869,7 +876,7 @@ export const TOOLS: Tool[] = [
     activity: () => `Fetching top news`,
     run: async () => {
       try {
-        const res = await fetch("https://news.google.com/rss");
+        const res = await tfetch("https://news.google.com/rss");
         if (!res.ok) throw new Error("News API failed");
         const xml = await res.text();
         const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -974,7 +981,9 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Opening Maps for ${i.address_or_query}`,
     run: async (i) => {
       const q = encodeURIComponent(i.address_or_query);
-      if (IS_MAC) return openUrl(`maps://?q=${q}`).then(() => `Apple Maps opened for: ${i.address_or_query}`);
+      // openUrl prepends https:// to anything non-http, which would mangle maps://
+      // into https://maps://… — open the maps: scheme directly instead.
+      if (IS_MAC) return sh(openCmd(`maps://?q=${q}`)).then(() => `Apple Maps opened for: ${i.address_or_query}`);
       else return openUrl(`https://www.google.com/maps/search/?api=1&query=${q}`).then(() => `Google Maps opened for: ${i.address_or_query}`);
     } },
   { name: "add_contact", safe: false, description: "Programmatically add a new person to your native Contacts. input: {first_name, last_name?, phone?, email?}.", params: "{first_name, last_name?, phone?, email?}",
@@ -1052,16 +1061,16 @@ export const TOOLS: Tool[] = [
     run: async (i) => { const p = safePath("./vault/notes/quick.md"); await sh(`mkdir -p ${shq(dirname(p))}`); await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" }); return `📝 Noted to your vault.`; } },
   { name: "crypto_price", safe: true, description: "Get a crypto price. input: coin (bitcoin, ethereum…).", params: "coin",
     activity: (i) => `Checking ${i.coin ?? i} price`,
-    run: async (i) => { try { const coin = String(i.coin ?? i).toLowerCase(); const d: any = await (await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coin)}&vs_currencies=usd,gbp`)).json(); const p = d?.[coin]; return p ? `🪙 ${coin}: $${p.usd} · £${p.gbp}` : `Couldn't find "${coin}".`; } catch (e: any) { return `Crypto lookup failed: ${e?.message}`; } } },
+    run: async (i) => { try { const coin = String(i.coin ?? i).toLowerCase(); const d: any = await (await tfetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coin)}&vs_currencies=usd,gbp`)).json(); const p = d?.[coin]; return p ? `🪙 ${coin}: $${p.usd} · £${p.gbp}` : `Couldn't find "${coin}".`; } catch (e: any) { return `Crypto lookup failed: ${e?.message}`; } } },
   { name: "define_word", safe: true, description: "Define a word. input: word.", params: "word",
     activity: (i) => `Defining "${i.word ?? i}"`,
-    run: async (i) => { try { const w = String(i.word ?? i); const d: any = await (await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`)).json(); const defs = d?.[0]?.meanings?.slice(0, 2).map((m: any) => `(${m.partOfSpeech}) ${m.definitions?.[0]?.definition}`).join("\n"); return defs ? `📖 ${w}\n${defs}` : `No definition for "${w}".`; } catch (e: any) { return `Lookup failed: ${e?.message}`; } } },
+    run: async (i) => { try { const w = String(i.word ?? i); const d: any = await (await tfetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`)).json(); const defs = d?.[0]?.meanings?.slice(0, 2).map((m: any) => `(${m.partOfSpeech}) ${m.definitions?.[0]?.definition}`).join("\n"); return defs ? `📖 ${w}\n${defs}` : `No definition for "${w}".`; } catch (e: any) { return `Lookup failed: ${e?.message}`; } } },
   { name: "wikipedia", safe: true, description: "Get a Wikipedia summary. input: topic.", params: "topic",
     activity: (i) => `Reading Wikipedia: ${i.topic ?? i}`,
-    run: async (i) => { try { const t = String(i.topic ?? i); const d: any = await (await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`)).json(); return d?.extract ? `📚 ${d.title}\n${d.extract}` : `No Wikipedia page for "${t}".`; } catch (e: any) { return `Lookup failed: ${e?.message}`; } } },
+    run: async (i) => { try { const t = String(i.topic ?? i); const d: any = await (await tfetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`)).json(); return d?.extract ? `📚 ${d.title}\n${d.extract}` : `No Wikipedia page for "${t}".`; } catch (e: any) { return `Lookup failed: ${e?.message}`; } } },
   { name: "hacker_news", safe: true, description: "Top Hacker News stories right now.", params: "(none)",
     activity: () => `Fetching Hacker News`,
-    run: async () => { try { const ids: any = await (await fetch("https://hacker-news.firebaseio.com/v0/topstories.json")).json(); const top = await Promise.all(ids.slice(0, 8).map(async (id: number) => { const s: any = await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json(); return `• ${s.title} (${s.score}▲) ${s.url || ""}`; })); return `📰 Top HN:\n${top.join("\n")}`; } catch (e: any) { return `HN fetch failed: ${e?.message}`; } } },
+    run: async () => { try { const ids: any = await (await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json")).json(); const top = await Promise.all(ids.slice(0, 8).map(async (id: number) => { const s: any = await (await tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json(); return `• ${s.title} (${s.score}▲) ${s.url || ""}`; })); return `📰 Top HN:\n${top.join("\n")}`; } catch (e: any) { return `HN fetch failed: ${e?.message}`; } } },
   { name: "dns_lookup", safe: true, description: "DNS lookup for a domain. input: domain.", params: "domain",
     activity: (i) => `DNS lookup: ${i.domain ?? i}`,
     run: async (i) => { const { stdout } = await sh(`dig +short ${shq(String(i.domain ?? i))} 2>/dev/null || nslookup ${shq(String(i.domain ?? i))} 2>/dev/null | tail -n +4`); return stdout.trim() || "No records found."; } },

@@ -422,6 +422,7 @@ const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes 
 function writeEnv(key: string, value: string) {
   let txt = "";
   try { txt = readFileSync(ENV_PATH, "utf8"); } catch {}
+  value = value.replace(/[\r\n]/g, " ");   // one value = one line — no .env line injection
   const line = `${key}=${value}`;
   const re = new RegExp(`^${key}=.*$`, "m");
   txt = re.test(txt) ? txt.replace(re, line) : (txt.replace(/\n?$/, "\n") + line + "\n");

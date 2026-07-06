@@ -201,7 +201,8 @@ export function searchDocsWith(e: { model: string; vec: number[] } | null, k = 4
   if (!rows.length) return [];
   const scored: { id: string; path: string; score: number }[] = [];
   for (const row of rows) {
-    const score = cosine(JSON.parse(row.vec), e.vec);
+    let v; try { v = JSON.parse(row.vec); } catch { continue; }   // skip a corrupt row, don't sink the search
+    const score = cosine(v, e.vec);
     if (score >= floor) scored.push({ id: row.id, path: row.path, score });
   }
   scored.sort((a, b) => b.score - a.score);
