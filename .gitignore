@@ -59,3 +59,4 @@ vault/people.json
 docs/index.html
 dist-app/
 !vault/mcp.sample.json
+vault/photos/

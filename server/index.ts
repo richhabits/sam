@@ -7,7 +7,7 @@
 import "dotenv/config";
 import os from "node:os";
 import { timingSafeEqual } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -718,6 +718,21 @@ app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.jso
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
 app.post("/api/people", (req, res) => { const { name, look, relation } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation)); });
+
+// 📸 Save a camera snapshot into the vault (local only — vault/photos is gitignored).
+app.post("/api/photo", (req, res) => {
+  try {
+    const data = String(req.body?.data || "");
+    const b64 = data.replace(/^data:image\/\w+;base64,/, "");
+    if (!b64 || b64.length > 14_000_000) return res.status(400).json({ error: "no/oversized image" });
+    const dir = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault"), "photos");
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+    const file = join(dir, `photo-${stamp}.jpg`);
+    writeFileSync(file, Buffer.from(b64, "base64"));
+    res.json({ ok: true, path: file });
+  } catch (e: any) { res.status(500).json({ error: String(e?.message || e).slice(0, 120) }); }
+});
 
 // ── The Team + The Ninjas: parallel specialists, synthesised (SSE) ──
 app.get("/api/team/roster", (_req, res) => res.json({ crew: SPECIALISTS, ninjas: NINJAS }));
