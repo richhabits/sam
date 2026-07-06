@@ -1570,10 +1570,14 @@ export const TOOLS: Tool[] = [
   { name: "view_photo", safe: true, description: "Look at a saved photo/image file and describe or answer questions about it (e.g. find where objects are in past snapshots). input: {path, question?}.", params: "{path, question?}",
     activity: (i) => `Looking at ${String(i.path || "").split("/").pop()}`, run: async (i) => {
       const p = String(i.path || i || "").replace(/^~/, process.env.HOME || "");
-      if (!p || !existsSync(p)) return `Can't find that image: ${p || "(no path)"}`;
+      // Safety: this auto-runs, so a prompt-injected model could try to read arbitrary files.
+      // Only ever open real image files, and never anything inside a sensitive/hidden dir.
+      if (!/\.(jpe?g|png|gif|webp|heic|bmp)$/i.test(p)) return "I can only look at image files (jpg/png/gif/webp).";
+      if (/\/\.(ssh|aws|gnupg|config|kube|docker)\b|\/\.env|id_rsa|\/etc\/|\/var\/(root|log)|Keychains?/i.test(p)) return "I won't open files from a protected location.";
+      if (!existsSync(p)) return `Can't find that image: ${p || "(no path)"}`;
       const buf = await readFile(p);
       if (buf.length > 8 * 1024 * 1024) return "That image is over 8MB — too big to inspect.";
-      const mime = /\.png$/i.test(p) ? "image/png" : "image/jpeg";
+      const mime = /\.png$/i.test(p) ? "image/png" : /\.webp$/i.test(p) ? "image/webp" : /\.gif$/i.test(p) ? "image/gif" : "image/jpeg";
       const r = await runVision("You are SAM's eyes reviewing a saved photo.", String(i.question || "Describe this photo in detail — objects, people you might know, and where things are."), [{ mime, data: buf.toString("base64") }]);
       return r.text;
     } },
