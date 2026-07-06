@@ -4,7 +4,7 @@ SAM is built local-first and safe by default. Here's the security model and how 
 
 ## Security model
 
-- **Local-first.** Your API keys, memory and data live only on your machine (`.env` + `vault/`, both gitignored). Nothing is uploaded; SAM has no telemetry.
+- **Local-first.** Your API keys, memory and data live only on your machine (`.env` + `vault/`, both gitignored). SAM has no telemetry and never phones home — the only thing that leaves your machine is the prompt (or photo) you send to the AI brain you pick, and nothing at all in offline/Ollama mode.
 - **Ask-first.** Any risky action (sending a message, deleting, pushing code, running a shell command) pauses for your explicit approval. You can grant a standing "always allow" per action.
 - **Catastrophic-command denylist.** A hard block prevents SAM from ever running destructive commands (e.g. `rm -rf /`, `mkfs`, disk overwrites) — even if approved.
 - **Locked-down API.** The local API only accepts requests from `localhost` / same-origin, so a website you visit can't reach it (CSRF-style abuse is blocked).

@@ -37,6 +37,12 @@ export function listAllowed(): string[] { return [...load()]; }
 //  they're outward-facing, cost money, or can't be undone. Safety never sleeps.
 const ALWAYS_ASK = new Set([
   "send_email", "send_imessage", "call", "facetime", "run_command", "run_script",
+  // Arbitrary-exec / input-injection surfaces — AppleScript can `do shell script`, and
+  // type/press/click can drive a terminal, so these are code-exec-equivalent. They must
+  // NEVER auto-run under Autopilot (only Elon Mode, the explicit ruthless override, can).
+  "applescript", "type_text", "press_key", "click",
+  // Irreversible / destructive to data + devices.
+  "empty_trash", "eject_disk", "trash_file",
   "git_commit", "git_push", "github_pr", "github_create_issue", "play",
 ]);
 let AUTOPILOT = false;
