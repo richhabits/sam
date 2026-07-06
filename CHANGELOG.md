@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📱 Phone, made smart** — ⚙ Settings → *Use SAM on your phone*: one click generates a private token
+  and shows a **QR you scan with your phone camera** → lands in SAM already signed in (no typing tokens).
+  Add-to-Home-Screen installs it as an app (camera/voice/everything). The HUD got a real **mobile layout**
+  (thumb-size targets, 16px inputs to stop iOS zoom, safe-area insets, full-screen sheets, standalone PWA
+  mode). README documents the free **Tailscale** path for encrypted access from *anywhere*, no cloud.
 - **📷 Camera — accessibility + find-my-thing** — 🔈 *Read this aloud* (camera → text → spoken, for menus/
   mail/labels), 🔎 *Find my…* (name an object, sweep the camera, SAM guides you warmer/colder and shouts
   'Found it — on the left!' with voice). Plus on-device face-descriptor storage is ready server-side

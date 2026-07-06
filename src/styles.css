@@ -294,6 +294,33 @@ button { font-family: inherit; cursor: pointer; }
   .hello { font-size: 26px; }
 }
 
+/* ── PHONE — genuine mobile layout (portrait & PWA standalone) ── */
+@media (max-width: 560px) {
+  .bar { padding: 8px 12px; gap: 6px; }
+  .bar-right { gap: 4px; }
+  /* keep only the essentials in the top bar; move the rest into menus */
+  .bar-right .icon-btn:not(.voice-btn):not([title*="History"]):not([title*="New chat"]) { display: none; }
+  .mode-toggle { display: none; }              /* Business/Personal lives in Settings on phone */
+  .wordmark { font-size: 17px; }
+  .row { max-width: 100%; }
+  .bubble { max-width: 88vw; font-size: 15px; }        /* comfortable tap-size text */
+  .composer { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }  /* clear the home bar */
+  .composer-inner { gap: 6px; }
+  .composer textarea, .composer input[type="text"] { font-size: 16px; }     /* 16px stops iOS zoom-on-focus */
+  .icon-btn, .send-btn, .plus-btn { min-width: 40px; min-height: 40px; }    /* thumb-friendly targets */
+  .drawer, .admin { width: 100vw !important; max-width: 100vw; }            /* full-screen sheets */
+  .pop, .plus-menu { max-width: 92vw; }
+  .stranger-bar, .admin-matrix { width: calc(100% - 20px); }
+  .admin-matrix { grid-template-columns: 1fr; }
+  .md-img { max-width: 100%; }
+  .side { width: 84vw; }                        /* history drawer */
+}
+/* PWA installed (standalone) — use the full screen height incl. safe areas */
+@media (display-mode: standalone) {
+  .app { min-height: 100vh; min-height: 100dvh; }
+  .bar { padding-top: calc(8px + env(safe-area-inset-top)); }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    HIGH-RES POLISH — crafted, premium, not generic
    ═══════════════════════════════════════════════════════════════ */

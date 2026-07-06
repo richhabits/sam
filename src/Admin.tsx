@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail } from "./lib/api";
+import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone } from "./lib/api";
+import QRCode from "qrcode";
 
 // Every publicly-available provider SAM can rotate across. `starter` = the easy, generous,
 // grab-in-2-minutes ones shown first; the rest live under "More free brains". More keys
@@ -61,6 +62,9 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
   const [apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
+  const [phone, setPhone] = useState<{ remoteOn: boolean; lan: string | null; url: string | null }>({ remoteOn: false, lan: null, url: null });
+  const [phoneQR, setPhoneQR] = useState("");
+  const [phoneMsg, setPhoneMsg] = useState("");
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -72,6 +76,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       if (c.apple) setApple({ appleId: c.apple.appleId || "", appleTeam: c.apple.appleTeam || "", applePass: "" });
     }).catch(() => {});
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
+    getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
   };
   useEffect(() => { refresh(); }, []);
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
@@ -228,6 +233,29 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             </div>
             <div className="admin-foot">Gmail: create an <b>App password</b> (not your login). IONOS/Fastmail/any SMTP works. Port 465 = TLS, 587 = STARTTLS.</div>
           </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">📱 Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
+          {phone.remoteOn && phoneQR ? (
+            <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+              <img src={phoneQR} alt="Scan to open SAM on your phone" style={{ width: 160, height: 160, borderRadius: 12, background: "#fff", padding: 6 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera 📷</div>
+                <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
+                <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              <div className="admin-note" style={{ marginBottom: 10, lineHeight: 1.5 }}>Turn on phone access — SAM opens to your Wi-Fi with a private token, and you scan a QR to connect. {phoneMsg && <b style={{ color: "var(--accent-text)" }}>{phoneMsg}</b>}</div>
+              <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+                setPhoneMsg("Turning on…");
+                const r = await enablePhone().catch(() => ({ ok: false }));
+                setPhoneMsg(r.ok ? "✓ Enabled — restart SAM (quit & reopen), then come back here for the QR." : "Couldn't enable — try again.");
+              }}>Turn on phone access</button>
+            </div>
+          )}
         </div>
 
         <div className="admin-row">
