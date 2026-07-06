@@ -3,6 +3,7 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🔒 Multi-user privacy hardened** — the owner (first-ever named user) is now persisted to disk, and ONLY the owner ever inherits/sees the pre-multi-user memories. A family member connecting to a shared SAM first after an update can never adopt the owner history — everyone else starts genuinely clean & private.
 - **👥 Multi-user / Family SAM** — several people can share one SAM, each with their OWN private
   memory. Memory is namespaced by the person's name (already sent with every request), with a one-time
   'adopt' so the original owner keeps all their history and everyone added later starts fresh & private.
