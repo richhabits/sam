@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🔔 Push notifications — SAM reaches your phone even when closed** — direct Web Push (VAPID, no third
+  party, keys generated once & kept local): the morning brief, reminders, and scheduled-task results
+  land as notifications on any device that opted in (Settings → 📱 → *Get alerts here*). Service worker
+  (public/sw.js) also makes the installed PWA load instantly offline. Fast + free: no push service fees,
+  no cloud relay — SAM pushes straight to the device.
 - **📱 Phone, made smart** — ⚙ Settings → *Use SAM on your phone*: one click generates a private token
   and shows a **QR you scan with your phone camera** → lands in SAM already signed in (no typing tokens).
   Add-to-Home-Screen installs it as an app (camera/voice/everything). The HUD got a real **mobile layout**
