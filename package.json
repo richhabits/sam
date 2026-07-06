@@ -22,6 +22,8 @@
     "start:fast": "node dist/server.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm test && npm run build",
     "selftest": "tsx server/selftest.ts",
     "skill:new": "node scripts/new-skill.mjs",
     "ship": "node scripts/ship.mjs",

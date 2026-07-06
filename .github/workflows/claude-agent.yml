@@ -1,0 +1,68 @@
+# ─────────────────────────────────────────────────────────────
+#  Claude Agent — report a problem → agent fixes it → auto-ships
+#
+#  How the loop works (enterprise-safe, review-gated on purpose):
+#    1. A user reports a bug (issue). A maintainer adds the `agent-fix`
+#       label — or anyone writes `@claude ...` in an issue/PR comment.
+#    2. This workflow wakes Claude, which reads the issue, digs through
+#       the repo, and opens a PULL REQUEST with the fix (never a direct
+#       push to main).
+#    3. CI (ci.yml: typecheck + tests + build) must pass on that PR.
+#    4. You click Merge. Then pages.yml + release auto-update the live
+#       site — so the fix ships the moment it's approved.
+#
+#  Why a PR and not auto-merge: instantly shipping unreviewed AI changes
+#  straight to production is the OPPOSITE of enterprise-ready. The agent
+#  is instant; the human keeps the merge button. That's the safe line.
+#
+#  ONE-TIME SETUP (maintainer):
+#    • Install the Claude GitHub App:  https://github.com/apps/claude
+#    • Add repo secret ANTHROPIC_API_KEY  (Settings → Secrets → Actions)
+#    • Create the `agent-fix` label (this repo already has it)
+#  Cost note: each run spends Anthropic API credits, so it's gated on the
+#  label / @claude mention — it does NOT fire on every opened issue.
+# ─────────────────────────────────────────────────────────────
+name: Claude Agent
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # Only run when deliberately invoked: the `agent-fix` label, or an @claude mention.
+    if: >
+      (github.event_name == 'issues' && github.event.label.name == 'agent-fix') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write         # open a branch + commit the fix
+      pull-requests: write     # open the PR
+      issues: write            # comment back on the issue
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude
+        # Pin to a tag you trust; check https://github.com/anthropics/claude-code-action for the latest.
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # When triggered by the label, give Claude a clear brief. On an @claude
+          # comment the action uses the comment text instead.
+          prompt: >
+            A user reported the issue in this event. Reproduce and understand it, find the
+            root cause in the codebase, and implement a minimal, correct fix. Follow the
+            repo's existing style. Then run `npm run verify` (typecheck + tests + build) and
+            make sure it passes. Open a pull request that closes the issue, with a short
+            explanation of the cause and the fix. Do NOT push to main directly. If the report
+            is unclear or not a real bug, comment on the issue asking for what you need instead.

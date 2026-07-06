@@ -1,0 +1,65 @@
+name: 🐛 Bug report
+description: Something isn't working — tell us and (optionally) let the agent fix it.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make SAM better. Fill in what you can — even a rough report helps.
+        A maintainer can add the **`agent-fix`** label to have Claude investigate and open a fix PR automatically.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What went wrong? Paste any error message or screenshot.
+      placeholder: "e.g. SAM crashes on boot with 'Cannot find module …'"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact steps so we (or the agent) can reproduce it.
+      placeholder: |
+        1. Run `npm start`
+        2. Open localhost:8787
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: false
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Windows, Linux, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SAM version / commit
+      description: "Run `git rev-parse --short HEAD` in your SAM folder."
+      placeholder: "e.g. cb8f391"
+    validations:
+      required: false
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: "Run `node -v`."
+      placeholder: "e.g. v22.12.0"
+    validations:
+      required: false
+  - type: input
+    id: brain
+    attributes:
+      label: Which AI brain(s)?
+      description: Which provider(s) were configured — or local Ollama?
+      placeholder: "e.g. Groq + Cerebras, or Ollama only"
+    validations:
+      required: false

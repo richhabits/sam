@@ -3,6 +3,19 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Report-a-problem → agent fixes it → auto-ships** — a new `Claude Agent` workflow: label a bug
+  `agent-fix` (or comment `@claude …`) and Claude reads the report, finds the cause, runs `npm run verify`,
+  and opens a **PR** with the fix. CI gates it, a human merges, and the site/build auto-update on merge —
+  instant agent, human keeps the merge button (needs `ANTHROPIC_API_KEY` + the Claude GitHub App). Plus:
+  a structured 🐛 bug-report form, PR template, issue-template config (Discussions + private security link),
+  and a one-shot `npm run verify` (typecheck + tests + build). GitHub description corrected to the real
+  counts (148 tools / 78 agents / 30+ brains — was "63 tools / 6 brains").
+- **Landing: categorised, live, honest** — the "everything it does" grid now groups all 148 tools into 15
+  labelled categories (Web, Files, Code, Vision, Control-your-Mac, Memory…), auto-generated from the source
+  on every push (`pages.yml`), so it's always accurate with zero upkeep. Removed the last overclaims
+  ("no data leaving your laptop" / "100% on your machine" / "conversations never leave") — now the honest
+  privacy story (keys/memory/files stay local; only the prompt you send goes to the brain you pick; nothing
+  in Ollama mode).
 - **Security audit — closed an Autopilot RCE path** — `applescript` (and `type_text`/`press_key`/`click`)
   were missing from the always-ask list, so with Autopilot on the model could run **arbitrary AppleScript
   → `do shell script` → shell** with no approval and no catastrophic-command guard (reachable via prompt
