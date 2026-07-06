@@ -12,6 +12,10 @@ const Admin = lazy(() => import("./Admin"));
 const Dashboard = lazy(() => import("./Dashboard"));
 
 interface Profile { name: string; about?: string; language?: string }
+// Multiple people can share one SAM — each profile has its OWN memory (server namespaces
+// by name). Saved locally so you switch instantly without re-onboarding.
+function loadProfiles(): Profile[] { try { return JSON.parse(localStorage.getItem("sam.profiles") || "[]"); } catch { return []; } }
+function saveProfiles(list: Profile[]) { try { localStorage.setItem("sam.profiles", JSON.stringify(list.slice(0, 12))); } catch {} }
 const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
 const TIPS = [
@@ -189,6 +193,12 @@ export default function App() {
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
   const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") === "1"; } catch { return false; } });
   const [profile, setProfile] = useState<Profile>(loadProfile);
+  const [profiles, setProfiles] = useState<Profile[]>(loadProfiles);
+  // Add/refresh a profile in the saved list (upsert by name).
+  function upsertProfile(p: Profile) {
+    setProfiles((list) => { const next = [p, ...list.filter((x) => x.name.toLowerCase() !== p.name.toLowerCase())]; saveProfiles(next); return next; });
+  }
+  function switchTo(p: Profile) { setProfile(p); setUser({ ...p, mode }); newChat(); sysNote(`👋 Switched to ${p.name} — this is ${p.name}'s SAM (own memory & chats).`); }
   const [onboardName, setOnboardName] = useState("");
   const [onboardAbout, setOnboardAbout] = useState("");
   const [onboardLang, setOnboardLang] = useState("English");
@@ -373,7 +383,7 @@ export default function App() {
     const name = onboardName.trim();
     if (!name) return;
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
-    setProfile(p); setUser({ ...p, mode });
+    setProfile(p); setUser({ ...p, mode }); upsertProfile(p);
     // First run: if no free key is set up yet, open the keys panel so the new user grabs a
     // FREE brain right away (SAM needs one free key — or local Ollama — to think).
     getStatus().then((s) => { if (!s?.capacity?.configured) setAdminOpen(true); }).catch(() => setAdminOpen(true));
@@ -961,7 +971,11 @@ export default function App() {
             <button className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
             <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
             <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
-            <button className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">Switch user</span><span className="pop-opt-sub">Signed in as {profile.name}</span></button>
+            <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
+            {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
+              <button key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
+            ))}
+            <button className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">＋ Add someone</span><span className="pop-opt-sub">A new person — fresh, private memory</span></button>
             {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return n ? <div className="pop-lanes">✓ {n} free {n === 1 ? "brain" : "brains"} ready — SAM rotates so you never hit a limit</div> : null; })()}
             <div className="pop-note">SAM can act for you — reading &amp; searching happen automatically; anything risky asks first.</div>
           </div>

@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **👥 Multi-user / Family SAM** — several people can share one SAM, each with their OWN private
+  memory. Memory is namespaced by the person's name (already sent with every request), with a one-time
+  'adopt' so the original owner keeps all their history and everyone added later starts fresh & private.
+  Settings → 👥 Who's using SAM: switch between saved people instantly (no re-onboarding) or add someone
+  new. Each person's SAM learns only about them. (Your-own-devices and give-it-out already worked; this
+  adds true per-person separation on a shared SAM.)
 - **🔔 Push notifications — SAM reaches your phone even when closed** — direct Web Push (VAPID, no third
   party, keys generated once & kept local): the morning brief, reminders, and scheduled-task results
   land as notifications on any device that opted in (Settings → 📱 → *Get alerts here*). Service worker
