@@ -34,6 +34,7 @@ const PROVIDERS: Prov[] = [
   { id: "alibaba", label: "Qwen (Alibaba)", note: "🧠 reasoning (Qwen) — strong thinker", url: "https://bailian.console.alibabacloud.com" },
   { id: "moonshot", label: "Moonshot (Kimi)", note: "📚 long documents (Kimi) — huge context", url: "https://platform.moonshot.ai/console/api-keys" },
   { id: "zhipu", label: "Zhipu GLM-5.2", note: "🧠💻 NEW flagship — 1M context, top coder (20M free tokens)", url: "https://open.bigmodel.cn" },
+  { id: "hermes", label: "Hermes (Nous)", note: "🪽 open, un-nerfed — elite agentic tool-use & reasoning", url: "https://portal.nousresearch.com" },
   { id: "minimax", label: "MiniMax", note: "💬 general chat", url: "https://platform.minimaxi.com" },
   { id: "stepfun", label: "StepFun", note: "💬 general chat", url: "https://platform.stepfun.com" },
   { id: "deepinfra", label: "DeepInfra", note: "🌐 many open models — good backup", url: "https://deepinfra.com/dash/api_keys" },

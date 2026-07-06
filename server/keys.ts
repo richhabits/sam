@@ -78,6 +78,7 @@ const POOLS: Record<string, KeyPool> = {
   alibaba: readPool("alibaba", "ALIBABA_API_KEYS", "ALIBABA_API_KEY"),
   volcengine: readPool("volcengine", "VOLCENGINE_API_KEYS", "VOLCENGINE_API_KEY"),
   zhipu: readPool("zhipu", "ZHIPU_API_KEYS", "ZHIPU_API_KEY"),
+  hermes: readPool("hermes", "HERMES_API_KEYS", "HERMES_API_KEY"),
   moonshot: readPool("moonshot", "MOONSHOT_API_KEYS", "MOONSHOT_API_KEY"),
   minimax: readPool("minimax", "MINIMAX_API_KEYS", "MINIMAX_API_KEY"),
   stepfun: readPool("stepfun", "STEPFUN_API_KEYS", "STEPFUN_API_KEY"),
