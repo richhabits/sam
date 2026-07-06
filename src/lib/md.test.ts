@@ -6,6 +6,17 @@ describe("renderMarkdown", () => {
     expect(renderMarkdown("<script>alert(1)</script>")).not.toContain("<script>");
     expect(renderMarkdown("a < b & c")).toContain("&lt;");
   });
+  it("cannot break out of a URL attribute to inject an event handler (XSS)", () => {
+    // The danger is a RAW quote closing src="…" and starting a new attribute. After the fix every
+    // quote is encoded (&quot;), so the handler text stays trapped inside the attribute value.
+    const img = renderMarkdown('![x](https://a.com"onerror="alert(1))');
+    expect(img).not.toContain('"onerror');   // no raw-quote breakout
+    expect(img).toContain("&quot;");           // the quote was escaped
+    const link = renderMarkdown('[t](https://a.com"onmouseover="alert(1))');
+    expect(link).not.toContain('"onmouseover');
+    // The alt-text path must be safe too.
+    expect(renderMarkdown('![x"onload="alert(1)](https://a.com)')).not.toContain('"onload');
+  });
   it("renders bold, code and links", () => {
     expect(renderMarkdown("**hi**")).toContain("<strong>hi</strong>");
     expect(renderMarkdown("`x`")).toContain("<code>x</code>");
