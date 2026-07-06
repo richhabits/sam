@@ -13,7 +13,7 @@ import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus } from "./keys.ts";
 import { capacityReport, capacityNudge, capacityLine } from "./capacity.ts";
-import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
+import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
@@ -443,6 +443,9 @@ const CONFIG_ENV: Record<string, string> = {
   notion: "NOTION_API_KEY", slack: "SLACK_BOT_TOKEN",
   discord: "DISCORD_WEBHOOK_URL", twitter: "TWITTER_BEARER_TOKEN",
   linear: "LINEAR_API_KEY", linearTeam: "LINEAR_TEAM_ID",
+  // SAM's own email (SMTP) — set from Settings, saved to .env
+  smtpHost: "SMTP_HOST", smtpPort: "SMTP_PORT", smtpUser: "SMTP_USER",
+  smtpPass: "SMTP_PASS", smtpFrom: "SMTP_FROM", ownerEmail: "SAM_OWNER_EMAIL",
 };
 const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces (My Drive)
 
@@ -472,6 +475,16 @@ app.get("/api/admin/config", (_req, res) => {
     twitter: !!process.env.TWITTER_BEARER_TOKEN,
     linear: !!process.env.LINEAR_API_KEY,
     linearTeam: process.env.LINEAR_TEAM_ID || "",
+    // SAM email — non-secret fields + whether a password is set (never the password itself)
+    email: {
+      configured: mailerConfigured(),
+      smtpHost: process.env.SMTP_HOST || "",
+      smtpPort: process.env.SMTP_PORT || "",
+      smtpUser: process.env.SMTP_USER || "",
+      smtpFrom: process.env.SMTP_FROM || "",
+      ownerEmail: process.env.SAM_OWNER_EMAIL || "",
+      smtpPassSet: !!process.env.SMTP_PASS,
+    },
     elonMode: isElonMode(),
     pools,
   });
@@ -494,7 +507,14 @@ app.post("/api/admin/config", (req, res) => {
   const envVar = CONFIG_ENV[key];
   if (!envVar) return res.status(400).json({ error: "unknown config key" });
   writeEnv(envVar, String(value || ""));
+  if (envVar.startsWith("SMTP_") || envVar === "SAM_OWNER_EMAIL") resetMailer();   // pick up the new email config
   res.json({ ok: true, key });
+});
+
+// Send a test email to confirm SAM's email is wired up.
+app.post("/api/admin/test-email", async (_req, res) => {
+  const r = await sendMail(ownerEmail(), "✅ SAM email test", "This is SAM — your email is set up. I can now send your morning brief and nudges here.");
+  res.json(r);
 });
 
 // Ingest user context (pasted from ChatGPT/Claude/Gemini) during onboarding or settings updates.
