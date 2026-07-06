@@ -15,6 +15,12 @@ and loads more) and it asks before anything risky.
 
 *(This is for Apple Silicon Macs — M1, M2, M3, M4. Most Macs from 2021 onwards.)*
 
+## 🪟 On Windows? Same easy way
+
+1. **[⬇️ Download SAM here](https://github.com/richhabits/sam/releases/latest)** (the `SAM-Setup-…exe` file)
+2. Run it. If Windows shows a blue "protected your PC" box, click **More info → Run anyway** (it's safe — just unsigned)
+3. Done — SAM opens and works free, no setup.
+
 ---
 
 ## 🛠️ Or the terminal way (any Mac, Windows, or Linux)
