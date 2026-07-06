@@ -3,6 +3,13 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📷 Camera, seriously upgraded** — 🙋 *Who's this?* (recognises known people or asks their name and
+  remembers them — plus a Guardian "remember them" banner when it spots someone new), 📸 *Take a photo*
+  (full-res → vault/photos, local-only, gitignored), 📄 *Scan text* (camera as document/receipt scanner),
+  all one tap from the ＋ menu. Privacy-first: people are remembered as text descriptions, not biometrics.
+- **🏇 HappyHorse + 🧠 GLM-5.2 — the new flagships, wired in** — video now leads with **HappyHorse 1.1**
+  (Alibaba's #1-arena model, native audio/lip-sync) via fal.ai (official API, free signup credits); chat's
+  deep/code lanes now default Zhipu to **GLM-5.2** (1M context, MIT, 20M free tokens on signup).
 - **🍎 Signed releases + TRUE silent auto-update (owner opt-in)** — paste your Apple developer
   details in Settings → 🍎 Signed releases (or .env), create a Developer ID cert in Xcode once,
   then `npm run release:app` builds a signed + notarized Mac app and uploads it with update
