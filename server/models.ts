@@ -151,7 +151,6 @@ const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_MODEL || "meta-llama/Llama-3.3
 const HYPERBOLIC_MODEL = process.env.HYPERBOLIC_MODEL || "meta-llama/Meta-Llama-3-70B-Instruct";
 const NOVITA_MODEL = process.env.NOVITA_MODEL || "meta-llama/llama-3.1-70b-instruct";
 const SILICONFLOW_MODEL = process.env.SILICONFLOW_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
-const GLHF_MODEL = process.env.GLHF_MODEL || "hf:meta-llama/Llama-3.1-70B-Instruct";
 const AI21_MODEL = process.env.AI21_MODEL || "jamba-1.5-large";
 const UPSTAGE_MODEL = process.env.UPSTAGE_MODEL || "solar-1-mini-chat";
 const NEBIUS_MODEL = process.env.NEBIUS_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
@@ -171,7 +170,6 @@ const TENCENT_MODEL = process.env.TENCENT_MODEL || "hunyuan-lite";
 // ── Bonus free/free-credit providers (all real, OpenAI-compatible) ──
 const DEEPINFRA_MODEL = process.env.DEEPINFRA_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
 const SCALEWAY_MODEL = process.env.SCALEWAY_MODEL || "llama-3.3-70b-instruct";
-const KLUSTER_MODEL = process.env.KLUSTER_MODEL || "klusterai/Meta-Llama-3.1-8B-Instruct-Turbo";
 const CHUTES_MODEL = process.env.CHUTES_MODEL || "deepseek-ai/DeepSeek-V3";
 const FRIENDLI_MODEL = process.env.FRIENDLI_MODEL || "meta-llama-3.1-70b-instruct";
 const CODESTRAL_MODEL = process.env.CODESTRAL_MODEL || "codestral-latest";
@@ -200,10 +198,10 @@ const PROVIDERS: Provider[] = [
   { id: "nvidia", tier: "free", label: `nvidia:${NVIDIA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://integrate.api.nvidia.com/v1", NVIDIA_MODEL, s, p, k) },
   { id: "siliconflow", tier: "free", label: `siliconflow:${SILICONFLOW_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.siliconflow.cn/v1", SILICONFLOW_MODEL, s, p, k) },
   { id: "xai", tier: "free", label: `xai:${XAI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.x.ai/v1", XAI_MODEL, s, p, k) },
-  { id: "huggingface", tier: "free", label: `huggingface:${HUGGINGFACE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api-inference.huggingface.co/v1", HUGGINGFACE_MODEL, s, p, k) },
+  { id: "huggingface", tier: "free", label: `huggingface:${HUGGINGFACE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://router.huggingface.co/v1", HUGGINGFACE_MODEL, s, p, k) },
   { id: "hyperbolic", tier: "free", label: `hyperbolic:${HYPERBOLIC_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.hyperbolic.xyz/v1", HYPERBOLIC_MODEL, s, p, k) },
   { id: "novita", tier: "free", label: `novita:${NOVITA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.novita.ai/v3/openai", NOVITA_MODEL, s, p, k) },
-  { id: "nebius", tier: "free", label: `nebius:${NEBIUS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.studio.nebius.ai/v1/", NEBIUS_MODEL, s, p, k) },
+  { id: "nebius", tier: "free", label: `nebius:${NEBIUS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.studio.nebius.ai/v1", NEBIUS_MODEL, s, p, k) },
 
   // ── TIER 3: Asian Heavyweights (massive free-tier new user quotas) ──
   { id: "alibaba", tier: "free", label: `alibaba:${ALIBABA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", ALIBABA_MODEL, s, p, k) },
@@ -216,7 +214,6 @@ const PROVIDERS: Provider[] = [
   { id: "tencent", tier: "free", label: `tencent:${TENCENT_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.lkeap.cloud.tencent.com/v1", TENCENT_MODEL, s, p, k) },
 
   // ── TIER 3b: Aggregators & Specialty ───────────────────────
-  { id: "glhf", tier: "free", label: `glhf:${GLHF_MODEL}`, run: (s, p, k) => callOpenAICompat("https://glhf.chat/api/openai/v1", GLHF_MODEL, s, p, k) },
   { id: "ai21", tier: "free", label: `ai21:${AI21_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.ai21.com/studio/v1", AI21_MODEL, s, p, k) },
   { id: "upstage", tier: "free", label: `upstage:${UPSTAGE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.upstage.ai/v1/solar", UPSTAGE_MODEL, s, p, k) },
   { id: "cohere", tier: "free", label: `cohere:${COHERE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cohere.com/v1", COHERE_MODEL, s, p, k) },
@@ -229,7 +226,6 @@ const PROVIDERS: Provider[] = [
   // ── TIER 3c: Bonus free brains (opt-in — add a key; tried after the mains) ──
   { id: "deepinfra", tier: "free", label: `deepinfra:${DEEPINFRA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.deepinfra.com/v1/openai", DEEPINFRA_MODEL, s, p, k) },
   { id: "scaleway", tier: "free", label: `scaleway:${SCALEWAY_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.scaleway.ai/v1", SCALEWAY_MODEL, s, p, k) },
-  { id: "kluster", tier: "free", label: `kluster:${KLUSTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.kluster.ai/v1", KLUSTER_MODEL, s, p, k) },
   { id: "chutes", tier: "free", label: `chutes:${CHUTES_MODEL}`, run: (s, p, k) => callOpenAICompat("https://llm.chutes.ai/v1", CHUTES_MODEL, s, p, k) },
   { id: "friendli", tier: "free", label: `friendli:${FRIENDLI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.friendli.ai/serverless/v1", FRIENDLI_MODEL, s, p, k) },
   { id: "codestral", tier: "free", label: `codestral:${CODESTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://codestral.mistral.ai/v1", CODESTRAL_MODEL, s, p, k) },

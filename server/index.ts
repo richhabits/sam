@@ -436,14 +436,14 @@ const PROVIDER_ENV: Record<string, string> = {
   together: "TOGETHER_API_KEYS", sambanova: "SAMBANOVA_API_KEYS", deepseek: "DEEPSEEK_API_KEYS",
   fireworks: "FIREWORKS_API_KEYS", xai: "XAI_API_KEYS", huggingface: "HUGGINGFACE_API_KEYS",
   hyperbolic: "HYPERBOLIC_API_KEYS", novita: "NOVITA_API_KEYS", siliconflow: "SILICONFLOW_API_KEYS",
-  glhf: "GLHF_API_KEYS", ai21: "AI21_API_KEYS", upstage: "UPSTAGE_API_KEYS",
+  ai21: "AI21_API_KEYS", upstage: "UPSTAGE_API_KEYS",
   nebius: "NEBIUS_API_KEYS", cohere: "COHERE_API_KEYS", perplexity: "PERPLEXITY_API_KEYS",
   // Infinite Compute — Asian Heavyweights
   alibaba: "ALIBABA_API_KEYS", volcengine: "VOLCENGINE_API_KEYS", zhipu: "ZHIPU_API_KEYS",
   moonshot: "MOONSHOT_API_KEYS", minimax: "MINIMAX_API_KEYS", stepfun: "STEPFUN_API_KEYS",
   baidu: "BAIDU_API_KEYS", tencent: "TENCENT_API_KEYS",
   // Bonus free/free-credit providers
-  deepinfra: "DEEPINFRA_API_KEYS", scaleway: "SCALEWAY_API_KEYS", kluster: "KLUSTER_API_KEYS",
+  deepinfra: "DEEPINFRA_API_KEYS", scaleway: "SCALEWAY_API_KEYS",
   chutes: "CHUTES_API_KEYS", friendli: "FRIENDLI_API_KEYS", codestral: "CODESTRAL_API_KEYS",
   inference: "INFERENCE_API_KEYS", gmi: "GMI_API_KEYS", vercel: "VERCEL_API_KEYS", ovh: "OVH_API_KEYS",
 };

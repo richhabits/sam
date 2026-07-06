@@ -69,7 +69,6 @@ const POOLS: Record<string, KeyPool> = {
   hyperbolic: readPool("hyperbolic", "HYPERBOLIC_API_KEYS", "HYPERBOLIC_API_KEY"),
   novita: readPool("novita", "NOVITA_API_KEYS", "NOVITA_API_KEY"),
   siliconflow: readPool("siliconflow", "SILICONFLOW_API_KEYS", "SILICONFLOW_API_KEY"),
-  glhf: readPool("glhf", "GLHF_API_KEYS", "GLHF_API_KEY"),
   ai21: readPool("ai21", "AI21_API_KEYS", "AI21_API_KEY"),
   upstage: readPool("upstage", "UPSTAGE_API_KEYS", "UPSTAGE_API_KEY"),
   nebius: readPool("nebius", "NEBIUS_API_KEYS", "NEBIUS_API_KEY"),
@@ -87,7 +86,6 @@ const POOLS: Record<string, KeyPool> = {
   // ── Bonus free/free-credit providers ──
   deepinfra: readPool("deepinfra", "DEEPINFRA_API_KEYS", "DEEPINFRA_API_KEY"),
   scaleway: readPool("scaleway", "SCALEWAY_API_KEYS", "SCALEWAY_API_KEY"),
-  kluster: readPool("kluster", "KLUSTER_API_KEYS", "KLUSTER_API_KEY"),
   chutes: readPool("chutes", "CHUTES_API_KEYS", "CHUTES_API_KEY"),
   friendli: readPool("friendli", "FRIENDLI_API_KEYS", "FRIENDLI_API_KEY"),
   codestral: readPool("codestral", "CODESTRAL_API_KEYS", "CODESTRAL_API_KEY"),
