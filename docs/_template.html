@@ -107,9 +107,13 @@
   .card .vs{font-family:var(--mono); font-size:12px; color:var(--ash-dim); margin-top:12px; padding-top:12px; border-top:1px solid var(--line-soft)}
   .card .vs b{color:var(--ember)}
 
-  /* does grid */
-  .does{display:flex; flex-wrap:wrap; gap:9px; margin-top:6px}
-  .does span{font-family:var(--mono); font-size:12.5px; color:var(--ash); border:1px solid var(--line-soft); border-radius:999px; padding:8px 13px; transition:all .16s}
+  /* categorised does grid */
+  .cats{display:grid; grid-template-columns:repeat(2,1fr); gap:26px 34px}
+  @media(max-width:720px){.cats{grid-template-columns:1fr}}
+  .cat-h{font-family:var(--mono); font-size:13px; color:var(--paper); margin-bottom:11px; display:flex; align-items:center; gap:9px; letter-spacing:.01em}
+  .cat-h em{font-style:normal; color:var(--ember); font-size:11px; border:1px solid var(--line); border-radius:999px; padding:1px 8px}
+  .does{display:flex; flex-wrap:wrap; gap:8px; margin-top:2px}
+  .does span{font-family:var(--mono); font-size:12.5px; color:var(--ash); border:1px solid var(--line-soft); border-radius:999px; padding:7px 12px; transition:all .16s}
   .does span:hover{color:var(--paper); border-color:var(--ember); background:var(--ember-soft)}
 
   /* steps */
@@ -157,7 +161,7 @@
             <button class="copy" id="copy">Copy</button>
           </div>
         </div>
-        <div class="sub-note">No sign-up. No subscription. No data leaving your laptop.</div>
+        <div class="sub-note">No sign-up. No subscription. No telemetry — your data stays yours.</div>
       </div>
 
       <!-- LIVE TERMINAL -->
@@ -172,7 +176,7 @@
       <div class="stat"><div class="n">{{BRAINS}}</div><div class="l">free AI brains</div></div>
       <div class="stat"><div class="n">{{TOOLS}}</div><div class="l">real tools</div></div>
       <div class="stat"><div class="n"><span class="u">£</span>0</div><div class="l">per month</div></div>
-      <div class="stat"><div class="n">100<span class="u">%</span></div><div class="l">on your machine</div></div>
+      <div class="stat"><div class="n">100<span class="u">%</span></div><div class="l">yours — no telemetry</div></div>
     </div>
 
     <!-- WHY -->
@@ -193,7 +197,7 @@
         </div>
         <div class="card">
           <h3><span class="g">🔒</span>Private by design</h3>
-          <p>Your keys, memory and conversations never leave your laptop. No telemetry, no cloud harvesting, no account.</p>
+          <p>Your keys, memory, files and vault stay on your laptop — no telemetry, no account, and your data never trains anyone's model. The only thing that leaves is the prompt you choose to send to the brain you pick — and in offline (Ollama) mode, nothing leaves at all.</p>
           <div class="vs">Them: your data trains their model · <b>SAM: your data stays yours</b></div>
         </div>
         <div class="card">
@@ -219,7 +223,7 @@
       <div class="kicker">{{TOOLS}} tools · {{AGENTS}} agents · {{SKILLS}} skills — and counting</div>
       <h2>Not a chatbot. A doer.</h2>
       <p class="section-lede">Ask in plain English. SAM picks the right tool, does the work, and asks before anything risky. <b>This list is generated live from the code</b> — every tool below is really in there.</p>
-      <div class="does">
+      <div class="cats">
         {{DOES}}
       </div>
     </section>

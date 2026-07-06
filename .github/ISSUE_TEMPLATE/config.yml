@@ -1,0 +1,9 @@
+# Nudge people to the right place — keeps the tracker clean and friendly.
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & ideas (Discussions)
+    url: https://github.com/richhabits/sam/discussions
+    about: Not sure it's a bug? Ask here — setup help, how-tos, feature chat.
+  - name: 🔒 Report a security issue privately
+    url: https://github.com/richhabits/sam/security/advisories/new
+    about: Please DON'T open a public issue for vulnerabilities — report privately here.
