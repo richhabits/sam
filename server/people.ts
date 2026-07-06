@@ -2,7 +2,7 @@
 //  S.A.M. · PEOPLE  — who SAM knows by sight
 //  Stores your people by name + a short look-description (from
 //  SAM's own vision). Injected into the vision prompt so SAM can
-//  say "hey Alex" — or flag "someone I don't recognise". Local
+//  say "hey <friend>" — or flag "someone I don't recognise". Local
 //  & private (vault/people.json, gitignored). No face data leaves
 //  your machine; we store a text description, not the photo.
 // ─────────────────────────────────────────────────────────────
