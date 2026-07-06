@@ -5,6 +5,15 @@ name: Deploy landing page
 on:
   push:
     branches: [main]
+    # Only redeploy when something that changes the landing actually changes —
+    # the page is generated from these, so unrelated code pushes don't spend minutes.
+    paths:
+      - "docs/**"
+      - "scripts/gen-landing.mjs"
+      - "server/tools.ts"
+      - "server/agents.ts"
+      - "skills/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
