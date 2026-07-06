@@ -39,7 +39,13 @@ Most "AI assistants" just talk. SAM works:
 
 ## Quick start
 
-**Prerequisites:** [Node.js 20.19+ or 22.12+](https://nodejs.org) · macOS (Windows/Linux work too; some Mac-only tools degrade gracefully).
+### 🍎 Easiest — download the Mac app (no terminal, nothing to install)
+
+**[⬇️ Download SAM for Mac](https://github.com/richhabits/sam/releases/latest)** → open the `.dmg` → drag **SAM** to Applications → **right-click SAM → Open** (once, because it's unsigned). Done. Works free out of the box — no API key needed. *(Apple Silicon M1–M4.)*
+
+### 🛠️ Or run from source (Mac · Windows · Linux)
+
+**Prerequisites:** [Node.js 20.19+ or 22.12+](https://nodejs.org) — *or skip this: `./setup.sh` installs it for you.*
 
 Paste these into Terminal **exactly as-is** (they're clean — no comments to trip up zsh):
 
