@@ -61,8 +61,10 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   // ── OPENAI REALTIME WEBRTC ──
   async function initWebRTC() {
     try {
-      // 1. Get ephemeral token from backend
-      const res = await fetch("http://localhost:8787/api/voice/token").catch(() => null);
+      // 1. Get ephemeral token from backend (relative → same-origin in dev via the
+      // Vite proxy; the file:// shim in main.tsx points it at the local server in a
+      // packaged build). Avoids a needless cross-origin call in dev.
+      const res = await fetch("/api/voice/token").catch(() => null);
       if (!res || !res.ok) throw new Error("No token");
       const { client_secret: { value: token } } = await res.json();
 
