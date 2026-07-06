@@ -606,6 +606,7 @@ async function getPage(): Promise<Page> {
       throw new Error(`Could not launch Chrome. Ensure it's installed. Error: ${e.message}`);
     }
   }
+  if (!activePage) throw new Error("Browser page unavailable — try the action again.");
   return activePage;
 }
 

@@ -127,7 +127,7 @@ export async function embedOne(text: string, isQuery = false, prefer?: string | 
   const out = r?.vectors?.[0] ? { model: r.model, vec: r.vectors[0] } : null;
   if (out) {
     EMB_CACHE.set(key, out);
-    if (EMB_CACHE.size > EMB_CACHE_MAX) EMB_CACHE.delete(EMB_CACHE.keys().next().value);   // evict oldest
+    if (EMB_CACHE.size > EMB_CACHE_MAX) { const oldest = EMB_CACHE.keys().next().value; if (oldest !== undefined) EMB_CACHE.delete(oldest); }   // evict oldest
   }
   return out;
 }
