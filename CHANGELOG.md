@@ -3,6 +3,14 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🪃 Roo-style swarm orchestration** — SAM's multi-agent team gained two upgrades from Roo Code's
+  Orchestrator/Boomerang: (1) **specialist "modes" with scoped tools** — a researcher/writer now gets a
+  focused read/research/write kit, not the run-shell/delete/send kit (builders & operators keep the full
+  toolset; ask-first still backstops safety); (2) **verify-and-re-delegate** — after the crew runs, the
+  orchestrator reviews the combined work against the request and, if it finds real gaps or errors,
+  delegates up to 2 follow-up subtasks to close them (one bounded round) before synthesising. SAM already
+  had dependency-graph parallel execution + output hand-off, so it now matches Roo AND runs subtasks in
+  parallel.
 - **📓 Notebook panel — NotebookLM, built into the HUD** — Settings → 📓 Notebooks (or the command palette):
   a real workspace. Left: your notebooks + sources (add a web link or paste text, one tap). Right: a
   grounded chat that answers ONLY from those sources with citations (no hallucination), plus a 🎙️ Audio
