@@ -105,14 +105,16 @@ export function recentLog(limit = 12): { time: string; msg: string }[] {
 export function recentExchanges(limit = 5): { user: string; sam: string }[] {
   const file = join(DAILY_DIR, `${today()}.md`);
   if (!existsSync(file)) return [];
-  const blocks = readFileSync(file, "utf8").split(/^### /m).slice(1);
+  // Only the last `limit` blocks are needed — regex-parsing the WHOLE day's log
+  // every request got slower as the day grew. Slice first, then parse.
+  const blocks = readFileSync(file, "utf8").split(/^### /m).slice(1).slice(-limit);
   const out: { user: string; sam: string }[] = [];
   for (const b of blocks) {
     const u = b.match(/\*\*the user:\*\*\s*([\s\S]*?)\n\n\*\*SAM/);
     const s = b.match(/\*\*SAM\*\*[^:]*:\s*([\s\S]*?)\n\n---/);
     if (u || s) out.push({ user: (u?.[1] || "").trim(), sam: (s?.[1] || "").trim() });
   }
-  return out.slice(-limit);
+  return out;
 }
 
 // ── In-memory graph cache ────────────────────────────────────
