@@ -88,6 +88,13 @@ app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
   });
 }
 
+// Local-machine-only check (used to fence off the most dangerous / owner-only actions even
+// when phone/remote access is on). Uses the socket address — not a spoofable header.
+function isLoopback(req: { socket: { remoteAddress?: string | null } }): boolean {
+  const ip = req.socket.remoteAddress || "";
+  return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+}
+
 const PORT = process.env.PORT || 8787;
 const SKILLS = loadSkills();
 
@@ -593,6 +600,9 @@ app.post("/api/admin/import-context", async (req, res) => {
 
 // Toggle Elon Mode (ruthless automation override).
 app.post("/api/admin/elon-mode", (req, res) => {
+  // Elon Mode bypasses EVERY ask-first safety gate — never flippable from a remote device
+  // (a phone with the shared token). Only the owner, at the machine itself, can enable it.
+  if (!isLoopback(req)) return res.status(403).json({ error: "Elon Mode can only be toggled on this computer, not remotely." });
   const { on } = req.body as { on: boolean };
   setElonMode(on);
   res.json({ ok: true, elonMode: isElonMode() });
@@ -736,8 +746,7 @@ function lanIP(): string | null {
   return n?.address || null;
 }
 app.get("/api/phone-link", (req, res) => {
-  const ip = req.socket.remoteAddress || "";
-  if (!(ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1")) return res.status(403).json({ error: "loopback only" });
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   const remoteOn = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
   const lan = lanIP();
   const url = remoteOn && lan ? `http://${lan}:${PORT}/?token=${encodeURIComponent(process.env.SAM_REMOTE_TOKEN!)}` : null;
@@ -745,8 +754,7 @@ app.get("/api/phone-link", (req, res) => {
 });
 // One-click enable: generate a strong token, persist SAM_REMOTE=1 + token (takes effect on restart).
 app.post("/api/phone-enable", (req, res) => {
-  const ip = req.socket.remoteAddress || "";
-  if (!(ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1")) return res.status(403).json({ error: "loopback only" });
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   const token = randomBytes(18).toString("base64url");
   writeEnv("SAM_REMOTE", "1");
   writeEnv("SAM_REMOTE_TOKEN", token);
