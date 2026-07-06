@@ -21,7 +21,7 @@ All notable changes to SAM. Newest first.
   hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
   a 69-test suite + typecheck/selftest/boot CI gates.
 - **World-class brain** — an operating doctrine distilled from the best public system prompts (agentic persistence,
-  prompt-injection defense, verify-before-claiming), plus 78 specialists and a searchable "Meet the team" browser.
+  prompt-injection defense, verify-before-claiming), plus 78 agents (64 specialists + 14 ninjas) and a searchable "Meet the team" browser.
 - **UX pass** — ⌘P command palette, ⌘F find-in-chat, 8 skins, syntax highlighting, per-block code-copy, drag-drop
   + paste, collapse-long messages, quote-reply, reading-progress, export/copy chat, text-size. Landing auto-builds from live code.
 - **149 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
