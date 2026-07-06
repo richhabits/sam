@@ -1,16 +1,43 @@
 import { useState, useEffect } from "react";
 import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail } from "./lib/api";
 
-const PROVIDERS = [
-  { id: "nvidia", label: "NVIDIA", note: "free · capable 70B · generous limits", url: "https://build.nvidia.com" },
-  { id: "groq", label: "Groq", note: "free · fastest · 70B", url: "https://console.groq.com/keys" },
-  { id: "cerebras", label: "Cerebras", note: "free · blazing fast · 70B", url: "https://cloud.cerebras.ai" },
-  { id: "mistral", label: "Mistral", note: "free tier · capable", url: "https://console.mistral.ai/api-keys" },
-  { id: "github", label: "GitHub Models", note: "free with a GitHub token", url: "https://github.com/settings/tokens" },
-  { id: "gemini", label: "Gemini", note: "free · multimodal (photos) · small daily cap", url: "https://aistudio.google.com/apikey" },
-  { id: "openrouter", label: "OpenRouter", note: "free tier", url: "https://openrouter.ai/keys" },
-  { id: "anthropic", label: "Anthropic (Claude)", note: "premium", url: "https://console.anthropic.com/settings/keys" },
-  { id: "openai", label: "OpenAI", note: "premium", url: "https://platform.openai.com/api-keys" },
+// Every publicly-available provider SAM can rotate across. `starter` = the easy, generous,
+// grab-in-2-minutes ones shown first; the rest live under "More free brains". More keys
+// across more providers = more free capacity (SAM hops when one's rate-limited).
+type Prov = { id: string; label: string; note: string; url: string; starter?: boolean; premium?: boolean };
+const PROVIDERS: Prov[] = [
+  // ── Starter (do these first — fast, generous, easy) ──
+  { id: "groq", label: "Groq", note: "fastest · very generous free tier", url: "https://console.groq.com/keys", starter: true },
+  { id: "cerebras", label: "Cerebras", note: "blazing fast · big 70B", url: "https://cloud.cerebras.ai", starter: true },
+  { id: "gemini", label: "Google Gemini", note: "adds photos/vision · generous", url: "https://aistudio.google.com/apikey", starter: true },
+  { id: "openrouter", label: "OpenRouter", note: "many free models, one key", url: "https://openrouter.ai/keys", starter: true },
+  { id: "nvidia", label: "NVIDIA", note: "capable 70B · generous", url: "https://build.nvidia.com", starter: true },
+  { id: "mistral", label: "Mistral", note: "solid European models · free tier", url: "https://console.mistral.ai/api-keys", starter: true },
+  { id: "github", label: "GitHub Models", note: "free with a GitHub token", url: "https://github.com/settings/tokens", starter: true },
+  // ── More free brains (all public — stack as many as you like) ──
+  { id: "together", label: "Together AI", note: "free credits · many models", url: "https://api.together.xyz/settings/api-keys" },
+  { id: "deepseek", label: "DeepSeek", note: "strong reasoning & code", url: "https://platform.deepseek.com/api_keys" },
+  { id: "sambanova", label: "SambaNova", note: "very fast", url: "https://cloud.sambanova.ai" },
+  { id: "fireworks", label: "Fireworks", note: "fast · free credits", url: "https://fireworks.ai/account/api-keys" },
+  { id: "cohere", label: "Cohere", note: "free trial keys", url: "https://dashboard.cohere.com/api-keys" },
+  { id: "hyperbolic", label: "Hyperbolic", note: "free credits", url: "https://app.hyperbolic.xyz/settings" },
+  { id: "novita", label: "Novita", note: "free credits", url: "https://novita.ai/settings/key-management" },
+  { id: "nebius", label: "Nebius", note: "free credits", url: "https://studio.nebius.com" },
+  { id: "xai", label: "xAI (Grok)", note: "free credits", url: "https://console.x.ai" },
+  { id: "huggingface", label: "HuggingFace", note: "free inference API", url: "https://huggingface.co/settings/tokens" },
+  { id: "ai21", label: "AI21", note: "free trial", url: "https://studio.ai21.com/account/api-key" },
+  { id: "upstage", label: "Upstage", note: "free credits", url: "https://console.upstage.ai/api-keys" },
+  { id: "glhf", label: "glhf.chat", note: "free (beta)", url: "https://glhf.chat" },
+  { id: "perplexity", label: "Perplexity", note: "free credits · web-aware", url: "https://www.perplexity.ai/settings/api" },
+  { id: "siliconflow", label: "SiliconFlow", note: "free tier", url: "https://cloud.siliconflow.cn/account/ak" },
+  { id: "alibaba", label: "Qwen (Alibaba)", note: "free tier · capable", url: "https://bailian.console.alibabacloud.com" },
+  { id: "moonshot", label: "Moonshot (Kimi)", note: "free credits · long context", url: "https://platform.moonshot.ai/console/api-keys" },
+  { id: "zhipu", label: "Zhipu (GLM)", note: "free tier", url: "https://open.bigmodel.cn" },
+  { id: "minimax", label: "MiniMax", note: "free credits", url: "https://platform.minimaxi.com" },
+  { id: "stepfun", label: "StepFun", note: "free tier", url: "https://platform.stepfun.com" },
+  // ── Premium (paid — only used if you pick "Best", never on free) ──
+  { id: "anthropic", label: "Anthropic (Claude)", note: "premium · paid", url: "https://console.anthropic.com/settings/keys", premium: true },
+  { id: "openai", label: "OpenAI", note: "premium · paid", url: "https://platform.openai.com/api-keys", premium: true },
 ];
 
 export default function Admin({ onClose }: { onClose: () => void }) {
@@ -20,6 +47,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [voice, setVoice] = useState("");
   const [saved, setSaved] = useState("");
   const [allowed, setAllowed] = useState<string[]>([]);
+  const [showMore, setShowMore] = useState(false);
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
@@ -93,17 +121,35 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {PROVIDERS.map((p) => (
-          <div key={p.id} className="admin-row">
-            <div className="admin-h"><span className="admin-name">{p.label}</span><span className="admin-note">{p.note}</span><span className="admin-count">{count(p.id)} key{count(p.id) === 1 ? "" : "s"}</span></div>
-            <textarea className="admin-input" rows={2} placeholder={`Paste ${p.label} key(s) — comma or new line for many`}
-              value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
-            <div className="admin-actions">
-              <button className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
-              <a className="admin-getkey" href={p.url} target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
+        {(() => {
+          const row = (p: Prov) => (
+            <div key={p.id} className="admin-row">
+              <div className="admin-h"><span className="admin-name">{p.label}</span><span className="admin-note">{p.note}</span><span className="admin-count">{count(p.id)} key{count(p.id) === 1 ? "" : "s"}</span></div>
+              <textarea className="admin-input" rows={2} placeholder={`Paste ${p.label} key(s) — comma or new line for many`}
+                value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
+              <div className="admin-actions">
+                <button className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
+                <a className="admin-getkey" href={p.url} target="_blank" rel="noopener noreferrer">{p.premium ? "Get a key ↗" : "Get a FREE key ↗"}</a>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+          const starters = PROVIDERS.filter((p) => p.starter);
+          const moreFree = PROVIDERS.filter((p) => !p.starter && !p.premium);
+          const premium = PROVIDERS.filter((p) => p.premium);
+          const activeKeys = PROVIDERS.reduce((n, p) => n + (count(p.id) > 0 ? 1 : 0), 0);
+          return (
+            <>
+              <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM rotates across them all, so you never hit a limit or a bill. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."}</div>
+              {starters.map(row)}
+              <button className="admin-more" onClick={() => setShowMore((v) => !v)}>
+                {showMore ? "▾ Hide extra free brains" : `▸ ＋ ${moreFree.length} more FREE brains — stack them for more free capacity`}
+              </button>
+              {showMore && moreFree.map(row)}
+              <div className="admin-sub">Premium (paid — optional, only used if you pick “Best”)</div>
+              {premium.map(row)}
+            </>
+          );
+        })()}
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">ElevenLabs voice</span><span className="admin-note">premium voice</span><span className="admin-count">{cfg?.elevenlabs ? "on" : "off"}</span></div>
