@@ -111,7 +111,11 @@ function viaFor(tag: string, texts: string[], isQuery: boolean): Promise<Embedde
 export async function embed(texts: string[], isQuery = false, prefer?: string | null): Promise<Embedded | null> {
   if (!texts.length) return { model: "none", vectors: [] };
   if (prefer) { const p = await viaFor(prefer, texts, isQuery); if (p) return p; }
-  return (await viaJina(texts, isQuery)) || (await viaGemini(texts)) || (await viaOllama(texts));
+  // LOCAL-FIRST: embeddings run on EVERY message (recall query) + every memory write, so default
+  // to free, private, on-device Ollama. Cloud (Jina/Gemini) is only a fallback for users with no
+  // local model — this is the difference between "free & no data leaves the machine" and quietly
+  // burning embedding quota on every single message.
+  return (await viaOllama(texts)) || (await viaJina(texts, isQuery)) || (await viaGemini(texts));
 }
 
 // Single-text embedding with a small LRU cache. Embedding a given text under a given
