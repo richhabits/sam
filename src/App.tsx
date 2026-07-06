@@ -1054,6 +1054,13 @@ export default function App() {
               </div>
             )}
           </div>
+          {quality === "turbo" && (
+            <button className="turbo-pill" title="⚡ Turbo is on — one fast call, no tools. Click to switch back to Automatic."
+              onClick={() => { setQuality("auto"); showToast("Switched to Automatic"); }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", marginRight: 6, borderRadius: 999, border: "1px solid var(--accent, #E8673A)", background: "transparent", color: "var(--accent, #E8673A)", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>
+              ⚡ Turbo
+            </button>
+          )}
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => dt.items.add(f)); onFiles(dt.files); } }}
