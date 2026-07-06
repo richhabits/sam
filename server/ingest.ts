@@ -76,7 +76,7 @@ const SKIP_DIRS = new Set([
 const skipDir = (name: string) => name.startsWith(".") || name.startsWith("_") || SKIP_DIRS.has(name);
 const supported = (ext: string) => TEXT_EXTS.has(ext) || RICH_EXTS.has(ext);
 
-async function extractText(path: string, ext: string): Promise<string> {
+export async function extractText(path: string, ext: string): Promise<string> {
   if (ext === ".pdf") {
     const pdfParse = require("pdf-parse");
     return (await pdfParse(await readFile(path)))?.text || "";
