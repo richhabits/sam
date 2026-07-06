@@ -188,11 +188,12 @@ startProactive(async () => {
 
 // Pull the last few exchanges from the vault so SAM actually remembers
 // what was just discussed (real continuity across messages/sessions).
+const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + "…" : s);
+
 function recallMemory(): string {
   const recent = recentExchanges(5);
   if (!recent.length) return "";
-  const clip = (s: string, n = 220) => (s.length > n ? s.slice(0, n) + "…" : s);
-  const lines = recent.map((e) => `- the user: ${clip(e.user)}\n  You: ${clip(e.sam)}`).join("\n");
+  const lines = recent.map((e) => `- the user: ${clip(e.user, 220)}\n  You: ${clip(e.sam, 220)}`).join("\n");
   return `\n## Recent conversation (remember this for continuity)\n${lines}`;
 }
 
@@ -203,9 +204,8 @@ interface User { name?: string; about?: string; mode?: "business" | "personal"; 
 // SAM knows your docs). Reuses the query vector already computed for memory recall.
 function recallDocs(qvec: { model: string; vec: number[] } | null): string {
   if (!qvec || !docsStats().chunks) return "";
-  const clip = (s: string, n = 420) => (s.length > n ? s.slice(0, n) + "…" : s);
   return searchDocsWith(qvec, 4)
-    .map((h) => `- [${h.source.split("/").pop()}] ${clip(h.text)}`)
+    .map((h) => `- [${h.source.split("/").pop()}] ${clip(h.text, 420)}`)
     .join("\n");
 }
 
@@ -584,7 +584,7 @@ app.all("/api/creative/*", async (req, res) => {
   // Sanitize the wildcard path so it can only address muapi's own API surface — no
   // "..", scheme, host, credentials or backslashes that could redirect the request
   // elsewhere (SSRF). Only plain path segments are allowed.
-  const targetPath = String(req.params[0] || "");
+  const targetPath = String((req.params as unknown as Record<string, string | undefined>)["0"] ?? "");
   if (!/^[a-zA-Z0-9._~/-]*$/.test(targetPath) || targetPath.includes("..")) {
     return res.status(400).json({ error: "Invalid creative path" });
   }

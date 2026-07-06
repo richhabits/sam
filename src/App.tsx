@@ -299,7 +299,7 @@ export default function App() {
     const pollSwarms = async () => {
       if (swarmStop) return;
       let active = false;
-      try { const sw = await getSwarms(); setSwarms(sw); active = sw.some((s) => s.status === "planning" || s.status === "running" || s.status === "paused"); } catch {}
+      try { const sw = await getSwarms(); setSwarms(sw); active = sw.some((s: Swarm) => s.status === "planning" || s.status === "running" || s.status === "paused"); } catch {}
       if (!swarmStop) swarmTimer = setTimeout(pollSwarms, active ? 5000 : 30000);
     };
     pollSwarms();
