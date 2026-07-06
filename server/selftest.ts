@@ -77,9 +77,11 @@ export async function runSelftest(): Promise<SelftestReport> {
   };
 }
 
-// Allow running directly from CLI `npm run selftest` (async IIFE — no top-level await,
-// so this file is safe to bundle under any esbuild target).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run the CLI ONLY when this file is the process entry (`tsx server/selftest.ts`).
+// Guard on the entry FILENAME, not `import.meta.url === file://argv[1]` — once esbuild
+// bundles this into dist/server.mjs, that comparison is true for the bundle too, so the
+// server would run the selftest and process.exit() at boot on any space-free path.
+if (/[\\/]selftest\.(ts|mjs|js|cjs)$/.test(process.argv[1] || "")) {
   (async () => {
     console.log("🚀 Running SAM Production Selftest...");
     const report = await runSelftest();
