@@ -13,6 +13,7 @@ import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus } from "./keys.ts";
 import { capacityReport, capacityNudge, capacityLine } from "./capacity.ts";
+import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
@@ -171,7 +172,10 @@ startProactive(async () => {
   try {
     const qvec = await embedOne(prompt, true);
     const r = await runAgent(system, prompt, (process.env.DEFAULT_TIER as Tier) || "free", selectTools(qvec, 6));
-    return r.kind === "final" ? (r.text || "") : "";
+    const brief = r.kind === "final" ? (r.text || "") : "";
+    // Email the brief to the owner too, if SAM's email is set up (fire-and-forget).
+    if (brief && mailerConfigured() && ownerEmail()) void sendMail(ownerEmail(), "☀️ SAM — your morning brief", brief);
+    return brief;
   } catch { return ""; }
 });
 
