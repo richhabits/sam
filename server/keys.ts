@@ -91,6 +91,7 @@ const POOLS: Record<string, KeyPool> = {
   chutes: readPool("chutes", "CHUTES_API_KEYS", "CHUTES_API_KEY"),
   friendli: readPool("friendli", "FRIENDLI_API_KEYS", "FRIENDLI_API_KEY"),
   codestral: readPool("codestral", "CODESTRAL_API_KEYS", "CODESTRAL_API_KEY"),
+  inference: readPool("inference", "INFERENCE_API_KEYS", "INFERENCE_API_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).
