@@ -66,7 +66,7 @@ All notable changes to SAM. Newest first.
   requirement. Validated an actual DMG build (secrets excluded, skills + server included).
 - **Dependencies clean** — vitest 2→4 / vite 6→8 cleared all dev-tooling advisories (`npm audit` 0); CI actions
   bumped to latest; tests are now hermetic (never touch the real vault).
-- **Cleanup** — removed 3 duplicate tools (149→146, kept the cross-platform ones), a 40 MB unused vendored app
+- **Cleanup** — removed 3 duplicate tools (kept the cross-platform ones), a 40 MB unused vendored app
   (repo 48 MB→15 MB), dead code, and fixed the landing count regex (was undercounting ids with digits).
 - **SAM knows your documents (roadmap #93 — the 100th item, board complete 🏁)** — point SAM at any folder or
   drive ("index my drive") and it walks it, extracts text (md/txt/pdf/docx/csv/json/html), chunks + embeds it
@@ -84,7 +84,7 @@ All notable changes to SAM. Newest first.
 - **Hardened to production-grade** — full 4-dimension audit (bugs · efficiency · integrity · hygiene): fixed a
   Private-mode→cloud fallthrough, a swarm lost-update race, memory-loss on embedding-provider rotation, request
   hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
-  a 69-test suite + typecheck/selftest/boot CI gates.
+  a full test suite (now 92 tests) + typecheck/selftest/boot CI gates.
 - **World-class brain** — an operating doctrine distilled from the best public system prompts (agentic persistence,
   prompt-injection defense, verify-before-claiming), plus 78 agents (64 specialists + 14 ninjas) and a searchable "Meet the team" browser.
 - **UX pass** — ⌘P command palette, ⌘F find-in-chat, 8 skins, syntax highlighting, per-block code-copy, drag-drop
