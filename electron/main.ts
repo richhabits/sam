@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,36 @@ import "../server/index.ts";
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+
+// ── Update check ──────────────────────────────────────────────
+// True silent auto-update needs an Apple signing cert. Without one, we do the honest
+// next-best thing: on launch, check GitHub for a newer release and, if there is one,
+// offer a one-click download. Never nags — only appears when a newer version exists.
+function isNewer(a: string, b: string): boolean {
+  const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) { const x = pa[i] || 0, y = pb[i] || 0; if (x !== y) return x > y; }
+  return false;
+}
+async function checkForUpdates() {
+  try {
+    const res = await fetch("https://api.github.com/repos/richhabits/sam/releases/latest", {
+      headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" },
+    });
+    if (!res.ok) return;
+    const rel = await res.json() as { tag_name?: string; html_url?: string };
+    const latest = (rel.tag_name || "").replace(/^v/, "");
+    if (!latest || !isNewer(latest, app.getVersion())) return;
+    const { response } = await dialog.showMessageBox({
+      type: "info",
+      title: "Update available",
+      message: `SAM ${latest} is out`,
+      detail: `You have ${app.getVersion()}. Download the new version — takes a few seconds, and your data stays put.`,
+      buttons: ["Download", "Later"],
+      defaultId: 0, cancelId: 1,
+    });
+    if (response === 0) shell.openExternal(rel.html_url || "https://github.com/richhabits/sam/releases/latest");
+  } catch { /* offline — no drama */ }
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -65,6 +95,7 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  setTimeout(() => void checkForUpdates(), 8000);   // check a few seconds after launch
 
   ipcMain.on("open-studio", () => {
     const studioWin = new BrowserWindow({
