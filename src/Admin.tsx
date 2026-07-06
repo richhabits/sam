@@ -145,8 +145,27 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           const moreFree = PROVIDERS.filter((p) => !p.starter && !p.premium);
           const premium = PROVIDERS.filter((p) => p.premium);
           const activeKeys = PROVIDERS.reduce((n, p) => n + (count(p.id) > 0 ? 1 : 0), 0);
+          // Media matrix — what each ability runs on NOW, and which key switches it on.
+          const has = (id: string) => count(id) > 0;
+          const ABILITIES = [
+            { icon: "💬", label: "Chat", on: true, via: activeKeys ? `${activeKeys} free brains, rotating` : "free no-key brain + Ollama", up: activeKeys ? "" : "add Groq/Cerebras for speed" },
+            { icon: "🎨", label: "Images", on: true, via: has("together") || has("siliconflow") ? "unlimited + free-credit lanes" : "Pollinations — unlimited, no key", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
+            { icon: "🔊", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
+            { icon: "👁", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
+            { icon: "🎧", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
+            { icon: "🎬", label: "Video", on: has("novita") || has("siliconflow"), via: has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("novita") || has("siliconflow") ? "" : "add Novita or SiliconFlow (free credits)" },
+          ];
           return (
             <>
+              <div className="admin-matrix">
+                {ABILITIES.map((a) => (
+                  <div key={a.label} className={"matrix-cell" + (a.on ? " on" : "")}>
+                    <span className="matrix-ic">{a.icon}</span>
+                    <span className="matrix-name">{a.label}</span>
+                    <span className="matrix-via">{a.on ? `✓ ${a.via}` : "off"}{a.up ? ` · ${a.up}` : ""}</span>
+                  </div>
+                ))}
+              </div>
               <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
               {starters.map(row)}
               <button className="admin-more" onClick={() => setShowMore((v) => !v)}>
