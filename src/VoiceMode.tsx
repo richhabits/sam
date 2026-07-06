@@ -129,7 +129,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setState("unsupported"); return; }
     const rec = new SR(); recRef.current = rec;
-    rec.lang = "en-GB"; rec.interimResults = true; rec.continuous = false;
+    rec.lang = navigator.language || "en-GB"; rec.interimResults = true; rec.continuous = false;
     setState("listening"); setHeard("");
     let final = "", blocked = false;
     rec.onresult = (e: any) => {

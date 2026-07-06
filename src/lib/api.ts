@@ -77,7 +77,6 @@ export const setAllow = (tool: string, on: boolean) =>
   fetch("/api/allow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool, on }) }).then((r) => r.json());
 
 export const getProjects = () => fetch("/api/projects").then((r) => r.json());
-export const getSkills = () => fetch("/api/skills").then((r) => r.json());
 export const getLog = () => fetch("/api/vault/log").then((r) => r.json());
 export const getStatus = () => fetch("/api/status").then((r) => r.json());
 export const getTools = () => fetch("/api/tools").then((r) => r.json());

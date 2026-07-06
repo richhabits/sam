@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getSchedules, getRoster } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
@@ -151,7 +151,7 @@ function loadState(): { convos: Convo[]; activeId: string; brand: string; qualit
 }
 const MemoizedMessageRow = memo(function MemoizedMessageRow({
   m, i, isExpanded, isCopied, isPinned, isPlaying, isLast,
-  onFollowUp, onExpand, onCopy, onCopyMarkdown, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit
+  onFollowUp, onExpand, onCopy, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit
 }: any) {
   return (
     <div className={`row ${m.role}`}>
@@ -165,7 +165,6 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
       {m.role === "sam" && m.text && (
         <div className="msg-actions">
           <button className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
-          <button className="mini" onClick={() => onCopyMarkdown(m.text, i)}>📋 Markdown</button>
           <button className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "📌 Pin"}</button>
           <button className="mini" onClick={() => onQuote(m.text)}>↩ Reply</button>
           <button className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "⏹ Stop" : "🔊 Listen"}</button>
@@ -415,7 +414,7 @@ export default function App() {
     // Toggle OFF — you're always in control: one click stops it.
     if (listening) { try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {} setListening(false); showToast("🎤 Mic off"); return; }
     const rec = new SR(); recRef.current = rec;
-    rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
+    rec.lang = navigator.language || "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
     rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((v) => (v ? v + " " : "") + t); inputRef.current?.focus(); };
     rec.onend = () => setListening(false);   // stops after one phrase — never loops on its own
     rec.onerror = (e: any) => {
@@ -987,7 +986,6 @@ export default function App() {
                 onFollowUp={(q: string) => sendRef.current(q)}
                 onExpand={(idx: number) => toggleExpand(idx)}
                 onCopy={(text: string, idx: number) => copyMsg(text, idx)}
-                onCopyMarkdown={(text: string, idx: number) => copyMsg(text, idx)}
                 onTogglePin={(idx: number) => setMessages((ms) => ms.map((msg, midx) => midx === idx ? { ...msg, pinned: !msg.pinned } : msg))}
                 onQuote={(text: string) => quoteReply(text)}
                 onTogglePlay={(text: string, idx: number) => {
