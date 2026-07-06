@@ -85,6 +85,8 @@ export const saveKeys = (provider: string, keys: string) =>
   fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, keys }) }).then((r) => r.json());
 export const saveConfig = (key: string, value: string) =>
   fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) }).then((r) => r.json());
+export const getPhoneLink = () => fetch("/api/phone-link").then((r) => r.json());
+export const enablePhone = () => fetch("/api/phone-enable", { method: "POST" }).then((r) => r.json());
 export const testEmail = (): Promise<{ ok: boolean; error?: string }> =>
   fetch("/api/admin/test-email", { method: "POST" }).then((r) => r.json());
 
