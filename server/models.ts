@@ -130,6 +130,7 @@ interface Provider {
   tier: Tier;
   label: string;
   run: (system: string, prompt: string, key: string) => Promise<string>;
+  noKey?: boolean;   // works with no API key at all (e.g. Pollinations) — the never-dry fallback
 }
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
@@ -166,6 +167,15 @@ const MINIMAX_MODEL = process.env.MINIMAX_MODEL || "abab6.5s-chat";
 const STEPFUN_MODEL = process.env.STEPFUN_MODEL || "step-1-8k";
 const BAIDU_MODEL = process.env.BAIDU_MODEL || "ernie-speed-128k";
 const TENCENT_MODEL = process.env.TENCENT_MODEL || "hunyuan-lite";
+
+// ── Bonus free/free-credit providers (all real, OpenAI-compatible) ──
+const DEEPINFRA_MODEL = process.env.DEEPINFRA_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
+const SCALEWAY_MODEL = process.env.SCALEWAY_MODEL || "llama-3.3-70b-instruct";
+const KLUSTER_MODEL = process.env.KLUSTER_MODEL || "klusterai/Meta-Llama-3.1-8B-Instruct-Turbo";
+const CHUTES_MODEL = process.env.CHUTES_MODEL || "deepseek-ai/DeepSeek-V3";
+const FRIENDLI_MODEL = process.env.FRIENDLI_MODEL || "meta-llama-3.1-70b-instruct";
+const CODESTRAL_MODEL = process.env.CODESTRAL_MODEL || "codestral-latest";
+const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "openai";
 
 // ═══════════════════════════════════════════════════════════════
 //  THE BURN-DOWN ENGINE — 30+ providers, tiered for maximum
@@ -212,6 +222,17 @@ const PROVIDERS: Provider[] = [
   { id: "gemini", tier: "free", label: "gemini-2.5-flash", run: callGemini },
   { id: "openrouter", tier: "free", label: `openrouter:${OPENROUTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://openrouter.ai/api/v1", OPENROUTER_MODEL, s, p, k) },
 
+  // ── TIER 3c: Bonus free brains (opt-in — add a key; tried after the mains) ──
+  { id: "deepinfra", tier: "free", label: `deepinfra:${DEEPINFRA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.deepinfra.com/v1/openai", DEEPINFRA_MODEL, s, p, k) },
+  { id: "scaleway", tier: "free", label: `scaleway:${SCALEWAY_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.scaleway.ai/v1", SCALEWAY_MODEL, s, p, k) },
+  { id: "kluster", tier: "free", label: `kluster:${KLUSTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.kluster.ai/v1", KLUSTER_MODEL, s, p, k) },
+  { id: "chutes", tier: "free", label: `chutes:${CHUTES_MODEL}`, run: (s, p, k) => callOpenAICompat("https://llm.chutes.ai/v1", CHUTES_MODEL, s, p, k) },
+  { id: "friendli", tier: "free", label: `friendli:${FRIENDLI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.friendli.ai/serverless/v1", FRIENDLI_MODEL, s, p, k) },
+  { id: "codestral", tier: "free", label: `codestral:${CODESTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://codestral.mistral.ai/v1", CODESTRAL_MODEL, s, p, k) },
+
+  // ── ALWAYS-LAST · never dry: a free brain that needs NO key at all ──
+  { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
+
   // ── TIER 4: Premium (paid, last resort) ────────────────────
   { id: "anthropic", tier: "premium", label: CLAUDE_MODEL, run: callAnthropic },
   { id: "openai", tier: "premium", label: OPENAI_MODEL, run: (s, p, k) => callOpenAICompat("https://api.openai.com/v1", OPENAI_MODEL, s, p, k) },
@@ -219,6 +240,10 @@ const PROVIDERS: Provider[] = [
 
 // Try one provider, rotating through its key pool on failure.
 async function tryProvider(prov: Provider, system: string, prompt: string): Promise<string | null> {
+  if (prov.noKey) {   // no-key provider (Pollinations) — one shot, no pool
+    try { const text = await prov.run(system, prompt, ""); if (text) return text; } catch { /* fall through */ }
+    return null;
+  }
   const attempts = Math.max(1, poolSize(prov.id));
   for (let i = 0; i < attempts; i++) {
     const key = getKey(prov.id);
@@ -233,6 +258,19 @@ async function tryProvider(prov: Provider, system: string, prompt: string): Prom
     }
   }
   return null;
+}
+
+// SMART USAGE ("Oliver Twist" — take a little, ask the next). Instead of hammering the
+// single fastest provider for EVERY request until it rate-limits, we round-robin the
+// starting point across the top few best-fit free providers, so each one's free quota is
+// sipped lightly and lasts far longer. More total free-ness, same speed (all top picks
+// are fast). A module counter is enough — no randomness needed.
+let rrCounter = 0;
+function spreadLoad(ranked: Provider[]): Provider[] {
+  if (ranked.length < 2) return ranked;
+  const spread = Math.min(3, ranked.length);            // rotate among the top few only
+  const start = (rrCounter++) % spread;
+  return [...ranked.slice(start, spread), ...ranked.slice(0, start), ...ranked.slice(spread)];
 }
 
 // ── DISPATCH with graceful fallback ──────────────────────────
@@ -283,9 +321,11 @@ export async function runModel(tier: Tier, system: string, prompt: string): Prom
   const order: Tier[] = tier === "premium" ? ["premium", "free"] : ["free"];
   const lane = pickLane(prompt);   // what does THIS task need? (fast / deep / code)
   for (const t of order) {
-    const pool = PROVIDERS.filter((p) => p.tier === t && poolSize(p.id) > 0);
-    // For the free tier, try the best model for the task FIRST (still falls through all).
-    const ranked = t === "free" ? laneSort(pool, lane) : pool;
+    // Include no-key providers (Pollinations) so there's ALWAYS a free brain to fall to.
+    const pool = PROVIDERS.filter((p) => p.tier === t && (poolSize(p.id) > 0 || p.noKey));
+    // Free tier: best model for the task FIRST (lane), then spread load across the top few
+    // (Oliver Twist) so no single free quota burns out. Still falls through ALL on failure.
+    const ranked = t === "free" ? spreadLoad(laneSort(pool, lane)) : pool;
     for (const prov of ranked) {
       const text = await tryProvider(prov, system, prompt);
       if (text) return { text, provider: prov.label, tier: t };
