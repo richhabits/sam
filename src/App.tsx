@@ -281,10 +281,17 @@ export default function App() {
     // keep the connection dot honest + check for proactive messages (light: every 3 min)
     const iv = setInterval(() => getStatus().then(setStatus).catch(() => setStatus(null)), 12000);
     const pv = setInterval(showProactive, 180000);
-    // Continuous Swarm polling
-    const sv = setInterval(() => getSwarms().then(setSwarms).catch(() => {}), 5000);
-    getSwarms().then(setSwarms).catch(() => {});
-    return () => { clearInterval(iv); clearInterval(pv); clearInterval(sv); };
+    // Swarm poll: fast (5s) only WHILE a swarm is active; idle → 30s. Was a perpetual
+    // 5s fetch + full-App re-render even with zero swarms.
+    let swarmStop = false, swarmTimer: any;
+    const pollSwarms = async () => {
+      if (swarmStop) return;
+      let active = false;
+      try { const sw = await getSwarms(); setSwarms(sw); active = sw.some((s) => s.status === "planning" || s.status === "running" || s.status === "paused"); } catch {}
+      if (!swarmStop) swarmTimer = setTimeout(pollSwarms, active ? 5000 : 30000);
+    };
+    pollSwarms();
+    return () => { clearInterval(iv); clearInterval(pv); swarmStop = true; clearTimeout(swarmTimer); };
   }, []);
   useEffect(() => { if (atBottom) msgEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, pending]);
   useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }, [input]);
@@ -293,7 +300,12 @@ export default function App() {
   useEffect(() => {
     setConvos((cs) => cs.map((c) => (c.id === activeId ? { ...c, messages, title: titleOf(messages), at: Date.now() } : c)));
   }, [messages]);
-  useEffect(() => { try { localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, 50), activeId, brand, quality })); } catch {} }, [convos, activeId, brand, quality]);
+  // Debounced persist — coalesce rapid changes into one stringify+write (was a
+  // multi-ms synchronous JSON.stringify of up to 50 convos on every completed turn).
+  useEffect(() => {
+    const t = setTimeout(() => { try { localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, 50), activeId, brand, quality })); } catch {} }, 400);
+    return () => clearTimeout(t);
+  }, [convos, activeId, brand, quality]);
 
   // keyboard shortcuts
   useEffect(() => {

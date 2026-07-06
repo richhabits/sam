@@ -64,7 +64,23 @@ export interface AgentResult {
 }
 
 // Pull the first {...} that looks like a tool call out of a model reply.
-function parseToolCall(text: string): { tool: string; input: any } | null {
+// Parse a JSON candidate, strict first then a lenient pass for the malformations small
+// models actually emit (trailing commas, single-quoted keys/values). The lenient pass
+// is a pure fallback — if it yields nonsense it just won't have a string `tool` and we
+// move on — but when it works it saves a whole model round-trip vs the repair call below.
+function tryToolJson(cand: string): { tool: string; input: any } | null {
+  const accept = (obj: any) => (obj && typeof obj.tool === "string") ? { tool: obj.tool, input: obj.input ?? {} } : null;
+  try { return accept(JSON.parse(cand)); } catch { /* try lenient */ }
+  try {
+    const fixed = cand
+      .replace(/,\s*([}\]])/g, "$1")                    // trailing commas
+      .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3') // single-quoted keys
+      .replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3') // unquoted keys
+      .replace(/:\s*'([^']*)'/g, ': "$1"');             // single-quoted values (no inner ')
+    return accept(JSON.parse(fixed));
+  } catch { return null; }
+}
+export function parseToolCall(text: string): { tool: string; input: any } | null {
   const cleaned = text.replace(/```json/gi, "```").trim();
   // scan for balanced JSON objects
   for (let i = 0; i < cleaned.length; i++) {
@@ -73,11 +89,8 @@ function parseToolCall(text: string): { tool: string; input: any } | null {
     for (let j = i; j < cleaned.length; j++) {
       if (cleaned[j] === "{") depth++;
       else if (cleaned[j] === "}") { depth--; if (depth === 0) {
-        const cand = cleaned.slice(i, j + 1);
-        try {
-          const obj = JSON.parse(cand);
-          if (obj && typeof obj.tool === "string") return { tool: obj.tool, input: obj.input ?? {} };
-        } catch { /* keep scanning */ }
+        const hit = tryToolJson(cleaned.slice(i, j + 1));
+        if (hit) return hit;
         break;
       }}
     }

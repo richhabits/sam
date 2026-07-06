@@ -12,9 +12,25 @@ vi.mock("./models.ts", () => ({
   runModel: vi.fn(async () => ({ text: replies.shift() ?? "done", provider: "test", tier: "local" })),
 }));
 
-import { runAgent, resumeAgent } from "./agent.ts";
+import { runAgent, resumeAgent, parseToolCall } from "./agent.ts";
 
 beforeEach(() => { replies.length = 0; });
+
+describe("parseToolCall — local recovery (avoids a model repair round-trip)", () => {
+  it("parses clean JSON, even embedded in prose or a code fence", () => {
+    expect(parseToolCall('{"tool":"web_search","input":{"query":"x"}}')).toEqual({ tool: "web_search", input: { query: "x" } });
+    expect(parseToolCall('Sure! ```json\n{"tool":"get_datetime","input":{}}\n```')).toEqual({ tool: "get_datetime", input: {} });
+  });
+  it("recovers the malformations small models actually emit — no model repair needed", () => {
+    expect(parseToolCall("{'tool':'web_search','input':{'query':'best crm'}}")).toEqual({ tool: "web_search", input: { query: "best crm" } });   // single quotes
+    expect(parseToolCall('{"tool":"web_search","input":{"query":"x"},}')).toEqual({ tool: "web_search", input: { query: "x" } });                // trailing comma
+    expect(parseToolCall('{tool: "get_weather", input: {place: "London"}}')).toEqual({ tool: "get_weather", input: { place: "London" } });        // unquoted keys
+  });
+  it("returns null for plain prose (no false tool call)", () => {
+    expect(parseToolCall("Here's your answer, no tool needed.")).toBeNull();
+    expect(parseToolCall("I think {this} is fine.")).toBeNull();
+  });
+});
 
 describe("agent loop", () => {
   it("auto-runs a SAFE tool then returns the final answer", async () => {

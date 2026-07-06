@@ -149,11 +149,15 @@ startProactive(async () => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
 
   // ── Jarvis Layer: gather real data from the ecosystem before composing ──
-  let calendarData = "", emailData = "", weatherData = "";
+  // Run the three independent lookups in PARALLEL — they don't depend on each other,
+  // so this is ~max(latency) instead of the sum (saves 1-3s on the brief).
   const { toolByName } = await import("./tools.ts");
-  try { const cal = toolByName("read_calendar"); if (cal) calendarData = await cal.run({}); } catch {}
-  try { const mail = toolByName("read_emails"); if (mail) emailData = await mail.run({}); } catch {}
-  try { const wx = toolByName("get_weather"); if (wx) weatherData = await wx.run({ place: locationText() || "" }); } catch {}
+  const runTool = (n: string, i: any) => { const t = toolByName(n); return t ? t.run(i).catch(() => "") : Promise.resolve(""); };
+  const [calendarData, emailData, weatherData] = await Promise.all([
+    runTool("read_calendar", {}),
+    runTool("read_emails", {}),
+    runTool("get_weather", { place: locationText() || "" }),
+  ]);
 
   const prompt = `Give me my morning brief — short, warm, punchy (5-8 lines). It's ${nowText()}.` +
     `${locationText() ? ` I'm near ${locationText()}.` : ""}` +
@@ -197,6 +201,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   const note = projectId ? readProjectNote(projectId) : "";
   const name = (user?.name || "there").trim();
   const mode = user?.mode === "personal" ? "personal" : "business";
+  const pctx = mode === "business" ? projectsContext() : "";   // compute once (was called twice)
   return [
     `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
     `Think like the OGs, always: Apple (make it simple, make it just-work), Elon (first principles, 10x, move fast), Amazon (obsess the outcome, build to scale from day one), Branson (bold but calm), Alan Sugar (blunt, numbers, no fluff) — with big-player, Microsoft-grade ethics and trust. You win on FACTS and TIMING, not noise.`,
@@ -227,7 +232,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
       ? `## Mode: PERSONAL 🏠\n${name}'s in PERSONAL mode — life outside work: family, friends, health, home, personal admin, downtime, sorting their own stuff. Be a mate — warm, relaxed, real. Don't lead with business or brands unless ${name} brings them up.`
       : `## Mode: BUSINESS 💼\n${name}'s in BUSINESS mode — brands, work, money, growth, ops. Sharp operator energy: think about what actually moves the needle for their businesses.`,
     ``,
-    mode === "business" && projectsContext() ? `## ${name}'s brands (context)\n${projectsContext()}\n${worldContext()}` : ``,
+    mode === "business" && pctx ? `## ${name}'s brands (context)\n${pctx}\n${worldContext()}` : ``,
     ``,
     project
       ? `## Active brand for this request: ${project.name}\n${project.summary}`
