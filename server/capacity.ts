@@ -67,9 +67,3 @@ export function capacityNudge(): string | null {
     : " Add another free key in Settings → API keys, or start Ollama for unlimited local.";
   return `⚡ ${r.headline}${tip}`;
 }
-
-// One-line human summary for a brief / the status panel.
-export function capacityLine(): string {
-  const r = capacityReport();
-  return `Free AI capacity: ${r.level} — ${r.configured} provider(s), ${r.healthy}/${r.freeKeys} keys ready${r.cooling ? `, ${r.cooling} cooling` : ""}.`;
-}

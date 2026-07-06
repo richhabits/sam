@@ -3,6 +3,18 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Security audit — closed an Autopilot RCE path** — `applescript` (and `type_text`/`press_key`/`click`)
+  were missing from the always-ask list, so with Autopilot on the model could run **arbitrary AppleScript
+  → `do shell script` → shell** with no approval and no catastrophic-command guard (reachable via prompt
+  injection). Fixed: those + destructive file/disk ops are now always-ask (only Elon Mode bypasses); the
+  AppleScript path runs through the catastrophic guard; P2P turns get **safe tools only**. Also patched
+  AppleScript/PowerShell injection in `add_calendar_event`, `app_switcher`, `press_key`, `click`, `type_text`
+  (escape strings, `Number()`-coerce coords/keycodes, Windows paths via `execFile` not the shell), and a
+  scheduler `every 0m` busy-loop.
+- **Truth sweep** — `.env.example`/landing/SECURITY.md corrected (free = rotating *cloud* tiers by default,
+  Ollama is the offline fallback — not "100% local / no cloud / nothing uploaded"); consistent `defaultTier`
+  fallback; accurate Node version (20.19+/22.12+); removed personal names/drive refs from README/CHANGELOG/tests.
+- **De-bloat** — removed the dead `capacityLine()` export and the unused `ws`/`@types/ws` deps.
 - **SAM's own email (SMTP)** — give SAM an address (any provider — Gmail app-password, IONOS, Fastmail…) via
   `SMTP_*` env and it can send mail on its own: the `send_mail` tool (ask-first) and an auto-emailed morning
   brief + capacity nudges to your inbox. Dormant until configured. `server/mailer.ts`, provider-agnostic.
@@ -85,7 +97,7 @@ All notable changes to SAM. Newest first.
   `.nvmrc`, hardened `.gitignore`; secret-scanned history (clean).
 - **Faster & cheaper**: agent fast-path (plain chat skips the tool protocol);
   single-process serve (`npm start`, one port `:8787`, no separate dev server).
-- **Bugfix**: space-safe paths (`fileURLToPath`) — fixed admin key-saving on "My Drive".
+- **Bugfix**: space-safe paths (`fileURLToPath`) — fixed admin key-saving on a path with spaces.
 
 ## Waves 1–7
 - **Voice**: ElevenLabs premium voice (`/api/speak`) + free browser fallback; two-way

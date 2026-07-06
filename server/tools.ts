@@ -286,7 +286,7 @@ async function typeText(text: string): Promise<string> {
     await osa(`tell application "System Events" to keystroke "${esc(text)}"`);
   } else if (OS === "windows") {
     const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${text.replace(/'/g, "''")}');`;
-    await sh(`powershell -command "${ps}"`);
+    await execFile("powershell", ["-command", ps]);   // execFile (no shell) — no cmd.exe quote break-out
   } else {
     await sh(`xdotool type ${shq(text)}`);
   }
@@ -294,14 +294,14 @@ async function typeText(text: string): Promise<string> {
 }
 async function pressKey(input: { key: string; modifiers?: string[] }): Promise<string> {
   if (IS_MAC) {
-    const mods = (input.modifiers || []).map((m) => `${m} down`).join(", ");
+    const mods = (input.modifiers || []).filter((m) => ["command", "shift", "option", "control"].includes(m)).map((m) => `${m} down`).join(", ");
     const using = mods ? ` using {${mods}}` : "";
-    await osa(`tell application "System Events" to key code ${input.key}${using}`);
+    await osa(`tell application "System Events" to key code ${Number(input.key) | 0}${using}`);
     return `Pressed key ${input.key}${using}`;
   } else if (OS === "windows") {
     // Basic fallback for Windows using SendKeys. Key codes map differently.
-    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{${input.key}}');`;
-    await sh(`powershell -command "${ps}"`);
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{${String(input.key).replace(/'/g, "''")}}');`;
+    await execFile("powershell", ["-command", ps]);
     return `Pressed key ${input.key}`;
   } else {
     await sh(`xdotool key ${shq(input.key)}`);
@@ -310,17 +310,23 @@ async function pressKey(input: { key: string; modifiers?: string[] }): Promise<s
 }
 async function clickAt(input: { x: number; y: number }): Promise<string> {
   if (IS_MAC) {
-    await osa(`tell application "System Events" to click at {${input.x}, ${input.y}}`);
+    await osa(`tell application "System Events" to click at {${Number(input.x) | 0}, ${Number(input.y) | 0}}`);
   } else if (OS === "windows") {
-    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${input.x}, ${input.y}); Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int buttons, int extrainfo);' -Name Mouse -Namespace Win32; [Win32.Mouse]::mouse_event(0x0002 -bor 0x0004, 0, 0, 0, 0);`;
-    await sh(`powershell -command "${ps}"`);
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${Number(input.x) | 0}, ${Number(input.y) | 0}); Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int buttons, int extrainfo);' -Name Mouse -Namespace Win32; [Win32.Mouse]::mouse_event(0x0002 -bor 0x0004, 0, 0, 0, 0);`;
+    await execFile("powershell", ["-command", ps]);
   } else {
     await sh(`xdotool mousemove ${Number(input.x)|0} ${Number(input.y)|0} click 1`);
   }
   return `Clicked at ${input.x},${input.y}`;
 }
 async function appleScript(script: string): Promise<string> {
-  try { return (await osa(script)) || "(AppleScript ran, no output)"; }
+  const s = String(script ?? "");
+  // Defence-in-depth: AppleScript can `do shell script "…"`, which bypasses run_command's
+  // guard entirely. Run the source through the same catastrophic-command check so a smuggled
+  // `rm -rf ~` (etc.) is refused even if this tool was approved or always-allowed.
+  const d = denied(s);
+  if (d) return d;
+  try { return (await osa(s)) || "(AppleScript ran, no output)"; }
   catch (e: any) { return `AppleScript failed: ${e?.message}`; }
 }
 async function screenshot(): Promise<string> {
@@ -732,7 +738,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       if (!IS_MAC) return "App switching only works on macOS.";
       try {
-        await osa(`tell application "${i.app_name}" to activate`);
+        await osa(`tell application "${esc(i.app_name)}" to activate`);
         return `Activated ${i.app_name}.`;
       } catch (e: any) { return `Failed to activate app: ${e.message}`; }
     } },
@@ -944,7 +950,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         if (IS_MAC) {
-          await osa(`tell application "Calendar" to tell calendar 1 to make new event at end of events with properties {summary:"${i.title.replace(/"/g, "")}", start date:date "${i.start_date}", end date:date "${i.end_date}"}`);
+          await osa(`tell application "Calendar" to tell calendar 1 to make new event at end of events with properties {summary:"${esc(i.title)}", start date:date "${esc(i.start_date)}", end date:date "${esc(i.end_date)}"}`);
           return "Event created successfully in default Calendar.";
         } else {
           return notSupported("Calendar");
