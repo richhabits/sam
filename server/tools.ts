@@ -1053,15 +1053,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Checking the weather in ${i.place ?? i ?? "your area"}`, run: (i) => getWeather(i.place ?? i ?? "") },
 
   // ── FREE UTILITY BATCH — no API keys, local OS or free web ──
-  { name: "qr_code", safe: true, description: "Make a QR code for text/a link and open it. input: text.", params: "text",
-    activity: () => `Making a QR code`,
-    run: (i) => openUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(i.text ?? i))}`).then(() => `📱 QR code opened for: ${i.text ?? i}`) },
-  { name: "battery_status", safe: true, description: "Check the Mac's battery level and charging state.", params: "(none)",
-    activity: () => `Checking battery`,
-    run: async () => { if (!IS_MAC) return notSupported("Battery"); const { stdout } = await sh(`pmset -g batt | grep -Eo '[0-9]+%[^;]*' | head -1`); return `🔋 ${stdout.trim() || "unknown"}`; } },
-  { name: "disk_space", safe: true, description: "How much disk space is free.", params: "(none)",
-    activity: () => `Checking disk space`,
-    run: async () => { const { stdout } = await sh(`df -h / | tail -1 | awk '{print $4" free of "$2" ("$5" used)"}'`); return `💾 ${stdout.trim()}`; } },
+  { name: "battery_status", safe: true, description: "Check the battery level and charging state.", params: "(none)",
+    activity: () => `Checking battery`, run: getBattery },   // cross-platform (Mac/Win/Linux)
   { name: "toggle_dnd", safe: false, description: "Toggle Mac Do Not Disturb / Focus on or off. input: {on: boolean}.", params: "{on: boolean}",
     activity: (i) => `Turning Do Not Disturb ${i.on ? "on" : "off"}`,
     run: async (i) => {
@@ -1213,8 +1206,6 @@ export const TOOLS: Tool[] = [
       .catch((e: any) => `GitHub: ${(e?.stderr || e?.message || e).toString().slice(0, 300)}`) },
   { name: "system_info", safe: true, description: "Get Mac system info (macOS version, uptime, disk).", params: "(none)",
     activity: () => `Checking your system`, run: systemInfo },
-  { name: "get_battery", safe: true, description: "Get battery status.", params: "(none)",
-    activity: () => `Checking the battery`, run: getBattery },
   { name: "speak", safe: true, description: "Speak text aloud through the speakers. input: text.", params: "text",
     activity: () => `Speaking`, run: (i) => speak(i.text ?? i) },
   { name: "play", safe: true, description: "Play/pull up music — a song, artist, latest release, or playlist. input: what to play.", params: "query",
