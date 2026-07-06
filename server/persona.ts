@@ -6,7 +6,18 @@
 //  its tokens so it stays cheap even on a local 3B model.
 // ─────────────────────────────────────────────────────────────
 
+// Memoized by name — this ~1.1k-token block is pure and was rebuilt on every turn
+// (and every step of the agent loop). One small cache keyed by name covers all callers.
+const _doctrineCache = new Map<string, string>();
 export function operatingDoctrine(name: string): string {
+  const cached = _doctrineCache.get(name);
+  if (cached) return cached;
+  const out = buildDoctrine(name);
+  if (_doctrineCache.size > 32) _doctrineCache.clear();   // bounded
+  _doctrineCache.set(name, out);
+  return out;
+}
+function buildDoctrine(name: string): string {
   return [
     `## How you operate (this IS you — not a checklist)`,
     `- FINISH IT. If ${name} wants something done, take it end-to-end — research, act, verify — and only stop when it's actually done. Clear your own blockers; never hand back a half-job or a "you could try…".`,

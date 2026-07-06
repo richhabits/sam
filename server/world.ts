@@ -34,11 +34,16 @@ export async function grabRepos(force = false): Promise<App[]> {
   return APPS;
 }
 // ── Socials registry (vault/socials.json) — SAM knows the accounts/links ──
+// Cached in memory: worldContext() runs on every business turn, and socials only
+// change in-process via saveSocials — so read+parse the file once, not per request.
+let _socialsCache: Record<string, any> | null = null;
 export function loadSocials(): Record<string, any> {
-  try { if (existsSync(SOCIALS_PATH)) return JSON.parse(readFileSync(SOCIALS_PATH, "utf8")); } catch { /* ignore */ }
-  return {};
+  if (_socialsCache) return _socialsCache;
+  try { if (existsSync(SOCIALS_PATH)) return (_socialsCache = JSON.parse(readFileSync(SOCIALS_PATH, "utf8"))); } catch { /* ignore */ }
+  return (_socialsCache = {});
 }
 export function saveSocials(data: Record<string, any>) {
+  _socialsCache = data;   // keep the cache fresh
   try { mkdirSync(dirname(SOCIALS_PATH), { recursive: true }); writeFileSync(SOCIALS_PATH, JSON.stringify(data, null, 2)); } catch { /* ignore */ }
 }
 
