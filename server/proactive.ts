@@ -76,6 +76,8 @@ const briefTime = () => (process.env.SAM_BRIEF_TIME || "08:00");
 function hhmm(d = new Date()) { return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
 function today() { return new Date().toLocaleDateString("en-GB"); }
 
+import { pushNotify } from "./push.ts";
+
 export function startProactive(composeBrief: () => Promise<string>) {
   if (process.env.SAM_NO_PROACTIVE === "1") return;
   const tick = async () => {
@@ -83,7 +85,7 @@ export function startProactive(composeBrief: () => Promise<string>) {
       // 1) due nudges → notify + queue
       const due = dueNudges();
       if (due.length) {
-        for (const n of due) { desktopNotify("SAM — reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); }
+        for (const n of due) { desktopNotify("SAM — reminder", n.text); void pushNotify("⏰ SAM reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); }
         markNotified(due.map((n) => n.id));
       }
       // 2) morning brief — once per day, at/after the brief time
@@ -91,7 +93,7 @@ export function startProactive(composeBrief: () => Promise<string>) {
       if (st.lastBrief !== today() && hhmm() >= briefTime()) {
         save(STATE, { ...st, lastBrief: today() });   // mark first (avoid double-fire)
         const brief = await composeBrief().catch(() => "");
-        if (brief) { desktopNotify("SAM — morning brief", brief.replace(/[#*`]/g, "").slice(0, 200)); pending.push({ type: "brief", text: brief, at: hhmm() }); }
+        if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", b); pending.push({ type: "brief", text: brief, at: hhmm() }); }
       }
     } catch { /* never let the timer crash the app */ }
   };

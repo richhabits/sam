@@ -16,6 +16,11 @@ if (typeof location !== "undefined" && location.protocol === "file:") {
     orig(typeof input === "string" && input.startsWith("/") && !input.startsWith("//") ? BASE + input : input, init);
 }
 
+// Register the service worker (push + offline shell). Only over http(s), not file:// (Electron).
+if (typeof location !== "undefined" && location.protocol.startsWith("http") && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+
 // ?app=studio (dedicated Electron window or a tab) → the Creative Space, else the chat.
 const StudioView = lazy(() => import("./StudioView"));
 const isStudio = new URLSearchParams(location.search).get("app") === "studio";
