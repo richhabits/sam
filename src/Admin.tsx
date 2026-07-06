@@ -35,6 +35,12 @@ const PROVIDERS: Prov[] = [
   { id: "zhipu", label: "Zhipu (GLM)", note: "free tier", url: "https://open.bigmodel.cn" },
   { id: "minimax", label: "MiniMax", note: "free credits", url: "https://platform.minimaxi.com" },
   { id: "stepfun", label: "StepFun", note: "free tier", url: "https://platform.stepfun.com" },
+  { id: "deepinfra", label: "DeepInfra", note: "free credits · many models", url: "https://deepinfra.com/dash/api_keys" },
+  { id: "scaleway", label: "Scaleway", note: "free beta · EU", url: "https://console.scaleway.com" },
+  { id: "kluster", label: "Kluster", note: "free credits", url: "https://platform.kluster.ai/apikeys" },
+  { id: "chutes", label: "Chutes", note: "free tier · decentralised", url: "https://chutes.ai" },
+  { id: "friendli", label: "Friendli", note: "free credits", url: "https://suite.friendli.ai" },
+  { id: "codestral", label: "Codestral (Mistral)", note: "free · code specialist", url: "https://console.mistral.ai/codestral" },
   // ── Premium (paid — only used if you pick "Best", never on free) ──
   { id: "anthropic", label: "Anthropic (Claude)", note: "premium · paid", url: "https://console.anthropic.com/settings/keys", premium: true },
   { id: "openai", label: "OpenAI", note: "premium · paid", url: "https://platform.openai.com/api-keys", premium: true },
@@ -139,7 +145,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           const activeKeys = PROVIDERS.reduce((n, p) => n + (count(p.id) > 0 ? 1 : 0), 0);
           return (
             <>
-              <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM rotates across them all, so you never hit a limit or a bill. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."}</div>
+              <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
               {starters.map(row)}
               <button className="admin-more" onClick={() => setShowMore((v) => !v)}>
                 {showMore ? "▾ Hide extra free brains" : `▸ ＋ ${moreFree.length} more FREE brains — stack them for more free capacity`}
