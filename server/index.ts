@@ -6,6 +6,7 @@
 
 import "dotenv/config";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
@@ -319,7 +320,8 @@ app.post("/api/command", async (req, res) => {
     logExchange({ user: message, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
   }
-  res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
+  const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
+  res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
   }
@@ -348,8 +350,9 @@ app.post("/api/stream", async (req, res) => {
   const userName = (user?.name || "the user").trim();
 
   try {
+    const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
     await runAgentStream(system, message, chosen, toolNames, (e) => {
-      send(e);
+      send(e.type === "pending" ? withPending(e, ctx) : e);
       if (e.type === "done") {
         logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
         void learnFrom(message, e.text || "", userName);
@@ -364,16 +367,20 @@ app.post("/api/stream", async (req, res) => {
 
 // ── APPROVE / DECLINE a risky action, then continue ──────────
 app.post("/api/confirm", async (req, res) => {
-  const { message, projectId, tier, transcript, tool, input, approved, trace, user, always } = req.body as any;
-  if (approved && always && tool) allow(tool);   // "yes, and always allow this"
+  // Client sends only {pendingId, approved, always} — everything else comes from
+  // the server-held record, so a caller can't approve a tool/input we never proposed.
+  const { pendingId, approved, always } = req.body as { pendingId?: string; approved?: boolean; always?: boolean };
+  const p = takePendingApproval(pendingId ? String(pendingId) : undefined);
+  if (!p) return res.status(410).json({ kind: "final", text: "That approval expired — ask me again and I'll re-propose it.", trace: [] });
+  if (approved && always && p.tool) allow(p.tool);   // "yes, and always allow this"
   try {
-    const { skill } = pickTier(message || "", tier);
-    const system = buildSystem(skill?.body || "", projectId, user, undefined, true);
-    const r = await resumeAgent(system, transcript || "", tier || "local", !!approved, tool, input, trace || []);
+    const system = buildSystem(p.skillBody, p.projectId, p.user, undefined, true);
+    const r = await resumeAgent(system, p.transcript, p.tier as Tier, !!approved, p.tool, p.input, p.trace);
     if (r.kind === "final") {
-      logExchange({ user: message || `[approved ${tool}]`, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
+      logExchange({ user: `[${approved ? "approved" : "declined"} ${p.tool}]`, sam: r.text || "", skill: p.skillId, project: p.projectId, provider: r.provider || "" });
     }
-    res.json({ ...r, skill: skill?.id || null, projectId: projectId || "", tier: tier || "local", message });
+    const ctx: PendingCtx = { tier: p.tier, projectId: p.projectId, skillBody: p.skillBody, skillId: p.skillId, user: p.user };
+    res.json({ ...withPending(r, ctx), skill: p.skillId || null, projectId: p.projectId || "", tier: p.tier });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: String(e?.message || e) });
   }
