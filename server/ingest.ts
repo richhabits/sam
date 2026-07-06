@@ -34,6 +34,7 @@ function db(): Database.Database {
   _db?.close();
   _db = new Database(path);
   _dbPath = path;
+  _docCache.clear();   // new DB (e.g. VAULT_DIR changed in tests) → drop stale cached vectors
   _db.exec(`
     CREATE TABLE IF NOT EXISTS doc_files (
       path TEXT PRIMARY KEY,
@@ -190,19 +191,34 @@ export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<In
     }
   }
 
+  if (report.ingested) invalidateDocCache();   // new/changed chunks → rebuild the in-memory index on next search
   if (report.remaining) report.note = `${report.note ? report.note + " " : ""}Hit the ${maxFiles}-file cap — run again to continue (already-done files are skipped).`;
   return report;
 }
 
 // ── SEARCH ───────────────────────────────────────────────────
+// In-memory Float32 index per model: each doc chunk's vector is parsed ONCE, then
+// search iterates typed arrays instead of JSON.parse-ing every chunk each query.
+// Ingestion/deletion is infrequent, so we just drop the cache on any write.
+type DocVec = { id: string; path: string; vec: Float32Array };
+const _docCache = new Map<string, DocVec[]>();
+export function invalidateDocCache() { _docCache.clear(); }
+function docIndex(model: string): DocVec[] {
+  let idx = _docCache.get(model);
+  if (idx) return idx;
+  idx = [];
+  const rows = db().prepare("SELECT id, path, vec FROM docs WHERE model = ?").all(model) as { id: string; path: string; vec: string }[];
+  for (const r of rows) { try { idx.push({ id: r.id, path: r.path, vec: Float32Array.from(JSON.parse(r.vec)) }); } catch { /* skip corrupt */ } }
+  _docCache.set(model, idx);
+  return idx;
+}
 export function searchDocsWith(e: { model: string; vec: number[] } | null, k = 4, floor = 0.32): { text: string; source: string; score: number }[] {
   if (!e) return [];
-  const rows = db().prepare("SELECT id, path, vec FROM docs WHERE model = ?").all(e.model) as { id: string; path: string; vec: string }[];
-  if (!rows.length) return [];
+  const index = docIndex(e.model);
+  if (!index.length) return [];
   const scored: { id: string; path: string; score: number }[] = [];
-  for (const row of rows) {
-    let v; try { v = JSON.parse(row.vec); } catch { continue; }   // skip a corrupt row, don't sink the search
-    const score = cosine(v, e.vec);
+  for (const row of index) {
+    const score = cosine(row.vec, e.vec);
     if (score >= floor) scored.push({ id: row.id, path: row.path, score });
   }
   scored.sort((a, b) => b.score - a.score);
@@ -235,7 +251,9 @@ export function forgetDoc(pathLike: string): number {
     const files = d.prepare("DELETE FROM doc_files WHERE path = ? OR path LIKE ?").run(p, p + "/%").changes;
     return chunks || files;
   });
-  return tx();
+  const n = tx();
+  if (n) invalidateDocCache();
+  return n;
 }
 
 // Human summary for the tool result / chat.

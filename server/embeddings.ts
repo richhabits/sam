@@ -114,12 +114,25 @@ export async function embed(texts: string[], isQuery = false, prefer?: string | 
   return (await viaJina(texts, isQuery)) || (await viaGemini(texts)) || (await viaOllama(texts));
 }
 
+// Single-text embedding with a small LRU cache. Embedding a given text under a given
+// model is deterministic, so caching kills a network round-trip (~100-500ms) whenever
+// a query repeats — common for greetings, slash-commands, re-asks and tool routing.
+const EMB_CACHE = new Map<string, { model: string; vec: number[] }>();
+const EMB_CACHE_MAX = 512;
 export async function embedOne(text: string, isQuery = false, prefer?: string | null): Promise<{ model: string; vec: number[] } | null> {
+  const key = `${prefer || ""}|${isQuery ? "q" : "p"}|${text}`;
+  const hit = EMB_CACHE.get(key);
+  if (hit) { EMB_CACHE.delete(key); EMB_CACHE.set(key, hit); return hit; }   // LRU touch
   const r = await embed([text], isQuery, prefer);
-  return r?.vectors?.[0] ? { model: r.model, vec: r.vectors[0] } : null;
+  const out = r?.vectors?.[0] ? { model: r.model, vec: r.vectors[0] } : null;
+  if (out) {
+    EMB_CACHE.set(key, out);
+    if (EMB_CACHE.size > EMB_CACHE_MAX) EMB_CACHE.delete(EMB_CACHE.keys().next().value);   // evict oldest
+  }
+  return out;
 }
 
-export function cosine(a: number[], b: number[]): number {
+export function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
   let dot = 0, na = 0, nb = 0;
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
