@@ -11,7 +11,7 @@
 import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, mkdirSync } from "node:fs";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
@@ -44,6 +44,27 @@ import { runVision, runModel } from "./models.ts";
 import * as nb from "./notebook.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
+
+// Locate the user's Obsidian vault: explicit OBSIDIAN_VAULT, else the usual spots (a real
+// Obsidian vault always contains a `.obsidian` config folder — that's how we recognise one).
+function obsidianVault(): string | null {
+  const home = process.env.HOME || "";
+  const explicit = process.env.OBSIDIAN_VAULT;
+  if (explicit && existsSync(explicit.replace(/^~/, home))) return explicit.replace(/^~/, home);
+  const candidates = [
+    join(home, "Obsidian"), join(home, "Documents", "Obsidian"), join(home, "Documents"),
+    join(home, "Library", "Mobile Documents", "iCloud~md~obsidian", "Documents"),
+  ];
+  for (const base of candidates) {
+    try {
+      if (existsSync(join(base, ".obsidian"))) return base;
+      for (const sub of readdirSync(base, { withFileTypes: true })) {   // a vault nested one level down
+        if (sub.isDirectory() && existsSync(join(base, sub.name, ".obsidian"))) return join(base, sub.name);
+      }
+    } catch { /* not there */ }
+  }
+  return null;
+}
 
 const sh = promisify(exec);
 // No-shell exec for anything carrying model/user text — args go straight to the
@@ -718,6 +739,27 @@ export const TOOLS: Tool[] = [
       const cite = urls.map((u, n) => `[${n + 1}] ${u}`).join("\n");
       return `${r.text}\n\n**Sources**\n${cite}${nbook ? `\n\n_Filed into notebook **${nbook.title}** — ask follow-ups with notebook_ask._` : ""}`;
     } },
+  // ── 🟣 OBSIDIAN — SAM reads & writes your second brain (plain markdown on disk) ──
+  { name: "obsidian_save", safe: false, description: "Write a note into your Obsidian vault as markdown (SAM adds to your second brain). input: {title, content, folder?}. Uses OBSIDIAN_VAULT, else auto-detects your vault.", params: "{title, content, folder?}",
+    activity: (i) => `Saving “${i.title}” to Obsidian`, run: async (i) => {
+      const vault = obsidianVault();
+      if (!vault) return "I couldn't find your Obsidian vault. Set OBSIDIAN_VAULT in Settings to its folder path.";
+      const safeTitle = String(i.title || "SAM note").replace(/[\/\\:*?"<>|]/g, "-").slice(0, 80);
+      const dir = i.folder ? join(vault, String(i.folder)) : join(vault, "SAM");
+      mkdirSync(dir, { recursive: true });
+      const file = join(dir, `${safeTitle}.md`);
+      const body = `${i.content || ""}\n\n---\n_Saved by SAM ${new Date().toISOString().slice(0, 16).replace("T", " ")}_\n`;
+      await writeFile(file, body, "utf8");
+      return `🟣 Saved to Obsidian: **${safeTitle}** (${file.replace(process.env.HOME || "", "~")})`;
+    } },
+  { name: "obsidian_index", safe: false, description: "Index your whole Obsidian vault so SAM can answer questions grounded in your notes. input: {} (auto-detects vault) or {path}.", params: "{path?}",
+    activity: () => `Indexing your Obsidian vault`, run: async (i) => {
+      const vault = i.path ? String(i.path).replace(/^~/, process.env.HOME || "") : obsidianVault();
+      if (!vault || !existsSync(vault)) return "No Obsidian vault found — set OBSIDIAN_VAULT in Settings, or pass its path.";
+      const r = await ingestFolder(vault, 2000);
+      return `🟣 Indexed your Obsidian vault — ${r.ingested} notes, ${r.chunks} passages. Ask me anything about your notes now (search_docs / notebook_ask).`;
+    } },
+
   { name: "research_watch", safe: false, description: "Set up a 24/7 research agent: SAM keeps researching a topic on a schedule, files new findings into a notebook, and pings you what's new. input: {topic, notebook?, every_hours?}.", params: "{topic, notebook?, every_hours?}",
     activity: (i) => `Setting up a 24/7 watch on “${i.topic}”`, run: async (i) => {
       const topic = String(i.topic || "").trim();
