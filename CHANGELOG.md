@@ -3,6 +3,13 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🔒 Privacy & security audit — 10/10 hardening** — (1) Elon Mode (the total safety-bypass) is now
+  LOOPBACK-ONLY: it can never be enabled from a phone/remote device, only by the owner at the machine.
+  (2) view_photo (auto-runs) now refuses non-image files and blocks sensitive/hidden dirs (.ssh, .env,
+  /etc, Keychains…) — prompt injection can no longer make SAM read arbitrary files. (3) reusable
+  isLoopback() socket-based guard (not header-spoofable). Verified: 0 secrets/personal data in tree or
+  history, vault fully gitignored, .env owner-only, no key ever logged (phone URL prints YOUR_TOKEN
+  placeholder), all remote routes token-gated, 0 npm-audit/CodeQL, 0 dead code.
 - **🔒 Multi-user privacy hardened** — the owner (first-ever named user) is now persisted to disk, and ONLY the owner ever inherits/sees the pre-multi-user memories. A family member connecting to a shared SAM first after an update can never adopt the owner history — everyone else starts genuinely clean & private.
 - **👥 Multi-user / Family SAM** — several people can share one SAM, each with their OWN private
   memory. Memory is namespaced by the person's name (already sent with every request), with a one-time
