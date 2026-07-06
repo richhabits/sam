@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🔌 Integrations panel — SAM as a business command center** — Settings → Integrations: one-tap connect
+  to popular MCP servers with just your key(s): 💳 Stripe, 📈 RevenueCat (revenue/MRR), 📊 Metricool
+  (schedule & post to ALL your socials in one shot), 📣 Meta Ads, 📝 Notion, 🐘 Supabase, 🐙 GitHub, 💬 Slack,
+  🦁 Brave Search. SAM gains their tools (always ask-first). Keys are loopback-only, written to local
+  vault/mcp.json, never returned by the API. Officialvs-community clearly labelled. Also shipped this
+  session: 🟣 Obsidian bridge (SAM reads & writes your vault).
 - **📓 NotebookLM, but yours & free + 🔎 deep research + 🛰️ 24/7 research agent + 🪽 Hermes** — SAM is now
   a grounded-intelligence platform. New `notebook_add` (sources: web pages, files, pasted text),
   `notebook_ask` (answers ONLY from your sources, every claim cited — no hallucination), `notebook_audio`

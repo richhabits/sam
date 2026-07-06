@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone } from "./lib/api";
+import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, getMcpPresets, configureMcp, removeMcp } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
+
+type McpPreset = { id: string; label: string; emoji: string; note: string; official: boolean; fields: { env: string; label: string; placeholder?: string }[]; docs?: string; connected: boolean };
 
 // Every publicly-available provider SAM can rotate across. `starter` = the easy, generous,
 // grab-in-2-minutes ones shown first; the rest live under "More free brains". More keys
@@ -69,6 +71,9 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [phoneMsg, setPhoneMsg] = useState("");
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
+  const [mcp, setMcp] = useState<McpPreset[]>([]);
+  const [mcpKeys, setMcpKeys] = useState<Record<string, Record<string, string>>>({});
+  const [mcpMsg, setMcpMsg] = useState<Record<string, string>>({});
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -82,6 +87,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
     getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
     pushEnabled().then(setPushOn).catch(() => {});
+    getMcpPresets().then((r) => setMcp(r.presets || [])).catch(() => {});
   };
   useEffect(() => { refresh(); }, []);
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
@@ -268,6 +274,43 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               setPushMsg(r === "ok" ? "" : r === "denied" ? "You blocked notifications — allow them in your browser/phone settings." : r === "unsupported" ? "This device doesn't support push (on iPhone: install SAM via Share → Add to Home Screen first)." : "Couldn't enable — try again.");
               if (r === "ok") setPushOn(true);
             }}>Get alerts here</button>}
+          </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">🔌 Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
+          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+            {mcp.map((p) => (
+              <div key={p.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 18 }}>{p.emoji}</span>
+                  <b>{p.label}</b>
+                  {p.official ? <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: "var(--accent-soft, #2a2a2a)", opacity: .8 }}>official</span> : <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, border: "1px solid var(--border)", opacity: .6 }}>community</span>}
+                  {p.connected && <span style={{ fontSize: 11, color: "var(--accent-text)", marginLeft: "auto" }}>✓ connected</span>}
+                </div>
+                <div className="admin-note" style={{ margin: "4px 0 8px" }}>{p.note}{p.docs && <> · <a href={p.docs} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>get key ↗</a></>}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  {p.fields.map((f) => (
+                    <input key={f.env} type="password" placeholder={f.label + (f.placeholder ? ` (${f.placeholder})` : "")} value={mcpKeys[p.id]?.[f.env] || ""}
+                      onChange={(e) => setMcpKeys((m) => ({ ...m, [p.id]: { ...m[p.id], [f.env]: e.target.value } }))}
+                      style={{ flex: "1 1 160px", minWidth: 120, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  ))}
+                  <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+                    const env = mcpKeys[p.id] || {};
+                    if (p.fields.some((f) => !(env[f.env] || "").trim())) { setMcpMsg((m) => ({ ...m, [p.id]: "Add the key(s) first." })); return; }
+                    setMcpMsg((m) => ({ ...m, [p.id]: "Connecting…" }));
+                    const r = await configureMcp(p.id, env).catch(() => ({ ok: false }));
+                    setMcpMsg((m) => ({ ...m, [p.id]: r.ok ? "✓ Saved — restart SAM to activate." : "Couldn't save." }));
+                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: true } : x)); setMcpKeys((m) => ({ ...m, [p.id]: {} })); }
+                  }}>{p.connected ? "Update" : "Connect"}</button>
+                  {p.connected && <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)" }} onClick={async () => {
+                    const r = await removeMcp(p.id).catch(() => ({ ok: false }));
+                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: false } : x)); setMcpMsg((m) => ({ ...m, [p.id]: "Removed — restart to apply." })); }
+                  }}>Remove</button>}
+                </div>
+                {mcpMsg[p.id] && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{mcpMsg[p.id]}</div>}
+              </div>
+            ))}
           </div>
         </div>
 
