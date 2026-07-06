@@ -3,6 +3,22 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🎨 FREE image generation** — "draw me a…" just works: rotating free lanes (Pollinations first —
+  no key, effectively unlimited — then Together FLUX/SiliconFlow on free keys, credits sipped evenly).
+  Images render inline in the chat (markdown `![img]` support added to the HUD).
+- **🎬 Video generation (free credits)** — `generate_video` uses Novita or SiliconFlow free signup
+  credits (rotating), with honest guidance when no key is set. No truly-unlimited free video API
+  exists yet — this is the closest legit thing.
+- **📱 Phone access (opt-in)** — `SAM_REMOTE=1` + `SAM_REMOTE_TOKEN` opens SAM to your Wi-Fi with a
+  token gate on every request (constant-time compare, brute-force backstop, cookie after first visit;
+  loopback unaffected). SAM prints the exact phone URL at boot. Off by default.
+- **🔌 MCP support — SAM plugs into the Model Context Protocol ecosystem** — drop servers into
+  `vault/mcp.json` (see `vault/mcp.sample.json`) and thousands of community MCP tools (Gmail, Notion,
+  Postgres, browsers…) appear as SAM tools (`mcp_<server>_<tool>`), always ask-first, included in the
+  semantic tool router. 148 built-in tools → effectively unlimited.
+- **🧭 Brains organised by what they do** — every provider in Settings now says its role (⚡ fast chat,
+  🧠 reasoning, 💻 code, 👁 vision, 🎨 images, 🎬 video, 🌐 many-models, 👑 premium) so you know exactly
+  why you're adding each key.
 - **Task-aware model routing — uses the RIGHT free brain for the job** — with 30+ free models, SAM
   no longer sends every request to the same fastest-first provider. It picks a *lane* from the ask:
   **fast** (Cerebras/Groq/SambaNova) for quick chat, **deep** (DeepSeek/NVIDIA/Together/Qwen…) for

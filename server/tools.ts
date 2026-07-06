@@ -32,7 +32,7 @@ import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./sc
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
-import { keyStatus } from "./keys.ts";
+import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
@@ -1510,6 +1510,119 @@ export const TOOLS: Tool[] = [
     activity: () => `Pruning old vault logs`, preview: () => `Delete vault daily notes older than 90 days?`,
     run: async () => { const r = pruneOldLogs(); return `Pruned ${r.removed} old log file${r.removed !== 1 ? "s" : ""}.`; } },
   // ─── ADMIN: KEY POOL HEALTH ────────────────────────────────────────────────
+  { name: "generate_image", safe: true, description: "Create an image from a text description — FREE (rotating free lanes, no key needed). Returns the image inline. input: {prompt, width?, height?}.", params: "{prompt, width?, height?}",
+    activity: (i) => `Painting: ${String(i.prompt || "").slice(0, 40)}…`, run: async (i) => {
+      const prompt = String(i.prompt || i || "").trim();
+      if (!prompt) return "Give me a description of the image you want.";
+      const w = Math.min(2048, Math.max(256, Number(i.width) | 0 || 1024));
+      const h = Math.min(2048, Math.max(256, Number(i.height) | 0 || 1024));
+      const done = (url: string, via: string) => `Here you go:\n\n![${prompt.slice(0, 80)}](${url})\n\n(Free — made via ${via}. Right-click to save; want a variation? Just ask.)`;
+      // LANE 1 · Pollinations — free, NO key, effectively unlimited. Always first: never
+      // spend anyone's free credits while an unlimited no-key lane works.
+      const seed = Math.floor(Math.random() * 1e9);
+      const pUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 500))}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
+      try {
+        const r = await fetch(pUrl, { method: "HEAD", signal: AbortSignal.timeout(45000) });
+        if (r.ok) return done(pUrl, "Pollinations");
+      } catch { /* fall through to the keyed lanes */ }
+      // KEYED LANES · rotate smartly (Oliver Twist — sip each provider's free credits evenly).
+      // All return hosted URLs (keeps the HUD simple). Add more lanes here as they appear.
+      type ImgLane = { id: string; make: (key: string) => Promise<string | null> };
+      const LANES: ImgLane[] = [
+        { id: "together", make: async (k) => {   // FLUX.1-schnell free model
+          const r = await fetch("https://api.together.xyz/v1/images/generations", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ model: "black-forest-labs/FLUX.1-schnell-Free", prompt: prompt.slice(0, 500), width: Math.min(w, 1440), height: Math.min(h, 1440), steps: 4, n: 1 }),
+          });
+          if (!r.ok) { reportFailure("together", k, r.status); return null; }
+          const u = (await r.json())?.data?.[0]?.url; if (u) reportSuccess("together", k); return u || null;
+        } },
+        { id: "siliconflow", make: async (k) => {   // Kwai-Kolors / SD — free tier
+          const r = await fetch("https://api.siliconflow.cn/v1/images/generations", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ model: "Kwai-Kolors/Kolors", prompt: prompt.slice(0, 500), image_size: `${Math.min(w, 1024)}x${Math.min(h, 1024)}`, num_inference_steps: 20 }),
+          });
+          if (!r.ok) { reportFailure("siliconflow", k, r.status); return null; }
+          const u = (await r.json())?.images?.[0]?.url; if (u) reportSuccess("siliconflow", k); return u || null;
+        } },
+      ];
+      const avail = LANES.filter((l) => poolSize(l.id) > 0);
+      const start = Math.floor(Math.random() * Math.max(1, avail.length));   // spread credit use
+      for (let n = 0; n < avail.length; n++) {
+        const lane = avail[(start + n) % avail.length];
+        const k = getKey(lane.id); if (!k) continue;
+        try { const u = await lane.make(k); if (u) return done(u, lane.id); } catch { /* next lane */ }
+      }
+      // Last resort: hand back the Pollinations URL anyway — the browser will trigger generation.
+      return done(pUrl, "Pollinations");
+    } },
+  { name: "generate_video", safe: true, description: "Create a short AI video from a text description (uses your free Novita credits; ~1-2 min). input: {prompt}.", params: "{prompt}",
+    activity: (i) => `Filming: ${String(i.prompt || "").slice(0, 40)}…`, run: async (i) => {
+      const prompt = String(i.prompt || i || "").trim();
+      if (!prompt) return "Describe the video you want.";
+      // Two free-credit lanes (Novita, SiliconFlow) — rotate to sip credits evenly. Both
+      // are async APIs: submit a job, poll (bounded ~2 min).
+      const poll = async (fn: () => Promise<string | "pending" | "failed">): Promise<string | null> => {
+        for (let t = 0; t < 24; t++) {
+          await new Promise((r) => setTimeout(r, 5000));
+          try { const s = await fn(); if (s === "failed") return null; if (s !== "pending") return s; } catch { /* keep polling */ }
+        }
+        return null;
+      };
+      type VidLane = { id: string; make: (key: string) => Promise<string | null> };
+      const LANES: VidLane[] = [
+        { id: "novita", make: async (k) => {
+          const sub = await fetch("https://api.novita.ai/v3/async/txt2video", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ model_name: "darkSushiMixMix_225D_46414.safetensors", prompt: prompt.slice(0, 400), width: 640, height: 384, steps: 20, frames: 64 }),
+          });
+          if (!sub.ok) { reportFailure("novita", k, sub.status); return null; }
+          const { task_id } = (await sub.json()) as { task_id?: string };
+          if (!task_id) return null;
+          const out = await poll(async () => {
+            const st = await fetch(`https://api.novita.ai/v3/async/task-result?task_id=${encodeURIComponent(task_id)}`, { headers: { Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(15000) });
+            if (!st.ok) return "pending";
+            const d: any = await st.json();
+            if (d?.task?.status === "TASK_STATUS_SUCCEED") return d?.videos?.[0]?.video_url || d?.video?.video_url || "failed";
+            if (d?.task?.status === "TASK_STATUS_FAILED") return "failed";
+            return "pending";
+          });
+          if (out) reportSuccess("novita", k);
+          return out;
+        } },
+        { id: "siliconflow", make: async (k) => {
+          const sub = await fetch("https://api.siliconflow.cn/v1/video/submit", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ model: "Wan-AI/Wan2.1-T2V-14B-Turbo", prompt: prompt.slice(0, 400) }),
+          });
+          if (!sub.ok) { reportFailure("siliconflow", k, sub.status); return null; }
+          const { requestId } = (await sub.json()) as { requestId?: string };
+          if (!requestId) return null;
+          const out = await poll(async () => {
+            const st = await fetch("https://api.siliconflow.cn/v1/video/status", {
+              method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(15000),
+              body: JSON.stringify({ requestId }),
+            });
+            if (!st.ok) return "pending";
+            const d: any = await st.json();
+            if (d?.status === "Succeed") return d?.results?.videos?.[0]?.url || "failed";
+            if (d?.status === "Failed") return "failed";
+            return "pending";
+          });
+          if (out) reportSuccess("siliconflow", k);
+          return out;
+        } },
+      ];
+      const avail = LANES.filter((l) => poolSize(l.id) > 0);
+      if (!avail.length) return "Video generation needs a free-credit key: Novita (novita.ai) or SiliconFlow (siliconflow.cn) — both give new accounts free credits; paste the key in Settings → API keys. Images, though, I can do free right now — want an image instead?";
+      const start = Math.floor(Math.random() * avail.length);   // spread credit use
+      for (let n = 0; n < avail.length; n++) {
+        const lane = avail[(start + n) % avail.length];
+        const k = getKey(lane.id); if (!k) continue;
+        try { const u = await lane.make(k); if (u) return `🎬 Done — [watch / download your video](${u})\n\n(Made with your free ${lane.id} credits.)`; } catch { /* next lane */ }
+      }
+      return "Video didn't come back in time (or the free credits are spent) — check your provider dashboard, try a simpler prompt, or want a free image instead?";
+    } },
   { name: "capacity_status", safe: true, description: "How much FREE AI capacity SAM has right now, and the one legit free key to add if it's running thin. input: (none).", params: "(none)",
     activity: () => `Checking free AI capacity`, run: async () => {
       const r = capacityReport();
