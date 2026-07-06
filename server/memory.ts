@@ -78,7 +78,7 @@ export async function remember(text: string, kind = "fact"): Promise<boolean> {
   // Instead of scanning all, we'll scan the most recent 300 of the same model.
   const recent = db.prepare(`SELECT vec FROM memories WHERE model = ? ORDER BY ts DESC LIMIT 300`).all(e.model) as { vec: string }[];
   for (const row of recent) {
-    const parsedVec = JSON.parse(row.vec);
+    let parsedVec; try { parsedVec = JSON.parse(row.vec); } catch { continue; }   // skip a corrupt row, don't crash dedup
     if (cosine(parsedVec, e.vec) > DEDUP_SIM) return false; // Duplicate
   }
 
@@ -104,7 +104,7 @@ export function recallWith(e: { model: string; vec: number[] } | null, k = 5, fl
 
   const scored = [];
   for (const row of rows) {
-    const parsedVec = JSON.parse(row.vec);
+    let parsedVec; try { parsedVec = JSON.parse(row.vec); } catch { continue; }   // one bad row must not sink the whole recall
     const sim = cosine(parsedVec, e.vec);
     const ageDays = (now - row.ts) / 86400000;
     const recency = 1 - Math.min(0.25, ageDays * 0.004);  // gentle decay, capped at -25%

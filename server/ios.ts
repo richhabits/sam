@@ -51,8 +51,11 @@ export function takeDrop(): DropResult[] { const d = drops; drops = []; return d
 // Transcribe a voice memo (m4a/wav/mp3) using macOS `say` + whisper or fallback to filename hint.
 async function transcribeAudio(path: string): Promise<string> {
   // If whisper CLI is available, use it (free, local).
+  // shq — a crafted filename synced into the drop folder must never reach the shell raw.
+  const shq = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
   try {
-    const { stdout } = await sh(`which whisper 2>/dev/null && whisper "${path}" --model tiny --output_format txt --output_dir /tmp 2>/dev/null && cat /tmp/${basename(path, extname(path))}.txt`, { timeout: 60000 });
+    const out = `/tmp/${basename(path, extname(path))}.txt`;
+    const { stdout } = await sh(`which whisper 2>/dev/null && whisper ${shq(path)} --model tiny --output_format txt --output_dir /tmp 2>/dev/null && cat ${shq(out)}`, { timeout: 60000 });
     if (stdout.trim()) return stdout.trim();
   } catch {}
   // Fallback: can't transcribe, just note that a voice memo was dropped.
