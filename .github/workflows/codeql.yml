@@ -1,11 +1,11 @@
 name: CodeQL
+# Security scan runs WEEKLY (+ on demand) — not on every push/PR. CodeQL is a heavy
+# job; on a private repo, running it per-push burns Actions minutes fast. Weekly is
+# plenty for a solo repo; trigger a scan any time from the Actions tab.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   schedule:
     - cron: "0 6 * * 1"
+  workflow_dispatch:
 jobs:
   analyze:
     runs-on: ubuntu-latest
