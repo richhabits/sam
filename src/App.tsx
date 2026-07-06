@@ -220,6 +220,8 @@ export default function App() {
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
   const [guardian, setGuardian] = useState(false);
+  const [stranger, setStranger] = useState<string | null>(null);   // Guardian saw someone new → "remember them" banner
+  const [strangerName, setStrangerName] = useState("");
   const [autopilot, setAutopilot] = useState(false);
   useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
   const [elon, setElon] = useState(false);
@@ -460,6 +462,7 @@ export default function App() {
           const txt = (r.text || "").trim();
           if (/^alert/i.test(txt)) {
             setMessages((m) => [...m, { role: "sam", text: "🛡️ " + txt, how: "guardian", at: now() }]);
+            setStranger(txt.replace(/^alert[:,\s]*/i, "").slice(0, 200));   // offer "remember them" banner
             try { if ("Notification" in window && Notification.permission === "granted") new Notification("🛡️ SAM Guardian", { body: txt.slice(0, 140) }); } catch {}
             if (speakReplies) speakText(txt);
           } else if (txt && !/^clear/i.test(txt)) {
@@ -471,9 +474,8 @@ export default function App() {
     } catch { sysNote("Couldn't start Guardian — allow camera access and try again."); }
   }
 
-  // 👁️ SAM looks through the webcam — captures one frame → its vision describes it.
-  async function lookThroughCamera() {
-    if (loading) return;
+  // 📷 Shared one-shot frame capture (all camera abilities go through this).
+  async function captureFrame(quality = 0.82): Promise<string | null> {
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -483,17 +485,46 @@ export default function App() {
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
       canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const data = canvas.toDataURL("image/jpeg", 0.82);
+      const data = canvas.toDataURL("image/jpeg", quality);
       stream.getTracks().forEach((t) => t.stop());
-      setMessages((m) => [...m, { role: "user", text: "👁️ (looking through the camera)", at: now() }]);
-      setLoading(true);
-      try { handleResult(await command("Look through my webcam — tell me what and who you can see, naturally and warmly.", brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "camera.jpg", mime: "image/jpeg", data }])); }
-      catch { sysNote("Couldn't see through the camera just now — need a Gemini key for vision (Settings → API keys)."); }
-      setLoading(false); inputRef.current?.focus();
+      return data;
     } catch {
       stream?.getTracks().forEach((t) => t.stop());
       sysNote("I couldn't open the camera — allow camera access in your browser and try again.");
+      return null;
     }
+  }
+
+  // Ask SAM something about a fresh camera frame.
+  async function askWithFrame(userLabel: string, prompt: string) {
+    if (loading) return;
+    const data = await captureFrame();
+    if (!data) return;
+    setMessages((m) => [...m, { role: "user", text: userLabel, at: now() }]);
+    setLoading(true);
+    try { handleResult(await command(prompt, brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "camera.jpg", mime: "image/jpeg", data }])); }
+    catch { sysNote("Couldn't see through the camera just now — need a Gemini key for vision (Settings → API keys)."); }
+    setLoading(false); inputRef.current?.focus();
+  }
+
+  // 👁️ SAM looks through the webcam — captures one frame → its vision describes it.
+  const lookThroughCamera = () => askWithFrame("👁️ (looking through the camera)", "Look through my webcam — tell me what and who you can see, naturally and warmly.");
+  // 🙋 Who's that? — recognise from people SAM knows, or ASK the name and remember them.
+  const whoIsThis = () => askWithFrame("🙋 (who's this?)",
+    "Look at the person in this camera frame. If you recognise them from the people you know, greet them by name. If NOT, describe their look in one short line and ASK me for their name — when I tell you, use the remember_person tool (with that look description) so you know them forever.");
+  // 📄 Scan text — camera as a document/receipt scanner.
+  const scanTextFromCamera = () => askWithFrame("📄 (scanning text)",
+    "Read ALL text visible in this camera frame (document, receipt, screen, label). Give it back accurately and neatly formatted, then offer to save it as a note.");
+  // 📸 Take a photo → saved to the vault (local only).
+  async function snapPhoto() {
+    const data = await captureFrame(0.92);
+    if (!data) return;
+    try {
+      const r = await fetch("/api/photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data }) });
+      const d = await r.json();
+      if (d.ok) { showToast("📸 Saved"); setMessages((m) => [...m, { role: "sam", text: `📸 Snapped and saved to \`${d.path}\` — ask me to look at it or open the folder any time.`, how: "camera", at: now() }]); }
+      else sysNote("Couldn't save the photo: " + (d.error || "unknown"));
+    } catch { sysNote("Couldn't save the photo — is SAM's brain running?"); }
   }
 
   function handleSlash(v: string): boolean {
@@ -1031,6 +1062,15 @@ export default function App() {
         {started && !atBottom && <button className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
       </main>
 
+      {stranger && (
+        <div className="stranger-bar">
+          <span className="stranger-txt">🙋 Someone new: <em>{stranger.slice(0, 90)}</em> — want me to remember them?</span>
+          <input className="stranger-input" placeholder="Their name" value={strangerName} onChange={(e) => setStrangerName(e.target.value)}
+            onKeyDown={async (e) => { if (e.key === "Enter" && strangerName.trim()) { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); } }} />
+          <button className="stranger-save" disabled={!strangerName.trim()} onClick={async () => { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); }}>Remember</button>
+          <button className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
+        </div>
+      )}
       <footer className="composer">
         {attachments.length > 0 && (
           <div className="attach-row">
@@ -1062,6 +1102,9 @@ export default function App() {
                 <button className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
                 <button className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
                 <button className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon">👁️</span> Look (Vision)</button>
+                <button className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
+                <button className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
+                <button className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
                 <button className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
                 <button className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
               </div>

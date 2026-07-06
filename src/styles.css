@@ -414,6 +414,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .admin-actions { display: flex; align-items: center; gap: 12px; }
 .admin-getkey { font-size: 13px; color: var(--accent-text); font-weight: 600; text-decoration: none; }
 .admin-getkey:hover { text-decoration: underline; }
+.stranger-bar { display: flex; align-items: center; gap: 10px; margin: 0 auto 8px; max-width: 780px; width: calc(100% - 32px); background: var(--panel, rgba(232,103,58,.08)); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; }
+.stranger-txt { flex: 1; color: var(--text); } .stranger-txt em { color: var(--muted); font-style: normal; }
+.stranger-input { width: 150px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; background: var(--bg); color: var(--text); }
+.stranger-save { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.stranger-save:disabled { opacity: .5; }
+.stranger-dismiss { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; }
 .admin-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 4px 0 14px; }
 .matrix-cell { display: flex; align-items: center; gap: 8px; background: var(--panel, rgba(127,127,127,.06)); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font-size: 12px; opacity: .65; }
 .matrix-cell.on { opacity: 1; border-color: rgba(95,208,138,.35); }
