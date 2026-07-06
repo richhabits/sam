@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus } from "./keys.ts";
-import { capacityReport, capacityNudge, capacityLine } from "./capacity.ts";
+import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
@@ -447,7 +447,7 @@ const CONFIG_ENV: Record<string, string> = {
   smtpHost: "SMTP_HOST", smtpPort: "SMTP_PORT", smtpUser: "SMTP_USER",
   smtpPass: "SMTP_PASS", smtpFrom: "SMTP_FROM", ownerEmail: "SAM_OWNER_EMAIL",
 };
-const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces (My Drive)
+const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces in the install path
 
 function writeEnv(key: string, value: string) {
   let txt = "";
@@ -739,7 +739,7 @@ app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: c
 
 // ── Serve the built app from this one process (production mode) ──
 // One server on :8787 — no separate Vite dev server. Leaner + faster.
-const DIST = fileURLToPath(new URL("../dist", import.meta.url)); // decodes spaces (My Drive)
+const DIST = fileURLToPath(new URL("../dist", import.meta.url)); // decodes spaces in the install path
 if (existsSync(DIST)) {
   app.use(express.static(DIST));
   app.get("*", (req, res, next) => {
