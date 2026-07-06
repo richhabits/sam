@@ -225,6 +225,8 @@ export default function App() {
   const [timelapse, setTimelapse] = useState(false);
   const tlStream = useRef<MediaStream | null>(null);
   const tlIv = useRef<ReturnType<typeof setInterval> | null>(null);
+  const findStream = useRef<MediaStream | null>(null);
+  const findIv = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autopilot, setAutopilot] = useState(false);
   useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
   const [elon, setElon] = useState(false);
@@ -412,6 +414,7 @@ export default function App() {
     if (wakeOn) setWakeOn(false);
     if (guardian) stopGuardian();
     if (timelapse) stopTimelapse();
+    stopFind();
     setVoiceMode(false);
     showToast("🔇 All audio & camera stopped");
   }
@@ -589,6 +592,51 @@ export default function App() {
       }, 30000);   // every 30s
     } catch { sysNote("Couldn't start Timelapse — allow camera access."); }
   }
+
+  // 🔈 Read aloud — scan text from the camera then SPEAK it (accessibility: menus, mail, labels).
+  async function readAloudScan() {
+    if (loading) return;
+    const data = await captureFrame();
+    if (!data) return;
+    setMessages((m) => [...m, { role: "user", text: "🔈 (read this aloud)", at: now() }]);
+    setLoading(true);
+    try {
+      const r = await command("Read ALL the text in this image exactly, as continuous natural speech (no markdown, no bullet points) — you're reading it out loud to someone.", brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "read.jpg", mime: "image/jpeg", data }]);
+      handleResult(r);
+      if (r.text) speakText(r.text);   // always speak this one, even if auto-speak is off
+    } catch { sysNote("Couldn't read it just now — need a vision brain (Groq or Gemini key, or Ollama)."); }
+    setLoading(false);
+  }
+
+  // 🔎 Find it — point the camera and SAM tells you when your object is in view (warmer/colder).
+  async function findObject() {
+    if (loading || findStream.current) return;
+    const target = window.prompt("What should I look for? (e.g. my keys, the remote, a red mug)");
+    if (!target?.trim()) return;
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      findStream.current = stream;
+      sysNote(`🔎 Looking for "${target}" — sweep the camera around slowly. Say stop or close this to end.`);
+      const video = document.createElement("video"); video.srcObject = stream; video.muted = true; await video.play();
+      const big = document.createElement("canvas"); let busy = false; let found = false; let ticks = 0;
+      const iv = setInterval(async () => {
+        if (!findStream.current || busy || found || ticks++ > 40) { if (ticks > 40) { clearInterval(iv); stopFind(); sysNote("🔎 Gave it a good look — didn't spot it. Try another angle?"); } return; }
+        busy = true;
+        try {
+          big.width = video.videoWidth || 640; big.height = video.videoHeight || 480;
+          big.getContext("2d")!.drawImage(video, 0, 0, big.width, big.height);
+          const data = big.toDataURL("image/jpeg", 0.6);
+          const r = await command(`OBJECT FIND. I'm looking for: "${target}". Is it visible in this frame? If YES, start with 'FOUND:' then say exactly where (left/right/top, on/under what). If NO but you see something close, start with 'warm:' and a hint. Otherwise start with 'cold:'.`, brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "find.jpg", mime: "image/jpeg", data }]);
+          const txt = (r.text || "").trim();
+          if (/^found/i.test(txt)) { found = true; clearInterval(iv); stopFind(); const msg = "🔎 " + txt.replace(/^found:\s*/i, "Found it — "); setMessages((m) => [...m, { role: "sam", text: msg, how: "camera", at: now() }]); speakText(msg); }
+          else if (/^warm/i.test(txt)) { showToast("🔥 " + txt.replace(/^warm:\s*/i, "").slice(0, 60)); }
+        } catch {} finally { busy = false; }
+      }, 2500);
+      findIv.current = iv;
+    } catch { stream?.getTracks().forEach((t) => t.stop()); findStream.current = null; sysNote("Couldn't open the camera to search."); }
+  }
+  function stopFind() { if (findIv.current) { clearInterval(findIv.current); findIv.current = null; } findStream.current?.getTracks().forEach((t) => t.stop()); findStream.current = null; }
 
   // 📸 Take a photo → saved to the vault (local only).
   async function snapPhoto() {
@@ -1181,6 +1229,8 @@ export default function App() {
                 <button className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
                 <button className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
                 <button className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
+                <button className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
+                <button className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon">🔎</span> Find my… (camera)</button>
                 <button className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
                 <button className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
                 <button className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>

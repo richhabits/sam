@@ -32,7 +32,7 @@ import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { addPerson, listPeople, peopleContext } from "./people.ts";
+import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine } from "./persona.ts";
@@ -718,7 +718,9 @@ app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.jso
 
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
-app.post("/api/people", (req, res) => { const { name, look, relation } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation)); });
+app.post("/api/people", (req, res) => { const { name, look, relation, face } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation, Array.isArray(face) ? face : undefined)); });
+// Face descriptors (128-float vectors, computed on-device) the HUD matches against — no images.
+app.get("/api/faces", (_req, res) => res.json({ faces: faceRoster() }));
 
 // 📸 Save a camera snapshot into the vault (local only — vault/photos is gitignored).
 app.post("/api/photo", (req, res) => {
