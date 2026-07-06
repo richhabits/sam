@@ -33,8 +33,6 @@ export async function grabRepos(force = false): Promise<App[]> {
   } catch { /* gh missing/not logged in — SAM still works, just without the app list */ }
   return APPS;
 }
-export function apps(): App[] { return APPS; }
-
 // ── Socials registry (vault/socials.json) — SAM knows the accounts/links ──
 export function loadSocials(): Record<string, any> {
   try { if (existsSync(SOCIALS_PATH)) return JSON.parse(readFileSync(SOCIALS_PATH, "utf8")); } catch { /* ignore */ }

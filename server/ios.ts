@@ -44,9 +44,6 @@ export interface DropResult {
   at: string;
 }
 
-// Queue of processed drops for the app to consume.
-let drops: DropResult[] = [];
-export function takeDrop(): DropResult[] { const d = drops; drops = []; return d; }
 
 // Transcribe a voice memo (m4a/wav/mp3) using macOS `say` + whisper or fallback to filename hint.
 async function transcribeAudio(path: string): Promise<string> {
@@ -113,10 +110,7 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
 
   // Process anything already sitting there.
   void scanExisting().then((results) => {
-    for (const r of results) {
-      drops.push(r);
-      handler(r);
-    }
+    for (const r of results) handler(r);
   });
 
   // Watch for new files.
@@ -126,19 +120,12 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
       // Small delay to let iCloud finish syncing the file.
       await new Promise((r) => setTimeout(r, 1500));
       const result = await processFile(filename);
-      if (result) {
-        drops.push(result);
-        if (onDrop) onDrop(result);
-      }
+      if (result && onDrop) onDrop(result);
     });
     console.log(`  📱 iOS companion · watching ${DROP}`);
   } catch (e: any) {
     console.log(`  📱 iOS companion · folder ready at ${DROP} (watcher unavailable: ${e.message})`);
   }
-}
-
-export function stopDropWatcher() {
-  if (watcher) { watcher.close(); watcher = null; }
 }
 
 // Where the drop folder lives (for docs / shortcut setup).
