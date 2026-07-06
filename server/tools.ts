@@ -34,6 +34,7 @@ import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } f
 import { PROJECTS } from "./projects.ts";
 import { keyStatus } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
+import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
@@ -982,6 +983,14 @@ export const TOOLS: Tool[] = [
           return stdout.trim() || "No matching notes found.";
         }
       } catch (e: any) { return `Failed to search notes: ${e.message}`; }
+    } },
+  { name: "send_mail", safe: false, description: "Send an email from SAM's OWN address via SMTP (works cross-platform, no Mail app needed). Defaults to the owner's inbox if 'to' is omitted. Needs SMTP set up in .env. input: {to?, subject, body}.", params: "{to?, subject, body}",
+    activity: (i) => `Emailing ${i.to || ownerEmail() || "you"}`,
+    preview: (i) => `Send email (from SAM) to ${i.to || ownerEmail() || "you"}:\nSubject: ${i.subject}\n\n${i.body}`,
+    run: async (i) => {
+      if (!mailerConfigured()) return "SAM's email isn't set up yet. Add SMTP_HOST / SMTP_USER / SMTP_PASS (and optionally SMTP_FROM, SAM_OWNER_EMAIL) to .env — see .env.example.";
+      const r = await sendMail(i.to || "", i.subject || "", i.body || "");
+      return r.ok ? `Sent ✓ to ${i.to || ownerEmail()}.` : `Couldn't send: ${r.error}`;
     } },
   { name: "send_email", safe: false, description: "Draft an email in the default mail client. input: {to_email, subject, body}.", params: "{to_email, subject, body}",
     activity: (i) => `Drafting email to ${i.to_email}`, preview: (i) => `Draft email to ${i.to_email}:\nSubject: ${i.subject}\n${i.body}`,
