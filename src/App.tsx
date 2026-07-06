@@ -367,6 +367,9 @@ export default function App() {
     if (!name) return;
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
     setProfile(p); setUser({ ...p, mode });
+    // First run: if no free key is set up yet, open the keys panel so the new user grabs a
+    // FREE brain right away (SAM needs one free key — or local Ollama — to think).
+    getStatus().then((s) => { if (!s?.capacity?.configured) setAdminOpen(true); }).catch(() => setAdminOpen(true));
   }
 
   const refreshLog = () => getLog().then(setLog).catch(() => {});
