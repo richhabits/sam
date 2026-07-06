@@ -12,7 +12,7 @@ import { join } from "node:path";
 
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById } from "./projects.ts";
-import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
+import { TOOLS, toolByName, toolCatalogue, isCatastrophic, isPrivateIp } from "./tools.ts";
 
 // ── THE BRAIN · skill routing ────────────────────────────────
 describe("routeSkill", () => {
@@ -80,6 +80,31 @@ describe("tools", () => {
   it("blocks catastrophic commands even when run directly", async () => {
     const out = await toolByName("run_command")!.run({ command: "rm -rf ~/" });
     expect(out).toMatch(/blocked/i);
+  });
+
+  it("denylist blocks the truly catastrophic forms", () => {
+    for (const cmd of [
+      "rm -rf ~", "rm -rf ~/", "rm -rf /", "rm -fr /", "rm -rf $HOME",
+      "rm -rf /Users", "rm -rf /System", "rm -rf /Volumes",           // system / all-volumes roots
+      "/bin/rm -rf ~/Documents", "find ~ -delete", "sudo rm -rf /etc",
+      "mkfs.ext4 /dev/sda", "dd if=/dev/zero of=/dev/disk2", "shutdown -h now",
+    ]) expect(isCatastrophic(cmd), cmd).toBe(true);
+  });
+
+  it("denylist ALLOWS legitimate cleanup (no false positives)", () => {
+    for (const cmd of [
+      "rm -rf /Volumes/My Drive/SAM/dist",    // subdir of the user's drive — must NOT block
+      "rm -rf ./dist", "rm -rf node_modules", "rm file.txt", "git rm cached.txt",
+      "npm run build", "grep -r shutdown ./logs", "ls /bin/rm", "find . -name '*.tmp'",
+    ]) expect(isCatastrophic(cmd), cmd).toBe(false);
+  });
+
+  it("SSRF guard flags private IPs incl. IPv4-mapped IPv6 (web_fetch auto-runs)", () => {
+    for (const ip of ["127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.1.1", "172.16.0.1",
+                       "::1", "::", "::ffff:127.0.0.1", "::ffff:7f00:1", "fd00::1", "fe80::1"])
+      expect(isPrivateIp(ip), ip).toBe(true);
+    for (const ip of ["8.8.8.8", "1.1.1.1", "93.184.216.34", "172.32.0.1", "::ffff:8.8.8.8"])
+      expect(isPrivateIp(ip), ip).toBe(false);
   });
 });
 

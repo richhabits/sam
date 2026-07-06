@@ -13,7 +13,7 @@ if (typeof location !== "undefined" && location.protocol === "file:") {
   const BASE = "http://localhost:8787";
   const orig = window.fetch.bind(window);
   window.fetch = (input: any, init?: any) =>
-    orig(typeof input === "string" && input.startsWith("/") ? BASE + input : input, init);
+    orig(typeof input === "string" && input.startsWith("/") && !input.startsWith("//") ? BASE + input : input, init);
 }
 
 // ?app=studio (dedicated Electron window or a tab) → the Creative Space, else the chat.

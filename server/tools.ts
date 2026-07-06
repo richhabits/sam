@@ -95,21 +95,28 @@ export interface Tool {
   run: (input: any) => Promise<string>;
 }
 
-// Never run these, even if approved — catastrophic / irreversible.
-// Matches flag order both ways, absolute-path rm (sidesteps the Elon trash alias),
-// find -delete, and raw disk writes — the old list missed rm -fr, /bin/rm, find -delete.
+// Never run these, even if approved — catastrophic / irreversible. Tuned to block the
+// truly unrecoverable forms (wiping ~, /, a whole system root or a mounted volume ROOT)
+// WITHOUT blocking legitimate cleanup inside those trees (e.g. rm -rf /Volumes/DRIVE/proj/dist).
+// Destructive verbs are anchored to command position so they don't false-positive on
+// read-only uses like `grep shutdown log` or `ls /bin/rm`.
 const HARD_DENY = [
-  /\brm\s+(-[a-z]*[rf][a-z]*\s+)+(-[a-z]*\s+)*["']?[~/]\/?["']?\s*($|[\s;])/i,
-  /\brm\s+(-[a-z]*\s+)*["']?\/(Users|home|System|Library|Applications|Volumes)\b/i,
-  /\/(usr\/)?bin\/rm\b/i,
+  /\brm\s+(-[a-z]*[rf][a-z]*\s+)+(-[a-z]*\s+)*["']?[~/]\/?["']?\s*($|[\s;])/i,           // rm -rf ~  |  rm -rf /
+  /\brm\s+(-[a-z]*\s+)*["']?(\$\{?HOME\}?|\/(Users|System|Library|Applications|Volumes))\/?["']?(\s|;|$)/i,  // rm of $HOME or a system / all-volumes ROOT (NOT subdirs — a specific drive/dir is approval-gated)
+  /(^|[;&|]\s*)(sudo\s+)?\/(usr\/)?bin\/rm\s+(-[a-z]*[rf])/i,                             // absolute rm -rf as a command (sidesteps trash alias)
   /\bfind\s+["']?[~/]["']?(\s|$).*(-delete|-exec\s+rm)/i,
   /\bmkfs\b/, /\bdd\s+(if|of)=/, /:\(\)\s*\{/,
-  /\bshutdown\b/i, /\breboot\b/i, /\bhalt\b/i, /\bkillall\s+-9\b/, />\s*\/dev\/(sd|disk|rdisk)/,
+  /(^|[;&|]\s*)(sudo\s+)?(shutdown|reboot|halt)\b/i, /\bkillall\s+-9\b/, />\s*\/dev\/(sd|disk|rdisk)/,
   /\bchmod\s+-R\s+000\b/, /\bsudo\s+(rm|dd|mkfs|chmod|chown|shutdown|reboot)\b/,
   /\bdiskutil\s+(erase|partition|apfs\s+delete)/i, /\bcsrutil\b/, /\blaunchctl\s+bootout\b/,
 ];
+// Pure predicate (no logging) — exported so the denylist can be unit-tested without
+// executing anything (you can't test an "allowed" command by running rm).
+export function isCatastrophic(cmd: string): boolean {
+  return HARD_DENY.some((re) => re.test(cmd));
+}
 function denied(cmd: string): string | null {
-  for (const re of HARD_DENY) if (re.test(cmd)) {
+  if (isCatastrophic(cmd)) {
     logSecurity("alert", "blocked-command", `Refused a catastrophic command: ${cmd}`, "agent");
     return `Blocked for safety: "${cmd}" matches a catastrophic-command guard. SAM will never run this.`;
   }
@@ -131,8 +138,20 @@ const webSignal = () => AbortSignal.timeout(WEB_TIMEOUT);
 function tfetch(url: any, opts: any = {}): Promise<Response> {
   return fetch(url, { ...opts, signal: opts.signal || AbortSignal.timeout(WEB_TIMEOUT) });
 }
-function isPrivateIp(ip: string): boolean {
-  if (/^::1$|^f[cd]|^fe80:/i.test(ip)) return true;                   // v6 loopback / ULA / link-local
+export function isPrivateIp(ip: string): boolean {
+  const h = ip.toLowerCase();
+  if (h === "::" || h === "::1") return true;                        // unspecified / v6 loopback
+  if (/^f[cd]|^fe80:/.test(h)) return true;                          // v6 ULA / link-local
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1) — unwrap to the v4 and re-check,
+  // otherwise a mapped loopback slips past the guard and web_fetch hits localhost.
+  const mapped = h.match(/^::ffff:(.+)$/i);
+  if (mapped) {
+    const hex = mapped[1].match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+    const v4 = hex
+      ? `${(parseInt(hex[1], 16) >> 8) & 255}.${parseInt(hex[1], 16) & 255}.${(parseInt(hex[2], 16) >> 8) & 255}.${parseInt(hex[2], 16) & 255}`
+      : mapped[1];
+    return isPrivateIp(v4);
+  }
   const m = ip.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
   if (!m) return false;
   const [a, b] = [Number(m[1]), Number(m[2])];
