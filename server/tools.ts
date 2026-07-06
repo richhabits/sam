@@ -1526,9 +1526,12 @@ export const TOOLS: Tool[] = [
       const seed = Math.floor(Math.random() * 1e9);
       const pUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 500))}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
       try {
-        const r = await fetch(pUrl, { method: "HEAD", signal: AbortSignal.timeout(45000) });
-        if (r.ok) return done(pUrl, "Pollinations");
-      } catch { /* fall through to the keyed lanes */ }
+        // Any response = the host is up (some CDNs answer HEAD with 405 but serve the GET fine).
+        // Only a real network error/timeout falls through — so we never burn paid credits when
+        // the free lane is reachable. The browser does the actual GET that renders the image.
+        await fetch(pUrl, { method: "HEAD", signal: AbortSignal.timeout(20000) });
+        return done(pUrl, "Pollinations");
+      } catch { /* network error only → try the keyed lanes */ }
       // KEYED LANES · rotate smartly (Oliver Twist — sip each provider's free credits evenly).
       // All return hosted URLs (keeps the HUD simple). Add more lanes here as they appear.
       type ImgLane = { id: string; make: (key: string) => Promise<string | null> };
