@@ -3,6 +3,27 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **⚡ Turbo mode** — a new answer-quality option (Settings · `/turbo` · palette) that does ONE fast call on the
+  quickest free brain (Cerebras/Groq) with no tool loop — instant replies for quick chat & drafting. A ⚡ pill in
+  the composer shows when it's on; click it to drop back to Automatic.
+- **Faster & leaner** — in-memory Float32 vector cache for memory + doc recall (parse each vector once, not every
+  turn — ~14–22× at scale); an LRU cache on query embeddings (kills the network round-trip on repeats); memoized
+  persona/doctrine + mtime-cached socials (no per-turn rebuild/disk read); local lenient tool-JSON recovery so a
+  small model's malformed JSON no longer costs an extra model round-trip; parallelised the morning brief; adaptive
+  swarm poll + debounced persistence in the HUD. (Model latency still dominates — SAM already routes fastest-first.)
+- **Security — full CodeQL + adversarial audit, 0 open alerts** — resolved 5 CodeQL alerts (command-injection in
+  the proactive notifier, SSRF in the creative proxy, a ReDoS in the command denylist) AND a broader shell-injection
+  class it missed (~22 `sh()` sites that wrapped input in double-quoted `JSON.stringify` → converted to single-quote
+  escaping so `$(…)` can never execute). Plus: **server-held approval store** (the client approves by opaque id — the
+  tool/input/transcript never come back over the network), SSRF guard incl. IPv4-mapped IPv6, hardened catastrophic
+  denylist, loopback-only API bind, **P2P off-by-default + token-gated**, and dropping an OpenAI-key leak to a 3rd party.
+- **Packaged desktop app works** — fixed every API call resolving to `file://` in a build (one `file://` fetch shim);
+  `electron-builder` now excludes `vault/` + `.env` from any DMG; a preflight guard explains the space-free-path
+  requirement. Validated an actual DMG build (secrets excluded, skills + server included).
+- **Dependencies clean** — vitest 2→4 / vite 6→8 cleared all dev-tooling advisories (`npm audit` 0); CI actions
+  bumped to latest; tests are now hermetic (never touch the real vault).
+- **Cleanup** — removed 3 duplicate tools (149→146, kept the cross-platform ones), a 40 MB unused vendored app
+  (repo 48 MB→15 MB), dead code, and fixed the landing count regex (was undercounting ids with digits).
 - **SAM knows your documents (roadmap #93 — the 100th item, board complete 🏁)** — point SAM at any folder or
   drive ("index my drive") and it walks it, extracts text (md/txt/pdf/docx/csv/json/html), chunks + embeds it
   into the vault (`docs` tables in memory.db, same free embedding lanes + model-pinning as memory), and recalls
