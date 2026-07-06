@@ -529,6 +529,7 @@ const PROVIDER_ENV: Record<string, string> = {
   fal: "FAL_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
+  obsidianVault: "OBSIDIAN_VAULT",
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",
   defaultTier: "DEFAULT_TIER", musicService: "MUSIC_SERVICE",
   groqModel: "GROQ_MODEL", claudeModel: "CLAUDE_MODEL",
