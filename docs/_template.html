@@ -127,6 +127,12 @@
   .does span{font-family:var(--mono); font-size:12px; color:var(--ash); background:rgba(243,237,228,.04); border-radius:7px; padding:6px 11px; transition:color .16s, background .16s}
   .does span:hover{color:var(--paper); background:var(--ember-soft)}
 
+  /* "and more" feature strip */
+  .more-lead{text-align:center; color:var(--ash); font-size:14px; margin:44px 0 18px; letter-spacing:.01em}
+  .more-strip{display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:720px; margin:0 auto}
+  .more-strip span{font-size:13.5px; color:var(--paper); background:var(--ink-2); border:1px solid var(--line-soft); border-radius:999px; padding:9px 16px; transition:border-color .18s}
+  .more-strip span:hover{border-color:var(--ember)}
+
   /* steps */
   .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; counter-reset:s}
   @media(max-width:720px){.steps{grid-template-columns:1fr}}
@@ -155,7 +161,7 @@
     <div class="top">
       <div class="brand">
         <span class="logo">S<span class="dot">.</span>A<span class="dot">.</span>M</span>
-        <small>Smart Artificial Mind</small>
+        <small>Smart Artificial Mind · by HECTIC</small>
       </div>
       <a class="ghlink" href="https://github.com/richhabits/sam" target="_blank" rel="noopener">★ github.com/richhabits/sam</a>
     </div>
@@ -163,7 +169,7 @@
     <!-- HERO -->
     <div class="hero">
       <div>
-        <span class="eyebrow"><span class="pulse"></span>Free · Private · Runs on your Mac</span>
+        <span class="eyebrow"><span class="pulse"></span>Free · Private · Mac · Windows · Linux</span>
         <h1>Your own AI.<br>It doesn't just answer — <span class="em">it handles it.</span></h1>
         <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code — for <b>£0 a month.</b></p>
         <div class="cta-row">
@@ -226,6 +232,20 @@
           <p>A morning brief and proactive nudges. SAM messages <em>you</em> — the weather, what's due, what needs a follow-up.</p>
           <div class="vs">Them: waits for a prompt · <b>SAM: gets ahead of your day</b></div>
         </div>
+      </div>
+
+      <!-- AND MORE — the rest of what SAM does, so the story is complete -->
+      <div class="more-lead">And a lot more, out of the box:</div>
+      <div class="more-strip">
+        <span>🎙 Two-way voice</span>
+        <span>🎨 Studio — image &amp; video</span>
+        <span>🐝 Background swarm</span>
+        <span>⏰ Scheduled tasks</span>
+        <span>🧩 {{SKILLS}} skills</span>
+        <span>🗣 Your language</span>
+        <span>📱 Install to your dock</span>
+        <span>🔄 Self-updating — evolves for free</span>
+        <span>🧠 Remembers everything</span>
       </div>
     </section>
 
