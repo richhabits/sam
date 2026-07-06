@@ -540,13 +540,19 @@ app.all("/api/creative/*", async (req, res) => {
   const apiKey = process.env.MUAPI_API_KEY || process.env.OPENAI_API_KEY; // fallback if needed, or specific key
   if (!apiKey) return res.status(503).json({ error: "No API key configured for SAM Creative Space" });
 
-  const targetPath = req.params[0];
+  // Sanitize the wildcard path so it can only address muapi's own API surface — no
+  // "..", scheme, host, credentials or backslashes that could redirect the request
+  // elsewhere (SSRF). Only plain path segments are allowed.
+  const targetPath = String(req.params[0] || "");
+  if (!/^[a-zA-Z0-9._~/-]*$/.test(targetPath) || targetPath.includes("..")) {
+    return res.status(400).json({ error: "Invalid creative path" });
+  }
   const targetUrl = `https://api.muapi.ai/api/v1/${targetPath}`;
-  
+
   try {
     const headers: Record<string, string> = { "x-api-key": apiKey };
     if (req.headers["content-type"]) headers["content-type"] = req.headers["content-type"] as string;
-    
+
     const query = new URLSearchParams(req.query as Record<string, string>).toString();
     const finalUrl = query ? `${targetUrl}?${query}` : targetUrl;
 

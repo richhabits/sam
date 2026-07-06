@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NUDGES = join(process.env.VAULT_DIR || join(ROOT, "vault"), "nudges.json");
@@ -51,19 +51,19 @@ function markNotified(ids: string[]) {
 // ── Delivery (cross-platform) ──
 export function desktopNotify(title: string, msg: string) {
   const clean = msg.replace(/[#*`]/g, "").slice(0, 220);
-  // esc: for double-quote context inside AppleScript strings — escapes " and \
-  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
-  // sq: strip/replace single-quotes so they can't break the outer shell single-quote context
-  const sq = (s: string) => s.replace(/'/g, "\u2019"); // ' → '
+  // Strip the chars that carry meaning in AppleScript/PowerShell/XML string contexts.
+  // Everything below uses execFile (NO shell), so title/msg — which come from model
+  // output — can't inject a command. (Was: exec() with string interpolation, which
+  // left the Linux notify-send path shell-injectable via $()/backticks.)
+  const e = (s: string) => s.replace(/["'<>&\\]/g, "").replace(/\n/g, " ");
+  const t = e(title.slice(0, 80));
   if (process.platform === "darwin") {
-    exec(`osascript -e 'display notification "${esc(sq(clean))}" with title "${esc(sq(title))}"'`, () => {});
+    execFile("osascript", ["-e", `display notification "${e(clean)}" with title "${t}"`], () => {});
   } else if (process.platform === "win32") {
-    // PowerShell toast notification (Windows 10+)
-    const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${esc(title)}</text><text id="2">${esc(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
-    exec(`powershell -command "${ps.replace(/"/g, '\\"')}"`, () => {});
+    const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${t}</text><text id="2">${e(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
+    execFile("powershell", ["-command", ps], () => {});
   } else {
-    // Linux — notify-send (most distros have it)
-    exec(`notify-send "${esc(title)}" "${esc(clean)}" 2>/dev/null || true`, () => {});
+    execFile("notify-send", [t, e(clean)], () => {});
   }
 }
 
