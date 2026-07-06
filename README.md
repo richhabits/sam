@@ -61,6 +61,9 @@ Then open **http://localhost:8787**, tell SAM your name, add a free key in **⚙
 
 ## Get a free brain (pick any — all free)
 
+> 👶 **Want dead-simple, step-by-step instructions?** See **[FREE-BRAINS.md](FREE-BRAINS.md)** — the
+> baby-steps guide: ~15 minutes of copy-paste gets you fast, free AI that basically never runs out.
+
 Open **⚙ Settings → API keys** in the app and paste one or more. SAM rotates across all of them.
 
 | Provider | Get a key | Notes |
@@ -72,7 +75,7 @@ Open **⚙ Settings → API keys** in the app and paste one or more. SAM rotates
 | **Mistral** | [console.mistral.ai](https://console.mistral.ai/api-keys) | free tier |
 | **GitHub Models** | [github.com/settings/tokens](https://github.com/settings/tokens) | free with a GitHub token |
 
-More keys per provider = more headroom, still free. Nothing bills you unless you deliberately add a paid provider.
+More **providers** = more headroom, still free (one account each — SAM rotates across them). Nothing bills you unless you deliberately add a paid provider.
 
 ---
 

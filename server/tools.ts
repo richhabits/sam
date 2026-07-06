@@ -61,7 +61,7 @@ async function gh(args: string): Promise<string> {
   }
 }
 
-// git in a specific local repo folder (handles spaces in paths like "My Drive").
+// git in a specific local repo folder (handles spaces in the path).
 async function gitIn(dir: string, args: string): Promise<string> {
   try {
     const { stdout, stderr } = await sh(`git -C ${shq(dir)} ${args}`, { timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
