@@ -85,6 +85,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// SECURITY headers (defense-in-depth for the served browser/phone HUD — Electron loads file://
+// and is unaffected). script-src 'self' blocks any injected inline script; frame-ancestors 'none'
+// stops clickjacking; nosniff + no-referrer are free wins. img/media stay open for generated
+// pictures/video; the app only ever talks back to itself, so connect-src is locked to 'self'.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https:; " +
+    "connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+  next();
+});
+
 // ── REMOTE-MODE token gate (phone access) ─────────────────────
 // Active only when SAM_REMOTE=1 + a strong SAM_REMOTE_TOKEN are set (see listen() below).
 // Every non-loopback request must present the token — via ?token= once (sets a cookie),
