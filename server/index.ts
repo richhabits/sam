@@ -5,6 +5,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import "dotenv/config";
+import os from "node:os";
+import { timingSafeEqual } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { join, dirname } from "node:path";
@@ -59,6 +61,32 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
 
+// ── REMOTE-MODE token gate (phone access) ─────────────────────
+// Active only when SAM_REMOTE=1 + a strong SAM_REMOTE_TOKEN are set (see listen() below).
+// Every non-loopback request must present the token — via ?token= once (sets a cookie),
+// the cookie afterwards, or an Authorization: Bearer header. Loopback stays open as ever.
+{
+  const TOKEN = process.env.SAM_REMOTE_TOKEN || "";
+  const tokenOk = (t: string) => {
+    if (!t || t.length !== TOKEN.length) return false;
+    try { return timingSafeEqual(Buffer.from(t), Buffer.from(TOKEN)); } catch { return false; }
+  };
+  let failures = 0;
+  app.use((req, res, next) => {
+    if (!(process.env.SAM_REMOTE === "1" && TOKEN.length >= 16)) return next();   // remote off → no gate
+    const ip = req.socket.remoteAddress || "";
+    if (ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1") return next();   // loopback always fine
+    if (failures > 200) { res.status(429).end(); return; }   // brute-force backstop (resets on restart)
+    const q = typeof req.query.token === "string" ? req.query.token : "";
+    const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)sam_token=([^;]+)/)?.[1] || "";
+    const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const t = q || decodeURIComponent(cookie) || bearer;
+    if (!tokenOk(t)) { failures++; logSecurity("alert", "remote-denied", "Blocked a remote request with a bad/missing token", ip); res.status(401).json({ error: "unauthorized" }); return; }
+    if (q) res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+    next();
+  });
+}
+
 const PORT = process.env.PORT || 8787;
 const SKILLS = loadSkills();
 
@@ -80,8 +108,14 @@ console.log(`  tools linked    · ${TOOLS.length} (${TOOLS.filter((t) => t.safe)
 console.log(`  brands tracked  · ${PROJECTS.length}`);
 console.log(`  vault mounted   · ${vaultStats().path}\n`);
 
-// Build semantic tool/skill indexes + warm date-time/location context (non-blocking).
-void buildIndexes(SKILLS).then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"));
+// MCP — link any configured Model Context Protocol servers (vault/mcp.json), then build
+// the semantic tool/skill indexes over the FULL toolset (non-blocking; index is SHA-cached).
+import { loadMcpTools } from "./mcp.ts";
+void loadMcpTools()
+  .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
+  .catch(() => {})
+  .then(() => buildIndexes(SKILLS))
+  .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"));
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
 void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`));
@@ -763,4 +797,20 @@ if (existsSync(DIST)) {
 // Bind strictly to loopback — prevents network peers on the same Wi-Fi/LAN
 // from reaching the API. The CORS check catches browser-origin abuse; this
 // is the second layer that stops raw TCP connections from other devices.
-app.listen(Number(PORT), "127.0.0.1", () => console.log(`  SAM online · http://localhost:${PORT}\n`));
+// ── LISTEN ────────────────────────────────────────────────────
+// Default: loopback only (private, nothing reachable from the network).
+// REMOTE MODE (phone access): SAM_REMOTE=1 + SAM_REMOTE_TOKEN=<long secret> binds to the
+// LAN but requires the token on EVERY request (cookie set on first visit via ?token=…).
+// We refuse to open the network without a strong token — no token, no remote. Note it's
+// plain HTTP on your LAN: fine on home Wi-Fi, don't use on networks you don't trust.
+const REMOTE = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
+const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
+app.listen(Number(PORT), HOST, () => {
+  console.log(`  SAM online · http://localhost:${PORT}\n`);
+  if (REMOTE) {
+    const nets = os.networkInterfaces();
+    const lan = Object.values(nets).flat().find((n) => n && n.family === "IPv4" && !n.internal)?.address;
+    if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);
+  }
+});
