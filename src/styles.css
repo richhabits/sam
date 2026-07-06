@@ -413,6 +413,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .admin-actions { display: flex; align-items: center; gap: 12px; }
 .admin-getkey { font-size: 13px; color: var(--accent-text); font-weight: 600; text-decoration: none; }
 .admin-getkey:hover { text-decoration: underline; }
+.admin-lead { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 2px 0 14px; }
+.admin-lead b { color: var(--text); }
+.admin-more { width: 100%; text-align: left; background: none; border: 1px dashed var(--border); border-radius: 10px; color: var(--accent-text); font-size: 13px; font-weight: 600; padding: 11px 14px; margin: 6px 0 4px; cursor: pointer; }
+.admin-more:hover { background: var(--accent-soft, rgba(232,103,58,.08)); border-color: var(--accent); }
+.admin-sub { font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; opacity: .8; }
 .allow-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .allow-list li { display: flex; align-items: center; justify-content: space-between; font-size: 14px; text-transform: capitalize; }
 .allow-list button { background: none; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--muted); font-size: 12px; padding: 3px 10px; cursor: pointer; }
