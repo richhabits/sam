@@ -14,11 +14,30 @@ the next without you noticing. So the more providers you set up, the more free A
 
 ---
 
+## 🪪 Step 0 — give SAM its own identity (do this once, first)
+
+The trick that makes the rest painless: **one email + one password for everything SAM signs up to.**
+You create these — SAM never signs up on its own (that breaks providers' rules and gets accounts
+banned). You stay in control; SAM just uses the keys you paste in.
+
+1. **Make SAM an email** — e.g. a free Gmail like `yourname.sam@gmail.com`, or `sam@yourdomain.com`.
+   This becomes SAM's identity for every free account below.
+2. **Pick ONE strong password** for it — call it SAM's password. Write it in a password manager
+   (iCloud Keychain, 1Password, Bitpass…) so you never retype it.
+3. From now on, every provider signup below uses **that same email + that same password** (or its
+   "Sign in with Google" button, using SAM's Gmail). One identity, reused everywhere = 2 clicks each.
+
+> **Why one identity:** you'll have ~10 logins. Same email + password (in your password manager)
+> turns each signup into "click Google → done." And when SAM emails you the morning brief, it's
+> coming from this same address (set it up under **⚙ Settings → 📧 SAM's email**).
+
+---
+
 ## How it works (10-second version)
 
-1. Click a link below → sign in → copy the key it gives you.
+1. Click a link below → sign in **with SAM's email/password (Step 0)** → copy the key it gives you.
 2. In SAM: **⚙ Settings → API keys** → paste it → **Save**.
-3. Repeat for as many as you like. **More keys = more free capacity.** That's it.
+3. Repeat for as many as you like. **More providers = more free capacity.** That's it.
 
 SAM even tells you when you're running low and which one to add next (the **capacity** monitor).
 
@@ -42,11 +61,12 @@ Each is one free account, one key. Paste each into **Settings → API keys**.
 
 ### Baby steps for #1 (Groq) — the rest follow the same pattern
 1. Click **[console.groq.com/keys](https://console.groq.com/keys)**.
-2. Sign in (Google/GitHub button — 10 seconds).
+2. Sign up / sign in **with SAM's email + password from Step 0** (or the "Sign in with Google"
+   button using SAM's Gmail — fastest). Your password manager fills it in.
 3. Click **"Create API Key"**, give it any name, click create.
 4. **Copy** the key it shows you (starts with `gsk_...`). Copy it *now* — some sites only show it once.
 5. In SAM: **⚙ Settings → API keys**, find **Groq**, paste, **Save**.
-6. Done. Repeat 2–7. 🎉
+6. Done. Repeat 2–7 — same email, same password each time. 🎉
 
 ---
 
@@ -69,12 +89,19 @@ SAM supports **30+ providers** in total — you never need all of them, but each
 
 ## 💡 The honest bit (so you don't get burned)
 
+- **You sign up, not a bot.** Use SAM's email + password (Step 0) to create each account **yourself**
+  — the same way you'd sign up for anything. Automating account creation (a script/bot that farms
+  signups) breaks every provider's rules and gets the accounts **banned**, so SAM never does it. You
+  click, SAM uses the keys.
 - **One account per provider.** SAM's power is spreading across *many* providers, not making
-  fake accounts on one — that gets you **banned**, and it's against their rules. Breadth (10 providers)
-  beats abuse (10 fake Groq accounts). Do it the clean way and it lasts forever.
+  fake accounts on one. Breadth (10 providers, one login each) beats abuse (10 fake Groq accounts) —
+  and lasts forever.
 - **It's genuinely free.** These are the providers' own free tiers. Nothing bills you unless *you*
   deliberately add a paid provider (OpenAI/Anthropic) and pick it.
 - **Your keys stay on your machine** (`.env`), never uploaded. SAM never shows them back.
+- **SAM's email can do more than keys.** Once SAM has its own inbox, that same identity is what you
+  use to sign it up for anything else you want it to have (newsletters, dev tools, a GitHub account of
+  its own…). Same rule: **you** do the signup with SAM's email + password; SAM then uses the access.
 
 ---
 
