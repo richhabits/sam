@@ -1,12 +1,24 @@
 version: 2
+# Monthly + GROUPED updates: one PR for all npm bumps and one for all actions bumps,
+# instead of a flood of individual PRs that each trigger a full CI run. Keeps deps
+# current without munching Actions minutes on a private repo.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
     labels: ["dependencies"]
+    groups:
+      npm-all:
+        patterns: ["*"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels: ["dependencies"]
+    groups:
+      actions-all:
+        patterns: ["*"]
