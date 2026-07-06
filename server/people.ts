@@ -7,7 +7,7 @@
 //  your machine; we store a text description, not the photo.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -16,12 +16,24 @@ const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "people.json");
 
 export interface Person { name: string; look: string; relation?: string; added: string }
 
+// mtime-cached: peopleContext() runs on every request, so only re-parse the file
+// when it actually changes (was a disk read + JSON.parse per request).
+let _cache: Person[] = [];
+let _mtime = -1;
 function load(): Person[] {
-  try { if (existsSync(FILE)) return JSON.parse(readFileSync(FILE, "utf8")); } catch { /* ignore */ }
-  return [];
+  try {
+    if (!existsSync(FILE)) { _cache = []; _mtime = -1; return _cache; }
+    const m = statSync(FILE).mtimeMs;
+    if (m !== _mtime) { _cache = JSON.parse(readFileSync(FILE, "utf8")); _mtime = m; }
+  } catch { /* keep last-good cache */ }
+  return _cache;
 }
 function save(list: Person[]) {
-  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(list, null, 2)); } catch { /* ignore */ }
+  try {
+    mkdirSync(dirname(FILE), { recursive: true });
+    writeFileSync(FILE, JSON.stringify(list, null, 2));
+    _cache = list; _mtime = statSync(FILE).mtimeMs;   // keep cache hot after a write
+  } catch { /* ignore */ }
 }
 
 export function addPerson(name: string, look: string, relation?: string): Person {
