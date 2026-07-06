@@ -93,6 +93,7 @@ const POOLS: Record<string, KeyPool> = {
   gmi: readPool("gmi", "GMI_API_KEYS", "GMI_API_KEY"),
   vercel: readPool("vercel", "VERCEL_API_KEYS", "VERCEL_API_KEY"),
   ovh: readPool("ovh", "OVH_API_KEYS", "OVH_API_KEY"),
+  fal: readPool("fal", "FAL_API_KEYS", "FAL_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).

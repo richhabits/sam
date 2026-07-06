@@ -1578,7 +1578,7 @@ export const TOOLS: Tool[] = [
         return text ? `Transcript of ${p.split("/").pop()}:\n\n${clip(text, 6000)}` : "Transcribed, but it came back empty — is there speech in that file?";
       } catch (e: any) { return `Transcription hiccup: ${String(e?.message || e).slice(0, 120)}`; }
     } },
-  { name: "generate_video", safe: true, description: "Create a short AI video from a text description (uses your free Novita credits; ~1-2 min). input: {prompt}.", params: "{prompt}",
+  { name: "generate_video", safe: true, description: "Create a short AI video (with sound) from a text description — HappyHorse #1 model via fal, or Novita/SiliconFlow free credits (~1-2 min). input: {prompt}.", params: "{prompt}",
     activity: (i) => `Filming: ${String(i.prompt || "").slice(0, 40)}…`, run: async (i) => {
       const prompt = String(i.prompt || i || "").trim();
       if (!prompt) return "Describe the video you want.";
@@ -1593,6 +1593,30 @@ export const TOOLS: Tool[] = [
       };
       type VidLane = { id: string; make: (key: string) => Promise<string | null> };
       const LANES: VidLane[] = [
+        { id: "fal", make: async (k) => {   // 🏇 HappyHorse 1.1 (Alibaba) — #1 arena video model, native audio; fal = official API
+          const sub = await fetch("https://queue.fal.run/alibaba/happy-horse/v1.1/text-to-video", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Key ${k}` }, signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 500) }),
+          });
+          if (!sub.ok) { reportFailure("fal", k, sub.status); return null; }
+          const j: any = await sub.json();
+          const statusUrl = j?.status_url, responseUrl = j?.response_url;
+          if (!statusUrl || !responseUrl) return null;
+          const out = await poll(async () => {
+            const st = await fetch(statusUrl, { headers: { Authorization: `Key ${k}` }, signal: AbortSignal.timeout(15000) });
+            if (!st.ok) return "pending";
+            const d: any = await st.json();
+            if (d?.status === "COMPLETED") {
+              const r = await fetch(responseUrl, { headers: { Authorization: `Key ${k}` }, signal: AbortSignal.timeout(15000) });
+              const v: any = r.ok ? await r.json() : null;
+              return v?.video?.url || v?.video_url || "failed";
+            }
+            if (d?.status === "FAILED" || d?.status === "ERROR") return "failed";
+            return "pending";
+          });
+          if (out) reportSuccess("fal", k);
+          return out;
+        } },
         { id: "novita", make: async (k) => {
           const sub = await fetch("https://api.novita.ai/v3/async/txt2video", {
             method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(30000),
@@ -1636,7 +1660,7 @@ export const TOOLS: Tool[] = [
         } },
       ];
       const avail = LANES.filter((l) => poolSize(l.id) > 0);
-      if (!avail.length) return "Video generation needs a free-credit key: Novita (novita.ai) or SiliconFlow (siliconflow.cn) — both give new accounts free credits; paste the key in Settings → API keys. Images, though, I can do free right now — want an image instead?";
+      if (!avail.length) return "Video generation needs a free-credit key: fal.ai (🏇 HappyHorse — the #1 video model, with sound), Novita, or SiliconFlow — all give new accounts free credits; paste the key in Settings → API keys. Images, though, I can do free right now — want an image instead?";
       const start = Math.floor(Math.random() * avail.length);   // spread credit use
       for (let n = 0; n < avail.length; n++) {
         const lane = avail[(start + n) % avail.length];

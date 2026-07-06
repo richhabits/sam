@@ -31,7 +31,7 @@ const PROVIDERS: Prov[] = [
   { id: "siliconflow", label: "SiliconFlow", note: "🎨 images + 🎬 video + chat (free tier)", url: "https://cloud.siliconflow.cn/account/ak" },
   { id: "alibaba", label: "Qwen (Alibaba)", note: "🧠 reasoning (Qwen) — strong thinker", url: "https://bailian.console.alibabacloud.com" },
   { id: "moonshot", label: "Moonshot (Kimi)", note: "📚 long documents (Kimi) — huge context", url: "https://platform.moonshot.ai/console/api-keys" },
-  { id: "zhipu", label: "Zhipu (GLM)", note: "🧠 reasoning (GLM)", url: "https://open.bigmodel.cn" },
+  { id: "zhipu", label: "Zhipu GLM-5.2", note: "🧠💻 NEW flagship — 1M context, top coder (20M free tokens)", url: "https://open.bigmodel.cn" },
   { id: "minimax", label: "MiniMax", note: "💬 general chat", url: "https://platform.minimaxi.com" },
   { id: "stepfun", label: "StepFun", note: "💬 general chat", url: "https://platform.stepfun.com" },
   { id: "deepinfra", label: "DeepInfra", note: "🌐 many open models — good backup", url: "https://deepinfra.com/dash/api_keys" },
@@ -43,6 +43,7 @@ const PROVIDERS: Prov[] = [
   { id: "vercel", label: "Vercel AI Gateway", note: "🌐 100s of models · $5 free EVERY month", url: "https://vercel.com/ai-gateway" },
   { id: "ovh", label: "OVHcloud AI", note: "💬 general chat — EU-hosted free tier", url: "https://endpoints.ai.cloud.ovh.net" },
   { id: "gmi", label: "GMI Cloud", note: "🧠 DeepSeek/Llama/Qwen hosting", url: "https://console.gmicloud.ai" },
+  { id: "fal", label: "fal (HappyHorse)", note: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)", url: "https://fal.ai/dashboard/keys" },
   // ── Premium (paid — only used if you pick "Best", never on free) ──
   { id: "anthropic", label: "Anthropic (Claude)", note: "👑 premium (paid) — best quality, only on 'Best'", url: "https://console.anthropic.com/settings/keys", premium: true },
   { id: "openai", label: "OpenAI", note: "👑 premium (paid) — only on 'Best'", url: "https://platform.openai.com/api-keys", premium: true },
@@ -155,7 +156,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             { icon: "🔊", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
             { icon: "👁", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
             { icon: "🎧", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
-            { icon: "🎬", label: "Video", on: has("novita") || has("siliconflow"), via: has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("novita") || has("siliconflow") ? "" : "add Novita or SiliconFlow (free credits)" },
+            { icon: "🎬", label: "Video", on: has("fal") || has("novita") || has("siliconflow"), via: has("fal") ? "HappyHorse #1 (fal)" : has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("fal") ? "" : "add fal (HappyHorse!) / Novita / SiliconFlow" },
           ];
           return (
             <>
