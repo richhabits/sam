@@ -59,6 +59,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
+  const [apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -67,6 +68,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       setIntegrations((prev) => ({ ...prev, linearTeam: c.linearTeam || "" }));
       // hydrate the non-secret email fields (password is never returned — placeholder shows if set)
       if (c.email) setEmail({ smtpHost: c.email.smtpHost || "", smtpPort: c.email.smtpPort || "", smtpUser: c.email.smtpUser || "", smtpPass: "", smtpFrom: c.email.smtpFrom || "", ownerEmail: c.email.ownerEmail || "" });
+      if (c.apple) setApple({ appleId: c.apple.appleId || "", appleTeam: c.apple.appleTeam || "", applePass: "" });
     }).catch(() => {});
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
   };
@@ -224,6 +226,24 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               {emailTest && <span className="admin-note" style={{ marginLeft: 4 }}>{emailTest}</span>}
             </div>
             <div className="admin-foot">Gmail: create an <b>App password</b> (not your login). IONOS/Fastmail/any SMTP works. Port 465 = TLS, 587 = STARTTLS.</div>
+          </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">🍎 Signed releases {cfg?.apple?.appleId ? "· on" : ""}</span><span className="admin-note">owner only — sign the Mac app so it opens clean + auto-updates itself</span></div>
+          <div style={{ display: "flex", gap: 8, flexDirection: "column", marginTop: 12 }}>
+            <input className="admin-input" placeholder="Apple ID email (developer account)" value={apple.appleId} onChange={(e) => setApple(v => ({ ...v, appleId: e.target.value }))} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="admin-input" style={{ width: 160 }} placeholder="Team ID (ABCDE12345)" value={apple.appleTeam} onChange={(e) => setApple(v => ({ ...v, appleTeam: e.target.value }))} />
+              <input className="admin-input" type="password" style={{ flex: 1 }} placeholder={cfg?.apple?.applePassSet ? "App-specific password (saved — blank keeps it)" : "App-specific password (appleid.apple.com)"} value={apple.applePass} onChange={(e) => setApple(v => ({ ...v, applePass: e.target.value }))} />
+            </div>
+            <button className="admin-save" style={{ width: "auto", alignSelf: "flex-start" }} onClick={async () => {
+              if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
+              if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
+              if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
+              setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh();
+            }}>{saved === "apple" ? "Saved ✓" : "Save Apple setup"}</button>
+            <div className="admin-foot">One-time: create a <b>Developer ID Application</b> certificate in Xcode (Settings → Accounts → Manage Certificates), then release with <code>npm run release:app</code> — installed SAMs silently self-update from then on.</div>
           </div>
         </div>
 

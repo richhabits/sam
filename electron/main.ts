@@ -95,7 +95,20 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
-  setTimeout(() => void checkForUpdates(), 8000);   // check a few seconds after launch
+  // Updates: try TRUE silent auto-update first (electron-updater + GitHub releases —
+  // works when the build is signed on macOS; unsigned Windows NSIS also updates fine).
+  // If it can't (unsigned mac build, dev run), fall back to the polite notifier.
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const { autoUpdater } = await import("electron-updater");
+        autoUpdater.autoDownload = true;
+        autoUpdater.autoInstallOnAppQuit = true;   // downloads quietly, installs on quit
+        autoUpdater.on("error", () => void checkForUpdates());   // unsigned/dev → notifier
+        await autoUpdater.checkForUpdatesAndNotify();
+      } catch { void checkForUpdates(); }
+    })();
+  }, 8000);
 
   ipcMain.on("open-studio", () => {
     const studioWin = new BrowserWindow({
