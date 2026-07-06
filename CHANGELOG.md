@@ -3,6 +3,15 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🛡️ Security hardening pass (attack-surface audit)** — closed the surfaces we had NOT audited:
+  (1) anti-DNS-rebinding Host-header check — a malicious webpage re-pointing its domain at 127.0.0.1
+  is now rejected 403 (phone/LAN access preserved); (2) global crash handlers so one bad async never
+  takes SAM down; (3) the GitHub auto-fix agent is now identity-gated (owner/member/collaborator only)
+  so a stranger can not drive the code-writing agent via an @claude comment. Verified clean: ReDoS
+  (50KB input <2ms), licenses (no copyleft — jszip is MIT-or-GPL, we take MIT), Electron isolation
+  (nodeIntegration off, contextIsolation on), esbuild postinstall (legit). Documented the honest
+  residuals in SECURITY.md: data-at-rest not encrypted, web_fetch exfil (send-channels are ask-first),
+  shared-token trust model.
 - **🔋 Zero-consumption by default — embeddings now LOCAL-FIRST** — embeddings fire on EVERY message
   (recall query) + every memory write. The fallback order was cloud-first (Jina→Gemini→Ollama), so
   anyone with a Gemini key (needed for vision) silently burned embedding quota on every single message.

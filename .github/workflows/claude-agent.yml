@@ -34,11 +34,17 @@ on:
 
 jobs:
   claude:
-    # Only run when deliberately invoked: the `agent-fix` label, or an @claude mention.
+    # Only run when deliberately invoked by a TRUSTED person. On a public repo, anyone can
+    # comment "@claude" — so we also require the commenter to be the owner/a member/a collaborator.
+    # (The `agent-fix` label already requires write access to apply, so it's inherently trusted.)
+    # Without this, a stranger could prompt-inject the code-writing agent, which runs with
+    # contents:write and the API key. The label/mention gate stays; this adds the identity gate.
     if: >
       (github.event_name == 'issues' && github.event.label.name == 'agent-fix') ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
+        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
+        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
