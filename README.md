@@ -25,7 +25,7 @@ Most "AI assistants" just talk. SAM works:
 - 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends.
 - 🐝 **The Swarm** — long-running, continuous background agents that survive restarts and pause to ask for your approval on risky actions.
 - 🧠 **30+ free AI brains, auto-rotating** — Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks · and 20 more. One hits a limit, it hops to the next.
-- 📐️ **147 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
+- 📐️ **148 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
 - 💻 **Native desktop app** — Mac/Windows/Linux desktop UI with a global `⌥Space` hotkey to summon SAM anywhere. Build it with `npm run build:mac` (or `:win` / `:linux`). Note: package the app from a **path with no spaces** — native modules can't build otherwise (the web app has no such restriction).
