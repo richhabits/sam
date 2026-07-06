@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **SAM manages its own free capacity** — a capacity monitor (`server/capacity.ts`) watches the free-tier key
+  pools and, when they run thin (all keys rate-limited, or none configured), surfaces ONE legit provider to top
+  up — in the morning brief, on `/api/capacity`, in `/api/status`, and via the `capacity_status` tool ("how's my
+  free capacity?"). Local Ollama is always the unlimited, key-free fallback. It points you at each provider's own
+  signup page (you create the account, per their ToS) — SAM never farms accounts/keys.
 - **⚡ Turbo mode** — a new answer-quality option (Settings · `/turbo` · palette) that does ONE fast call on the
   quickest free brain (Cerebras/Groq) with no tool loop — instant replies for quick chat & drafting. A ⚡ pill in
   the composer shows when it's on; click it to drop back to Automatic.
@@ -45,7 +50,7 @@ All notable changes to SAM. Newest first.
   prompt-injection defense, verify-before-claiming), plus 78 agents (64 specialists + 14 ninjas) and a searchable "Meet the team" browser.
 - **UX pass** — ⌘P command palette, ⌘F find-in-chat, 8 skins, syntax highlighting, per-block code-copy, drag-drop
   + paste, collapse-long messages, quote-reply, reading-progress, export/copy chat, text-size. Landing auto-builds from live code.
-- **146 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
+- **147 tools · 78 agents · 25 skills** — counts stay accurate; the landing and "Meet the team" read them live from source.
 - **Control-centre Dashboard** — live view of free brains, tools, skills, memory, brands + recent activity.
 - **Listen button** on every message — hear what SAM did out loud (per-message TTS).
 - **Self-update** — SAM checks the repo and shows "new version available → Update now" (git pull). Evolves for free.
