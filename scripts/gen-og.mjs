@@ -44,8 +44,19 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   .url{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:20px;color:#9A9187}
 </style></head><body>
   <div>
-    <div class="eyebrow"><span class="dot"></span>Free · Private · Runs on your Mac</div>
-    <h1>Your own AI. It doesn't just answer — <span class="em">it handles it.</span></h1>
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:14px">
+      <svg viewBox="0 0 192 192" width="72" height="72" style="border-radius:17px">
+        <defs><linearGradient id="og-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0824E"/><stop offset="1" stop-color="#D9531F"/></linearGradient></defs>
+        <rect width="192" height="192" rx="44" fill="url(#og-g)"/>
+        <rect x="93" y="30" width="6" height="20" rx="3" fill="#FDF6EF"/><circle cx="96" cy="28" r="7" fill="#FDF6EF"/>
+        <rect x="48" y="56" width="96" height="84" rx="26" fill="#FDF6EF"/>
+        <circle cx="76" cy="94" r="11" fill="#E8673A"/><circle cx="116" cy="94" r="11" fill="#E8673A"/>
+        <rect x="78" y="118" width="36" height="7" rx="3.5" fill="#E8673A" opacity="0.55"/>
+        <rect x="40" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/><rect x="144" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/>
+      </svg>
+      <div class="eyebrow" style="margin:0">Free · Private · Mac · Windows · Linux</div>
+    </div>
+    <h1 style="margin-top:8px">Your own AI. It doesn't just answer — <span class="em">it handles it.</span></h1>
   </div>
   <div class="stats">
     <div class="stat"><div class="n">${tools}</div><div class="l">real tools</div></div>

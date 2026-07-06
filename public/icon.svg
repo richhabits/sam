@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <defs>
-    <linearGradient id="sam-g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F0824E"/>
-      <stop offset="1" stop-color="#D9531F"/>
-    </linearGradient>
-  </defs>
+  <defs><linearGradient id="sam-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0824E"/><stop offset="1" stop-color="#D9531F"/></linearGradient></defs>
   <rect width="192" height="192" rx="44" fill="url(#sam-g)"/>
-  <rect x="1" y="1" width="190" height="190" rx="43" fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="2"/>
-  <text x="84" y="132" font-family="-apple-system, 'SF Pro Display', system-ui, sans-serif" font-size="112" font-weight="800" letter-spacing="-5" fill="#FDF6EF" text-anchor="middle">S</text>
-  <circle cx="140" cy="118" r="10" fill="#FDF6EF"/>
+  <rect x="93" y="30" width="6" height="20" rx="3" fill="#FDF6EF"/>
+  <circle cx="96" cy="28" r="7" fill="#FDF6EF"/>
+  <rect x="48" y="56" width="96" height="84" rx="26" fill="#FDF6EF"/>
+  <circle cx="76" cy="94" r="11" fill="#E8673A"/>
+  <circle cx="116" cy="94" r="11" fill="#E8673A"/>
+  <rect x="78" y="118" width="36" height="7" rx="3.5" fill="#E8673A" opacity="0.55"/>
+  <rect x="40" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/>
+  <rect x="144" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/>
 </svg>
