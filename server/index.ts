@@ -36,6 +36,7 @@ import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
 import { vapidPublicKey, addSubscription, pushNotify, subscriberCount } from "./push.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
+import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import { operatingDoctrine } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
@@ -771,6 +772,42 @@ app.get("/api/people", (_req, res) => res.json(listPeople()));
 app.post("/api/people", (req, res) => { const { name, look, relation, face } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation, Array.isArray(face) ? face : undefined)); });
 // Face descriptors (128-float vectors, computed on-device) the HUD matches against — no images.
 app.get("/api/faces", (_req, res) => res.json({ faces: faceRoster() }));
+
+// 🔌 MCP presets — one-tap connect to business tools (Stripe, RevenueCat, Metricool, Meta Ads…).
+// Config (with keys) is loopback-only; keys are written to vault/mcp.json (gitignored) and NEVER
+// returned by the API. Takes effect on the next restart (MCP servers load at boot).
+const MCP_CONFIG = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault"), "mcp.json");
+function readMcpConfig(): { servers: any[] } { try { const c = JSON.parse(readFileSync(MCP_CONFIG, "utf8")); return { servers: Array.isArray(c?.servers) ? c.servers : [] }; } catch { return { servers: [] }; } }
+function writeMcpConfig(cfg: { servers: any[] }) { mkdirSync(dirname(MCP_CONFIG), { recursive: true }); writeFileSync(MCP_CONFIG, JSON.stringify(cfg, null, 2)); }
+app.get("/api/mcp/presets", (_req, res) => {
+  const configured = new Set(readMcpConfig().servers.map((s: any) => s?.name));
+  // never leak env VALUES — only the catalog + which ids are connected
+  res.json({ presets: MCP_PRESETS.map((p) => ({ id: p.id, label: p.label, emoji: p.emoji, note: p.note, official: p.official, fields: p.fields, docs: p.docs, connected: configured.has(p.id) })) });
+});
+app.post("/api/mcp/configure", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "configure MCP on this computer only" });
+  const { id, env } = req.body || {};
+  const preset = presetById(String(id || ""));
+  if (!preset) return res.status(400).json({ error: "unknown preset" });
+  if (!env || typeof env !== "object" || preset.fields.some((f) => !String(env[f.env] || "").trim())) return res.status(400).json({ error: "missing key(s)" });
+  const cleanEnv: Record<string, string> = {};
+  for (const f of preset.fields) cleanEnv[f.env] = String(env[f.env]).trim();
+  const cfg = readMcpConfig();
+  const server = { name: preset.id, command: preset.command, args: preset.args, env: cleanEnv };
+  const i = cfg.servers.findIndex((s: any) => s?.name === preset.id);
+  if (i >= 0) cfg.servers[i] = server; else cfg.servers.push(server);
+  writeMcpConfig(cfg);
+  res.json({ ok: true, needsRestart: true });
+});
+app.post("/api/mcp/remove", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const id = String(req.body?.id || "");
+  const cfg = readMcpConfig();
+  const before = cfg.servers.length;
+  cfg.servers = cfg.servers.filter((s: any) => s?.name !== id);
+  writeMcpConfig(cfg);
+  res.json({ ok: cfg.servers.length < before, needsRestart: true });
+});
 
 // 🔔 Web Push — SAM reaches your phone even when the app is closed.
 app.get("/api/push/key", (_req, res) => res.json({ key: vapidPublicKey(), subscribers: subscriberCount() }));

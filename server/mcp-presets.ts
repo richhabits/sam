@@ -1,0 +1,52 @@
+// ─────────────────────────────────────────────────────────────
+//  S.A.M. · MCP PRESETS — one-tap connect to the tools that run a
+//  business. Each preset knows how to launch a real MCP server;
+//  the user just drops in their key(s) in Settings and SAM gains
+//  those tools (always ask-first). Command/args are editable, and
+//  each is marked official vs community so nothing is oversold.
+//
+//  Adding your key writes vault/mcp.json (gitignored) — the keys
+//  stay on your machine. Takes effect on the next restart.
+// ─────────────────────────────────────────────────────────────
+
+export interface PresetField { env: string; label: string; placeholder?: string }
+export interface McpPreset {
+  id: string; label: string; emoji: string; note: string;
+  official: boolean;             // true = first-party/verified server, false = community (verify the package)
+  command: string; args: string[];
+  fields: PresetField[];         // secrets → written into the server's env
+  docs?: string;
+}
+
+// Best-known launch commands. Users can edit command/args if a package name changes.
+export const MCP_PRESETS: McpPreset[] = [
+  // ── 💰 Business / revenue ──
+  { id: "stripe", label: "Stripe", emoji: "💳", official: true, note: "payments, revenue, customers, refunds",
+    command: "npx", args: ["-y", "@stripe/mcp", "--tools=all"], fields: [{ env: "STRIPE_SECRET_KEY", label: "Secret key", placeholder: "sk_live_…" }], docs: "https://docs.stripe.com/mcp" },
+  { id: "revenuecat", label: "RevenueCat", emoji: "📈", official: true, note: "subscription revenue, MRR, churn (in-app purchases)",
+    command: "npx", args: ["-y", "@revenuecat/mcp"], fields: [{ env: "REVENUECAT_API_KEY", label: "API key (v2)", placeholder: "sk_…" }], docs: "https://www.revenuecat.com/docs/tools/mcp" },
+
+  // ── 📣 Marketing / social / ads ──
+  { id: "metricool", label: "Metricool", emoji: "📊", official: true, note: "schedule & POST to all your socials in one shot, analytics",
+    command: "uvx", args: ["mcp-metricool"], fields: [{ env: "METRICOOL_USER_TOKEN", label: "User token" }, { env: "METRICOOL_USER_ID", label: "User ID" }], docs: "https://github.com/metricool/mcp-metricool" },
+  { id: "meta_ads", label: "Meta Ads", emoji: "📣", official: false, note: "run & manage Facebook/Instagram ad campaigns",
+    command: "uvx", args: ["meta-ads-mcp"], fields: [{ env: "META_ACCESS_TOKEN", label: "Access token" }], docs: "https://github.com/pipeboard-co/meta-ads-mcp" },
+  { id: "buffer", label: "Buffer (community)", emoji: "🅱️", official: false, note: "queue posts across social platforms",
+    command: "npx", args: ["-y", "buffer-mcp-server"], fields: [{ env: "BUFFER_ACCESS_TOKEN", label: "Access token" }], docs: "https://buffer.com/developers" },
+
+  // ── 🗂️ Workspace / data ──
+  { id: "notion", label: "Notion", emoji: "📝", official: true, note: "read/write your Notion workspace",
+    command: "npx", args: ["-y", "@notionhq/notion-mcp-server"], fields: [{ env: "NOTION_TOKEN", label: "Integration token", placeholder: "ntn_…" }], docs: "https://github.com/makenotion/notion-mcp-server" },
+  { id: "supabase", label: "Supabase", emoji: "🐘", official: true, note: "query & manage your Supabase database",
+    command: "npx", args: ["-y", "@supabase/mcp-server-supabase@latest"], fields: [{ env: "SUPABASE_ACCESS_TOKEN", label: "Access token", placeholder: "sbp_…" }], docs: "https://github.com/supabase-community/supabase-mcp" },
+  { id: "github", label: "GitHub", emoji: "🐙", official: true, note: "repos, issues, PRs, code search",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-github"], fields: [{ env: "GITHUB_PERSONAL_ACCESS_TOKEN", label: "Personal access token", placeholder: "ghp_…" }], docs: "https://github.com/modelcontextprotocol/servers" },
+  { id: "slack", label: "Slack", emoji: "💬", official: true, note: "read & post to your Slack workspace",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-slack"], fields: [{ env: "SLACK_BOT_TOKEN", label: "Bot token", placeholder: "xoxb-…" }, { env: "SLACK_TEAM_ID", label: "Team ID" }], docs: "https://github.com/modelcontextprotocol/servers" },
+  { id: "brave", label: "Brave Search", emoji: "🦁", official: true, note: "independent web search (extra source for research)",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-brave-search"], fields: [{ env: "BRAVE_API_KEY", label: "API key" }], docs: "https://github.com/modelcontextprotocol/servers" },
+];
+
+export function presetById(id: string): McpPreset | undefined {
+  return MCP_PRESETS.find((p) => p.id === id);
+}
