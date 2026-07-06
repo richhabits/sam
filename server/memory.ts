@@ -6,7 +6,7 @@
 //  Upgraded to SQLite for infinite scale and zero memory bloat.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
@@ -35,11 +35,20 @@ db.exec(`
 // Multi-user: each person's memories live under their own namespace (their name).
 try { db.exec(`ALTER TABLE memories ADD COLUMN user TEXT NOT NULL DEFAULT ''`); } catch { /* already there */ }
 const normUser = (u?: string) => (u || "").toLowerCase().trim().slice(0, 60);
+
+// The OWNER is the first-ever named user, persisted so it survives restarts. ONLY the owner
+// ever adopts/sees the legacy (untagged) memories — a family member connecting first after an
+// update can never inherit the owner's private history. Anyone who isn't the owner starts clean.
+const OWNER_FILE = join(process.env.VAULT_DIR || join(__dirname, "..", "vault"), "owner.json");
+let _owner: string | null = (() => { try { return existsSync(OWNER_FILE) ? JSON.parse(readFileSync(OWNER_FILE, "utf8")).owner || null : null; } catch { return null; } })();
 let _adopted = false;
-// One-time: the first named user "adopts" all pre-existing untagged memories (the owner's
-// history) so it isn't lost; everyone added afterwards starts with a clean, private namespace.
 function adoptLegacy(ns: string) {
-  if (_adopted || !ns) return;
+  if (!ns) return;
+  if (!_owner) {                       // first-ever named user becomes the owner (persisted)
+    _owner = ns;
+    try { mkdirSync(dirname(OWNER_FILE), { recursive: true }); writeFileSync(OWNER_FILE, JSON.stringify({ owner: ns })); } catch {}
+  }
+  if (_adopted || ns !== _owner) return;   // only the owner adopts legacy memories
   _adopted = true;
   try { const r = db.prepare(`UPDATE memories SET user = ? WHERE user = '' OR user IS NULL`).run(ns); if (r.changes) _vecCache.clear(); } catch {}
 }

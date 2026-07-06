@@ -60,3 +60,4 @@ docs/index.html
 dist-app/
 !vault/mcp.sample.json
 vault/photos/
+vault/owner.json
