@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow } from "./lib/api";
+import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail } from "./lib/api";
 
 const PROVIDERS = [
   { id: "nvidia", label: "NVIDIA", note: "free · capable 70B · generous limits", url: "https://build.nvidia.com" },
@@ -21,12 +21,16 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [saved, setSaved] = useState("");
   const [allowed, setAllowed] = useState<string[]>([]);
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
+  const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
+  const [emailTest, setEmailTest] = useState("");
 
   const refresh = () => {
     getAdminConfig().then((c) => {
       setCfg(c);
       setVoice(c.elevenVoice || "");
       setIntegrations((prev) => ({ ...prev, linearTeam: c.linearTeam || "" }));
+      // hydrate the non-secret email fields (password is never returned — placeholder shows if set)
+      if (c.email) setEmail({ smtpHost: c.email.smtpHost || "", smtpPort: c.email.smtpPort || "", smtpUser: c.email.smtpUser || "", smtpPass: "", smtpFrom: c.email.smtpFrom || "", ownerEmail: c.email.ownerEmail || "" });
     }).catch(() => {});
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
   };
@@ -45,6 +49,24 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     setEleven(""); flash("elevenlabs"); refresh();
   }
   async function setService(v: string) { await saveConfig("musicService", v); refresh(); }
+
+  async function saveEmail() {
+    // Only send fields the user actually changed (blank password = keep the saved one).
+    if (email.smtpHost) await saveConfig("smtpHost", email.smtpHost.trim());
+    if (email.smtpPort) await saveConfig("smtpPort", email.smtpPort.trim());
+    if (email.smtpUser) await saveConfig("smtpUser", email.smtpUser.trim());
+    if (email.smtpPass) await saveConfig("smtpPass", email.smtpPass.trim());
+    if (email.smtpFrom) await saveConfig("smtpFrom", email.smtpFrom.trim());
+    if (email.ownerEmail) await saveConfig("ownerEmail", email.ownerEmail.trim());
+    setEmail((e) => ({ ...e, smtpPass: "" }));
+    flash("email"); refresh();
+  }
+  async function sendTest() {
+    setEmailTest("Sending…");
+    const r = await testEmail().catch(() => ({ ok: false, error: "request failed" }));
+    setEmailTest(r.ok ? "Sent ✓ — check your inbox" : `Failed: ${r.error || "unknown"}`);
+    setTimeout(() => setEmailTest(""), 6000);
+  }
 
   async function saveIntegrations() {
     if (integrations.notion) await saveConfig("notion", integrations.notion.trim());
@@ -109,6 +131,26 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <input className="admin-input" placeholder={`Linear API Key ${cfg?.linear ? "(Saved)" : ""}`} value={integrations.linear} onChange={(e) => setIntegrations(i => ({...i, linear: e.target.value}))} />
             <input className="admin-input" placeholder="Linear Team ID" value={integrations.linearTeam} onChange={(e) => setIntegrations(i => ({...i, linearTeam: e.target.value}))} />
             <button className="admin-save" onClick={saveIntegrations} style={{width:"auto", alignSelf:"flex-start"}}>{saved === "integrations" ? "Saved ✓" : "Save Integrations"}</button>
+          </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">📧 SAM's email {cfg?.email?.configured ? "· on" : ""}</span><span className="admin-note">so SAM can email your brief + nudges, and send on its own</span></div>
+          <div style={{ display: "flex", gap: 8, flexDirection: "column", marginTop: 12 }}>
+            <input className="admin-input" placeholder="SMTP host (e.g. smtp.gmail.com)" value={email.smtpHost} onChange={(e) => setEmail(v => ({ ...v, smtpHost: e.target.value }))} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="admin-input" style={{ width: 110 }} placeholder="Port (587)" value={email.smtpPort} onChange={(e) => setEmail(v => ({ ...v, smtpPort: e.target.value }))} />
+              <input className="admin-input" style={{ flex: 1 }} placeholder="Username (SAM's address)" value={email.smtpUser} onChange={(e) => setEmail(v => ({ ...v, smtpUser: e.target.value }))} />
+            </div>
+            <input className="admin-input" type="password" placeholder={cfg?.email?.smtpPassSet ? "App password (saved — leave blank to keep)" : "App password"} value={email.smtpPass} onChange={(e) => setEmail(v => ({ ...v, smtpPass: e.target.value }))} />
+            <input className="admin-input" placeholder='From (e.g. SAM <sam@you.com>) — optional' value={email.smtpFrom} onChange={(e) => setEmail(v => ({ ...v, smtpFrom: e.target.value }))} />
+            <input className="admin-input" placeholder="Send my brief to (your inbox)" value={email.ownerEmail} onChange={(e) => setEmail(v => ({ ...v, ownerEmail: e.target.value }))} />
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="admin-save" onClick={saveEmail} style={{ width: "auto" }}>{saved === "email" ? "Saved ✓" : "Save email"}</button>
+              <button className="admin-save" onClick={sendTest} style={{ width: "auto", opacity: cfg?.email?.configured ? 1 : 0.5 }} disabled={!cfg?.email?.configured}>Send test</button>
+              {emailTest && <span className="admin-note" style={{ marginLeft: 4 }}>{emailTest}</span>}
+            </div>
+            <div className="admin-foot">Gmail: create an <b>App password</b> (not your login). IONOS/Fastmail/any SMTP works. Port 465 = TLS, 587 = STARTTLS.</div>
           </div>
         </div>
 

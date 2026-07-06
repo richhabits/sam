@@ -32,6 +32,9 @@ function transport(): Transporter | null {
   return _transport;
 }
 
+// Drop the cached transport so a config change (via Settings/.env) is picked up next send.
+export function resetMailer(): void { _transport = null; }
+
 // Who SAM emails by default (the owner's inbox).
 export function ownerEmail(): string { return process.env.SAM_OWNER_EMAIL || process.env.SMTP_USER || ""; }
 
