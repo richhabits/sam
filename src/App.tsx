@@ -55,6 +55,7 @@ function howAnswered(provider?: string): string {
 const COMMANDS: [string, string][] = [
   ["/team", "🤝 Assemble the crew — big jobs, run in parallel"],
   ["/ninjas", "🥷 Deploy the problem squad — find & deal with it"],
+  ["/turbo", "⚡ Fastest — one quick call, no tools"],
   ["/private", "🔒 100% on your computer (local only)"],
   ["/best", "✨ Best quality"],
   ["/auto", "⚡ Free & capable (default)"],
@@ -77,8 +78,9 @@ const SUGGESTIONS = [
   "What's the weather today, and directions to the nearest coffee?",
 ];
 
-type Quality = "auto" | "private" | "best";
-const QUALITY_TIER: Record<Quality, string | undefined> = { auto: "free", private: "local", best: "premium" };
+type Quality = "turbo" | "auto" | "private" | "best";
+// "turbo" is a signal the server maps to the fastest free provider + a single call (no tools).
+const QUALITY_TIER: Record<Quality, string | undefined> = { turbo: "turbo", auto: "free", private: "local", best: "premium" };
 
 const LS = "sam.v2";
 function loadState(): { convos: Convo[]; activeId: string; brand: string; quality: Quality } {
@@ -487,6 +489,7 @@ export default function App() {
     if (cmd === "/private") { setQuality("private"); sysNote("Switched to Private — everything runs 100% on your computer."); return true; }
     if (cmd === "/best") { setQuality("best"); sysNote("Switched to Best quality."); return true; }
     if (cmd === "/fast" || cmd === "/auto") { setQuality("auto"); sysNote("Switched to Automatic (free & capable)."); return true; }
+    if (cmd === "/turbo") { setQuality("turbo"); sysNote("⚡ Turbo — one fast call on the quickest free brain (no tools). Great for quick chat & drafting."); return true; }
     if (cmd === "/tools") { setToolsOpen(true); return true; }
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
@@ -499,7 +502,7 @@ export default function App() {
     if (cmd === "/swarm") { sysNote("Start a persistent background swarm: /swarm <massive goal>"); return true; }
     if (v.toLowerCase().startsWith("/schedule ")) { runSchedule(v.slice(10)); return true; }
     if (cmd === "/schedule") { sysNote("Schedule a recurring task: /schedule <cron> | <command> — e.g. /schedule daily 09:00 | check my email"); return true; }
-    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /schedule, /new, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
+    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /schedule, /new, /turbo, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
   }
 
@@ -763,10 +766,10 @@ export default function App() {
         {settingsOpen && (
           <div className="popover" onMouseLeave={() => setSettingsOpen(false)}>
             <div className="pop-title">Answer quality</div>
-            {(["auto", "private", "best"] as Quality[]).map((q) => (
+            {(["turbo", "auto", "private", "best"] as Quality[]).map((q) => (
               <button key={q} className={`pop-opt ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)}>
-                <span className="pop-opt-name">{q === "auto" ? "Automatic" : q === "private" ? "Private" : "Best"}</span>
-                <span className="pop-opt-sub">{q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
+                <span className="pop-opt-name">{q === "turbo" ? "⚡ Turbo" : q === "auto" ? "Automatic" : q === "private" ? "Private" : "Best"}</span>
+                <span className="pop-opt-sub">{q === "turbo" ? "Fastest — one quick call, no tools" : q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
               </button>
             ))}
             <div className="pop-title" style={{ marginTop: 6 }}>🎛️ Audio &amp; Camera — you're in control</div>

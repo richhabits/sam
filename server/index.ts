@@ -282,16 +282,21 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
 //  Runs the AGENT: SAM can use tools. Safe tools run automatically;
 //  a risky tool returns kind:"pending" for the user to approve.
 app.post("/api/command", async (req, res) => {
-  const { message, projectId, tier, user, attachments } = req.body as
-    { message: string; projectId?: string; tier?: Tier; user?: User; attachments?: any[] };
+  const { message, projectId, tier: rawTier, user, attachments } = req.body as
+    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[] };
   const atts = Array.isArray(attachments) ? attachments : [];
   const images = atts.filter((a) => a?.kind === "image" && a.data);
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
 
+  // TURBO: one fast model call on the quickest free provider — skip tools, embedding,
+  // recall and routing entirely. Trades the tool loop for raw speed.
+  const turbo = rawTier === "turbo";
+  const tier = (turbo ? "free" : rawTier) as Tier | undefined;
+
   try {
   // SPEED: quick chat/drafting skips embedding, recall and routing entirely.
-  const fast = !!message && isFastPath(message);
+  const fast = turbo || (!!message && isFastPath(message));
   const qvec = (!fast && message) ? await embedOne(message, true, pinnedModel()) : null;
 
   let { skill, chosen } = pickTier(message || "look at this", tier);
@@ -319,7 +324,7 @@ app.post("/api/command", async (req, res) => {
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  const r = await runAgent(system, fullMessage, chosen, toolNames);
+  const r = await runAgent(system, fullMessage, chosen, toolNames, turbo);
 
   if (r.kind === "final") {
     logExchange({ user: message, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
@@ -334,7 +339,7 @@ app.post("/api/command", async (req, res) => {
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
 app.post("/api/stream", async (req, res) => {
-  const { message, projectId, tier, user } = req.body as { message: string; projectId?: string; tier?: Tier; user?: User };
+  const { message, projectId, tier: rawTier, user } = req.body as { message: string; projectId?: string; tier?: string; user?: User };
   if (!message?.trim()) return res.status(400).json({ error: "empty message" });
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -343,7 +348,9 @@ app.post("/api/stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
 
-  const fast = isFastPath(message);
+  const turbo = rawTier === "turbo";              // one fast call, no tools
+  const tier = (turbo ? "free" : rawTier) as Tier | undefined;
+  const fast = turbo || isFastPath(message);
   const qvec = fast ? null : await embedOne(message, true, pinnedModel());
   let { skill, chosen } = pickTier(message, tier);
   const semanticSkillId = selectSkillId(qvec);
@@ -362,7 +369,7 @@ app.post("/api/stream", async (req, res) => {
         logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
         void learnFrom(message, e.text || "", userName);
       }
-    });
+    }, turbo);
   } catch (e: any) {
     send({ type: "done", text: "Something went wrong mid-answer.", trace: [] });
   }
