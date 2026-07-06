@@ -14,7 +14,7 @@ import cors from "cors";
 import { setPool, poolSize, keyStatus } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
-import { runModel, Tier, providersStatus, runVision } from "./models.ts";
+import { runModel, Tier, providersStatus, runVision, warmBrain } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
@@ -82,6 +82,9 @@ console.log(`  vault mounted   · ${vaultStats().path}\n`);
 
 // Build semantic tool/skill indexes + warm date-time/location context (non-blocking).
 void buildIndexes(SKILLS).then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"));
+// Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
+// Local Ollama only — never a cloud call, so it costs nothing.
+void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`));
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
