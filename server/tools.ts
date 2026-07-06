@@ -33,6 +33,7 @@ import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 import { keyStatus } from "./keys.ts";
+import { capacityReport, capacityNudge } from "./capacity.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
@@ -1491,6 +1492,14 @@ export const TOOLS: Tool[] = [
     activity: () => `Pruning old vault logs`, preview: () => `Delete vault daily notes older than 90 days?`,
     run: async () => { const r = pruneOldLogs(); return `Pruned ${r.removed} old log file${r.removed !== 1 ? "s" : ""}.`; } },
   // ─── ADMIN: KEY POOL HEALTH ────────────────────────────────────────────────
+  { name: "capacity_status", safe: true, description: "How much FREE AI capacity SAM has right now, and the one legit free key to add if it's running thin. input: (none).", params: "(none)",
+    activity: () => `Checking free AI capacity`, run: async () => {
+      const r = capacityReport();
+      const nudge = capacityNudge();
+      return `Free AI capacity: ${r.level.toUpperCase()} — ${r.configured} free provider(s) configured, ${r.healthy}/${r.freeKeys} keys ready` +
+        (r.cooling ? `, ${r.cooling} cooling (rate-limited)` : "") + ".\n" + (nudge || "You're well-stocked — nothing to add.") +
+        `\n(Local Ollama is always the unlimited, key-free fallback.)`;
+    } },
   { name: "key_pool_status", safe: true, description: "Live dashboard showing every AI provider's key pool: how many keys are healthy vs cooling down.", params: "(none)",
     activity: () => `Checking key pool health`, run: async () => {
       const pools = keyStatus();

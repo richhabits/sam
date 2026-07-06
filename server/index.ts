@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus } from "./keys.ts";
+import { capacityReport, capacityNudge, capacityLine } from "./capacity.ts";
 import { runModel, Tier, providersStatus, runVision } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
@@ -165,7 +166,8 @@ startProactive(async () => {
     `\n\n## Latest Emails\n${emailData || "Inbox is quiet."}` +
     `\n\n## Weather\n${weatherData || "Couldn't get the weather."}` +
     `${nudges.length ? `\n\n## Pending Nudges\n${nudges.map((n) => `- ${n.text}${n.due ? ` (due ${n.due})` : ""}`).join("\n")}` : "\n\nNo pending nudges."}` +
-    `\n\nSynthesise all of this into a single, warm, punchy morning brief. Lead with the most important thing. Don't just list — weave it into a narrative.`;
+    `${capacityNudge() ? `\n\n## Free AI capacity\n${capacityNudge()}` : ""}` +
+    `\n\nSynthesise all of this into a single, warm, punchy morning brief. Lead with the most important thing. Don't just list — weave it into a narrative. If free AI capacity is thin, mention it and the one key to add.`;
   try {
     const qvec = await embedOne(prompt, true);
     const r = await runAgent(system, prompt, (process.env.DEFAULT_TIER as Tier) || "free", selectTools(qvec, 6));
@@ -703,10 +705,13 @@ app.get("/api/status", (_req, res) =>
     memory: memoryStats(),
     docs: docsStats(),
     models: providersStatus(),
+    capacity: capacityReport(),
     vault: vaultStats(),
   })
 );
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
+// SAM's own free-tier capacity + the single legit key to add next (if any).
+app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
 
 // ── Serve the built app from this one process (production mode) ──
 // One server on :8787 — no separate Vite dev server. Leaner + faster.
