@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense, memo } from "react";
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
 import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -187,7 +187,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
 });
 
 export default function App() {
-  const init = loadState();
+  const init = useMemo(loadState, []);   // read persisted state ONCE, not on every render
   const [projects, setProjects] = useState<{ id: string; name: string; themeColor?: string }[]>([]);
   const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [status, setStatus] = useState<any>(null);
@@ -672,6 +672,8 @@ export default function App() {
 
   // Used by hands-free Voice Mode — runs a turn and returns SAM's reply to speak.
   async function voiceAsk(q: string): Promise<string> {
+    if (loading) return "One sec — I'm still finishing the last one.";   // same gate as typed send() — don't interleave turns
+    setLoading(true);
     setMessages((m) => [...m, { role: "user", text: q, at: now() }]);
     try {
       const r = await command(q, brand || undefined, QUALITY_TIER[quality]);
@@ -680,6 +682,7 @@ export default function App() {
       refreshLog();
       return r.text || "";
     } catch { return "I couldn't reach my brain just then."; }
+    finally { setLoading(false); }
   }
 
   function stop() { abortRef.current?.abort(); setLive(null); setLoading(false); }
@@ -702,11 +705,15 @@ export default function App() {
     setActiveId(id); setMessages(convos.find((c) => c.id === id)?.messages || []); setPending(null); setHistoryOpen(false);
   }
   function deleteConvo(id: string) {
-    setConvos((cs) => {
-      const rest = cs.filter((c) => c.id !== id);
-      if (id === activeId) { const next = rest[0] || { id: uid(), title: "New chat", messages: [], at: Date.now() }; setActiveId(next.id); setMessages(next.messages); return rest.length ? rest : [next]; }
-      return rest;
-    });
+    // Compute first, then set each state — a setState updater must be pure (React may
+    // call it twice in StrictMode/concurrent, which would double-fire the side effects).
+    const rest = convos.filter((c) => c.id !== id);
+    if (id === activeId) {
+      const next = rest[0] || { id: uid(), title: "New chat", messages: [], at: Date.now() };
+      setActiveId(next.id); setMessages(next.messages); setConvos(rest.length ? rest : [next]);
+    } else {
+      setConvos(rest);
+    }
   }
 
   async function copyMsg(text: string, i: number) {
