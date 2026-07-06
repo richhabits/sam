@@ -36,6 +36,27 @@ async function callOllama(system: string, prompt: string): Promise<string> {
   return data?.message?.content?.trim() || "";
 }
 
+// Pre-load the local Ollama model into RAM at boot so the FIRST message doesn't pay the
+// multi-second cold model-load. Free + local + best-effort — we NEVER spend cloud quota to
+// warm up. `prompt:""` loads the model without generating; keep_alive holds it resident.
+export async function warmBrain(): Promise<string | null> {
+  try {
+    const tags = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(1200) });
+    if (!tags.ok) return null;   // Ollama not running — nothing to warm (cloud stays cold by design)
+    // Only warm a model that's actually pulled, so we never falsely claim it's resident.
+    const models: string[] = ((await tags.json())?.models || []).map((m: any) => m?.name).filter(Boolean);
+    const target = models.includes(OLLAMA_MODEL) ? OLLAMA_MODEL : models[0];
+    if (!target) return null;    // Ollama up but no models pulled — nothing to load
+    void fetch(`${OLLAMA_URL}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: target, prompt: "", keep_alive: "30m" }),
+      signal: AbortSignal.timeout(30000),
+    }).catch(() => {});
+    return target;
+  } catch { return null; }
+}
+
 // ── Shared OpenAI-compatible caller (Groq, OpenRouter, OpenAI) ─
 async function callOpenAICompat(
   base: string, model: string, system: string, prompt: string, key: string
