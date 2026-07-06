@@ -42,6 +42,9 @@ const PROVIDERS: Prov[] = [
   { id: "friendli", label: "Friendli", note: "free credits", url: "https://suite.friendli.ai" },
   { id: "codestral", label: "Codestral (Mistral)", note: "free · code specialist", url: "https://console.mistral.ai/codestral" },
   { id: "inference", label: "Inference.net", note: "free credits · OpenAI-compatible", url: "https://inference.net" },
+  { id: "vercel", label: "Vercel AI Gateway", note: "$5 free credits every month · 100s of models", url: "https://vercel.com/ai-gateway" },
+  { id: "ovh", label: "OVHcloud AI", note: "free tier · EU · OpenAI-compatible", url: "https://endpoints.ai.cloud.ovh.net" },
+  { id: "gmi", label: "GMI Cloud", note: "free credits · DeepSeek/Llama/Qwen", url: "https://console.gmicloud.ai" },
   // ── Premium (paid — only used if you pick "Best", never on free) ──
   { id: "anthropic", label: "Anthropic (Claude)", note: "premium · paid", url: "https://console.anthropic.com/settings/keys", premium: true },
   { id: "openai", label: "OpenAI", note: "premium · paid", url: "https://platform.openai.com/api-keys", premium: true },

@@ -176,6 +176,9 @@ const CHUTES_MODEL = process.env.CHUTES_MODEL || "deepseek-ai/DeepSeek-V3";
 const FRIENDLI_MODEL = process.env.FRIENDLI_MODEL || "meta-llama-3.1-70b-instruct";
 const CODESTRAL_MODEL = process.env.CODESTRAL_MODEL || "codestral-latest";
 const INFERENCE_MODEL = process.env.INFERENCE_MODEL || "meta-llama/llama-3.1-8b-instruct/fp-8";
+const GMI_MODEL = process.env.GMI_MODEL || "meta-llama/Llama-3.3-70B-Instruct";
+const VERCEL_MODEL = process.env.VERCEL_MODEL || "meta/llama-3.3-70b";
+const OVH_MODEL = process.env.OVH_MODEL || "Meta-Llama-3_1-70B-Instruct";
 const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "openai";
 
 // ═══════════════════════════════════════════════════════════════
@@ -231,6 +234,9 @@ const PROVIDERS: Provider[] = [
   { id: "friendli", tier: "free", label: `friendli:${FRIENDLI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.friendli.ai/serverless/v1", FRIENDLI_MODEL, s, p, k) },
   { id: "codestral", tier: "free", label: `codestral:${CODESTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://codestral.mistral.ai/v1", CODESTRAL_MODEL, s, p, k) },
   { id: "inference", tier: "free", label: `inference:${INFERENCE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.inference.net/v1", INFERENCE_MODEL, s, p, k) },
+  { id: "gmi", tier: "free", label: `gmi:${GMI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.gmi-serving.com/v1", GMI_MODEL, s, p, k) },
+  { id: "vercel", tier: "free", label: `vercel:${VERCEL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://ai-gateway.vercel.sh/v1", VERCEL_MODEL, s, p, k) },
+  { id: "ovh", tier: "free", label: `ovh:${OVH_MODEL}`, run: (s, p, k) => callOpenAICompat("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1", OVH_MODEL, s, p, k) },
 
   // ── ALWAYS-LAST · never dry: a free brain that needs NO key at all ──
   { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },

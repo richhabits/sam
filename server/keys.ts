@@ -92,6 +92,9 @@ const POOLS: Record<string, KeyPool> = {
   friendli: readPool("friendli", "FRIENDLI_API_KEYS", "FRIENDLI_API_KEY"),
   codestral: readPool("codestral", "CODESTRAL_API_KEYS", "CODESTRAL_API_KEY"),
   inference: readPool("inference", "INFERENCE_API_KEYS", "INFERENCE_API_KEY"),
+  gmi: readPool("gmi", "GMI_API_KEYS", "GMI_API_KEY"),
+  vercel: readPool("vercel", "VERCEL_API_KEYS", "VERCEL_API_KEY"),
+  ovh: readPool("ovh", "OVH_API_KEYS", "OVH_API_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).
