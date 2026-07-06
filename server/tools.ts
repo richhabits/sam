@@ -11,6 +11,7 @@
 import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
@@ -1555,6 +1556,27 @@ export const TOOLS: Tool[] = [
       }
       // Last resort: hand back the Pollinations URL anyway — the browser will trigger generation.
       return done(pUrl, "Pollinations");
+    } },
+  { name: "transcribe_audio", safe: true, description: "Transcribe an audio file (voice memo, recording, podcast clip) to text — free via Groq Whisper. input: {path}.", params: "{path}",
+    activity: (i) => `Transcribing ${String(i.path || "").split("/").pop()}`, run: async (i) => {
+      const p = String(i.path || i || "").replace(/^~/, process.env.HOME || "");
+      if (!p || !existsSync(p)) return `Can't find that audio file: ${p || "(no path)"}`;
+      const gk = getKey("groq");
+      if (!gk) return "Transcription needs a (free) Groq key — grab one at console.groq.com/keys and paste it in Settings → API keys.";
+      try {
+        const buf = await readFile(p);
+        if (buf.length > 24 * 1024 * 1024) return "That file's over 24MB — trim it down and I'll transcribe it.";
+        const form = new FormData();
+        form.append("file", new Blob([new Uint8Array(buf)]), p.split("/").pop() || "audio.m4a");
+        form.append("model", "whisper-large-v3");
+        const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST", headers: { Authorization: `Bearer ${gk}` }, body: form, signal: AbortSignal.timeout(120000),
+        });
+        if (!r.ok) { reportFailure("groq", gk, r.status); return `Transcription failed (HTTP ${r.status}).`; }
+        reportSuccess("groq", gk);
+        const text = ((await r.json()) as any)?.text?.trim() || "";
+        return text ? `Transcript of ${p.split("/").pop()}:\n\n${clip(text, 6000)}` : "Transcribed, but it came back empty — is there speech in that file?";
+      } catch (e: any) { return `Transcription hiccup: ${String(e?.message || e).slice(0, 120)}`; }
     } },
   { name: "generate_video", safe: true, description: "Create a short AI video from a text description (uses your free Novita credits; ~1-2 min). input: {prompt}.", params: "{prompt}",
     activity: (i) => `Filming: ${String(i.prompt || "").slice(0, 40)}…`, run: async (i) => {
