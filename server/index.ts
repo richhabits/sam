@@ -33,6 +33,7 @@ import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./sw
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
+import { vapidPublicKey, addSubscription, pushNotify, subscriberCount } from "./push.ts";
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine } from "./persona.ts";
@@ -169,7 +170,7 @@ startDropWatcher(async (d) => {
     const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free");
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
-      desktopNotify("SAM — iOS Drop Processed", r.text);
+      desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
     }
   } catch {}
 });
@@ -179,7 +180,7 @@ startScheduler(async (command: string) => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
   const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
   if (r.kind === "final" && r.text) {
-    desktopNotify("SAM — Scheduled Task", r.text);
+    desktopNotify("SAM — Scheduled Task", r.text); void pushNotify("SAM — scheduled task", r.text);
     return r.text;
   }
   return "Finished.";
@@ -721,6 +722,11 @@ app.get("/api/people", (_req, res) => res.json(listPeople()));
 app.post("/api/people", (req, res) => { const { name, look, relation, face } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation, Array.isArray(face) ? face : undefined)); });
 // Face descriptors (128-float vectors, computed on-device) the HUD matches against — no images.
 app.get("/api/faces", (_req, res) => res.json({ faces: faceRoster() }));
+
+// 🔔 Web Push — SAM reaches your phone even when the app is closed.
+app.get("/api/push/key", (_req, res) => res.json({ key: vapidPublicKey(), subscribers: subscriberCount() }));
+app.post("/api/push/subscribe", (req, res) => { const ok = addSubscription(req.body); res.json({ ok }); });
+
 
 // 📱 Phone link — loopback-only. Returns the scan-me URL (with token) so Settings can show a
 // QR the phone camera reads → lands authenticated. Only reveals the token to a local request.

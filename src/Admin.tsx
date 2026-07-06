@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone } from "./lib/api";
 import QRCode from "qrcode";
+import { enablePush, pushEnabled } from "./lib/push";
 
 // Every publicly-available provider SAM can rotate across. `starter` = the easy, generous,
 // grab-in-2-minutes ones shown first; the rest live under "More free brains". More keys
@@ -65,6 +66,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [phone, setPhone] = useState<{ remoteOn: boolean; lan: string | null; url: string | null }>({ remoteOn: false, lan: null, url: null });
   const [phoneQR, setPhoneQR] = useState("");
   const [phoneMsg, setPhoneMsg] = useState("");
+  const [pushOn, setPushOn] = useState(false);
+  const [pushMsg, setPushMsg] = useState("");
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -77,6 +80,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     }).catch(() => {});
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
     getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
+    pushEnabled().then(setPushOn).catch(() => {});
   };
   useEffect(() => { refresh(); }, []);
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
@@ -256,6 +260,14 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               }}>Turn on phone access</button>
             </div>
           )}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <div className="admin-note" style={{ marginBottom: 8, lineHeight: 1.5 }}>🔔 <b>Alerts on this device</b> — get SAM's morning brief, reminders &amp; task results as push notifications, even when SAM's closed. {pushOn ? <b style={{ color: "var(--accent-text)" }}>· On for this device ✓</b> : ""} {pushMsg && <b style={{ color: "var(--accent-text)" }}>{pushMsg}</b>}</div>
+            {!pushOn && <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+              setPushMsg("…"); const r = await enablePush();
+              setPushMsg(r === "ok" ? "" : r === "denied" ? "You blocked notifications — allow them in your browser/phone settings." : r === "unsupported" ? "This device doesn't support push (on iPhone: install SAM via Share → Add to Home Screen first)." : "Couldn't enable — try again.");
+              if (r === "ok") setPushOn(true);
+            }}>Get alerts here</button>}
+          </div>
         </div>
 
         <div className="admin-row">
