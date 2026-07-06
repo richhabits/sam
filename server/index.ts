@@ -322,7 +322,7 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
     const m = r.text.match(/\[[\s\S]*\]/);
     if (!m) return;
     const facts = JSON.parse(m[0]);
-    if (Array.isArray(facts)) for (const f of facts) if (typeof f === "string" && f.length > 6) await remember(f, "fact");
+    if (Array.isArray(facts)) for (const f of facts) if (typeof f === "string" && f.length > 6) await remember(f, "fact", name);
   } catch { /* memory is best-effort */ }
 }
 
@@ -351,7 +351,7 @@ app.post("/api/command", async (req, res) => {
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
 
-  const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
+  const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
   const docs = fast ? "" : recallDocs(qvec);
   const toolNames = fast ? undefined : selectTools(qvec, 8, message);
   const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
@@ -406,7 +406,7 @@ app.post("/api/stream", async (req, res) => {
     let { skill, chosen } = pickTier(message, tier);
     const semanticSkillId = selectSkillId(qvec);
     if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-    const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
+    const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
     const docs = fast ? "" : recallDocs(qvec);
     const toolNames = fast ? undefined : selectTools(qvec, 8, message);
     const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
