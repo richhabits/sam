@@ -10,7 +10,7 @@
 
 import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, readdir, stat, appendFile as appendFileFs } from "node:fs/promises";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
@@ -80,9 +80,9 @@ function notSupported(feature: string): string {
 }
 // Cross-platform "open this URL/app/file with the system default".
 function openCmd(target: string): string {
-  if (OS === "mac") return `open ${JSON.stringify(target)}`;
-  if (OS === "windows") return `start "" ${JSON.stringify(target)}`;
-  return `xdg-open ${JSON.stringify(target)}`;
+  if (OS === "mac") return `open ${shq(target)}`;
+  if (OS === "windows") return `start "" ${shq(target)}`;
+  return `xdg-open ${shq(target)}`;
 }
 
 export interface Tool {
@@ -275,8 +275,8 @@ async function osa(script: string): Promise<string> {
 }
 async function openApp(name: string): Promise<string> {
   if (IS_MAC) await execFile("open", ["-a", name]);
-  else if (OS === "windows") await sh(`start "" ${JSON.stringify(name)}`);
-  else await sh(`${JSON.stringify(name)} &`).catch(() => {});
+  else if (OS === "windows") await sh(`start "" ${shq(name)}`);
+  else await sh(`${shq(name)} &`).catch(() => {});
   return `Opened ${name}.`;
 }
 async function typeText(text: string): Promise<string> {
@@ -286,7 +286,7 @@ async function typeText(text: string): Promise<string> {
     const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${text.replace(/'/g, "''")}');`;
     await sh(`powershell -command "${ps}"`);
   } else {
-    await sh(`xdotool type ${JSON.stringify(text)}`);
+    await sh(`xdotool type ${shq(text)}`);
   }
   return `Typed: ${text}`;
 }
@@ -302,7 +302,7 @@ async function pressKey(input: { key: string; modifiers?: string[] }): Promise<s
     await sh(`powershell -command "${ps}"`);
     return `Pressed key ${input.key}`;
   } else {
-    await sh(`xdotool key ${input.key}`);
+    await sh(`xdotool key ${shq(input.key)}`);
     return `Pressed key ${input.key}`;
   }
 }
@@ -313,7 +313,7 @@ async function clickAt(input: { x: number; y: number }): Promise<string> {
     const ps = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${input.x}, ${input.y}); Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int buttons, int extrainfo);' -Name Mouse -Namespace Win32; [Win32.Mouse]::mouse_event(0x0002 -bor 0x0004, 0, 0, 0, 0);`;
     await sh(`powershell -command "${ps}"`);
   } else {
-    await sh(`xdotool mousemove ${input.x} ${input.y} click 1`);
+    await sh(`xdotool mousemove ${Number(input.x)|0} ${Number(input.y)|0} click 1`);
   }
   return `Clicked at ${input.x},${input.y}`;
 }
@@ -325,12 +325,12 @@ async function screenshot(): Promise<string> {
   const path = resolve(homedir(), "Desktop", `SAM-screenshot-${Date.now()}.png`);
   try {
     if (IS_MAC) {
-      await sh(`screencapture -x ${JSON.stringify(path)}`);
+      await sh(`screencapture -x ${shq(path)}`);
     } else if (OS === "windows") {
       const ps = `Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height; $gfx = [System.Drawing.Graphics]::FromImage($bmp); $gfx.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size); $bmp.Save('${path}', [System.Drawing.Imaging.ImageFormat]::Png); $gfx.Dispose(); $bmp.Dispose()`;
       await sh(`powershell -command "${ps}"`);
     } else {
-      await sh(`import -window root ${JSON.stringify(path)} 2>/dev/null || scrot ${JSON.stringify(path)}`);
+      await sh(`import -window root ${shq(path)} 2>/dev/null || scrot ${shq(path)}`);
     }
     return `Saved a screenshot to ${path}`;
   } catch (e: any) {
@@ -346,9 +346,9 @@ async function clipboardGet(): Promise<string> {
 }
 async function clipboardSet(text: string): Promise<string> {
   try {
-    if (IS_MAC) await sh(`printf %s ${JSON.stringify(text)} | pbcopy`);
-    else if (OS === "windows") await sh(`echo ${JSON.stringify(text)} | clip`);
-    else await sh(`printf %s ${JSON.stringify(text)} | xclip -selection clipboard`);
+    if (IS_MAC) await sh(`printf %s ${shq(text)} | pbcopy`);
+    else if (OS === "windows") await sh(`echo ${shq(text)} | clip`);
+    else await sh(`printf %s ${shq(text)} | xclip -selection clipboard`);
     return "Copied to clipboard.";
   } catch { return notSupported("set clipboard"); }
 }
@@ -380,8 +380,8 @@ async function openUrl(url: string): Promise<string> {
 }
 async function searchFiles(q: string): Promise<string> {
   try {
-    if (IS_MAC) { const { stdout } = await sh(`mdfind ${JSON.stringify(q)} | head -30`, { timeout: 20000 }); return clip(stdout.trim()) || "No files found."; }
-    const { stdout } = await sh(`grep -rl ${JSON.stringify(q)} ${JSON.stringify(homedir())} 2>/dev/null | head -30`, { timeout: 20000 });
+    if (IS_MAC) { const { stdout } = await sh(`mdfind ${shq(q)} | head -30`, { timeout: 20000 }); return clip(stdout.trim()) || "No files found."; }
+    const { stdout } = await sh(`grep -rl ${shq(q)} ${shq(homedir())} 2>/dev/null | head -30`, { timeout: 20000 });
     return clip(stdout.trim()) || "No files found.";
   } catch (e: any) { return `Search failed: ${e?.message}`; }
 }
@@ -405,7 +405,7 @@ async function getBattery(): Promise<string> {
 
 async function speak(text: string): Promise<string> {
   if (!IS_MAC) return "SAM can speak in the browser instead (turn on 'Read replies aloud' in settings).";
-  await sh(`say ${JSON.stringify(text)}`); return `Said: ${text}`;
+  await sh(`say ${shq(text)}`); return `Said: ${text}`;
 }
 
 // ── MORE macOS ACTIONS (risky) ───────────────────────────────
@@ -475,12 +475,12 @@ async function playMusic(query: string): Promise<string> {
 async function makeCall(number: string): Promise<string> {
   if (!IS_MAC) return notSupported("phone calls");
   const n = String(number).replace(/[^\d+*#]/g, "");
-  await sh(`open ${JSON.stringify("tel://" + n)}`);
+  await sh(`open ${shq("tel://" + n)}`);
   return `Calling ${number} — pick up on your Mac or iPhone. (Needs 'Calls from iPhone' on in FaceTime settings.)`;
 }
 async function faceTime(who: string): Promise<string> {
   if (!IS_MAC) return notSupported("FaceTime");
-  await sh(`open ${JSON.stringify("facetime://" + who)}`);
+  await sh(`open ${shq("facetime://" + who)}`);
   return `Starting a FaceTime with ${who}.`;
 }
 
@@ -703,7 +703,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Ejecting ${i.volume_name}`, preview: (i) => `Eject volume: ${i.volume_name}`,
     run: async (i) => {
       if (!IS_MAC) return "Eject only works on macOS.";
-      try { await sh(`diskutil eject "/Volumes/${i.volume_name.replace(/"/g, "")}"`); return `Ejected ${i.volume_name}.`; } catch (e: any) { return `Failed to eject: ${e.message}`; }
+      try { await sh(`diskutil eject ${shq("/Volumes/" + String(i.volume_name).replace(/\//g, ""))}`); return `Ejected ${i.volume_name}.`; } catch (e: any) { return `Failed to eject: ${e.message}`; }
     } },
   { name: "caffeinate", safe: true, description: "Prevent the Mac from sleeping for a duration. input: {minutes}.", params: "{minutes}",
     activity: (i) => `Keeping Mac awake for ${i.minutes}m`,
@@ -977,7 +977,7 @@ export const TOOLS: Tool[] = [
           return result.trim() || "No matching notes found.";
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
-          const { stdout } = await sh(`grep -ri "${i.query.replace(/"/g, "")}" "${notesDir}" 2>/dev/null || true`);
+          const { stdout } = await sh(`grep -ri ${shq(i.query)} ${shq(notesDir)} 2>/dev/null || true`);
           return stdout.trim() || "No matching notes found.";
         }
       } catch (e: any) { return `Failed to search notes: ${e.message}`; }
@@ -1248,9 +1248,9 @@ export const TOOLS: Tool[] = [
           return `Appended to note '${i.title}'.`;
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
-          const { stdout } = await sh(`ls "${notesDir}" 2>/dev/null | grep -i "${i.title.replace(/"/g, "")}" | head -1`);
-          const file = resolve(notesDir, stdout.trim() || `${i.title.replace(/[^a-z0-9]/gi, '_')}.txt`);
-          await sh(`printf "\n\n${i.text.replace(/"/g, '\\"')}" >> "${file}"`);
+          const { stdout } = await sh(`ls ${shq(notesDir)} 2>/dev/null | grep -i ${shq(i.title)} | head -1`);
+          const file = resolve(notesDir, stdout.trim() || `${String(i.title).replace(/[^a-z0-9]/gi, '_')}.txt`);
+          await appendFileFs(file, `\n\n${i.text}`, "utf8");   // fs write — no shell, no injection
           return `Appended to ${file}.`;
         }
       } catch (e: any) { return `Couldn't append to note: ${e.message}`; }
@@ -1301,7 +1301,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       if (!IS_MAC) return notSupported("Shortcuts");
       try {
-        const { stdout } = await sh(`shortcuts run "${esc(i.name)}"`);
+        const { stdout } = await sh(`shortcuts run ${shq(i.name)}`);
         return stdout || `Ran shortcut '${i.name}'.`;
       } catch (e: any) { return `Shortcut failed: ${e.message}`; }
     } },
