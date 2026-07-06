@@ -348,20 +348,22 @@ app.post("/api/stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
 
-  const turbo = rawTier === "turbo";              // one fast call, no tools
-  const tier = (turbo ? "free" : rawTier) as Tier | undefined;
-  const fast = turbo || isFastPath(message);
-  const qvec = fast ? null : await embedOne(message, true, pinnedModel());
-  let { skill, chosen } = pickTier(message, tier);
-  const semanticSkillId = selectSkillId(qvec);
-  if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-  const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
-  const docs = fast ? "" : recallDocs(qvec);
-  const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
-  const userName = (user?.name || "the user").trim();
-
   try {
+    // Setup (embed/recall/routing) is INSIDE the try — a throw here (e.g. an embed
+    // provider blowing up) must still send done+end, or the client's SSE reader hangs.
+    const turbo = rawTier === "turbo";              // one fast call, no tools
+    const tier = (turbo ? "free" : rawTier) as Tier | undefined;
+    const fast = turbo || isFastPath(message);
+    const qvec = fast ? null : await embedOne(message, true, pinnedModel());
+    let { skill, chosen } = pickTier(message, tier);
+    const semanticSkillId = selectSkillId(qvec);
+    if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
+    const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5) : []).map((h) => `- ${h.text}`).join("\n");
+    const docs = fast ? "" : recallDocs(qvec);
+    const toolNames = fast ? undefined : selectTools(qvec, 8, message);
+    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
+    const userName = (user?.name || "the user").trim();
+
     const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
     await runAgentStream(system, message, chosen, toolNames, (e) => {
       send(e.type === "pending" ? withPending(e, ctx) : e);
@@ -537,8 +539,10 @@ app.post("/api/speak", async (req, res) => {
 
 // ── SAM Creative Space (Proxy to Muapi) ──────────────────────
 app.all("/api/creative/*", async (req, res) => {
-  const apiKey = process.env.MUAPI_API_KEY || process.env.OPENAI_API_KEY; // fallback if needed, or specific key
-  if (!apiKey) return res.status(503).json({ error: "No API key configured for SAM Creative Space" });
+  // ONLY the muapi key — no OpenAI fallback: an OpenAI key isn't valid at muapi anyway,
+  // so the old fallback just leaked the user's OpenAI credential to a third party.
+  const apiKey = process.env.MUAPI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "No MUAPI_API_KEY configured for SAM Creative Space" });
 
   // Sanitize the wildcard path so it can only address muapi's own API surface — no
   // "..", scheme, host, credentials or backslashes that could redirect the request
