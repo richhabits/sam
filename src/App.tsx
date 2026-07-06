@@ -48,8 +48,18 @@ function howAnswered(provider?: string): string {
   if (!provider) return "";
   if (provider.startsWith("ollama")) return "on your computer";
   if (provider === "none") return "offline";
-  if (/claude|anthropic|gpt-4|openai/i.test(provider)) return "best";
-  return "fast";   // cerebras / groq / nvidia / mistral / github / gemini — all free & quick
+  if (/claude|anthropic|gpt-4|openai/i.test(provider)) return "on Claude (best)";
+  // Free cloud — show WHICH brain answered, so the task-aware routing is visible
+  // (quick chat → Cerebras/Groq; reasoning → DeepSeek/NVIDIA; code → DeepSeek/Fireworks).
+  const NAMES: Record<string, string> = {
+    cerebras: "Cerebras", groq: "Groq", sambanova: "SambaNova", together: "Together",
+    deepseek: "DeepSeek", fireworks: "Fireworks", nvidia: "NVIDIA", mistral: "Mistral",
+    gemini: "Gemini", openrouter: "OpenRouter", github: "GitHub Models", zhipu: "Zhipu",
+    alibaba: "Qwen", xai: "xAI", cohere: "Cohere", perplexity: "Perplexity", nebius: "Nebius",
+    hyperbolic: "Hyperbolic", novita: "Novita", siliconflow: "SiliconFlow", huggingface: "HuggingFace",
+  };
+  const id = provider.split(":")[0];
+  return `on ${NAMES[id] || id} (free)`;
 }
 
 const COMMANDS: [string, string][] = [
