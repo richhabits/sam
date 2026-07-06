@@ -222,6 +222,9 @@ export default function App() {
   const [guardian, setGuardian] = useState(false);
   const [stranger, setStranger] = useState<string | null>(null);   // Guardian saw someone new → "remember them" banner
   const [strangerName, setStrangerName] = useState("");
+  const [timelapse, setTimelapse] = useState(false);
+  const tlStream = useRef<MediaStream | null>(null);
+  const tlIv = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autopilot, setAutopilot] = useState(false);
   useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
   const [elon, setElon] = useState(false);
@@ -408,6 +411,7 @@ export default function App() {
     setSpeakReplies(false);
     if (wakeOn) setWakeOn(false);
     if (guardian) stopGuardian();
+    if (timelapse) stopTimelapse();
     setVoiceMode(false);
     showToast("🔇 All audio & camera stopped");
   }
@@ -515,6 +519,77 @@ export default function App() {
   // 📄 Scan text — camera as a document/receipt scanner.
   const scanTextFromCamera = () => askWithFrame("📄 (scanning text)",
     "Read ALL text visible in this camera frame (document, receipt, screen, label). Give it back accurately and neatly formatted, then offer to save it as a note.");
+  // 🔳 Scan a QR code / barcode — native BarcodeDetector when available, else vision fallback.
+  async function scanQR() {
+    if (loading) return;
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const video = document.createElement("video"); video.srcObject = stream; video.muted = true; await video.play();
+      await new Promise((r) => setTimeout(r, 500));
+      const BD = (window as any).BarcodeDetector;
+      if (BD) {
+        const det = new BD();
+        for (let t = 0; t < 12; t++) {   // scan a couple of seconds
+          const codes = await det.detect(video).catch(() => []);
+          if (codes?.length) {
+            const val = codes[0].rawValue as string;
+            stream.getTracks().forEach((x) => x.stop());
+            setMessages((m) => [...m, { role: "user", text: "🔳 (scanned a code)", at: now() }]);
+            const isUrl = /^https?:\/\//i.test(val);
+            setMessages((m) => [...m, { role: "sam", text: `🔳 Scanned: ${isUrl ? `[${val}](${val})` : "`" + val + "`"}${isUrl ? " — want me to open or summarise it?" : ""}`, how: "camera", at: now() }]);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 180));
+        }
+        stream.getTracks().forEach((x) => x.stop());
+        sysNote("No code spotted — hold it steady in frame and try again.");
+        return;
+      }
+      // Fallback: capture a frame and let vision read it
+      const c = document.createElement("canvas"); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480;
+      c.getContext("2d")!.drawImage(video, 0, 0, c.width, c.height);
+      const data = c.toDataURL("image/jpeg", 0.85); stream.getTracks().forEach((x) => x.stop());
+      askWithFrameData("🔳 (scanning a code)", "Read the QR code or barcode in this image and tell me exactly what it contains (URL, text, etc.).", data);
+    } catch { stream?.getTracks().forEach((x) => x.stop()); sysNote("Couldn't open the camera to scan."); }
+  }
+
+  // helper: ask with a frame we already captured
+  async function askWithFrameData(label: string, prompt: string, data: string) {
+    setMessages((m) => [...m, { role: "user", text: label, at: now() }]); setLoading(true);
+    try { handleResult(await command(prompt, brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "cam.jpg", mime: "image/jpeg", data }])); }
+    catch { sysNote("Couldn't read it just now."); }
+    setLoading(false);
+  }
+
+  // ⏱️ Timelapse watch — snaps every N sec and only pings you when the scene meaningfully changes.
+  function stopTimelapse() { if (tlIv.current) { clearInterval(tlIv.current); tlIv.current = null; } tlStream.current?.getTracks().forEach((t) => t.stop()); tlStream.current = null; setTimelapse(false); }
+  async function toggleTimelapse() {
+    if (timelapse) { stopTimelapse(); sysNote("⏱️ Timelapse watch off."); return; }
+    try {
+      tlStream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      setTimelapse(true); sysNote("⏱️ Watching this spot — I'll ping you only when something notable changes (e.g. someone arrives, a delivery lands). Keep this tab open.");
+      const video = document.createElement("video"); video.srcObject = tlStream.current; video.muted = true; await video.play();
+      const big = document.createElement("canvas"); let busy = false; let last = "";
+      tlIv.current = setInterval(async () => {
+        if (!tlStream.current || busy) return; busy = true;
+        try {
+          big.width = video.videoWidth || 640; big.height = video.videoHeight || 480;
+          big.getContext("2d")!.drawImage(video, 0, 0, big.width, big.height);
+          const data = big.toDataURL("image/jpeg", 0.7);
+          const r = await command(`TIMELAPSE WATCH. Previous scene: "${last || "(first look)"}". Describe the scene in one short line. Then, if it's NOTABLY different from the previous (a person/vehicle/object appeared or left, not just lighting), start your reply with 'CHANGE:'. Otherwise start with 'same:'.`, brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "tl.jpg", mime: "image/jpeg", data }]);
+          const txt = (r.text || "").trim(); last = txt.replace(/^(change|same):\s*/i, "").slice(0, 120);
+          if (/^change/i.test(txt)) {
+            const msg = "⏱️ " + txt.replace(/^change:\s*/i, "");
+            setMessages((m) => [...m, { role: "sam", text: msg, how: "timelapse", at: now() }]);
+            try { if ("Notification" in window && Notification.permission === "granted") new Notification("⏱️ SAM Timelapse", { body: msg.slice(0, 140) }); } catch {}
+            if (speakReplies) speakText(msg);
+          }
+        } catch {} finally { busy = false; }
+      }, 30000);   // every 30s
+    } catch { sysNote("Couldn't start Timelapse — allow camera access."); }
+  }
+
   // 📸 Take a photo → saved to the vault (local only).
   async function snapPhoto() {
     const data = await captureFrame(0.92);
@@ -1105,6 +1180,8 @@ export default function App() {
                 <button className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
                 <button className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
                 <button className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
+                <button className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
+                <button className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
                 <button className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
                 <button className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
               </div>
