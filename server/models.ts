@@ -236,6 +236,33 @@ async function tryProvider(prov: Provider, system: string, prompt: string): Prom
 }
 
 // ── DISPATCH with graceful fallback ──────────────────────────
+// ── TASK-AWARE LANES ─────────────────────────────────────────
+// 30+ free models is a lot of firepower — so use the RIGHT one FIRST for the job:
+// blazing-fast small models for quick chat, big reasoning models for hard problems,
+// code-strong ones for programming. It still falls through ALL free providers on
+// failure (nothing wasted) — this only changes which is TRIED first.
+export type Lane = "fast" | "deep" | "code";
+const LANE_PREF: Record<Lane, string[]> = {
+  // fastest inference first (default — keeps quick chat snappy)
+  fast: ["cerebras", "groq", "sambanova"],
+  // biggest / strongest reasoning free models first
+  deep: ["deepseek", "nvidia", "together", "zhipu", "alibaba", "fireworks", "cerebras", "groq"],
+  // strongest at code first
+  code: ["deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
+};
+export function pickLane(text: string): Lane {
+  const t = (text || "").slice(0, 600).toLowerCase();
+  if (/```|\b(debug|refactor|stack ?trace|compile|regex|typescript|javascript|python|\bnpm\b|traceback|exception|syntax error|stack overflow)\b/.test(t)) return "code";
+  if (t.length > 280 || /\b(analy[sz]e|explain why|strateg|compare\b|pros and cons|think through|break ?down|evaluate|deep dive|trade-?offs?|reason through|assess\b)\b/.test(t)) return "deep";
+  return "fast";
+}
+// Stable-sort a free-tier pool so lane-preferred providers come first; unlisted keep order.
+function laneSort(pool: Provider[], lane: Lane): Provider[] {
+  const pref = LANE_PREF[lane];
+  const rank = (id: string) => { const i = pref.indexOf(id); return i === -1 ? 999 : i; };
+  return pool.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p.id) - rank(b.p.id) || a.i - b.i).map((x) => x.p);
+}
+
 export async function runModel(tier: Tier, system: string, prompt: string): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
@@ -254,8 +281,12 @@ export async function runModel(tier: Tier, system: string, prompt: string): Prom
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to
   // paid premium — only an explicit "premium" (Best) request may use paid models.
   const order: Tier[] = tier === "premium" ? ["premium", "free"] : ["free"];
+  const lane = pickLane(prompt);   // what does THIS task need? (fast / deep / code)
   for (const t of order) {
-    for (const prov of PROVIDERS.filter((p) => p.tier === t && poolSize(p.id) > 0)) {
+    const pool = PROVIDERS.filter((p) => p.tier === t && poolSize(p.id) > 0);
+    // For the free tier, try the best model for the task FIRST (still falls through all).
+    const ranked = t === "free" ? laneSort(pool, lane) : pool;
+    for (const prov of ranked) {
       const text = await tryProvider(prov, system, prompt);
       if (text) return { text, provider: prov.label, tier: t };
     }
