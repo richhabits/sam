@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📷 Camera scaled further** — 🔳 QR/barcode scan (native BarcodeDetector, instant; vision fallback),
+  ⏱️ Timelapse watch (snaps every 30s, only pings when the scene NOTABLY changes — deliveries, arrivals),
+  📸 photo roll SAM can browse + reason over (list_photos / view_photo tools — 'where did I leave my keys?'
+  over past snapshots), and a 2nd FREE vision lane (Groq llama-4-scout) so photo-reading works without a
+  Gemini key. All local-first.
 - **📷 Camera, seriously upgraded** — 🙋 *Who's this?* (recognises known people or asks their name and
   remembers them — plus a Guardian "remember them" banner when it spots someone new), 📸 *Take a photo*
   (full-res → vault/photos, local-only, gitignored), 📄 *Scan text* (camera as document/receipt scanner),

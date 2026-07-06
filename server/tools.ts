@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
 // time via require — importing them as ESM at the top crashed boot, and this also
@@ -39,6 +40,8 @@ import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
+import { runVision } from "./models.ts";
+const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
 const sh = promisify(exec);
@@ -1556,6 +1559,23 @@ export const TOOLS: Tool[] = [
       }
       // Last resort: hand back the Pollinations URL anyway — the browser will trigger generation.
       return done(pUrl, "Pollinations");
+    } },
+  { name: "list_photos", safe: true, description: "List the photos SAM has taken/saved (vault/photos) with timestamps — newest first. input: (none).", params: "(none)",
+    activity: () => `Checking my photo roll`, run: async () => {
+      const dir = join(VAULT_DIR, "photos");
+      if (!existsSync(dir)) return "No photos yet — say 'take a photo' or hit 📸 in the ＋ menu.";
+      const files = (await readdir(dir)).filter((f) => /\.(jpe?g|png)$/i.test(f)).sort().reverse().slice(0, 40);
+      return files.length ? `📸 ${files.length} photo(s), newest first:\n${files.map((f) => `- ${join(dir, f)}`).join("\n")}` : "No photos yet.";
+    } },
+  { name: "view_photo", safe: true, description: "Look at a saved photo/image file and describe or answer questions about it (e.g. find where objects are in past snapshots). input: {path, question?}.", params: "{path, question?}",
+    activity: (i) => `Looking at ${String(i.path || "").split("/").pop()}`, run: async (i) => {
+      const p = String(i.path || i || "").replace(/^~/, process.env.HOME || "");
+      if (!p || !existsSync(p)) return `Can't find that image: ${p || "(no path)"}`;
+      const buf = await readFile(p);
+      if (buf.length > 8 * 1024 * 1024) return "That image is over 8MB — too big to inspect.";
+      const mime = /\.png$/i.test(p) ? "image/png" : "image/jpeg";
+      const r = await runVision("You are SAM's eyes reviewing a saved photo.", String(i.question || "Describe this photo in detail — objects, people you might know, and where things are."), [{ mime, data: buf.toString("base64") }]);
+      return r.text;
     } },
   { name: "transcribe_audio", safe: true, description: "Transcribe an audio file (voice memo, recording, podcast clip) to text — free via Groq Whisper. input: {path}.", params: "{path}",
     activity: (i) => `Transcribing ${String(i.path || "").split("/").pop()}`, run: async (i) => {

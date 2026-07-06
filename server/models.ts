@@ -419,6 +419,25 @@ export async function streamModel(tier: Tier, system: string, prompt: string, on
 // ── VISION · look at photos/images (free via Gemini multimodal) ──
 export interface ImagePart { mime: string; data: string } // data = raw base64
 export async function runVision(system: string, prompt: string, images: ImagePart[]): Promise<ModelResult> {
+  // LANE 0 · Groq llama-4-scout (free tier, very fast) — vision without a Gemini key.
+  {
+    const gk = getKey("groq");
+    if (gk) {
+      try {
+        const content: any[] = [{ type: "text", text: prompt || "Describe this and answer any question about it." },
+          ...images.slice(0, 4).map((im) => ({ type: "image_url", image_url: { url: `data:${im.mime};base64,${im.data}` } }))];
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${gk}` },
+          signal: AbortSignal.timeout(45000),
+          body: JSON.stringify({ model: process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct", max_tokens: 1500, messages: [{ role: "system", content: system }, { role: "user", content }] }),
+        });
+        if (r.ok) {
+          const text = (await r.json())?.choices?.[0]?.message?.content?.trim() || "";
+          if (text) { reportSuccess("groq", gk); return { text, provider: "groq:llama-4-scout (vision)", tier: "free" }; }
+        } else reportFailure("groq", gk, r.status);
+      } catch { /* fall through to Gemini */ }
+    }
+  }
   const attempts = Math.max(1, poolSize("gemini"));
   for (let i = 0; i < attempts; i++) {
     const key = getKey("gemini");
