@@ -28,7 +28,7 @@ Most "AI assistants" just talk. SAM works:
 - 📐️ **149 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
-- 💻 **Native macOS App** — runs a native desktop UI with a global `⌥Space` hotkey to summon SAM anywhere.
+- 💻 **Native desktop app** — Mac/Windows/Linux desktop UI with a global `⌥Space` hotkey to summon SAM anywhere. Build it with `npm run build:mac` (or `:win` / `:linux`). Note: package the app from a **path with no spaces** — native modules can't build otherwise (the web app has no such restriction).
 - ✈️ **Autopilot** — lifts the routine work autonomously; the serious stuff still asks. And it reaches out first with a **morning brief** + nudges.
 - 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Shady"*), and **🛡️ Guardian** mode watches for intruders.
 - 🧭 **Semantic memory** · 💼🏠 **Business & Personal minds** · 📍 **live progress tracker** · 🗣️ **two-way voice**.
