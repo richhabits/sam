@@ -69,14 +69,14 @@
       "output": "dist-app"
     },
     "files": [
-      "dist/**",
-      "dist-electron/**",
-      "package.json",
-      "!**/vault/**",
-      "!**/.env",
-      "!**/.env.*",
+      "**/*",
+      "!vault/**",
+      "!.env",
+      "!.env.*",
       "!**/*.test.*",
-      "!**/creative-space/**"
+      "!creative-space/**",
+      "!dist-app/**",
+      "!.git/**"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**",
