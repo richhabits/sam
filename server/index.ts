@@ -491,6 +491,8 @@ const CONFIG_ENV: Record<string, string> = {
   // SAM's own email (SMTP) — set from Settings, saved to .env
   smtpHost: "SMTP_HOST", smtpPort: "SMTP_PORT", smtpUser: "SMTP_USER",
   smtpPass: "SMTP_PASS", smtpFrom: "SMTP_FROM", ownerEmail: "SAM_OWNER_EMAIL",
+  // Apple signed releases (owner-only, BUILD-time creds — used by npm run release:app)
+  appleId: "APPLE_ID", appleTeam: "APPLE_TEAM_ID", applePass: "APPLE_APP_SPECIFIC_PASSWORD",
 };
 const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces in the install path
 
@@ -520,6 +522,12 @@ app.get("/api/admin/config", (_req, res) => {
     twitter: !!process.env.TWITTER_BEARER_TOKEN,
     linear: !!process.env.LINEAR_API_KEY,
     linearTeam: process.env.LINEAR_TEAM_ID || "",
+    // Apple signing (owner) — non-secret fields + whether the app-specific password is set
+    apple: {
+      appleId: process.env.APPLE_ID || "",
+      appleTeam: process.env.APPLE_TEAM_ID || "",
+      applePassSet: !!process.env.APPLE_APP_SPECIFIC_PASSWORD,
+    },
     // SAM email — non-secret fields + whether a password is set (never the password itself)
     email: {
       configured: mailerConfigured(),

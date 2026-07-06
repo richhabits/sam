@@ -3,6 +3,13 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🍎 Signed releases + TRUE silent auto-update (owner opt-in)** — paste your Apple developer
+  details in Settings → 🍎 Signed releases (or .env), create a Developer ID cert in Xcode once,
+  then `npm run release:app` builds a signed + notarized Mac app and uploads it with update
+  manifests — installed SAMs then **update themselves silently** (electron-updater + GitHub
+  releases; unsigned builds gracefully fall back to the update-notifier — Windows NSIS
+  auto-updates even unsigned). Settings shows the config; the app-specific password is
+  write-only, never returned.
 - **🎨 FREE image generation** — "draw me a…" just works: rotating free lanes (Pollinations first —
   no key, effectively unlimited — then Together FLUX/SiliconFlow on free keys, credits sipped evenly).
   Images render inline in the chat (markdown `![img]` support added to the HUD).
