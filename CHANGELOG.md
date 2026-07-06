@@ -3,6 +3,15 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📓 NotebookLM, but yours & free + 🔎 deep research + 🛰️ 24/7 research agent + 🪽 Hermes** — SAM is now
+  a grounded-intelligence platform. New `notebook_add` (sources: web pages, files, pasted text),
+  `notebook_ask` (answers ONLY from your sources, every claim cited — no hallucination), `notebook_audio`
+  (two-host podcast "Audio Overview" of your material), `notebook_list`. New `research` tool: searches
+  the live web, reads the top sources, returns a cited briefing, and files it into a notebook for
+  follow-ups. New `research_watch`: a 24/7 agent that keeps researching a topic on a schedule, files new
+  findings, and pings you what changed. All chunked + embedded LOCALLY (free, private). Powered by
+  **Hermes** (Nous) — reached with no new signup: Nous key → OpenRouter (300-model gateway) → local Ollama;
+  it fronts the deep + code reasoning lanes.
 - **🛡️ XSS closed + hardened HTTP headers** — found & fixed a real cross-site-scripting hole: the reply
   renderer escaped <>& but NOT quotes, so a crafted image/link URL (echoable from a malicious web page
   via web_fetch) could break out of src="…" and inject an onerror handler → JS with full local-API

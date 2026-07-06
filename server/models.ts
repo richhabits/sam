@@ -18,12 +18,12 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
 
 // ── LOCAL · Ollama (free, on your machine) ───────────────────
-async function callOllama(system: string, prompt: string): Promise<string> {
+async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: OLLAMA_MODEL,
+      model,
       stream: false,
       messages: [
         { role: "system", content: system },
@@ -161,6 +161,7 @@ const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || "llama-3.1-sonar-small-
 const ALIBABA_MODEL = process.env.ALIBABA_MODEL || "qwen-plus";
 const VOLCENGINE_MODEL = process.env.VOLCENGINE_MODEL || "doubao-1.5-pro-32k";
 const ZHIPU_MODEL = process.env.ZHIPU_MODEL || "glm-5.2";   // Zhipu flagship — 1M context, MIT (20M free tokens on signup; set glm-4-flash for the free-forever tier)
+const HERMES_MODEL = process.env.HERMES_MODEL || "Hermes-4-405B";   // Nous Hermes flagship — open weights, superb agentic/tool-use reasoning (free tier via Nous portal)
 const MOONSHOT_MODEL = process.env.MOONSHOT_MODEL || "moonshot-v1-8k";
 const MINIMAX_MODEL = process.env.MINIMAX_MODEL || "abab6.5s-chat";
 const STEPFUN_MODEL = process.env.STEPFUN_MODEL || "step-1-8k";
@@ -207,6 +208,17 @@ const PROVIDERS: Provider[] = [
   { id: "alibaba", tier: "free", label: `alibaba:${ALIBABA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", ALIBABA_MODEL, s, p, k) },
   { id: "volcengine", tier: "free", label: `volcengine:${VOLCENGINE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://ark.cn-beijing.volces.com/api/v3", VOLCENGINE_MODEL, s, p, k) },
   { id: "zhipu", tier: "free", label: `zhipu:${ZHIPU_MODEL}`, run: (s, p, k) => callOpenAICompat("https://open.bigmodel.cn/api/paas/v4", ZHIPU_MODEL, s, p, k) },
+  // 🪽 Hermes (Nous Research) — open, un-nerfed, elite at agentic tool-use & long reasoning.
+  // Reached however you already can, NO new signup required: Nous Portal key → OpenRouter (the
+  // 300-model gateway, reuses that key) → local Ollama (free & private). noKey:true so it's always
+  // in the running; it self-selects the best available path and only fails if none exist.
+  { id: "hermes", tier: "free", noKey: true, label: `hermes:${HERMES_MODEL}`, run: async (s, p, _k) => {
+    const nous = getKey("hermes");
+    if (nous) return callOpenAICompat("https://inference-api.nousresearch.com/v1", HERMES_MODEL, s, p, nous);
+    const orouter = getKey("openrouter");
+    if (orouter) return callOpenAICompat("https://openrouter.ai/api/v1", process.env.HERMES_OR_MODEL || "nousresearch/hermes-4-405b", s, p, orouter);
+    return callOllama(s, p, process.env.HERMES_LOCAL_MODEL || "hermes3");   // free + private fallback
+  } },
   { id: "moonshot", tier: "free", label: `moonshot:${MOONSHOT_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.moonshot.cn/v1", MOONSHOT_MODEL, s, p, k) },
   { id: "minimax", tier: "free", label: `minimax:${MINIMAX_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.minimax.chat/v1", MINIMAX_MODEL, s, p, k) },
   { id: "stepfun", tier: "free", label: `stepfun:${STEPFUN_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.stepfun.com/v1", STEPFUN_MODEL, s, p, k) },
@@ -288,9 +300,9 @@ const LANE_PREF: Record<Lane, string[]> = {
   // fastest inference first (default — keeps quick chat snappy)
   fast: ["cerebras", "groq", "sambanova"],
   // biggest / strongest reasoning free models first
-  deep: ["zhipu", "deepseek", "nvidia", "together", "alibaba", "fireworks", "cerebras", "groq"],
+  deep: ["hermes", "zhipu", "deepseek", "nvidia", "together", "alibaba", "fireworks", "cerebras", "groq"],
   // strongest at code first
-  code: ["zhipu", "deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
+  code: ["hermes", "zhipu", "deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
 };
 export function pickLane(text: string): Lane {
   const t = (text || "").slice(0, 600).toLowerCase();

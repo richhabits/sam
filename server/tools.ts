@@ -40,7 +40,8 @@ import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
-import { runVision } from "./models.ts";
+import { runVision, runModel } from "./models.ts";
+import * as nb from "./notebook.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
@@ -656,6 +657,79 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Searching the web for “${i.query ?? i}”`, run: (i) => webSearch(i.query ?? i) },
   { name: "web_fetch", safe: true, description: "Open a URL and read its text. input: a url string.", params: "url",
     activity: (i) => `Reading ${i.url ?? i}`, run: (i) => webFetch(i.url ?? i) },
+
+  // ── 📓 NOTEBOOKS (NotebookLM, but yours & free) + 🔎 deep research + 🛰️ 24/7 agent ──
+  { name: "notebook_add", safe: true, description: "Add a source to a notebook (creates it if new) so SAM can answer grounded questions about it. input: {notebook, url? | file? | text?, title?}. Sources: a web page URL, a file path (pdf/docx/txt/md/csv), or pasted text.", params: "{notebook, url?, file?, text?, title?}",
+    activity: (i) => `Adding a source to “${i.notebook || "notebook"}”`, run: async (i) => {
+      const { id, title } = nb.ensureNotebook(i.notebook || "Research");
+      try {
+        if (i.url) { const r = await nb.addUrl(id, String(i.url)); return `📓 Added “${r.title}” (${r.chunks} passages) to notebook **${title}**.`; }
+        if (i.file) { const n = await nb.addFile(id, String(i.file).replace(/^~/, process.env.HOME || "")); return `📓 Added ${basename(String(i.file))} (${n} passages) to **${title}**.`; }
+        if (i.text) { const n = await nb.addText(id, String(i.title || "note"), String(i.text)); return `📓 Added a note (${n} passages) to **${title}**.`; }
+        return "Give me a url, file path, or text to add.";
+      } catch (e: any) { return `Couldn't add that source: ${e?.message || e}`; }
+    } },
+  { name: "notebook_ask", safe: true, description: "Ask a question answered ONLY from a notebook's sources, with citations. The world-class 'grounded' mode — no hallucination, every claim traceable. input: {notebook, question}.", params: "{notebook, question}",
+    activity: (i) => `Consulting notebook “${i.notebook}”`, run: async (i) => {
+      const found = nb.ensureNotebook(i.notebook || "Research");
+      const passages = await nb.retrieve(found.id, String(i.question || i), 8);
+      if (!passages.length) return `Notebook **${found.title}** has nothing on that yet — add sources with notebook_add.`;
+      const srcs = [...new Set(passages.map((p) => p.title))];
+      const ctx = passages.map((p, n) => `[${n + 1}] (${p.title})\n${p.text}`).join("\n\n");
+      const sys = "You answer STRICTLY from the provided sources — a grounded research assistant. Never use outside knowledge. Cite each claim with its [n] number. If the sources don't cover it, say so plainly. Be clear and well-organised.";
+      const r = await runModel("free", sys, `SOURCES:\n${ctx}\n\nQUESTION: ${i.question || i}\n\nAnswer using ONLY the sources above, citing [n]:`);
+      return `${r.text}\n\n— grounded in ${srcs.length} source${srcs.length === 1 ? "" : "s"}: ${srcs.slice(0, 6).join(", ")}`;
+    } },
+  { name: "notebook_audio", safe: true, description: "Generate an 'Audio Overview' — a lively two-host podcast script discussing a notebook's sources (NotebookLM's signature feature). Play it with SAM's voice. input: {notebook}.", params: "{notebook}",
+    activity: (i) => `Producing an audio overview of “${i.notebook}”`, run: async (i) => {
+      const found = nb.ensureNotebook(i.notebook || "Research");
+      const chunks = nb.overviewChunks(found.id, 12);
+      if (!chunks.length) return `Notebook **${found.title}** is empty — add sources first.`;
+      const material = chunks.map((c) => `• (${c.title}) ${c.text.slice(0, 600)}`).join("\n");
+      const sys = "You are a producer writing a short, engaging two-host podcast (hosts: Alex and Sam) that explains the user's material in an accessible, curious way. Natural dialogue, hand-offs, a few 'oh interesting' beats — no fluff, all grounded in the material. 8-14 exchanges. Format each line as 'Alex: …' / 'Sam: …'.";
+      const r = await runModel("free", sys, `MATERIAL (from notebook “${found.title}”):\n${material}\n\nWrite the audio-overview script:`);
+      return `🎙️ **Audio Overview — ${found.title}**\n\n${r.text}\n\n_(Tap 🔊 or ask “read this aloud” to hear it.)_`;
+    } },
+  { name: "notebook_list", safe: true, description: "List SAM's notebooks and their sources.", params: "(none)",
+    activity: () => `Listing notebooks`, run: async () => {
+      const list = nb.listNotebooks();
+      if (!list.length) return "No notebooks yet. Create one by adding a source (notebook_add) or running research.";
+      return list.map((n) => `📓 **${n.title}** — ${n.sources} source${n.sources === 1 ? "" : "s"}, ${n.chunks} passages`).join("\n");
+    } },
+  { name: "research", safe: true, description: "Deep web research: searches the live web, reads the top sources, and returns a cited briefing. Optionally files everything into a notebook for follow-up questions. input: {query, notebook?, depth?}.", params: "{query, notebook?, depth?}",
+    activity: (i) => `Researching “${i.query ?? i}”`, run: async (i) => {
+      const query = String((i.query ?? i) || "").trim();
+      if (!query) return "What should I research?";
+      const depth = Math.min(6, Math.max(2, Number(i.depth) || 4));
+      const results = await webSearch(query).catch(() => "");
+      const urls = [...new Set((results.match(/https?:\/\/[^\s)"']+/g) || []))].filter((u) => !/\.(png|jpg|gif|svg|css|js)$/i.test(u)).slice(0, depth);
+      if (!urls.length) return `Couldn't find sources for “${query}”.`;
+      const nbook = i.notebook ? nb.ensureNotebook(String(i.notebook)) : null;
+      const readings: string[] = [];
+      for (const u of urls) {
+        try {
+          const text = await webFetch(u);
+          if (text && text.length > 200) { readings.push(`SOURCE (${u}):\n${text.slice(0, 3500)}`); if (nbook) await nb.addUrl(nbook.id, u).catch(() => {}); }
+        } catch {}
+      }
+      if (!readings.length) return `Found links for “${query}” but couldn't read them.`;
+      const sys = "You are a sharp research analyst. Synthesise the sources into a clear, well-structured briefing that actually answers the question. Cite sources inline as [1], [2]… matching their order. Flag disagreements and gaps. No filler.";
+      const r = await runModel("free", sys, `QUESTION: ${query}\n\n${readings.map((t, n) => t.replace("SOURCE (", `[${n + 1}] SOURCE (`)).join("\n\n")}\n\nWrite the briefing:`);
+      const cite = urls.map((u, n) => `[${n + 1}] ${u}`).join("\n");
+      return `${r.text}\n\n**Sources**\n${cite}${nbook ? `\n\n_Filed into notebook **${nbook.title}** — ask follow-ups with notebook_ask._` : ""}`;
+    } },
+  { name: "research_watch", safe: false, description: "Set up a 24/7 research agent: SAM keeps researching a topic on a schedule, files new findings into a notebook, and pings you what's new. input: {topic, notebook?, every_hours?}.", params: "{topic, notebook?, every_hours?}",
+    activity: (i) => `Setting up a 24/7 watch on “${i.topic}”`, run: async (i) => {
+      const topic = String(i.topic || "").trim();
+      if (!topic) return "What topic should I watch?";
+      const notebook = String(i.notebook || topic).slice(0, 48);
+      const hrs = Math.min(24, Math.max(1, Number(i.every_hours) || 6));
+      nb.ensureNotebook(notebook);
+      const cron = `0 */${hrs} * * *`;   // every N hours
+      const command = `Research the very latest on "${topic}", add anything new to notebook "${notebook}", and give me a 2-line update on what changed. If nothing is new, say so briefly.`;
+      const s = addSchedule(command, cron);
+      return `🛰️ 24/7 research agent is live — I'll sweep the web on **${topic}** every ${hrs}h, file it into notebook **${notebook}**, and ping you what's new. (schedule ${s.id})`;
+    } },
   { name: "read_file", safe: true, description: "Read a file's contents. input: a file path (supports ~).", params: "path",
     activity: (i) => `Reading file ${i.path ?? i}`, run: (i) => readFileTool(i.path ?? i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
