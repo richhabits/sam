@@ -20,7 +20,7 @@
     "build:all": "node scripts/preflight-build.mjs && npm run build && electron-builder -mwl",
     "start": "npm run build && node dist/server.mjs",
     "start:fast": "node dist/server.mjs",
-    "test": "vitest run --exclude 'creative-space/**'",
+    "test": "vitest run",
     "test:watch": "vitest",
     "selftest": "tsx server/selftest.ts",
     "skill:new": "node scripts/new-skill.mjs",
@@ -73,7 +73,6 @@
       "!.env",
       "!.env.*",
       "!**/*.test.*",
-      "!creative-space/**",
       "!dist-app/**",
       "!.git/**"
     ],
