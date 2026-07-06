@@ -175,6 +175,7 @@ const KLUSTER_MODEL = process.env.KLUSTER_MODEL || "klusterai/Meta-Llama-3.1-8B-
 const CHUTES_MODEL = process.env.CHUTES_MODEL || "deepseek-ai/DeepSeek-V3";
 const FRIENDLI_MODEL = process.env.FRIENDLI_MODEL || "meta-llama-3.1-70b-instruct";
 const CODESTRAL_MODEL = process.env.CODESTRAL_MODEL || "codestral-latest";
+const INFERENCE_MODEL = process.env.INFERENCE_MODEL || "meta-llama/llama-3.1-8b-instruct/fp-8";
 const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "openai";
 
 // ═══════════════════════════════════════════════════════════════
@@ -229,6 +230,7 @@ const PROVIDERS: Provider[] = [
   { id: "chutes", tier: "free", label: `chutes:${CHUTES_MODEL}`, run: (s, p, k) => callOpenAICompat("https://llm.chutes.ai/v1", CHUTES_MODEL, s, p, k) },
   { id: "friendli", tier: "free", label: `friendli:${FRIENDLI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.friendli.ai/serverless/v1", FRIENDLI_MODEL, s, p, k) },
   { id: "codestral", tier: "free", label: `codestral:${CODESTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://codestral.mistral.ai/v1", CODESTRAL_MODEL, s, p, k) },
+  { id: "inference", tier: "free", label: `inference:${INFERENCE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.inference.net/v1", INFERENCE_MODEL, s, p, k) },
 
   // ── ALWAYS-LAST · never dry: a free brain that needs NO key at all ──
   { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
