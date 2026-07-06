@@ -2,22 +2,25 @@
 
 My mate built this. It's **your own private AI assistant** that runs on your computer — free.
 Not just a chatbot: it actually *does* stuff (searches the web, reads your files, drafts emails,
-and loads more) and it asks before anything risky. Takes about **5 minutes** to set up. Let's go.
+and loads more) and it asks before anything risky.
 
 ---
 
-## What you need first (one-time)
+## 🍎 On a Mac? The easy way — no terminal, nothing to install
 
-**1. Node.js** — the thing that runs it.
-Go to **[nodejs.org](https://nodejs.org)**, download the big green "LTS" button, install it. Done.
+1. **[⬇️ Download SAM here](https://github.com/richhabits/sam/releases/latest)** (click the `.dmg` file)
+2. Open the downloaded file, drag **SAM** into your **Applications** folder
+3. **Right-click** the SAM app → **Open** (do this the *first* time — the Mac asks "are you sure?", click **Open**)
+4. That's it! SAM just works — no setup, no keys, nothing.
 
-*(On a Mac and like the terminal? `brew install node` also works. If not, ignore this.)*
+*(This is for Apple Silicon Macs — M1, M2, M3, M4. Most Macs from 2021 onwards.)*
 
 ---
 
-## Get SAM onto your computer
+## 🛠️ Or the terminal way (any Mac, Windows, or Linux)
 
-Open **Terminal** (Mac: press `⌘ + Space`, type "Terminal", hit enter) and paste this whole block:
+You don't even need to install anything first — the setup does it all. Open **Terminal**
+(Mac: press `⌘ + Space`, type "Terminal", hit enter) and paste this whole block:
 
 ```bash
 git clone https://github.com/richhabits/sam.git
@@ -25,7 +28,8 @@ cd sam
 ./setup.sh
 ```
 
-That's it — **`setup.sh` does everything for you**: installs it, sets it up, and offers to start it. (Takes a minute — grab a coffee.)
+That's it — **`setup.sh` does everything for you**: installs Node if you don't have it, sets SAM
+up, starts it, and opens your browser. (Takes a couple of minutes — grab a coffee.)
 
 
 ---
