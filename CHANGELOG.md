@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🛡️ XSS closed + hardened HTTP headers** — found & fixed a real cross-site-scripting hole: the reply
+  renderer escaped <>& but NOT quotes, so a crafted image/link URL (echoable from a malicious web page
+  via web_fetch) could break out of src="…" and inject an onerror handler → JS with full local-API
+  access. Now all five HTML chars are escaped (regression-tested). Added a strict CSP (script-src self,
+  frame-ancestors none), X-Frame-Options: DENY, nosniff, and no-referrer to the served HUD; verified the
+  app still loads clean under it. Confirmed the remote cookie is HttpOnly+SameSite=Lax.
 - **🛡️ Security hardening pass (attack-surface audit)** — closed the surfaces we had NOT audited:
   (1) anti-DNS-rebinding Host-header check — a malicious webpage re-pointing its domain at 127.0.0.1
   is now rejected 403 (phone/LAN access preserved); (2) global crash handlers so one bad async never

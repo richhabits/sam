@@ -13,6 +13,7 @@ SAM is built local-first and safe by default. Here's the security model and how 
 - **Resilient.** Global `unhandledRejection` / `uncaughtException` handlers keep SAM up if a single request misbehaves, instead of taking the whole assistant down.
 - **Watchdog.** SAM logs and surfaces anything dodgy — blocked commands, unexpected origins, unexpected Host headers — in the Dashboard and via `security_check`.
 - **No injection.** Shell arguments are escaped; user input never reaches a shell unquoted. osascript invocations sanitise single-quotes (notification strings) and escape newlines (AppleScript multi-line bodies) so user-controlled content can't inject extra shell or AppleScript statements. Regexes over user input are linear (no ReDoS — a 50 KB pathological input matches in <2 ms).
+- **No HUD XSS.** SAM's reply renderer escapes all five HTML-sensitive characters (incl. quotes), so a crafted link/image URL echoed from a malicious web page cannot break out of an HTML attribute to inject a script or event handler. The served HUD also ships a strict Content-Security-Policy (`script-src 'self'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`, and `no-referrer` — defence-in-depth against injected scripts and clickjacking. The remote-access cookie is `HttpOnly; SameSite=Lax`.
 - **Automation is identity-gated.** The GitHub auto-fix agent only runs for the repo owner / members / collaborators (plus the write-gated `agent-fix` label) — a stranger can't drive the code-writing agent on a public repo.
 
 ## Known limitations (honest residuals)

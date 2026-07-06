@@ -2,8 +2,12 @@
 // Escapes first (no injection), then applies a small set of formats:
 // **bold**, *italic*, `code`, links, and - / 1. lists.
 
+// Escape ALL five HTML-sensitive chars. The quotes matter: the link/image rules below
+// interpolate URLs and alt-text into HTML *attributes*, so an unescaped " or ' in model
+// output (e.g. echoed from a malicious web page) could break out of src="…" and inject an
+// event handler (onerror=…) → XSS with full local-API access. Escaping " and ' closes that.
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function inline(s: string): string {
@@ -20,7 +24,8 @@ function inline(s: string): string {
 // Runs on already-escaped code; single-pass alternation (first-match-wins) so a
 // keyword inside a string/comment isn't wrongly highlighted. Covers the common
 // languages SAM emits (JS/TS/Python/shell/JSON/etc.).
-const HL = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("[^"\n]*"|'[^'\n]*'|`[^`]*`)|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|import|export|from|default|class|extends|new|this|super|async|await|try|catch|finally|throw|typeof|instanceof|yield|def|lambda|print|echo|func|package|public|private|protected|static|void|type|interface|enum|struct|true|false|null|None|True|False|undefined|and|or|not|in|of|with|as|pass)\b|(\b\d+\.?\d*\b)/g;
+// NOTE: runs AFTER escapeHtml, so string literals are &quot;…&quot; / &#39;…&#39;, not "…"/'…'.
+const HL = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|(&quot;.*?&quot;|&#39;.*?&#39;|`[^`]*`)|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|import|export|from|default|class|extends|new|this|super|async|await|try|catch|finally|throw|typeof|instanceof|yield|def|lambda|print|echo|func|package|public|private|protected|static|void|type|interface|enum|struct|true|false|null|None|True|False|undefined|and|or|not|in|of|with|as|pass)\b|(\b\d+\.?\d*\b)/g;
 function highlight(code: string): string {
   return code.replace(HL, (m, c, s, k, n) =>
     c ? `<span class="tok-c">${c}</span>` :
