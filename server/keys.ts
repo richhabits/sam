@@ -84,6 +84,13 @@ const POOLS: Record<string, KeyPool> = {
   stepfun: readPool("stepfun", "STEPFUN_API_KEYS", "STEPFUN_API_KEY"),
   baidu: readPool("baidu", "BAIDU_API_KEYS", "BAIDU_API_KEY"),
   tencent: readPool("tencent", "TENCENT_API_KEYS", "TENCENT_API_KEY"),
+  // ── Bonus free/free-credit providers ──
+  deepinfra: readPool("deepinfra", "DEEPINFRA_API_KEYS", "DEEPINFRA_API_KEY"),
+  scaleway: readPool("scaleway", "SCALEWAY_API_KEYS", "SCALEWAY_API_KEY"),
+  kluster: readPool("kluster", "KLUSTER_API_KEYS", "KLUSTER_API_KEY"),
+  chutes: readPool("chutes", "CHUTES_API_KEYS", "CHUTES_API_KEY"),
+  friendli: readPool("friendli", "FRIENDLI_API_KEYS", "FRIENDLI_API_KEY"),
+  codestral: readPool("codestral", "CODESTRAL_API_KEYS", "CODESTRAL_API_KEY"),
 };
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).

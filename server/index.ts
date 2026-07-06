@@ -442,6 +442,9 @@ const PROVIDER_ENV: Record<string, string> = {
   alibaba: "ALIBABA_API_KEYS", volcengine: "VOLCENGINE_API_KEYS", zhipu: "ZHIPU_API_KEYS",
   moonshot: "MOONSHOT_API_KEYS", minimax: "MINIMAX_API_KEYS", stepfun: "STEPFUN_API_KEYS",
   baidu: "BAIDU_API_KEYS", tencent: "TENCENT_API_KEYS",
+  // Bonus free/free-credit providers
+  deepinfra: "DEEPINFRA_API_KEYS", scaleway: "SCALEWAY_API_KEYS", kluster: "KLUSTER_API_KEYS",
+  chutes: "CHUTES_API_KEYS", friendli: "FRIENDLI_API_KEYS", codestral: "CODESTRAL_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",
