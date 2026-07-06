@@ -15,7 +15,6 @@ let analyser: AnalyserNode | null = null;
 let tapped: HTMLAudioElement | null = null;
 
 export function voiceLevel() { return _level; }
-export function isSpeaking() { return _speaking; }
 
 function startTicker() {
   if (raf) return;
