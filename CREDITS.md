@@ -4,11 +4,10 @@ SAM stands on the shoulders of great open-source work. We absorb and adapt under
 each project's license, and keep the required attributions here.
 
 ## SAM Creative Space
-The Creative Space image/video studio is adapted from **Open-Generative-AI**
-(https://github.com/Anil-matcha/Open-Generative-AI), used under the **MIT License**.
-Its original `LICENSE` and copyright notice are retained in the `creative-space/`
-directory. We've rebranded the UI and wired it to SAM's secure API proxy; the
-underlying MIT-licensed code remains credited to its original authors.
+SAM's Creative Space (image/video studio) is our own slim build (`src/StudioView.tsx`)
+wired to SAM's key-hiding `/api/creative` proxy. Its UX was inspired by
+**Open-Generative-AI** (https://github.com/Anil-matcha/Open-Generative-AI, MIT) —
+credited with thanks. No code from that project is bundled in SAM.
 
 ## Runtime
 - Model access via each provider's own free/paid API under their terms.
