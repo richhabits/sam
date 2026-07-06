@@ -8,7 +8,7 @@
 
 import { promisify } from "node:util";
 import { exec } from "node:child_process";
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROJECTS } from "./projects.ts";
@@ -34,17 +34,27 @@ export async function grabRepos(force = false): Promise<App[]> {
   return APPS;
 }
 // ── Socials registry (vault/socials.json) — SAM knows the accounts/links ──
-// Cached in memory: worldContext() runs on every business turn, and socials only
-// change in-process via saveSocials — so read+parse the file once, not per request.
+// worldContext() runs on every business turn, so avoid a read+parse each time — but
+// key the cache on the file's mtime so a MANUAL edit (the my_socials tool tells users
+// to edit the file) is picked up without a restart. A statSync is far cheaper than
+// read+parse, so this keeps almost all the perf win.
 let _socialsCache: Record<string, any> | null = null;
+let _socialsMtime = -1;
 export function loadSocials(): Record<string, any> {
-  if (_socialsCache) return _socialsCache;
-  try { if (existsSync(SOCIALS_PATH)) return (_socialsCache = JSON.parse(readFileSync(SOCIALS_PATH, "utf8"))); } catch { /* ignore */ }
-  return (_socialsCache = {});
+  try {
+    if (!existsSync(SOCIALS_PATH)) return (_socialsCache = {}, _socialsMtime = -1, _socialsCache);
+    const mtime = statSync(SOCIALS_PATH).mtimeMs;
+    if (_socialsCache && mtime === _socialsMtime) return _socialsCache;
+    _socialsMtime = mtime;
+    return (_socialsCache = JSON.parse(readFileSync(SOCIALS_PATH, "utf8")));
+  } catch { return (_socialsCache = _socialsCache || {}); }
 }
 export function saveSocials(data: Record<string, any>) {
-  _socialsCache = data;   // keep the cache fresh
-  try { mkdirSync(dirname(SOCIALS_PATH), { recursive: true }); writeFileSync(SOCIALS_PATH, JSON.stringify(data, null, 2)); } catch { /* ignore */ }
+  try {
+    mkdirSync(dirname(SOCIALS_PATH), { recursive: true });
+    writeFileSync(SOCIALS_PATH, JSON.stringify(data, null, 2));
+    _socialsCache = data; _socialsMtime = statSync(SOCIALS_PATH).mtimeMs;   // keep cache + mtime fresh
+  } catch { /* ignore */ }
 }
 
 // Seed from the brands (website known; handle slots blank for the user to fill / SAM to find).
