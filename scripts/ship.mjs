@@ -16,6 +16,7 @@ try {
 
   console.log("\n🧪 testing…");   run("npm test");
   console.log("\n🎨 refreshing landing…"); run("node scripts/gen-landing.mjs");
+  console.log("\n🖼️  refreshing share image…"); run("node scripts/gen-og.mjs"); // skips gracefully if no Chrome
   console.log("\n🏗️  building…");  run("npm run build");
 
   console.log("\n🚀 shipping…");
