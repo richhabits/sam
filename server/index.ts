@@ -37,6 +37,7 @@ import { vapidPublicKey, addSubscription, pushNotify, subscriberCount } from "./
 import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
+import * as notebook from "./notebook.ts";
 import { operatingDoctrine } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
@@ -900,6 +901,39 @@ app.post("/api/schedules", (req, res) => {
   res.json(addSchedule(command, cron));
 });
 app.delete("/api/schedules/:id", (req, res) => res.json({ ok: removeSchedule(req.params.id) }));
+
+// ── 📓 NOTEBOOKS (NotebookLM UI backend) — grounded Q&A + audio overview over YOUR sources ──
+app.get("/api/notebooks", (_req, res) => res.json({ notebooks: notebook.listNotebooks() }));
+app.post("/api/notebooks", (req, res) => res.json(notebook.ensureNotebook(String(req.body?.title || "Notebook"))));
+app.get("/api/notebooks/:id/sources", (req, res) => res.json({ sources: notebook.notebookSources(req.params.id) }));
+app.delete("/api/notebooks/:id", (req, res) => res.json({ ok: notebook.deleteNotebook(req.params.id) }));
+app.post("/api/notebooks/:id/source", async (req, res) => {
+  const { url, file, text, title } = req.body || {};
+  try {
+    if (url) { const r = await notebook.addUrl(req.params.id, String(url)); return res.json({ ok: true, chunks: r.chunks, title: r.title }); }
+    if (file) { const c = await notebook.addFile(req.params.id, String(file).replace(/^~/, os.homedir())); return res.json({ ok: true, chunks: c }); }
+    if (text) { const c = await notebook.addText(req.params.id, String(title || "note"), String(text)); return res.json({ ok: true, chunks: c }); }
+    res.status(400).json({ error: "need url, file, or text" });
+  } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.post("/api/notebooks/:id/ask", async (req, res) => {
+  const q = String(req.body?.question || "").trim();
+  if (!q) return res.status(400).json({ error: "no question" });
+  const passages = await notebook.retrieve(req.params.id, q, 8);
+  if (!passages.length) return res.json({ answer: "This notebook has nothing on that yet — add sources first.", citations: [] });
+  const ctx = passages.map((p, n) => `[${n + 1}] (${p.title})\n${p.text}`).join("\n\n");
+  const sys = "You answer STRICTLY from the provided sources — a grounded research assistant. Never use outside knowledge. Cite each claim with its [n] number. If the sources don't cover it, say so plainly. Be clear and well-organised.";
+  const r = await runModel("free", sys, `SOURCES:\n${ctx}\n\nQUESTION: ${q}\n\nAnswer using ONLY the sources above, citing [n]:`);
+  res.json({ answer: r.text, citations: [...new Set(passages.map((p) => p.title))], provider: r.provider });
+});
+app.post("/api/notebooks/:id/audio", async (req, res) => {
+  const chunks = notebook.overviewChunks(req.params.id, 12);
+  if (!chunks.length) return res.json({ script: "" });
+  const material = chunks.map((c) => `• (${c.title}) ${c.text.slice(0, 600)}`).join("\n");
+  const sys = "You are a producer writing a short, engaging two-host podcast (hosts: Alex and Sam) that explains the user's material in an accessible, curious way. Natural dialogue, hand-offs, a few 'oh interesting' beats — no fluff, all grounded in the material. 8-14 exchanges. Format each line as 'Alex: …' / 'Sam: …'.";
+  const r = await runModel("free", sys, `MATERIAL:\n${material}\n\nWrite the audio-overview script:`);
+  res.json({ script: r.text });
+});
 app.post("/api/schedules/:id/toggle", (req, res) => res.json(toggleSchedule(req.params.id)));
 
 // ── P2P Network — expose peer list to frontend ──

@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **📓 Notebook panel — NotebookLM, built into the HUD** — Settings → 📓 Notebooks (or the command palette):
+  a real workspace. Left: your notebooks + sources (add a web link or paste text, one tap). Right: a
+  grounded chat that answers ONLY from those sources with citations (no hallucination), plus a 🎙️ Audio
+  Overview button that produces a two-host podcast of your material you can play aloud. Backed by local
+  embeddings (free, private) + REST endpoints. Makes the research/notebook engine usable by anyone, no
+  commands needed. Hand-built in SAM's existing design.
 - **🔌 Integrations panel — SAM as a business command center** — Settings → Integrations: one-tap connect
   to popular MCP servers with just your key(s): 💳 Stripe, 📈 RevenueCat (revenue/MRR), 📊 Metricool
   (schedule & post to ALL your socials in one shot), 📣 Meta Ads, 📝 Notion, 🐘 Supabase, 🐙 GitHub, 💬 Slack,

@@ -169,3 +169,12 @@ export async function toggleSchedule(id: string) { return api<Schedule>(`/api/sc
 
 // People SAM knows by sight (face memory).
 export const getPeople = () => fetch("/api/people").then((r) => r.json());
+
+// ── 📓 Notebooks (NotebookLM) ──
+export const listNotebooks = () => fetch("/api/notebooks").then((r) => r.json());
+export const createNotebook = (title: string) => fetch("/api/notebooks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) }).then((r) => r.json());
+export const notebookSources = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/sources`).then((r) => r.json());
+export const addNotebookSource = (id: string, body: { url?: string; file?: string; text?: string; title?: string }) => fetch(`/api/notebooks/${encodeURIComponent(id)}/source`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+export const askNotebook = (id: string, question: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) }).then((r) => r.json());
+export const notebookAudio = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/audio`, { method: "POST" }).then((r) => r.json());
+export const deleteNotebook = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}`, { method: "DELETE" }).then((r) => r.json());
