@@ -480,6 +480,7 @@ const PROVIDER_ENV: Record<string, string> = {
   deepinfra: "DEEPINFRA_API_KEYS", scaleway: "SCALEWAY_API_KEYS",
   chutes: "CHUTES_API_KEYS", friendli: "FRIENDLI_API_KEYS", codestral: "CODESTRAL_API_KEYS",
   inference: "INFERENCE_API_KEYS", gmi: "GMI_API_KEYS", vercel: "VERCEL_API_KEYS", ovh: "OVH_API_KEYS",
+  fal: "FAL_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",

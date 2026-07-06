@@ -160,7 +160,7 @@ const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || "llama-3.1-sonar-small-
 // ── "Infinite Compute" Global Mesh — Asian Heavyweights ──
 const ALIBABA_MODEL = process.env.ALIBABA_MODEL || "qwen-plus";
 const VOLCENGINE_MODEL = process.env.VOLCENGINE_MODEL || "doubao-1.5-pro-32k";
-const ZHIPU_MODEL = process.env.ZHIPU_MODEL || "glm-4-flash";
+const ZHIPU_MODEL = process.env.ZHIPU_MODEL || "glm-5.2";   // Zhipu flagship — 1M context, MIT (20M free tokens on signup; set glm-4-flash for the free-forever tier)
 const MOONSHOT_MODEL = process.env.MOONSHOT_MODEL || "moonshot-v1-8k";
 const MINIMAX_MODEL = process.env.MINIMAX_MODEL || "abab6.5s-chat";
 const STEPFUN_MODEL = process.env.STEPFUN_MODEL || "step-1-8k";
@@ -288,9 +288,9 @@ const LANE_PREF: Record<Lane, string[]> = {
   // fastest inference first (default — keeps quick chat snappy)
   fast: ["cerebras", "groq", "sambanova"],
   // biggest / strongest reasoning free models first
-  deep: ["deepseek", "nvidia", "together", "zhipu", "alibaba", "fireworks", "cerebras", "groq"],
+  deep: ["zhipu", "deepseek", "nvidia", "together", "alibaba", "fireworks", "cerebras", "groq"],
   // strongest at code first
-  code: ["deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
+  code: ["zhipu", "deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
 };
 export function pickLane(text: string): Lane {
   const t = (text || "").slice(0, 600).toLowerCase();
