@@ -133,32 +133,51 @@ function parsePlan(text: string): PlanItem[] {
   } catch { return []; }
 }
 
-// Orchestrator: break the request into a dynamic dependency graph.
-async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
-  const reqLower = request.toLowerCase();
-  const words = reqLower.split(/\W+/).filter(w => w.length > 2);
-  
-  // Cheap keyword match to filter the 80+ agent roster down to the ~15 most relevant
-  const scored = SPECIALISTS.map(s => {
-    let score = 0;
-    const text = (s.id + " " + s.name + " " + s.brief).toLowerCase();
-    for (const w of words) { if (text.includes(w)) score++; }
+// Classify a specialist into a working "mode" (Roo-style) so we can SCOPE its tools: a researcher
+// or writer gets a focused read/research/write kit, not the run-shell/delete/send kit. Builders and
+// operators keep the full toolset (they're meant to act). Ask-first gating still backstops safety.
+type Kind = "research" | "write" | "analyze" | "design" | "code" | "ops";
+function specialistKind(s: Specialist): Kind {
+  const t = `${s.id} ${s.name} ${s.brief} ${s.modeledOn}`.toLowerCase();
+  if (/\b(code|coder|engineer|dev|program|forge|build|debug|refactor|script|api|backend|frontend|deploy)\b/.test(t)) return "code";
+  if (/\b(ops|system|admin|exec|envoy|operat|automat|integrat|pipeline)\b/.test(t)) return "ops";
+  if (/\b(write|writer|copy|content|quill|story|editor|blog|word|narrat)\b/.test(t)) return "write";
+  if (/\b(design|brand|ui|ux|visual|logo|art|creative)\b/.test(t)) return "design";
+  if (/\b(research|scout|find|hunt|intel|analy|data|market|audit|review|judge|fact)\b/.test(t)) return "research";
+  return "analyze";
+}
+const RESEARCH_TOOLS = ["web_search", "web_fetch", "research", "notebook_add", "notebook_ask", "notebook_list", "search_docs", "search_files", "read_file", "list_dir", "docs_library", "wikipedia", "news_rss", "hacker_news", "stock_price", "crypto_price", "currency_convert", "unit_convert", "translate", "define_word", "ip_geolocate", "whois", "dns_lookup", "get_datetime", "get_weather", "github_repos", "github_repo", "github_issues", "github_read_file", "my_apps", "my_socials", "search_memory"];
+const WRITE_TOOLS = [...RESEARCH_TOOLS, "create_note", "quick_note", "append_note", "obsidian_save", "notebook_audio", "remember_fact"];
+const DESIGN_TOOLS = [...RESEARCH_TOOLS, "create_note", "qr_generate", "color_tools"];
+// Scoped tool pool per specialist. code/ops → undefined = full kit (they need to build/act).
+function toolPool(s: Specialist): string[] | undefined {
+  switch (specialistKind(s)) {
+    case "research": case "analyze": return RESEARCH_TOOLS;
+    case "write": return WRITE_TOOLS;
+    case "design": return DESIGN_TOOLS;
+    default: return undefined;
+  }
+}
+
+// The ~15 most relevant specialists for a request (shared by planning AND verification).
+function pickRoster(request: string): Specialist[] {
+  const words = request.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+  const scored = SPECIALISTS.map((s) => {
+    let score = 0; const text = (s.id + " " + s.name + " " + s.brief).toLowerCase();
+    for (const w of words) if (text.includes(w)) score++;
     return { s, score };
   });
-  
   scored.sort((a, b) => b.score - a.score);
-  const top15 = scored.slice(0, 15).map(x => x.s);
-  
-  // Always include the core startup crew just in case
-  const CORE = ["scout", "forge", "quill", "judge", "envoy"];
-  for (const c of CORE) {
-    if (!top15.some(x => x.id === c)) {
-      const agent = SPECIALISTS.find(x => x.id === c);
-      if (agent) top15.push(agent);
-    }
+  const top = scored.slice(0, 15).map((x) => x.s);
+  for (const c of ["scout", "forge", "quill", "judge", "envoy"]) {
+    if (!top.some((x) => x.id === c)) { const a = SPECIALISTS.find((x) => x.id === c); if (a) top.push(a); }
   }
+  return top;
+}
 
-  const roster = top15.map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
+// Orchestrator: break the request into a dynamic dependency graph.
+async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
+  const roster = pickRoster(request).map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
   const sys = `You are SAM's orchestrator. Break the request into the FEWEST subtasks that fully cover it, and assign each to the ONE best-fit specialist.
 
 Rules:
@@ -221,7 +240,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 
     let output = "";
     try {
-      const r = await runAgent(sys, item.task, tier);
+      const r = await runAgent(sys, item.task, tier, toolPool(s));   // scoped tools = this specialist's mode
       output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`;
     } catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
 
@@ -232,6 +251,31 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
   })());
 
   await Promise.allSettled(runners);
+
+  // ── Roo-style VERIFY & RE-DELEGATE (one bounded round) ──────────────────────────────
+  // The orchestrator reviews the crew's combined work against the request; if it finds real gaps,
+  // errors or unverified claims, it delegates up to 2 follow-up subtasks to close them. This is the
+  // self-correcting "boomerang" step — each result comes back for verification before the final.
+  try {
+    const soFar = results.map((r) => `## ${r.s.name} — ${r.task}\n${r.output}`).join("\n\n");
+    const vRoster = pickRoster(request).map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
+    const vSys = `You are SAM's orchestrator VERIFYING your crew's work. Given the request and the outputs, decide if the combined result FULLY and CORRECTLY answers it. If there are GENUINE gaps, errors, or unverified claims, output up to 2 follow-up subtasks that fix them (JSON: [{"id":"f1","specialist":"<id>","task":"...","dependsOn":[]}]). If the work is complete and solid, output []. Be strict — only real gaps, never pad.\n\nSpecialists:\n${vRoster}`;
+    const vr = await runModel(tier, vSys, `Request: ${request}\n\nWork so far:\n${soFar}\n\nFollow-up subtasks (JSON array, or []):`);
+    const followups = parsePlan(vr.text).slice(0, 2);
+    if (followups.length) {
+      emit({ type: "plan", plan: followups.map((p) => { const s = byId(p.specialist)!; return { id: p.id, specialist: p.specialist, name: s.name, emoji: s.emoji, task: p.task, dependsOn: [] }; }) });
+      await Promise.allSettled(followups.map(async (f) => {
+        const s = byId(f.specialist)!;
+        emit({ type: "agent-start", id: f.id, name: s.name, emoji: s.emoji, task: f.task });
+        const fsys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nThis is a FOLLOW-UP to close a gap the orchestrator found — do exactly this, tightly, and hand back a finished deliverable.\n\n## Work already done:\n${soFar}`;
+        let out = "";
+        try { const rr = await runAgent(fsys, f.task, tier, toolPool(s)); out = rr.kind === "final" ? (rr.text || "") : `(needs approval to ${rr.tool})`; }
+        catch (e: any) { out = `(couldn't complete: ${e?.message || e})`; }
+        emit({ type: "agent-done", id: f.id, name: s.name, emoji: s.emoji, output: out });
+        results.push({ s, task: f.task, output: out });
+      }));
+    }
+  } catch { /* verification is best-effort — never block the final answer */ }
 
   // SAM synthesises the crew's work into one answer.
   const synthSys = `${baseSystem}\n\nYour specialists just did the work below. Combine it into ONE clear, punchy answer for the user — lead with the outcome, weave the pieces together, briefly credit the crew. Don't just list their outputs; synthesise.`;
