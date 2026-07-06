@@ -101,8 +101,8 @@ export interface Tool {
 // Destructive verbs are anchored to command position so they don't false-positive on
 // read-only uses like `grep shutdown log` or `ls /bin/rm`.
 const HARD_DENY = [
-  /\brm\s+(-[a-z]*[rf][a-z]*\s+)+(-[a-z]*\s+)*["']?[~/]\/?["']?\s*($|[\s;])/i,           // rm -rf ~  |  rm -rf /
-  /\brm\s+(-[a-z]*\s+)*["']?(\$\{?HOME\}?|\/(Users|System|Library|Applications|Volumes))\/?["']?(\s|;|$)/i,  // rm of $HOME or a system / all-volumes ROOT (NOT subdirs — a specific drive/dir is approval-gated)
+  /\brm\s+(?:-[a-z]+\s+)*["']?[~/]\/?["']?\s*(?:$|[\s;])/i,                               // rm [flags] ~  |  /  (root/home wipe; ReDoS-safe — each flag group anchored by '-')
+  /\brm\s+(?:-[a-z]+\s+)*["']?(?:\$\{?HOME\}?|\/(?:Users|System|Library|Applications|Volumes))\/?["']?(?:\s|;|$)/i,  // rm of $HOME or a system / all-volumes ROOT (NOT subdirs — a specific drive/dir is approval-gated)
   /(^|[;&|]\s*)(sudo\s+)?\/(usr\/)?bin\/rm\s+(-[a-z]*[rf])/i,                             // absolute rm -rf as a command (sidesteps trash alias)
   /\bfind\s+["']?[~/]["']?(\s|$).*(-delete|-exec\s+rm)/i,
   /\bmkfs\b/, /\bdd\s+(if|of)=/, /:\(\)\s*\{/,
