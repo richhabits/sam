@@ -6,6 +6,11 @@ All notable changes to SAM. Newest first.
 - **🎨 FREE image generation** — "draw me a…" just works: rotating free lanes (Pollinations first —
   no key, effectively unlimited — then Together FLUX/SiliconFlow on free keys, credits sipped evenly).
   Images render inline in the chat (markdown `![img]` support added to the HUD).
+- **🔊 Voice OUT OF THE BOX** — /api/speak is now a rotating free-first chain: ElevenLabs (premium,
+  if key) → Groq TTS (free key) → **Pollinations voice (FREE, NO key)** → browser voice. A fresh
+  download talks with zero setup.
+- **🎧 Audio in — transcribe_audio** — voice memos / recordings / podcast clips → text, free via
+  Groq Whisper (whisper-large-v3, 24MB cap).
 - **🎬 Video generation (free credits)** — `generate_video` uses Novita or SiliconFlow free signup
   credits (rotating), with honest guidance when no key is set. No truly-unlimited free video API
   exists yet — this is the closest legit thing.
