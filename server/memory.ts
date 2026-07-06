@@ -173,4 +173,5 @@ export function listRecent(limit = 10): { id: string; text: string; ts: number }
 export function clearAll(): void {
   db.prepare("DELETE FROM memories").run();
   _vecCache.clear();
+  _pinned = null;   // vault is empty again — re-pin to whatever model next writes
 }
