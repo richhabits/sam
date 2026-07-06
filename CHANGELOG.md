@@ -3,6 +3,17 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Every device, first-class** — cross-platform audit: Windows gets a one-command
+  `setup.ps1` + double-click `START-SAM.bat` (Mac's `START-SAM.command` now works from any
+  folder); Mac-only tools now degrade gracefully everywhere (the model is told "this needs
+  macOS — this machine runs windows/linux" instead of a cryptic failure, so SAM answers
+  honestly and offers what it CAN do); README documents the Windows path. Verified already
+  cross-platform: server + HUD (PWA-installable: manifest/icons/viewport), notifications
+  (osascript/PowerShell/notify-send via execFile), iOS drop folder (iCloud on Mac/Windows),
+  electron builds (`build:mac/:win/:linux`), Node 20.19+/22.12+.
+- **OG share image** — `npm run og` renders `docs/og.png` (1200×630 @2x) from the live
+  counts via your installed Chrome; wired into `ship.mjs`; og:/twitter: meta added — links
+  shared on X/WhatsApp/Discord/LinkedIn now show a proper card.
 - **Report-a-problem → agent fixes it → auto-ships** — a new `Claude Agent` workflow: label a bug
   `agent-fix` (or comment `@claude …`) and Claude reads the report, finds the cause, runs `npm run verify`,
   and opens a **PR** with the fix. CI gates it, a human merges, and the site/build auto-update on merge —
