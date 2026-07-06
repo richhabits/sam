@@ -122,6 +122,14 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 ---
 
+## Use SAM on your phone 📱
+
+**Same Wi-Fi (easiest):** ⚙ Settings → **📱 Use SAM on your phone** → *Turn on phone access* → restart SAM → **scan the QR** with your phone camera. It opens SAM already signed in; tap **Share → Add to Home Screen** to install it like an app (camera, voice, everything). A private token gates every request; loopback stays untouched.
+
+**From anywhere (free, private, encrypted):** install [Tailscale](https://tailscale.com/) on your Mac + phone (both free, ~5 min) — then reach SAM from any network at `http://<your-mac>.<tailnet>.ts.net:8787` over an encrypted mesh, no ports opened, no data through anyone's cloud. Best of both: private *and* everywhere.
+
+---
+
 ## Privacy & safety
 
 - **Local-first.** Your keys, memory and data stay on your machine.

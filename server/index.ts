@@ -6,7 +6,7 @@
 
 import "dotenv/config";
 import os from "node:os";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { join, dirname } from "node:path";
@@ -721,6 +721,32 @@ app.get("/api/people", (_req, res) => res.json(listPeople()));
 app.post("/api/people", (req, res) => { const { name, look, relation, face } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation, Array.isArray(face) ? face : undefined)); });
 // Face descriptors (128-float vectors, computed on-device) the HUD matches against — no images.
 app.get("/api/faces", (_req, res) => res.json({ faces: faceRoster() }));
+
+// 📱 Phone link — loopback-only. Returns the scan-me URL (with token) so Settings can show a
+// QR the phone camera reads → lands authenticated. Only reveals the token to a local request.
+function lanIP(): string | null {
+  const nets = os.networkInterfaces();
+  const n = Object.values(nets).flat().find((x) => x && x.family === "IPv4" && !x.internal);
+  return n?.address || null;
+}
+app.get("/api/phone-link", (req, res) => {
+  const ip = req.socket.remoteAddress || "";
+  if (!(ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1")) return res.status(403).json({ error: "loopback only" });
+  const remoteOn = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+  const lan = lanIP();
+  const url = remoteOn && lan ? `http://${lan}:${PORT}/?token=${encodeURIComponent(process.env.SAM_REMOTE_TOKEN!)}` : null;
+  res.json({ remoteOn, lan, url });
+});
+// One-click enable: generate a strong token, persist SAM_REMOTE=1 + token (takes effect on restart).
+app.post("/api/phone-enable", (req, res) => {
+  const ip = req.socket.remoteAddress || "";
+  if (!(ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1")) return res.status(403).json({ error: "loopback only" });
+  const token = randomBytes(18).toString("base64url");
+  writeEnv("SAM_REMOTE", "1");
+  writeEnv("SAM_REMOTE_TOKEN", token);
+  process.env.SAM_REMOTE = "1"; process.env.SAM_REMOTE_TOKEN = token;
+  res.json({ ok: true, needsRestart: true });
+});
 
 // 📸 Save a camera snapshot into the vault (local only — vault/photos is gitignored).
 app.post("/api/photo", (req, res) => {
