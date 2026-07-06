@@ -3,6 +3,15 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Task-aware model routing — uses the RIGHT free brain for the job** — with 30+ free models, SAM
+  no longer sends every request to the same fastest-first provider. It picks a *lane* from the ask:
+  **fast** (Cerebras/Groq/SambaNova) for quick chat, **deep** (DeepSeek/NVIDIA/Together/Qwen…) for
+  reasoning/analysis/long prompts, **code** (DeepSeek/Fireworks/Together…) for programming — trying the
+  best-fit model FIRST while still falling through all 30 on failure, so nothing's wasted. `pickLane()`
+  in `server/models.ts` (5 tests). The provider label in each reply shows which model answered.
+- **Brain warmed at boot** — SAM pre-loads the local Ollama model into RAM at startup (keep-alive 30m)
+  so the FIRST message is instant instead of paying a multi-second cold model-load. Local-only, never a
+  cloud call (zero quota). Only warms a model that's actually pulled.
 - **Repo slimmed 16× — cheaper clones & CI forever** — purged the old `creative-space/` app
   (18 MB of dead binary blobs — demo.mp4, webp assets — deleted from the tree long ago but still
   dragged along in git history) from ALL history. `.git` **18 MB → 1.1 MB**; a fresh clone is now
