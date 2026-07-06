@@ -30,20 +30,36 @@ const agents = (agentsSrc.match(/\{\s*id:\s*"[a-z0-9_]+",\s*name:/g) || []).leng
 let skills = 0;
 try { skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch {}
 
-// ── Auto-build the "everything it does" grid from the real tool list ──
-const EMO = [
-  [/(search|google|web|browse|surf|url)/, "🔍"], [/(pdf|docx|doc)/, "📄"], [/(file|folder|zip|unzip|disk|move|rename)/, "📁"],
-  [/(mail|email|imessage|message|text|slack|discord|telegram)/, "📧"], [/(git|github|repo|commit|\bpr\b|branch|issue)/, "🐙"],
-  [/(call|facetime|phone|ring)/, "📞"], [/(calendar|schedule|remind|nudge|timer|todo|linear|notion|trello)/, "📅"],
-  [/(weather|direction|map|location)/, "🌤️"], [/(screen|screenshot|look|camera|vision|ocr|see)/, "👁️"],
-  [/(music|play|song|spotify|volume|media)/, "🎵"], [/(command|run|terminal|exec|caffeinate|lock|battery|system|wifi|network|eject|trash|brightness)/, "💻"],
-  [/(security|watchdog|guard)/, "🛡️"], [/(person|people|remember|memory|note)/, "🧠"],
-  [/(crypto|stock|currency|price|money|convert|stripe|shopify)/, "💰"], [/(wiki|define|dictionary|news|hacker|translate)/, "📚"],
-  [/(team|ninja|swarm|agent)/, "🤝"], [/(qr|password|dns|ip|whois|unit|generate)/, "🔧"], [/(notify|clock|world)/, "🔔"],
+// ── Auto-build the CATEGORISED "everything it does" grid from the real tool list ──
+// Every real tool lands in the FIRST category whose pattern matches (else "Utilities").
+// Add a tool to tools.ts and it shows up here automatically, in the right group.
+const CATS = [
+  ["🔍", "Web &amp; research", /(search|google|web|browse|surf|url|wiki|news|hacker|define|dictionary|translate|research|scrape|fetch|socials)/],
+  ["📄", "Files, docs &amp; vault", /(file|folder|zip|unzip|pdf|docx|\bdoc|read|write|append|move|rename|ingest|dedupe|organize|list_dir|vault|backup)/],
+  ["📧", "Messaging &amp; email", /(mail|email|imessage|message|text|slack|discord|telegram|notify)/],
+  ["📞", "Calls", /(call|facetime|phone|ring)/],
+  ["🐙", "Code &amp; GitHub", /(git|github|repo|commit|\bpr\b|branch|issue|npm|command|script|terminal|exec|diff|selftest)/],
+  ["📅", "Calendar, tasks &amp; projects", /(calendar|schedule|remind|nudge|timer|todo|linear|notion|trello|event|reminder|project)/],
+  ["👁️", "Vision &amp; screen", /(screen|screenshot|look|camera|vision|ocr|\bsee|photo|guardian|wallpaper)/],
+  ["🎵", "Music &amp; media", /(music|play|song|spotify|volume|media|pause|track|speak|voice)/],
+  ["🖱️", "Control your Mac", /(caffeinate|lock|battery|system|wifi|network|eject|trash|brightness|clipboard|disk|type|press|click|\bkey|mouse|frontmost|dark_mode|dnd|my_apps|open_app|shortcut|self_restart|\bkill|manage)/],
+  ["🧠", "Memory &amp; people", /(person|people|remember|memor|note|recall|forget|contact|who_i_know)/],
+  ["🤝", "Agents &amp; swarm", /(team|ninja|swarm|agent|capacity)/],
+  ["🛡️", "Security", /(security|watchdog|guard)/],
+  ["💰", "Money &amp; business", /(crypto|stock|currency|price|money|convert|stripe|shopify|invoice)/],
+  ["📍", "Location &amp; weather", /(weather|direction|map|location|forecast)/],
+  ["🔧", "Utilities", /.*/],   // catch-all — always last
 ];
-const emo = (n) => (EMO.find(([re]) => re.test(n)) || [, "▪️"])[1];
-const pretty = (n) => `${emo(n)} ${n.replace(/_/g, " ")}`;
-const does = toolNames.slice().sort().map((n) => `<span>${pretty(n)}</span>`).join("\n        ");
+const groups = CATS.map(() => []);
+for (const n of toolNames.slice().sort()) {
+  const i = CATS.findIndex(([, , re]) => re.test(n));
+  groups[i === -1 ? CATS.length - 1 : i].push(n);
+}
+const does = CATS.map(([emoji, label], i) => {
+  if (!groups[i].length) return "";
+  const chips = groups[i].map((n) => `<span>${n.replace(/_/g, " ")}</span>`).join("");
+  return `<div class="cat"><div class="cat-h">${emoji} ${label} <em>${groups[i].length}</em></div><div class="does">${chips}</div></div>`;
+}).filter(Boolean).join("\n        ");
 
 const values = { TOOLS: tools || 60, BRAINS: brains || 6, SKILLS: skills || 25, AGENTS: agents || 10, DOES: does };
 

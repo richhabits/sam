@@ -32,9 +32,19 @@ npm test               # run the test suite
 ## Before you propose a change
 
 - Keep it lean and free-first (SAM's whole point is running free on your machine).
-- Run `npm test` and `npm run build` — both must pass.
+- Run **`npm run verify`** (typecheck + tests + build) — it must pass. CI runs the same gate.
 - Never commit secrets, keys, or personal data. `.env` and `vault/` data stay local.
+- PRs use the [pull-request template](.github/PULL_REQUEST_TEMPLATE.md) — fill it in.
 
 ## Reporting bugs / ideas
 
-Open an issue. For security problems, see [SECURITY.md](SECURITY.md) instead.
+- **Bug?** Open a [🐛 bug report](https://github.com/richhabits/sam/issues/new?template=bug_report.yml) — the form walks you through it.
+- **Question or idea?** Use [Discussions](https://github.com/richhabits/sam/discussions).
+- **Security issue?** Report it privately — see [SECURITY.md](SECURITY.md). Never in a public issue.
+
+### 🤖 Let the agent fix it
+A maintainer can add the **`agent-fix`** label to a bug (or comment `@claude …` on any issue/PR).
+Claude then reads the report, finds the cause, runs `npm run verify`, and opens a **pull request**
+with the fix. CI must pass and a human merges it — then the fix ships automatically (the site + build
+regenerate on merge). The agent is instant; a person keeps the merge button. Setup lives in
+[`.github/workflows/claude-agent.yml`](.github/workflows/claude-agent.yml).
