@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🔋 Zero-consumption by default — embeddings now LOCAL-FIRST** — embeddings fire on EVERY message
+  (recall query) + every memory write. The fallback order was cloud-first (Jina→Gemini→Ollama), so
+  anyone with a Gemini key (needed for vision) silently burned embedding quota on every single message.
+  Now it is local-first (Ollama nomic → Jina → Gemini): free, private, nothing leaves the machine unless
+  you have no local model. Verified no telemetry / analytics / phone-home anywhere; the daily brief uses
+  the FREE tier only (never paid) and fires at most once/day.
 - **🔒 Privacy & security audit — 10/10 hardening** — (1) Elon Mode (the total safety-bypass) is now
   LOOPBACK-ONLY: it can never be enabled from a phone/remote device, only by the owner at the machine.
   (2) view_photo (auto-runs) now refuses non-image files and blocks sensitive/hidden dirs (.ssh, .env,
