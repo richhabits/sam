@@ -3,6 +3,11 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **Faster — per-request quick wins** — three hot-path allocations removed from the code that runs on
+  *every* message: `people.json` is now mtime-cached (was a disk read + JSON.parse per request),
+  `projectsContext()` is memoised (constant string, was rebuilt each turn), and `recentExchanges()`
+  slices to the last N blocks *before* regex-parsing (was parsing the whole day's log every request —
+  got slower as the day grew). Pure wins, no behaviour change; 92 tests still green.
 - **Every device, first-class** — cross-platform audit: Windows gets a one-command
   `setup.ps1` + double-click `START-SAM.bat` (Mac's `START-SAM.command` now works from any
   folder); Mac-only tools now degrade gracefully everywhere (the model is told "this needs

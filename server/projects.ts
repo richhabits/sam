@@ -66,8 +66,11 @@ export function projectById(id: string): Project | undefined {
 
 // Compact brand list injected into every prompt (kept SHORT to stay under free
 // per-minute token limits). Each brand's one-line tag stops SAM confusing them.
+// Memoised — PROJECTS is loaded once at startup, so this string is constant.
+let _ctx: string | null = null;
 export function projectsContext(): string {
-  if (!PROJECTS.length) return "";
-  return "Brands (use the right one — don't mix them up):\n" +
+  if (_ctx !== null) return _ctx;
+  _ctx = !PROJECTS.length ? "" : "Brands (use the right one — don't mix them up):\n" +
     PROJECTS.map((p) => `- ${p.name}${p.domain ? ` (${p.domain})` : ""}${p.tag ? ` — ${p.tag}` : ""}`).join("\n");
+  return _ctx;
 }
