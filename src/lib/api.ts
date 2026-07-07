@@ -180,3 +180,7 @@ export const addNotebookSource = (id: string, body: { url?: string; file?: strin
 export const askNotebook = (id: string, question: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) }).then((r) => r.json());
 export const notebookAudio = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/audio`, { method: "POST" }).then((r) => r.json());
 export const deleteNotebook = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}`, { method: "DELETE" }).then((r) => r.json());
+
+// 🚀 Sign & ship
+export const getSigningStatus = () => fetch("/api/signing/status").then((r) => r.json());
+export const genAndroidKeystore = () => fetch("/api/signing/android-keystore", { method: "POST" }).then((r) => r.json());

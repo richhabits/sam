@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp } from "./lib/api";
+import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp, getSigningStatus, genAndroidKeystore } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
 
@@ -74,6 +74,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [mcp, setMcp] = useState<McpPreset[]>([]);
   const [mcpKeys, setMcpKeys] = useState<Record<string, Record<string, string>>>({});
   const [mcpMsg, setMcpMsg] = useState<Record<string, string>>({});
+  const [signing, setSigning] = useState<any>(null);
+  const [signingMsg, setSigningMsg] = useState("");
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -88,6 +90,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
     pushEnabled().then(setPushOn).catch(() => {});
     getMcpPresets().then((r) => setMcp(r.presets || [])).catch(() => {});
+    getSigningStatus().then(setSigning).catch(() => {});
   };
   useEffect(() => { refresh(); }, []);
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
@@ -197,6 +200,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           );
         })()}
 
+        <div className="admin-cat">🎨 Media &amp; Voice</div>
+
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">ElevenLabs voice</span><span className="admin-note">premium voice</span><span className="admin-count">{cfg?.elevenlabs ? "on" : "off"}</span></div>
           <input className="admin-input" placeholder="ElevenLabs API key" value={eleven} onChange={(e) => setEleven(e.target.value)} />
@@ -212,6 +217,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+
+        <div className="admin-cat">🔗 Connect your apps</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">3rd-Party Integrations</span><span className="admin-note">keys for Notion, Slack, etc.</span></div>
@@ -245,6 +252,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <div className="admin-foot">Gmail: create an <b>App password</b> (not your login). IONOS/Fastmail/any SMTP works. Port 465 = TLS, 587 = STARTTLS.</div>
           </div>
         </div>
+
+        <div className="admin-cat">📱 Phone &amp; devices</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">📱 Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
@@ -291,6 +300,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        <div className="admin-cat">🔌 Business integrations</div>
+
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">🔌 Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
           <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -328,23 +339,60 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        <div className="admin-cat">🚀 Ship your app</div>
+
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">🍎 Signed releases {cfg?.apple?.appleId ? "· on" : ""}</span><span className="admin-note">owner only — sign the Mac app so it opens clean + auto-updates itself</span></div>
-          <div style={{ display: "flex", gap: 8, flexDirection: "column", marginTop: 12 }}>
-            <input className="admin-input" placeholder="Apple ID email (developer account)" value={apple.appleId} onChange={(e) => setApple(v => ({ ...v, appleId: e.target.value }))} />
+          <div className="admin-h"><span className="admin-name">🍎 Sign the Mac app {signing?.mac?.ready ? "· ✓ ready" : ""}</span><span className="admin-note">so it opens with no "unidentified developer" warning</span></div>
+          {/* SAM checks what you have and tells you exactly what's left — no external checklist. */}
+          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
+              <span>{signing?.mac?.hasCert ? "✅" : "⬜️"} Developer ID certificate {signing?.mac?.certName ? <span className="admin-note">· {signing.mac.certName.slice(0, 42)}</span> : ""}</span>
+              <span>{signing?.mac?.hasAppleId ? "✅" : "⬜️"} Apple ID &nbsp; {signing?.mac?.hasTeamId ? "✅" : "⬜️"} Team ID &nbsp; {signing?.mac?.hasPassword ? "✅" : "⬜️"} App password</span>
+            </div>
+            {signing?.mac?.next && <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, color: signing.mac.ready ? "var(--c-ok, #22C55E)" : "var(--accent-text)" }}>👉 {signing.mac.next}</div>}
+          </div>
+          <div className="admin-note" style={{ margin: "10px 0", lineHeight: 1.6 }}>
+            <b>3 one-time steps</b> (you need a <a href="https://developer.apple.com/programs/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>paid Apple Developer account</a>, $99/yr):<br />
+            1. <a href="https://developer.apple.com/account/resources/certificates/add" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Create a “Developer ID Application” certificate ↗</a> → download → double-click to install it.<br />
+            2. <a href="https://appleid.apple.com/account/manage" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Make an app-specific password ↗</a> (Sign-In &amp; Security).<br />
+            3. Enter your Apple ID + Team ID + that password below → SAM signs &amp; notarizes on the next build.
+          </div>
+          <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+            <input className="admin-input" placeholder="Apple ID email" value={apple.appleId} onChange={(e) => setApple(v => ({ ...v, appleId: e.target.value }))} />
             <div style={{ display: "flex", gap: 8 }}>
               <input className="admin-input" style={{ width: 160 }} placeholder="Team ID (ABCDE12345)" value={apple.appleTeam} onChange={(e) => setApple(v => ({ ...v, appleTeam: e.target.value }))} />
-              <input className="admin-input" type="password" style={{ flex: 1 }} placeholder={cfg?.apple?.applePassSet ? "App-specific password (saved — blank keeps it)" : "App-specific password (appleid.apple.com)"} value={apple.applePass} onChange={(e) => setApple(v => ({ ...v, applePass: e.target.value }))} />
+              <input className="admin-input" type="password" style={{ flex: 1 }} placeholder={cfg?.apple?.applePassSet ? "App password (saved — blank keeps it)" : "App-specific password"} value={apple.applePass} onChange={(e) => setApple(v => ({ ...v, applePass: e.target.value }))} />
             </div>
-            <button className="admin-save" style={{ width: "auto", alignSelf: "flex-start" }} onClick={async () => {
-              if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
-              if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
-              if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
-              setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh();
-            }}>{saved === "apple" ? "Saved ✓" : "Save Apple setup"}</button>
-            <div className="admin-foot">One-time: create a <b>Developer ID Application</b> certificate in Xcode (Settings → Accounts → Manage Certificates), then release with <code>npm run release:app</code> — installed SAMs silently self-update from then on.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+                if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
+                if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
+                if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
+                setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh(); getSigningStatus().then(setSigning).catch(() => {});
+              }}>{saved === "apple" ? "Saved ✓" : "Save"}</button>
+              <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {})}>↻ Re-check</button>
+            </div>
           </div>
         </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">🤖 Android app {signing?.android?.hasKeystore ? "· keystore ready" : ""}</span><span className="admin-note">install SAM on Android — free, no account needed</span></div>
+          <div className="admin-note" style={{ margin: "8px 0", lineHeight: 1.6 }}>
+            SAM already installs as an app on Android <b>right now</b> — connect your phone (📱 above), open the link, then <b>⋮ → Add to Home Screen</b>. No signing, no Play Store, works today.<br />
+            For a <b>Play Store</b> build later you'll need a signing keystore — SAM can make one for you, locally, no account:
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="admin-save" style={{ width: "auto" }} disabled={signing?.android?.hasKeystore} onClick={async () => {
+              setSigningMsg("Generating keystore…");
+              const r = await genAndroidKeystore().catch(() => ({ ok: false, error: "failed" }));
+              setSigningMsg(r.ok ? `✅ Keystore created (vault/signing/). Password saved — keep it safe.` : `⚠️ ${r.error || "couldn't create"}`);
+              getSigningStatus().then(setSigning).catch(() => {});
+            }}>{signing?.android?.hasKeystore ? "Keystore ready ✓" : "Generate Android keystore"}</button>
+            {signingMsg && <span className="admin-note">{signingMsg}</span>}
+          </div>
+        </div>
+
+        <div className="admin-cat">🛡️ Safety &amp; permissions</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">Authorized actions</span><span className="admin-note">SAM does these without asking</span></div>
