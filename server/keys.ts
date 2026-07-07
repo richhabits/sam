@@ -35,10 +35,13 @@ class KeyPool {
   }
   status() {
     const now = Date.now();
+    const coolingKeys = this.keys.filter((k) => k.cooldownUntil > now);
     return { provider: this.provider, total: this.keys.length,
       healthy: this.keys.filter((k) => k.cooldownUntil <= now).length,
-      cooling: this.keys.filter((k) => k.cooldownUntil > now).length,
-      uses: this.keys.reduce((a, k) => a + k.uses, 0) };
+      cooling: coolingKeys.length,
+      uses: this.keys.reduce((a, k) => a + k.uses, 0),
+      // soonest a cooling key frees up (ms epoch, 0 if none cooling) — for the usage page countdown
+      coolingUntil: coolingKeys.length ? Math.min(...coolingKeys.map((k) => k.cooldownUntil)) : 0 };
   }
 }
 
