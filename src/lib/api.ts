@@ -96,7 +96,7 @@ export const testEmail = (): Promise<{ ok: boolean; error?: string }> =>
   fetch("/api/admin/test-email", { method: "POST" }).then((r) => r.json());
 
 // Self-update — SAM checks the repo and can pull the latest (evolve, for free).
-export async function checkUpdate(): Promise<{ behind: boolean; current?: string; latest?: string }> {
+export async function checkUpdate(): Promise<{ behind: boolean; current?: string; latest?: string; url?: string }> {
   try { const r = await fetch("/api/update-check"); return await r.json(); } catch { return { behind: false }; }
 }
 export async function runUpdate(): Promise<{ ok: boolean; output?: string; error?: string }> {
