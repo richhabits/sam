@@ -102,7 +102,7 @@ button { font-family: inherit; cursor: pointer; }
 /* settings popover */
 .pop-scrim { position: fixed; inset: 0; z-index: 59; background: transparent; }
 .popover {
-  position: absolute; top: 58px; right: 16px; width: 288px;
+  position: fixed; top: 58px; right: 16px; width: 288px;
   max-height: calc(100vh - 84px); overflow-y: auto; overscroll-behavior: contain;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 16px; box-shadow: 0 12px 40px rgba(28,25,23,.22), 0 2px 8px rgba(28,25,23,.12);
