@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { listNotebooks, createNotebook, notebookSources, addNotebookSource, askNotebook, notebookAudio, deleteNotebook } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
+import { useEscape } from "./lib/useOverlay";
 
 type NB = { id: string; title: string; sources: number; chunks: number };
 type Source = { source: string; title: string; chunks: number };
@@ -10,6 +11,7 @@ type Turn = { q: string; a: string; citations: string[]; loading?: boolean };
 // then ask questions answered ONLY from those sources — with citations — or generate
 // a two-host "Audio Overview" podcast of the material.
 export default function Notebook({ onClose, speak }: { onClose: () => void; speak?: (t: string) => void }) {
+  useEscape(onClose);
   const [books, setBooks] = useState<NB[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);

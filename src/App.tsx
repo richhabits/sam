@@ -349,11 +349,20 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [loading, palette, findOpen, messages.length]);
+  }, [loading, palette, findOpen, messages.length, dragOver]);
+  // Safety net so the file-drop overlay can NEVER get stuck open: clear it if the drag ends, drops
+  // anywhere, or the window loses focus (covers drags cancelled or dropped outside the app).
+  useEffect(() => {
+    const clear = () => setDragOver(false);
+    window.addEventListener("dragend", clear);
+    window.addEventListener("drop", clear);
+    window.addEventListener("blur", clear);
+    return () => { window.removeEventListener("dragend", clear); window.removeEventListener("drop", clear); window.removeEventListener("blur", clear); };
+  }, []);
   useEffect(() => { if (palette) setTimeout(() => paletteRef.current?.focus(), 30); }, [palette]);
   // Matching message indices for ⌘F find-in-chat.
   const findMatches = findQ.trim() ? messages.map((m, i) => (m.text || "").toLowerCase().includes(findQ.toLowerCase()) ? i : -1).filter((i) => i >= 0) : [];
@@ -916,9 +925,9 @@ export default function App() {
   return (
     <div className="app" style={customAccent ? { "--accent": customAccent, "--accent-2": customAccent } as React.CSSProperties : undefined}
       onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!dragOver) setDragOver(true); } }}
-      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+      onDragLeave={(e) => { const rt = e.relatedTarget as Node | null; if (!rt || !e.currentTarget.contains(rt)) setDragOver(false); }}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}>
-      {dragOver && <div className="app-drop"><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span></div></div>}
+      {dragOver && <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>}
       <header className="bar">
         <div className="brandmark">
           <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
@@ -960,8 +969,9 @@ export default function App() {
           <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
           <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
-        {settingsOpen && (
-          <div className="popover" onMouseLeave={() => setSettingsOpen(false)}>
+        {settingsOpen && (<>
+          <div className="pop-scrim" onClick={() => setSettingsOpen(false)} />
+          <div className="popover" role="menu">
             <div className="pop-title">Answer quality</div>
             {(["turbo", "auto", "private", "best"] as Quality[]).map((q) => (
               <button key={q} className={`pop-opt ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)}>
@@ -1001,7 +1011,7 @@ export default function App() {
             {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return n ? <div className="pop-lanes">✓ {n} free {n === 1 ? "brain" : "brains"} ready — SAM rotates so you never hit a limit</div> : null; })()}
             <div className="pop-note">SAM can act for you — reading &amp; searching happen automatically; anything risky asks first.</div>
           </div>
-        )}
+        </>)}
       </header>
 
       {update?.behind && (
