@@ -546,6 +546,7 @@ const PROVIDER_ENV: Record<string, string> = {
   fal: "FAL_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
+  cloudflareAccount: "CLOUDFLARE_ACCOUNT_ID", cloudflareToken: "CLOUDFLARE_API_TOKEN", leonardo: "LEONARDO_API_KEY",
   pexels: "PEXELS_API_KEY", pixabay: "PIXABAY_API_KEY", giphy: "GIPHY_API_KEY", tmdb: "TMDB_API_KEY", omdb: "OMDB_API_KEY",
   obsidianVault: "OBSIDIAN_VAULT",
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",

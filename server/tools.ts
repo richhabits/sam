@@ -1712,10 +1712,72 @@ export const TOOLS: Tool[] = [
         await fetch(pUrl, { method: "HEAD", signal: AbortSignal.timeout(20000) });
         return done(pUrl, "Pollinations");
       } catch { /* network error only → try the keyed lanes */ }
+      // ── CLOUDFLARE Workers AI · FLUX.1-schnell — up to ~100k images/DAY free (account id + token) ──
+      const cfAcct = process.env.CLOUDFLARE_ACCOUNT_ID, cfTok = process.env.CLOUDFLARE_API_TOKEN;
+      if (cfAcct && cfTok) {
+        try {
+          const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAcct}/ai/run/@cf/black-forest-labs/flux-1-schnell`, {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfTok}` }, signal: AbortSignal.timeout(45000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 2000), steps: 6 }),
+          });
+          if (r.ok) { const d: any = await r.json(); const b64 = d?.result?.image; if (b64) return done(`data:image/jpeg;base64,${b64}`, "Cloudflare FLUX"); }
+        } catch { /* fall through */ }
+      }
       // KEYED LANES · rotate smartly (Oliver Twist — sip each provider's free credits evenly).
-      // All return hosted URLs (keeps the HUD simple). Add more lanes here as they appear.
+      // A comprehensive free FLUX/SD matrix — SAM hops across whichever you've connected.
       type ImgLane = { id: string; make: (key: string) => Promise<string | null> };
+      const dataUri = (b64: string, mime = "image/png") => `data:${mime};base64,${b64}`;
       const LANES: ImgLane[] = [
+        { id: "huggingface", make: async (k) => {   // FLUX.1-schnell via HF Inference (returns image bytes)
+          const r = await fetch("https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ inputs: prompt.slice(0, 800) }),
+          });
+          if (!r.ok) { reportFailure("huggingface", k, r.status); return null; }
+          const ct = r.headers.get("content-type") || ""; if (!ct.startsWith("image")) return null;
+          reportSuccess("huggingface", k); return dataUri(Buffer.from(await r.arrayBuffer()).toString("base64"), ct.split(";")[0]);
+        } },
+        { id: "nvidia", make: async (k) => {   // FLUX.1-schnell via NVIDIA (base64 artifacts)
+          const r = await fetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}`, Accept: "application/json" }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 500), width: Math.min(w, 1024), height: Math.min(h, 1024), steps: 4, seed: Math.floor(Math.random() * 1e6) }),
+          });
+          if (!r.ok) { reportFailure("nvidia", k, r.status); return null; }
+          const d: any = await r.json(); const b64 = d?.artifacts?.[0]?.base64 || d?.image; if (b64) { reportSuccess("nvidia", k); return dataUri(b64); } return null;
+        } },
+        { id: "deepinfra", make: async (k) => {   // FLUX-1-schnell
+          const r = await fetch("https://api.deepinfra.com/v1/inference/black-forest-labs/FLUX-1-schnell", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 800) }),
+          });
+          if (!r.ok) { reportFailure("deepinfra", k, r.status); return null; }
+          const d: any = await r.json(); const u = d?.images?.[0] || d?.image_url; if (u) { reportSuccess("deepinfra", k); return u; } return null;
+        } },
+        { id: "fal", make: async (k) => {   // FLUX schnell (synchronous)
+          const r = await fetch("https://fal.run/fal-ai/flux/schnell", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Key ${k}` }, signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 800), image_size: h > w ? "portrait_16_9" : w > h ? "landscape_16_9" : "square_hd" }),
+          });
+          if (!r.ok) { reportFailure("fal", k, r.status); return null; }
+          const u = (await r.json())?.images?.[0]?.url; if (u) reportSuccess("fal", k); return u || null;
+        } },
+        { id: "leonardo", make: async (k) => {   // Leonardo.Ai — async (submit + poll); $5 free credit
+          const sub = await fetch("https://cloud.leonardo.ai/api/rest/v1/generations", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ prompt: prompt.slice(0, 800), num_images: 1, width: Math.min(w, 1024), height: Math.min(h, 1024) }),
+          });
+          if (!sub.ok) { reportFailure("leonardo", k, sub.status); return null; }
+          const id = (await sub.json())?.sdGenerationJob?.generationId; if (!id) return null;
+          for (let t = 0; t < 20; t++) {
+            await new Promise((r) => setTimeout(r, 3000));
+            const st = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${id}`, { headers: { Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(15000) });
+            if (!st.ok) continue;
+            const g: any = await st.json(); const img = g?.generations_by_pk?.generated_images?.[0]?.url;
+            if (img) { reportSuccess("leonardo", k); return img; }
+            if (g?.generations_by_pk?.status === "FAILED") return null;
+          }
+          return null;
+        } },
         { id: "together", make: async (k) => {   // FLUX.1-schnell free model
           const r = await fetch("https://api.together.xyz/v1/images/generations", {
             method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(60000),
