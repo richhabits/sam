@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, getMcpPresets, configureMcp, removeMcp } from "./lib/api";
+import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
 
@@ -255,6 +255,20 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera 📷</div>
                 <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
                 <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
+                    if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
+                    const r = await regeneratePhone().catch(() => ({ ok: false }));
+                    if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
+                  }}>🔁 New token</button>
+                  <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
+                    if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
+                    const r = await disablePhone().catch(() => ({ ok: false }));
+                    if (r.ok) { setPhone({ remoteOn: false, lan: phone.lan, url: null }); setPhoneQR(""); setPhoneMsg("🔴 Phone access off — restart SAM to fully close the LAN."); }
+                  }}>🔴 Turn off</button>
+                </div>
+                <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, opacity: .8 }}>🔒 Same-Wi-Fi traffic isn't encrypted — fine on your own home network. For access from <b>anywhere</b> (encrypted), use <a href="https://tailscale.com/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Tailscale</a>.</div>
+                {phoneMsg && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{phoneMsg}</div>}
               </div>
             </div>
           ) : (

@@ -89,6 +89,8 @@ export const getMcpPresets = () => fetch("/api/mcp/presets").then((r) => r.json(
 export const configureMcp = (id: string, env: Record<string,string>) => fetch("/api/mcp/configure", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, env }) }).then((r) => r.json());
 export const removeMcp = (id: string) => fetch("/api/mcp/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((r) => r.json());
 export const getPhoneLink = () => fetch("/api/phone-link").then((r) => r.json());
+export const regeneratePhone = () => fetch("/api/phone-regenerate", { method: "POST" }).then((r) => r.json());
+export const disablePhone = () => fetch("/api/phone-disable", { method: "POST" }).then((r) => r.json());
 export const enablePhone = () => fetch("/api/phone-enable", { method: "POST" }).then((r) => r.json());
 export const testEmail = (): Promise<{ ok: boolean; error?: string }> =>
   fetch("/api/admin/test-email", { method: "POST" }).then((r) => r.json());
