@@ -199,14 +199,20 @@ export async function runAgentStream(system: string, message: string, tier: Tier
   let prompt = `User: ${message}`;
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    let full = "", mode: null | "answer" | "tool" = null;
+    let full = "", mode: null | "answer" | "tool" = null, emitted = 0;
+    // Never stream past the start of a JSON tool-call object. Small free models often write a line of
+    // preamble and THEN a {"tool":…} call; without this guard the raw JSON leaked into the visible
+    // answer. We hold everything from the first `{"` and only release it later if it wasn't a real call.
+    const braceCut = (s: string) => { const m = s.search(/\{\s*"/); return m >= 0 ? m : s.length; };
     const res = await streamModel(tier, sys, prompt + CONTINUE, (chunk) => {   // deep lane below (Hermes-led planning)
       full += chunk;
       if (mode === null) {
         const s = full.replace(/^[\s`]+/, "");
-        if (s.length > 0) { mode = s[0] === "{" ? "tool" : "answer"; if (mode === "answer") emit({ type: "token", t: full }); }
-      } else if (mode === "answer") {
-        emit({ type: "token", t: chunk });
+        if (s.length > 0) mode = s[0] === "{" ? "tool" : "answer";
+      }
+      if (mode === "answer") {
+        const cut = braceCut(full);
+        if (cut > emitted) { emit({ type: "token", t: full.slice(emitted, cut) }); emitted = cut; }
       }
     }, "deep");
     const finalText = res.text || full;
@@ -227,8 +233,10 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       continue;
     }
 
-    // Final answer. If it was buffered as a would-be tool call but wasn't valid, emit it now.
+    // Final answer. Release anything held back — either a full tool-mode buffer that turned out to be
+    // prose, or an answer-mode `{"…` tail that wasn't actually a valid tool call.
     if (mode !== "answer") emit({ type: "token", t: finalText });
+    else if (full.length > emitted) emit({ type: "token", t: full.slice(emitted) });
     emit({ type: "done", text: finalText, provider: res.provider, trace });
     return;
   }
