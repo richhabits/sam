@@ -92,11 +92,12 @@ jobs:
         run: |
           set +e
           if [ "${{ matrix.platform }}" = "mac" ]; then
-            APP=$(find dist-app -maxdepth 4 -path '*SAM.app/Contents/MacOS/SAM' | head -1)
+            APP=$(find dist-app -path '*SAM.app/Contents/MacOS/*' -type f | head -1)
           else
-            APP=$(find dist-app -maxdepth 3 -iname 'SAM.exe' -path '*unpacked*' | head -1)
+            APP=$(find dist-app -iname 'SAM.exe' -path '*unpacked*' | head -1)
           fi
           echo "Launching: $APP"
+          if [ -z "$APP" ]; then echo "❌ could not locate the packaged binary under dist-app:"; find dist-app -maxdepth 2 -type d; exit 1; fi
           "$APP" > smoke.log 2>&1 &
           UP=0
           for i in $(seq 1 30); do
