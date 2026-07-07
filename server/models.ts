@@ -317,7 +317,7 @@ function laneSort(pool: Provider[], lane: Lane): Provider[] {
   return pool.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p.id) - rank(b.p.id) || a.i - b.i).map((x) => x.p);
 }
 
-export async function runModel(tier: Tier, system: string, prompt: string): Promise<ModelResult> {
+export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
     try {
@@ -335,7 +335,7 @@ export async function runModel(tier: Tier, system: string, prompt: string): Prom
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to
   // paid premium — only an explicit "premium" (Best) request may use paid models.
   const order: Tier[] = tier === "premium" ? ["premium", "free"] : ["free"];
-  const lane = pickLane(prompt);   // what does THIS task need? (fast / deep / code)
+  const lane = laneHint || pickLane(prompt);   // caller can force a lane (e.g. agent tool-planning → deep/Hermes)
   for (const t of order) {
     // Include no-key providers (Pollinations) so there's ALWAYS a free brain to fall to.
     const pool = PROVIDERS.filter((p) => p.tier === t && (poolSize(p.id) > 0 || p.noKey));
@@ -408,7 +408,7 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,
 // falls back to a normal call and emits the whole answer as one chunk.
-export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void): Promise<ModelResult> {
+export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
     if (!poolSize(id)) return null;
     const key = getKey(id); if (!key) return null;
@@ -422,8 +422,8 @@ export async function streamModel(tier: Tier, system: string, prompt: string, on
     const gem = await tryStream("gemini", (k) => streamGemini(system, prompt, k, onChunk), "gemini-2.5-flash");
     if (gem) return gem;
   }
-  // fallback: non-streamed, emit whole text once
-  const r = await runModel(tier, system, prompt);
+  // fallback: non-streamed, emit whole text once (respects a forced lane, e.g. deep/Hermes)
+  const r = await runModel(tier, system, prompt, laneHint);
   onChunk(r.text);
   return r;
 }

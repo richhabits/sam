@@ -3,6 +3,12 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🪽 Hermes leads the agent + more integrations + 📢 post-everywhere** — (1) SAM's tool-PLANNING (deciding
+  the next action) now routes to the deep lane where Hermes fronts — elite agentic reasoning — while still
+  falling through every free brain so it never goes dark. (2) MCP Integrations grew to 16 presets: added
+  Shopify, Google Ads, Google Analytics, Mailchimp, Airtable, Linear. (3) New post_everywhere tool: one
+  command posts to all connected channels (Discord + Slack directly; X/IG/FB/LinkedIn via Metricool),
+  ask-first.
 - **🪃 Roo-style swarm orchestration** — SAM's multi-agent team gained two upgrades from Roo Code's
   Orchestrator/Boomerang: (1) **specialist "modes" with scoped tools** — a researcher/writer now gets a
   focused read/research/write kit, not the run-shell/delete/send kit (builders & operators keep the full
