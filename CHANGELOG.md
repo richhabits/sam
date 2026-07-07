@@ -2,7 +2,7 @@
 
 All notable changes to SAM. Newest first.
 
-## Unreleased
+## [1.1.0] - 2026-07-07
 - **🗜️ Headroom-style context compression — built in & free** — big tool outputs (web pages, MCP/API JSON,
   file reads) get RE-SENT to the model every agent-loop step, so they dominate token cost. SAM now
   compresses each result before it enters the transcript: JSON is minified (~48% saved on real nested
