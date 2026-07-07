@@ -111,7 +111,7 @@ export default function StudioView() {
         <div className="stu-styles">
           {STYLES.map((s, i) => (
             <button key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
-              style={{ backgroundImage: `url(${pollinated(s.pv, 7 + i)})` }} title={s.label}>
+              style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.label}>
               <span className="stu-style-label">{s.label}</span>
             </button>
           ))}
