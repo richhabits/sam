@@ -939,6 +939,15 @@ export default function App() {
           {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
             <button className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now">🔇 Stop</button>
           )}
+          {(() => {
+            const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
+            return (
+              <button className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setAdminOpen(true)}
+                title="Add your free AI keys — SAM rotates them so you never hit a limit">
+                🔑 {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
+              </button>
+            );
+          })()}
           <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
           <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>

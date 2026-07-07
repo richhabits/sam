@@ -86,4 +86,24 @@ Flip the **💼 Business / 🏠 Personal** switch up top to change its vibe.
 - 💸 **It's free.** Won't cost you anything unless you deliberately plug in a paid key.
 - 🆘 **Stuck?** Text me. Or if something errors, close the Terminal, reopen, `cd sam`, `npm start` again.
 
+---
+
+## 🔑 Making it smarter (free API keys)
+
+SAM works out of the box, but adding **free** keys makes it faster and unlocks more (photos, voice, video). Click the **🔑 Add free keys** button top-right → pick any provider → **Get a FREE key ↗** → paste it → Save. Add as many as you like; SAM rotates through them so you never hit a limit. Two minutes each, and they're genuinely free.
+
+## 🔄 Updating & reinstalling
+
+- **Updates** are automatic — SAM checks on launch and (Windows) updates itself, or (Mac) pops a "new version" link. Nothing to do.
+- **Installing a new version by hand?** Quit SAM first (⌘Q / close the tray icon), then install. If it won't replace because "SAM is open", quit it fully and try again.
+- **Already open when you launch it again?** It just focuses the window it already has — no double copies, no conflict.
+
+## 🧹 Clean uninstall / reinstall
+
+Your data (chats, memory, keys) lives *outside* the app, so a reinstall keeps everything.
+
+- **Mac:** quit SAM → drag **SAM** from Applications to the Trash. (To wipe everything too: also delete `~/Library/Application Support/SAM`.)
+- **Windows:** Settings → Apps → **SAM** → Uninstall. (To wipe data: delete `%APPDATA%\SAM`.)
+- **Reinstall:** just download the latest from the release page and open it again — your stuff comes back automatically (unless you wiped the data folder above).
+
 Enjoy it 🙌

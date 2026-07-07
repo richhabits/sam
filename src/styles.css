@@ -422,9 +422,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-end:hover { border-color: var(--accent); color: var(--accent-text); }
 
 /* ── Admin: API keys & providers ─────────────── */
-.drawer.admin { width: min(460px, 94vw); }
-.admin-row { border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 12px; background: var(--bg); }
-.admin-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.drawer.admin { width: min(720px, 96vw); padding: 26px 28px; }   /* wider + roomier — was cramped at 460px */
+.admin-row { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; background: var(--bg); }
+.admin-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .admin-name { font-size: 15px; font-weight: 700; }
 .admin-note { font-size: 12px; color: var(--muted); }
 .admin-count { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent-text); background: var(--accent-soft); border-radius: 999px; padding: 2px 10px; }
@@ -447,7 +447,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .stranger-save { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .stranger-save:disabled { opacity: .5; }
 .stranger-dismiss { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; }
-.admin-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 4px 0 14px; }
+.admin-matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 4px 0 16px; }
+
+/* 🔑 Add-free-keys call-to-action in the header — the whole product's value, made obvious. */
+.key-cta { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 13px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  background: var(--accent-soft); color: var(--accent-text); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.key-cta:hover { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.key-cta.needs { background: var(--accent); color: #fff; border-color: var(--accent); animation: keyPulse 2.4s ease-in-out infinite; }
+@keyframes keyPulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); } }
+@media (max-width: 560px) { .key-cta.needs { font-size: 0; gap: 0; padding: 0 11px; } .key-cta.needs::before { content: "🔑"; font-size: 15px; } .admin-matrix { grid-template-columns: repeat(2, 1fr); } }
 .matrix-cell { display: flex; align-items: center; gap: 8px; background: var(--panel, rgba(127,127,127,.06)); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font-size: 12px; opacity: .65; }
 .matrix-cell.on { opacity: 1; border-color: rgba(95,208,138,.35); }
 .matrix-ic { font-size: 15px; }
