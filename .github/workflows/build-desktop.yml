@@ -87,7 +87,12 @@ jobs:
       # RUNTIME PROOF (no false claims): actually launch the packaged app on THIS platform and
       # confirm the embedded server boots + responds. This exercises the real risks — the native
       # better-sqlite3 binding loading per-platform + the writable data dir — not just "it compiled".
+      # Only smoke-test where the RUNNER arch matches the BUILD arch, so the app runs natively and
+      # the result is honest. The mac-x64 build is cross-compiled on an arm64 runner — running it
+      # here would only exercise Rosetta (Chromium's network service crashes under emulation), which
+      # is NOT how a real Intel Mac behaves. Intel is build-verified; true runtime proof needs Intel HW.
       - name: Smoke test — boot the packaged app + hit the server
+        if: ${{ !(matrix.platform == 'mac' && matrix.arch == 'x64') }}
         shell: bash
         run: |
           set +e
