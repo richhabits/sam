@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────
+#  Build SAM desktop apps — Mac (.dmg) + Windows (.exe installer)
+#
+#  Each platform builds on its OWN runner because the native module
+#  (better-sqlite3) can't be cross-compiled — its .node must be built
+#  on-platform, FROM SOURCE, against Electron's ABI (npmRebuild is off
+#  in package.json, so we do that rebuild explicitly here).
+#
+#  Triggers:
+#   • Publish a GitHub Release (or push a v* tag) → builds + attaches
+#     the installers to that release (auto-update picks them up).
+#   • Run manually (workflow_dispatch) → builds + uploads artifacts you
+#     can download from the run, without touching a release.
+#
+#  Code signing is OPTIONAL — set these repo secrets to ship signed
+#  (unsigned still builds fine, users just click through Gatekeeper):
+#   Mac:  CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, and for notarizing
+#         APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+#   Win:  WIN_CSC_LINK (base64 .pfx), WIN_CSC_KEY_PASSWORD
+# ─────────────────────────────────────────────────────────────
+name: Build Desktop Apps
+
+on:
+  release:
+    types: [published]   # publish a release → build + attach installers to it
+  workflow_dispatch:      # run manually → build + upload downloadable artifacts
+
+permissions:
+  contents: write   # attach installers to the release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest      # Apple Silicon (arm64)
+            platform: mac
+          - os: windows-latest     # Windows x64
+            platform: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web + server bundles
+        run: npm run build
+
+      - name: Rebuild native modules for Electron (from source, on-platform)
+        run: npx @electron/rebuild --force --build-from-source --only better-sqlite3
+
+      - name: Package + publish (${{ matrix.platform }})
+        run: >
+          npx electron-builder --${{ matrix.platform }}
+          --publish ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')) && 'always' || 'never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Mac signing / notarization (optional — empty = unsigned build)
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing (optional)
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Upload installers as artifacts (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sam-${{ matrix.platform }}
+          path: |
+            dist-app/*.dmg
+            dist-app/*.exe
+            dist-app/*.blockmap
+            dist-app/latest*.yml
+          if-no-files-found: warn
