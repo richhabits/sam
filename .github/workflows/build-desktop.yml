@@ -36,6 +36,8 @@ jobs:
         include:
           - os: macos-latest      # Apple Silicon (arm64)
             platform: mac
+          - os: macos-13           # Intel Macs (x64)
+            platform: mac
           - os: windows-latest     # Windows x64
             platform: win
     runs-on: ${{ matrix.os }}
@@ -78,7 +80,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: sam-${{ matrix.platform }}
+          name: sam-${{ matrix.os }}   # unique per runner (two mac jobs can't share one name)
           path: |
             dist-app/*.dmg
             dist-app/*.exe
