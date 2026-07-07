@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm, getSchedules, toggleSchedule, removeSchedule, Schedule, getPeople } from "./lib/api";
+import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
 const PROVIDER_LABEL: Record<string, string> = {
@@ -15,6 +16,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [people, setPeople] = useState<any[]>([]);
+  useEscape(onClose);
 
   useEffect(() => {
     const load = () => {

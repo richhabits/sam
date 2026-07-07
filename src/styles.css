@@ -100,11 +100,17 @@ button { font-family: inherit; cursor: pointer; }
 .icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
 
 /* settings popover */
+.pop-scrim { position: fixed; inset: 0; z-index: 59; background: transparent; }
 .popover {
-  position: absolute; top: 60px; right: 16px; width: 260px;
+  position: absolute; top: 58px; right: 16px; width: 288px;
+  max-height: calc(100vh - 84px); overflow-y: auto; overscroll-behavior: contain;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px; z-index: 30;
+  border-radius: 16px; box-shadow: 0 12px 40px rgba(28,25,23,.22), 0 2px 8px rgba(28,25,23,.12);
+  padding: 10px; z-index: 60;
+  animation: pop-in .16s cubic-bezier(.2,.8,.2,1);
 }
+@media (prefers-color-scheme: dark) { .popover { box-shadow: 0 16px 50px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
 .pop-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 4px 6px 8px; }
 .pop-opt { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; }
 .pop-opt:hover { background: var(--bg); }
@@ -274,8 +280,14 @@ button { font-family: inherit; cursor: pointer; }
 .hint { max-width: 760px; margin: 8px auto 0; text-align: center; font-size: 12px; color: var(--muted); }
 
 /* ── Memory drawer ──────────────────────────── */
-.drawer-wrap { position: fixed; inset: 0; background: rgba(28,25,23,.28); z-index: 40; display: flex; justify-content: flex-end; }
-.drawer { width: min(400px, 92vw); height: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 30px rgba(28,25,23,.12); padding: 20px; overflow-y: auto; }
+.drawer-wrap { position: fixed; inset: 0; background: rgba(28,25,23,.38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); z-index: 40; display: flex; justify-content: flex-end; animation: scrim-in .18s ease; }
+@media (prefers-color-scheme: dark) { .drawer-wrap { background: rgba(0,0,0,.5); } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.drawer { width: min(400px, 92vw); height: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 30px rgba(28,25,23,.12); padding: 20px; overflow-y: auto; animation: drawer-in .24s cubic-bezier(.2,.8,.2,1); }
+.drawer-wrap.left .drawer, .drawer.drawer-l { animation: drawer-in-left .24s cubic-bezier(.2,.8,.2,1); }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes drawer-in-left { from { transform: translateX(-24px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .drawer, .drawer-wrap, .popover, .app-drop-card { animation: none !important; } }
 .drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
 .drawer-title { font-size: 18px; font-weight: 800; }
 .drawer-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
@@ -563,8 +575,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* security watchdog line in dashboard */
 .dash-security { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; }
-.dash-security.clear { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
-.dash-security.flagged { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+.dash-security.clear { background: color-mix(in srgb, var(--c-ok, #16a34a) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-ok, #16a34a) 30%, transparent); color: var(--c-ok, #16a34a); }
+.dash-security.flagged { background: color-mix(in srgb, var(--c-err, #dc2626) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-err, #dc2626) 30%, transparent); color: var(--c-err, #dc2626); }
 :root[data-theme="dark"] .dash-security.clear { background: #0f2417; border-color: #1e4630; color: #86efac; }
 :root[data-theme="dark"] .dash-security.flagged { background: #2a1414; border-color: #4a1e1e; color: #fca5a5; }
 .dash-shield { font-size: 16px; }
@@ -949,9 +961,10 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 @keyframes av-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); } 50% { box-shadow: 0 0 0 5px rgba(239,68,68,0); } }
 
 /* App-wide drag-drop overlay */
-.app-drop { position: fixed; inset: 0; z-index: 300; background: rgba(10,12,16,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.app-drop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 3px dashed var(--accent); border-radius: 24px; padding: 48px 66px; background: var(--accent-soft); color: var(--accent-text); font: 800 22px var(--sans); text-align: center; box-shadow: 0 0 60px color-mix(in srgb, var(--accent) 40%, transparent); }
+.app-drop { position: fixed; inset: 0; z-index: 300; background: rgba(10,12,16,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; cursor: pointer; animation: scrim-in .16s ease; }
+.app-drop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 3px dashed var(--accent); border-radius: 24px; padding: 48px 66px; background: var(--accent-soft); color: var(--accent-text); font: 800 22px var(--sans); text-align: center; box-shadow: 0 0 60px color-mix(in srgb, var(--accent) 40%, transparent); pointer-events: none; }
 .app-drop-card span { font: 500 13px var(--sans); color: var(--muted); }
+.app-drop-card em { font: 500 12px var(--sans); color: var(--muted); opacity: .7; font-style: normal; margin-top: 4px; }
 
 /* Voice Mode blocked state — dimmed orb, clearly not listening */
 .vm-orb.blocked { filter: grayscale(0.7) brightness(0.6); opacity: .6; }

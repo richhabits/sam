@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getStatus } from "./lib/api";
+import { useEscape } from "./lib/useOverlay";
 
 // 📊 Live Usage — even though it's all free, this shows WHERE SAM is spending each provider,
 // which are rate-limited right now, and when they free up. So you can see if you're leaning on
@@ -12,6 +13,7 @@ export default function Usage({ onClose }: { onClose: () => void }) {
   const [pools, setPools] = useState<Pool[]>([]);
   const [provs, setProvs] = useState<Prov[]>([]);
   const [, tick] = useState(0);
+  useEscape(onClose);
 
   useEffect(() => {
     const load = () => getStatus().then((s) => { setPools(s?.models?.pools || []); setProvs(s?.models?.providers || []); }).catch(() => {});
