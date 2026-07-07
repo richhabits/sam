@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
+import { openDb } from "./db.ts";
 import { embedOne, cosine } from "./embeddings.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,7 +20,7 @@ const OLD_STORE = join(VAULT_DIR, "memory.json");
 const DEDUP_SIM = 0.92;   // skip near-duplicate facts (research: dedup on write)
 
 mkdirSync(VAULT_DIR, { recursive: true });
-const db = new Database(DB_PATH);
+const db = openDb(DB_PATH);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS memories (
