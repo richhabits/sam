@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { runModel, streamModel, Tier } from "./models.ts";
+import { compressToolOutput } from "./compress.ts";
 import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 import { mayAutoRun } from "./authz.ts";
 
@@ -20,6 +21,7 @@ const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token l
 function trimPrompt(p: string): string {
   return p.length > 7000 ? p.slice(0, 700) + "\n…(earlier steps trimmed)…\n" + p.slice(-5500) : p;
 }
+
 
 // Built per request so we can expose ONLY the relevant tools (semantic routing).
 function buildProtocol(toolNames?: string[]): string {
@@ -142,7 +144,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[])
     let result: string;
     try { result = await tool.run(call.input); }
     catch (e: any) { result = `that didn't work (${e?.message || e})`; }
-    prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${result}`);
+    prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${compressToolOutput(tool.name, result)}`);
   }
   // ran out of steps — ask the model to wrap up with what it has
   const wrap = await runModel(tier, system, prompt + `\n\nWrap up now: give the user your best final answer in plain words.`);
@@ -221,7 +223,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       emit({ type: "tool", activity: tool.activity(call.input) });
       let result: string;
       try { result = await tool.run(call.input); } catch (e: any) { result = `that didn't work (${e?.message || e})`; }
-      prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${result}`);
+      prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${compressToolOutput(tool.name, result)}`);
       continue;
     }
 
@@ -247,7 +249,7 @@ export async function resumeAgent(
     let result: string;
     try { result = await tool.run(input); }
     catch (e: any) { result = `that didn't work (${e?.message || e})`; }
-    prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${result}`);
+    prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${compressToolOutput(tool.name, result)}`);
   } else {
     prompt += `\n\n[The user declined to run ${toolName}. Do not do it. Continue without it or explain what you'd need.]`;
   }
