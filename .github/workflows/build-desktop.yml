@@ -84,6 +84,33 @@ jobs:
           #         WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      # RUNTIME PROOF (no false claims): actually launch the packaged app on THIS platform and
+      # confirm the embedded server boots + responds. This exercises the real risks — the native
+      # better-sqlite3 binding loading per-platform + the writable data dir — not just "it compiled".
+      - name: Smoke test — boot the packaged app + hit the server
+        shell: bash
+        run: |
+          set +e
+          if [ "${{ matrix.platform }}" = "mac" ]; then
+            APP=$(find dist-app -maxdepth 4 -path '*SAM.app/Contents/MacOS/SAM' | head -1)
+          else
+            APP=$(find dist-app -maxdepth 3 -iname 'SAM.exe' -path '*unpacked*' | head -1)
+          fi
+          echo "Launching: $APP"
+          "$APP" > smoke.log 2>&1 &
+          UP=0
+          for i in $(seq 1 30); do
+            if curl -s -m3 http://127.0.0.1:8787/api/status -o /dev/null; then UP=1; break; fi
+            sleep 3
+          done
+          echo "----- app boot log -----"; tail -25 smoke.log 2>/dev/null
+          taskkill //F //IM SAM.exe >/dev/null 2>&1; pkill -f 'SAM' >/dev/null 2>&1; true
+          if [ "$UP" = "1" ]; then
+            echo "✅ ${{ matrix.platform }}-${{ matrix.arch }}: packaged app booted and the server responded."
+          else
+            echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: server did NOT respond — see log above."; exit 1
+          fi
+
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
