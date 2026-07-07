@@ -232,7 +232,7 @@ All notable changes to SAM. Newest first.
 - **De-bloat** — `desktopNotify` properly exported; two duplicate dynamic `import(…) as any` call-sites in `index.ts` replaced with a single top-level import.
 - **Truth sweep** — SECURITY.md updated with loopback binding bullet + accurate injection-defence description; CHANGELOG counts corrected.
 
-## Unreleased (previous)
+## [1.1.1] - 2026-07-07 (previous)
 - **Hardened to production-grade** — full 4-dimension audit (bugs · efficiency · integrity · hygiene): fixed a
   Private-mode→cloud fallthrough, a swarm lost-update race, memory-loss on embedding-provider rotation, request
   hangs, and a scripted "now playing" claim; capped tool-routing token waste; added Anthropic prompt caching,
