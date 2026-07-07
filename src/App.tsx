@@ -386,9 +386,16 @@ export default function App() {
     if (!name) return;
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
     setProfile(p); setUser({ ...p, mode }); upsertProfile(p);
-    // First run: if no free key is set up yet, open the keys panel so the new user grabs a
-    // FREE brain right away (SAM needs one free key — or local Ollama — to think).
-    getStatus().then((s) => { if (!s?.capacity?.configured) setAdminOpen(true); }).catch(() => setAdminOpen(true));
+    // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
+    // no config. So instead of shoving the keys panel in a brand-new user's face, we greet them and
+    // drop them straight into a working chat. Keys are an OPTIONAL speed/ability boost (the 🔑 button
+    // up top), never a gate. This is the "it just works" first run.
+    setMessages([{
+      role: "sam",
+      text: `Hey ${name} 👋 I'm **SAM** — your private AI, running **free, right on your computer**. Nothing to set up. Ask me anything, or just tell me what you're working on.\n\n_Want me faster, or photos & voice? Tap **🔑 Add free keys** up top — 2 minutes, still free. But you're good to go right now._`,
+      how: "welcome",
+      at: now(),
+    }]);
   }
 
   const refreshLog = () => getLog().then(setLog).catch(() => {});
