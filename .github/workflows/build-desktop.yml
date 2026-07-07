@@ -66,23 +66,34 @@ jobs:
       - name: Rebuild native modules for Electron (from source, target arch)
         run: npx @electron/rebuild --force --build-from-source --only better-sqlite3 --arch ${{ matrix.arch }}
 
+      # Signs + notarizes AUTOMATICALLY when the Apple secrets are present, otherwise builds unsigned.
+      # No workflow edits needed — add the repo secrets (CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
+      # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) and the very next release signs itself.
       - name: Package + publish (${{ matrix.platform }} ${{ matrix.arch }})
-        run: >
-          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }}
-          --publish ${{ (github.event_name == 'release' || inputs.publish) && 'always' || 'never' }}
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Build UNSIGNED by default. An empty CSC_LINK makes electron-builder try to read the cwd
-          # as a certificate ("not a file" crash on macOS), so we explicitly disable signing here.
-          # ── To ship SIGNED builds: add these repo secrets, DELETE the line below, and uncomment:
-          #   Mac:  CSC_LINK: ${{ secrets.CSC_LINK }}
-          #         CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          #         APPLE_ID: ${{ secrets.APPLE_ID }}
-          #         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          #         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          #   Win:  WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          #         WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          SIGN_CSC_LINK: ${{ secrets.CSC_LINK }}
+          SIGN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_SIGN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_SIGN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          PUBLISH=${{ (github.event_name == 'release' || inputs.publish) && 'always' || 'never' }}
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "$SIGN_CSC_LINK" ]; then
+            export CSC_LINK="$SIGN_CSC_LINK" CSC_KEY_PASSWORD="$SIGN_CSC_KEY_PASSWORD"
+            echo "🔏 macOS: signing + notarizing (Developer ID cert + notarization creds present)"
+          elif [ "${{ matrix.platform }}" = "win" ] && [ -n "$WIN_SIGN_CSC_LINK" ]; then
+            export CSC_LINK="$WIN_SIGN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_SIGN_CSC_KEY_PASSWORD"
+            echo "🔏 Windows: signing"
+          else
+            # No cert secret → force-disable auto-discovery so an empty CSC_LINK can't crash the build.
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            echo "ℹ️ ${{ matrix.platform }}: unsigned build (no signing secrets set)"
+          fi
+          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish "$PUBLISH"
 
       # RUNTIME PROOF (no false claims): actually launch the packaged app on THIS platform and
       # confirm the embedded server boots + responds. This exercises the real risks — the native
