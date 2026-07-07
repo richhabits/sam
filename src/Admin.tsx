@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp, getSigningStatus, genAndroidKeystore } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
+import { useEscape } from "./lib/useOverlay";
 
 type McpPreset = { id: string; label: string; emoji: string; note: string; official: boolean; fields: { env: string; label: string; placeholder?: string }[]; docs?: string; connected: boolean };
 
@@ -56,6 +57,7 @@ const PROVIDERS: Prov[] = [
 ];
 
 export default function Admin({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const [cfg, setCfg] = useState<any>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [eleven, setEleven] = useState("");
