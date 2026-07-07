@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import Database from "better-sqlite3";
+import { openDb } from "./db.ts";
 import { embed, embedOne, cosine } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";
 
@@ -32,7 +33,7 @@ function db(): Database.Database {
   if (_db && _dbPath === path) return _db;
   mkdirSync(vaultDir, { recursive: true });
   _db?.close();
-  _db = new Database(path);
+  _db = openDb(path);
   _dbPath = path;
   _docCache.clear();   // new DB (e.g. VAULT_DIR changed in tests) → drop stale cached vectors
   _db.exec(`

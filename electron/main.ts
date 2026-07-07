@@ -1,11 +1,18 @@
+// MUST be first: sets CJS globals, crash visibility, and the writable data dir BEFORE the server
+// module below evaluates. (ES imports evaluate in source order, so preboot runs before the server.)
+import "./preboot.ts";
+
 import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell } from "electron";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Start the Express backend directly in the main process!
-// It will boot up and listen on 8787 automatically.
+// Start the Express backend in this process (boots + listens on 8787). STATIC import so the electron
+// build's `external` (better-sqlite3) applies and the native module loads from node_modules rather
+// than being bundled and losing its .node. preboot.ts (imported first, above) has already set the
+// data dir + CJS globals it needs.
 import "../server/index.ts";
 
 let win: BrowserWindow | null = null;
