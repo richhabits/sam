@@ -99,6 +99,18 @@ function createTray() {
   });
 }
 
+// Single-instance lock: if SAM is already running (the common "already installed / launched twice"
+// conflict — two servers fighting over port 8787), don't start a second copy. Just focus the one
+// that's open. This is the clean fix for install/launch conflicts.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+    else createWindow();
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
   createTray();
