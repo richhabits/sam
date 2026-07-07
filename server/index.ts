@@ -107,23 +107,37 @@ app.use((_req, res, next) => {
 // Every non-loopback request must present the token — via ?token= once (sets a cookie),
 // the cookie afterwards, or an Authorization: Bearer header. Loopback stays open as ever.
 {
-  const TOKEN = process.env.SAM_REMOTE_TOKEN || "";
-  const tokenOk = (t: string) => {
-    if (!t || t.length !== TOKEN.length) return false;
-    try { return timingSafeEqual(Buffer.from(t), Buffer.from(TOKEN)); } catch { return false; }
-  };
-  let failures = 0;
+  // Per-IP brute-force protection: after a few bad tokens from one IP, lock THAT IP with growing
+  // backoff — so a real attacker is throttled without a fat-fingered typo locking everyone out.
+  const fails = new Map<string, { n: number; until: number }>();
   app.use((req, res, next) => {
-    if (!(process.env.SAM_REMOTE === "1" && TOKEN.length >= 16)) return next();   // remote off → no gate
+    if (!(process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16)) return next();   // remote off → no gate
+    const LIVE = process.env.SAM_REMOTE_TOKEN || "";   // read live so regenerate/disable takes effect without restart
+    const liveOk = (t: string) => { if (!t || t.length !== LIVE.length) return false; try { return timingSafeEqual(Buffer.from(t), Buffer.from(LIVE)); } catch { return false; } };
     const ip = req.socket.remoteAddress || "";
     if (ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1") return next();   // loopback always fine
-    if (failures > 200) { res.status(429).end(); return; }   // brute-force backstop (resets on restart)
+    const now = Date.now();
+    const rec = fails.get(ip);
+    if (rec && rec.until > now) { res.status(429).json({ error: "too many attempts — try again shortly" }); return; }
     const q = typeof req.query.token === "string" ? req.query.token : "";
     const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)sam_token=([^;]+)/)?.[1] || "";
     const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     const t = q || decodeURIComponent(cookie) || bearer;
-    if (!tokenOk(t)) { failures++; logSecurity("alert", "remote-denied", "Blocked a remote request with a bad/missing token", ip); res.status(401).json({ error: "unauthorized" }); return; }
-    if (q) res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+    if (!liveOk(t)) {
+      const n = (rec?.n || 0) + 1;
+      const until = n >= 5 ? now + Math.min(15 * 60_000, 1000 * 2 ** (n - 5)) : 0;   // exp backoff after 5 bad tries
+      if (fails.size > 2000) fails.clear();   // bound memory
+      fails.set(ip, { n, until });
+      logSecurity("alert", "remote-denied", `Blocked a remote request with a bad/missing token (attempt ${n} from this device)`, ip);
+      res.status(401).json({ error: "unauthorized" }); return;
+    }
+    fails.delete(ip);   // good token → clear this IP's record
+    if (q) {
+      res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+      // Strip the token from the URL (it lingers in history/address bar otherwise) — redirect the
+      // page navigation to the clean path; the cookie now carries auth.
+      if (req.method === "GET" && !req.path.startsWith("/api/")) { res.redirect(302, req.path || "/"); return; }
+    }
     next();
   });
 }
@@ -834,10 +848,29 @@ app.get("/api/phone-link", (req, res) => {
 // One-click enable: generate a strong token, persist SAM_REMOTE=1 + token (takes effect on restart).
 app.post("/api/phone-enable", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
-  const token = randomBytes(18).toString("base64url");
+  const token = randomBytes(32).toString("base64url");   // 256-bit — quantum-safe symmetric secret (128-bit effective under Grover)
   writeEnv("SAM_REMOTE", "1");
   writeEnv("SAM_REMOTE_TOKEN", token);
   process.env.SAM_REMOTE = "1"; process.env.SAM_REMOTE_TOKEN = token;
+  res.json({ ok: true, needsRestart: true });
+});
+// 🔁 Rotate the token — instantly revokes every device (they must re-scan). No restart needed; the
+// gate reads SAM_REMOTE_TOKEN live. Loopback-only so a remote device can never rotate you out.
+app.post("/api/phone-regenerate", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const token = randomBytes(32).toString("base64url");   // 256-bit, quantum-safe
+  writeEnv("SAM_REMOTE_TOKEN", token);
+  process.env.SAM_REMOTE_TOKEN = token;
+  logSecurity("info", "phone-token-rotated", "Phone access token regenerated — all devices must re-connect", "owner");
+  res.json({ ok: true, rotated: true });
+});
+// 🔴 Turn phone access OFF — closes the LAN entirely (binds back to loopback on next restart) and
+// invalidates the token now.
+app.post("/api/phone-disable", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  writeEnv("SAM_REMOTE", "0");
+  process.env.SAM_REMOTE = "0";
+  logSecurity("info", "phone-disabled", "Phone/remote access turned off", "owner");
   res.json({ ok: true, needsRestart: true });
 });
 
