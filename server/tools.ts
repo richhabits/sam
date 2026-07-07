@@ -1656,6 +1656,44 @@ export const TOOLS: Tool[] = [
     activity: () => `Pruning old vault logs`, preview: () => `Delete vault daily notes older than 90 days?`,
     run: async () => { const r = pruneOldLogs(); return `Pruned ${r.removed} old log file${r.removed !== 1 ? "s" : ""}.`; } },
   // ─── ADMIN: KEY POOL HEALTH ────────────────────────────────────────────────
+  // ── 📸 STOCK MEDIA + assets — real footage/photos/GIFs/film data (free tiers) ──
+  { name: "stock_photo", safe: true, description: "Find REAL stock photos (free, commercial-ok) via Pexels or Pixabay. input: {query, count?}.", params: "{query, count?}",
+    activity: (i) => `Finding stock photos: ${i.query ?? i}`, run: async (i) => {
+      const q = String(i.query ?? i ?? "").trim(); if (!q) return "What photos are you after?";
+      const n = Math.min(8, Math.max(1, Number(i.count) || 4));
+      const px = process.env.PEXELS_API_KEY;
+      if (px) { try { const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=${n}`, { headers: { Authorization: px }, signal: AbortSignal.timeout(15000) }); if (r.ok) { const d: any = await r.json(); const ph = (d.photos || []).map((p: any) => p.src?.large2x || p.src?.large).filter(Boolean); if (ph.length) return `📸 ${ph.length} photos (Pexels):\n` + ph.map((u: string) => `![photo](${u})`).join("\n"); } } catch {} }
+      const pb = process.env.PIXABAY_API_KEY;
+      if (pb) { try { const r = await fetch(`https://pixabay.com/api/?key=${pb}&q=${encodeURIComponent(q)}&per_page=${n}&image_type=photo`, { signal: AbortSignal.timeout(15000) }); if (r.ok) { const d: any = await r.json(); const ph = (d.hits || []).map((h: any) => h.largeImageURL || h.webformatURL).filter(Boolean); if (ph.length) return `📸 ${ph.length} photos (Pixabay):\n` + ph.map((u: string) => `![photo](${u})`).join("\n"); } } catch {} }
+      return "To search real stock photos, add a free Pexels or Pixabay key in Settings → Media.";
+    } },
+  { name: "stock_video", safe: true, description: "Find REAL stock video / b-roll (free) via Pexels or Pixabay. input: {query, count?}.", params: "{query, count?}",
+    activity: (i) => `Finding b-roll: ${i.query ?? i}`, run: async (i) => {
+      const q = String(i.query ?? i ?? "").trim(); if (!q) return "What footage do you need?";
+      const n = Math.min(6, Math.max(1, Number(i.count) || 3));
+      const px = process.env.PEXELS_API_KEY;
+      if (px) { try { const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&per_page=${n}`, { headers: { Authorization: px }, signal: AbortSignal.timeout(15000) }); if (r.ok) { const d: any = await r.json(); const vids = (d.videos || []).map((v: any) => v.video_files?.find((f: any) => f.quality === "hd")?.link || v.video_files?.[0]?.link).filter(Boolean); if (vids.length) return `🎬 ${vids.length} clips (Pexels):\n` + vids.map((u: string) => u).join("\n"); } } catch {} }
+      const pb = process.env.PIXABAY_API_KEY;
+      if (pb) { try { const r = await fetch(`https://pixabay.com/api/videos/?key=${pb}&q=${encodeURIComponent(q)}&per_page=${n}`, { signal: AbortSignal.timeout(15000) }); if (r.ok) { const d: any = await r.json(); const vids = (d.hits || []).map((h: any) => h.videos?.large?.url || h.videos?.medium?.url).filter(Boolean); if (vids.length) return `🎬 ${vids.length} clips (Pixabay):\n` + vids.join("\n"); } } catch {} }
+      return "To search real b-roll, add a free Pexels or Pixabay key in Settings → Media.";
+    } },
+  { name: "find_gif", safe: true, description: "Find a GIF via GIPHY (free). input: {query}.", params: "{query}",
+    activity: (i) => `Finding a GIF: ${i.query ?? i}`, run: async (i) => {
+      const q = String(i.query ?? i ?? "").trim(); if (!q) return "What GIF?";
+      const k = process.env.GIPHY_API_KEY; if (!k) return "Add a free GIPHY key in Settings → Media to search GIFs.";
+      try { const r = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${k}&q=${encodeURIComponent(q)}&limit=3`, { signal: AbortSignal.timeout(12000) }); if (r.ok) { const d: any = await r.json(); const g = (d.data || []).map((x: any) => x.images?.original?.url).filter(Boolean); if (g.length) return g.map((u: string) => `![gif](${u})`).join("\n"); } } catch {}
+      return "Couldn't find a GIF for that.";
+    } },
+  { name: "movie_info", safe: true, description: "Look up a film/TV show — plot, year, rating, poster — via TMDb or OMDb (free). input: {title}.", params: "{title}",
+    activity: (i) => `Looking up “${i.title ?? i}”`, run: async (i) => {
+      const t = String(i.title ?? i ?? "").trim(); if (!t) return "Which title?";
+      const tmdb = process.env.TMDB_API_KEY;
+      if (tmdb) { try { const r = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${tmdb}&query=${encodeURIComponent(t)}`, { signal: AbortSignal.timeout(12000) }); if (r.ok) { const d: any = await r.json(); const m = d.results?.[0]; if (m) return `🎬 **${m.title || m.name}** (${(m.release_date || m.first_air_date || "").slice(0, 4)}) · ⭐ ${m.vote_average}\n${m.overview || ""}${m.poster_path ? `\n\n![poster](https://image.tmdb.org/t/p/w500${m.poster_path})` : ""}`; } } catch {} }
+      const omdb = process.env.OMDB_API_KEY;
+      if (omdb) { try { const r = await fetch(`https://www.omdbapi.com/?apikey=${omdb}&t=${encodeURIComponent(t)}`, { signal: AbortSignal.timeout(12000) }); if (r.ok) { const m: any = await r.json(); if (m.Title) return `🎬 **${m.Title}** (${m.Year}) · ⭐ ${m.imdbRating}\n${m.Plot || ""}${m.Poster && m.Poster !== "N/A" ? `\n\n![poster](${m.Poster})` : ""}`; } } catch {} }
+      return "Add a free TMDb or OMDb key in Settings → Media to look up films.";
+    } },
+
   { name: "generate_image", safe: true, description: "Create an image from a text description — FREE (rotating free lanes, no key needed). Returns the image inline. input: {prompt, width?, height?}.", params: "{prompt, width?, height?}",
     activity: (i) => `Painting: ${String(i.prompt || "").slice(0, 40)}…`, run: async (i) => {
       const prompt = String(i.prompt || i || "").trim();
