@@ -536,7 +536,7 @@ const CONFIG_ENV: Record<string, string> = {
   defaultTier: "DEFAULT_TIER", musicService: "MUSIC_SERVICE",
   groqModel: "GROQ_MODEL", claudeModel: "CLAUDE_MODEL",
   notion: "NOTION_API_KEY", slack: "SLACK_BOT_TOKEN",
-  discord: "DISCORD_WEBHOOK_URL", twitter: "TWITTER_BEARER_TOKEN",
+  discord: "DISCORD_WEBHOOK_URL", twitter: "TWITTER_BEARER_TOKEN", slackChannel: "SLACK_CHANNEL",
   linear: "LINEAR_API_KEY", linearTeam: "LINEAR_TEAM_ID",
   // SAM's own email (SMTP) — set from Settings, saved to .env
   smtpHost: "SMTP_HOST", smtpPort: "SMTP_PORT", smtpUser: "SMTP_USER",

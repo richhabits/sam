@@ -760,6 +760,29 @@ export const TOOLS: Tool[] = [
       return `🟣 Indexed your Obsidian vault — ${r.ingested} notes, ${r.chunks} passages. Ask me anything about your notes now (search_docs / notebook_ask).`;
     } },
 
+  // ── 📢 POST EVERYWHERE — one command, all your connected channels ──
+  { name: "post_everywhere", safe: false, description: "Post the same message to ALL connected channels at once (Discord, Slack directly; X/Instagram/Facebook/LinkedIn via the Metricool integration if connected). input: {text}.", params: "{text}",
+    activity: () => `Posting to all channels`, run: async (i) => {
+      const text = String((i.text ?? i) || "").trim();
+      if (!text) return "What should I post?";
+      const results: string[] = [];
+      // Discord — incoming webhook (simplest, no OAuth)
+      const dh = process.env.DISCORD_WEBHOOK_URL;
+      if (dh) {
+        try { const r = await fetch(dh, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: text.slice(0, 2000) }), signal: AbortSignal.timeout(15000) }); results.push(r.ok ? "✅ Discord" : `⚠️ Discord (${r.status})`); }
+        catch { results.push("⚠️ Discord (failed)"); }
+      }
+      // Slack — chat.postMessage with a bot token (needs SLACK_CHANNEL)
+      const st = process.env.SLACK_BOT_TOKEN, sc = process.env.SLACK_CHANNEL;
+      if (st && sc) {
+        try { const r = await fetch("https://slack.com/api/chat.postMessage", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${st}` }, body: JSON.stringify({ channel: sc, text }), signal: AbortSignal.timeout(15000) }); const d: any = await r.json(); results.push(d?.ok ? "✅ Slack" : `⚠️ Slack (${d?.error || "failed"})`); }
+        catch { results.push("⚠️ Slack (failed)"); }
+      }
+      const socialHint = "For X · Instagram · Facebook · LinkedIn in one shot, connect **Metricool** in Settings → Integrations, then I'll schedule/post there too.";
+      if (!results.length) return `No direct channels connected yet. Set DISCORD_WEBHOOK_URL and/or SLACK_BOT_TOKEN + SLACK_CHANNEL in Settings.\n\n${socialHint}`;
+      return `📢 Posted:\n${results.map((r) => "  " + r).join("\n")}\n\n${socialHint}`;
+    } },
+
   { name: "research_watch", safe: false, description: "Set up a 24/7 research agent: SAM keeps researching a topic on a schedule, files new findings into a notebook, and pings you what's new. input: {topic, notebook?, every_hours?}.", params: "{topic, notebook?, every_hours?}",
     activity: (i) => `Setting up a 24/7 watch on “${i.topic}”`, run: async (i) => {
       const topic = String(i.topic || "").trim();

@@ -45,6 +45,20 @@ export const MCP_PRESETS: McpPreset[] = [
     command: "npx", args: ["-y", "@modelcontextprotocol/server-slack"], fields: [{ env: "SLACK_BOT_TOKEN", label: "Bot token", placeholder: "xoxb-…" }, { env: "SLACK_TEAM_ID", label: "Team ID" }], docs: "https://github.com/modelcontextprotocol/servers" },
   { id: "brave", label: "Brave Search", emoji: "🦁", official: true, note: "independent web search (extra source for research)",
     command: "npx", args: ["-y", "@modelcontextprotocol/server-brave-search"], fields: [{ env: "BRAVE_API_KEY", label: "API key" }], docs: "https://github.com/modelcontextprotocol/servers" },
+
+  // ── 🛒 Commerce / growth ──
+  { id: "shopify", label: "Shopify", emoji: "🛒", official: true, note: "products, orders, storefront — run your shop",
+    command: "npx", args: ["-y", "@shopify/dev-mcp"], fields: [{ env: "SHOPIFY_ACCESS_TOKEN", label: "Admin API token", placeholder: "shpat_…" }, { env: "SHOPIFY_STORE", label: "Store (my-shop.myshopify.com)" }], docs: "https://shopify.dev/docs/apps/build/storefront-mcp" },
+  { id: "google_ads", label: "Google Ads", emoji: "🅶", official: false, note: "search/display ad campaigns & performance",
+    command: "uvx", args: ["google-ads-mcp"], fields: [{ env: "GOOGLE_ADS_DEVELOPER_TOKEN", label: "Developer token" }, { env: "GOOGLE_ADS_CLIENT_ID", label: "OAuth client ID" }], docs: "https://developers.google.com/google-ads/api/docs/start" },
+  { id: "google_analytics", label: "Google Analytics", emoji: "📉", official: false, note: "traffic, conversions, GA4 reports",
+    command: "uvx", args: ["mcp-google-analytics"], fields: [{ env: "GA_PROPERTY_ID", label: "GA4 property ID" }, { env: "GOOGLE_APPLICATION_CREDENTIALS", label: "Service-account JSON path" }], docs: "https://developers.google.com/analytics" },
+  { id: "mailchimp", label: "Mailchimp", emoji: "🐵", official: false, note: "email lists, campaigns, audiences",
+    command: "npx", args: ["-y", "mailchimp-mcp"], fields: [{ env: "MAILCHIMP_API_KEY", label: "API key" }], docs: "https://mailchimp.com/developer/" },
+  { id: "airtable", label: "Airtable", emoji: "🗃️", official: true, note: "your bases as a flexible database",
+    command: "npx", args: ["-y", "airtable-mcp-server"], fields: [{ env: "AIRTABLE_API_KEY", label: "Personal access token", placeholder: "pat…" }], docs: "https://github.com/domdomegg/airtable-mcp-server" },
+  { id: "linear", label: "Linear", emoji: "📐", official: true, note: "issues, projects, product roadmap",
+    command: "npx", args: ["-y", "mcp-remote", "https://mcp.linear.app/sse"], fields: [{ env: "LINEAR_API_KEY", label: "API key", placeholder: "lin_api_…" }], docs: "https://linear.app/developers" },
 ];
 
 export function presetById(id: string): McpPreset | undefined {

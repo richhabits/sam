@@ -103,7 +103,9 @@ const CONTINUE = `\nNow either call one tool (reply with ONLY the JSON) or give 
 // Core loop. `prompt` is the running transcript (the user's request + tool results).
 async function loop(system: string, prompt: string, tier: Tier, trace: string[]): Promise<AgentResult> {
   for (let step = 0; step < MAX_STEPS; step++) {
-    let res = await runModel(tier, system, prompt + CONTINUE);
+    // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
+    // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
+    let res = await runModel(tier, system, prompt + CONTINUE, "deep");
     let call = parseToolCall(res.text);
 
     // Retry/repair: small models often intend a tool but emit invalid JSON.
@@ -196,7 +198,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
 
   for (let step = 0; step < MAX_STEPS; step++) {
     let full = "", mode: null | "answer" | "tool" = null;
-    const res = await streamModel(tier, sys, prompt + CONTINUE, (chunk) => {
+    const res = await streamModel(tier, sys, prompt + CONTINUE, (chunk) => {   // deep lane below (Hermes-led planning)
       full += chunk;
       if (mode === null) {
         const s = full.replace(/^[\s`]+/, "");
@@ -204,7 +206,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       } else if (mode === "answer") {
         emit({ type: "token", t: chunk });
       }
-    });
+    }, "deep");
     const finalText = res.text || full;
     const call = parseToolCall(finalText);
 
