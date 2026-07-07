@@ -46,6 +46,10 @@ export const MCP_PRESETS: McpPreset[] = [
   { id: "brave", label: "Brave Search", emoji: "🦁", official: true, note: "independent web search (extra source for research)",
     command: "npx", args: ["-y", "@modelcontextprotocol/server-brave-search"], fields: [{ env: "BRAVE_API_KEY", label: "API key" }], docs: "https://github.com/modelcontextprotocol/servers" },
 
+  // ── 🧠 Agent infra ──
+  { id: "headroom", label: "Headroom (compression)", emoji: "🗜️", official: true, note: "compress context 60-95% — the full engine (SmartCrusher/AST), on top of SAM built-in",
+    command: "npx", args: ["-y", "headroom-ai", "mcp"], fields: [], docs: "https://github.com/headroomlabs-ai/headroom" },
+
   // ── 🛒 Commerce / growth ──
   { id: "shopify", label: "Shopify", emoji: "🛒", official: true, note: "products, orders, storefront — run your shop",
     command: "npx", args: ["-y", "@shopify/dev-mcp"], fields: [{ env: "SHOPIFY_ACCESS_TOKEN", label: "Admin API token", placeholder: "shpat_…" }, { env: "SHOPIFY_STORE", label: "Store (my-shop.myshopify.com)" }], docs: "https://shopify.dev/docs/apps/build/storefront-mcp" },

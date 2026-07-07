@@ -42,6 +42,7 @@ import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { runVision, runModel } from "./models.ts";
 import * as nb from "./notebook.ts";
+import { retrieveFullOutput } from "./compress.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
@@ -678,6 +679,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Searching the web for “${i.query ?? i}”`, run: (i) => webSearch(i.query ?? i) },
   { name: "web_fetch", safe: true, description: "Open a URL and read its text. input: a url string.", params: "url",
     activity: (i) => `Reading ${i.url ?? i}`, run: (i) => webFetch(i.url ?? i) },
+  { name: "retrieve_full", safe: true, description: "Pull back the FULL text of an earlier tool output that was compressed to save tokens (you'll have seen an id like 'web_fetch#3'). input: {id}.", params: "{id}",
+    activity: (i) => `Retrieving full output ${i.id ?? i}`, run: async (i) => retrieveFullOutput(String((i.id ?? i) || "")) ?? "That compressed output is no longer cached." },
 
   // ── 📓 NOTEBOOKS (NotebookLM, but yours & free) + 🔎 deep research + 🛰️ 24/7 agent ──
   { name: "notebook_add", safe: true, description: "Add a source to a notebook (creates it if new) so SAM can answer grounded questions about it. input: {notebook, url? | file? | text?, title?}. Sources: a web page URL, a file path (pdf/docx/txt/md/csv), or pasted text.", params: "{notebook, url?, file?, text?, title?}",
