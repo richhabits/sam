@@ -1,5 +1,5 @@
 // SAM service worker — push notifications + installable offline shell.
-const CACHE = "sam-shell-v1";
+const CACHE = "sam-shell-v2";
 
 self.addEventListener("install", (e) => { self.skipWaiting(); });
 self.addEventListener("activate", (e) => { e.waitUntil(self.clients.claim()); });
@@ -33,7 +33,11 @@ self.addEventListener("notificationclick", (event) => {
 // Network-first for the app shell (so updates land), cache as offline fallback.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET" || new URL(req.url).pathname.startsWith("/api/")) return;   // never cache the API
+  const url = new URL(req.url);
+  // ONLY handle same-origin GETs. Cross-origin (Pollinations previews, provider images/video) must
+  // pass straight through to the browser — intercepting them and re-fetching hits the connect-src
+  // CSP and breaks the image. Also never touch the API.
+  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   event.respondWith(
     fetch(req).then((res) => {
       if (res.ok && req.url.startsWith(self.location.origin)) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
