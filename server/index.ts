@@ -949,6 +949,31 @@ app.post("/api/schedules", (req, res) => {
 app.delete("/api/schedules/:id", (req, res) => res.json({ ok: removeSchedule(req.params.id) }));
 
 // ── 📓 NOTEBOOKS (NotebookLM UI backend) — grounded Q&A + audio overview over YOUR sources ──
+// ── 🎨 STUDIO — free-first image/video generation (Pollinations → keyed lanes), no MUAPI needed ──
+const urlFromMarkdown = (md: string) => { const m = String(md||"").match(/\((https?:\/\/[^)\s]+)\)/); return m ? m[1] : ""; };
+app.post("/api/studio/image", async (req, res) => {
+  const { prompt, width, height } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: "no prompt" });
+  const t = TOOLS.find((x) => x.name === "generate_image");
+  if (!t) return res.status(500).json({ error: "image tool missing" });
+  try { const out = await t.run({ prompt, width, height }); const url = urlFromMarkdown(out); res.json(url ? { url } : { error: out }); }
+  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.post("/api/studio/video", async (req, res) => {
+  const { prompt } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: "no prompt" });
+  const t = TOOLS.find((x) => x.name === "generate_video");
+  if (!t) return res.status(500).json({ error: "video tool missing" });
+  try { const out = await t.run({ prompt }); const url = urlFromMarkdown(out); res.json(url ? { url } : { error: out }); }
+  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.post("/api/studio/enhance", async (req, res) => {
+  const p = String(req.body?.prompt || "").trim();
+  if (!p) return res.status(400).json({ error: "no prompt" });
+  const sys = "You are a prompt engineer for AI image/video generation. Rewrite the user's idea into ONE vivid, specific, cinematic prompt (subject, setting, lighting, mood, lens, detail). Output ONLY the improved prompt, no quotes, no preamble, under 60 words.";
+  try { const r = await runModel("free", sys, p); res.json({ prompt: (r.text || p).replace(/^["']|["']$/g, "").trim() }); }
+  catch { res.json({ prompt: p }); }
+});
 app.get("/api/notebooks", (_req, res) => res.json({ notebooks: notebook.listNotebooks() }));
 app.post("/api/notebooks", (req, res) => res.json(notebook.ensureNotebook(String(req.body?.title || "Notebook"))));
 app.get("/api/notebooks/:id/sources", (req, res) => res.json({ sources: notebook.notebookSources(req.params.id) }));
