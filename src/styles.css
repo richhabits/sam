@@ -538,7 +538,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* ── Self-update banner (SAM evolving itself) ── */
 .update-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 9px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--accent-text); font-weight: 600; }
-.update-go { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 5px 13px; font-weight: 600; font-size: 12px; }
+.update-go { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 5px 13px; font-weight: 600; font-size: 12px; text-decoration: none; display: inline-block; cursor: pointer; }
 .update-go:disabled { opacity: .6; }
 .update-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
 

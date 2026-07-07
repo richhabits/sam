@@ -1120,7 +1120,23 @@ app.get("/api/ios/status", (_req, res) => {
   res.json({ folder: dropFolderPath(), enabled: true });
 });
 
+const isNewerVer = (a: string, b: string) => { const pa = a.split(".").map(Number), pb = b.split(".").map(Number); for (let i = 0; i < 3; i++) { const x = pa[i] || 0, y = pb[i] || 0; if (x !== y) return x > y; } return false; };
 app.get("/api/update-check", async (_req, res) => {
+  // Packaged app (version injected by Electron): compare against the latest GitHub RELEASE, since
+  // there's no git to diff. Returns a download URL so the banner can offer a one-click download.
+  const appVer = process.env.SAM_APP_VERSION;
+  if (appVer) {
+    try {
+      const r = await fetch("https://api.github.com/repos/richhabits/sam/releases/latest", { headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" }, signal: AbortSignal.timeout(8000) });
+      if (r.ok) {
+        const rel: any = await r.json();
+        const latest = String(rel.tag_name || "").replace(/^v/, "");
+        return res.json({ behind: !!latest && isNewerVer(latest, appVer), current: appVer, latest, url: rel.html_url || "https://github.com/richhabits/sam/releases/latest" });
+      }
+    } catch { /* offline — no drama */ }
+    return res.json({ behind: false, current: appVer });
+  }
+  // Source install: git-based check (git pull updates it).
   try {
     const local = await git("rev-parse HEAD");
     const remote = (await git("ls-remote origin HEAD")).split(/\s+/)[0] || "";
