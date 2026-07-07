@@ -3,6 +3,13 @@
 All notable changes to SAM. Newest first.
 
 ## Unreleased
+- **🗜️ Headroom-style context compression — built in & free** — big tool outputs (web pages, MCP/API JSON,
+  file reads) get RE-SENT to the model every agent-loop step, so they dominate token cost. SAM now
+  compresses each result before it enters the transcript: JSON is minified (~48% saved on real nested
+  data), long prose is kept head+tail — and the originals are cached so SAM can pull the full text back
+  with retrieve_full (reversible). Pure token savings = more free-tier headroom, faster replies, zero deps.
+  Directly serves SAM's never-burn-your-quota promise. Also added Headroom itself as a one-tap MCP preset
+  (🗜️) for the full compression engine on top. (16→17 integrations.)
 - **🪽 Hermes leads the agent + more integrations + 📢 post-everywhere** — (1) SAM's tool-PLANNING (deciding
   the next action) now routes to the deep lane where Hermes fronts — elite agentic reasoning — while still
   falling through every free brain so it never goes dark. (2) MCP Integrations grew to 16 presets: added
