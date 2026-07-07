@@ -34,12 +34,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest      # Apple Silicon (arm64)
+          - os: macos-latest      # Apple Silicon Macs
             platform: mac
-          - os: macos-13           # Intel Macs (x64)
-            platform: mac
-          - os: windows-latest     # Windows x64
+            arch: arm64
+          - os: macos-latest      # Intel Macs — CROSS-built on the (plentiful) arm64 runner, so we
+            platform: mac          # never wait on the scarce macos-13 Intel runner.
+            arch: x64
+          - os: windows-latest     # Windows
             platform: win
+            arch: x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -55,13 +58,13 @@ jobs:
       - name: Build web + server bundles
         run: npm run build
 
-      - name: Rebuild native modules for Electron (from source, on-platform)
-        run: npx @electron/rebuild --force --build-from-source --only better-sqlite3
+      - name: Rebuild native modules for Electron (from source, target arch)
+        run: npx @electron/rebuild --force --build-from-source --only better-sqlite3 --arch ${{ matrix.arch }}
 
-      - name: Package + publish (${{ matrix.platform }})
+      - name: Package + publish (${{ matrix.platform }} ${{ matrix.arch }})
         run: >
-          npx electron-builder --${{ matrix.platform }}
-          --publish ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')) && 'always' || 'never' }}
+          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }}
+          --publish ${{ github.event_name == 'release' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Build UNSIGNED by default. An empty CSC_LINK makes electron-builder try to read the cwd
@@ -80,7 +83,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: sam-${{ matrix.os }}   # unique per runner (two mac jobs can't share one name)
+          name: sam-${{ matrix.platform }}-${{ matrix.arch }}   # unique per platform+arch
           path: |
             dist-app/*.dmg
             dist-app/*.exe
