@@ -111,7 +111,8 @@
       {
         "provider": "github",
         "owner": "richhabits",
-        "repo": "sam"
+        "repo": "sam",
+        "releaseType": "release"
       }
     ],
     "npmRebuild": false
