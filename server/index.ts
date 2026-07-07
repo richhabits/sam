@@ -1013,4 +1013,9 @@ app.listen(Number(PORT), HOST, () => {
     const lan = Object.values(nets).flat().find((n) => n && n.family === "IPv4" && !n.internal)?.address;
     if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);
   }
+}).on("error", (e: any) => {
+  // Port already taken — almost always another SAM (or a stale one) already serving on it. Don't
+  // crash: the window will just connect to whatever's already there. Log it plainly.
+  if (e?.code === "EADDRINUSE") console.error(`  ⚠️ Port ${PORT} is already in use — SAM may already be running. Using the existing instance.`);
+  else console.error("  ⚠️ Server listen error:", e?.message || e);
 });
