@@ -544,7 +544,9 @@ const CONFIG_ENV: Record<string, string> = {
   // Apple signed releases (owner-only, BUILD-time creds — used by npm run release:app)
   appleId: "APPLE_ID", appleTeam: "APPLE_TEAM_ID", applePass: "APPLE_APP_SPECIFIC_PASSWORD",
 };
-const ENV_PATH = fileURLToPath(new URL("../.env", import.meta.url)); // decodes spaces in the install path
+// Packaged app sets DOTENV_CONFIG_PATH to a writable per-user .env; dev/CLI falls back to the
+// repo .env next to the source (../.env, decoded for spaces in the install path).
+const ENV_PATH = process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
 
 function writeEnv(key: string, value: string) {
   let txt = "";

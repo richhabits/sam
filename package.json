@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
-  "description": "S.A.M. — Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
+  "description": "S.A.M. \u2014 Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -112,6 +112,7 @@
         "owner": "richhabits",
         "repo": "sam"
       }
-    ]
+    ],
+    "npmRebuild": false
   }
 }
