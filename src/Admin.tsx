@@ -76,6 +76,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [mcpMsg, setMcpMsg] = useState<Record<string, string>>({});
   const [signing, setSigning] = useState<any>(null);
   const [signingMsg, setSigningMsg] = useState("");
+  const [mediaKeys, setMediaKeys] = useState({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "" });
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -215,6 +216,22 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             {["apple", "spotify", "youtube"].map((s) => (
               <button key={s} className={cfg?.musicService === s ? "on" : ""} onClick={() => setService(s)}>{s}</button>
             ))}
+          </div>
+        </div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">📸 Stock media &amp; assets</span><span className="admin-note">real photos, b-roll, GIFs, film info — free keys</span></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            {([["pexels","Pexels","https://www.pexels.com/api/","photos + video"],["pixabay","Pixabay","https://pixabay.com/api/docs/","photos + video + music"],["giphy","GIPHY","https://developers.giphy.com/","GIFs"],["tmdb","TMDb","https://www.themoviedb.org/settings/api","film info + posters"],["omdb","OMDb","https://www.omdbapi.com/apikey.aspx","film info (backup)"]] as const).map(([id,label,url,note]) => (
+              <div key={id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input className="admin-input" style={{ flex: 1, margin: 0 }} type="password" placeholder={`${label} key ${cfg?.media?.[id] ? "(saved)" : ""} — ${note}`} value={(mediaKeys as any)[id]} onChange={(e) => setMediaKeys(m => ({ ...m, [id]: e.target.value }))} />
+                <a className="admin-getkey" href={url} target="_blank" rel="noreferrer">FREE key ↗</a>
+              </div>
+            ))}
+            <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+              for (const [id, v] of Object.entries(mediaKeys)) if (v.trim()) await saveConfig(id, v.trim());
+              setMediaKeys({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "" }); flash("media"); refresh();
+            }}>{saved === "media" ? "Saved ✓" : "Save media keys"}</button>
           </div>
         </div>
 

@@ -546,6 +546,7 @@ const PROVIDER_ENV: Record<string, string> = {
   fal: "FAL_API_KEYS",
 };
 const CONFIG_ENV: Record<string, string> = {
+  pexels: "PEXELS_API_KEY", pixabay: "PIXABAY_API_KEY", giphy: "GIPHY_API_KEY", tmdb: "TMDB_API_KEY", omdb: "OMDB_API_KEY",
   obsidianVault: "OBSIDIAN_VAULT",
   elevenlabs: "ELEVENLABS_API_KEY", elevenVoice: "ELEVENLABS_VOICE_ID",
   defaultTier: "DEFAULT_TIER", musicService: "MUSIC_SERVICE",
@@ -590,6 +591,7 @@ app.get("/api/admin/config", (_req, res) => {
     linear: !!process.env.LINEAR_API_KEY,
     linearTeam: process.env.LINEAR_TEAM_ID || "",
     // Apple signing (owner) — non-secret fields + whether the app-specific password is set
+    media: { pexels: !!process.env.PEXELS_API_KEY, pixabay: !!process.env.PIXABAY_API_KEY, giphy: !!process.env.GIPHY_API_KEY, tmdb: !!process.env.TMDB_API_KEY, omdb: !!process.env.OMDB_API_KEY },
     apple: {
       appleId: process.env.APPLE_ID || "",
       appleTeam: process.env.APPLE_TEAM_ID || "",
