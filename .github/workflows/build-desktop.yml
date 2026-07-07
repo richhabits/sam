@@ -62,15 +62,17 @@ jobs:
           --publish ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')) && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Mac signing / notarization (optional — empty = unsigned build)
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing (optional)
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          # Build UNSIGNED by default. An empty CSC_LINK makes electron-builder try to read the cwd
+          # as a certificate ("not a file" crash on macOS), so we explicitly disable signing here.
+          # ── To ship SIGNED builds: add these repo secrets, DELETE the line below, and uncomment:
+          #   Mac:  CSC_LINK: ${{ secrets.CSC_LINK }}
+          #         CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          #         APPLE_ID: ${{ secrets.APPLE_ID }}
+          #         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          #         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          #   Win:  WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          #         WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
