@@ -1061,3 +1061,22 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
   .nb-body { flex-direction: column; }
   .nb-side { width: 100%; max-height: 40%; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+/* iOS-Settings-style category headers in the Settings drawer — groups the wall into calm sections. */
+.admin-cat { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 30px 2px 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+.admin-cat:first-of-type { border-top: none; padding-top: 0; margin-top: 4px; }
+
+/* ═══ APPLE-SMOOTH — one consistent interaction feel across HUD · Settings · Studio ═══ */
+button, .icon-btn, .admin-save, .key-cta, .pop-opt, .chip, .tag, .nb-book, .admin-more,
+input, textarea, select, a, .matrix-cell, .plus-opt, .qa-btn, .drawer-list li {
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .16s ease, transform .1s ease;
+}
+/* subtle press feedback — the little "give" Apple buttons have */
+button:active, .icon-btn:active, .admin-save:active, .key-cta:active, .pop-opt:active,
+.chip:active, .nb-book:active, .qa-btn:active, .plus-opt:active, .nb-add-btn:active { transform: scale(0.975); }
+/* consistent, calm focus ring everywhere */
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+/* smooth scrolling in every scroll area */
+.drawer, .admin, .nb-chat, .chat, .side, .messages { scroll-behavior: smooth; }

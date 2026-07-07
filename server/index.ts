@@ -38,6 +38,7 @@ import { loadSkills, routeSkill } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import * as notebook from "./notebook.ts";
+import { signingStatus, generateAndroidKeystore } from "./signing.ts";
 import { operatingDoctrine } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
@@ -866,6 +867,16 @@ app.post("/api/phone-regenerate", (req, res) => {
 });
 // 🔴 Turn phone access OFF — closes the LAN entirely (binds back to loopback on next restart) and
 // invalidates the token now.
+// 🚀 Sign & ship — SAM checks your signing readiness and does the mechanical bits (owner-only).
+app.get("/api/signing/status", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  try { res.json(await signingStatus()); } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.post("/api/signing/android-keystore", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  res.json(await generateAndroidKeystore());
+});
+
 app.post("/api/phone-disable", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   writeEnv("SAM_REMOTE", "0");
