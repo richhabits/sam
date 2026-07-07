@@ -283,7 +283,7 @@ export default function App() {
   const guardStream = useRef<MediaStream | null>(null);
   const guardIv = useRef<any>(null);
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
-  const [update, setUpdate] = useState<{ behind: boolean } | null>(null);
+  const [update, setUpdate] = useState<{ behind: boolean; current?: string; latest?: string; url?: string } | null>(null);
   const [updating, setUpdating] = useState("");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1020,6 +1020,10 @@ export default function App() {
           {updating === "done" ? (
             <><span>✨ Updated — restart SAM to apply the new version.</span>
               <button className="update-go" onClick={() => location.reload()}>Reload</button></>
+          ) : update.url ? (
+            // Packaged app — no git to pull, so send them to the signed installer download.
+            <><span>✨ SAM {update.latest} is available{update.current ? ` (you have ${update.current})` : ""}.</span>
+              <a className="update-go" href={update.url} target="_blank" rel="noreferrer" onClick={() => setTimeout(() => setUpdate(null), 500)}>Download</a></>
           ) : (
             <><span>✨ A new version of SAM is available.</span>
               <button className="update-go" disabled={!!updating} onClick={async () => {

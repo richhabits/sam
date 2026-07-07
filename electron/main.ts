@@ -15,6 +15,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // data dir + CJS globals it needs.
 import "../server/index.ts";
 
+// Tell the embedded server which packaged version it is, so /api/update-check can compare against
+// the latest GitHub RELEASE (not git) and show an in-app "update available" banner on packaged builds.
+try { process.env.SAM_APP_VERSION = app.getVersion(); } catch { /* dev */ }
+
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
