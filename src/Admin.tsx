@@ -48,6 +48,7 @@ const PROVIDERS: Prov[] = [
   { id: "vercel", label: "Vercel AI Gateway", note: "🌐 100s of models · $5 free EVERY month", url: "https://vercel.com/ai-gateway" },
   { id: "ovh", label: "OVHcloud AI", note: "💬 general chat — EU-hosted free tier", url: "https://endpoints.ai.cloud.ovh.net" },
   { id: "gmi", label: "GMI Cloud", note: "🧠 DeepSeek/Llama/Qwen hosting", url: "https://console.gmicloud.ai" },
+  { id: "leonardo", label: "Leonardo.Ai", note: "🎨 images + img2video — $5 free credit", url: "https://app.leonardo.ai/settings" },
   { id: "fal", label: "fal (HappyHorse)", note: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)", url: "https://fal.ai/dashboard/keys" },
   // ── Premium (paid — only used if you pick "Best", never on free) ──
   { id: "anthropic", label: "Anthropic (Claude)", note: "👑 premium (paid) — best quality, only on 'Best'", url: "https://console.anthropic.com/settings/keys", premium: true },
@@ -76,7 +77,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [mcpMsg, setMcpMsg] = useState<Record<string, string>>({});
   const [signing, setSigning] = useState<any>(null);
   const [signingMsg, setSigningMsg] = useState("");
-  const [mediaKeys, setMediaKeys] = useState({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "" });
+  const [mediaKeys, setMediaKeys] = useState({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "", cloudflareAccount: "", cloudflareToken: "" });
 
   const refresh = () => {
     getAdminConfig().then((c) => {
@@ -228,9 +229,13 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 <a className="admin-getkey" href={url} target="_blank" rel="noreferrer">FREE key ↗</a>
               </div>
             ))}
+            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0", paddingTop: 8 }} />
+            <div className="admin-note" style={{ marginBottom: 4 }}>☁️ <b>Cloudflare FLUX</b> — the big free image lane (~100k/day). <a className="admin-getkey" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">get token ↗</a></div>
+            <input className="admin-input" style={{ margin: 0 }} placeholder={`Cloudflare Account ID ${cfg?.media?.cloudflareAccount ? "(saved)" : ""}`} value={mediaKeys.cloudflareAccount} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareAccount: e.target.value }))} />
+            <input className="admin-input" style={{ margin: 0 }} type="password" placeholder="Cloudflare API Token (Workers AI)" value={mediaKeys.cloudflareToken} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareToken: e.target.value }))} />
             <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
               for (const [id, v] of Object.entries(mediaKeys)) if (v.trim()) await saveConfig(id, v.trim());
-              setMediaKeys({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "" }); flash("media"); refresh();
+              setMediaKeys({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "", cloudflareAccount: "", cloudflareToken: "" }); flash("media"); refresh();
             }}>{saved === "media" ? "Saved ✓" : "Save media keys"}</button>
           </div>
         </div>
