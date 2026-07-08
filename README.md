@@ -6,12 +6,12 @@
 
 Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes real action on your Mac (web, files, terminal, email, calls, GitHub), and when a job's big it assembles a **team of specialist agents** to tackle it in parallel — all running free on your own machine.
 
-`Free forever` · `Local-first & private` · `30+ free AI brains` · `A team of agents` · `Ask-first safe`
+`Free forever` · `Local-first & private` · `40 free AI brains` · `A team of agents` · `Ask-first safe`
 
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-30%2B-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 
@@ -24,8 +24,8 @@ Most "AI assistants" just talk. SAM works:
 
 - 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends.
 - 🐝 **The Swarm** — long-running, continuous background agents that survive restarts and pause to ask for your approval on risky actions.
-- 🧠 **30+ free AI brains, auto-rotating** — Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks · and 20 more. One hits a limit, it hops to the next.
-- 📐️ **150+ real tools** — web, files, terminal, email, iMessage, calls, calendar, music, camera & vision, screenshots, **GitHub (read, commit, push, PRs)**.
+- 🧠 **40 free AI brains, auto-rotating** — Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks · and 20 more. One hits a limit, it hops to the next.
+- 📐️ **167 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, camera & vision, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
 - 💻 **Native desktop app** — Mac/Windows/Linux desktop UI with a global `⌥Space` hotkey to summon SAM anywhere. Build it with `npm run build:mac` (or `:win` / `:linux`). Note: package the app from a **path with no spaces** — native modules can't build otherwise (the web app has no such restriction).

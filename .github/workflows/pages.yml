@@ -10,8 +10,10 @@ on:
     paths:
       - "docs/**"
       - "scripts/gen-landing.mjs"
+      - "scripts/generate-stats.ts"
       - "server/tools.ts"
       - "server/agents.ts"
+      - "server/models.ts"
       - "skills/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
