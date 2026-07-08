@@ -178,16 +178,17 @@ void loadMcpTools()
   .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
   .catch(() => {})
   .then(() => buildIndexes(SKILLS))
-  .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"));
+  .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"))
+  .catch(() => {});   // never let boot indexing reject unhandled
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
-void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`));
+void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
-void grabWorld().then((s) => console.log(`  ${s}\n`));
+void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
 resumeOrphanedSwarms();
 
 // ── P2P Swarm: discover other SAM instances on the LAN ──────
