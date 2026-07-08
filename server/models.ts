@@ -64,6 +64,7 @@ async function callOpenAICompat(
   const r = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(30000),   // never hang forever on a slow/unresponsive provider
     body: JSON.stringify({
       model,
       max_tokens: 1500,
@@ -76,6 +77,15 @@ async function callOpenAICompat(
   if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
   const d = await r.json();
   return d?.choices?.[0]?.message?.content?.trim() || "";
+}
+
+// Pollinations' simple GET endpoint — a DIFFERENT code path/URL to the POST /openai one above, so if
+// that endpoint hiccups this independent lane can still answer. Keeps SAM working out of the box.
+async function callPollinationsGet(system: string, prompt: string): Promise<string> {
+  const q = `${system}\n\nUser: ${prompt}\nSAM:`.slice(0, 3000);
+  const r = await fetch(`https://text.pollinations.ai/${encodeURIComponent(q)}?model=openai`, { signal: AbortSignal.timeout(30000) });
+  if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  return (await r.text()).trim();
 }
 
 // ── FREE · Gemini 2.5 Flash (thinkingBudget 0 — no wasted tokens) ─
@@ -246,8 +256,12 @@ const PROVIDERS: Provider[] = [
   { id: "vercel", tier: "free", label: `vercel:${VERCEL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://ai-gateway.vercel.sh/v1", VERCEL_MODEL, s, p, k) },
   { id: "ovh", tier: "free", label: `ovh:${OVH_MODEL}`, run: (s, p, k) => callOpenAICompat("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1", OVH_MODEL, s, p, k) },
 
-  // ── ALWAYS-LAST · never dry: a free brain that needs NO key at all ──
+  // ── ALWAYS-LAST · never dry: free brains that need NO key at all. SAM works out of the box on
+  //    these. Several independent lanes (different models + a different endpoint) so one transient
+  //    hiccup can't take the whole no-key path down — there's always another free brain to fall to.
   { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
+  { id: "pollinations-mistral", tier: "free", noKey: true, label: "pollinations:mistral", run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", "mistral", s, p, "") },
+  { id: "pollinations-get", tier: "free", noKey: true, label: "pollinations:get", run: (s, p) => callPollinationsGet(s, p) },
 
   // ── TIER 4: Premium (paid, last resort) ────────────────────
   { id: "anthropic", tier: "premium", label: CLAUDE_MODEL, run: callAnthropic },
@@ -256,8 +270,11 @@ const PROVIDERS: Provider[] = [
 
 // Try one provider, rotating through its key pool on failure.
 async function tryProvider(prov: Provider, system: string, prompt: string): Promise<string | null> {
-  if (prov.noKey) {   // no-key provider (Pollinations) — one shot, no pool
-    try { const text = await prov.run(system, prompt, ""); if (text) return text; } catch { /* fall through */ }
+  if (prov.noKey) {   // no-key provider (Pollinations) — retry a couple of times; transient hiccups are common
+    for (let i = 0; i < 2; i++) {
+      try { const text = await prov.run(system, prompt, ""); if (text) return text; } catch { /* retry, then fall through */ }
+      if (i === 0) await new Promise((r) => setTimeout(r, 800));
+    }
     return null;
   }
   const attempts = Math.max(1, poolSize(prov.id));
@@ -356,8 +373,9 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
 
   return {
     text:
-      "SAM router offline — no provider answered. Start Ollama (`ollama serve`) " +
-      "or add a key to .env (GEMINI_API_KEYS / GROQ_API_KEYS / ANTHROPIC_API_KEYS).",
+      "I couldn't reach a brain just now — the free lane may be briefly busy, or your internet dropped. " +
+      "Give it a few seconds and try again. (SAM is free out of the box — you don't need to add anything. " +
+      "If it keeps happening, you can add a free key in Settings 🔑 or run Ollama locally for an offline brain.)",
     provider: "none",
     tier,
   };
