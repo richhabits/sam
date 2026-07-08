@@ -205,6 +205,7 @@ export default function App() {
   const [onboardName, setOnboardName] = useState("");
   const [onboardAbout, setOnboardAbout] = useState("");
   const [onboardLang, setOnboardLang] = useState("English");
+  const [onboardKey, setOnboardKey] = useState("");   // OPTIONAL free Groq key — never required
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -398,6 +399,8 @@ export default function App() {
     if (!name) return;
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
     setProfile(p); setUser({ ...p, mode }); upsertProfile(p);
+    // Optional free Groq key — if pasted, save it silently (SAM still works fine without it).
+    if (onboardKey.trim()) fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "groq", keys: onboardKey.trim() }) }).catch(() => {});
     // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
     // no config. So instead of shoving the keys panel in a brand-new user's face, we greet them and
     // drop them straight into a working chat. Keys are an OPTIONAL speed/ability boost (the 🔑 button
@@ -912,8 +915,12 @@ export default function App() {
           <select className="onboard-input" value={onboardLang} onChange={(e) => setOnboardLang(e.target.value)} aria-label="Language">
             {LANGUAGES.map((l) => <option key={l} value={l}>{l === "English" ? "Language: English" : l}</option>)}
           </select>
+          <input className="onboard-input" value={onboardKey} onChange={(e) => setOnboardKey(e.target.value)} type="password"
+            onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }}
+            placeholder="⚡ Optional: paste a free Groq key for speed — or skip, SAM's free already" />
+          <div className="onboard-hint">No key? Skip it — SAM works free out of the box. Want it snappy? <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Grab a free Groq key</a> (~30 sec) and paste it above.</div>
           <button className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
-          <div className="onboard-note">Private &amp; free — SAM runs on your computer.</div>
+          <div className="onboard-note">Then try: <b>"what's the weather and directions to the nearest coffee?"</b> — you'll watch SAM use a real tool. Private &amp; free — runs on your computer.</div>
         </div>
       </div>
     );
