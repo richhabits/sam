@@ -17,7 +17,18 @@ jobs:
       # so type errors slip through the build. This catches them.
       - run: npx tsc --noEmit
       - run: npm run build
-      
+
+      # Truth check — advertised numbers must equal reality. Regenerate stats from the live
+      # registries; fail if docs/stats.json or the README numbers drifted (someone changed the
+      # tool/agent/skill/provider registry without running `npm run stats`).
+      - name: Advertised stats are current (no drift)
+        run: |
+          npm run stats
+          git diff --exit-code docs/stats.json docs/repo-description.txt README.md || {
+            echo "::error::Advertised numbers are stale. Run 'npm run stats' and commit the result.";
+            exit 1;
+          }
+
       # Selftest — checks tools, agents, vault, and model availability.
       - name: Live Boot Selftest
         run: npm run selftest

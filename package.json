@@ -30,7 +30,8 @@
     "landing": "node scripts/gen-landing.mjs",
     "og": "node scripts/gen-og.mjs",
     "build:mac:signed": "node scripts/build-signed.mjs",
-    "release:app": "node scripts/build-signed.mjs --upload"
+    "release:app": "node scripts/build-signed.mjs --upload",
+    "stats": "tsx scripts/generate-stats.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
