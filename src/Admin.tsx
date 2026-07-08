@@ -260,6 +260,12 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">📧 SAM's email {cfg?.email?.configured ? "· on" : ""}</span><span className="admin-note">so SAM can email your brief + nudges, and send on its own</span></div>
           <div style={{ display: "flex", gap: 8, flexDirection: "column", marginTop: 12 }}>
+            <div className="admin-note" style={{ marginBottom: 2 }}>Pick your provider (fills the settings) — or Custom for any SMTP:</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {([["Gmail","smtp.gmail.com","587"],["Outlook","smtp-mail.outlook.com","587"],["iCloud","smtp.mail.me.com","587"],["Yahoo","smtp.mail.yahoo.com","465"],["Fastmail","smtp.fastmail.com","465"],["Proton Bridge","127.0.0.1","1025"],["Custom","",""]] as const).map(([label, host, port]) => (
+                <button key={label} type="button" className={"stu-chip" + (email.smtpHost === host && host ? " on" : "")} onClick={() => setEmail(v => ({ ...v, smtpHost: host, smtpPort: port }))}>{label}</button>
+              ))}
+            </div>
             <input className="admin-input" placeholder="SMTP host (e.g. smtp.gmail.com)" value={email.smtpHost} onChange={(e) => setEmail(v => ({ ...v, smtpHost: e.target.value }))} />
             <div style={{ display: "flex", gap: 8 }}>
               <input className="admin-input" style={{ width: 110 }} placeholder="Port (587)" value={email.smtpPort} onChange={(e) => setEmail(v => ({ ...v, smtpPort: e.target.value }))} />
@@ -273,7 +279,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               <button className="admin-save" onClick={sendTest} style={{ width: "auto", opacity: cfg?.email?.configured ? 1 : 0.5 }} disabled={!cfg?.email?.configured}>Send test</button>
               {emailTest && <span className="admin-note" style={{ marginLeft: 4 }}>{emailTest}</span>}
             </div>
-            <div className="admin-foot">Gmail: create an <b>App password</b> (not your login). IONOS/Fastmail/any SMTP works. Port 465 = TLS, 587 = STARTTLS.</div>
+            <div className="admin-foot">Most providers (Gmail, iCloud, Yahoo, Fastmail) need an <b>App password</b> — not your normal login — created in your account's security settings. Outlook uses your normal password (or an app password if 2FA is on). Port 465 = TLS, 587 = STARTTLS. Any SMTP host works.</div>
           </div>
         </div>
 
