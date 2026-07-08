@@ -103,7 +103,7 @@ export function parseToolCall(text: string): { tool: string; input: any } | null
 const CONTINUE = `\nNow either call one tool (reply with ONLY the JSON) or give the user your final plain-text answer.`;
 
 // Core loop. `prompt` is the running transcript (the user's request + tool results).
-async function loop(system: string, prompt: string, tier: Tier, trace: string[]): Promise<AgentResult> {
+async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false): Promise<AgentResult> {
   for (let step = 0; step < MAX_STEPS; step++) {
     // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
     // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
@@ -128,7 +128,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[])
       continue;
     }
 
-    if (!tool.safe && !mayAutoRun(tool.name)) {
+    if (!tool.safe && !mayAutoRun(tool.name, swarm)) {
       // ask-first: pause and hand the decision to the user (unless pre-authorized)
       return {
         kind: "pending", trace, provider: res.provider,
@@ -167,14 +167,14 @@ export function isFastPath(message: string): boolean {
 
 // Fresh request. `toolNames` = the relevant tools to expose (semantic routing).
 // `forceFast` (Turbo) forces the single-call path even for tool-shaped messages.
-export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false): Promise<AgentResult> {
+export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false): Promise<AgentResult> {
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
   if (forceFast || isFastPath(message)) {
     return runModel(tier, system, `User: ${message}\n\nAnswer directly.`)
       .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
   }
   const prompt = `User: ${message}`;
-  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, []);
+  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm);   // swarm=true → dangerous never auto-runs (even in Elon)
 }
 
 // ── STREAMING variant — emits typed events for live token/tool UX ──
@@ -247,7 +247,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
 // Resume after the user approves (or rejects) a risky action.
 export async function resumeAgent(
   system: string, transcript: string, tier: Tier,
-  approved: boolean, toolName: string, input: any, trace: string[] = []
+  approved: boolean, toolName: string, input: any, trace: string[] = [], swarm = false
 ): Promise<AgentResult> {
   const sys = `${system}\n\n${buildProtocol()}`;   // resume exposes all tools (already mid-task)
   const tool = toolByName(toolName);
@@ -261,5 +261,5 @@ export async function resumeAgent(
   } else {
     prompt += `\n\n[The user declined to run ${toolName}. Do not do it. Continue without it or explain what you'd need.]`;
   }
-  return loop(sys, prompt, tier, trace);
+  return loop(sys, prompt, tier, trace, swarm);
 }

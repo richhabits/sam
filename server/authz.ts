@@ -28,36 +28,58 @@ function save() {
 }
 
 export function isAllowed(tool: string): boolean { return load().has(tool); }
-export function allow(tool: string) { load().add(tool); save(); }
+export function allow(tool: string) { if (DANGEROUS.has(tool)) return; load().add(tool); save(); }   // dangerous tools can NEVER be standing-allowed
 export function disallow(tool: string) { load().delete(tool); save(); }
 export function listAllowed(): string[] { return [...load()]; }
 
-// ── AUTOPILOT — "lift the silly work". When on, SAM runs low-consequence actions
-//  autonomously (no asking). But these ALWAYS ask, even in autopilot, because
-//  they're outward-facing, cost money, or can't be undone. Safety never sleeps.
-const ALWAYS_ASK = new Set([
-  "send_email", "send_imessage", "call", "facetime", "run_command", "run_script",
-  // Arbitrary-exec / input-injection surfaces — AppleScript can `do shell script`, and
-  // type/press/click can drive a terminal, so these are code-exec-equivalent. They must
-  // NEVER auto-run under Autopilot (only Elon Mode, the explicit ruthless override, can).
-  "applescript", "type_text", "press_key", "click",
-  // Irreversible / destructive to data + devices.
-  "empty_trash", "eject_disk", "trash_file",
-  "git_commit", "git_push", "github_pr", "github_create_issue", "play",
+// ── PERMISSION TIERS (v1.2) ─────────────────────────────────────────────────────
+// Every tool is one of three tiers:
+//   • safe      — read-only / harmless (tool.safe === true) → runs without asking.
+//   • confirm   — recoverable-but-notable (in CONFIRM below) → asks by default; Autopilot / a
+//                 standing "always allow" / Elon Mode may skip it.
+//   • dangerous — outward-facing, destructive, or security-altering (DANGEROUS below) → ALWAYS
+//                 asks. No bypass by Autopilot, Swarm, or a standing "always allow" — the ONLY
+//                 skip is an interactive, opt-in Elon-Mode session (user present, accepts the risk).
+//
+// DANGEROUS covers: shell/code-exec, send (outward), push/publish, delete/wipe, and security-settings.
+export const DANGEROUS = new Set([
+  // shell + code-execution-equivalent (a terminal can be driven via these)
+  "run_command", "run_script", "applescript", "type_text", "press_key", "click",
+  // send / outward-facing (can't be un-sent; may reach real people)
+  "send_email", "send_mail", "send_imessage", "call", "facetime", "post_everywhere",
+  // push / publish (changes remote/public state)
+  "git_push", "github_pr", "github_create_issue",
+  // delete / wipe (data + device destruction)
+  "empty_trash", "trash_file", "eject_disk", "kill_process", "kill_port",
+  "clear_all_memories", "forget_memory", "forget_docs", "prune_vault",
+  // security settings — an agent must NEVER silently change its own permissions/keys (privilege escalation)
+  "manage_api_keys", "manage_authorizations", "manage_autopilot",
 ]);
+
 let AUTOPILOT = false;
 export function setAutopilot(on: boolean) { AUTOPILOT = !!on; }
 export function autopilotOn(): boolean { return AUTOPILOT; }
 
-// ── ELON MODE — the ruthless automation override.
-// When active, SAM bypasses ALL ALWAYS_ASK safety checks. Used for massive, unattended
-// engineering swarms. Comes with a 30-day safety bin for destructive bash commands.
+// ── ELON MODE — the explicit, opt-in "off-leash" override (huge warning in the UI).
+// When active, SAM skips the confirm prompt for everything. Used for massive engineering pushes with
+// the user present. Deletes still land in a 30-day bin. A background SWARM never inherits this for
+// dangerous tools (see mayAutoRun's swarm flag) — nothing outward/destructive fires unattended.
 let ELON_MODE = process.env.SAM_ELON_MODE === "true";
 export function setElonMode(on: boolean) { ELON_MODE = !!on; }
 export function isElonMode(): boolean { return ELON_MODE; }
 
-// True when a risky tool may run without asking (authorized OR autopilot + not always-ask).
-export function mayAutoRun(tool: string): boolean {
+// The tier of a tool, given its `safe` flag. Single classifier used by the gate + /api/tools.
+export function toolTier(name: string, safe: boolean): "safe" | "confirm" | "dangerous" {
+  if (DANGEROUS.has(name)) return "dangerous";
+  if (safe) return "safe";
+  return "confirm";
+}
+
+// May this !safe tool run WITHOUT asking? `swarm` = true means it's an unattended background agent.
+//   • dangerous → NEVER, except an interactive Elon-Mode session (never a swarm).
+//   • confirm   → yes if Autopilot is on, a standing "always allow" covers it, or Elon Mode.
+export function mayAutoRun(tool: string, swarm = false): boolean {
+  if (DANGEROUS.has(tool)) return ELON_MODE && !swarm;
   if (ELON_MODE) return true;
-  return isAllowed(tool) || (AUTOPILOT && !ALWAYS_ASK.has(tool));
+  return isAllowed(tool) || AUTOPILOT;
 }

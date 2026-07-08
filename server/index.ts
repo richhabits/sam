@@ -23,7 +23,7 @@ import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -513,7 +513,7 @@ app.post("/api/confirm", async (req, res) => {
 });
 
 // What can SAM actually do? (for the UI / transparency)
-app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, description: t.description, allowed: isAllowed(t.name) }))));
+app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, tier: toolTier(t.name, t.safe), description: t.description, allowed: isAllowed(t.name) }))));
 
 // ── STANDING AUTHORIZATIONS ("yes, always allow X") ──────────
 app.get("/api/allow", (_req, res) => res.json({ allowed: listAllowed() }));
