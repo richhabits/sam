@@ -59,13 +59,13 @@ cp .env.example .env
 npm start
 ```
 
-Then open **http://localhost:8787**, tell SAM your name, add a free key in **⚙ Settings**, and go.
+Then open **http://localhost:8787**, tell SAM your name, and go — **SAM works free out of the box, no key needed.** Want more speed or image/video? Add a free key in **⚙ Settings** (optional — never required, and never by editing files).
 
 > Prefer one command? `git clone https://github.com/richhabits/sam.git && cd sam && ./setup.sh`
 >
 > **Windows?** Same clone, then `powershell -ExecutionPolicy Bypass -File .\setup.ps1` — or just run the manual steps above in PowerShell. After setup, double-click **`START-SAM.bat`** (Mac: **`START-SAM.command`**) to launch any time.
 
-> No keys yet? SAM still runs fully offline via [Ollama](https://ollama.com) if you have it — otherwise grab one free key below (60 seconds).
+> No keys? You don't need any — SAM runs **free out of the box**. For a fully-offline brain, install [Ollama](https://ollama.com); for more speed/power, add a free key in Settings (optional — 60 seconds).
 
 ---
 
