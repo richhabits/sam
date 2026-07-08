@@ -48,6 +48,9 @@ jobs:
           - os: windows-latest     # Windows
             platform: win
             arch: x64
+          - os: ubuntu-latest      # Linux (AppImage)
+            platform: linux
+            arch: x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -110,8 +113,11 @@ jobs:
       # the result is honest. The mac-x64 build is cross-compiled on an arm64 runner — running it
       # here would only exercise Rosetta (Chromium's network service crashes under emulation), which
       # is NOT how a real Intel Mac behaves. Intel is build-verified; true runtime proof needs Intel HW.
+      # Smoke only where the runner arch matches natively: win-x64 + mac-arm64. mac-x64 (cross-built,
+      # Rosetta) and linux-AppImage (needs a display server) are build-verified; the install-test job
+      # covers their runtime.
       - name: Smoke test — boot the packaged app + hit the server
-        if: ${{ !(matrix.platform == 'mac' && matrix.arch == 'x64') }}
+        if: ${{ matrix.platform == 'win' || (matrix.platform == 'mac' && matrix.arch == 'arm64') }}
         shell: bash
         run: |
           set +e
@@ -162,6 +168,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
           REPO: ${{ github.repository }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           set -e
           gh release view "$TAG" -R "$REPO" --json body -q .body > existing.md
@@ -169,19 +176,85 @@ jobs:
             echo "checksums already in notes — skipping"; exit 0
           fi
           mkdir dl && cd dl
-          gh release download "$TAG" -R "$REPO" -p '*.dmg' -p '*.exe'
+          gh release download "$TAG" -R "$REPO" -p '*.dmg' -p '*.exe' -p '*.AppImage'
+          # SHA256SUMS.txt — uploaded as a release asset so install.sh / install.ps1 can verify downloads.
+          sha256sum * > SHA256SUMS.txt
+          gh release upload "$TAG" -R "$REPO" SHA256SUMS.txt --clobber
           {
             echo "## 🔒 Verify your download (SHA-256)"
             echo ""
-            echo "Confirm your installer wasn't tampered with. Compute the hash and match it below:"
+            echo "The one-paste installers verify this automatically. To check by hand, compute the hash and match:"
             echo "- **macOS/Linux:** \`shasum -a 256 <file>\`"
             echo "- **Windows (PowerShell):** \`Get-FileHash <file> -Algorithm SHA256\`"
             echo ""
             echo '```'
-            sha256sum * | sed 's|  | |'
+            cat SHA256SUMS.txt
             echo '```'
           } > sums.md
           cd ..
           { cat existing.md; echo ""; echo "---"; echo ""; cat dl/sums.md; } > combined.md
           gh release edit "$TAG" -R "$REPO" --notes-file combined.md
-          echo "✓ checksums appended to $TAG release notes"
+          echo "✓ checksums (notes + SHA256SUMS.txt asset) published for $TAG"
+          # Homebrew cask — auto-bump the tap so `brew install --cask richhabits/tap/sam` tracks releases.
+          # Runs only if HOMEBREW_TAP_TOKEN (a PAT with write to richhabits/homebrew-tap) is set — else skips.
+          if [ -n "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            V="${TAG#v}"
+            ARM=$(grep -iE "arm64\.dmg" dl/SHA256SUMS.txt | grep -oiE '[a-f0-9]{64}' | head -1)
+            INTEL=$(grep -iE "SAM-${V}\.dmg" dl/SHA256SUMS.txt | grep -oiE '[a-f0-9]{64}' | head -1)
+            cat > sam.rb <<CASK
+          cask "sam" do
+            version "${V}"
+            on_arm do
+              sha256 "${ARM}"
+              url "https://github.com/${REPO}/releases/download/v#{version}/SAM-#{version}-arm64.dmg"
+            end
+            on_intel do
+              sha256 "${INTEL}"
+              url "https://github.com/${REPO}/releases/download/v#{version}/SAM-#{version}.dmg"
+            end
+            name "SAM"
+            desc "Free, private, local-first AI assistant that actually does the work"
+            homepage "https://github.com/${REPO}"
+            app "SAM.app"
+          end
+          CASK
+            git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/richhabits/homebrew-tap.git" tap 2>/dev/null && {
+              mkdir -p tap/Casks; cp sam.rb tap/Casks/sam.rb
+              cd tap && git config user.name "sam-bot" && git config user.email "sam@hectic" \
+                && git add Casks/sam.rb && git commit -m "sam ${V}" && git push && echo "✓ Homebrew cask bumped to ${V}"
+            } || echo "⚠ tap push skipped (repo/token issue)"
+          else
+            echo "ℹ️ Homebrew tap auto-bump skipped (HOMEBREW_TAP_TOKEN not set)"
+          fi
+
+  # PHASE 1 — clean-machine install test: run the ACTUAL one-paste installers from scratch on fresh
+  # macOS/Windows/Ubuntu runners against the just-published release. Install must succeed on all three
+  # or the release is marked failed. (SAM_NO_LAUNCH=1 → install silently, don't open the GUI.)
+  install-test:
+    needs: checksums
+    if: github.event_name == 'release'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      SAM_NO_LAUNCH: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: One-paste install (${{ matrix.os }})
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            pwsh -ExecutionPolicy Bypass -File docs/install.ps1
+          else
+            bash docs/install.sh
+          fi
+      - name: Verify SAM landed
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS)   test -d "/Applications/SAM.app" && echo "✅ SAM.app installed on macOS";;
+            Linux)   test -x "$HOME/.local/bin/SAM.AppImage" && echo "✅ AppImage installed on Linux";;
+            Windows) if compgen -G "$LOCALAPPDATA/Programs/*[Ss][Aa][Mm]*" > /dev/null || compgen -G "$LOCALAPPDATA/*[Ss][Aa][Mm]*/SAM.exe" > /dev/null; then echo "✅ SAM installed on Windows"; else echo "❌ not found"; ls "$LOCALAPPDATA/Programs" 2>/dev/null; exit 1; fi;;
+          esac
