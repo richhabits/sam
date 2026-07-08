@@ -49,7 +49,7 @@ import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 // Locate the user's Obsidian vault: explicit OBSIDIAN_VAULT, else the usual spots (a real
 // Obsidian vault always contains a `.obsidian` config folder — that's how we recognise one).
 function obsidianVault(): string | null {
-  const home = process.env.HOME || "";
+  const home = homedir();
   const explicit = process.env.OBSIDIAN_VAULT;
   if (explicit && existsSync(explicit.replace(/^~/, home))) return explicit.replace(/^~/, home);
   const candidates = [
@@ -688,7 +688,7 @@ export const TOOLS: Tool[] = [
       const { id, title } = nb.ensureNotebook(i.notebook || "Research");
       try {
         if (i.url) { const r = await nb.addUrl(id, String(i.url)); return `📓 Added “${r.title}” (${r.chunks} passages) to notebook **${title}**.`; }
-        if (i.file) { const n = await nb.addFile(id, String(i.file).replace(/^~/, process.env.HOME || "")); return `📓 Added ${basename(String(i.file))} (${n} passages) to **${title}**.`; }
+        if (i.file) { const n = await nb.addFile(id, String(i.file).replace(/^~/, homedir())); return `📓 Added ${basename(String(i.file))} (${n} passages) to **${title}**.`; }
         if (i.text) { const n = await nb.addText(id, String(i.title || "note"), String(i.text)); return `📓 Added a note (${n} passages) to **${title}**.`; }
         return "Give me a url, file path, or text to add.";
       } catch (e: any) { return `Couldn't add that source: ${e?.message || e}`; }
@@ -753,11 +753,11 @@ export const TOOLS: Tool[] = [
       const file = join(dir, `${safeTitle}.md`);
       const body = `${i.content || ""}\n\n---\n_Saved by SAM ${new Date().toISOString().slice(0, 16).replace("T", " ")}_\n`;
       await writeFile(file, body, "utf8");
-      return `🟣 Saved to Obsidian: **${safeTitle}** (${file.replace(process.env.HOME || "", "~")})`;
+      return `🟣 Saved to Obsidian: **${safeTitle}** (${file.replace(homedir(), "~")})`;
     } },
   { name: "obsidian_index", safe: false, description: "Index your whole Obsidian vault so SAM can answer questions grounded in your notes. input: {} (auto-detects vault) or {path}.", params: "{path?}",
     activity: () => `Indexing your Obsidian vault`, run: async (i) => {
-      const vault = i.path ? String(i.path).replace(/^~/, process.env.HOME || "") : obsidianVault();
+      const vault = i.path ? String(i.path).replace(/^~/, homedir()) : obsidianVault();
       if (!vault || !existsSync(vault)) return "No Obsidian vault found — set OBSIDIAN_VAULT in Settings, or pass its path.";
       const r = await ingestFolder(vault, 2000);
       return `🟣 Indexed your Obsidian vault — ${r.ingested} notes, ${r.chunks} passages. Ask me anything about your notes now (search_docs / notebook_ask).`;
@@ -1813,8 +1813,8 @@ export const TOOLS: Tool[] = [
       return files.length ? `📸 ${files.length} photo(s), newest first:\n${files.map((f) => `- ${join(dir, f)}`).join("\n")}` : "No photos yet.";
     } },
   { name: "view_photo", safe: true, description: "Look at a saved photo/image file and describe or answer questions about it (e.g. find where objects are in past snapshots). input: {path, question?}.", params: "{path, question?}",
-    activity: (i) => `Looking at ${String(i.path || "").split("/").pop()}`, run: async (i) => {
-      const p = String(i.path || i || "").replace(/^~/, process.env.HOME || "");
+    activity: (i) => `Looking at ${basename(String(i.path || ""))}`, run: async (i) => {
+      const p = String(i.path || i || "").replace(/^~/, homedir());
       // Safety: this auto-runs, so a prompt-injected model could try to read arbitrary files.
       // Only ever open real image files, and never anything inside a sensitive/hidden dir.
       if (!/\.(jpe?g|png|gif|webp|heic|bmp)$/i.test(p)) return "I can only look at image files (jpg/png/gif/webp).";
@@ -1827,8 +1827,8 @@ export const TOOLS: Tool[] = [
       return r.text;
     } },
   { name: "transcribe_audio", safe: true, description: "Transcribe an audio file (voice memo, recording, podcast clip) to text — free via Groq Whisper. input: {path}.", params: "{path}",
-    activity: (i) => `Transcribing ${String(i.path || "").split("/").pop()}`, run: async (i) => {
-      const p = String(i.path || i || "").replace(/^~/, process.env.HOME || "");
+    activity: (i) => `Transcribing ${basename(String(i.path || ""))}`, run: async (i) => {
+      const p = String(i.path || i || "").replace(/^~/, homedir());
       if (!p || !existsSync(p)) return `Can't find that audio file: ${p || "(no path)"}`;
       const gk = getKey("groq");
       if (!gk) return "Transcription needs a (free) Groq key — grab one at console.groq.com/keys and paste it in Settings → API keys.";
@@ -1836,7 +1836,7 @@ export const TOOLS: Tool[] = [
         const buf = await readFile(p);
         if (buf.length > 24 * 1024 * 1024) return "That file's over 24MB — trim it down and I'll transcribe it.";
         const form = new FormData();
-        form.append("file", new Blob([new Uint8Array(buf)]), p.split("/").pop() || "audio.m4a");
+        form.append("file", new Blob([new Uint8Array(buf)]), basename(p) || "audio.m4a");
         form.append("model", "whisper-large-v3");
         const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST", headers: { Authorization: `Bearer ${gk}` }, body: form, signal: AbortSignal.timeout(120000),
@@ -1844,7 +1844,7 @@ export const TOOLS: Tool[] = [
         if (!r.ok) { reportFailure("groq", gk, r.status); return `Transcription failed (HTTP ${r.status}).`; }
         reportSuccess("groq", gk);
         const text = ((await r.json()) as any)?.text?.trim() || "";
-        return text ? `Transcript of ${p.split("/").pop()}:\n\n${clip(text, 6000)}` : "Transcribed, but it came back empty — is there speech in that file?";
+        return text ? `Transcript of ${basename(p)}:\n\n${clip(text, 6000)}` : "Transcribed, but it came back empty — is there speech in that file?";
       } catch (e: any) { return `Transcription hiccup: ${String(e?.message || e).slice(0, 120)}`; }
     } },
   { name: "generate_video", safe: true, description: "Create a short AI video (with sound) from a text description — HappyHorse #1 model via fal, or Novita/SiliconFlow free credits (~1-2 min). input: {prompt}.", params: "{prompt}",
