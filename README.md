@@ -63,9 +63,16 @@ npm start
 
 Then open **http://localhost:8787**, tell SAM your name, and go — **SAM works free out of the box, no key needed.** Want more speed or image/video? Add a free key in **⚙ Settings** (optional — never required, and never by editing files).
 
-> Prefer one command? `git clone https://github.com/richhabits/sam.git && cd sam && ./setup.sh`
+> **Mac / Linux** — prefer one command? `git clone https://github.com/richhabits/sam.git && cd sam && ./setup.sh`
 >
-> **Windows?** Same clone, then `powershell -ExecutionPolicy Bypass -File .\setup.ps1` — or just run the manual steps above in PowerShell. After setup, double-click **`START-SAM.bat`** (Mac: **`START-SAM.command`**) to launch any time.
+> ⚠️ **Windows — do NOT use that one-liner.** Windows PowerShell doesn't understand `&&`, and `./setup.sh` is a Mac/Linux script (you'll get `The token '&&' is not a valid statement separator`). Instead, **the easiest path on Windows is the [Download button](#-easiest--download-the-app-no-terminal-nothing-to-install) — no terminal at all.** If you really want source: run the commands **one line at a time** in PowerShell:
+> ```powershell
+> git clone https://github.com/richhabits/sam.git
+> cd sam
+> npm install
+> npm start
+> ```
+> (or `.\setup.ps1`). Then double-click **`START-SAM.bat`** to launch any time.
 
 > No keys? You don't need any — SAM runs **free out of the box**. For a fully-offline brain, install [Ollama](https://ollama.com); for more speed/power, add a free key in Settings (optional — 60 seconds).
 
