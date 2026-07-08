@@ -45,6 +45,8 @@ Most "AI assistants" just talk. SAM works:
 - **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → **right-click → Open** (once — it's unsigned)
 - **Windows**: run `SAM-Setup-…exe` → if SmartScreen appears, click **More info → Run anyway** (once — it's unsigned)
 
+> **"Windows says the file isn't safe" / "Windows protected your PC" — that's expected, and it's not actually unsafe.** It's the exact same build our CI tests; Windows just shows this for any app that isn't code-signed (a paid publisher certificate), until the app builds download reputation. To proceed: if your browser flags the download, choose **Keep**; when the blue SmartScreen box appears, click **More info → Run anyway**. (Mac shows the same kind of prompt — right-click → Open.) The permanent fix is code-signing — see below.
+
 ### 🛠️ Or run from source (Mac · Windows · Linux)
 
 **Prerequisites:** [Node.js 20.19+ or 22.12+](https://nodejs.org) — *or skip this: `./setup.sh` installs it for you.*
