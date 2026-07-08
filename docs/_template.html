@@ -68,7 +68,13 @@
   .lede{font-size:clamp(17px,2.3vw,20px); color:var(--ash); max-width:35ch; margin:0 0 32px; line-height:1.55}
   .lede b{color:var(--paper); font-weight:600}
 
-  .cta-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .cta-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .dl-btn{display:inline-flex; align-items:center; gap:6px; font-family:var(--sans); font-size:15px; font-weight:650; padding:13px 22px; border-radius:12px; text-decoration:none; transition:all .18s; border:1px solid var(--line-soft); white-space:nowrap}
+  .dl-btn.primary{background:var(--accent,#E8673A); color:#fff; border-color:transparent; box-shadow:0 6px 22px rgba(232,103,58,.28)}
+  .dl-btn.primary:hover{transform:translateY(-1px); box-shadow:0 9px 30px rgba(232,103,58,.4)}
+  .dl-btn:not(.primary){background:var(--raised); color:var(--paper)}
+  .dl-btn:not(.primary):hover{border-color:var(--accent,#E8673A); color:#fff; transform:translateY(-1px)}
+  .install-alt{margin-top:14px; opacity:.75; font-size:12.5px; display:inline-flex}
   .install{display:flex; align-items:center; gap:12px; background:var(--ink-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px; font-family:var(--mono); font-size:13.5px; color:var(--paper)}
   .install .prompt{color:var(--ember)}
   .install .cmd{color:var(--paper); opacity:.92}
@@ -185,12 +191,14 @@
         <h1>Your own AI.<br>It doesn't just answer — <span class="em">it handles it.</span></h1>
         <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code — for <b>£0 a month.</b></p>
         <div class="cta-row">
-          <div class="install">
-            <span class="prompt">$</span><span class="cmd" id="cmd">git clone …/sam &amp;&amp; cd sam &amp;&amp; ./setup.sh</span>
-            <button class="copy" id="copy">Copy</button>
-          </div>
+          <a class="dl-btn primary" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Mac</a>
+          <a class="dl-btn" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Windows</a>
         </div>
-        <div class="sub-note">No sign-up. No subscription. No telemetry — your data stays yours.</div>
+        <div class="install install-alt">
+          <span class="prompt">$</span><span class="cmd" id="cmd">git clone …/sam &amp;&amp; cd sam &amp;&amp; ./setup.sh</span>
+          <button class="copy" id="copy">Copy</button>
+        </div>
+        <div class="sub-note">Free · no sign-up · no telemetry — your data stays yours. Or install from source ↑ (Mac · Windows · Linux).</div>
       </div>
 
       <!-- LIVE TERMINAL -->
@@ -290,7 +298,11 @@
   <div class="closer">
     <div class="kicker" style="justify-content:center">Own your AI</div>
     <h2>Free. Private. Yours.</h2>
-    <div class="install">
+    <div class="cta-row" style="justify-content:center; margin:8px 0 4px">
+      <a class="dl-btn primary" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Mac</a>
+      <a class="dl-btn" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Windows</a>
+    </div>
+    <div class="install install-alt" style="margin-top:12px">
       <span class="prompt">$</span><span class="cmd">git clone https://github.com/richhabits/sam.git &amp;&amp; cd sam &amp;&amp; ./setup.sh</span>
     </div>
   </div>
