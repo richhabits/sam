@@ -83,6 +83,9 @@
   .btn{font-family:var(--sans); font-weight:600; font-size:15px; padding:13px 22px; border-radius:12px; background:var(--ember); color:#1a1006; border:none; cursor:pointer; transition:all .18s}
   .btn:hover{background:var(--ember-deep); transform:translateY(-1px)}
   .sub-note{font-family:var(--mono); font-size:12px; color:var(--ash-dim); margin-top:16px}
+  .firstrun{margin-top:18px; max-width:560px; background:var(--ink-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.6; color:var(--ash)}
+  .firstrun b{color:var(--paper)}
+  .firstrun .fr-os{display:block; margin-top:8px; font-size:12.5px}
 
   /* ── terminal ── */
   .term{background:linear-gradient(180deg,var(--surface),var(--ink-2)); border:1px solid var(--line); border-radius:16px; box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(243,237,228,.04); overflow:hidden}
@@ -199,6 +202,11 @@
           <button class="copy" id="copy">Copy</button>
         </div>
         <div class="sub-note">Free · no sign-up · no telemetry — your data stays yours. Or install from source ↑ (Mac · Windows · Linux).</div>
+        <div class="firstrun">
+          <b>First time you open it, your computer will ask you to confirm — that's normal for a new indie app</b> (it's the same build our tests run, just not yet code-signed). Nothing's wrong:
+          <span class="fr-os"><b>Windows:</b> if a blue “Windows protected your PC” box appears → <b>More info → Run anyway</b>. If the browser says “keep” → keep it.</span>
+          <span class="fr-os"><b>Mac:</b> right-click the app → <b>Open</b> → Open (just the first time).</span>
+        </div>
       </div>
 
       <!-- LIVE TERMINAL -->
