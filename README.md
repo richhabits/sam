@@ -39,7 +39,21 @@ Most "AI assistants" just talk. SAM works:
 
 ## Quick start
 
-### ⬇️ Easiest — download the app (no terminal, nothing to install)
+### ⚡ One paste — install & launch (about 60 seconds)
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://richhabits.github.io/sam/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://richhabits.github.io/sam/install.ps1 | iex
+```
+Detects your OS, downloads the right build, **verifies the SHA-256**, installs it, and launches SAM. Re-run any time to update. Then open **http://localhost:8787** — free out of the box, no key or setup.
+
+*(macOS also: `brew install --cask richhabits/tap/sam`.)*
+
+### ⬇️ Prefer a click? Download the app (no terminal)
 
 **[Download SAM](https://github.com/richhabits/sam/releases/latest)** — works free out of the box, no API key needed:
 - **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → **right-click → Open** (once — it's unsigned)

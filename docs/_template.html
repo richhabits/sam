@@ -75,6 +75,16 @@
   .dl-btn:not(.primary){background:var(--raised); color:var(--paper)}
   .dl-btn:not(.primary):hover{border-color:var(--accent,#E8673A); color:#fff; transform:translateY(-1px)}
   .install-alt{margin-top:14px; opacity:.75; font-size:12.5px; display:inline-flex}
+  .oneliner{margin-bottom:18px; max-width:560px}
+  .ol-tabs{display:flex; gap:6px; margin-bottom:8px}
+  .ol-tab{font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--ash); background:none; border:1px solid var(--line); border-radius:8px 8px 0 0; padding:7px 13px; cursor:pointer; transition:all .15s}
+  .ol-tab.on{color:var(--paper); background:var(--ember-soft); border-color:var(--ember)}
+  .ol-cmd{display:flex; align-items:center; gap:10px; background:var(--ink-2); border:1px solid var(--ember); border-radius:12px; padding:14px 15px; font-family:var(--mono); font-size:13.5px; box-shadow:0 6px 22px rgba(232,103,58,.16)}
+  .ol-cmd .prompt{color:var(--ember)}
+  .ol-cmd code{color:var(--paper); flex:1; overflow-x:auto; white-space:nowrap}
+  .ol-copy{cursor:pointer; background:var(--ember); color:#1a1006; border:none; font-family:var(--sans); font-weight:700; font-size:12px; padding:6px 12px; border-radius:7px; transition:all .15s}
+  .ol-copy:hover{background:var(--ember-deep)}
+  .ol-note{font-family:var(--sans); font-size:12px; color:var(--ash-dim); margin-top:9px}
   .install{display:flex; align-items:center; gap:12px; background:var(--ink-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px; font-family:var(--mono); font-size:13.5px; color:var(--paper)}
   .install .prompt{color:var(--ember)}
   .install .cmd{color:var(--paper); opacity:.92}
@@ -194,6 +204,14 @@
         <span class="eyebrow"><span class="pulse"></span>Free · Private · Mac · Windows · Linux</span>
         <h1>Your own AI.<br>It doesn't just answer — <span class="em">it handles it.</span></h1>
         <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code — for <b>£0 a month.</b></p>
+        <div class="oneliner">
+          <div class="ol-tabs">
+            <button class="ol-tab on" data-os="unix">🍎 macOS / 🐧 Linux</button>
+            <button class="ol-tab" data-os="win">🪟 Windows</button>
+          </div>
+          <div class="ol-cmd"><span class="prompt">$</span><code id="ol-code">curl -fsSL https://richhabits.github.io/sam/install.sh | bash</code><button class="ol-copy" id="ol-copy">Copy</button></div>
+          <div class="ol-note">Installs, verifies the SHA-256, and launches SAM — ~60 seconds. Re-run to update.</div>
+        </div>
         <div class="cta-row">
           <a class="dl-btn primary" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Mac</a>
           <a class="dl-btn" href="https://github.com/richhabits/sam/releases/latest" target="_blank" rel="noopener">↓&nbsp; Download for Windows</a>
@@ -332,6 +350,20 @@
   const copy = document.getElementById("copy");
   copy && copy.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(full); copy.textContent = "Copied ✓"; setTimeout(()=>copy.textContent="Copy",1600); } catch {}
+  });
+
+  // one-paste installer: OS auto-detect + tabs + copy
+  const CMDS = {
+    unix: "curl -fsSL https://richhabits.github.io/sam/install.sh | bash",
+    win:  "irm https://richhabits.github.io/sam/install.ps1 | iex",
+  };
+  const olCode = document.getElementById("ol-code"), olCopy = document.getElementById("ol-copy");
+  const olTabs = [...document.querySelectorAll(".ol-tab")];
+  function setOS(os){ olCode.textContent = CMDS[os]; olTabs.forEach(t => t.classList.toggle("on", t.dataset.os === os)); }
+  olTabs.forEach(t => t.addEventListener("click", () => setOS(t.dataset.os)));
+  setOS(/win/i.test(navigator.platform || navigator.userAgent) ? "win" : "unix");   // auto-detect
+  olCopy && olCopy.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(olCode.textContent); olCopy.textContent = "Copied ✓"; setTimeout(()=>olCopy.textContent="Copy",1600); } catch {}
   });
 
   // live terminal — SAM doing a real task, Uber-style
