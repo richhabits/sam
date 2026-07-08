@@ -170,7 +170,7 @@ async function runAgentLoop(swarmId: string, agentId: string) {
   const sys = `${s.system}\n\n## You are ${spec.name} ${spec.emoji} — one of SAM's specialists, channelling ${spec.modeledOn}.\nYour lane: ${spec.brief}\nDo YOUR part of the job only, brilliantly. Be concise and concrete.`;
 
   try {
-    const result = await runAgent(sys, a.task, s.tier as Tier);
+    const result = await runAgent(sys, a.task, s.tier as Tier, undefined, false, /* swarm */ true);
     handleAgentResult(swarmId, agentId, result);
   } catch (e: any) {
     updateSwarm(swarmId, (sw) => {
@@ -198,7 +198,7 @@ export async function approveAgent(swarmId: string, agentId: string, approved: b
   const sys = `${s.system}\n\n## You are ${spec.name} ${spec.emoji} — one of SAM's specialists, channelling ${spec.modeledOn}.\nYour lane: ${spec.brief}\nDo YOUR part of the job only, brilliantly.`;
 
   try {
-    const result = await resumeAgent(sys, a.transcript!, s.tier as Tier, approved, a.pendingTool!, a.pendingInput, a.trace);
+    const result = await resumeAgent(sys, a.transcript!, s.tier as Tier, approved, a.pendingTool!, a.pendingInput, a.trace, /* swarm */ true);
     handleAgentResult(swarmId, agentId, result);
   } catch (e: any) {
     updateSwarm(swarmId, (sw) => {

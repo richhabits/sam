@@ -23,7 +23,7 @@ import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -513,7 +513,7 @@ app.post("/api/confirm", async (req, res) => {
 });
 
 // What can SAM actually do? (for the UI / transparency)
-app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, description: t.description, allowed: isAllowed(t.name) }))));
+app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, tier: toolTier(t.name, t.safe), description: t.description, allowed: isAllowed(t.name) }))));
 
 // ── STANDING AUTHORIZATIONS ("yes, always allow X") ──────────
 app.get("/api/allow", (_req, res) => res.json({ allowed: listAllowed() }));
@@ -1146,8 +1146,21 @@ app.get("/api/update-check", async (_req, res) => {
   } catch { res.json({ behind: false }); }   // no git/remote → silently no updates
 });
 app.post("/api/update", async (_req, res) => {
-  try { res.json({ ok: true, output: (await git("pull --ff-only", 45000)).slice(0, 400) }); }
-  catch (e: any) { res.json({ ok: false, error: (e?.stderr || e?.message || e).toString().slice(0, 300) }); }
+  try {
+    // Refuse gracefully on a dirty tree — never silently overwrite the user's local edits.
+    const dirty = (await git("status --porcelain")).trim();
+    if (dirty) return res.json({ ok: false, dirty: true, error: "You have unsaved local changes — SAM won't overwrite them. Commit or stash them first (`git stash`), then hit Update again." });
+    const output = (await git("pull --ff-only", 45000)).slice(0, 400);
+    res.json({ ok: true, output });
+  } catch (e: any) {
+    const msg = (e?.stderr || e?.message || e).toString();
+    const friendly =
+      /not a git repository/i.test(msg) ? "This isn't a source checkout — download the latest app from the releases page instead." :
+      /diverged|non-fast-forward|would be overwritten|Not possible to fast-forward/i.test(msg) ? "Your copy has diverged from GitHub. Run `git pull` in the sam folder to reconcile, or reinstall the app." :
+      /could not resolve host|network|timed out/i.test(msg) ? "Couldn't reach GitHub — check your internet and try again." :
+      msg.slice(0, 200);
+    res.json({ ok: false, error: friendly });
+  }
 });
 app.get("/api/status", (_req, res) =>
   res.json({
