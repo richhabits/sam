@@ -260,7 +260,7 @@ const PROVIDERS: Provider[] = [
   //    these. Several independent lanes (different models + a different endpoint) so one transient
   //    hiccup can't take the whole no-key path down — there's always another free brain to fall to.
   { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
-  { id: "pollinations-mistral", tier: "free", noKey: true, label: "pollinations:mistral", run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", "mistral", s, p, "") },
+  { id: "pollinations-fast", tier: "free", noKey: true, label: "pollinations:openai-fast", run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", "openai-fast", s, p, "") },
   { id: "pollinations-get", tier: "free", noKey: true, label: "pollinations:get", run: (s, p) => callPollinationsGet(s, p) },
 
   // ── TIER 4: Premium (paid, last resort) ────────────────────
