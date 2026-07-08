@@ -46,6 +46,15 @@ vault/daily/*
 # bulletproof: no vault data ships
 vault/**/*.json
 vault/**/*.md
+vault/**/*.jpg
+vault/**/*.jpeg
+vault/**/*.png
+vault/**/*.webp
+vault/**/*.gif
+vault/**/*.mp4
+vault/**/*.heic
+vault/studio-gen/
+vault/studio-previews/
 !vault/brands.sample.json
 !vault/**/.gitkeep
 

@@ -14,21 +14,16 @@ import { join, dirname } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => { try { return readFileSync(join(ROOT, p), "utf8"); } catch { return ""; } };
 
-// ── Pull the real numbers + names from source ──
+// ── Numbers come from docs/stats.json — the SINGLE SOURCE OF TRUTH (run `npm run stats` first;
+//    the build + CI do). No independent counting here, so the site can never disagree with the
+//    README/repo. Falls back to a safe read only if stats.json is somehow missing. ──
+let STATS = { tools: 0, brains: 0, agents: 0, skills: 0 };
+try { STATS = JSON.parse(read("docs/stats.json")); } catch {}
+const tools = STATS.tools, brains = STATS.brains, agents = STATS.agents, skills = STATS.skills;
+
+// The tool NAMES (for the categorised grid below) still come from source — that's the list, not a count.
 const toolsSrc = read("server/tools.ts");
-// [a-z0-9_]+ — tool/provider/agent ids can contain digits (e.g. weather_forecast_7day,
-// provider "ai21"); the old [a-z_]+ silently undercounted them.
 const toolNames = [...toolsSrc.matchAll(/\bname:\s*"([a-z0-9_]+)"/g)].map((m) => m[1]);
-const tools = toolNames.length;
-
-const modelsSrc = read("server/models.ts");
-const brains = (modelsSrc.match(/id:\s*"[a-z0-9_]+",\s*tier:\s*"free"/g) || []).length;
-
-const agentsSrc = read("server/agents.ts");
-const agents = (agentsSrc.match(/\{\s*id:\s*"[a-z0-9_]+",\s*name:/g) || []).length;
-
-let skills = 0;
-try { skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch {}
 
 // ── Auto-build the CATEGORISED "everything it does" grid from the real tool list ──
 // Every real tool lands in the FIRST category whose pattern matches (else "Utilities").
