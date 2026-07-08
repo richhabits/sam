@@ -1,0 +1,23 @@
+# SAM gitleaks config — extends the built-in rules (which detect OpenAI/AWS/generic keys, etc.).
+# The allowlist below only excuses FORMAT EXAMPLES + placeholders — never anything that could hide a
+# real secret (real keys have no "…"/"xxx"/"YOUR_" and don't live in .env.example).
+title = "SAM secret-scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders, key-format examples, and generated lockfiles — not real secrets"
+regexTarget = "match"
+regexes = [
+  # obvious placeholders: a provider prefix followed by …, xxxx, or an ellipsis run
+  '''(?i)(sk|gsk|ghp|xoxb|pat|shpat|ntn|lin_api|sk-ant|sk-proj|aiza)[-_a-z0-9]*(…|x{3,}|\.{3})''',
+  '''YOUR[_-]?(TOKEN|KEY|API|SECRET|PASSWORD)''',
+  '''(placeholder|example\.com|dummy|test-fake|<[A-Z_]{3,}>)''',
+]
+paths = [
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+  '''(^|/)docs/SIGNING\.md$''',        # documents cert/key formats, not values
+  '''(^|/)server/mcp-presets\.ts$''',  # UI placeholder strings like "sk_live_…"
+]
