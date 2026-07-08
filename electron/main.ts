@@ -118,16 +118,19 @@ if (!app.requestSingleInstanceLock()) {
 app.whenReady().then(() => {
   createWindow();
   createTray();
-  // Updates: try TRUE silent auto-update first (electron-updater + GitHub releases —
-  // works when the build is signed on macOS; unsigned Windows NSIS also updates fine).
-  // If it can't (unsigned mac build, dev run), fall back to the polite notifier.
+  // Updates. electron-updater's silent self-update works on Windows even unsigned. On macOS it needs
+  // a SIGNED zip target (Squirrel.Mac) — an UNSIGNED mac build throws "ZIP file not provided" as an
+  // unhandledRejection on every launch that finds an update. So on macOS we skip it and use the
+  // GitHub-release notifier (a one-click Download dialog) instead — no crash, and it actually works.
+  // (When the mac build is signed + ships a zip, re-enable electron-updater here.)
   setTimeout(() => {
     void (async () => {
+      if (process.platform === "darwin") { void checkForUpdates(); return; }
       try {
         const { autoUpdater } = await import("electron-updater");
         autoUpdater.autoDownload = true;
         autoUpdater.autoInstallOnAppQuit = true;   // downloads quietly, installs on quit
-        autoUpdater.on("error", () => void checkForUpdates());   // unsigned/dev → notifier
+        autoUpdater.on("error", () => void checkForUpdates());   // any hiccup → notifier
         await autoUpdater.checkForUpdatesAndNotify();
       } catch { void checkForUpdates(); }
     })();
