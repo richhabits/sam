@@ -10,8 +10,39 @@
 
 import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, writeFile, readdir, stat, appendFile as appendFileFs } from "node:fs/promises";
+import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
 import { existsSync, readdirSync, mkdirSync } from "node:fs";
+
+// ── Cross-platform file search (NO shell) — works on Windows/Linux/Mac identically. Mac keeps its
+//    fast Spotlight `mdfind` path where called; this is the portable fallback. Walk is bounded so it
+//    can't run away on a huge tree, and skips hidden/system/heavy dirs. ──────────────────────────
+const SKIP_DIRS = new Set(["node_modules", "Library", ".git", ".Trash", "vendor", "dist", "build", ".cache"]);
+async function walkFiles(dir: string, depth: number, out: string[]): Promise<string[]> {
+  if (depth < 0 || out.length >= 4000) return out;
+  let entries: any[];
+  try { entries = await readdir(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    if (out.length >= 4000) break;
+    if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+    const full = join(dir, e.name);
+    if (e.isDirectory()) await walkFiles(full, depth - 1, out);
+    else out.push(full);
+  }
+  return out;
+}
+async function findByName(root: string, query: string, limit = 30): Promise<string[]> {
+  const q = query.toLowerCase();
+  return (await walkFiles(root, 5, [])).filter((f) => basename(f).toLowerCase().includes(q)).slice(0, limit);
+}
+async function findByContent(root: string, query: string, limit = 30): Promise<string[]> {
+  const q = query.toLowerCase(); const hits: string[] = [];
+  for (const f of await walkFiles(root, 4, [])) {
+    if (hits.length >= limit) break;
+    if (!/\.(txt|md|markdown|json|jsonl|js|ts|tsx|csv|log|html?|xml|ya?ml|py|env|conf|ini|rtf)$/i.test(f)) continue;
+    try { if ((await readFile(f, "utf8")).toLowerCase().includes(q)) hits.push(f); } catch {}
+  }
+  return hits;
+}
 import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
@@ -417,9 +448,13 @@ async function openUrl(url: string): Promise<string> {
 }
 async function searchFiles(q: string): Promise<string> {
   try {
-    if (IS_MAC) { const { stdout } = await sh(`mdfind ${shq(q)} | head -30`, { timeout: 20000 }); return clip(stdout.trim()) || "No files found."; }
-    const { stdout } = await sh(`grep -rl ${shq(q)} ${shq(homedir())} 2>/dev/null | head -30`, { timeout: 20000 });
-    return clip(stdout.trim()) || "No files found.";
+    // Mac: fast Spotlight index (name + content). Windows/Linux: Node-native walk (no shell), matching
+    // by filename first, then by content — works identically everywhere, no grep/mdfind dependency.
+    if (IS_MAC) { const { stdout } = await sh(`mdfind ${shq(q)} | head -30`, { timeout: 20000 }); const r = clip(stdout.trim()); if (r) return r; }
+    const home = homedir();
+    let hits = await findByName(home, q, 30);
+    if (!hits.length) hits = await findByContent(home, q, 30);
+    return hits.length ? clip(hits.join("\n")) : "No files found.";
   } catch (e: any) { return `Search failed: ${e?.message}`; }
 }
 async function systemInfo(): Promise<string> {
@@ -1117,7 +1152,7 @@ export const TOOLS: Tool[] = [
           return "Note created successfully.";
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
-          await sh(`mkdir -p "${notesDir}"`);
+          mkdirSync(notesDir, { recursive: true });
           const file = resolve(notesDir, `${i.title.replace(/[^a-z0-9]/gi, '_')}.txt`);
           await writeFile(file, i.body);
           return `Note saved to ${file}.`;
@@ -1134,7 +1169,7 @@ export const TOOLS: Tool[] = [
           return result.trim() || "No matching notes found.";
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
-          const { stdout } = await sh(`grep -ri ${shq(i.query)} ${shq(notesDir)} 2>/dev/null || true`);
+          const hitFiles = await findByContent(notesDir, String(i.query), 20); const stdout = hitFiles.join("\n");
           return stdout.trim() || "No matching notes found.";
         }
       } catch (e: any) { return `Failed to search notes: ${e.message}`; }
@@ -1185,7 +1220,7 @@ export const TOOLS: Tool[] = [
         } else {
           const vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${i.last_name || ""};${i.first_name};;;\nFN:${i.first_name} ${i.last_name || ""}\nTEL;TYPE=CELL:${i.phone || ""}\nEMAIL;TYPE=WORK:${i.email || ""}\nEND:VCARD`;
           const contactsDir = resolve(homedir(), "SAM_Contacts");
-          await sh(`mkdir -p "${contactsDir}"`);
+          mkdirSync(contactsDir, { recursive: true });
           const file = resolve(contactsDir, `${i.first_name}_${i.last_name || ""}.vcf`.trim());
           await writeFile(file, vcf);
           return `Contact saved as VCF in ${file}.`;
@@ -1235,7 +1270,7 @@ export const TOOLS: Tool[] = [
   },
   { name: "quick_note", safe: true, description: "Jot a quick note into SAM's vault. input: text.", params: "text",
     activity: () => `Saving a note`,
-    run: async (i) => { const p = safePath("./vault/notes/quick.md"); await sh(`mkdir -p ${shq(dirname(p))}`); await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" }); return `📝 Noted to your vault.`; } },
+    run: async (i) => { const p = safePath("./vault/notes/quick.md"); mkdirSync(dirname(p), { recursive: true }); await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" }); return `📝 Noted to your vault.`; } },
   { name: "crypto_price", safe: true, description: "Get a crypto price. input: coin (bitcoin, ethereum…).", params: "coin",
     activity: (i) => `Checking ${i.coin ?? i} price`,
     run: async (i) => { try { const coin = String(i.coin ?? i).toLowerCase(); const d: any = await (await tfetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coin)}&vs_currencies=usd,gbp`)).json(); const p = d?.[coin]; return p ? `🪙 ${coin}: $${p.usd} · £${p.gbp}` : `Couldn't find "${coin}".`; } catch (e: any) { return `Crypto lookup failed: ${e?.message}`; } } },
@@ -1250,7 +1285,15 @@ export const TOOLS: Tool[] = [
     run: async () => { try { const ids: any = await (await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json")).json(); const top = await Promise.all(ids.slice(0, 8).map(async (id: number) => { const s: any = await (await tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json(); return `• ${s.title} (${s.score}▲) ${s.url || ""}`; })); return `📰 Top HN:\n${top.join("\n")}`; } catch (e: any) { return `HN fetch failed: ${e?.message}`; } } },
   { name: "dns_lookup", safe: true, description: "DNS lookup for a domain. input: domain.", params: "domain",
     activity: (i) => `DNS lookup: ${i.domain ?? i}`,
-    run: async (i) => { const { stdout } = await sh(`dig +short ${shq(String(i.domain ?? i))} 2>/dev/null || nslookup ${shq(String(i.domain ?? i))} 2>/dev/null | tail -n +4`); return stdout.trim() || "No records found."; } },
+    run: async (i) => {
+      const domain = String(i.domain ?? i).trim().replace(/^https?:\/\//, "").split("/")[0];
+      try {
+        const dns = await import("node:dns/promises");
+        const [a, aaaa] = await Promise.all([dns.resolve4(domain).catch(() => [] as string[]), dns.resolve6(domain).catch(() => [] as string[])]);
+        const recs = [...a.map((x) => `A     ${x}`), ...aaaa.map((x) => `AAAA  ${x}`)];
+        return recs.length ? recs.join("\n") : "No records found.";
+      } catch (e: any) { return `Lookup failed: ${e?.message}`; }
+    } },
   { name: "open_url", safe: true, description: "Open a URL in the default browser. input: url.", params: "url",
     activity: (i) => `Opening ${i.url ?? i}`, run: (i) => openUrl(i.url ?? i) },
   { name: "search_files", safe: true, description: "Search the Mac for files by name/content (Spotlight). input: query.", params: "query",
@@ -1288,7 +1331,15 @@ export const TOOLS: Tool[] = [
   { name: "run_script", safe: false, description: "Run an npm script (build/test/lint/etc) in a project. input: {dir, script}.", params: "{dir, script}",
     activity: (i) => `Running npm ${i.script} in ${i.dir}`,
     preview: (i) => `Run \`npm run ${i.script}\` in ${i.dir}`,
-    run: (i) => sh(`cd ${shq(i.dir)} && npm run ${shq(i.script)} 2>&1 | tail -40`, { timeout: 180000 }).then((r: any) => (r.stdout || "(done)").toString().slice(0, 4000)).catch((e: any) => `failed: ${(e?.stderr || e?.message || e).toString().slice(0, 400)}`) },
+    run: (i) => {
+      const script = String(i.script || "");
+      if (!/^[\w:.-]+$/.test(script)) return Promise.resolve("That doesn't look like a valid npm script name.");
+      // Cross-platform: execFile with cwd (no `cd`), shell:true so 'npm' resolves to npm.cmd on Windows;
+      // last 40 lines sliced in JS (no `| tail`). Strict script validation blocks shell injection.
+      return execFile("npm", ["run", script], { cwd: String(i.dir || "."), timeout: 180000, maxBuffer: 4 * 1024 * 1024, shell: true } as any)
+        .then((r: any) => (((r.stdout || "") + (r.stderr || "")).split("\n").slice(-40).join("\n") || "(done)").slice(0, 4000))
+        .catch((e: any) => `failed:\n${(((e?.stdout || "") + (e?.stderr || e?.message || e)).toString()).split("\n").slice(-40).join("\n").slice(0, 800)}`);
+    } },
   { name: "my_socials", safe: true, description: "Show the user's social profiles/links on file (optionally for one brand). input: {brand?}.", params: "{brand?}",
     activity: () => `Pulling up your socials`,
     run: async (i) => {
@@ -1312,25 +1363,39 @@ export const TOOLS: Tool[] = [
   { name: "move_file", safe: false, description: "Move or rename a file/folder. input: {from, to}.", params: "{from, to}",
     activity: (i) => `Moving ${i.from} → ${i.to}`,
     preview: (i) => `Move / rename:\n${i.from}\n→ ${i.to}`,
-    run: (i) => sh(`mv ${shq(safePath(i.from))} ${shq(safePath(i.to))}`).then(() => `Moved to ${i.to}`).catch((e: any) => `Couldn't move: ${e?.message}`) },
+    run: (i) => rename(safePath(i.from), safePath(i.to)).then(() => `Moved to ${i.to}`).catch((e: any) => `Couldn't move: ${e?.message}`) },
   { name: "make_folder", safe: false, description: "Create a folder (and any parent folders). input: path.", params: "path",
     activity: (i) => `Creating folder ${i.path ?? i}`,
     preview: (i) => `Create folder: ${i.path ?? i}`,
-    run: (i) => sh(`mkdir -p ${shq(safePath(i.path ?? i))}`).then(() => `Created ${i.path ?? i}`).catch((e: any) => `Couldn't: ${e?.message}`) },
+    run: (i) => (async () => { try { mkdirSync(safePath(i.path ?? i), { recursive: true }); return `Created ${i.path ?? i}`; } catch (e: any) { return `Couldn't: ${e?.message}`; } })() },
   { name: "compress", safe: false, description: "Zip a file or folder. input: {path, out?}.", params: "{path, out?}",
     activity: (i) => `Zipping ${i.path}`,
     preview: (i) => `Zip: ${i.path}`,
-    run: (i) => { const src = safePath(i.path); const out = safePath(i.out || i.path + ".zip"); return sh(`cd ${shq(dirname(src))} && zip -rq ${shq(out)} ${shq(basename(src))}`).then(() => `Zipped to ${out}`).catch((e: any) => `Couldn't zip: ${e?.message}`); } },
+    run: (i) => {
+      const src = safePath(i.path); const out = safePath(i.out || i.path + ".zip");
+      const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;   // PowerShell single-quote escape
+      const p = OS === "windows"
+        ? execFile("powershell", ["-NoProfile", "-Command", `Compress-Archive -Path ${psq(src)} -DestinationPath ${psq(out)} -Force`])
+        : sh(`cd ${shq(dirname(src))} && zip -rq ${shq(out)} ${shq(basename(src))}`);
+      return p.then(() => `Zipped to ${out}`).catch((e: any) => `Couldn't zip: ${e?.message}`);
+    } },
   { name: "unzip_file", safe: false, description: "Unzip an archive. input: {path, to?}.", params: "{path, to?}",
     activity: (i) => `Unzipping ${i.path}`,
     preview: (i) => `Unzip: ${i.path}`,
-    run: (i) => sh(`unzip -oq ${shq(safePath(i.path))} ${i.to ? `-d ${shq(safePath(i.to))}` : `-d ${shq(dirname(safePath(i.path)))}`}`).then(() => `Unzipped ${i.path}`).catch((e: any) => `Couldn't unzip: ${e?.message}`) },
+    run: (i) => {
+      const src = safePath(i.path); const dest = i.to ? safePath(i.to) : dirname(src);
+      const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;
+      const p = OS === "windows"
+        ? execFile("powershell", ["-NoProfile", "-Command", `Expand-Archive -Path ${psq(src)} -DestinationPath ${psq(dest)} -Force`])
+        : sh(`unzip -oq ${shq(src)} -d ${shq(dest)}`);
+      return p.then(() => `Unzipped ${i.path}`).catch((e: any) => `Couldn't unzip: ${e?.message}`);
+    } },
   { name: "directions", safe: true, description: "Open directions / a map lookup. input: {to, from?}.", params: "{to, from?}",
     activity: (i) => `Getting directions to ${i.to ?? i}`,
     run: (i) => { const to = encodeURIComponent(i.to ?? i); const from = i.from ? `&origin=${encodeURIComponent(i.from)}` : ""; return openUrl(`https://www.google.com/maps/dir/?api=1&destination=${to}${from}`).then(() => `Opened directions to ${i.to ?? i}`); } },
   { name: "backup_vault", safe: true, description: "Back up SAM's memory vault to a timestamped folder on the Desktop.", params: "(none)",
     activity: () => `Backing up your SAM memory`,
-    run: async () => { const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12); const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`); try { await sh(`cp -R ${shq(safePath("./vault"))} ${shq(dest)}`); return `Backed up your vault to ${dest}`; } catch (e: any) { return `Backup failed: ${e?.message}`; } } },
+    run: async () => { const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12); const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`); try { await cp(safePath("./vault"), dest, { recursive: true }); return `Backed up your vault to ${dest}`; } catch (e: any) { return `Backup failed: ${e?.message}`; } } },
   // ── People SAM knows by sight ──
   { name: "remember_person", safe: true, description: "Remember a person by sight. input: {name, look, relation?} — look = short description of their appearance.", params: "{name, look, relation?}",
     activity: (i) => `Remembering ${i.name}`,
@@ -1413,7 +1478,7 @@ export const TOOLS: Tool[] = [
           return `Appended to note '${i.title}'.`;
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
-          const { stdout } = await sh(`ls ${shq(notesDir)} 2>/dev/null | grep -i ${shq(i.title)} | head -1`);
+          const nmeHits = await findByName(notesDir, String(i.title), 1); const stdout = nmeHits[0] || "";
           const file = resolve(notesDir, stdout.trim() || `${String(i.title).replace(/[^a-z0-9]/gi, '_')}.txt`);
           await appendFileFs(file, `\n\n${i.text}`, "utf8");   // fs write — no shell, no injection
           return `Appended to ${file}.`;
