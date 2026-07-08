@@ -17,7 +17,18 @@ jobs:
       # so type errors slip through the build. This catches them.
       - run: npx tsc --noEmit
       - run: npm run build
-      
+
+      # Truth check — advertised numbers must equal reality. Regenerate stats from the live
+      # registries; fail if docs/stats.json or the README numbers drifted (someone changed the
+      # tool/agent/skill/provider registry without running `npm run stats`).
+      - name: Advertised stats are current (no drift)
+        run: |
+          npm run stats
+          git diff --exit-code docs/stats.json docs/repo-description.txt README.md || {
+            echo "::error::Advertised numbers are stale. Run 'npm run stats' and commit the result.";
+            exit 1;
+          }
+
       # Selftest — checks tools, agents, vault, and model availability.
       - name: Live Boot Selftest
         run: npm run selftest
@@ -35,3 +46,40 @@ jobs:
             sleep 1
           done
           echo "✗ SAM failed to boot within 25s"; kill $PID 2>/dev/null; exit 1
+
+  # PHASE 4 — cross-platform proof: boot SAM + self-test + verify the platform matrix on all 3 OSes.
+  # Proves the "universal tools" claim: SAM boots everywhere, the registry is intact, and every
+  # macOS-only tool degrades cleanly (0 ungated-risk) — not just "it compiled on Linux".
+  cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Platform matrix current + zero ungated-risk
+        run: npm run platforms          # exits 1 if any macOS-only tool lacks a clean degrade
+      - name: Live boot self-test
+        run: npm run selftest            # checks tools, agents, vault, model availability
+      - name: Boot + smoke the API on ${{ matrix.os }}
+        shell: bash
+        run: |
+          node dist/server.mjs > boot.log 2>&1 &
+          PID=$!
+          UP=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/api/health >/dev/null 2>&1; then UP=1; break; fi
+            sleep 2
+          done
+          if [ "$UP" != "1" ]; then echo "❌ SAM did not boot on ${{ matrix.os }}"; tail -20 boot.log; kill $PID 2>/dev/null; exit 1; fi
+          N=$(curl -s http://127.0.0.1:8787/api/tools | node -e "process.stdin.on('data',d=>{try{console.log(JSON.parse(d).length)}catch{console.log(0)}})")
+          echo "✅ ${{ matrix.os }}: booted, /api/health OK, $N tools registered"
+          [ "${N:-0}" -ge 100 ] || { echo "❌ too few tools ($N)"; exit 1; }
+          kill $PID 2>/dev/null || true

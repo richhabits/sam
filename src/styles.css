@@ -1117,3 +1117,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .use-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent))); border-radius: 999px; transition: width .5s ease; }
 .use-meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .use-foot { margin-top: 16px; font-size: 13px; color: var(--muted); line-height: 1.55; border-top: 1px solid var(--border); padding-top: 14px; }
+
+/* onboarding optional-key hint */
+.onboard-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: -4px 2px 4px; text-align: left; }
+.onboard-hint a { color: var(--accent-text); font-weight: 600; }

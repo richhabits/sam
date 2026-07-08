@@ -1,6 +1,6 @@
 {
   "name": "sam",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
@@ -30,7 +30,9 @@
     "landing": "node scripts/gen-landing.mjs",
     "og": "node scripts/gen-og.mjs",
     "build:mac:signed": "node scripts/build-signed.mjs",
-    "release:app": "node scripts/build-signed.mjs --upload"
+    "release:app": "node scripts/build-signed.mjs --upload",
+    "stats": "tsx scripts/generate-stats.ts",
+    "platforms": "tsx scripts/platform-matrix.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
