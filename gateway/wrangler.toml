@@ -1,0 +1,22 @@
+name = "sam-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Anonymous per-device + global quota counters (daily TTL). Create with:
+#   npx wrangler kv namespace create QUOTA
+# then paste the id below.
+[[kv_namespaces]]
+binding = "QUOTA"
+id = "REPLACE_WITH_KV_ID"
+
+# Non-secret config (tune freely). Secrets (PROVIDER_KEYS) are set separately — never in this file.
+[vars]
+UPSTREAM_URL = "https://api.groq.com/openai/v1"          # any OpenAI-compatible base
+MODEL_WHITELIST = "llama-3.1-8b-instant,gemma2-9b-it"    # cheap models only
+PER_DEVICE_DAILY = "50"
+GLOBAL_DAILY = "20000"
+SPEND_CEILING_CALLS = "500000"
+ALLOW_ORIGIN = "*"
+
+# Set the pooled keys as a SECRET (never committed):
+#   npx wrangler secret put PROVIDER_KEYS      # paste: key1,key2,key3

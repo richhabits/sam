@@ -70,3 +70,6 @@ dist-app/
 !vault/mcp.sample.json
 vault/photos/
 vault/owner.json
+
+# anonymous per-install gateway device id (never shared)
+vault/.device-id

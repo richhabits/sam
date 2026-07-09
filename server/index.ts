@@ -16,7 +16,7 @@ import cors from "cors";
 import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
-import { runModel, Tier, providersStatus, runVision, warmBrain } from "./models.ts";
+import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
@@ -633,6 +633,16 @@ app.post("/api/admin/validate-key", async (req, res) => {
   const tester = KEY_TEST[provider];
   if (!tester) return res.json({ valid: null });   // can't test this one — save it and it rotates in
   try { res.json({ valid: await tester(String(key).trim()) }); } catch { res.json({ valid: false }); }
+});
+
+// SAM Cloud gateway quota (only meaningful if SAM_GATEWAY_URL is set at build) — the UI shows the
+// remaining daily free allowance + nudges the user to add their own key for unlimited use.
+app.get("/api/gateway/quota", async (_req, res) => {
+  if (!GATEWAY_URL) return res.json({ enabled: false });
+  try {
+    const r = await fetch(`${GATEWAY_URL}/v1/quota?device=${encodeURIComponent(deviceId())}`, { signal: AbortSignal.timeout(6000) });
+    res.json({ enabled: true, ...(await r.json()) });
+  } catch { res.json({ enabled: true, error: "unreachable" }); }
 });
 
 // Save keys for a provider (rolling pool — send an array or comma/newline text).
