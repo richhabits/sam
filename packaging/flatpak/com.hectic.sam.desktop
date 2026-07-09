@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=SAM
+Comment=Free, private, local-first AI assistant that actually does things
+Exec=sam
+Icon=com.hectic.sam
+Terminal=false
+Type=Application
+Categories=Utility;Office;
+Keywords=AI;assistant;LLM;automation;privacy;

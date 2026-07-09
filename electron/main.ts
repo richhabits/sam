@@ -37,11 +37,16 @@ function isNewer(a: string, b: string): boolean {
 }
 async function checkForUpdates() {
   try {
-    const res = await fetch("https://api.github.com/repos/richhabits/sam/releases/latest", {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" },
-    });
+    // Beta channel follows prereleases (-beta.N); stable uses only full releases.
+    const beta = process.env.SAM_UPDATE_CHANNEL === "beta";
+    const url = beta
+      ? "https://api.github.com/repos/richhabits/sam/releases?per_page=10"
+      : "https://api.github.com/repos/richhabits/sam/releases/latest";
+    const res = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" } });
     if (!res.ok) return;
-    const rel = await res.json() as { tag_name?: string; html_url?: string };
+    const data = await res.json();
+    const rel = (beta ? (Array.isArray(data) ? data.find((r: any) => !r.draft) : null) : data) as { tag_name?: string; html_url?: string } | null;
+    if (!rel) return;
     const latest = (rel.tag_name || "").replace(/^v/, "");
     if (!latest || !isNewer(latest, app.getVersion())) return;
     const { response } = await dialog.showMessageBox({
@@ -203,6 +208,7 @@ app.whenReady().then(() => {
         const { autoUpdater } = await import("electron-updater");
         autoUpdater.autoDownload = true;
         autoUpdater.autoInstallOnAppQuit = true;   // downloads quietly, installs on quit
+        if (process.env.SAM_UPDATE_CHANNEL === "beta") { autoUpdater.channel = "beta"; autoUpdater.allowPrerelease = true; }   // canary channel
         autoUpdater.on("error", () => void checkForUpdates());   // any hiccup → notifier
         await autoUpdater.checkForUpdatesAndNotify();
       } catch { void checkForUpdates(); }

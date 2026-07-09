@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.hectic.sam</id>
+  <name>SAM</name>
+  <summary>Free, private, local-first AI assistant that actually does things</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.richhabits"><name>HECTIC</name></developer>
+  <description>
+    <p>
+      SAM is a free, private team of AI agents that runs on your own machine. It routes each
+      request to the cheapest brain that fits (your local model first), caches repeat answers,
+      indexes the folders you choose, and can be summoned system-wide with a hotkey. No
+      subscription — runs on free cloud AI tiers by default, or 100% offline on Ollama.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.hectic.sam.desktop</launchable>
+  <url type="homepage">https://github.com/richhabits/sam</url>
+  <url type="bugtracker">https://github.com/richhabits/sam/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="{{VERSION}}" date="{{DATE}}"/>
+  </releases>
+</component>

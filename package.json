@@ -32,6 +32,7 @@
     "build:mac:signed": "node scripts/build-signed.mjs",
     "release:app": "node scripts/build-signed.mjs --upload",
     "bench": "tsx scripts/bench.ts",
+    "rollback": "tsx scripts/rollback.ts",
     "stats": "tsx scripts/generate-stats.ts",
     "platforms": "tsx scripts/platform-matrix.ts"
   },
