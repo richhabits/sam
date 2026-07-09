@@ -20,6 +20,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { seal, open } from "./vault-crypto.ts";   // encrypted at rest when vault encryption is on
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");
@@ -35,11 +36,13 @@ function sha(s: string): string { return createHash("sha256").update(s).digest("
 let cache: StoredToken[] | null = null;
 function load(): StoredToken[] {
   if (cache) return cache;
-  try { cache = existsSync(FILE) ? JSON.parse(readFileSync(FILE, "utf8")) : []; }
+  // open() transparently decrypts when vault encryption is on+unlocked; a LOCKED vault fails closed
+  // (no tokens ⇒ no remote access until unlocked — the safe default), and plaintext passes through.
+  try { cache = existsSync(FILE) ? JSON.parse(open(readFileSync(FILE, "utf8"))) : []; }
   catch { cache = []; }
   return cache!;
 }
-function save() { try { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify(load())); } catch { /* best-effort */ } }
+function save() { try { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, seal(JSON.stringify(load()))); } catch { /* best-effort (e.g. vault locked) */ } }
 
 export interface CreatedToken { id: string; token: string; label: string; scope: Scope; expiresAt?: number }
 // Create a token — returns the plaintext ONCE (never stored). 256-bit secret.
