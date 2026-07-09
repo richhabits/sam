@@ -1,0 +1,12 @@
+{
+  "updated": "2026-07-09",
+  "note": "The in-app 'Browse community packs' pulls this index (read-only). Add your pack via PR — CI validates format + runs the static safety scan.",
+  "packs": [
+    { "id": "landlord-dispute", "name": "Landlord Dispute Assistant", "author": "HECTIC", "description": "Fight an unfair deposit deduction or disrepair issue — evidence-first.", "file": "packs/landlord-dispute.sampack", "tags": ["legal", "home"] },
+    { "id": "planning-application", "name": "Planning Application Helper", "author": "HECTIC", "description": "Navigate a UK planning application or objection without a consultant.", "file": "packs/planning-application.sampack", "tags": ["legal", "home"] },
+    { "id": "content-studio", "name": "Content Studio", "author": "HECTIC", "description": "Turn one idea into a week of on-brand content.", "file": "packs/content-studio.sampack", "tags": ["marketing", "content"] },
+    { "id": "dev-sidekick", "name": "Dev Sidekick", "author": "HECTIC", "description": "A pragmatic pair-programmer for small projects.", "file": "packs/dev-sidekick.sampack", "tags": ["dev"] },
+    { "id": "research-analyst", "name": "Research Analyst", "author": "HECTIC", "description": "Multi-source, fact-checked briefings with citations.", "file": "packs/research-analyst.sampack", "tags": ["research"] },
+    { "id": "home-ops", "name": "Home Ops", "author": "HECTIC", "description": "Run the household admin — bills, renewals, reminders.", "file": "packs/home-ops.sampack", "tags": ["home", "productivity"] }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "format": "sampack/1",
+  "meta": {
+    "name": "Content Studio",
+    "description": "Turn one idea into a week of on-brand content across channels.",
+    "author": "HECTIC",
+    "createdAt": 0
+  },
+  "contents": {
+    "skills": [
+      {
+        "id": "content_studio",
+        "body": "---\nname: Content Studio\ntier: free\n---\n\n# Content Studio\n\nAct as a sharp content lead.\n- Take one idea and produce a hook, a long post, 3 short variants, and a caption set.\n- Keep the brand voice consistent; punchy, no fluff.\n- Suggest a posting cadence and the single best channel to start."
+      }
+    ],
+    "tools": [],
+    "prompts": [
+      {
+        "title": "Repurpose",
+        "text": "Turn this into a week of content across X, LinkedIn and Instagram: {idea}"
+      }
+    ],
+    "watchedTemplates": [
+      {
+        "label": "Brand assets",
+        "hint": "~/Documents/Brand"
+      }
+    ]
+  }
+}
