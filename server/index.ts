@@ -17,6 +17,7 @@ import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
+import { drainMetrics, peekMetrics } from "./metrics.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
@@ -151,6 +152,10 @@ function isLoopback(req: { socket: { remoteAddress?: string | null } }): boolean
 }
 
 const PORT = process.env.PORT || 8787;
+// BENCH MODE (scripts/bench.ts) — deterministic mock brain + no background side-effects
+// (no scheduler timers, LAN, world-grab, self-update, drop-watcher). Keeps the benchmarked
+// pipeline clean, offline and reproducible. Never set in a real install.
+const BENCH_MODE = process.env.SAM_BENCH_MOCK === "1";
 const SKILLS = loadSkills();
 
 // ── Brand ──────────────────────────────────────────────
@@ -182,14 +187,14 @@ void loadMcpTools()
   .catch(() => {});   // never let boot indexing reject unhandled
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
-void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
+if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
-void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
-resumeOrphanedSwarms();
+if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
+if (!BENCH_MODE) resumeOrphanedSwarms();
 
 // ── P2P Swarm: discover other SAM instances on the LAN ──────
 // Off unless SAM_P2P=1 — it binds to the LAN and lets authenticated peers drive
@@ -214,7 +219,7 @@ if (P2P_ENABLED) {
 
 // Non-blocking background selfupdate — replaces the old blocking prestart hook.
 // SAM launches instantly; update check happens silently 5s later.
-setTimeout(async () => {
+if (!BENCH_MODE) setTimeout(async () => {
   try {
     const local = await git("rev-parse HEAD");
     await git("fetch --quiet origin", 10000);
@@ -225,7 +230,7 @@ setTimeout(async () => {
 }, 5000);
 
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
-startDropWatcher(async (d) => {
+if (!BENCH_MODE) startDropWatcher(async (d) => {
   console.log(`  📱 drop received · ${d.file} (${d.kind})`);
   // Process the drop as a standard command (SAM answers it autonomously).
   try {
@@ -239,7 +244,7 @@ startDropWatcher(async (d) => {
 });
 
 // Scheduler — Recurring background tasks
-startScheduler(async (command: string) => {
+if (!BENCH_MODE) startScheduler(async (command: string) => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
   const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
   if (r.kind === "final" && r.text) {
@@ -1147,7 +1152,11 @@ app.post("/api/p2p/broadcast", async (req, res) => {
   res.json({ ok: true, sent: results.length, results });
 });
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8) }));
+
+// BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
+// bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
+if (BENCH_MODE) app.get("/api/bench/drain", (_req, res) => res.json({ calls: drainMetrics() }));
 app.get("/api/ios/status", (_req, res) => {
   res.json({ folder: dropFolderPath(), enabled: true });
 });
