@@ -9,6 +9,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { getKey, reportSuccess, reportFailure, poolSize, keyStatus } from "./keys.ts";
+import { randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -16,6 +20,25 @@ export interface ModelResult { text: string; provider: string; tier: Tier }
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
+
+// ── SAM Cloud gateway (OPTIONAL hosted free tier — OFF unless SAM_GATEWAY_URL is set at build) ──
+// Anonymous per-install device id (random, no personal data) so the gateway can meter fairly.
+export const GATEWAY_URL = process.env.SAM_GATEWAY_URL || "";
+const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
+let _deviceId = "";
+export function deviceId(): string {
+  if (_deviceId) return _deviceId;
+  const f = join(VAULT_DIR, ".device-id");
+  try { _deviceId = readFileSync(f, "utf8").trim(); } catch { /* first run */ }
+  if (!_deviceId) { _deviceId = randomBytes(12).toString("hex"); try { writeFileSync(f, _deviceId); } catch { /* read-only fs — ephemeral id is fine */ } }
+  return _deviceId;
+}
+async function callGateway(system: string, prompt: string): Promise<string> {
+  const r = await fetch(`${GATEWAY_URL}/v1/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ device: deviceId(), messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }), signal: AbortSignal.timeout(30000) });
+  if (!r.ok) throw new Error(`gateway ${r.status}`);
+  const d: any = await r.json();
+  return d?.choices?.[0]?.message?.content || "";
+}
 
 // ── LOCAL · Ollama (free, on your machine) ───────────────────
 async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL): Promise<string> {
@@ -334,6 +357,19 @@ function laneSort(pool: Provider[], lane: Lane): Provider[] {
   return pool.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p.id) - rank(b.p.id) || a.i - b.i).map((x) => x.p);
 }
 
+// Cheap cached check: is a local Ollama up WITH a model pulled? (private, offline, zero-key brain)
+let _ollamaOk: boolean | null = null, _ollamaAt = 0;
+export async function ollamaReady(): Promise<boolean> {
+  const now = Date.now();
+  if (_ollamaOk !== null && now - _ollamaAt < 30_000) return _ollamaOk;
+  _ollamaAt = now;
+  try { const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(1500) }); const d: any = r.ok ? await r.json() : null; _ollamaOk = !!(d?.models?.length); }
+  catch { _ollamaOk = false; }
+  return _ollamaOk;
+}
+// Any cloud provider with a real key pooled? (noKey lanes like Pollinations don't count as "has keys")
+function hasCloudKeys(): boolean { return PROVIDERS.some((p) => p.tier === "free" && !p.noKey && poolSize(p.id) > 0); }
+
 export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
@@ -347,6 +383,18 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
       text: `🔒 Private mode is on — nothing leaves your Mac — but the local model isn't responding right now. Start it with \`ollama serve\` (and \`ollama pull ${OLLAMA_MODEL}\` if needed), or switch to Auto/Best to use the free cloud brains.`,
       provider: "local-unavailable", tier: "local",
     };
+  }
+
+  // ZERO-KEY DEFAULT: if the user has added NO cloud keys and a local Ollama is up with a model,
+  // prefer the LOCAL brain — private, offline, instant. It also becomes the floor if the free cloud
+  // lanes below all fail. When cloud keys exist, we use the (usually faster/stronger) cloud pool first.
+  if (tier !== "premium" && !hasCloudKeys() && await ollamaReady()) {
+    try { const text = await callOllama(system, prompt); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; } catch { /* fall to free cloud lanes */ }
+  }
+  // SAM Cloud gateway — if the operator turned it on (SAM_GATEWAY_URL at build) and the user has no
+  // keys + no local brain, serve from the hosted free daily allowance before the public no-key lanes.
+  if (tier !== "premium" && !hasCloudKeys() && GATEWAY_URL) {
+    try { const text = await callGateway(system, prompt); if (text) return { text, provider: "sam-cloud", tier: "free" }; } catch { /* fall to free cloud lanes */ }
   }
 
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to
