@@ -2,6 +2,11 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.3.1] - 2026-07-09 — installer fixes
+
+- Fixed the macOS installer aborting at /Applications (hdiutil -quiet suppressed the mount table the script parsed). Caught by the clean-machine install-test before any user hit it.
+- Fixed the Windows install-test verify (backslash path in the glob; the installer itself was fine).
+
 ## [1.3.0] - 2026-07-09 — "Instant"
 
 Zero to a working assistant in ~60 seconds, on any device, with one paste.
