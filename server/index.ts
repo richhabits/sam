@@ -17,7 +17,8 @@ import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
-import { drainMetrics, peekMetrics } from "./metrics.ts";
+import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
+import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -157,6 +158,7 @@ const PORT = process.env.PORT || 8787;
 // (no scheduler timers, LAN, world-grab, self-update, drop-watcher). Keeps the benchmarked
 // pipeline clean, offline and reproducible. Never set in a real install.
 const BENCH_MODE = process.env.SAM_BENCH_MOCK === "1";
+if (BENCH_MODE) clearCache();   // every benchmark run starts from an empty cache (reproducible)
 const SKILLS = loadSkills();
 
 // ── Brand ──────────────────────────────────────────────
@@ -437,8 +439,8 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
 //  Runs the AGENT: SAM can use tools. Safe tools run automatically;
 //  a risky tool returns kind:"pending" for the user to approve.
 app.post("/api/command", async (req, res) => {
-  const { message, projectId, tier: rawTier, user, attachments } = req.body as
-    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[] };
+  const { message, projectId, tier: rawTier, user, attachments, noCache } = req.body as
+    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[]; noCache?: boolean };
   const atts = Array.isArray(attachments) ? attachments : [];
   const images = atts.filter((a) => a?.kind === "image" && a.data);
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
@@ -474,6 +476,24 @@ app.post("/api/command", async (req, res) => {
     return res.json({ kind: "final", text: v.text, trace: [`Looked at your ${images.length > 1 ? images.length + " images" : "photo"}`], provider: v.provider, projectId: projectId || "", tier: v.tier, message });
   }
 
+  // ── SEMANTIC CACHE (Phase 2) — same question, same context → instant + 0 tokens ──
+  // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
+  // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
+  const canCache = !atts.length && !!message && cacheable(message);
+  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+  if (canCache && !noCache) {
+    const t0 = Date.now();
+    const hit = cacheLookup(message, fp, qvec);
+    if (hit) {
+      recordModelCall({ tier: hit.tier, provider: hit.provider, promptTokens: 0, outputTokens: 0, ms: Date.now() - t0, cached: true, reason: "cache hit" });
+      return res.json({
+        kind: "final", text: hit.answer, trace: [], provider: hit.provider,
+        projectId: projectId || "", tier: hit.tier, message, cached: true,
+        route: { tier: hit.tier, klass, reason: "from memory · 0 tokens", cached: true, escalated: false },
+      });
+    }
+  }
+
   // Text files → fold their contents into the request, then run the agent.
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
@@ -497,6 +517,8 @@ app.post("/api/command", async (req, res) => {
   if (r.kind === "final") {
     logExchange({ user: message, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
+    // Cache only tool-FREE finals (no tool ran → reproducible, and dangerous-tool runs are never cached).
+    if (canCache && r.trace.length === 0 && r.text) cacheStore({ message, fp, answer: r.text, provider: r.provider || "", tier: answeredTier, qvec });
   }
   const ctx: PendingCtx = { tier: answeredTier, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
   res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: answeredTier, message,
@@ -508,7 +530,7 @@ app.post("/api/command", async (req, res) => {
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
 app.post("/api/stream", async (req, res) => {
-  const { message, projectId, tier: rawTier, user } = req.body as { message: string; projectId?: string; tier?: string; user?: User };
+  const { message, projectId, tier: rawTier, user, noCache } = req.body as { message: string; projectId?: string; tier?: string; user?: User; noCache?: boolean };
   if (!message?.trim()) return res.status(400).json({ error: "empty message" });
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -533,6 +555,22 @@ app.post("/api/stream", async (req, res) => {
     const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
     const userName = (user?.name || "the user").trim();
 
+    // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
+    const canCache = !!message && cacheable(message);
+    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+    if (canCache && !noCache) {
+      const t0 = Date.now();
+      const hit = cacheLookup(message, fp, qvec);
+      if (hit) {
+        recordModelCall({ tier: hit.tier, provider: hit.provider, promptTokens: 0, outputTokens: 0, ms: Date.now() - t0, cached: true, reason: "cache hit" });
+        send({ type: "route", tier: hit.tier, klass, reason: "from memory · 0 tokens", cached: true });
+        send({ type: "token", t: hit.answer });
+        send({ type: "done", text: hit.answer, provider: hit.provider, trace: [], cached: true });
+        send({ type: "end", projectId: projectId || "" });
+        return res.end();
+      }
+    }
+
     // Router badge — tell the client which tier is answering and why, before tokens flow.
     send({ type: "route", tier: chosen, klass, reason });
     const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
@@ -541,6 +579,8 @@ app.post("/api/stream", async (req, res) => {
       if (e.type === "done") {
         logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
         void learnFrom(message, e.text || "", userName);
+        // Cache tool-free finals only (reproducible; never a dangerous-tool run).
+        if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
     }, turbo);
   } catch (e: any) {
@@ -1206,7 +1246,7 @@ app.post("/api/p2p/broadcast", async (req, res) => {
   res.json({ ok: true, sent: results.length, results });
 });
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8) }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8), cache: cacheStats() }));
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
 // bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
