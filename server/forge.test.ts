@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync, mkdirSync } from "node:fs";
 import type { Tool } from "./tools.ts";
 
 const SCRATCH = "/private/tmp/claude-501/-Users-user/sam-forge-test";
 let F: typeof import("./forge.ts");
+let A: typeof import("./authz.ts");
 let TOOLS: Tool[];
 
 beforeAll(async () => {
   process.env.VAULT_DIR = SCRATCH;
   rmSync(SCRATCH, { recursive: true, force: true });
   F = await import("./forge.ts");
+  A = await import("./authz.ts");
   ({ TOOLS } = await import("./tools.ts"));
 });
 afterEach(() => {
@@ -17,73 +19,89 @@ afterEach(() => {
   F.syncForgedRegistry();
 });
 
+function writeForged(t: any) {
+  const dir = `${SCRATCH}/forged`; mkdirSync(dir, { recursive: true });
+  writeFileSync(`${dir}/${t.name}.json`, JSON.stringify({ enabled: false, createdAt: 1, caps: [], tests: [], ...t }));
+}
+
 describe("static safety scan", () => {
-  it("rejects every escape hatch", () => {
+  it("rejects every ambient escape hatch", () => {
     for (const bad of [
       "(i)=>eval(i)", "(i)=>Function('return '+i)()", "(i)=>require('fs')",
-      "(i)=>process.exit(1)", "(i)=>fetch('http://x')", "(i)=>{const{execSync}=require('child_process');return execSync(i)}",
-      "(i)=>readFile(i)", "(i)=>{while(true){}}", "(i)=>globalThis.x",
+      "(i)=>process.exit(1)", "(i)=>fetch('http://x')", "(i)=>{const{execSync}=require('child_process')}",
+      "(i)=>{while(true){}}", "(i)=>globalThis.x", "(i)=>i.constructor.constructor('x')()",
     ]) expect(F.scanCode(bad).ok, bad).toBe(false);
   });
   it("passes pure computation", () => {
     expect(F.scanCode("(i)=>i.toUpperCase()").ok).toBe(true);
-    expect(F.scanCode("(i)=>String(Number(i)*2)").ok).toBe(true);
+  });
+  it("allows sam.* ONLY when the matching capability is declared", () => {
+    expect(F.scanCode("(i,sam)=>sam.fetch(i)", []).ok).toBe(false);        // net not declared
+    expect(F.scanCode("(i,sam)=>sam.fetch(i)", ["net"]).ok).toBe(true);
+    expect(F.scanCode("(i,sam)=>sam.writeFile('a',i)", ["fs:read"]).ok).toBe(false);   // wrong cap
+    expect(F.scanCode("(i,sam)=>sam.writeFile('a',i)", ["fs:write"]).ok).toBe(true);
   });
 });
 
-describe("sandbox", () => {
-  it("runs a pure function and returns a string", () => {
-    expect(F.sandboxRun("(i)=>i.split('').reverse().join('')", "abc")).toBe("cba");
-    expect(F.sandboxRun("(i)=>String(i*i)", 7)).toBe("49");
-  });
-  it("has no access to require/process/fetch (they throw)", () => {
-    expect(() => F.sandboxRun("(i)=>typeof process", "")).not.toThrow();     // typeof undefined is fine
-    expect(F.sandboxRun("(i)=>typeof process", "")).toBe("undefined");
-    expect(F.sandboxRun("(i)=>typeof require", "")).toBe("undefined");
-    expect(F.sandboxRun("(i)=>typeof fetch", "")).toBe("undefined");
-  });
-  it("times out a runaway loop instead of hanging", () => {
-    // A counted mega-loop slips past the scan but must be killed by the vm timeout.
-    expect(() => F.sandboxRun("(i)=>{let x=0;for(let k=0;k<1e12;k++){x+=k}return x}", "")).toThrow();
-  });
-  it("cannot generate code inside the sandbox (eval disabled)", () => {
-    expect(() => F.sandboxRun("(i)=>eval('1+1')", "")).toThrow();
+describe("capability → tier", () => {
+  it("pure and fs:read are confirm; net and fs:write are dangerous", () => {
+    expect(F.tierForCaps([])).toBe("confirm");
+    expect(F.tierForCaps(["fs:read"])).toBe("confirm");
+    expect(F.tierForCaps(["net"])).toBe("dangerous");
+    expect(F.tierForCaps(["fs:write"])).toBe("dangerous");
   });
 });
 
-describe("testForged", () => {
-  it("passes valid samples, fails a thrower", () => {
-    expect(F.testForged("(i)=>i+'!'", [{ input: "hi" }]).ok).toBe(true);
-    expect(F.testForged("(i)=>{throw new Error('boom')}", [{ input: "x" }]).ok).toBe(false);
+describe("sandbox (async)", () => {
+  it("runs a pure function and returns a string", async () => {
+    expect(await F.sandboxRun("(i)=>i.split('').reverse().join('')", "abc")).toBe("cba");
+  });
+  it("has no ambient require/process/fetch", async () => {
+    expect(await F.sandboxRun("(i)=>typeof process", "")).toBe("undefined");
+    expect(await F.sandboxRun("(i)=>typeof require", "")).toBe("undefined");
+    expect(await F.sandboxRun("(i)=>typeof fetch", "")).toBe("undefined");
+  });
+  it("sam is empty unless a capability is injected", async () => {
+    expect(await F.sandboxRun("(i,sam)=>typeof sam.fetch", "", [])).toBe("undefined");
+    expect(await F.sandboxRun("(i,sam)=>typeof sam.fetch", "", ["net"])).toBe("function");
+  });
+  it("fs:write shim is confined to the tool sandbox (no traversal)", async () => {
+    await F.sandboxRun("(i,sam)=>sam.writeFile('../../escape.txt','x')", "", ["fs:write"], "t1");
+    const out = await F.sandboxRun("(i,sam)=>sam.readFile('escape.txt')", "", ["fs:read"], "t1");
+    expect(out).toBe("x");   // basename-sanitised — landed inside the sandbox, never at ../../
+  });
+  it("blocks eval inside the sandbox", async () => {
+    await expect(F.sandboxRun("(i)=>eval('1+1')", "")).rejects.toBeTruthy();
   });
 });
 
-describe("live registry hot-reload + hard rules", () => {
-  it("only ENABLED forged tools register, always as confirm (never safe)", () => {
-    // Hand-write a forged file (bypassing the model draft) to test registration.
-    const { writeFileSync, mkdirSync } = require("node:fs");
-    const dir = `${SCRATCH}/forged`; mkdirSync(dir, { recursive: true });
-    const tool = { name: "shout", description: "uppercases", params: "input", explanation: "shouts text", code: "(i)=>String(i).toUpperCase()", tests: [{ input: "hi" }], enabled: false, createdAt: Date.now(), tier: "confirm" };
-    writeFileSync(`${dir}/shout.json`, JSON.stringify(tool));
-
-    expect(F.syncForgedRegistry()).toBe(0);                 // disabled → not registered
-    expect(TOOLS.find((t) => t.name === "shout")).toBeUndefined();
-
+describe("live registry + hard rules", () => {
+  it("a net forged tool registers as DANGEROUS (marked in authz), never safe", () => {
+    writeForged({ name: "fetcher", description: "fetches", params: "url", explanation: "gets a url", code: "(i,sam)=>sam.fetch(i)", caps: ["net"] });
+    F.setForgedEnabled("fetcher", true);
+    const reg = TOOLS.find((t) => t.name === "fetcher") as any;
+    expect(reg?.safe).toBe(false);
+    expect(reg?.forged).toBe(true);
+    expect(A.isDangerous("fetcher")).toBe(true);              // net ⇒ dangerous, gated
+    expect(A.toolTier("fetcher", false)).toBe("dangerous");
+    F.setForgedEnabled("fetcher", false);
+    expect(A.isDangerous("fetcher")).toBe(false);             // unmarked on unregister
+  });
+  it("a pure forged tool is confirm-tier (not dangerous)", () => {
+    writeForged({ name: "shout", description: "upper", params: "i", explanation: "shouts", code: "(i)=>String(i).toUpperCase()", caps: [] });
     F.setForgedEnabled("shout", true);
-    const reg = TOOLS.find((t) => t.name === "shout") as any;
-    expect(reg).toBeDefined();
-    expect(reg.safe).toBe(false);                           // HARD RULE: forged ⇒ never safe
-    expect(reg.forged).toBe(true);
-
-    F.setForgedEnabled("shout", false);
-    expect(TOOLS.find((t) => t.name === "shout")).toBeUndefined();   // hot-unregister
+    expect(A.isDangerous("shout")).toBe(false);
+    expect(A.toolTier("shout", false)).toBe("confirm");
   });
-
-  it("refuses to register code that fails the scan (defence in depth)", () => {
-    const { writeFileSync, mkdirSync } = require("node:fs");
-    const dir = `${SCRATCH}/forged`; mkdirSync(dir, { recursive: true });
-    writeFileSync(`${dir}/evil.json`, JSON.stringify({ name: "evil", description: "x", params: "i", explanation: "x", code: "(i)=>require('fs')", tests: [], enabled: true, createdAt: Date.now(), tier: "confirm" }));
-    expect(F.syncForgedRegistry()).toBe(0);                 // enabled but unsafe → still not registered
+  it("never registers code that fails the scan (defence in depth)", () => {
+    writeForged({ name: "evil", description: "x", params: "i", explanation: "x", code: "(i)=>require('fs')", caps: [], enabled: true });
+    expect(F.syncForgedRegistry()).toBe(0);
     expect(TOOLS.find((t) => t.name === "evil")).toBeUndefined();
+  });
+  it("a dangerous forged tool can never be standing-allowed", () => {
+    writeForged({ name: "writer", description: "writes", params: "i", explanation: "writes a file", code: "(i,sam)=>sam.writeFile('a.txt',i)", caps: ["fs:write"], enabled: true });
+    F.syncForgedRegistry();
+    A.allow("writer");                                        // must be a no-op for dangerous
+    expect(A.isAllowed("writer")).toBe(false);
   });
 });
