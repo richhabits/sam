@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { rmSync, writeFileSync, mkdirSync } from "node:fs";
 import type { Tool } from "./tools.ts";
 
-const SCRATCH = "/private/tmp/claude-501/-Users-user/sam-forge-test";
+const SCRATCH = "/tmp/sam-forge-test";
 let F: typeof import("./forge.ts");
 let A: typeof import("./authz.ts");
 let TOOLS: Tool[];

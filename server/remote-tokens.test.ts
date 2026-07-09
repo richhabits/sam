@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { rmSync } from "node:fs";
 
-const SCRATCH = "/private/tmp/claude-501/-Users-user/sam-remotetok-test";
+const SCRATCH = "/tmp/sam-remotetok-test";
 let T: typeof import("./remote-tokens.ts");
 beforeAll(async () => { process.env.VAULT_DIR = SCRATCH; T = await import("./remote-tokens.ts"); });
 beforeEach(() => { rmSync(SCRATCH, { recursive: true, force: true }); for (const t of T.listTokens()) T.revokeToken(t.id); });
