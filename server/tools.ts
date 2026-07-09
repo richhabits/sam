@@ -62,6 +62,7 @@ import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
 import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
+import { forgeTool, listForged, forgedStats } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
@@ -2104,6 +2105,24 @@ export const TOOLS: Tool[] = [
         const count = await saveImportedFacts(facts);
         return `Successfully processed context. Extracted ${facts.length} facts, saved ${count} new facts to memory.`;
       } catch (e: any) { return `Failed to import context: ${e.message}`; }
+    } },
+  // ── THE FORGE (Phase 5) — SAM writes its own tools. Confirm-tier: it asks before drafting.
+  // The drafted tool is saved DISABLED for the user to review + enable; it can never self-approve.
+  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new pure-computation tool for a need (formatter, converter, parser, generator, calculator). SAM writes it, safety-scans it, and sandbox-tests it, then saves it for you to review + enable in Settings. input: {need}.", params: "{need}",
+    activity: (i) => `Forging a tool for: ${i.need ?? i}`,
+    preview: (i) => `Draft, safety-scan and sandbox-test a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code and enable it in Settings before it can ever run.`,
+    run: async (i) => {
+      const r = await forgeTool(String(i.need ?? i ?? ""));
+      if (!r.ok) return `Couldn't forge that: ${r.reason}`;
+      const t = r.tool!;
+      const samples = (r.samples || []).slice(0, 2).map((s) => `  ${JSON.stringify(s.input)} → ${s.output.slice(0, 80)}`).join("\n");
+      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n\nCode:\n${t.code}\n\nSandbox test:\n${samples}`;
+    } },
+  { name: "forged_tools", safe: true, description: "List the tools SAM has forged for itself — enabled/disabled status. input: (none).", params: "(none)",
+    activity: () => `Checking SAM-forged tools`, run: async () => {
+      const all = listForged(); const s = forgedStats();
+      if (!all.length) return "SAM hasn't forged any tools yet. Ask for something no built-in tool covers and SAM can build it.";
+      return `${s.enabled}/${s.total} forged tools enabled:\n` + all.map((t) => `- ${t.name} [${t.enabled ? "on" : "off"}] — ${t.explanation}`).join("\n");
     } },
 ];
 
