@@ -1,0 +1,24 @@
+PackageIdentifier: HECTIC.SAM
+PackageVersion: "{{VERSION}}"
+PackageLocale: en-US
+Publisher: HECTIC
+PublisherUrl: https://github.com/richhabits
+PackageName: SAM
+PackageUrl: https://github.com/richhabits/sam
+License: MIT
+LicenseUrl: https://github.com/richhabits/sam/blob/main/LICENSE
+ShortDescription: SAM — a free, private, local-first AI assistant that actually does things.
+Description: >-
+  SAM is a free, private team of AI agents that runs on your own machine — cascade brain
+  (routes to your local model first), semantic cache, on-device file index, a system-wide
+  ⌥Space overlay, and self-written tools. No subscription; runs on free cloud AI tiers by
+  default or 100% offline on Ollama.
+Tags:
+  - ai
+  - assistant
+  - local-first
+  - privacy
+  - productivity
+  - llm
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
