@@ -101,6 +101,16 @@ else
   if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; ( "$DEST/SAM.AppImage" >/dev/null 2>&1 & ) || say "  ${DIM}Start it any time: ${DEST}/SAM.AppImage${RESET}"; fi
 fi
 
+# ── local brain (Ollama) — optional: makes SAM 100% private + offline, no keys ever ──
+if command -v ollama >/dev/null 2>&1; then
+  ok "Ollama found — pulling a small local brain (llama3.2:3b) in the background…"
+  ( ollama pull llama3.2:3b >/dev/null 2>&1 & ) || true
+else
+  printf "\n${DIM}  Tip: for a 100%% private, offline brain (no keys, ever), install Ollama (~2 min):${RESET}\n"
+  printf "  ${BOLD}curl -fsSL https://ollama.com/install.sh | sh${RESET}  ${DIM}then:${RESET}  ${BOLD}ollama pull llama3.2:3b${RESET}\n"
+  printf "  ${DIM}SAM already works right now on free cloud brains — this is just an upgrade.${RESET}\n"
+fi
+
 cat <<BANNER
 
 ${GREEN}${BOLD}  ✓ SAM is installed and starting up.${RESET}
