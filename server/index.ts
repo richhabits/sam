@@ -19,6 +19,7 @@ import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts
 import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
 import { drainMetrics, peekMetrics } from "./metrics.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
+import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
@@ -312,11 +313,25 @@ function recallDocs(qvec: { model: string; vec: number[] } | null): string {
     .join("\n");
 }
 
-function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false, docs?: string): string {
+function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false, docs?: string, lean = false): string {
   const project = projectId ? projectById(projectId) : undefined;
   const note = projectId ? readProjectNote(projectId) : "";
   const name = (user?.name || "there").trim();
   const mode = user?.mode === "personal" ? "personal" : "business";
+
+  // TOKEN DIET (Phase 1): trivial requests (greetings, tiny maths, one-liners) get a LEAN
+  // prompt — persona + date only, none of the heavy doctrine/brands/world/skill blocks.
+  // Cuts the prompt from ~3.5k tokens to ~60 with zero quality loss on these requests.
+  if (lean) {
+    return [
+      `You are SAM — ${name}'s personal AI assistant. Confident, warm, sharp, a little flair — never robotic. Call them ${name} now and then.`,
+      `Keep it tight and correct. Never bluff; if you're unsure, say so.`,
+      user?.language && !/^en|english/i.test(user.language) ? `Always reply to ${name} in ${user.language}.` : ``,
+      `Today & current time: ${nowText()}`,
+      // Keep the routed skill's playbook (it's small + relevant) but drop the heavy persona/doctrine.
+      skillBody ? `\n## Playbook\n${skillBody}` : ``,
+    ].filter(Boolean).join("\n");
+  }
   const pctx = mode === "business" ? projectsContext() : "";   // compute once (was called twice)
   return [
     `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
@@ -362,10 +377,33 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   ].filter(Boolean).join("\n");
 }
 
+// FREE-FIRST: premium is auto-reachable ONLY when the operator opted in (DEFAULT_TIER=premium
+// or SAM_AUTO_PREMIUM=1). Otherwise the cascade tops out at the strong free "deep" lane and the
+// wrong-tier self-check never spends real money without the user's say-so.
+function autoPremiumAllowed(): boolean {
+  return process.env.SAM_AUTO_PREMIUM === "1" || (process.env.DEFAULT_TIER as Tier) === "premium";
+}
+
+// The cascade router: classify → tier + lane + lean + a human reason for the badge.
+// A skill match can PIN local (cheaper) but never silently upgrades the tier to premium.
 function pickTier(message: string, tier?: Tier) {
   const skill = routeSkill(message, SKILLS);
-  const chosen: Tier = tier || skill?.tier || (process.env.DEFAULT_TIER as Tier) || "local";
-  return { skill, chosen };
+  const r = route(message, { userTier: tier, allowPremium: autoPremiumAllowed() });
+  // Honour an explicit env default only when the classifier said "free" and nothing stronger was asked.
+  const envDefault = (process.env.DEFAULT_TIER as Tier) || null;
+  let chosen: Tier = r.tier;
+  if (!tier && envDefault === "local" && r.tier === "free" && r.klass !== "needs-tools") chosen = "local";
+  return { skill, chosen, lane: r.lane, klass: r.klass, reason: r.reason, lean: r.lean };
+}
+
+// TOKEN DIET: only memory chunks that clear a higher relevance floor, capped and de-duplicated,
+// so the prompt carries the few facts that matter — not five loosely-related ones.
+function dietRecall(qvec: { model: string; vec: number[] } | null, name?: string): string {
+  if (!qvec || !memoryStats().count) return "";
+  const seen = new Set<string>();
+  return recallWith(qvec, 4, 0.42, name)
+    .filter((h) => { const k = h.text.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .map((h) => `- ${h.text}`).join("\n");
 }
 
 // Only bother extracting facts when the message plausibly contains something
@@ -416,14 +454,13 @@ app.post("/api/command", async (req, res) => {
   const fast = turbo || (!!message && isFastPath(message));
   const qvec = (!fast && message) ? await embedOne(message, true, pinnedModel()) : null;
 
-  let { skill, chosen } = pickTier(message || "look at this", tier);
+  let { skill, chosen, reason, lean, klass } = pickTier(message || "look at this", tier);
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
-  if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-
-  const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
-  const docs = fast ? "" : recallDocs(qvec);
+  if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
+  const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  const docs = (fast || lean) ? "" : recallDocs(qvec);
   const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
   const userName = (user?.name || "the user").trim();
 
   // Photos → free Gemini vision (no tool loop needed to look at an image).
@@ -441,14 +478,29 @@ app.post("/api/command", async (req, res) => {
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  const r = await runAgent(system, fullMessage, chosen, toolNames, turbo);
+  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, false, reason);
+  let escalated = false, answeredTier = chosen, badgeReason = reason;
+
+  // WRONG-TIER SELF-CHECK: if a cheap answer that used NO tools looks truncated/refused/empty,
+  // escalate ONE tier and serve the better answer — the user sees one good reply, not the retry.
+  // Gated to tool-free finals so we never re-run a side-effecting action.
+  if (r.kind === "final" && !turbo && r.trace.length === 0 && selfCheckFailed(r.text || "", message)) {
+    const up = nextTierUp(chosen, autoPremiumAllowed());
+    if (up) {
+      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, false, `escalated ${chosen}→${up}`);
+      if (up2.kind === "final" && !selfCheckFailed(up2.text || "", message)) {
+        r = up2; escalated = true; answeredTier = up; badgeReason = `${reason} · escalated → ${up}`;
+      }
+    }
+  }
 
   if (r.kind === "final") {
     logExchange({ user: message, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
   }
-  const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
-  res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
+  const ctx: PendingCtx = { tier: answeredTier, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
+  res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: answeredTier, message,
+    route: { tier: answeredTier, klass, reason: badgeReason, escalated } });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
   }
@@ -472,15 +524,17 @@ app.post("/api/stream", async (req, res) => {
     const tier = (turbo ? "free" : rawTier) as Tier | undefined;
     const fast = turbo || isFastPath(message);
     const qvec = fast ? null : await embedOne(message, true, pinnedModel());
-    let { skill, chosen } = pickTier(message, tier);
+    let { skill, chosen, reason, lean, klass } = pickTier(message, tier);
     const semanticSkillId = selectSkillId(qvec);
-    if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-    const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
-    const docs = fast ? "" : recallDocs(qvec);
+    if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
+    const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    const docs = (fast || lean) ? "" : recallDocs(qvec);
     const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
+    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
     const userName = (user?.name || "the user").trim();
 
+    // Router badge — tell the client which tier is answering and why, before tokens flow.
+    send({ type: "route", tier: chosen, klass, reason });
     const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
     await runAgentStream(system, message, chosen, toolNames, (e) => {
       send(e.type === "pending" ? withPending(e, ctx) : e);
