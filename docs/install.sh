@@ -84,7 +84,8 @@ fi
 # ── install ──
 if [ "$PLATFORM" = "mac" ]; then
   step "Installing to /Applications…"
-  MNT="$(hdiutil attach "$TMP/$FILE" -nobrowse -noverify -quiet | grep -oE '/Volumes/[^ ]+.*' | tail -1 | sed 's/[[:space:]]*$//')"
+  # NOTE: do NOT pass -quiet — it suppresses the device→mountpoint table we parse for the volume path.
+  MNT="$(hdiutil attach "$TMP/$FILE" -nobrowse -noverify | grep -oE '/Volumes/.*' | tail -1 | sed 's/[[:space:]]*$//')"
   [ -d "$MNT" ] || die "Couldn't open the installer disk image." "Try downloading it manually from the releases page."
   APP="$(find "$MNT" -maxdepth 1 -name '*.app' | head -1)"
   rm -rf "/Applications/SAM.app" 2>/dev/null || true
