@@ -64,6 +64,11 @@ RULES:
   the user's ACTUAL request.
 - Never claim you did something unless a tool actually did it. If a tool failed, say so.
 - One tool per reply. Keep going until the job is done, then give the final answer.
+- SPEED: when you need several INDEPENDENT read-only lookups that don't depend on each other
+  (e.g. a web search AND the current time AND a file read), you MAY batch them in ONE reply:
+  {"tools":[{"tool":"web_search","input":{"query":"…"}},{"tool":"get_datetime","input":{}}]}
+  SAM runs them at once (faster). Only for safe, independent lookups — anything that needs approval
+  or depends on a previous result: use one tool per reply as usual.
 - UI WIDGETS: You can render native UI widgets in your final answer by outputting a markdown block labeled "widget" containing pure JSON.
   Chart: \`\`\`widget\n{"type":"chart","title":"Sales","series":[{"label":"Jan","value":10}]}\n\`\`\`
   Kanban: \`\`\`widget\n{"type":"kanban","title":"Project","columns":[{"name":"Todo","tasks":["Task 1"]},{"name":"Done","tasks":[]}]}\n\`\`\`
@@ -122,13 +127,66 @@ export function parseToolCall(text: string): { tool: string; input: any } | null
 
 const CONTINUE = `\nNow either call one tool (reply with ONLY the JSON) or give the user your final plain-text answer.`;
 
+// Parse a BATCH tool call — {"tools":[{"tool":..,"input":..}, …]} — used when the model wants
+// several INDEPENDENT read-only lookups at once. Returns the calls, or null if it's not a batch.
+export function parseToolBatch(text: string): { tool: string; input: any }[] | null {
+  const cleaned = text.replace(/```json/gi, "```").trim();
+  const i = cleaned.indexOf(`"tools"`);
+  if (i < 0) return null;
+  // find the enclosing object
+  const start = cleaned.lastIndexOf("{", i);
+  if (start < 0) return null;
+  let depth = 0;
+  for (let j = start; j < cleaned.length; j++) {
+    if (cleaned[j] === "{") depth++;
+    else if (cleaned[j] === "}") { depth--; if (depth === 0) {
+      try {
+        const obj = JSON.parse(cleaned.slice(start, j + 1));
+        if (!Array.isArray(obj?.tools)) return null;
+        const calls = obj.tools.filter((c: any) => c && typeof c.tool === "string").map((c: any) => ({ tool: c.tool, input: c.input ?? {} }));
+        return calls.length >= 2 ? calls : null;   // a "batch" of one is just a normal call
+      } catch { return null; }
+    }}
+  }
+  return null;
+}
+
+// Run a batch of tool calls CONCURRENTLY — but only when EVERY tool is safe/auto-runnable, so the
+// ask-first gate is never bypassed. If any call is risky, returns {parallel:false} and the caller
+// falls back to the normal one-at-a-time (gated) path. This is the Phase 6 perceived-speed win:
+// N independent lookups (search + datetime + read_file) finish in the time of the slowest, not the sum.
+export interface BatchRun { parallel: boolean; results?: { tool: string; result: string; activity: string }[] }
+export async function executeToolBatch(calls: { tool: string; input: any }[], swarm = false): Promise<BatchRun> {
+  const tools = calls.map((c) => toolByName(c.tool));
+  if (tools.some((t, i) => !t || (!t.safe && !mayAutoRun(calls[i].tool, swarm)))) return { parallel: false };
+  const results = await Promise.all(calls.map(async (c, i) => {
+    const t = tools[i]!;
+    let result: string;
+    try { result = await t.run(c.input); } catch (e: any) { result = `that didn't work (${e?.message || e})`; }
+    return { tool: t.name, result: fenceToolResult(t.name, result), activity: t.activity(c.input) };
+  }));
+  return { parallel: true, results };
+}
+
 // Core loop. `prompt` is the running transcript (the user's request + tool results).
 async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false): Promise<AgentResult> {
   for (let step = 0; step < MAX_STEPS; step++) {
     // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
     // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
     let res = await runModel(tier, system, prompt + CONTINUE, "deep");
-    let call = parseToolCall(res.text);
+
+    // PARALLEL BATCH (Phase 6): the model asked for several INDEPENDENT read-only lookups at once.
+    // Run them concurrently (only when all are safe/auto) — N lookups take the time of the slowest.
+    const batch = parseToolBatch(res.text);
+    if (batch) {
+      const run = await executeToolBatch(batch, swarm);
+      if (run.parallel) {
+        for (const r of run.results!) { trace.push(r.activity); prompt = trimPrompt(prompt + `\n\n[ran ${r.tool}] → ${r.result}`); }
+        continue;
+      }
+    }
+
+    let call = parseToolCall(res.text) || (batch ? batch[0] : null);
 
     // Retry/repair: small models often intend a tool but emit invalid JSON.
     if (!call && /["']?tool["']?\s*:/.test(res.text)) {
@@ -185,12 +243,18 @@ export function isFastPath(message: string): boolean {
   return PURE_GENERATION.test(message) && !NEEDS_TOOLS.test(message);
 }
 
+// True when a message plainly needs live/external info (→ must use the tool loop).
+// Exposed so the cascade classifier (classify.ts) can reuse the canonical signal.
+export function needsLiveInfo(message: string): boolean {
+  return NEEDS_TOOLS.test(message || "");
+}
+
 // Fresh request. `toolNames` = the relevant tools to expose (semantic routing).
 // `forceFast` (Turbo) forces the single-call path even for tool-shaped messages.
-export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false): Promise<AgentResult> {
+export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false, reason?: string): Promise<AgentResult> {
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
   if (forceFast || isFastPath(message)) {
-    return runModel(tier, system, `User: ${message}\n\nAnswer directly.`)
+    return runModel(tier, system, `User: ${message}\n\nAnswer directly.`, undefined, reason ? { reason } : undefined)
       .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
   }
   const prompt = `User: ${message}`;
@@ -236,7 +300,17 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       }
     }, "deep");
     const finalText = res.text || full;
-    const call = parseToolCall(finalText);
+
+    // PARALLEL BATCH (Phase 6) — run several independent safe lookups at once, streaming progress.
+    const batch = parseToolBatch(finalText);
+    if (batch) {
+      const run = await executeToolBatch(batch);
+      if (run.parallel) {
+        for (const r of run.results!) { trace.push(r.activity); emit({ type: "tool", activity: r.activity }); prompt = trimPrompt(prompt + `\n\n[ran ${r.tool}] → ${r.result}`); }
+        continue;
+      }
+    }
+    const call = parseToolCall(finalText) || (batch ? batch[0] : null);
 
     if (call) {
       const tool = toolByName(call.tool);

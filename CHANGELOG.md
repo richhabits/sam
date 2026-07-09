@@ -2,6 +2,60 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.5.0] - 2026-07-09 — "Launch & Loop"
+
+Closes every caveat v1.4 deferred, makes updates safe for a growing user base, and adds the machinery for the community to extend + share SAM. **MIT-licensed now.** No cost/latency regression (bench: within 0.3%).
+
+### Every v1.4 caveat closed
+- **Overlay proof**: real Electron Playwright e2e on the macOS CI runner (summon <300ms, palette renders, Escape dismisses, selection round-trips) + a Windows/Linux manual checklist.
+- **Forge tier 2**: forged tools can declare capabilities (`net`, `fs:read`, `fs:write`), reached ONLY through injected `sam.*` shims (nothing ambient). `net`/`fs:write` are **dangerous-tier** (always ask, never standing-allowable); shell is forbidden to forge, permanently.
+- **Vault encryption at rest** (opt-in): scrypt → AES-256-GCM, OS-keychain auto-unlock (Keychain/DPAPI/libsecret), no-recovery warning. Adopted first by the scoped-token store.
+- **Scoped remote tokens**: `read-only` / `no-dangerous` / `full`, hashed, labelled, expiry, revocable in Settings; the iOS companion defaults to no-dangerous.
+
+### Release hygiene
+- **Beta channel** (stable/beta auto-update; `-beta.N` prereleases canary to volunteers first).
+- **Crash safety net**: local-only rotating crash log (never uploaded) + a redacted "copy diagnostic bundle" button.
+- **Rollback**: `sam rollback` / Settings reinstalls the previous release if an update breaks something (your data stays put).
+- **Package managers**: winget + Flathub manifests, auto-bumped like the brew cask.
+
+### The growth loop
+- **SAM Packs**: signed, importable bundles (skills, forged tools + capabilities, prompts, watched-folder templates). Import runs the full forge safety pipeline and **never auto-installs** anything. 6 starter packs shipped; community index at `richhabits/sam-packs` (CI validates every pack).
+- **Share moments** + a Star-SAM card on your 10th task — subtle, opt-in, dismissible forever, no telemetry.
+
+### Gateway soft-beta prep
+- Instant kill-switch, conservative caps (~$25/mo ceiling), and an airtight "exactly what it can and can't see" privacy doc. One env-var from live.
+
+### Launch
+- **MIT license**; refreshed Show HN / Product Hunt / Reddit / X drafts; a launch-day runbook (monitoring + 10 pre-written answers + triage rota); docs hub + packs gallery.
+
+## [1.4.0] - 2026-07-09 — "Game Changer"
+
+What Cursor did to coding, SAM does to the whole computer: AI inside the work, AI that knows your files, and a brain that's near-instant and near-free. **~86% cheaper and ~46% faster per task than v1.3** ([benchmarks](docs/BENCHMARKS.md)) — with every task served free-or-local.
+
+### The cascade brain — smarter, quicker, far less consumption
+- A fast, model-free **classifier** scores every request (trivial / standard / hard / needs-tools) and routes it to the cheapest tier that fits: trivial → the **local** brain (never a paid API), standard/tool → free, hard → the strong **free** deep lane. **Free-first stays law** — premium is reached only on explicit opt-in or a failed self-check, so average cost goes down, never up.
+- **Wrong-tier self-check**: if a cheap, tool-free answer looks truncated/refused/empty, SAM silently escalates one tier and serves the good answer — you see one reply, not the retry.
+- **Token diet**: trivial requests get a lean ~60-token prompt instead of the full ~3.5k-token persona; recall injects only high-relevance memory, capped + de-duped. **~35% fewer tokens per task.**
+- Router badge in the UI + `/api/health` shows which tier answered and why.
+
+### Semantic cache — repeat answers are instant + free
+- Ask the same thing in the same context and SAM serves it **from memory in ~2ms, 0 tokens**, with a "from memory · 0 tokens" badge and one-tap re-ask-fresh. Live/time-sensitive and private requests are never cached; a changed fact or file invalidates automatically.
+
+### The life index — SAM knows your stuff
+- Pick folders (Documents, Desktop, a projects dir) and SAM indexes them **on-device**, keeps them fresh with a file-watcher (paused on battery), and cites the source file in its answers. New tools: `watch_folder`, `ask_about`, `life_index`. Nothing is indexed without your selection; vectors never leave your machine.
+
+### SAM everywhere — the ⌥Space overlay
+- A lightweight, always-on-top palette summoned by **⌥Space** over any app. Highlight text anywhere → **rewrite / reply / summarize / translate / explain / fix** or ask freeform → copy back or paste in place. Selection-aware (clipboard-swap), routed through the cascade, tray with brain status + launch-at-login. Captured text is treated as **untrusted** (injection-fenced); anything risky is handed to the main window where the approval gate lives.
+
+### The forge — SAM writes its own tools
+- When no built-in tool fits, SAM can **draft a new one** — a pure function that's static-scanned (no eval/require/process/fs/network/shell), **sandbox-tested** (`node:vm`, no escapes, timed out), and saved **disabled** for you to review the code and enable in Settings. Forged tools are always confirm-tier, can never self-approve, and are listed/deletable.
+
+### Perceived speed
+- **Parallel tool batching**: independent read-only lookups run concurrently (safe tools only — the approval gate is untouched). Streaming-while-acting and lazy-loading of heavy modules were already in place.
+
+### Proof
+- New `npm run bench` harness runs a fixed 20-task suite through the real pipeline against a deterministic offline mock brain (zero quota), recording cost/tokens/tier/latency. Before/after published in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
 ## [1.3.1] - 2026-07-09 — installer fixes
 
 - Fixed the macOS installer aborting at /Applications (hdiutil -quiet suppressed the mount table the script parsed). Caught by the clean-machine install-test before any user hit it.

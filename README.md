@@ -11,7 +11,7 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-MIT-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 <div align="center">
@@ -30,6 +30,16 @@ curl -fsSL https://richhabits.github.io/sam/install.sh | bash
 
 ---
 
+## 🚀 New in v1.4 "Game Changer"
+
+*What Cursor did to coding, SAM does to the whole computer.* And it's now **~86% cheaper and ~46% faster per task** than v1.3 — with **every task served free-or-local** ([reproducible benchmarks](docs/BENCHMARKS.md)).
+
+- 🧠 **Cascade brain** — a classifier routes each request to the cheapest brain that fits (trivial → your local model, never a paid API), auto-escalating only when a cheap answer actually fails. **~35% fewer tokens**, free-first always.
+- ⚡ **Semantic cache** — ask the same thing twice and SAM answers **from memory in ~2ms, 0 tokens**.
+- 🗂️ **The life index** — pick folders and SAM indexes them **on-device**, keeps them fresh, and cites the file in its answers. *Cursor indexes your repo; SAM indexes your world.*
+- 🪄 **SAM everywhere** — hit **⌥Space** over any app, highlight text, and rewrite / reply / summarize / translate / fix it in place.
+- 🛠️ **The forge** — when SAM lacks a tool, it **writes one** — sandbox-tested, saved disabled for you to review + enable.
+
 ## Why SAM
 
 Most "AI assistants" just talk. SAM works:
@@ -37,7 +47,7 @@ Most "AI assistants" just talk. SAM works:
 - 🤝 **A team of AI agents** — for a big job SAM assembles a crew (research, code, writing, strategy, growth, deals) that runs **in parallel** and synthesises one answer. Plus **🥷 the Ninjas** — a problem squad that hunts down blockers, debts and loose ends.
 - 🐝 **The Swarm** — long-running, continuous background agents that survive restarts and pause to ask for your approval on risky actions.
 - 🧠 **40 free AI brains, auto-rotating** — Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · GitHub Models · SambaNova · Together · Fireworks · and 20 more. One hits a limit, it hops to the next.
-- 📐️ **167 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, camera & vision, screenshots, **GitHub (read, commit, push, PRs)**.
+- 📐️ **173 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, camera & vision, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
 - 💻 **Native desktop app** — Mac/Windows/Linux desktop UI with a global `⌥Space` hotkey to summon SAM anywhere. Build it with `npm run build:mac` (or `:win` / `:linux`). Note: package the app from a **path with no spaces** — native modules can't build otherwise (the web app has no such restriction).
@@ -54,7 +64,7 @@ Most "AI assistants" just talk. SAM works:
 | **Cost** | Free (£0/mo) | $20/mo | Free |
 | **Runs on your machine** | ✅ | ❌ cloud | ✅ |
 | **Works fully offline** | ✅ (Ollama) | ❌ | ⚠️ if you self-host a model |
-| **Takes real actions** | ✅ 167 tools | ⚠️ limited | ❌ mostly chat |
+| **Takes real actions** | ✅ 173 tools | ⚠️ limited | ❌ mostly chat |
 | **Team of agents** | ✅ parallel crew | ❌ | ❌ |
 | **Your data stays home** | ✅ | ❌ | ✅ |
 | **Free brains, auto-rotating** | ✅ ~40 | n/a | ❌ bring your own |
