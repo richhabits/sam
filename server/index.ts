@@ -19,6 +19,7 @@ import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts
 import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
+import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -198,6 +199,8 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+// Life index — start watching the folders the user chose (auto-refresh on change; paused on battery).
+if (!BENCH_MODE) { try { startWatching(); const li = lifeIndexStats(); if (li.folders) console.log(`  life index      · ${li.folders} folder(s) watched\n`); } catch { /* no folders yet */ } }
 
 // ── P2P Swarm: discover other SAM instances on the LAN ──────
 // Off unless SAM_P2P=1 — it binds to the LAN and lets authenticated peers drive
@@ -1247,6 +1250,22 @@ app.post("/api/p2p/broadcast", async (req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8), cache: cacheStats() }));
+
+// ── THE LIFE INDEX (Phase 3) — the settings screen drives these ──
+app.get("/api/life-index", (_req, res) => res.json({ ...lifeIndexStats(), folders: listFolders() }));
+app.post("/api/life-index", async (req, res) => {
+  const { path } = req.body as { path?: string };
+  if (!path?.trim()) return res.status(400).json({ error: "path required" });
+  try { const r = await addFolder(path); res.json({ ok: true, ...r }); }
+  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.delete("/api/life-index", (req, res) => {
+  const path = (req.query.path as string) || (req.body as any)?.path;
+  if (!path) return res.status(400).json({ error: "path required" });
+  res.json(removeFolder(path));
+});
+app.post("/api/life-index/reindex", async (_req, res) => { const reports = await reindexAll(); res.json({ ok: true, reports }); });
+app.post("/api/life-index/watch", (req, res) => { const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
 // bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.

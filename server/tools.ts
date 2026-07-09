@@ -61,6 +61,7 @@ import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
+import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
@@ -1608,6 +1609,25 @@ export const TOOLS: Tool[] = [
   { name: "forget_docs", safe: false, description: "Remove a file or a whole folder from SAM's document library. input: {path}.", params: "{path}",
     activity: (i) => `Removing ${i.path ?? i} from the library`, preview: (i) => `Forget everything indexed under ${i.path ?? i}?`,
     run: async (i) => { const n = forgetDoc(i.path ?? i); return n ? `Forgot ${n} indexed chunk(s) under ${i.path ?? i}.` : `Nothing in the library under ${i.path ?? i}.`; } },
+  // ── THE LIFE INDEX (Phase 3) — folders the user chooses, kept fresh automatically ──
+  { name: "watch_folder", safe: false, description: "Add a folder to SAM's LIFE INDEX: index it now AND keep it auto-updated as files change (file-watcher, paused on battery). Like watch_folder for your whole world. input: {path}.", params: "{path}",
+    activity: (i) => `Adding ${i.path ?? i} to your life index`, preview: (i) => `Index ${i.path ?? i} and keep it live-updated as its files change (local only; nothing leaves your Mac)`,
+    run: async (i) => { const { report } = await addFolder(i.path ?? i); return report ? reportText(report) + " Now watching it for changes." : `Added ${i.path ?? i} to the life index (indexing paused — on battery or busy; it'll catch up when plugged in).`; } },
+  { name: "unwatch_folder", safe: false, description: "Remove a folder from SAM's life index — stops watching it and forgets its contents. input: {path}.", params: "{path}",
+    activity: (i) => `Removing ${i.path ?? i} from your life index`, preview: (i) => `Stop watching ${i.path ?? i} and forget everything indexed under it?`,
+    run: async (i) => { const r = removeFolder(i.path ?? i); return r.removed ? `Stopped watching ${i.path ?? i} and forgot ${r.forgotten} chunk(s).` : `${i.path ?? i} isn't in the life index.`; } },
+  { name: "life_index", safe: true, description: "Show SAM's life index — which of your folders are indexed and watched for changes. input: (none).", params: "(none)",
+    activity: () => `Checking your life index`, run: async () => {
+      const s = lifeIndexStats(); const folders = listFolders();
+      if (!folders.length) return "Your life index is empty. Pick a folder (Documents, Desktop, a projects dir) with watch_folder and I'll learn it and keep it fresh.";
+      return `${s.folders} folder(s) in your life index · watching: ${s.watching ? "on" : "off"} (${s.watchers} live)\n` +
+        folders.map((f) => `- ${f.path}${f.lastIndexedAt ? ` (last indexed ${new Date(f.lastIndexedAt).toLocaleString()})` : " (not indexed yet)"}`).join("\n");
+    } },
+  { name: "ask_about", safe: true, description: "Answer a question grounded ONLY in a specific file or folder from your indexed library, citing the source files. input: {path, question}.", params: "{path, question}",
+    activity: (i) => `Reading your ${(i.path ?? "").split("/").pop() || "files"} to answer that`, run: async (i) => {
+      const { answer, sources } = await askAbout(i.path ?? "", i.question ?? "");
+      return sources.length ? `${answer}\n\nSources: ${sources.map((s: string) => s.split("/").pop()).join(", ")}` : answer;
+    } },
   { name: "add_schedule", safe: false, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
     activity: () => `Adding scheduled task`, preview: (i) => `Set up a recurring task — run "${i.command}" ${i.cron}?`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
   { name: "list_schedules", safe: true, description: "List all active background routines and scheduled tasks SAM is maintaining.", params: "(none)",
