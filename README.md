@@ -11,7 +11,7 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-MIT-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 <div align="center">

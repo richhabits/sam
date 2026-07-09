@@ -2,6 +2,7 @@
   "name": "sam",
   "version": "1.4.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
   "description": "S.A.M. \u2014 Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
