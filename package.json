@@ -1,7 +1,8 @@
 {
   "name": "sam",
-  "version": "1.3.1",
+  "version": "1.5.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
   "description": "S.A.M. \u2014 Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
@@ -31,6 +32,8 @@
     "og": "node scripts/gen-og.mjs",
     "build:mac:signed": "node scripts/build-signed.mjs",
     "release:app": "node scripts/build-signed.mjs --upload",
+    "bench": "tsx scripts/bench.ts",
+    "rollback": "tsx scripts/rollback.ts",
     "stats": "tsx scripts/generate-stats.ts",
     "platforms": "tsx scripts/platform-matrix.ts"
   },

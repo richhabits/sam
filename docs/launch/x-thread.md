@@ -1,32 +1,22 @@
 # X / Twitter thread draft (10 tweets)
 
-1/ I built SAM: a free, private AI assistant that lives on your own machine and actually *does the work*
-— not another chat box. One paste to install. 🧵
+1/ What Cursor did for coding, I built for the whole computer. SAM: a free, private AI that lives on your Mac, knows your files, and *does the work* — now ~86% cheaper and ~46% faster than its last version. 🧵
 
-2/ The hook: `curl -fsSL https://richhabits.github.io/sam/install.sh | bash`
-(Windows: `irm …/install.ps1 | iex`). It verifies the SHA-256 and launches. ~60 seconds → working
-assistant, zero keys needed.
+2/ The trick is a cascade router. Every request is classified in ~0ms: "hi" and quick rewrites go to your LOCAL model (never a paid API), normal stuff to free cloud tiers, hard stuff to the strong free lane. Premium only if you opt in.
 
-3/ It's a doer. 167 real tools: web, files, terminal, email, calendar, GitHub (commit/push/PRs), camera
-+ vision. It doesn't tell you how — it does it.
+3/ Result on a fixed 20-task benchmark: 100% served free-or-local, avg cost/task down 86%, latency down 46%. It's in the repo and runs against a deterministic mock — reproduce it yourself for $0: `npm run bench`.
 
-4/ Big job? SAM assembles a *team* of specialist agents that work in parallel and hand you one answer.
-Research + code + writing + strategy, at once.
+4/ Ask the same thing twice? A semantic cache answers in ~2ms, 0 tokens, "from memory". Repeat work is basically free.
 
-5/ Free + private by default. Runs on ~40 auto-rotating free AI tiers so it never rate-limits itself —
-or 100% offline on Ollama, where nothing ever leaves your machine.
+5/ It knows YOUR stuff. Point it at folders and it indexes them on-device, keeps them fresh, and cites the file in its answers. Cursor indexes your repo; SAM indexes your world.
 
-6/ No keys? With Ollama installed it uses your *local* model by default. Private, offline, instant. Cloud
-is just the fallback.
+6/ ⌥Space over ANY app → highlight text → rewrite / reply / summarize / translate / fix it in place. AI inside whatever you're doing, not in a separate tab.
 
-7/ Want more speed/photos/voice? A 60-second wizard adds free keys (Groq/Gemini/OpenRouter/Mistral) —
-deep-links, live validation, done. Never a gate; SAM works free out of the box.
+7/ When SAM lacks a tool, it writes one — a function it static-scans (no eval/shell), sandbox-tests, and saves DISABLED for you to review. Nothing risky runs without you.
 
-8/ Safe by design: dangerous actions (shell, send, delete, push) always ask first — even in autopilot.
-Web/email content is fenced so prompt-injection can't fire tools.
+8/ Private by design: keys, memory, files, vault stay local; nothing leaves in offline mode; zero telemetry. Optional passphrase encryption at rest. Dangerous actions always ask first.
 
-9/ Honest bits: desktop builds are unsigned for now (cert incoming) — checksums included, click-through
-documented. Zero telemetry. Your data is yours.
+9/ Honest bits: desktop builds are unsigned for now (checksums published); at-rest encryption is opt-in. All in the open — it's MIT-licensed now.
 
-10/ It's free, forever, by @HECTIC. Star it, break it, tell me what's missing 👇
+10/ Free, forever, by @HECTIC. Star it, break it, tell me what's missing 👇
 https://github.com/richhabits/sam

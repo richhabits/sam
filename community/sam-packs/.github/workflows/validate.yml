@@ -1,0 +1,14 @@
+# CI for the community sam-packs repo — validates every pack on each PR.
+name: Validate packs
+on:
+  pull_request:
+  push: { branches: [main] }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: 20 }
+      - name: Format + static safety scan
+        run: node validate.mjs packs

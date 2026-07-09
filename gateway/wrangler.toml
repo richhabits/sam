@@ -9,13 +9,15 @@ compatibility_date = "2025-01-01"
 binding = "QUOTA"
 id = "REPLACE_WITH_KV_ID"
 
-# Non-secret config (tune freely). Secrets (PROVIDER_KEYS) are set separately — never in this file.
+# Non-secret config. Secrets (PROVIDER_KEYS) are set separately — never in this file.
+# ── CONSERVATIVE SOFT-BETA values (tighten first, loosen once cost is understood) ──
 [vars]
 UPSTREAM_URL = "https://api.groq.com/openai/v1"          # any OpenAI-compatible base
 MODEL_WHITELIST = "llama-3.1-8b-instant,gemma2-9b-it"    # cheap models only
-PER_DEVICE_DAILY = "50"
-GLOBAL_DAILY = "20000"
-SPEND_CEILING_CALLS = "500000"
+PER_DEVICE_DAILY = "15"                                  # small per-device daily allowance for the beta
+GLOBAL_DAILY = "3000"                                    # conservative global/day
+SPEND_CEILING_CALLS = "60000"                            # ~ maps to a ~$25/mo ceiling at cheap-model rates
+PAUSED = "0"                                             # set "1" to instantly pause the whole gateway
 ALLOW_ORIGIN = "*"
 
 # Set the pooled keys as a SECRET (never committed):

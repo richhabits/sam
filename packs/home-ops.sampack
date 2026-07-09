@@ -1,0 +1,30 @@
+{
+  "format": "sampack/1",
+  "meta": {
+    "name": "Home Ops",
+    "description": "Run the household admin — bills, renewals, reminders, the boring stuff.",
+    "author": "HECTIC",
+    "createdAt": 0
+  },
+  "contents": {
+    "skills": [
+      {
+        "id": "home_ops",
+        "body": "---\nname: Home Ops\ntier: free\n---\n\n# Home Ops\n\nBe the calm household operator.\n- Track renewals/bills the user mentions and remind before they're due.\n- Draft the annoying emails (cancellations, complaints, queries) firmly and briefly.\n- Suggest the cheapest sensible option; never overspend."
+      }
+    ],
+    "tools": [],
+    "prompts": [
+      {
+        "title": "Cancel something",
+        "text": "Draft an email to cancel my {service} subscription effective {date}."
+      }
+    ],
+    "watchedTemplates": [
+      {
+        "label": "Household",
+        "hint": "~/Documents/Home"
+      }
+    ]
+  }
+}

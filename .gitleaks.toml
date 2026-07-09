@@ -20,4 +20,5 @@ paths = [
   '''package-lock\.json$''',
   '''(^|/)docs/SIGNING\.md$''',        # documents cert/key formats, not values
   '''(^|/)server/mcp-presets\.ts$''',  # UI placeholder strings like "sk_live_…"
+  '''(^|/)server/crashlog\.test\.ts$''',  # redaction test — contains FAKE key-shaped fixtures by design (proves scrubbing works)
 ]

@@ -61,6 +61,8 @@ import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
+import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
+import { forgeTool, listForged, forgedStats } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
@@ -1608,6 +1610,25 @@ export const TOOLS: Tool[] = [
   { name: "forget_docs", safe: false, description: "Remove a file or a whole folder from SAM's document library. input: {path}.", params: "{path}",
     activity: (i) => `Removing ${i.path ?? i} from the library`, preview: (i) => `Forget everything indexed under ${i.path ?? i}?`,
     run: async (i) => { const n = forgetDoc(i.path ?? i); return n ? `Forgot ${n} indexed chunk(s) under ${i.path ?? i}.` : `Nothing in the library under ${i.path ?? i}.`; } },
+  // ── THE LIFE INDEX (Phase 3) — folders the user chooses, kept fresh automatically ──
+  { name: "watch_folder", safe: false, description: "Add a folder to SAM's LIFE INDEX: index it now AND keep it auto-updated as files change (file-watcher, paused on battery). Like watch_folder for your whole world. input: {path}.", params: "{path}",
+    activity: (i) => `Adding ${i.path ?? i} to your life index`, preview: (i) => `Index ${i.path ?? i} and keep it live-updated as its files change (local only; nothing leaves your Mac)`,
+    run: async (i) => { const { report } = await addFolder(i.path ?? i); return report ? reportText(report) + " Now watching it for changes." : `Added ${i.path ?? i} to the life index (indexing paused — on battery or busy; it'll catch up when plugged in).`; } },
+  { name: "unwatch_folder", safe: false, description: "Remove a folder from SAM's life index — stops watching it and forgets its contents. input: {path}.", params: "{path}",
+    activity: (i) => `Removing ${i.path ?? i} from your life index`, preview: (i) => `Stop watching ${i.path ?? i} and forget everything indexed under it?`,
+    run: async (i) => { const r = removeFolder(i.path ?? i); return r.removed ? `Stopped watching ${i.path ?? i} and forgot ${r.forgotten} chunk(s).` : `${i.path ?? i} isn't in the life index.`; } },
+  { name: "life_index", safe: true, description: "Show SAM's life index — which of your folders are indexed and watched for changes. input: (none).", params: "(none)",
+    activity: () => `Checking your life index`, run: async () => {
+      const s = lifeIndexStats(); const folders = listFolders();
+      if (!folders.length) return "Your life index is empty. Pick a folder (Documents, Desktop, a projects dir) with watch_folder and I'll learn it and keep it fresh.";
+      return `${s.folders} folder(s) in your life index · watching: ${s.watching ? "on" : "off"} (${s.watchers} live)\n` +
+        folders.map((f) => `- ${f.path}${f.lastIndexedAt ? ` (last indexed ${new Date(f.lastIndexedAt).toLocaleString()})` : " (not indexed yet)"}`).join("\n");
+    } },
+  { name: "ask_about", safe: true, description: "Answer a question grounded ONLY in a specific file or folder from your indexed library, citing the source files. input: {path, question}.", params: "{path, question}",
+    activity: (i) => `Reading your ${(i.path ?? "").split("/").pop() || "files"} to answer that`, run: async (i) => {
+      const { answer, sources } = await askAbout(i.path ?? "", i.question ?? "");
+      return sources.length ? `${answer}\n\nSources: ${sources.map((s: string) => s.split("/").pop()).join(", ")}` : answer;
+    } },
   { name: "add_schedule", safe: false, description: "Create a recurring background task. input: {command, cron} (cron: 'hourly', 'every 30m', 'daily 09:00', 'weekly mon 09:00').", params: "{command, cron}",
     activity: () => `Adding scheduled task`, preview: (i) => `Set up a recurring task — run "${i.command}" ${i.cron}?`, run: async (i) => { const s = addSchedule(i.command, i.cron); return `Scheduled '${s.command}' to run ${s.cron} (ID: ${s.id}).`; } },
   { name: "list_schedules", safe: true, description: "List all active background routines and scheduled tasks SAM is maintaining.", params: "(none)",
@@ -2084,6 +2105,25 @@ export const TOOLS: Tool[] = [
         const count = await saveImportedFacts(facts);
         return `Successfully processed context. Extracted ${facts.length} facts, saved ${count} new facts to memory.`;
       } catch (e: any) { return `Failed to import context: ${e.message}`; }
+    } },
+  // ── THE FORGE (Phase 5) — SAM writes its own tools. Confirm-tier: it asks before drafting.
+  // The drafted tool is saved DISABLED for the user to review + enable; it can never self-approve.
+  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new tool for a need. Pure-computation by default; may declare capabilities (net, fs:read, fs:write) — net/fs:write become dangerous-tier. SAM writes it, safety-scans it, sandbox-tests it, then saves it DISABLED for you to review + enable in Settings. input: {need}.", params: "{need}",
+    activity: (i) => `Forging a tool for: ${i.need ?? i}`,
+    preview: (i) => `Draft, safety-scan and sandbox-test a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code + declared capabilities and enable it in Settings before it can ever run.`,
+    run: async (i) => {
+      const r = await forgeTool(String(i.need ?? i ?? ""));
+      if (!r.ok) return `Couldn't forge that: ${r.reason}`;
+      const t = r.tool!;
+      const caps = t.caps.length ? `Capabilities: ${t.caps.join(", ")} → ${t.tier} tier` : `Pure computation → confirm tier`;
+      const samples = (r.samples || []).slice(0, 2).map((s) => `  ${JSON.stringify(s.input)} → ${s.output.slice(0, 80)}`).join("\n");
+      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n${caps}\n\nCode:\n${t.code}\n\nSandbox test:\n${samples}`;
+    } },
+  { name: "forged_tools", safe: true, description: "List the tools SAM has forged for itself — enabled/disabled status + capabilities. input: (none).", params: "(none)",
+    activity: () => `Checking SAM-forged tools`, run: async () => {
+      const all = listForged(); const s = forgedStats();
+      if (!all.length) return "SAM hasn't forged any tools yet. Ask for something no built-in tool covers and SAM can build it.";
+      return `${s.enabled}/${s.total} forged tools enabled (${s.dangerous} dangerous):\n` + all.map((t) => `- ${t.name} [${t.enabled ? "on" : "off"}] ${t.caps.length ? `{${t.caps.join(",")}}` : ""} — ${t.explanation}`).join("\n");
     } },
 ];
 
