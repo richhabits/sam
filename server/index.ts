@@ -20,6 +20,7 @@ import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, dev
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
 import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
+import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -186,6 +187,7 @@ import { loadMcpTools } from "./mcp.ts";
 void loadMcpTools()
   .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
   .catch(() => {})
+  .then(() => { const n = syncForgedRegistry(); if (n) console.log(`  forged tools    · ${n} enabled (SAM-built)\n`); })   // hot-load user-enabled forged tools
   .then(() => buildIndexes(SKILLS))
   .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"))
   .catch(() => {});   // never let boot indexing reject unhandled
@@ -1266,6 +1268,14 @@ app.delete("/api/life-index", (req, res) => {
 });
 app.post("/api/life-index/reindex", async (_req, res) => { const reports = await reindexAll(); res.json({ ok: true, reports }); });
 app.post("/api/life-index/watch", (req, res) => { const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
+
+// ── THE FORGE (Phase 5) — settings screen: review, enable/disable, delete SAM-forged tools ──
+app.get("/api/forged", (_req, res) => res.json({ ...forgedStats(), tools: listForged() }));
+app.post("/api/forged/:name/enable", (req, res) => {
+  const on = !!(req.body as any)?.enabled;
+  res.json({ ok: setForgedEnabled(req.params.name, on), ...forgedStats() });
+});
+app.delete("/api/forged/:name", (req, res) => res.json({ ok: deleteForged(req.params.name), ...forgedStats() }));
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
 // bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
