@@ -73,3 +73,6 @@ vault/owner.json
 
 # anonymous per-install gateway device id (never shared)
 vault/.device-id
+
+# generated package manifests (filled at release)
+packaging/out/

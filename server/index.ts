@@ -23,6 +23,8 @@ import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWat
 import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
 import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens, SCOPES } from "./remote-tokens.ts";
 import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
+import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
+import { previousRelease } from "./rollback.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -171,6 +173,7 @@ const PORT = process.env.PORT || 8787;
 // pipeline clean, offline and reproducible. Never set in a real install.
 const BENCH_MODE = process.env.SAM_BENCH_MOCK === "1";
 if (BENCH_MODE) clearCache();   // every benchmark run starts from an empty cache (reproducible)
+if (!BENCH_MODE) installCrashHandlers();   // local-only rotating crash log (never uploaded)
 const SKILLS = loadSkills();
 
 // ── Brand ──────────────────────────────────────────────
@@ -1339,6 +1342,34 @@ app.post("/api/encryption/unlock", (req, res) => {
 app.post("/api/encryption/lock", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   lockVault(); res.json({ ok: true, ...encryptionStatus() });
+});
+
+// ── CRASH SAFETY NET (v1.5) — local-only; the bundle is redacted + copied by the USER, never uploaded. ──
+app.get("/api/diagnostics", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  res.json({ ...crashStats(), bundle: diagnosticBundle(process.env.SAM_APP_VERSION || "dev", new Date().toISOString()) });
+});
+
+// ── UPDATE CHANNEL (v1.5) — stable (default) or beta. Beta opts into -beta.N prereleases so risky
+// features canary to volunteers first. Takes effect on the next launch (electron-updater reads it). ──
+app.get("/api/update-channel", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  res.json({ channel: process.env.SAM_UPDATE_CHANNEL === "beta" ? "beta" : "stable" });
+});
+app.post("/api/update-channel", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const channel = (req.body as any)?.channel === "beta" ? "beta" : "stable";
+  writeEnv("SAM_UPDATE_CHANNEL", channel);
+  process.env.SAM_UPDATE_CHANNEL = channel;
+  res.json({ ok: true, channel, note: "Takes effect on the next launch." });
+});
+
+// ── ROLLBACK (v1.5) — if an update breaks something, get the previous release's installer. ──
+app.get("/api/rollback", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const current = process.env.SAM_APP_VERSION || "999.0.0";   // dev: nothing is older, returns null
+  const target = await previousRelease(current, process.env.SAM_UPDATE_CHANNEL === "beta");
+  res.json({ current, target, note: target ? `Reinstall SAM ${target.version} — your data stays put.` : "No earlier release found." });
 });
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
