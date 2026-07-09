@@ -142,6 +142,23 @@ jobs:
             echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: server did NOT respond — see log above."; exit 1
           fi
 
+      # PHASE 5 — prove notarization actually STUCK when signing is configured. If the Apple secrets are
+      # present but Gatekeeper/stapler reject the build, fail the release loudly (a silently-broken
+      # notarization is worse than an honest unsigned build). When unsigned, this skips cleanly.
+      - name: Verify signature + notarization (macOS)
+        if: matrix.platform == 'mac' && matrix.arch == 'arm64'
+        shell: bash
+        env:
+          HAVE_CERT: ${{ secrets.CSC_LINK != '' }}
+        run: |
+          APP=$(find dist-app -maxdepth 4 -name 'SAM.app' | head -1)
+          DMG=$(find dist-app -maxdepth 1 -name '*.dmg' | head -1)
+          if [ "$HAVE_CERT" != "true" ]; then echo "ℹ️ unsigned build (no CSC_LINK secret) — notarization check skipped, checksum-verify path stands."; exit 0; fi
+          echo "🔎 Gatekeeper assessment:"; spctl -a -vv --type exec "$APP" 2>&1 | tee /tmp/spctl.txt || true
+          grep -qiE "source=Notarized Developer ID|accepted" /tmp/spctl.txt || { echo "❌ Gatekeeper did NOT accept the app — notarization didn't stick."; exit 1; }
+          echo "🔎 Stapler validate (dmg):"; xcrun stapler validate "$DMG" || { echo "❌ notarization ticket is not stapled to the .dmg."; exit 1; }
+          echo "✅ signed + notarized + stapled — ships with zero Gatekeeper warning."
+
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
