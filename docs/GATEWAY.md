@@ -11,10 +11,11 @@ no key and no signup** — by proxying to a pool of provider keys *you* hold in 
 app stays keyless; the keys live only on your Worker.
 
 Hard cost controls are built in and enforced server-side:
-- **Per-device daily cap** (`PER_DEVICE_DAILY`, default 50 calls/day)
-- **Global daily cap** (`GLOBAL_DAILY`, default 20 000 calls/day)
+- **Per-device daily cap** (`PER_DEVICE_DAILY`) — **soft-beta default: 15 calls/day**
+- **Global daily cap** (`GLOBAL_DAILY`) — **soft-beta default: 3 000 calls/day**
 - **Cheap-models-only whitelist** (`MODEL_WHITELIST`) — the client can't request anything pricier
-- **Abuse blocklist** (`block:<device>` KV key) + **hard kill-switch** (`SPEND_CEILING_CALLS`)
+- **Abuse blocklist** (`block:<device>` KV key) + **cumulative spend ceiling** (`SPEND_CEILING_CALLS`, soft-beta ~60 000 ≈ **$25/mo cap**)
+- **INSTANT kill-switch** (`PAUSED=1`) — pauses the whole gateway immediately, no redeploy; SAM falls back to its own free lanes so no one is stranded
 - **Anonymous device id** — a random per-install id (no personal data), so the zero-telemetry promise holds
 
 When a user hits their allowance, SAM nudges them to add their own free key (Phase 3 wizard) for
@@ -54,8 +55,34 @@ tokens/call average and the default caps:
 The headline: **the global daily cap fixes your worst-case cost regardless of user count.** Raise
 `GLOBAL_DAILY` to serve more; `SPEND_CEILING_CALLS` is the absolute hard stop. Start conservative.
 
-## Privacy
+## Kill-switch test (do this before the beta goes live)
 
-The gateway sees only: the anonymous device id, the model, and the prompt (which it must forward to the
-provider to answer). It stores **counters only** (device→count, day→count) in KV with a daily TTL — no
-prompts, no content, no personal data logged. Same privacy posture as the rest of SAM.
+```bash
+cd gateway
+npx wrangler deploy
+# pause instantly:
+npx wrangler secret put PAUSED   # enter: 1     (or set the var in the dashboard)
+curl https://sam-gateway.<you>.workers.dev/health          # → {"paused":true}
+curl -X POST .../v1/chat -d '{"device":"testdevice","messages":[]}'   # → 503, "gateway paused"
+# resume:
+npx wrangler secret put PAUSED   # enter: 0
+```
+SAM clients that were using the gateway automatically fall through to the public no-key lanes while it's paused — they never go dark.
+
+## Conversion instrumentation, without telemetry
+
+To see cost + adoption during the beta you need two numbers, and only two — both derivable from the counters the gateway already keeps, **server-side on your own infra**:
+- **device-days** (how many distinct `d:<device>:<day>` keys exist) → active installs over time
+- **total calls / spend** (`total:calls`, the daily `g:<day>` counters) → cost
+
+That's the whole conversion picture (adoption + cost) with nothing personal. It lives in *your* Cloudflare account, is never sent back to the app, and the app itself still records nothing.
+
+## Privacy — exactly what it can and can't see
+
+**Stores (KV, short TTL, on your infra):** an anonymous per-install device id, per-device daily counts (`d:<device>:<day>`), global daily counts (`g:<day>`), a cumulative `total:calls`, and any manual `block:<device>` flags. Nothing else.
+
+**Sees transiently (to answer a request, never stored):** the model name and the prompt/messages — which it must forward to the upstream provider to get an answer, exactly like any API call. It is not logged, not written to KV, and not retained.
+
+**Never sees / never stores:** your name, email, IP-derived identity, memory, files, vault, or the *content* of answers. There is no account, no login, no cross-device linking.
+
+Same privacy posture as the rest of SAM: the app records nothing; the gateway records only the anonymous counters that make a fair free allowance possible.
