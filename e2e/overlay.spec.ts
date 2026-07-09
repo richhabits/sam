@@ -23,12 +23,14 @@ test.beforeAll(async () => {
     args: [MAIN],
     env: { ...process.env, SAM_E2E: "1", SAM_BENCH_MOCK: "1", NODE_ENV: "production" },
   });
+  // main.ts installs the E2E surface inside app.whenReady() — wait for it before driving anything.
+  await expect.poll(async () => app.evaluate(() => !!(globalThis as any).__samE2E), { timeout: 20000 }).toBe(true);
 });
 test.afterAll(async () => { await app?.close(); });
 
 test("overlay summons in under 300ms and is ready", async () => {
   const t0 = Date.now();
-  await app.evaluate(({}, ) => (globalThis as any).__samE2E.summon());
+  await app.evaluate(() => (globalThis as any).__samE2E.summon());
   // Wait until the main process reports the overlay visible + finished loading.
   await expect.poll(async () => app.evaluate(() => (globalThis as any).__samE2E.overlayVisible() && (globalThis as any).__samE2E.overlayReady()), { timeout: 1500 }).toBe(true);
   const summonMs = Date.now() - t0;
