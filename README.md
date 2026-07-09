@@ -14,7 +14,19 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 <img alt="license" src="https://img.shields.io/badge/license-proprietary-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
+<div align="center">
 
+```bash
+curl -fsSL https://richhabits.github.io/sam/install.sh | bash
+```
+**macOS · Linux — one paste.** Windows: `irm https://richhabits.github.io/sam/install.ps1 | iex`
+
+<!-- Hero demo — regenerated each release by scripts/record-demo.mjs -->
+<img alt="SAM demo" src="docs/media/demo.gif" width="720">
+
+⭐ **[Star SAM](https://github.com/richhabits/sam)** if you want a free, private AI that actually does the work.
+
+</div>
 
 ---
 
@@ -35,11 +47,39 @@ Most "AI assistants" just talk. SAM works:
 - 🎨 **Skins** — Jarvis HUD, Ember, Stealth. Clean premium UI, light/dark, streams as it types.
 - 🔒 **Private by design** — your keys, memory, vault and documents stay on your machine. Only the prompt you send goes to the brain you pick (and nothing at all in offline/Ollama mode).
 
+### SAM vs the usual options
+
+|  | **SAM** | ChatGPT Desktop | Typical open chat UI |
+|---|:---:|:---:|:---:|
+| **Cost** | Free (£0/mo) | $20/mo | Free |
+| **Runs on your machine** | ✅ | ❌ cloud | ✅ |
+| **Works fully offline** | ✅ (Ollama) | ❌ | ⚠️ if you self-host a model |
+| **Takes real actions** | ✅ 167 tools | ⚠️ limited | ❌ mostly chat |
+| **Team of agents** | ✅ parallel crew | ❌ | ❌ |
+| **Your data stays home** | ✅ | ❌ | ✅ |
+| **Free brains, auto-rotating** | ✅ ~40 | n/a | ❌ bring your own |
+| **One-paste install** | ✅ | ✅ | ❌ usually setup |
+| **Telemetry** | none | yes | varies |
+
 ---
 
 ## Quick start
 
-### ⬇️ Easiest — download the app (no terminal, nothing to install)
+### ⚡ One paste — install & launch (about 60 seconds)
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://richhabits.github.io/sam/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://richhabits.github.io/sam/install.ps1 | iex
+```
+Detects your OS, downloads the right build, **verifies the SHA-256**, installs it, and launches SAM. Re-run any time to update. Then open **http://localhost:8787** — free out of the box, no key or setup.
+
+*(macOS also: `brew install --cask richhabits/tap/sam`.)*
+
+### ⬇️ Prefer a click? Download the app (no terminal)
 
 **[Download SAM](https://github.com/richhabits/sam/releases/latest)** — works free out of the box, no API key needed:
 - **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → **right-click → Open** (once — it's unsigned)
