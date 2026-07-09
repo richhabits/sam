@@ -21,6 +21,7 @@ import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
 import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
 import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
+import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens, SCOPES } from "./remote-tokens.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -28,7 +29,7 @@ import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier, isDangerous } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -129,7 +130,10 @@ app.use((_req, res, next) => {
     const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)sam_token=([^;]+)/)?.[1] || "";
     const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     const t = q || decodeURIComponent(cookie) || bearer;
-    if (!liveOk(t)) {
+    // Credential = the legacy owner token (⇒ full scope) OR a scoped per-device token (v1.5).
+    let scope: import("./remote-tokens.ts").Scope | null = liveOk(t) ? "full" : null;
+    if (!scope) { const s = verifyRemoteToken(t); if (s) scope = s.scope; }
+    if (!scope) {
       const n = (rec?.n || 0) + 1;
       const until = n >= 5 ? now + Math.min(15 * 60_000, 1000 * 2 ** (n - 5)) : 0;   // exp backoff after 5 bad tries
       if (fails.size > 2000) fails.clear();   // bound memory
@@ -138,6 +142,11 @@ app.use((_req, res, next) => {
       res.status(401).json({ error: "unauthorized" }); return;
     }
     fails.delete(ip);   // good token → clear this IP's record
+    (req as any).remoteScope = scope;
+    // READ-ONLY tokens can view but never mutate — block every non-GET API call.
+    if (scope === "read-only" && req.method !== "GET" && req.method !== "HEAD" && req.path.startsWith("/api/")) {
+      res.status(403).json({ error: "read-only token — this device can view but not run tasks or change anything" }); return;
+    }
     if (q) {
       res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
       // Strip the token from the URL (it lingers in history/address bar otherwise) — redirect the
@@ -243,7 +252,9 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
   // Process the drop as a standard command (SAM answers it autonomously).
   try {
     const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
-    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free");
+    // iOS companion defaults to NO-DANGEROUS (swarm=true) — an unattended phone drop can never
+    // trigger a dangerous tool (send/delete/push/shell) without the owner at the machine.
+    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free", undefined, false, true);
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
       desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
@@ -466,7 +477,12 @@ app.post("/api/command", async (req, res) => {
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
   const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
   const docs = (fast || lean) ? "" : recallDocs(qvec);
-  const toolNames = fast ? undefined : selectTools(qvec, 8, message);
+  let toolNames = fast ? undefined : selectTools(qvec, 8, message);
+  // SCOPED REMOTE TOKENS: a non-`full` remote device (e.g. the iOS companion on `no-dangerous`)
+  // never even sees dangerous tools, and dangerous can't auto-run (swarm=true).
+  const remoteScope = (req as any).remoteScope as string | undefined;
+  const restricted = !!remoteScope && remoteScope !== "full";
+  if (restricted && toolNames) toolNames = toolNames.filter((n) => !isDangerous(n));
   const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
   const userName = (user?.name || "the user").trim();
 
@@ -503,7 +519,7 @@ app.post("/api/command", async (req, res) => {
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, false, reason);
+  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason);   // restricted ⇒ swarm-mode: dangerous never auto-runs
   let escalated = false, answeredTier = chosen, badgeReason = reason;
 
   // WRONG-TIER SELF-CHECK: if a cheap answer that used NO tools looks truncated/refused/empty,
@@ -512,7 +528,7 @@ app.post("/api/command", async (req, res) => {
   if (r.kind === "final" && !turbo && r.trace.length === 0 && selfCheckFailed(r.text || "", message)) {
     const up = nextTierUp(chosen, autoPremiumAllowed());
     if (up) {
-      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, false, `escalated ${chosen}→${up}`);
+      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`);
       if (up2.kind === "final" && !selfCheckFailed(up2.text || "", message)) {
         r = up2; escalated = true; answeredTier = up; badgeReason = `${reason} · escalated → ${up}`;
       }
@@ -556,7 +572,9 @@ app.post("/api/stream", async (req, res) => {
     if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
     const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
     const docs = (fast || lean) ? "" : recallDocs(qvec);
-    const toolNames = fast ? undefined : selectTools(qvec, 8, message);
+    let toolNames = fast ? undefined : selectTools(qvec, 8, message);
+    const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token
+    if (restricted && toolNames) toolNames = toolNames.filter((n) => !isDangerous(n));
     const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
     const userName = (user?.name || "the user").trim();
 
@@ -1276,6 +1294,24 @@ app.post("/api/forged/:name/enable", (req, res) => {
   res.json({ ok: setForgedEnabled(req.params.name, on), ...forgedStats() });
 });
 app.delete("/api/forged/:name", (req, res) => res.json({ ok: deleteForged(req.params.name), ...forgedStats() }));
+
+// ── SCOPED REMOTE TOKENS (v1.5) — Settings manages per-device phone tokens. Loopback-only:
+// tokens can only be minted/revoked at the machine itself, never from a phone.
+app.get("/api/remote-tokens", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  res.json({ tokens: listTokens(), scopes: SCOPES });
+});
+app.post("/api/remote-tokens", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  const { label, scope, ttlDays } = req.body as { label?: string; scope?: any; ttlDays?: number };
+  if (!SCOPES.includes(scope)) return res.status(400).json({ error: `scope must be one of ${SCOPES.join(", ")}` });
+  // Returns the plaintext token ONCE — the client shows it (QR / copy); we only ever store the hash.
+  res.json(createToken(label || "device", scope, Number(ttlDays) || undefined));
+});
+app.delete("/api/remote-tokens/:id", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  res.json({ ok: revokeToken(req.params.id) });
+});
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
 // bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
