@@ -45,6 +45,7 @@ export function listFolders(): WatchedFolder[] { return load().folders; }
 // ── BATTERY AWARENESS (macOS) — don't chew battery re-indexing on the go ──
 let _acPower: boolean | null = null, _acAt = 0;
 export function onACPower(): Promise<boolean> {
+  if (process.env.SAM_BENCH_MOCK === "1") return Promise.resolve(true);   // deterministic in bench/tests (no battery gating)
   const now = Date.now();
   if (_acPower !== null && now - _acAt < 30_000) return Promise.resolve(_acPower);
   _acAt = now;

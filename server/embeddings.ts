@@ -33,7 +33,9 @@ export interface Embedded { model: string; vectors: number[][] }
 // so production is byte-for-byte unaffected. A stable 64-dim hash of the text: identical
 // text → identical vector (cosine 1.0), which is exactly what the repeat-question / cache
 // path needs to be testable without depending on whether a real embedder is up.
-const BENCH_MOCK = process.env.SAM_BENCH_MOCK === "1";
+// Read the flag PER CALL (not once at module load) so it's robust to import order —
+// a test can set SAM_BENCH_MOCK before exercising embed() even if this module loaded earlier.
+const benchMock = () => process.env.SAM_BENCH_MOCK === "1";
 function mockVec(text: string): number[] {
   const dims = 64;
   const v = new Array(dims).fill(0);
@@ -130,7 +132,7 @@ function viaFor(tag: string, texts: string[], isQuery: boolean): Promise<Embedde
 // provider is genuinely down — a switch would silently orphan stored memories).
 export async function embed(texts: string[], isQuery = false, prefer?: string | null): Promise<Embedded | null> {
   if (!texts.length) return { model: "none", vectors: [] };
-  if (BENCH_MOCK) return mockEmbed(texts);
+  if (benchMock()) return mockEmbed(texts);
   if (prefer) { const p = await viaFor(prefer, texts, isQuery); if (p) return p; }
   // LOCAL-FIRST: embeddings run on EVERY message (recall query) + every memory write, so default
   // to free, private, on-device Ollama. Cloud (Jina/Gemini) is only a fallback for users with no
