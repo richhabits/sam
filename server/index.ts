@@ -615,6 +615,26 @@ app.get("/api/admin/config", (_req, res) => {
   });
 });
 
+// Live-validate a key by making one cheap test call to the provider. The key is used + discarded
+// (never logged, never stored here) — only saved if the user then hits Save.
+const testGet = (url: string, key: string) => fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false);
+const KEY_TEST: Record<string, (k: string) => Promise<boolean>> = {
+  groq: (k) => testGet("https://api.groq.com/openai/v1/models", k),
+  gemini: (k) => fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(k)}`, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false),
+  openrouter: (k) => testGet("https://openrouter.ai/api/v1/models", k),
+  mistral: (k) => testGet("https://api.mistral.ai/v1/models", k),
+  nvidia: (k) => testGet("https://integrate.api.nvidia.com/v1/models", k),
+  cerebras: (k) => testGet("https://api.cerebras.ai/v1/models", k),
+  together: (k) => testGet("https://api.together.xyz/v1/models", k),
+};
+app.post("/api/admin/validate-key", async (req, res) => {
+  const { provider, key } = (req.body || {}) as { provider?: string; key?: string };
+  if (!provider || !key) return res.json({ valid: false });
+  const tester = KEY_TEST[provider];
+  if (!tester) return res.json({ valid: null });   // can't test this one — save it and it rotates in
+  try { res.json({ valid: await tester(String(key).trim()) }); } catch { res.json({ valid: false }); }
+});
+
 // Save keys for a provider (rolling pool — send an array or comma/newline text).
 app.post("/api/admin/keys", (req, res) => {
   const { provider, keys } = req.body as { provider: string; keys: string | string[] };
