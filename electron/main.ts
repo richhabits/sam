@@ -194,8 +194,16 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.whenReady().then(() => {
-  createWindow();
-  createTray();
+  // E2E surface FIRST — install it before any GUI call that could throw in a headless CI, so the
+  // Playwright spec can always reach it. summonOverlay() lazily creates the overlay on first use.
+  if (E2E) (globalThis as any).__samE2E = {
+    summon: () => summonOverlay(),
+    dismiss: () => overlay?.hide(),
+    overlayVisible: () => !!overlay?.isVisible(),
+    overlayReady: () => !!overlay && !overlay.webContents.isLoading(),
+  };
+  try { createWindow(); } catch (e) { console.error("createWindow:", e); }
+  try { createTray(); } catch (e) { console.error("createTray:", e); }
   // Updates. electron-updater's silent self-update works on Windows even unsigned. On macOS it needs
   // a SIGNED zip target (Squirrel.Mac) — an UNSIGNED mac build throws "ZIP file not provided" as an
   // unhandledRejection on every launch that finds an update. So on macOS we skip it and use the
@@ -237,14 +245,7 @@ app.whenReady().then(() => {
   });
 
   // ── Overlay wiring (Phase 4) ──
-  createOverlay();
-  // E2E test surface (only under SAM_E2E) — lets Playwright drive + inspect the overlay in main-process.
-  if (E2E) (globalThis as any).__samE2E = {
-    summon: () => summonOverlay(),
-    dismiss: () => overlay?.hide(),
-    overlayVisible: () => !!overlay?.isVisible(),
-    overlayReady: () => !!overlay && !overlay.webContents.isLoading(),
-  };
+  createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)
   ipcMain.handle("overlay:run", (_e, payload) => runOverlayAction(payload));
   ipcMain.handle("overlay:copy", (_e, text: string) => { clipboard.writeText(String(text || "")); return true; });
   ipcMain.handle("overlay:paste", async (_e, text: string) => { overlay?.hide(); await pasteBack(String(text || "")); return true; });
