@@ -146,7 +146,7 @@ jobs:
       # present but Gatekeeper/stapler reject the build, fail the release loudly (a silently-broken
       # notarization is worse than an honest unsigned build). When unsigned, this skips cleanly.
       - name: Verify signature + notarization (macOS)
-        if: matrix.platform == 'mac' && matrix.arch == 'arm64'
+        if: matrix.platform == 'mac'   # both arches — spctl/stapler don't run the app, so x64 verifies fine too
         shell: bash
         env:
           HAVE_CERT: ${{ secrets.CSC_LINK != '' }}
