@@ -6,5 +6,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     setupFiles: ["./server/test-setup.ts"],
+    // e2e/ holds Playwright Electron specs (run via `npx playwright test`, not vitest).
+    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**"],
   },
 });
