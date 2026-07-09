@@ -17,13 +17,24 @@ import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
+import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
+import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
+import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
+import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
+import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens, SCOPES } from "./remote-tokens.ts";
+import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
+import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
+import { previousRelease } from "./rollback.ts";
+import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
+import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
+import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier, isDangerous } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -124,7 +135,10 @@ app.use((_req, res, next) => {
     const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)sam_token=([^;]+)/)?.[1] || "";
     const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     const t = q || decodeURIComponent(cookie) || bearer;
-    if (!liveOk(t)) {
+    // Credential = the legacy owner token (⇒ full scope) OR a scoped per-device token (v1.5).
+    let scope: import("./remote-tokens.ts").Scope | null = liveOk(t) ? "full" : null;
+    if (!scope) { const s = verifyRemoteToken(t); if (s) scope = s.scope; }
+    if (!scope) {
       const n = (rec?.n || 0) + 1;
       const until = n >= 5 ? now + Math.min(15 * 60_000, 1000 * 2 ** (n - 5)) : 0;   // exp backoff after 5 bad tries
       if (fails.size > 2000) fails.clear();   // bound memory
@@ -133,6 +147,11 @@ app.use((_req, res, next) => {
       res.status(401).json({ error: "unauthorized" }); return;
     }
     fails.delete(ip);   // good token → clear this IP's record
+    (req as any).remoteScope = scope;
+    // READ-ONLY tokens can view but never mutate — block every non-GET API call.
+    if (scope === "read-only" && req.method !== "GET" && req.method !== "HEAD" && req.path.startsWith("/api/")) {
+      res.status(403).json({ error: "read-only token — this device can view but not run tasks or change anything" }); return;
+    }
     if (q) {
       res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
       // Strip the token from the URL (it lingers in history/address bar otherwise) — redirect the
@@ -151,6 +170,12 @@ function isLoopback(req: { socket: { remoteAddress?: string | null } }): boolean
 }
 
 const PORT = process.env.PORT || 8787;
+// BENCH MODE (scripts/bench.ts) — deterministic mock brain + no background side-effects
+// (no scheduler timers, LAN, world-grab, self-update, drop-watcher). Keeps the benchmarked
+// pipeline clean, offline and reproducible. Never set in a real install.
+const BENCH_MODE = process.env.SAM_BENCH_MOCK === "1";
+if (BENCH_MODE) clearCache();   // every benchmark run starts from an empty cache (reproducible)
+if (!BENCH_MODE) installCrashHandlers();   // local-only rotating crash log (never uploaded)
 const SKILLS = loadSkills();
 
 // ── Brand ──────────────────────────────────────────────
@@ -177,19 +202,28 @@ import { loadMcpTools } from "./mcp.ts";
 void loadMcpTools()
   .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
   .catch(() => {})
+  .then(() => { const n = syncForgedRegistry(); if (n) console.log(`  forged tools    · ${n} enabled (SAM-built)\n`); })   // hot-load user-enabled forged tools
   .then(() => buildIndexes(SKILLS))
   .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"))
   .catch(() => {});   // never let boot indexing reject unhandled
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
-void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
+if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
-void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
-resumeOrphanedSwarms();
+if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
+if (!BENCH_MODE) resumeOrphanedSwarms();
+// Vault encryption — auto-unlock from the OS keychain if the user enabled it; else it stays locked
+// until they unlock in Settings (remote tokens + other sealed secrets are unreadable while locked).
+if (!BENCH_MODE && isEncryptionEnabled()) {
+  if (unlockFromKeychain()) console.log("  vault           · 🔓 unlocked from keychain\n");
+  else console.log("  vault           · 🔒 encrypted + locked — unlock in Settings\n");
+}
+// Life index — start watching the folders the user chose (auto-refresh on change; paused on battery).
+if (!BENCH_MODE) { try { startWatching(); const li = lifeIndexStats(); if (li.folders) console.log(`  life index      · ${li.folders} folder(s) watched\n`); } catch { /* no folders yet */ } }
 
 // ── P2P Swarm: discover other SAM instances on the LAN ──────
 // Off unless SAM_P2P=1 — it binds to the LAN and lets authenticated peers drive
@@ -214,7 +248,7 @@ if (P2P_ENABLED) {
 
 // Non-blocking background selfupdate — replaces the old blocking prestart hook.
 // SAM launches instantly; update check happens silently 5s later.
-setTimeout(async () => {
+if (!BENCH_MODE) setTimeout(async () => {
   try {
     const local = await git("rev-parse HEAD");
     await git("fetch --quiet origin", 10000);
@@ -225,12 +259,14 @@ setTimeout(async () => {
 }, 5000);
 
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
-startDropWatcher(async (d) => {
+if (!BENCH_MODE) startDropWatcher(async (d) => {
   console.log(`  📱 drop received · ${d.file} (${d.kind})`);
   // Process the drop as a standard command (SAM answers it autonomously).
   try {
     const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
-    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free");
+    // iOS companion defaults to NO-DANGEROUS (swarm=true) — an unattended phone drop can never
+    // trigger a dangerous tool (send/delete/push/shell) without the owner at the machine.
+    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free", undefined, false, true);
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
       desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
@@ -239,7 +275,7 @@ startDropWatcher(async (d) => {
 });
 
 // Scheduler — Recurring background tasks
-startScheduler(async (command: string) => {
+if (!BENCH_MODE) startScheduler(async (command: string) => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
   const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
   if (r.kind === "final" && r.text) {
@@ -307,11 +343,25 @@ function recallDocs(qvec: { model: string; vec: number[] } | null): string {
     .join("\n");
 }
 
-function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false, docs?: string): string {
+function buildSystem(skillBody: string, projectId?: string, user?: User, recalled?: string, interactive = false, docs?: string, lean = false): string {
   const project = projectId ? projectById(projectId) : undefined;
   const note = projectId ? readProjectNote(projectId) : "";
   const name = (user?.name || "there").trim();
   const mode = user?.mode === "personal" ? "personal" : "business";
+
+  // TOKEN DIET (Phase 1): trivial requests (greetings, tiny maths, one-liners) get a LEAN
+  // prompt — persona + date only, none of the heavy doctrine/brands/world/skill blocks.
+  // Cuts the prompt from ~3.5k tokens to ~60 with zero quality loss on these requests.
+  if (lean) {
+    return [
+      `You are SAM — ${name}'s personal AI assistant. Confident, warm, sharp, a little flair — never robotic. Call them ${name} now and then.`,
+      `Keep it tight and correct. Never bluff; if you're unsure, say so.`,
+      user?.language && !/^en|english/i.test(user.language) ? `Always reply to ${name} in ${user.language}.` : ``,
+      `Today & current time: ${nowText()}`,
+      // Keep the routed skill's playbook (it's small + relevant) but drop the heavy persona/doctrine.
+      skillBody ? `\n## Playbook\n${skillBody}` : ``,
+    ].filter(Boolean).join("\n");
+  }
   const pctx = mode === "business" ? projectsContext() : "";   // compute once (was called twice)
   return [
     `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
@@ -357,10 +407,33 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   ].filter(Boolean).join("\n");
 }
 
+// FREE-FIRST: premium is auto-reachable ONLY when the operator opted in (DEFAULT_TIER=premium
+// or SAM_AUTO_PREMIUM=1). Otherwise the cascade tops out at the strong free "deep" lane and the
+// wrong-tier self-check never spends real money without the user's say-so.
+function autoPremiumAllowed(): boolean {
+  return process.env.SAM_AUTO_PREMIUM === "1" || (process.env.DEFAULT_TIER as Tier) === "premium";
+}
+
+// The cascade router: classify → tier + lane + lean + a human reason for the badge.
+// A skill match can PIN local (cheaper) but never silently upgrades the tier to premium.
 function pickTier(message: string, tier?: Tier) {
   const skill = routeSkill(message, SKILLS);
-  const chosen: Tier = tier || skill?.tier || (process.env.DEFAULT_TIER as Tier) || "local";
-  return { skill, chosen };
+  const r = route(message, { userTier: tier, allowPremium: autoPremiumAllowed() });
+  // Honour an explicit env default only when the classifier said "free" and nothing stronger was asked.
+  const envDefault = (process.env.DEFAULT_TIER as Tier) || null;
+  let chosen: Tier = r.tier;
+  if (!tier && envDefault === "local" && r.tier === "free" && r.klass !== "needs-tools") chosen = "local";
+  return { skill, chosen, lane: r.lane, klass: r.klass, reason: r.reason, lean: r.lean };
+}
+
+// TOKEN DIET: only memory chunks that clear a higher relevance floor, capped and de-duplicated,
+// so the prompt carries the few facts that matter — not five loosely-related ones.
+function dietRecall(qvec: { model: string; vec: number[] } | null, name?: string): string {
+  if (!qvec || !memoryStats().count) return "";
+  const seen = new Set<string>();
+  return recallWith(qvec, 4, 0.42, name)
+    .filter((h) => { const k = h.text.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .map((h) => `- ${h.text}`).join("\n");
 }
 
 // Only bother extracting facts when the message plausibly contains something
@@ -394,8 +467,8 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
 //  Runs the AGENT: SAM can use tools. Safe tools run automatically;
 //  a risky tool returns kind:"pending" for the user to approve.
 app.post("/api/command", async (req, res) => {
-  const { message, projectId, tier: rawTier, user, attachments } = req.body as
-    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[] };
+  const { message, projectId, tier: rawTier, user, attachments, noCache } = req.body as
+    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[]; noCache?: boolean };
   const atts = Array.isArray(attachments) ? attachments : [];
   const images = atts.filter((a) => a?.kind === "image" && a.data);
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
@@ -411,14 +484,18 @@ app.post("/api/command", async (req, res) => {
   const fast = turbo || (!!message && isFastPath(message));
   const qvec = (!fast && message) ? await embedOne(message, true, pinnedModel()) : null;
 
-  let { skill, chosen } = pickTier(message || "look at this", tier);
+  let { skill, chosen, reason, lean, klass } = pickTier(message || "look at this", tier);
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
-  if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-
-  const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
-  const docs = fast ? "" : recallDocs(qvec);
-  const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
+  if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
+  const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  const docs = (fast || lean) ? "" : recallDocs(qvec);
+  let toolNames = fast ? undefined : selectTools(qvec, 8, message);
+  // SCOPED REMOTE TOKENS: a non-`full` remote device (e.g. the iOS companion on `no-dangerous`)
+  // never even sees dangerous tools, and dangerous can't auto-run (swarm=true).
+  const remoteScope = (req as any).remoteScope as string | undefined;
+  const restricted = !!remoteScope && remoteScope !== "full";
+  if (restricted && toolNames) toolNames = toolNames.filter((n) => !isDangerous(n));
+  const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
   const userName = (user?.name || "the user").trim();
 
   // Photos → free Gemini vision (no tool loop needed to look at an image).
@@ -432,18 +509,55 @@ app.post("/api/command", async (req, res) => {
     return res.json({ kind: "final", text: v.text, trace: [`Looked at your ${images.length > 1 ? images.length + " images" : "photo"}`], provider: v.provider, projectId: projectId || "", tier: v.tier, message });
   }
 
+  // ── SEMANTIC CACHE (Phase 2) — same question, same context → instant + 0 tokens ──
+  // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
+  // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
+  const canCache = !atts.length && !!message && cacheable(message);
+  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+  if (canCache && !noCache) {
+    const t0 = Date.now();
+    const hit = cacheLookup(message, fp, qvec);
+    if (hit) {
+      recordModelCall({ tier: hit.tier, provider: hit.provider, promptTokens: 0, outputTokens: 0, ms: Date.now() - t0, cached: true, reason: "cache hit" });
+      recordSuccess("cache-hit");
+      return res.json({
+        kind: "final", text: hit.answer, trace: [], provider: hit.provider,
+        projectId: projectId || "", tier: hit.tier, message, cached: true,
+        route: { tier: hit.tier, klass, reason: "from memory · 0 tokens", cached: true, escalated: false },
+      });
+    }
+  }
+
   // Text files → fold their contents into the request, then run the agent.
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  const r = await runAgent(system, fullMessage, chosen, toolNames, turbo);
+  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason);   // restricted ⇒ swarm-mode: dangerous never auto-runs
+  let escalated = false, answeredTier = chosen, badgeReason = reason;
+
+  // WRONG-TIER SELF-CHECK: if a cheap answer that used NO tools looks truncated/refused/empty,
+  // escalate ONE tier and serve the better answer — the user sees one good reply, not the retry.
+  // Gated to tool-free finals so we never re-run a side-effecting action.
+  if (r.kind === "final" && !turbo && r.trace.length === 0 && selfCheckFailed(r.text || "", message)) {
+    const up = nextTierUp(chosen, autoPremiumAllowed());
+    if (up) {
+      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`);
+      if (up2.kind === "final" && !selfCheckFailed(up2.text || "", message)) {
+        r = up2; escalated = true; answeredTier = up; badgeReason = `${reason} · escalated → ${up}`;
+      }
+    }
+  }
 
   if (r.kind === "final") {
     logExchange({ user: message, sam: r.text || "", skill: skill?.id, project: projectId, provider: r.provider || "" });
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
+    // Cache only tool-FREE finals (no tool ran → reproducible, and dangerous-tool runs are never cached).
+    if (canCache && r.trace.length === 0 && r.text) cacheStore({ message, fp, answer: r.text, provider: r.provider || "", tier: answeredTier, qvec });
+    recordSuccess(answeredTier === "local" ? "local" : "task");   // for the (opt-in, dismissible) share moments
   }
-  const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
-  res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: chosen, message });
+  const ctx: PendingCtx = { tier: answeredTier, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
+  res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: answeredTier, message,
+    route: { tier: answeredTier, klass, reason: badgeReason, escalated } });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
   }
@@ -451,7 +565,7 @@ app.post("/api/command", async (req, res) => {
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
 app.post("/api/stream", async (req, res) => {
-  const { message, projectId, tier: rawTier, user } = req.body as { message: string; projectId?: string; tier?: string; user?: User };
+  const { message, projectId, tier: rawTier, user, noCache } = req.body as { message: string; projectId?: string; tier?: string; user?: User; noCache?: boolean };
   if (!message?.trim()) return res.status(400).json({ error: "empty message" });
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -467,21 +581,43 @@ app.post("/api/stream", async (req, res) => {
     const tier = (turbo ? "free" : rawTier) as Tier | undefined;
     const fast = turbo || isFastPath(message);
     const qvec = fast ? null : await embedOne(message, true, pinnedModel());
-    let { skill, chosen } = pickTier(message, tier);
+    let { skill, chosen, reason, lean, klass } = pickTier(message, tier);
     const semanticSkillId = selectSkillId(qvec);
-    if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; chosen = tier || s.tier || chosen; } }
-    const recalled = (!fast && memoryStats().count ? recallWith(qvec, 5, 0.35, user?.name) : []).map((h) => `- ${h.text}`).join("\n");
-    const docs = fast ? "" : recallDocs(qvec);
-    const toolNames = fast ? undefined : selectTools(qvec, 8, message);
-    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs);
+    if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
+    const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    const docs = (fast || lean) ? "" : recallDocs(qvec);
+    let toolNames = fast ? undefined : selectTools(qvec, 8, message);
+    const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token
+    if (restricted && toolNames) toolNames = toolNames.filter((n) => !isDangerous(n));
+    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
     const userName = (user?.name || "the user").trim();
 
+    // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
+    const canCache = !!message && cacheable(message);
+    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+    if (canCache && !noCache) {
+      const t0 = Date.now();
+      const hit = cacheLookup(message, fp, qvec);
+      if (hit) {
+        recordModelCall({ tier: hit.tier, provider: hit.provider, promptTokens: 0, outputTokens: 0, ms: Date.now() - t0, cached: true, reason: "cache hit" });
+        send({ type: "route", tier: hit.tier, klass, reason: "from memory · 0 tokens", cached: true });
+        send({ type: "token", t: hit.answer });
+        send({ type: "done", text: hit.answer, provider: hit.provider, trace: [], cached: true });
+        send({ type: "end", projectId: projectId || "" });
+        return res.end();
+      }
+    }
+
+    // Router badge — tell the client which tier is answering and why, before tokens flow.
+    send({ type: "route", tier: chosen, klass, reason });
     const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
     await runAgentStream(system, message, chosen, toolNames, (e) => {
       send(e.type === "pending" ? withPending(e, ctx) : e);
       if (e.type === "done") {
         logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
         void learnFrom(message, e.text || "", userName);
+        // Cache tool-free finals only (reproducible; never a dangerous-tool run).
+        if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
     }, turbo);
   } catch (e: any) {
@@ -1147,7 +1283,134 @@ app.post("/api/p2p/broadcast", async (req, res) => {
   res.json({ ok: true, sent: results.length, results });
 });
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8), cache: cacheStats() }));
+
+// ── THE LIFE INDEX (Phase 3) — the settings screen drives these ──
+app.get("/api/life-index", (_req, res) => res.json({ ...lifeIndexStats(), folders: listFolders() }));
+app.post("/api/life-index", async (req, res) => {
+  const { path } = req.body as { path?: string };
+  if (!path?.trim()) return res.status(400).json({ error: "path required" });
+  try { const r = await addFolder(path); res.json({ ok: true, ...r }); }
+  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+app.delete("/api/life-index", (req, res) => {
+  const path = (req.query.path as string) || (req.body as any)?.path;
+  if (!path) return res.status(400).json({ error: "path required" });
+  res.json(removeFolder(path));
+});
+app.post("/api/life-index/reindex", async (_req, res) => { const reports = await reindexAll(); res.json({ ok: true, reports }); });
+app.post("/api/life-index/watch", (req, res) => { const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
+
+// ── THE FORGE (Phase 5) — settings screen: review, enable/disable, delete SAM-forged tools ──
+app.get("/api/forged", (_req, res) => res.json({ ...forgedStats(), tools: listForged() }));
+app.post("/api/forged/:name/enable", (req, res) => {
+  const on = !!(req.body as any)?.enabled;
+  res.json({ ok: setForgedEnabled(req.params.name, on), ...forgedStats() });
+});
+app.delete("/api/forged/:name", (req, res) => res.json({ ok: deleteForged(req.params.name), ...forgedStats() }));
+
+// ── SCOPED REMOTE TOKENS (v1.5) — Settings manages per-device phone tokens. Loopback-only:
+// tokens can only be minted/revoked at the machine itself, never from a phone.
+app.get("/api/remote-tokens", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  res.json({ tokens: listTokens(), scopes: SCOPES });
+});
+app.post("/api/remote-tokens", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  const { label, scope, ttlDays } = req.body as { label?: string; scope?: any; ttlDays?: number };
+  if (!SCOPES.includes(scope)) return res.status(400).json({ error: `scope must be one of ${SCOPES.join(", ")}` });
+  // Returns the plaintext token ONCE — the client shows it (QR / copy); we only ever store the hash.
+  res.json(createToken(label || "device", scope, Number(ttlDays) || undefined));
+});
+app.delete("/api/remote-tokens/:id", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
+  res.json({ ok: revokeToken(req.params.id) });
+});
+
+// ── VAULT ENCRYPTION AT REST (v1.5) — loopback-only; the passphrase never leaves the machine. ──
+app.get("/api/encryption", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage encryption on this computer only" });
+  res.json(encryptionStatus());
+});
+app.post("/api/encryption/setup", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "set up encryption on this computer only" });
+  const { passphrase, useKeychain } = req.body as { passphrase?: string; useKeychain?: boolean };
+  const r = setupEncryption(String(passphrase || ""), useKeychain !== false);
+  res.status(r.ok ? 200 : 400).json(r);
+});
+app.post("/api/encryption/unlock", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "unlock on this computer only" });
+  const ok = unlockWithPassphrase(String((req.body as any)?.passphrase || ""));
+  res.status(ok ? 200 : 401).json({ ok, ...encryptionStatus() });
+});
+app.post("/api/encryption/lock", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  lockVault(); res.json({ ok: true, ...encryptionStatus() });
+});
+
+// ── CRASH SAFETY NET (v1.5) — local-only; the bundle is redacted + copied by the USER, never uploaded. ──
+app.get("/api/diagnostics", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  res.json({ ...crashStats(), bundle: diagnosticBundle(process.env.SAM_APP_VERSION || "dev", new Date().toISOString()) });
+});
+
+// ── UPDATE CHANNEL (v1.5) — stable (default) or beta. Beta opts into -beta.N prereleases so risky
+// features canary to volunteers first. Takes effect on the next launch (electron-updater reads it). ──
+app.get("/api/update-channel", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  res.json({ channel: process.env.SAM_UPDATE_CHANNEL === "beta" ? "beta" : "stable" });
+});
+app.post("/api/update-channel", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const channel = (req.body as any)?.channel === "beta" ? "beta" : "stable";
+  writeEnv("SAM_UPDATE_CHANNEL", channel);
+  process.env.SAM_UPDATE_CHANNEL = channel;
+  res.json({ ok: true, channel, note: "Takes effect on the next launch." });
+});
+
+// ── SAM PACKS (v1.5) — export/import shareable bundles. Import NEVER auto-installs. ──
+app.get("/api/packs/key", (req, res) => { if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" }); res.json({ publicKey: myPackKey() }); });
+app.post("/api/packs/export", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const { meta, contents } = req.body as { meta?: any; contents?: any };
+  if (!meta?.name || !contents) return res.status(400).json({ error: "meta.name + contents required" });
+  res.json({ pack: exportPack(meta, contents, Date.now()) });
+});
+app.post("/api/packs/import", async (req, res) => {
+  // Returns a PLAN of what's inside + safety-scan results. Installs nothing.
+  const plan = await planImport(String((req.body as any)?.pack || ""));
+  res.status(plan.ok ? 200 : 400).json(plan);
+});
+app.post("/api/packs/apply", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "install packs on this computer only" });
+  const { pack, choices } = req.body as { pack?: string; choices?: any };
+  const r = await applyPack(String(pack || ""), choices || {}, Date.now());
+  if (r.installedTools.length) syncForgedRegistry();   // registers nothing new (all disabled) — refresh view
+  res.status(r.ok ? 200 : 400).json(r);
+});
+app.get("/api/packs/community", async (_req, res) => {
+  // Read-only index pulled from the public richhabits/sam-packs repo — no server of our own needed.
+  try {
+    const r = await fetch("https://raw.githubusercontent.com/richhabits/sam-packs/main/index.json", { signal: AbortSignal.timeout(8000) });
+    res.json(r.ok ? await r.json() : { packs: [], note: "community index unavailable" });
+  } catch { res.json({ packs: [], note: "offline" }); }
+});
+
+// ── SHARE MOMENTS (v1.5) — subtle, opt-in, dismissible-forever. No telemetry (local counters). ──
+app.get("/api/moments", (_req, res) => res.json({ moment: nextMoment(), stats: momentStats() }));
+app.post("/api/moments/dismiss", (req, res) => { const id = (req.body as any)?.id; if (id) dismissMoment(String(id)); res.json({ ok: true }); });
+
+// ── ROLLBACK (v1.5) — if an update breaks something, get the previous release's installer. ──
+app.get("/api/rollback", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const current = process.env.SAM_APP_VERSION || "999.0.0";   // dev: nothing is older, returns null
+  const target = await previousRelease(current, process.env.SAM_UPDATE_CHANNEL === "beta");
+  res.json({ current, target, note: target ? `Reinstall SAM ${target.version} — your data stays put.` : "No earlier release found." });
+});
+
+// BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
+// bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
+if (BENCH_MODE) app.get("/api/bench/drain", (_req, res) => res.json({ calls: drainMetrics() }));
 app.get("/api/ios/status", (_req, res) => {
   res.json({ folder: dropFolderPath(), enabled: true });
 });

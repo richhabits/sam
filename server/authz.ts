@@ -28,7 +28,7 @@ function save() {
 }
 
 export function isAllowed(tool: string): boolean { return load().has(tool); }
-export function allow(tool: string) { if (DANGEROUS.has(tool)) return; load().add(tool); save(); }   // dangerous tools can NEVER be standing-allowed
+export function allow(tool: string) { if (isDangerous(tool)) return; load().add(tool); save(); }   // dangerous tools can NEVER be standing-allowed
 export function disallow(tool: string) { load().delete(tool); save(); }
 export function listAllowed(): string[] { return [...load()]; }
 
@@ -56,6 +56,14 @@ export const DANGEROUS = new Set([
   "manage_api_keys", "manage_authorizations", "manage_autopilot",
 ]);
 
+// Dynamically-registered dangerous tools — forged tools (v1.5) that declare a `net` or `fs:write`
+// capability are marked dangerous AT REGISTRATION, so the gate treats them exactly like the static
+// dangerous set (always ask, never standing-allowable). A forged tool can never mark itself safe.
+const DYNAMIC_DANGEROUS = new Set<string>();
+export function markDangerous(name: string) { DYNAMIC_DANGEROUS.add(name); }
+export function unmarkDangerous(name: string) { DYNAMIC_DANGEROUS.delete(name); }
+export function isDangerous(name: string): boolean { return DANGEROUS.has(name) || DYNAMIC_DANGEROUS.has(name); }
+
 let AUTOPILOT = false;
 export function setAutopilot(on: boolean) { AUTOPILOT = !!on; }
 export function autopilotOn(): boolean { return AUTOPILOT; }
@@ -70,7 +78,7 @@ export function isElonMode(): boolean { return ELON_MODE; }
 
 // The tier of a tool, given its `safe` flag. Single classifier used by the gate + /api/tools.
 export function toolTier(name: string, safe: boolean): "safe" | "confirm" | "dangerous" {
-  if (DANGEROUS.has(name)) return "dangerous";
+  if (isDangerous(name)) return "dangerous";
   if (safe) return "safe";
   return "confirm";
 }
@@ -79,7 +87,7 @@ export function toolTier(name: string, safe: boolean): "safe" | "confirm" | "dan
 //   • dangerous → NEVER, except an interactive Elon-Mode session (never a swarm).
 //   • confirm   → yes if Autopilot is on, a standing "always allow" covers it, or Elon Mode.
 export function mayAutoRun(tool: string, swarm = false): boolean {
-  if (DANGEROUS.has(tool)) return ELON_MODE && !swarm;
+  if (isDangerous(tool)) return ELON_MODE && !swarm;
   if (ELON_MODE) return true;
   return isAllowed(tool) || AUTOPILOT;
 }

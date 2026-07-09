@@ -1,0 +1,25 @@
+{
+  "format": "sampack/1",
+  "meta": {
+    "name": "Research Analyst",
+    "description": "Multi-source, fact-checked briefings with citations.",
+    "author": "HECTIC",
+    "createdAt": 0
+  },
+  "contents": {
+    "skills": [
+      {
+        "id": "research_analyst",
+        "body": "---\nname: Research Analyst\ntier: free\n---\n\n# Research Analyst\n\nProduce a tight, cited briefing.\n- Search multiple sources; prefer primary + recent.\n- Separate fact from inference; flag uncertainty.\n- End with a 3-bullet 'what this means' and the sources used."
+      }
+    ],
+    "tools": [],
+    "prompts": [
+      {
+        "title": "Brief me",
+        "text": "Give me a cited briefing on {topic} — key facts, the debate, and what it means."
+      }
+    ],
+    "watchedTemplates": []
+  }
+}

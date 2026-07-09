@@ -1,0 +1,30 @@
+{
+  "format": "sampack/1",
+  "meta": {
+    "name": "Landlord Dispute Assistant",
+    "description": "Fight an unfair deposit deduction or disrepair issue — evidence-first, calm, and by the book.",
+    "author": "HECTIC",
+    "createdAt": 0
+  },
+  "contents": {
+    "skills": [
+      {
+        "id": "landlord_dispute",
+        "body": "---\nname: Landlord Dispute Assistant\ntier: free\n---\n\n# Landlord Dispute Assistant\n\nHelp a tenant handle a deposit or disrepair dispute in England/Wales.\n- Establish the facts + timeline; list the evidence they have (photos, inventory, messages).\n- Cite the relevant rights plainly (deposit protection, the 'reasonable wear and tear' standard) — flag when to check current gov.uk guidance.\n- Draft a firm, polite letter/email to the landlord or agent.\n- If unresolved, explain the deposit-scheme dispute (ADR) route and how to submit evidence.\nAlways: facts first, no legal bluffing, suggest free routes before paid."
+      }
+    ],
+    "tools": [],
+    "prompts": [
+      {
+        "title": "Deposit challenge",
+        "text": "My landlord is deducting £{amount} from my deposit for {reason}. Draft a firm letter challenging it."
+      }
+    ],
+    "watchedTemplates": [
+      {
+        "label": "Tenancy docs",
+        "hint": "~/Documents/Tenancy"
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+# Flathub manifest (template — {{PLACEHOLDERS}} filled by scripts/bump-packages.mjs at release).
+# Wraps the published Linux AppImage. Submitted to flathub/flathub as com.hectic.sam.
+app-id: com.hectic.sam
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+command: sam
+separate-locales: false
+finish-args:
+  - --share=network            # free cloud AI lanes (or fully offline via Ollama)
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home          # the life index reads folders YOU choose
+  - --talk-name=org.freedesktop.secrets   # libsecret for optional vault encryption
+modules:
+  - name: sam
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 SAM.AppImage /app/bin/sam
+      - install -Dm644 com.hectic.sam.metainfo.xml /app/share/metainfo/com.hectic.sam.metainfo.xml
+      - install -Dm644 com.hectic.sam.desktop /app/share/applications/com.hectic.sam.desktop
+    sources:
+      - type: file
+        url: "{{APPIMAGE_URL}}"
+        sha256: "{{APPIMAGE_SHA256}}"
+        dest-filename: SAM.AppImage
+      - type: file
+        path: com.hectic.sam.metainfo.xml
+      - type: file
+        path: com.hectic.sam.desktop
