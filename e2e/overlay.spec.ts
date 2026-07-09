@@ -11,8 +11,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));   // ESM: no ambient __dirname
 const MAIN = join(__dirname, "..", "dist-electron", "main.js");
 let app: ElectronApplication;
 
