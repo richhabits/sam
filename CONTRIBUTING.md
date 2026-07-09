@@ -1,50 +1,30 @@
-# Contributing
+# Contributing to SAM
 
-Thanks for your interest in SAM. This is a **proprietary** project (see [LICENSE](LICENSE)) — shared publicly so you can run and test it, but not for redistribution or commercial use without permission.
+Thanks for helping make SAM better! SAM is a free, private, local-first AI assistant by HECTIC.
 
-## Running it locally
-
+## Quick start
 ```bash
 git clone https://github.com/richhabits/sam.git
-cd sam
-./setup.sh
+cd sam && npm install && npm start     # http://localhost:8787
+npm run dev      # hot reload
+npm test         # tests
+npx tsc --noEmit # type-check
 ```
 
-Or manually:
+## Ground rules (non-negotiable)
+- **Never commit secrets** — no keys, `.env`, or `vault/` contents. CI runs a gitleaks secret-scan that fails the build on any leaked key. `.env.example` holds placeholders only.
+- **Keep it free & private** — no telemetry, no phone-home, no paid-provider defaults. User data stays local.
+- **Safety tiers hold** — dangerous tools (shell, send, delete, push, payments) must always ask first, even under Autopilot/Swarm. If you touch the tool or auth layer, add a test in the same PR.
+- **Tests green + `tsc` clean** before you open a PR. New tools/features tested on the 3-OS CI matrix.
 
-```bash
-npm install
-cp .env.example .env   # add a free key (see the README)
-npm start              # builds + serves on http://localhost:8787
-npm run dev            # dev mode with hot reload
-npm test               # run the test suite
-```
+## Adding a tool
+One entry in `server/tools.ts` (`{ name, safe, description, params, run }`). Mark `safe: false` if it changes state; dangerous tools are gated in `server/authz.ts`. Add it to the platform matrix if it's OS-specific (it must degrade cleanly off-platform).
 
-## Project layout
+## Adding a free provider
+One entry in `PROVIDERS` in `server/models.ts` + the env var in `PROVIDER_ENV`. Add it to the key wizard (`src/KeyWizard.tsx` + `KEY_TEST`) if it has a free tier.
 
-| Path | What it is |
-|---|---|
-| `server/` | The brain — Express API, agent loop, model router, tools, memory, security |
-| `src/` | The React/Vite UI |
-| `skills/` | Skill playbooks (`skills/<name>/SKILL.md`) — drop one in to add a skill |
-| `vault/` | Your local memory & data (gitignored — never committed) |
+## Good first issues
+Look for the [`good-first-issue`](https://github.com/richhabits/sam/labels/good-first-issue) label — scoped, genuinely useful starters.
 
-## Before you propose a change
-
-- Keep it lean and free-first (SAM's whole point is running free on your machine).
-- Run **`npm run verify`** (typecheck + tests + build) — it must pass. CI runs the same gate.
-- Never commit secrets, keys, or personal data. `.env` and `vault/` data stay local.
-- PRs use the [pull-request template](.github/PULL_REQUEST_TEMPLATE.md) — fill it in.
-
-## Reporting bugs / ideas
-
-- **Bug?** Open a [🐛 bug report](https://github.com/richhabits/sam/issues/new?template=bug_report.yml) — the form walks you through it.
-- **Question or idea?** Use [Discussions](https://github.com/richhabits/sam/discussions).
-- **Security issue?** Report it privately — see [SECURITY.md](SECURITY.md). Never in a public issue.
-
-### 🤖 Let the agent fix it
-A maintainer can add the **`agent-fix`** label to a bug (or comment `@claude …` on any issue/PR).
-Claude then reads the report, finds the cause, runs `npm run verify`, and opens a **pull request**
-with the fix. CI must pass and a human merges it — then the fix ships automatically (the site + build
-regenerate on merge). The agent is instant; a person keeps the merge button. Setup lives in
-[`.github/workflows/claude-agent.yml`](.github/workflows/claude-agent.yml).
+## PRs
+Small, focused, one concern each. Explain the *why*. Match the surrounding code's style. Run `npm run stats` if you changed tool/agent/provider counts (badges/docs generate from `docs/stats.json`).
