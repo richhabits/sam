@@ -2108,21 +2108,22 @@ export const TOOLS: Tool[] = [
     } },
   // ── THE FORGE (Phase 5) — SAM writes its own tools. Confirm-tier: it asks before drafting.
   // The drafted tool is saved DISABLED for the user to review + enable; it can never self-approve.
-  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new pure-computation tool for a need (formatter, converter, parser, generator, calculator). SAM writes it, safety-scans it, and sandbox-tests it, then saves it for you to review + enable in Settings. input: {need}.", params: "{need}",
+  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new tool for a need. Pure-computation by default; may declare capabilities (net, fs:read, fs:write) — net/fs:write become dangerous-tier. SAM writes it, safety-scans it, sandbox-tests it, then saves it DISABLED for you to review + enable in Settings. input: {need}.", params: "{need}",
     activity: (i) => `Forging a tool for: ${i.need ?? i}`,
-    preview: (i) => `Draft, safety-scan and sandbox-test a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code and enable it in Settings before it can ever run.`,
+    preview: (i) => `Draft, safety-scan and sandbox-test a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code + declared capabilities and enable it in Settings before it can ever run.`,
     run: async (i) => {
       const r = await forgeTool(String(i.need ?? i ?? ""));
       if (!r.ok) return `Couldn't forge that: ${r.reason}`;
       const t = r.tool!;
+      const caps = t.caps.length ? `Capabilities: ${t.caps.join(", ")} → ${t.tier} tier` : `Pure computation → confirm tier`;
       const samples = (r.samples || []).slice(0, 2).map((s) => `  ${JSON.stringify(s.input)} → ${s.output.slice(0, 80)}`).join("\n");
-      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n\nCode:\n${t.code}\n\nSandbox test:\n${samples}`;
+      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n${caps}\n\nCode:\n${t.code}\n\nSandbox test:\n${samples}`;
     } },
-  { name: "forged_tools", safe: true, description: "List the tools SAM has forged for itself — enabled/disabled status. input: (none).", params: "(none)",
+  { name: "forged_tools", safe: true, description: "List the tools SAM has forged for itself — enabled/disabled status + capabilities. input: (none).", params: "(none)",
     activity: () => `Checking SAM-forged tools`, run: async () => {
       const all = listForged(); const s = forgedStats();
       if (!all.length) return "SAM hasn't forged any tools yet. Ask for something no built-in tool covers and SAM can build it.";
-      return `${s.enabled}/${s.total} forged tools enabled:\n` + all.map((t) => `- ${t.name} [${t.enabled ? "on" : "off"}] — ${t.explanation}`).join("\n");
+      return `${s.enabled}/${s.total} forged tools enabled (${s.dangerous} dangerous):\n` + all.map((t) => `- ${t.name} [${t.enabled ? "on" : "off"}] ${t.caps.length ? `{${t.caps.join(",")}}` : ""} — ${t.explanation}`).join("\n");
     } },
 ];
 
