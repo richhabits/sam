@@ -21,7 +21,12 @@ catch { Die "No internet connection." "Check your network and re-run this comman
 
 # ── latest release ──
 Step "Finding the latest release…"
-try { $rel = Invoke-RestMethod -UseBasicParsing -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers @{ "User-Agent" = "SAM-installer" } }
+# Authenticate the API call ONLY when a token is present (CI / corporate proxy) to dodge GitHub's
+# unauthenticated rate limit on shared IPs. Real installs need no token — behaviour is unchanged.
+$ghHeaders = @{ "User-Agent" = "SAM-installer" }
+$ghToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } elseif ($env:GH_TOKEN) { $env:GH_TOKEN } else { "" }
+if ($ghToken) { $ghHeaders["Authorization"] = "Bearer $ghToken" }
+try { $rel = Invoke-RestMethod -UseBasicParsing -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $ghHeaders }
 catch { Die "Couldn't reach GitHub Releases." "GitHub may be down — try again in a minute." }
 $tag = $rel.tag_name
 if (-not $tag) { Die "Couldn't read the latest version." "Report this at github.com/$repo/issues." }

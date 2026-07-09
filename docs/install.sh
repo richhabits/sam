@@ -11,6 +11,10 @@ set -euo pipefail
 
 REPO="richhabits/sam"
 API="https://api.github.com/repos/${REPO}/releases/latest"
+# Authenticate the API call ONLY when a token is present (CI, or a corporate proxy). This dodges
+# GitHub's unauthenticated rate limit on shared egress IPs. Real installs need no token — a normal
+# Mac/PC has ample unauthenticated budget — so behaviour is unchanged for users.
+GH_TOKEN_VALUE="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 BOLD=$'\033[1m'; DIM=$'\033[2m'; GREEN=$'\033[32m'; RED=$'\033[31m'; ORANGE=$'\033[38;5;208m'; RESET=$'\033[0m'
 
 say()  { printf "%s\n" "$*"; }
@@ -39,7 +43,12 @@ step "Detected ${BOLD}${PLATFORM} ${ARCH}${RESET}"
 
 # ── fetch the latest release ──
 step "Finding the latest release…"
-REL="$(curl -fsSL "$API")" || die "Couldn't reach GitHub Releases." "GitHub may be down — try again in a minute."
+# (bash 3.2-safe: no arrays — macOS ships bash 3.2, and this may run under `set -u`)
+if [ -n "$GH_TOKEN_VALUE" ]; then
+  REL="$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN_VALUE" "$API")" || die "Couldn't reach GitHub Releases." "GitHub may be down — try again in a minute."
+else
+  REL="$(curl -fsSL "$API")" || die "Couldn't reach GitHub Releases." "GitHub may be down — try again in a minute."
+fi
 TAG="$(printf '%s' "$REL" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
 [ -n "$TAG" ] || die "Couldn't read the latest version." "Report this at github.com/${REPO}/issues."
 
