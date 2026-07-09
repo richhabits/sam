@@ -12,6 +12,7 @@ const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
+const KeyWizard = lazy(() => import("./KeyWizard"));
 const Dashboard = lazy(() => import("./Dashboard"));
 
 interface Profile { name: string; about?: string; language?: string }
@@ -211,6 +212,7 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   const [pq, setPq] = useState("");        // palette query
@@ -968,7 +970,7 @@ export default function App() {
           {(() => {
             const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
             return (
-              <button className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setAdminOpen(true)}
+              <button className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setWizardOpen(true)}
                 title="Add your free AI keys — SAM rotates them so you never hit a limit">
                 🔑 {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
               </button>
@@ -1010,6 +1012,7 @@ export default function App() {
             <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
             <button className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">📓 Notebooks</span><span className="pop-opt-sub">Grounded research from your own sources</span></button>
             <button className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">📊 Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
+            <button className="pop-opt" onClick={() => { setWizardOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">⚡ Power up (add free keys)</span><span className="pop-opt-sub">60-second wizard — validate + pool free brains</span></button>
             <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
             <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
@@ -1464,6 +1467,7 @@ export default function App() {
           { icon: "🔑", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "📓", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "📊", label: "Live usage", run: () => setUsageOpen(true) },
+          { icon: "⚡", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
           { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "🔍", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
           { icon: "⬇️", label: "Export this chat (download)", run: () => { exportChat(); showToast("⬇️ Chat downloaded"); } },
@@ -1521,6 +1525,7 @@ export default function App() {
         {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
+        {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} />}
         {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
       </Suspense>
 
