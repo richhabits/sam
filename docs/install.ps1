@@ -62,6 +62,15 @@ try {
 }
 catch { Die "The installer couldn't run." "If SmartScreen blocked it: More info -> Run anyway. Or run $file manually." }
 
+# ── local brain (Ollama) — optional: 100% private + offline, no keys ──
+if (Get-Command ollama -ErrorAction SilentlyContinue) {
+  Ok "Ollama found — pulling a small local brain (llama3.2:3b) in the background…"
+  Start-Process -NoNewWindow ollama -ArgumentList "pull","llama3.2:3b" -ErrorAction SilentlyContinue
+} else {
+  Write-Host "`n  Tip: for a 100% private, offline brain (no keys, ever), install Ollama from https://ollama.com/download," -ForegroundColor DarkGray
+  Write-Host "  then run: ollama pull llama3.2:3b. SAM already works now on free cloud brains — this is just an upgrade." -ForegroundColor DarkGray
+}
+
 @"
 
   ✓ SAM is installed.

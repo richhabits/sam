@@ -334,6 +334,19 @@ function laneSort(pool: Provider[], lane: Lane): Provider[] {
   return pool.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p.id) - rank(b.p.id) || a.i - b.i).map((x) => x.p);
 }
 
+// Cheap cached check: is a local Ollama up WITH a model pulled? (private, offline, zero-key brain)
+let _ollamaOk: boolean | null = null, _ollamaAt = 0;
+export async function ollamaReady(): Promise<boolean> {
+  const now = Date.now();
+  if (_ollamaOk !== null && now - _ollamaAt < 30_000) return _ollamaOk;
+  _ollamaAt = now;
+  try { const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(1500) }); const d: any = r.ok ? await r.json() : null; _ollamaOk = !!(d?.models?.length); }
+  catch { _ollamaOk = false; }
+  return _ollamaOk;
+}
+// Any cloud provider with a real key pooled? (noKey lanes like Pollinations don't count as "has keys")
+function hasCloudKeys(): boolean { return PROVIDERS.some((p) => p.tier === "free" && !p.noKey && poolSize(p.id) > 0); }
+
 export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
@@ -347,6 +360,13 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
       text: `🔒 Private mode is on — nothing leaves your Mac — but the local model isn't responding right now. Start it with \`ollama serve\` (and \`ollama pull ${OLLAMA_MODEL}\` if needed), or switch to Auto/Best to use the free cloud brains.`,
       provider: "local-unavailable", tier: "local",
     };
+  }
+
+  // ZERO-KEY DEFAULT: if the user has added NO cloud keys and a local Ollama is up with a model,
+  // prefer the LOCAL brain — private, offline, instant. It also becomes the floor if the free cloud
+  // lanes below all fail. When cloud keys exist, we use the (usually faster/stronger) cloud pool first.
+  if (tier !== "premium" && !hasCloudKeys() && await ollamaReady()) {
+    try { const text = await callOllama(system, prompt); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; } catch { /* fall to free cloud lanes */ }
   }
 
   // Walk the cloud tiers. MONEY-SAVER: free/local requests NEVER escalate to
