@@ -2,6 +2,32 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.5.0] - 2026-07-09 — "Launch & Loop"
+
+Closes every caveat v1.4 deferred, makes updates safe for a growing user base, and adds the machinery for the community to extend + share SAM. **MIT-licensed now.** No cost/latency regression (bench: within 0.3%).
+
+### Every v1.4 caveat closed
+- **Overlay proof**: real Electron Playwright e2e on the macOS CI runner (summon <300ms, palette renders, Escape dismisses, selection round-trips) + a Windows/Linux manual checklist.
+- **Forge tier 2**: forged tools can declare capabilities (`net`, `fs:read`, `fs:write`), reached ONLY through injected `sam.*` shims (nothing ambient). `net`/`fs:write` are **dangerous-tier** (always ask, never standing-allowable); shell is forbidden to forge, permanently.
+- **Vault encryption at rest** (opt-in): scrypt → AES-256-GCM, OS-keychain auto-unlock (Keychain/DPAPI/libsecret), no-recovery warning. Adopted first by the scoped-token store.
+- **Scoped remote tokens**: `read-only` / `no-dangerous` / `full`, hashed, labelled, expiry, revocable in Settings; the iOS companion defaults to no-dangerous.
+
+### Release hygiene
+- **Beta channel** (stable/beta auto-update; `-beta.N` prereleases canary to volunteers first).
+- **Crash safety net**: local-only rotating crash log (never uploaded) + a redacted "copy diagnostic bundle" button.
+- **Rollback**: `sam rollback` / Settings reinstalls the previous release if an update breaks something (your data stays put).
+- **Package managers**: winget + Flathub manifests, auto-bumped like the brew cask.
+
+### The growth loop
+- **SAM Packs**: signed, importable bundles (skills, forged tools + capabilities, prompts, watched-folder templates). Import runs the full forge safety pipeline and **never auto-installs** anything. 6 starter packs shipped; community index at `richhabits/sam-packs` (CI validates every pack).
+- **Share moments** + a Star-SAM card on your 10th task — subtle, opt-in, dismissible forever, no telemetry.
+
+### Gateway soft-beta prep
+- Instant kill-switch, conservative caps (~$25/mo ceiling), and an airtight "exactly what it can and can't see" privacy doc. One env-var from live.
+
+### Launch
+- **MIT license**; refreshed Show HN / Product Hunt / Reddit / X drafts; a launch-day runbook (monitoring + 10 pre-written answers + triage rota); docs hub + packs gallery.
+
 ## [1.4.0] - 2026-07-09 — "Game Changer"
 
 What Cursor did to coding, SAM does to the whole computer: AI inside the work, AI that knows your files, and a brain that's near-instant and near-free. **~86% cheaper and ~46% faster per task than v1.3** ([benchmarks](docs/BENCHMARKS.md)) — with every task served free-or-local.
