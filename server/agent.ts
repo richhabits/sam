@@ -185,12 +185,18 @@ export function isFastPath(message: string): boolean {
   return PURE_GENERATION.test(message) && !NEEDS_TOOLS.test(message);
 }
 
+// True when a message plainly needs live/external info (→ must use the tool loop).
+// Exposed so the cascade classifier (classify.ts) can reuse the canonical signal.
+export function needsLiveInfo(message: string): boolean {
+  return NEEDS_TOOLS.test(message || "");
+}
+
 // Fresh request. `toolNames` = the relevant tools to expose (semantic routing).
 // `forceFast` (Turbo) forces the single-call path even for tool-shaped messages.
-export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false): Promise<AgentResult> {
+export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false, reason?: string): Promise<AgentResult> {
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
   if (forceFast || isFastPath(message)) {
-    return runModel(tier, system, `User: ${message}\n\nAnswer directly.`)
+    return runModel(tier, system, `User: ${message}\n\nAnswer directly.`, undefined, reason ? { reason } : undefined)
       .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
   }
   const prompt = `User: ${message}`;
