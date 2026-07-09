@@ -149,4 +149,8 @@ export function store(e: { message: string; fp: string; answer: string; provider
 }
 
 export function cacheStats() { load(); return { entries: entries.length, hits, misses }; }
-export function clearCache(): void { entries = []; hits = 0; misses = 0; saveSoon(); }
+export function clearCache(): void {
+  entries = []; hits = 0; misses = 0;
+  loaded = true;   // prevent a later lazy load() from resurrecting a stale on-disk cache (bench reproducibility)
+  try { if (existsSync(CACHE_PATH)) writeFileSync(CACHE_PATH, JSON.stringify({ entries: [] })); } catch { /* best-effort */ }
+}
