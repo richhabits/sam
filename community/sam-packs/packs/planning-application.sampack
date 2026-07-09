@@ -1,0 +1,25 @@
+{
+  "format": "sampack/1",
+  "meta": {
+    "name": "Planning Application Helper",
+    "description": "Navigate a UK planning application or objection without a consultant.",
+    "author": "HECTIC",
+    "createdAt": 0
+  },
+  "contents": {
+    "skills": [
+      {
+        "id": "planning_application",
+        "body": "---\nname: Planning Application Helper\ntier: free\n---\n\n# Planning Application Helper\n\nGuide a householder through a planning application or a neighbour objection.\n- Clarify what they're doing (extension, change of use) and whether it's permitted development.\n- Explain the process + typical timelines in plain English; flag to verify on the local council portal.\n- Draft a clear design-and-access style summary or a reasoned objection letter grounded in material planning considerations (overlooking, light, character) — not personal grievances."
+      }
+    ],
+    "tools": [],
+    "prompts": [
+      {
+        "title": "Objection letter",
+        "text": "Draft a planning objection to application {ref} on the grounds of {concern}."
+      }
+    ],
+    "watchedTemplates": []
+  }
+}
