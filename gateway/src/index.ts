@@ -18,6 +18,7 @@ export interface Env {
   PER_DEVICE_DAILY?: string;         // default 50
   GLOBAL_DAILY?: string;             // default 20000
   SPEND_CEILING_CALLS?: string;      // hard global kill-switch (cumulative), default 500000
+  PAUSED?: string;                   // INSTANT kill-switch: set "1" to pause everything now (no redeploy)
   ALLOW_ORIGIN?: string;             // CORS, default *
 }
 
@@ -39,7 +40,11 @@ export default {
     if (req.method === "OPTIONS") return json({}, 204, origin);
     const url = new URL(req.url);
 
-    if (url.pathname === "/health") return json({ ok: true, service: "sam-gateway" }, 200, origin);
+    if (url.pathname === "/health") return json({ ok: true, service: "sam-gateway", paused: env.PAUSED === "1" }, 200, origin);
+
+    // INSTANT kill-switch — `wrangler secret put PAUSED` / dashboard var = "1" pauses everything at once,
+    // no redeploy. SAM falls back to its own free lanes, so users aren't stranded.
+    if (env.PAUSED === "1") return json({ error: "gateway paused — SAM is using its own free lanes" }, 503, origin);
 
     // Quota check — SAM shows the user their remaining daily allowance.
     if (url.pathname === "/v1/quota" && req.method === "GET") {
