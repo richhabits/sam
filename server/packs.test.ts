@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { rmSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const SCRATCH = "/private/tmp/claude-501/-Users-romeovalentine/sam-packs-test";
+const SCRATCH = "/tmp/sam-packs-test";
 let P: typeof import("./packs.ts");
 beforeAll(async () => {
   process.env.VAULT_DIR = join(SCRATCH, "vault");
