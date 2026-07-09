@@ -103,6 +103,7 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "notarize": { "teamId": "CC9Q9BH5NT" },
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
@@ -129,7 +130,6 @@
         "releaseType": "release"
       }
     ],
-    "npmRebuild": false,
-    "afterSign": "scripts/notarize.mjs"
+    "npmRebuild": false
   }
 }
