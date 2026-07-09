@@ -138,11 +138,15 @@ function createOverlay() {
   overlay.on("close", (e) => { if (!isQuitting) { e.preventDefault(); overlay?.hide(); } });
 }
 
+// E2E hook — the Playwright test can't fire an OS-level global shortcut, so under SAM_E2E the
+// spec drives summon/dismiss directly and injects a fixed selection (real capture needs a target app).
+const E2E = process.env.SAM_E2E === "1";
+
 async function summonOverlay() {
   if (!overlay) createOverlay();
   if (overlay!.isVisible()) { overlay!.hide(); return; }
-  await ensureAccessibility();                 // one-time macOS permission for selection capture
-  const selection = await captureSelection();  // clipboard-swap; "" if nothing highlighted
+  if (!E2E) await ensureAccessibility();       // one-time macOS permission for selection capture
+  const selection = E2E ? "the quick brown fox" : await captureSelection();  // clipboard-swap; "" if nothing highlighted
   // Center on the display under the cursor so it appears where the user is working.
   try {
     const pt = screen.getCursorScreenPoint();
@@ -228,6 +232,13 @@ app.whenReady().then(() => {
 
   // ── Overlay wiring (Phase 4) ──
   createOverlay();
+  // E2E test surface (only under SAM_E2E) — lets Playwright drive + inspect the overlay in main-process.
+  if (E2E) (globalThis as any).__samE2E = {
+    summon: () => summonOverlay(),
+    dismiss: () => overlay?.hide(),
+    overlayVisible: () => !!overlay?.isVisible(),
+    overlayReady: () => !!overlay && !overlay.webContents.isLoading(),
+  };
   ipcMain.handle("overlay:run", (_e, payload) => runOverlayAction(payload));
   ipcMain.handle("overlay:copy", (_e, text: string) => { clipboard.writeText(String(text || "")); return true; });
   ipcMain.handle("overlay:paste", async (_e, text: string) => { overlay?.hide(); await pasteBack(String(text || "")); return true; });
