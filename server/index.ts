@@ -25,6 +25,8 @@ import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens,
 import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
 import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
 import { previousRelease } from "./rollback.ts";
+import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
+import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -517,6 +519,7 @@ app.post("/api/command", async (req, res) => {
     const hit = cacheLookup(message, fp, qvec);
     if (hit) {
       recordModelCall({ tier: hit.tier, provider: hit.provider, promptTokens: 0, outputTokens: 0, ms: Date.now() - t0, cached: true, reason: "cache hit" });
+      recordSuccess("cache-hit");
       return res.json({
         kind: "final", text: hit.answer, trace: [], provider: hit.provider,
         projectId: projectId || "", tier: hit.tier, message, cached: true,
@@ -550,6 +553,7 @@ app.post("/api/command", async (req, res) => {
     void learnFrom(message || "", r.text || "", userName);   // fire-and-forget: build long-term memory
     // Cache only tool-FREE finals (no tool ran → reproducible, and dangerous-tool runs are never cached).
     if (canCache && r.trace.length === 0 && r.text) cacheStore({ message, fp, answer: r.text, provider: r.provider || "", tier: answeredTier, qvec });
+    recordSuccess(answeredTier === "local" ? "local" : "task");   // for the (opt-in, dismissible) share moments
   }
   const ctx: PendingCtx = { tier: answeredTier, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
   res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: answeredTier, message,
@@ -1363,6 +1367,38 @@ app.post("/api/update-channel", (req, res) => {
   process.env.SAM_UPDATE_CHANNEL = channel;
   res.json({ ok: true, channel, note: "Takes effect on the next launch." });
 });
+
+// ── SAM PACKS (v1.5) — export/import shareable bundles. Import NEVER auto-installs. ──
+app.get("/api/packs/key", (req, res) => { if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" }); res.json({ publicKey: myPackKey() }); });
+app.post("/api/packs/export", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const { meta, contents } = req.body as { meta?: any; contents?: any };
+  if (!meta?.name || !contents) return res.status(400).json({ error: "meta.name + contents required" });
+  res.json({ pack: exportPack(meta, contents, Date.now()) });
+});
+app.post("/api/packs/import", async (req, res) => {
+  // Returns a PLAN of what's inside + safety-scan results. Installs nothing.
+  const plan = await planImport(String((req.body as any)?.pack || ""));
+  res.status(plan.ok ? 200 : 400).json(plan);
+});
+app.post("/api/packs/apply", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "install packs on this computer only" });
+  const { pack, choices } = req.body as { pack?: string; choices?: any };
+  const r = await applyPack(String(pack || ""), choices || {}, Date.now());
+  if (r.installedTools.length) syncForgedRegistry();   // registers nothing new (all disabled) — refresh view
+  res.status(r.ok ? 200 : 400).json(r);
+});
+app.get("/api/packs/community", async (_req, res) => {
+  // Read-only index pulled from the public richhabits/sam-packs repo — no server of our own needed.
+  try {
+    const r = await fetch("https://raw.githubusercontent.com/richhabits/sam-packs/main/index.json", { signal: AbortSignal.timeout(8000) });
+    res.json(r.ok ? await r.json() : { packs: [], note: "community index unavailable" });
+  } catch { res.json({ packs: [], note: "offline" }); }
+});
+
+// ── SHARE MOMENTS (v1.5) — subtle, opt-in, dismissible-forever. No telemetry (local counters). ──
+app.get("/api/moments", (_req, res) => res.json({ moment: nextMoment(), stats: momentStats() }));
+app.post("/api/moments/dismiss", (req, res) => { const id = (req.body as any)?.id; if (id) dismissMoment(String(id)); res.json({ ok: true }); });
 
 // ── ROLLBACK (v1.5) — if an update breaks something, get the previous release's installer. ──
 app.get("/api/rollback", async (req, res) => {
