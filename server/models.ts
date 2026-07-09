@@ -13,9 +13,27 @@ import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { recordModelCall, estTokens } from "./metrics.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
+
+// ── BENCH MOCK ── deterministic, offline brain so scripts/bench.ts can exercise the FULL
+// real pipeline (routing, prompt assembly, cache, agent loop) with zero network + zero quota.
+// Gated behind SAM_BENCH_MOCK so production is untouched. Latency is MODELLED per tier (the
+// ratios — local < free < premium — are what before/after deltas care about, documented as such).
+const BENCH_MOCK = process.env.SAM_BENCH_MOCK === "1";
+const MOCK_LATENCY: Record<Tier, number> = { local: 40, free: 200, premium: 500 };
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+function mockText(tier: Tier): string {
+  // A stable, plausible answer sized to a realistic short reply (~50 tokens).
+  return `[${tier}] Done — here's a clear, useful answer to that. ` +
+    "It covers the key point directly and stays tight, the way SAM replies when it's on form.";
+}
+async function mockRun(tier: Tier): Promise<ModelResult> {
+  await sleep(MOCK_LATENCY[tier]);
+  return { text: mockText(tier), provider: `mock:${tier}`, tier };
+}
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
@@ -370,7 +388,7 @@ export async function ollamaReady(): Promise<boolean> {
 // Any cloud provider with a real key pooled? (noKey lanes like Pollinations don't count as "has keys")
 function hasCloudKeys(): boolean { return PROVIDERS.some((p) => p.tier === "free" && !p.noKey && poolSize(p.id) > 0); }
 
-export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
+async function runModelInner(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
     try {
@@ -429,6 +447,20 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
   };
 }
 
+// Public entry — times the call and records it (tier, tokens, latency) for the router
+// badge + benchmark. In bench-mock mode it returns a deterministic answer with no network.
+export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean }): Promise<ModelResult> {
+  const t0 = Date.now();
+  const r = BENCH_MOCK ? await mockRun(tier) : await runModelInner(tier, system, prompt, laneHint);
+  recordModelCall({
+    tier: r.tier, provider: r.provider,
+    promptTokens: estTokens(system) + estTokens(prompt),
+    outputTokens: estTokens(r.text),
+    ms: Date.now() - t0, reason: meta?.reason, escalated: meta?.escalated,
+  });
+  return r;
+}
+
 // ── STREAMING · token-by-token for the "types as it thinks" feel ──
 async function streamOpenAICompat(base: string, model: string, system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
   const r = await fetch(`${base}/chat/completions`, {
@@ -474,7 +506,7 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,
 // falls back to a normal call and emits the whole answer as one chunk.
-export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
+async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
     if (!poolSize(id)) return null;
     const key = getKey(id); if (!key) return null;
@@ -489,8 +521,35 @@ export async function streamModel(tier: Tier, system: string, prompt: string, on
     if (gem) return gem;
   }
   // fallback: non-streamed, emit whole text once (respects a forced lane, e.g. deep/Hermes)
-  const r = await runModel(tier, system, prompt, laneHint);
+  const r = await runModelInner(tier, system, prompt, laneHint);
   onChunk(r.text);
+  return r;
+}
+
+// Public streaming entry — records ttft + total latency for the badge + benchmark.
+// Bench-mock: emit the deterministic answer in two chunks with a modelled TTFT.
+export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean }): Promise<ModelResult> {
+  const t0 = Date.now();
+  let ttft = 0;
+  const wrap = (t: string) => { if (!ttft) ttft = Date.now() - t0; onChunk(t); };
+  let r: ModelResult;
+  if (BENCH_MOCK) {
+    await sleep(Math.round(MOCK_LATENCY[tier] * 0.4));   // time-to-first-token < total
+    const txt = mockText(tier);
+    const mid = Math.floor(txt.length / 2);
+    wrap(txt.slice(0, mid));
+    await sleep(Math.round(MOCK_LATENCY[tier] * 0.6));
+    wrap(txt.slice(mid));
+    r = { text: txt, provider: `mock:${tier}`, tier };
+  } else {
+    r = await streamModelInner(tier, system, prompt, wrap, laneHint);
+  }
+  recordModelCall({
+    tier: r.tier, provider: r.provider,
+    promptTokens: estTokens(system) + estTokens(prompt),
+    outputTokens: estTokens(r.text),
+    ms: Date.now() - t0, ttftMs: ttft || undefined, reason: meta?.reason, escalated: meta?.escalated,
+  });
   return r;
 }
 

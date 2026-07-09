@@ -28,6 +28,26 @@ async function mapConcurrent<T, R>(items: T[], fn: (item: T) => Promise<R>, limi
 
 export interface Embedded { model: string; vectors: number[][] }
 
+// ── BENCH MOCK ── deterministic, offline pseudo-embeddings so scripts/bench.ts runs
+// with zero network + reproducible routing/cache behaviour. Gated behind SAM_BENCH_MOCK,
+// so production is byte-for-byte unaffected. A stable 64-dim hash of the text: identical
+// text → identical vector (cosine 1.0), which is exactly what the repeat-question / cache
+// path needs to be testable without depending on whether a real embedder is up.
+const BENCH_MOCK = process.env.SAM_BENCH_MOCK === "1";
+function mockVec(text: string): number[] {
+  const dims = 64;
+  const v = new Array(dims).fill(0);
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    v[(c + i * 7) % dims] += ((c % 13) - 6);          // spread chars across dims
+    v[(c * 3 + i) % dims] += ((i % 5) - 2);
+  }
+  return v;
+}
+function mockEmbed(texts: string[]): Embedded {
+  return { model: "mock-emb", vectors: texts.map(mockVec) };
+}
+
 async function viaJina(texts: string[], isQuery: boolean): Promise<Embedded | null> {
   const key = process.env.JINA_API_KEY;
   if (!key) return null;
@@ -110,6 +130,7 @@ function viaFor(tag: string, texts: string[], isQuery: boolean): Promise<Embedde
 // provider is genuinely down — a switch would silently orphan stored memories).
 export async function embed(texts: string[], isQuery = false, prefer?: string | null): Promise<Embedded | null> {
   if (!texts.length) return { model: "none", vectors: [] };
+  if (BENCH_MOCK) return mockEmbed(texts);
   if (prefer) { const p = await viaFor(prefer, texts, isQuery); if (p) return p; }
   // LOCAL-FIRST: embeddings run on EVERY message (recall query) + every memory write, so default
   // to free, private, on-device Ollama. Cloud (Jina/Gemini) is only a fallback for users with no
