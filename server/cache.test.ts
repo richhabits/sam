@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 // Point the cache at a throwaway dir so tests never touch the real vault.
 let C: typeof import("./cache.ts");
 beforeAll(async () => {
-  process.env.VAULT_DIR = "/private/tmp/claude-501/-Users-romeovalentine/sam-cache-test";
+  process.env.VAULT_DIR = "/tmp/sam-cache-test";
   C = await import("./cache.ts");
 });
 beforeEach(() => C.clearCache());

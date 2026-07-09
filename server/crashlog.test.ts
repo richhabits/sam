@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { rmSync } from "node:fs";
 
-const SCRATCH = "/private/tmp/claude-501/-Users-romeovalentine/sam-crash-test";
+const SCRATCH = "/tmp/sam-crash-test";
 let C: typeof import("./crashlog.ts");
 beforeAll(async () => { process.env.VAULT_DIR = SCRATCH; C = await import("./crashlog.ts"); });
 beforeEach(() => rmSync(SCRATCH, { recursive: true, force: true }));

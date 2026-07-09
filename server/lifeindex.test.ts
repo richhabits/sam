@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // Isolated scratch vault + deterministic offline embeddings.
-const SCRATCH = "/private/tmp/claude-501/-Users-romeovalentine/sam-lifeindex-test";
+const SCRATCH = "/tmp/sam-lifeindex-test";
 const DOCS = join(SCRATCH, "docs");
 let LI: typeof import("./lifeindex.ts");
 
