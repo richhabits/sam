@@ -92,10 +92,10 @@ Detects your OS, downloads the right build, **verifies the SHA-256**, installs i
 ### ⬇️ Prefer a click? Download the app (no terminal)
 
 **[Download SAM](https://github.com/richhabits/sam/releases/latest)** — works free out of the box, no API key needed:
-- **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → **right-click → Open** (once — it's unsigned)
+- **Mac** (Apple Silicon M1–M4): open the `.dmg` → drag **SAM** to Applications → launch it. On recent macOS an unsigned app shows *"SAM is damaged and can't be opened"* — that's **not** real damage, just Apple's quarantine flag on a browser download. One-line fix: `xattr -cr /Applications/SAM.app` in Terminal (then open it), or **System Settings → Privacy & Security → Open Anyway**. *(The one-paste installer above strips this automatically; code-signing removes it for good.)*
 - **Windows**: run `SAM-Setup-…exe` → if SmartScreen appears, click **More info → Run anyway** (once — it's unsigned)
 
-> **"Windows says the file isn't safe" / "Windows protected your PC" — that's expected, and it's not actually unsafe.** It's the exact same build our CI tests; Windows just shows this for any app that isn't code-signed (a paid publisher certificate), until the app builds download reputation. To proceed: if your browser flags the download, choose **Keep**; when the blue SmartScreen box appears, click **More info → Run anyway**. (Mac shows the same kind of prompt — right-click → Open.) The permanent fix is code-signing — see below.
+> **"Windows says the file isn't safe" / "Windows protected your PC" — that's expected, and it's not actually unsafe.** It's the exact same build our CI tests; Windows just shows this for any app that isn't code-signed (a paid publisher certificate), until the app builds download reputation. To proceed: if your browser flags the download, choose **Keep**; when the blue SmartScreen box appears, click **More info → Run anyway**. (Mac shows a *"damaged"* variant on recent macOS — `xattr -cr /Applications/SAM.app` or Privacy & Security → Open Anyway; see the Mac note above.) The permanent fix is code-signing — see below.
 
 ### 🔒 Verify your download
 
