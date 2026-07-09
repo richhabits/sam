@@ -198,6 +198,7 @@ async function main() {
   console.log(`\n⚡ SAM benchmark → ${name}.json  (mock brain · offline · zero quota)\n`);
 
   // Boot the real server with the deterministic mock brain, isolated port, no background jobs.
+  const bootT0 = Date.now();
   const child: ChildProcess = spawn("npx", ["tsx", "server/index.ts"], {
     cwd: ROOT,
     env: { ...process.env, SAM_BENCH_MOCK: "1", PORT: String(PORT), SAM_P2P: "0", SAM_REMOTE: "0" },
@@ -210,6 +211,7 @@ async function main() {
 
   try {
     if (!await waitReady()) throw new Error(`server did not become ready on :${PORT}`);
+    const bootMs = Date.now() - bootT0;   // spawn → /api/health ok (tsx cold-start included)
     // small settle so lazy boot indexing finishes
     await new Promise((r) => setTimeout(r, 500));
     await drain();   // clear any boot-time calls
@@ -237,7 +239,8 @@ async function main() {
     const agg = aggregate(rows);
     printTable(rows, agg);
 
-    const out = { name, generatedAt: new Date().toISOString(), suiteSize: SUITE.length, summary: agg, tasks: rows };
+    console.log(`  server boot       : ${bootMs} ms  (spawn → ready, tsx cold-start)`);
+    const out = { name, generatedAt: new Date().toISOString(), suiteSize: SUITE.length, summary: { ...agg, bootMs }, tasks: rows };
     writeFileSync(join(BENCH_DIR, `${name}.json`), JSON.stringify(out, null, 2));
     console.log(`\n📊 saved → bench/${name}.json\n`);
   } finally {
