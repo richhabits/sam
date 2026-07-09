@@ -37,7 +37,7 @@ const CATS = [
   ["📅", "Calendar, tasks &amp; projects", /(calendar|schedule|remind|nudge|timer|todo|linear|notion|trello|event|reminder|project)/],
   ["👁️", "Vision &amp; screen", /(screenshot|camera|vision|ocr|\blook|photo|guardian|wallpaper)/],
   ["🎵", "Music &amp; media", /(music|play|song|spotify|volume|media|pause|track|speak|voice)/],
-  ["🖱️", "Control your Mac", /(caffeinate|lock|battery|system|wifi|network|eject|trash|brightness|clipboard|disk|type|press|click|\bkey|mouse|frontmost|dark_mode|dnd|my_apps|open_app|shortcut|self_restart|\bkill|manage)/],
+  ["🖱️", "Control your computer", /(caffeinate|lock|battery|system|wifi|network|eject|trash|brightness|clipboard|disk|type|press|click|\bkey|mouse|frontmost|dark_mode|dnd|my_apps|open_app|shortcut|self_restart|\bkill|manage)/],
   ["🧠", "Memory &amp; people", /(person|people|remember|memor|note|recall|forget|contact|who_i_know)/],
   ["🤝", "Agents &amp; swarm", /(team|ninja|swarm|agent|capacity)/],
   ["🛡️", "Security", /(security|watchdog|guard)/],
