@@ -1,15 +1,9 @@
-<!-- Thanks for contributing to SAM! Keep this short and honest. -->
-
 ## What & why
-<!-- One or two lines: what does this change, and why? Link the issue: "Closes #123" -->
+<!-- What does this change, and why? -->
 
-Closes #
-
-## How I verified
-<!-- Tick what you actually ran. `npm run verify` = typecheck + tests + build. -->
-- [ ] `npm run verify` passes locally (typecheck + tests + build)
-- [ ] Added/updated tests for the change (if it's a fix or new behaviour)
-- [ ] No secrets, keys, or personal data in the diff
-
-## Notes for the reviewer
-<!-- Anything to watch, trade-offs, follow-ups. Delete if none. -->
+## Checklist
+- [ ] `npm test` green + `npx tsc --noEmit` clean
+- [ ] No secrets/keys/.env/vault committed (gitleaks will check)
+- [ ] Tool/auth changes include a test in this PR
+- [ ] OS-specific tools degrade cleanly off-platform
+- [ ] Ran `npm run stats` if tool/agent/provider counts changed

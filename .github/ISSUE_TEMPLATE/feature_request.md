@@ -1,9 +1,14 @@
 ---
 name: Feature request
-about: An idea to make SAM better
+about: Suggest an idea
 labels: enhancement
 ---
 
-**What would you like SAM to do?**
+**The problem**
+What are you trying to do that SAM makes hard today?
 
-**Why it'd help:**
+**The idea**
+What would help.
+
+**Keep it SAM**
+Does it stay free, private, local-first, no-telemetry? (If it needs a paid service or phones home, say how it stays optional.)
