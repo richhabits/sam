@@ -273,5 +273,5 @@ jobs:
           case "${{ runner.os }}" in
             macOS)   test -d "/Applications/SAM.app" && echo "✅ SAM.app installed on macOS";;
             Linux)   test -x "$HOME/.local/bin/SAM.AppImage" && echo "✅ AppImage installed on Linux";;
-            Windows) if compgen -G "$LOCALAPPDATA/Programs/*[Ss][Aa][Mm]*" > /dev/null || compgen -G "$LOCALAPPDATA/*[Ss][Aa][Mm]*/SAM.exe" > /dev/null; then echo "✅ SAM installed on Windows"; else echo "❌ not found"; ls "$LOCALAPPDATA/Programs" 2>/dev/null; exit 1; fi;;
+            Windows) if ls "$LOCALAPPDATA/Programs" 2>/dev/null | grep -qi sam; then echo "✅ SAM installed on Windows (LOCALAPPDATA/Programs)"; else echo "❌ not found"; ls "$LOCALAPPDATA/Programs" 2>/dev/null; exit 1; fi;;
           esac
