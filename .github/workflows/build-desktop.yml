@@ -257,6 +257,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       SAM_NO_LAUNCH: "1"
+      # Authenticate install.sh's GitHub API call — hosted macOS runners share an egress IP that's
+      # chronically rate-limited (403) for UNauthenticated api.github.com. Real users need no token.
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - name: One-paste install (${{ matrix.os }})
