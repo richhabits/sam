@@ -9,6 +9,7 @@ order that historically drives the cleanest traffic. Everything below is drafted
 - [ ] README hero GIF renders; the one-liner copies correctly; star CTA visible above the fold.
 - [ ] Landing page (richhabits.github.io/sam) shows current stats + checksums + one-liner.
 - [ ] `docs/stats.json` truthful; badges match.
+- [ ] **Upload the social preview**: repo → Settings → General → Social preview → upload `docs/media/social-preview.png` (1280×640). *(GitHub has no CLI for this — one-time manual step.)*
 
 ## Launch day (Tuesday, ~9:00am US Eastern — best HN window)
 1. [ ] **Show HN** — post `show-hn.md`. Be present in the thread all day; reply fast, humble, technical.
