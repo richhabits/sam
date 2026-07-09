@@ -2,6 +2,30 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.3.0] - 2026-07-09 — "Instant"
+
+Zero to a working assistant in ~60 seconds, on any device, with one paste.
+
+### One-paste install (every platform)
+- `curl -fsSL https://richhabits.github.io/sam/install.sh | bash` (macOS/Linux) and `irm …/install.ps1 | iex` (Windows): detect OS+arch → download the right release asset → **verify SHA-256** → install → launch. Idempotent, plain-English errors for every failure. Linux AppImage added to the build matrix.
+- **SHA256SUMS.txt** shipped as a release asset (installers verify against it). Homebrew cask auto-bumps the tap. **`install-test` CI** runs both installers from scratch on clean macOS/Windows/Ubuntu every release — install must succeed on all three or the release fails.
+
+### Zero-key local brain
+- With **no cloud keys and Ollama running, SAM prefers your local model** (llama3.2:3b) — private, offline, instant — and it's the floor if all free cloud lanes fail. Installers detect Ollama (pull the model, or suggest the one-line install). Proven: clean 0-key env → answered by `ollama:llama3.2:3b`.
+
+### 60-second key wizard
+- **⚡ Power up SAM**: Groq/Gemini/OpenRouter/Mistral, each with a deep-link, paste field, **live validation** (real test call), green tick, and a progress meter. Clipboard watcher offers to slot in a copied key. `POST /api/admin/validate-key` (key used + discarded, never logged).
+
+### Hosted free tier (built, OFF by default)
+- `gateway/` — a Cloudflare Worker that serves pooled keys the *operator* holds (never shipped in the app), behind `SAM_GATEWAY_URL`. Per-device + global daily caps, cheap-model whitelist, abuse blocklist, spend-ceiling kill-switch, anonymous device id. Fully documented in `docs/GATEWAY.md` (with cost table). Inert in the public build.
+
+### Signing & security
+- **Secret-scan (gitleaks)** fails the build on any leaked key — no key ships in the repo, installers, or docs. `curl … | bash` "out of the box" comes from the local brain + wizard + optional gateway, never a bundled key.
+- macOS notarization is **verified in CI** (`spctl` + `stapler validate` fail the release if it doesn't stick). Ready to go live the moment the Apple cert secrets land.
+
+### Built to go viral
+- README rebuilt (one-paste hero, demo-GIF slot, SAM-vs-others comparison table, star CTA). Demo pipeline (`scripts/record-demo.mjs`). Social preview image. CONTRIBUTING + issue/PR templates. Launch kit in `docs/launch/` (Show HN, Product Hunt, Reddit, X thread, awesome-list submissions, checklist). 5 good-first-issues seeded.
+
 ## [1.2.0] - 2026-07-09 — "Trust & Ship"
 
 Every claim made true, every install frictionless, every tool safe.

@@ -16,7 +16,7 @@ import cors from "cors";
 import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
-import { runModel, Tier, providersStatus, runVision, warmBrain } from "./models.ts";
+import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
@@ -613,6 +613,36 @@ app.get("/api/admin/config", (_req, res) => {
     elonMode: isElonMode(),
     pools,
   });
+});
+
+// Live-validate a key by making one cheap test call to the provider. The key is used + discarded
+// (never logged, never stored here) — only saved if the user then hits Save.
+const testGet = (url: string, key: string) => fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false);
+const KEY_TEST: Record<string, (k: string) => Promise<boolean>> = {
+  groq: (k) => testGet("https://api.groq.com/openai/v1/models", k),
+  gemini: (k) => fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(k)}`, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false),
+  openrouter: (k) => testGet("https://openrouter.ai/api/v1/models", k),
+  mistral: (k) => testGet("https://api.mistral.ai/v1/models", k),
+  nvidia: (k) => testGet("https://integrate.api.nvidia.com/v1/models", k),
+  cerebras: (k) => testGet("https://api.cerebras.ai/v1/models", k),
+  together: (k) => testGet("https://api.together.xyz/v1/models", k),
+};
+app.post("/api/admin/validate-key", async (req, res) => {
+  const { provider, key } = (req.body || {}) as { provider?: string; key?: string };
+  if (!provider || !key) return res.json({ valid: false });
+  const tester = KEY_TEST[provider];
+  if (!tester) return res.json({ valid: null });   // can't test this one — save it and it rotates in
+  try { res.json({ valid: await tester(String(key).trim()) }); } catch { res.json({ valid: false }); }
+});
+
+// SAM Cloud gateway quota (only meaningful if SAM_GATEWAY_URL is set at build) — the UI shows the
+// remaining daily free allowance + nudges the user to add their own key for unlimited use.
+app.get("/api/gateway/quota", async (_req, res) => {
+  if (!GATEWAY_URL) return res.json({ enabled: false });
+  try {
+    const r = await fetch(`${GATEWAY_URL}/v1/quota?device=${encodeURIComponent(deviceId())}`, { signal: AbortSignal.timeout(6000) });
+    res.json({ enabled: true, ...(await r.json()) });
+  } catch { res.json({ enabled: true, error: "unreachable" }); }
 });
 
 // Save keys for a provider (rolling pool — send an array or comma/newline text).

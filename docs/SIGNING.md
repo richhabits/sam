@@ -5,6 +5,18 @@ warning that hurts installs. Signing removes it. **The CI is already wired** —
 secrets below, the *next release signs itself automatically* (no workflow edits). This doc is the exact
 steps + honest costs.
 
+## Status
+
+| Platform | Signing wired | Verified in CI | Live? | Needs |
+|---|---|---|---|---|
+| **macOS** | ✅ (auto when secrets set) | ✅ `spctl` + `stapler validate` fail the release if notarization doesn't stick | ⏳ add the 5 secrets below | Apple Developer ID ($99/yr) |
+| **Windows** | ✅ (auto when secrets set) | — (graceful unsigned + SHA-256 verify) | ⏳ optional | Azure Trusted Signing (~$10/mo) or OV/EV cert |
+| **Linux** | n/a (AppImage, unsigned by norm) | SHA-256 verify | ✅ | — |
+
+**Auto-update stays intact through signing.** electron-updater verifies each downloaded update against
+the signature of the currently-installed app, so a signed release updates signed-to-signed with no extra
+config — and unsigned→unsigned works today via the `latest-mac.yml`/`latest.yml` manifests + checksums.
+
 ---
 
 ## 🍎 macOS — Developer ID + notarization
