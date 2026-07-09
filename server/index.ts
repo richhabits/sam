@@ -22,6 +22,7 @@ import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cac
 import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
 import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
 import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens, SCOPES } from "./remote-tokens.ts";
+import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
@@ -210,6 +211,12 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+// Vault encryption — auto-unlock from the OS keychain if the user enabled it; else it stays locked
+// until they unlock in Settings (remote tokens + other sealed secrets are unreadable while locked).
+if (!BENCH_MODE && isEncryptionEnabled()) {
+  if (unlockFromKeychain()) console.log("  vault           · 🔓 unlocked from keychain\n");
+  else console.log("  vault           · 🔒 encrypted + locked — unlock in Settings\n");
+}
 // Life index — start watching the folders the user chose (auto-refresh on change; paused on battery).
 if (!BENCH_MODE) { try { startWatching(); const li = lifeIndexStats(); if (li.folders) console.log(`  life index      · ${li.folders} folder(s) watched\n`); } catch { /* no folders yet */ } }
 
@@ -1311,6 +1318,27 @@ app.post("/api/remote-tokens", (req, res) => {
 app.delete("/api/remote-tokens/:id", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "manage tokens on this computer only" });
   res.json({ ok: revokeToken(req.params.id) });
+});
+
+// ── VAULT ENCRYPTION AT REST (v1.5) — loopback-only; the passphrase never leaves the machine. ──
+app.get("/api/encryption", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "manage encryption on this computer only" });
+  res.json(encryptionStatus());
+});
+app.post("/api/encryption/setup", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "set up encryption on this computer only" });
+  const { passphrase, useKeychain } = req.body as { passphrase?: string; useKeychain?: boolean };
+  const r = setupEncryption(String(passphrase || ""), useKeychain !== false);
+  res.status(r.ok ? 200 : 400).json(r);
+});
+app.post("/api/encryption/unlock", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "unlock on this computer only" });
+  const ok = unlockWithPassphrase(String((req.body as any)?.passphrase || ""));
+  res.status(ok ? 200 : 401).json({ ok, ...encryptionStatus() });
+});
+app.post("/api/encryption/lock", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  lockVault(); res.json({ ok: true, ...encryptionStatus() });
 });
 
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
