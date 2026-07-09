@@ -1,35 +1,26 @@
 # Show HN draft
 
 **Title:**
-> Show HN: SAM – a free, private AI assistant that runs on your machine and does the work
+> Show HN: SAM – a local-first AI assistant that does the work (86% cheaper than v1.3)
 
-*(Alt titles to A/B: "Show HN: A local-first AI agent team with 167 tools, one paste to install" · "Show HN: SAM – ChatGPT-desktop but local, free, and it actually takes actions")*
+*(Alt titles to A/B: "Show HN: SAM – free, private AI agent for your Mac that writes its own tools" · "Show HN: A local-first AI that indexes your files, acts system-wide, and costs ~nothing")*
 
 **URL:** https://github.com/richhabits/sam
 
 **First comment (post immediately after):**
 
-Hi HN — I'm the maker (solo, under HECTIC). SAM is a private AI assistant that lives on your own
-machine. Three things make it different from a chat app:
+Hi HN — I'm the maker (solo, under HECTIC). SAM is a private AI assistant that lives on your own machine and actually *does* things (web, files, terminal, email, GitHub) rather than just chatting. It's now **MIT-licensed**. The last two releases were about making it cheap, fast and trustworthy:
 
-1. **It does the work, not just talk.** 167 real tools — web, files, terminal, email, calendar,
-   GitHub (commit/push/PRs), camera/vision. For a big job it spins up a team of specialist agents in
-   parallel and synthesizes one answer.
+1. **Cascade router.** A fast, model-free classifier sends each request to the cheapest brain that fits: trivial → your local Ollama model (never a paid API), standard → free cloud tiers (Groq/Cerebras/Gemini, ~40 auto-rotating), hard → the strong free lane; premium only if you opt in. On a fixed 20-task benchmark that's **~86% cheaper and ~46% faster** than the previous version, **100% served free-or-local**. The bench is in the repo (`npm run bench`) and runs against a deterministic mock, so it's reproducible and costs nothing.
 
-2. **Free and private by default.** It runs on free cloud tiers (auto-rotating across ~40 providers so
-   it never rate-limits itself), or 100% offline on Ollama — nothing leaves your machine in local mode.
-   No subscription, no telemetry, your keys/memory/vault stay local.
+2. **Knows your stuff, acts everywhere.** A semantic cache returns repeat questions in ~2ms/0 tokens. An on-device life index embeds folders you pick and cites the source file. A system-wide ⌥Space overlay lets you act on your current selection in any app.
 
-3. **One paste to install.** `curl -fsSL https://richhabits.github.io/sam/install.sh | bash`
-   (or `irm …/install.ps1 | iex` on Windows). It verifies the SHA-256 and launches. ~60 seconds to a
-   working assistant with zero keys.
+3. **It writes its own tools.** When it lacks one, it drafts a JS function, static-scans it (no eval/require/shell), sandbox-tests it in `node:vm` with nothing ambient, and saves it *disabled* for you to review. Capabilities are declared: `net`/`fs:write` are gated as dangerous; shell can never be forged.
 
-Honest bits: the desktop builds aren't code-signed yet (Apple cert incoming) — the installer verifies
-checksums and I document the Gatekeeper/SmartScreen click-through openly. Dangerous actions (shell,
-send, delete, push) always ask first, even in autopilot. Prompt-injection from fetched web/email
-content is fenced so it can't trigger tool calls.
+Privacy: keys/memory/files/vault stay local; only the prompt you send goes to the brain you pick; nothing at all in offline mode. No telemetry. Optional vault encryption (scrypt→AES-256-GCM, OS-keychain). Dangerous tools (shell/send/delete/push) always ask first; prompt-injection from fetched content is fenced.
 
-Stack: TypeScript/Express + React, an Electron desktop app, a model-agnostic agent loop, embeddings for
-memory/tool routing, no database (markdown vault). Tests + a 3-OS CI matrix.
+Honest bits: desktop builds aren't code-signed yet (checksums are published; I document the Gatekeeper/SmartScreen click-through openly). At-rest encryption is opt-in and not yet whole-DB (full-disk encryption recommended there).
 
-Happy to answer anything — architecture, the free-provider routing, the safety model, why local-first.
+Stack: TypeScript/Express + React, Electron, a model-agnostic agent loop, local embeddings, a markdown/SQLite vault. Tests + 3-OS CI + a macOS overlay e2e.
+
+Happy to go deep on the routing, the sandbox, or the security model. What would you break first?

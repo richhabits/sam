@@ -3,13 +3,10 @@
 Ready-to-submit entries for the 5 most relevant lists. **One PR per list**, each framed around the value
 that list's readers care about.
 
-> ⚠️ **Licensing caveat — read first.** Several awesome lists (notably **awesome-selfhosted** and
-> **awesome-electron**) require an **open-source (OSI) license**. SAM is currently *proprietary /
-> source-available* ("shared for personal use, not for redistribution" — see LICENSE). Those two will
-> likely reject it until relicensed (e.g. to a permissive or fair-source license). The other three below
-> accept free/source-available tools. **Decision for Romeo:** relicense to open-source to unlock the big
-> lists, or target only the license-agnostic ones. Don't submit to OSS-only lists as-is — a rejected PR
-> burns credibility.
+> ✅ **Licensing: unblocked (v1.5).** SAM is now **MIT-licensed** — all five lists below, including the
+> OSS-only **awesome-selfhosted** and **awesome-electron**, accept it. Submit `License: MIT` where the
+> format asks. (Update the entries below from "167 tools" to the current count if it's changed, and lead
+> with the v1.4/v1.5 hook — the −86% cost / free-or-local routing — where a one-liner allows.)
 
 ## 1. awesome-ai-agents  (e2b-dev/awesome-ai-agents) — ✅ good fit
 Rules: real, working agent projects; alphabetical within section; one-line description. Entry:
@@ -29,17 +26,17 @@ Rules: privacy-respecting tools; state the privacy property. Entry:
 - [SAM](https://github.com/richhabits/sam) - Private AI assistant that runs on your own machine; keys, memory and data stay local, nothing leaves in offline mode, zero telemetry.
 ```
 
-## 4. awesome-selfhosted  (awesome-selfhosted/awesome-selfhosted) — ⚠️ needs OSS license
+## 4. awesome-selfhosted  (awesome-selfhosted/awesome-selfhosted) — ✅ now eligible (MIT)
 Rules: **must be open-source**, self-hostable, actively maintained; strict format + a working demo/docs.
-Entry (only if relicensed):
+Entry:
 ```md
-- SAM - Free, private AI assistant that runs on your own machine with 167 tools and an agent team; free cloud tiers or fully offline on Ollama. `License` `Language`
+- SAM - Free, private, local-first AI assistant that runs on your own machine with 170+ tools and an agent team; routes to your local model first (most tasks cost nothing) or runs fully offline on Ollama. `MIT` `Nodejs/TypeScript`
 ```
 
-## 5. awesome-electron  (sindresorhus/awesome-electron) — ⚠️ needs OSS + high bar
-Rules: notable open-source Electron apps; high quality bar. Entry (only if relicensed):
+## 5. awesome-electron  (sindresorhus/awesome-electron) — ✅ now eligible (MIT + high bar)
+Rules: notable open-source Electron apps; high quality bar. Entry:
 ```md
-- [SAM](https://github.com/richhabits/sam) - Private, local-first AI assistant with a global hotkey; free or fully offline.
+- [SAM](https://github.com/richhabits/sam) - Private, local-first AI assistant with a system-wide ⌥Space overlay; routes to your local model first, free or fully offline.
 ```
 
 ## Submission tips
