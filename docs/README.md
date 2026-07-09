@@ -10,7 +10,7 @@ Everything a skeptical reader clicks before starring.
 - **[Signing](SIGNING.md)** — why builds are unsigned for now, and how to verify checksums.
 
 ## The 60-second pitch
-SAM is a free, private, MIT-licensed AI that runs on your own machine and *does the work* — web, files, terminal, email, GitHub. A cascade router sends each request to the cheapest brain that fits (your local model first), so most tasks cost nothing. It caches repeat answers instantly, indexes the folders you choose (on-device, cited), can be summoned system-wide with ⌥Space to act on your selection in any app, and safely writes its own tools when it lacks one. No subscription, no telemetry.
+SAM is a free, private, MIT-licensed AI that runs on your own machine and *does the work* — web, files, terminal, email, GitHub. A cascade router sends each request to the cheapest brain that fits (your local model first), so most tasks cost nothing. It caches repeat answers instantly, indexes the folders you choose (on-device, cited), can be summoned system-wide with **Alt+Space** (⌥Space on Mac) to act on your selection in any app, and safely writes its own tools when it lacks one. No subscription, no telemetry.
 
 ## How it works (one diagram in words)
 `your message → cascade classifier (≈0ms, local) → cheapest tier that fits → [semantic cache? → 2ms/0 tokens] → agent loop (170+ tools, dangerous ones ask first) → answer, with the source file / tier badge shown`
