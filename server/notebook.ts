@@ -10,7 +10,7 @@
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname, extname, basename } from "node:path";
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import { openDb } from "./db.ts";
 import { embed, embedOne, cosine } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";

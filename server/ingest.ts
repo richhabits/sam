@@ -15,7 +15,7 @@ import { join, dirname, extname, basename, resolve } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import { openDb } from "./db.ts";
 import { embed, embedOne, cosine } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";

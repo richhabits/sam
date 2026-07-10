@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { newKeyConfig, unlockKey, encrypt, decrypt, keyFingerprint, KeyConfig } from "./crypto-vault.ts";
+import { newKeyConfig, unlockKey, encrypt, decrypt, keyFingerprint, type KeyConfig } from "./crypto-vault.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

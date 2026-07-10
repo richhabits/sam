@@ -597,12 +597,6 @@ export async function runVision(system: string, prompt: string, images: ImagePar
       if (text) { reportSuccess("gemini", key); return { text: text.trim(), provider: "gemini-2.5-flash (vision)", tier: "free" }; }
     } catch (e: any) { reportFailure("gemini", key, e?.status); }
   }
-  
-  // Fully Local Zero-Cloud Fallback via Ollama (llava). Always attempt it — Ollama
-  // runs on the default localhost URL without any env var set, so gating on
-  // process.env.OLLAMA_URL meant this never fired on a normal local install. If
-  // Ollama's down or llava isn't pulled, the fetch fails and we fall through below.
-  {
     try {
       const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
       const ollamaModel = process.env.OLLAMA_VISION_MODEL || "llava";
@@ -632,7 +626,6 @@ export async function runVision(system: string, prompt: string, images: ImagePar
     } catch (e: any) {
       // Fall through to the offline message below if Ollama fails/isn't running
     }
-  }
 
   return { text: "To read photos, SAM needs a free Gemini key (add GEMINI_API_KEYS to .env) or Ollama running with the 'llava' model locally. Everything else works without it.", provider: "none", tier: "free" };
 }

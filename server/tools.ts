@@ -784,7 +784,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Saving “${i.title}” to Obsidian`, run: async (i) => {
       const vault = obsidianVault();
       if (!vault) return "I couldn't find your Obsidian vault. Set OBSIDIAN_VAULT in Settings to its folder path.";
-      const safeTitle = String(i.title || "SAM note").replace(/[\/\\:*?"<>|]/g, "-").slice(0, 80);
+      const safeTitle = String(i.title || "SAM note").replace(/[/\\:*?"<>|]/g, "-").slice(0, 80);
       const dir = i.folder ? join(vault, String(i.folder)) : join(vault, "SAM");
       mkdirSync(dir, { recursive: true });
       const file = join(dir, `${safeTitle}.md`);

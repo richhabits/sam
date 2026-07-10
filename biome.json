@@ -1,30 +1,43 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": {
-    "ignore": ["dist", "dist-electron", "dist-app", "node_modules", "vault", "docs/index.html", "packaging/out", "coverage", "*.min.js"]
-  },
-  "formatter": { "enabled": false },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "suspicious": {
-        "noExplicitAny": "off",
-        "noAssignInExpressions": "warn",
-        "noConfusingVoidType": "off"
-      },
-      "complexity": {
-        "noForEach": "off",
-        "useLiteralKeys": "off"
-      },
-      "style": {
-        "noNonNullAssertion": "off",
-        "useNodejsImportProtocol": "warn",
-        "noParameterAssign": "off",
-        "useTemplate": "off"
-      },
-      "performance": { "noDelete": "off" }
-    }
-  }
+	"$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"files": {
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/dist-electron",
+			"!**/dist-app",
+			"!**/node_modules",
+			"!**/vault",
+			"!**/docs/index.html",
+			"!**/packaging/out",
+			"!**/coverage",
+			"!**/*.min.js",
+			"!**/*.svg",
+			"!**/docs/_template.html"
+		]
+	},
+	"formatter": { "enabled": false },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noAssignInExpressions": "warn",
+				"noConfusingVoidType": "off"
+			},
+			"complexity": {
+				"noForEach": "off",
+				"useLiteralKeys": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useNodejsImportProtocol": "warn",
+				"noParameterAssign": "off",
+				"useTemplate": "off"
+			},
+			"performance": { "noDelete": "off" }
+		}
+	}
 }

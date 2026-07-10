@@ -83,7 +83,7 @@ if (_migCount.c === 0 && existsSync(OLD_STORE)) {
 // The embedding model this vault already uses (most memories). Pin to it so a
 // provider rotation between sessions doesn't orphan everything stored under the
 // old model. `undefined` = not computed yet; `null` = empty vault.
-let _pinned: string | null | undefined = undefined;
+let _pinned: string | null | undefined ;
 export function pinnedModel(): string | null {
   if (_pinned !== undefined) return _pinned;
   try { const row = db.prepare(`SELECT model FROM memories GROUP BY model ORDER BY COUNT(*) DESC LIMIT 1`).get() as { model?: string } | undefined; _pinned = row?.model ?? null; } catch { _pinned = null; }

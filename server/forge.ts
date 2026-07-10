@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runModel } from "./models.ts";
-import { TOOLS, Tool } from "./tools.ts";
+import { TOOLS, type Tool } from "./tools.ts";
 import { markDangerous, unmarkDangerous } from "./authz.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
