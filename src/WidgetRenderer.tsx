@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { renderMarkdown } from "./lib/md";
 
 // ── WIDGET COMPONENTS ──
@@ -90,11 +90,11 @@ const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: 
       } else {
         out.push(<div key={`w${i}`} className="widget-error">Unknown widget type: {w.type}</div>);
       }
-    } catch (e) {
+    } catch (_e) {
       out.push(<div key={`w${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(`\`\`\`json\n${widgetJson}\n\`\`\``) }} />);
     }
 
-    if (remainingText && remainingText.trim()) {
+    if (remainingText?.trim()) {
       out.push(<div key={`t${i}`} className="bubble md" dangerouslySetInnerHTML={{ __html: renderWithCheckboxes(remainingText) }} />);
     }
   }

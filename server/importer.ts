@@ -1,4 +1,4 @@
-import { runModel, Tier } from "./models.ts";
+import { runModel, type Tier } from "./models.ts";
 import { remember } from "./memory.ts";
 
 /**

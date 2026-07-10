@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, Swarm, getSchedules, toggleSchedule, removeSchedule, Schedule, getPeople } from "./lib/api";
+import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.

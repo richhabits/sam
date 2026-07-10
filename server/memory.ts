@@ -9,7 +9,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 import { openDb } from "./db.ts";
 import { embedOne, cosine } from "./embeddings.ts";
 
@@ -83,7 +82,7 @@ if (_migCount.c === 0 && existsSync(OLD_STORE)) {
 // The embedding model this vault already uses (most memories). Pin to it so a
 // provider rotation between sessions doesn't orphan everything stored under the
 // old model. `undefined` = not computed yet; `null` = empty vault.
-let _pinned: string | null | undefined = undefined;
+let _pinned: string | null | undefined ;
 export function pinnedModel(): string | null {
   if (_pinned !== undefined) return _pinned;
   try { const row = db.prepare(`SELECT model FROM memories GROUP BY model ORDER BY COUNT(*) DESC LIMIT 1`).get() as { model?: string } | undefined; _pinned = row?.model ?? null; } catch { _pinned = null; }
@@ -183,7 +182,7 @@ export function memoryStats() {
 
 export function forget(id: string): boolean {
   const result = db.prepare("DELETE FROM memories WHERE id = ?").run(id);
-  if (result.changes > 0) for (const [m, idx] of _vecCache) {   // keep the index in sync
+  if (result.changes > 0) for (const [_m, idx] of _vecCache) {   // keep the index in sync
     const i = idx.findIndex((r) => r.id === id);
     if (i >= 0) { idx.splice(i, 1); break; }
   }

@@ -5,13 +5,22 @@
 #  Linux coverage is the documented manual script in docs/e2e-overlay-manual.md.
 # ─────────────────────────────────────────────────────────────
 name: Overlay E2E
+# ⚠️ SECURITY (public repo + self-hosted runner): this job is destined for the self-hosted macOS
+# "gui" runner (v1.6 Phase 1), which lives on a personal Mac holding the code-signing archive. A
+# self-hosted runner must NEVER run untrusted code from a fork PR. Therefore this workflow triggers
+# ONLY on push to our own branches (forks cannot push to the repo) + manual dispatch (maintainer-only)
+# — deliberately NO `pull_request` trigger. Rule for all self-hosted jobs: push/main/release +
+# workflow_dispatch only, never pull_request. Also enable repo Settings → Actions → Fork PR workflows
+# → "Require approval for all outside collaborators" as a second layer. See docs/PIPELINE.md.
 on:
   push: { branches: [main, "release/**"] }
-  pull_request: { branches: [main] }
   workflow_dispatch:
+concurrency:
+  group: overlay-e2e-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   overlay:
-    runs-on: macos-latest
+    runs-on: macos-latest   # v1.6 Phase 1 moves this to: [self-hosted, macOS, gui] once the runner is registered
     # INFORMATIONAL for now: driving the overlay via Playwright's _electron on the hosted macOS runner
     # is flaky (the main-process __samE2E hook isn't reliably observable via app.evaluate there). The
     # overlay itself is exercised by the unit-tested injection fencing + the manual checklist in

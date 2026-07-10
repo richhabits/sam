@@ -2,16 +2,18 @@
 
 # S.A.M. — Smart Artificial Mind
 
-**A free, private team of AI agents that lives on your Mac, remembers everything, and actually does the work. No subscription, no cost — runs on free cloud AI tiers by default, or 100% offline on Ollama.**
+**A free, private team of AI agents that lives on your computer, remembers everything, and actually does the work. No subscription, no cost — runs on free cloud AI tiers by default, or 100% offline on Ollama.**
 
-Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes real action on your Mac (web, files, terminal, email, calls, GitHub), and when a job's big it assembles a **team of specialist agents** to tackle it in parallel — all running free on your own machine.
+Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes real action on your computer (web, files, terminal, email, calls, GitHub), and when a job's big it assembles a **team of specialist agents** to tackle it in parallel — all running free on your own machine.
 
 `Free forever` · `Local-first & private` · `40 free AI brains` · `A team of agents` · `Ask-first safe`
+
+**Works everywhere: macOS · Windows · Linux** — [see the platform matrix](docs/PLATFORMS.md)
 
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-MIT-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-MIT-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-cross--platform-6E56CF"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 <div align="center">
@@ -21,8 +23,9 @@ curl -fsSL https://richhabits.github.io/sam/install.sh | bash
 ```
 **macOS · Linux — one paste.** Windows: `irm https://richhabits.github.io/sam/install.ps1 | iex`
 
-<!-- Hero demo — regenerated each release by scripts/record-demo.mjs -->
-<img alt="SAM demo" src="docs/media/demo.gif" width="720">
+<!-- Hero: static preview until the demo GIF is recorded on a real machine (scripts/record-demo.mjs).
+     Swap the src back to docs/media/demo.gif once it's generated. -->
+<img alt="SAM — free, private, local-first AI assistant" src="docs/media/social-preview.png" width="720">
 
 ⭐ **[Star SAM](https://github.com/richhabits/sam)** if you want a free, private AI that actually does the work.
 
@@ -194,7 +197,7 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 **Same Wi-Fi (easiest):** ⚙ Settings → **📱 Use SAM on your phone** → *Turn on phone access* → restart SAM → **scan the QR** with your phone camera. It opens SAM already signed in; tap **Share → Add to Home Screen** to install it like an app (camera, voice, everything). A private token gates every request; loopback stays untouched.
 
-**From anywhere (free, private, encrypted):** install [Tailscale](https://tailscale.com/) on your Mac + phone (both free, ~5 min) — then reach SAM from any network at `http://<your-mac>.<tailnet>.ts.net:8787` over an encrypted mesh, no ports opened, no data through anyone's cloud. Best of both: private *and* everywhere.
+**From anywhere (free, private, encrypted):** install [Tailscale](https://tailscale.com/) on your computer + phone (both free, ~5 min) — then reach SAM from any network at `http://<your-machine>.<tailnet>.ts.net:8787` over an encrypted mesh, no ports opened, no data through anyone's cloud. Best of both: private *and* everywhere.
 
 ---
 
@@ -208,8 +211,8 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 ## License
 
-**Proprietary — © 2026 HECTIC. All rights reserved.** See [LICENSE](LICENSE).
-Shared for personal use and testing; not for redistribution or commercial use without permission.
+**MIT** © 2026 HECTIC. See [LICENSE](LICENSE).
+Free to use, modify, and redistribute — including commercially — with attribution.
 
 <div align="center">
 

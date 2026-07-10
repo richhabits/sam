@@ -17,7 +17,7 @@
 //          npm run bench -- --compare baseline v1.4   → prints a delta table
 // ─────────────────────────────────────────────────────────────
 
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

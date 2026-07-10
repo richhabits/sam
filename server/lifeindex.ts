@@ -14,12 +14,12 @@
 //   • EXPLICIT — folders are added by the user; we never scan the whole disk.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, watch, FSWatcher } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, watch, type FSWatcher } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { ingestFolder, forgetDoc, searchDocs, IngestReport } from "./ingest.ts";
+import { ingestFolder, forgetDoc, searchDocs, type IngestReport } from "./ingest.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

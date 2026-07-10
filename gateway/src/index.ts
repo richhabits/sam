@@ -2,7 +2,7 @@
 //  SAM Cloud gateway — OPTIONAL hosted free-tier brain.
 //
 //  A tiny Cloudflare Worker that lets new SAM installs get instant cloud AI through pooled keys that
-//  the operator (Romeo) holds — WITHOUT shipping any key in the app. It enforces hard cost controls:
+//  the operator holds — WITHOUT shipping any key in the app. It enforces hard cost controls:
 //  per-device daily quota, a global daily cap, a cheap-models-only whitelist, an abuse blocklist, and
 //  an automatic shutoff at a spend ceiling. Device identity is an anonymous random ID generated at
 //  install — no personal data, so the zero-telemetry promise holds.
