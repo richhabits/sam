@@ -4,9 +4,8 @@ import "./preboot.ts";
 
 import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen, clipboard } from "electron";
 import path from "node:path";
-import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, OverlayAction } from "./overlay.ts";
+import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8787;

@@ -6,7 +6,7 @@
 //
 // URLs + checksums are read from env when present (set by the release workflow); otherwise the
 // GitHub release-asset URLs are inferred and a reminder is printed to fill the SHAs.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 

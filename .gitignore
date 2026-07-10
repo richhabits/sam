@@ -11,6 +11,15 @@ release/
 .env.*.local
 *.pem
 *.key
+# signing material — code-signing certs / provisioning / private keys of every format
+*.p12
+*.pfx
+*.cer
+*.crt
+*.p8
+*.mobileprovision
+*.certSigningRequest
+sam-signing/
 
 # runtime memory (personal — keep folders, ignore contents)
 vault/daily/*.md

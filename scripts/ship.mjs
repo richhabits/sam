@@ -26,7 +26,7 @@ try {
   run("git push");
 
   console.log("\n✅ Shipped to GitHub. Every user gets it automatically on next launch. 🔄\n");
-} catch (e) {
+} catch (_e) {
   console.error("\n✗ Ship stopped (nothing pushed). Fix the above and run again.\n");
   process.exit(1);
 }

@@ -42,7 +42,7 @@ export function renderMarkdown(text: string): string {
     let html = "";
     for (let i = 0; i < parts.length; i++) {
       if (i % 2 === 1) {
-        const lang = (parts[i].match(/^([a-zA-Z0-9+#.]*)\n/) || [, ""])[1] || "";
+        const lang = (parts[i].match(/^([a-zA-Z0-9+#.]*)\n/) || [undefined, ""])[1] || "";
         const code = escapeHtml(parts[i].replace(/^[a-zA-Z0-9+#.]*\n/, ""));
         html += `<div class="code-wrap"><button class="code-copy" type="button" aria-label="Copy code">Copy</button><pre class="code"${lang ? ` data-lang="${lang}"` : ""}><code>${highlight(code)}</code></pre></div>`;
       } else html += renderBlock(parts[i]);

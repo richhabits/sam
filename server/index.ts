@@ -16,7 +16,7 @@ import cors from "cors";
 import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
-import { runModel, Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
+import { runModel, type Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
 import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
@@ -620,7 +620,7 @@ app.post("/api/stream", async (req, res) => {
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
     }, turbo);
-  } catch (e: any) {
+  } catch (_e: any) {
     send({ type: "done", text: "Something went wrong mid-answer.", trace: [] });
   }
   send({ type: "end", projectId: projectId || "" });

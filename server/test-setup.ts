@@ -5,6 +5,6 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-if (!process.env.VAULT_DIR || !process.env.VAULT_DIR.includes("sam-test")) {
+if (!process.env.VAULT_DIR?.includes("sam-test")) {
   process.env.VAULT_DIR = mkdtempSync(join(tmpdir(), "sam-test-vault-"));
 }

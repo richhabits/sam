@@ -18,8 +18,8 @@ const read = (p) => { try { return readFileSync(join(ROOT, p), "utf8"); } catch 
 const tools = [...read("server/tools.ts").matchAll(/\bname:\s*"([a-z0-9_]+)"/g)].length;
 const brains = (read("server/models.ts").match(/id:\s*"[a-z0-9_]+",\s*tier:\s*"free"/g) || []).length;
 const agents = (read("server/agents.ts").match(/\{\s*id:\s*"[a-z0-9_]+",\s*name:/g) || []).length;
-let skills = 0;
-try { skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch {}
+let _skills = 0;
+try { _skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch {}
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   *{margin:0;padding:0;box-sizing:border-box}
