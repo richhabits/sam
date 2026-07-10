@@ -1,0 +1,27 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+categories:
+  - title: '🔒 Security'
+    labels: ['security']
+  - title: '🚀 Features'
+    labels: ['feature', 'enhancement']
+  - title: '🐛 Fixes'
+    labels: ['fix', 'bug']
+  - title: '🧹 Maintenance'
+    labels: ['chore', 'dependencies', 'ci', 'docs']
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+version-resolver:
+  major:
+    labels: ['major', 'breaking']
+  minor:
+    labels: ['feature', 'enhancement', 'minor']
+  patch:
+    labels: ['fix', 'bug', 'chore', 'dependencies', 'ci', 'docs', 'security']
+  default: patch
+template: |
+  ## What's changed
+
+  $CHANGES
+
+  **Full changelog**: https://github.com/richhabits/sam/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
