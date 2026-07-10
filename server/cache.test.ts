@@ -8,7 +8,7 @@ beforeAll(async () => {
 });
 beforeEach(() => C.clearCache());
 
-const FP = () => C.fingerprint({ skillId: "content", userName: "user", mode: "business", lean: false, recalled: "", docs: "" });
+const FP = () => C.fingerprint({ skillId: "content", userName: "alex", mode: "business", lean: false, recalled: "", docs: "" });
 
 describe("cacheable", () => {
   it("blocks live/current info and private requests", () => {
@@ -35,8 +35,8 @@ describe("exact cache", () => {
   });
 
   it("misses when the context fingerprint changes (invalidation)", () => {
-    const fp1 = C.fingerprint({ skillId: "content", recalled: "user likes tea" });
-    const fp2 = C.fingerprint({ skillId: "content", recalled: "user likes coffee now" });
+    const fp1 = C.fingerprint({ skillId: "content", recalled: "alex likes tea" });
+    const fp2 = C.fingerprint({ skillId: "content", recalled: "alex likes coffee now" });
     C.store({ message: "what do I like?", fp: fp1, answer: "tea", provider: "p", tier: "free" });
     expect(C.lookup("what do I like?", fp1)).not.toBeNull();
     expect(C.lookup("what do I like?", fp2)).toBeNull();   // context changed → miss

@@ -23,7 +23,7 @@ const CONTENTS = {
 
 describe("pack sign + verify", () => {
   it("exports a signed pack that verifies", () => {
-    const json = P.exportPack({ name: "Landlord Pack", author: "user" }, CONTENTS as any, 1);
+    const json = P.exportPack({ name: "Landlord Pack", author: "alex" }, CONTENTS as any, 1);
     const v = P.verifyPack(json);
     expect(v.ok).toBe(true);
     expect(v.signed).toBe(true);

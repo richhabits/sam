@@ -8,11 +8,11 @@ beforeEach(() => { rmSync(SCRATCH, { recursive: true, force: true }); for (const
 
 describe("scoped remote tokens", () => {
   it("creates a token, returns plaintext ONCE, verifies to its scope", () => {
-    const c = T.createToken("the user's iPhone", "no-dangerous");
+    const c = T.createToken("Owner's iPhone", "no-dangerous");
     expect(c.token).toBeTruthy();
     const v = T.verifyToken(c.token);
     expect(v?.scope).toBe("no-dangerous");
-    expect(v?.label).toBe("the user's iPhone");
+    expect(v?.label).toBe("Owner's iPhone");
   });
 
   it("never stores or lists the plaintext or hash", () => {
