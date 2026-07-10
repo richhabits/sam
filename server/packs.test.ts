@@ -75,3 +75,28 @@ describe("apply installs only approved items, tools DISABLED, never unsafe code"
     expect(r.installedTools).toHaveLength(0);
   });
 });
+
+describe("pack versioning + dependencies (v1.8)", () => {
+  it("stamps version + dependencies into the signed pack and still verifies", () => {
+    const json = P.exportPack({ name: "Builds On Base", author: "alex", version: "2.1.0", dependencies: ["base-pack"] }, CONTENTS as any, 1);
+    const v = P.verifyPack(json);
+    expect(v.ok).toBe(true);
+    expect(v.sigValid).toBe(true);                       // version/deps are inside the signed bytes
+    expect(v.pack?.meta.version).toBe("2.1.0");
+    expect(v.pack?.meta.dependencies).toEqual(["base-pack"]);
+  });
+
+  it("reports unmet dependencies without auto-installing anything", () => {
+    const json = P.exportPack({ name: "Needs Two", version: "1.0.0", dependencies: ["base-pack", "extra-pack"] }, CONTENTS as any, 1);
+    const pack = P.verifyPack(json).pack!;
+    expect(P.unmetDependencies(pack, new Set(["base-pack"]))).toEqual(["extra-pack"]);
+    expect(P.unmetDependencies(pack, new Set(["base-pack", "extra-pack"]))).toEqual([]);
+  });
+
+  it("a pre-v1.8 pack with no version/deps still verifies", () => {
+    const json = P.exportPack({ name: "Legacy" }, CONTENTS as any, 1);   // no version/deps passed
+    const v = P.verifyPack(json);
+    expect(v.ok && v.sigValid).toBe(true);
+    expect(v.pack?.meta.version).toBe("1.0.0");           // defaulted, not undefined
+  });
+});
