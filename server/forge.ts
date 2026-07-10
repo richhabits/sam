@@ -152,7 +152,7 @@ export function sandboxRun(code: string, input: any, caps: Capability[] = [], na
     child.on("error", (e: any) => done(() => reject(new Error(String(e?.message || e)))));
     child.on("close", () => done(() => {
       let r: any; try { r = JSON.parse(out); } catch { r = null; }
-      if (r && r.ok) resolve(String(r.out ?? ""));
+      if (r?.ok) resolve(String(r.out ?? ""));
       else reject(new Error(r?.err || "sandbox produced no output"));
     }));
     child.stdin.on("error", () => {});   // child may exit before we finish writing

@@ -43,7 +43,7 @@ async function findByContent(root: string, query: string, limit = 30): Promise<s
   }
   return hits;
 }
-import { homedir, cpus, totalmem, freemem, uptime } from "node:os";
+import { homedir, } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { resolve, dirname, basename, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -483,7 +483,7 @@ async function speak(text: string): Promise<string> {
 }
 
 // ── MORE macOS ACTIONS (risky) ───────────────────────────────
-async function sendEmail(i: { to: string; subject?: string; body: string }): Promise<string> {
+async function _sendEmail(i: { to: string; subject?: string; body: string }): Promise<string> {
   const script = `tell application "Mail"
 set m to make new outgoing message with properties {subject:"${esc(i.subject || "")}", content:"${esc(i.body)}", visible:false}
 tell m to make new to recipient at end of to recipients with properties {address:"${esc(i.to)}"}
@@ -499,12 +499,12 @@ send "${esc(i.message)}" to targetBuddy
 end tell`;
   await osa(script); return `iMessage sent to ${i.to}.`;
 }
-async function addReminder(i: { text: string; list?: string }): Promise<string> {
+async function _addReminder(i: { text: string; list?: string }): Promise<string> {
   const list = i.list ? `list "${esc(i.list)}"` : "default list";
   await osa(`tell application "Reminders" to make new reminder at ${list} with properties {name:"${esc(i.text)}"}`);
   return `Added reminder: ${i.text}`;
 }
-async function addCalendarEvent(i: { title: string; start?: string; calendar?: string }): Promise<string> {
+async function _addCalendarEvent(i: { title: string; start?: string; calendar?: string }): Promise<string> {
   const cal = i.calendar || "Home";
   const start = i.start ? `date "${esc(i.start)}"` : "(current date) + 3600";
   await osa(`tell application "Calendar" to tell calendar "${esc(cal)}" to make new event with properties {summary:"${esc(i.title)}", start date:${start}, end date:(${start}) + 3600}`);
@@ -849,7 +849,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Setting a timer for ${i.minutes}m`, 
     run: async (i) => {
       const min = Number(i.minutes);
-      if (isNaN(min) || min <= 0) return "Invalid minutes.";
+      if (Number.isNaN(min) || min <= 0) return "Invalid minutes.";
       setTimeout(() => {
         notify({ title: "Timer Done", message: i.reason || "Time is up!" });
       }, min * 60000);
@@ -904,7 +904,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       if (!IS_MAC) return "Caffeinate only works on macOS.";
       const min = Number(i.minutes);
-      if (isNaN(min) || min <= 0) return "Invalid minutes.";
+      if (Number.isNaN(min) || min <= 0) return "Invalid minutes.";
       try {
         // Run in background detached
         sh(`caffeinate -d -t ${min * 60} &`);
@@ -1015,7 +1015,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Converting ${i.amount} ${i.from} to ${i.to}`,
     run: async (i) => {
       const v = Number(i.amount);
-      if (isNaN(v)) return "Invalid amount.";
+      if (Number.isNaN(v)) return "Invalid amount.";
       const f = String(i.from).toLowerCase();
       const t = String(i.to).toLowerCase();
       let res = 0;
@@ -1123,7 +1123,7 @@ export const TOOLS: Tool[] = [
         }
         await walk(dir);
         let out = "";
-        for (const [hash, paths] of map.entries()) {
+        for (const [_hash, paths] of map.entries()) {
           if (paths.length > 1) {
             out += `Duplicate Group:\\n` + paths.map(p => `  - ${p}`).join("\\n") + "\\n\\n";
           }
@@ -1250,7 +1250,7 @@ export const TOOLS: Tool[] = [
   { name: "get_location", safe: true, description: "Get the user's current approximate location (city/region).", params: "(none)",
     activity: () => `Checking your location`, run: async () => (await fetchLocation(true)) || "Couldn't determine location (offline?)." },
   { name: "notify", safe: true, description: "Show a macOS notification. input: {title?, message}.", params: "{title?, message}",
-    activity: (i) => `Sending a notification`, run: (i) => notify(i) },
+    activity: (_i) => `Sending a notification`, run: (i) => notify(i) },
   { name: "get_weather", safe: true, description: "Get current weather. input: a place name (city).", params: "place",
     activity: (i) => `Checking the weather in ${i.place ?? i ?? "your area"}`, run: (i) => getWeather(i.place ?? i ?? "") },
 
@@ -1358,7 +1358,7 @@ export const TOOLS: Tool[] = [
     activity: () => `Checking your nudges`,
     run: async () => { const l = listNudges(); return l.length ? l.map((n) => `• ${n.text}${n.due ? ` (due ${n.due})` : ""}`).join("\n") : "No pending nudges."; } },
   { name: "complete_nudge", safe: true, description: "Mark a nudge done. input: text or id.", params: "text",
-    activity: (i) => `Ticking off a nudge`,
+    activity: (_i) => `Ticking off a nudge`,
     run: async (i) => completeNudge(i.text ?? i.id ?? i) },
 
   // ── File utilities (quick wins) ──
@@ -1452,7 +1452,7 @@ export const TOOLS: Tool[] = [
 
   // risky · ask first
   { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
-    activity: (i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
+    activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "write_file", safe: false, description: "Write/overwrite a file. input: {path, content}.", params: "{path, content}",
     activity: (i) => `Saving ${i.path}`, preview: (i) => `Write to ${i.path} (${(i.content||"").length} chars)`, run: (i) => writeFileTool(i) },
   { name: "open_app", safe: false, description: "Open a Mac application. input: app name.", params: "app name",
@@ -1462,7 +1462,7 @@ export const TOOLS: Tool[] = [
   { name: "press_key", safe: false, description: "Press a key. input: {key: <key code number>, modifiers?: [command|shift|option|control]}.", params: "{key, modifiers?}",
     activity: () => `Pressing a key`, preview: (i) => `Press key code ${i.key}${i.modifiers?` + ${i.modifiers.join("+")}`:""}`, run: (i) => pressKey(i) },
   { name: "click", safe: false, description: "Click the mouse at screen coordinates. input: {x, y}.", params: "{x, y}",
-    activity: (i) => `Clicking the screen`, preview: (i) => `Click at ${i.x}, ${i.y}`, run: (i) => clickAt(i) },
+    activity: (_i) => `Clicking the screen`, preview: (i) => `Click at ${i.x}, ${i.y}`, run: (i) => clickAt(i) },
   { name: "applescript", safe: false, description: "Run AppleScript for deep macOS automation (control apps, Messages, Mail, etc). input: script.", params: "script",
     activity: () => `Automating an app`, preview: (i) => `Run AppleScript:\n${i.script ?? i}`, run: (i) => appleScript(i.script ?? i) },
   { name: "clipboard_set", safe: false, description: "Put text on the clipboard. input: text.", params: "text",
@@ -1565,7 +1565,7 @@ export const TOOLS: Tool[] = [
   { name: "trash_file", safe: false, description: "Move a file to the Trash (recoverable). input: path.", params: "path",
     activity: (i) => `Trashing ${i.path ?? i}`, preview: (i) => `Move to Trash: ${i.path ?? i}`, run: (i) => moveToTrash(i.path ?? i) },
   { name: "set_volume", safe: false, description: "Set the system volume 0-100. input: level.", params: "level",
-    activity: (i) => `Setting volume`, preview: (i) => `Set volume to ${i.level ?? i}%`, run: (i) => setVolume(i.level ?? i) },
+    activity: (_i) => `Setting volume`, preview: (i) => `Set volume to ${i.level ?? i}%`, run: (i) => setVolume(i.level ?? i) },
   { name: "music", safe: false, description: "Control Apple Music. input: {action: play|pause|next|previous}.", params: "{action}",
     activity: (i) => `Music: ${i.action ?? i}`, preview: (i) => `Music control: ${i.action ?? i}`, run: (i) => musicControl(i.action ?? i) },
   { name: "call", safe: false, description: "Place a phone call through your iPhone (Continuity). input: a phone number.", params: "number",

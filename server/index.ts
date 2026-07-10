@@ -620,7 +620,7 @@ app.post("/api/stream", async (req, res) => {
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
     }, turbo);
-  } catch (e: any) {
+  } catch (_e: any) {
     send({ type: "done", text: "Something went wrong mid-answer.", trace: [] });
   }
   send({ type: "end", projectId: projectId || "" });

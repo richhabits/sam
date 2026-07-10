@@ -9,7 +9,7 @@
 //  configurable local drop folder.
 // ─────────────────────────────────────────────────────────────
 
-import { watch, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { watch, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, } from "node:fs";
 import { join, extname, basename } from "node:path";
 import { homedir } from "node:os";
 import { exec } from "node:child_process";
@@ -98,7 +98,7 @@ async function scanExisting(): Promise<DropResult[]> {
   return results;
 }
 
-let watcher: ReturnType<typeof watch> | null = null;
+let _watcher: ReturnType<typeof watch> | null = null;
 let onDrop: ((d: DropResult) => void) | null = null;
 
 // Start watching the iCloud Drop folder.
@@ -115,7 +115,7 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
 
   // Watch for new files.
   try {
-    watcher = watch(DROP, async (event, filename) => {
+    _watcher = watch(DROP, async (event, filename) => {
       if (!filename || filename.startsWith(".") || event !== "rename") return;
       // Small delay to let iCloud finish syncing the file.
       await new Promise((r) => setTimeout(r, 1500));
