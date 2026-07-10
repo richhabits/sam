@@ -381,7 +381,9 @@ button { font-family: inherit; cursor: pointer; }
 
 .plus-menu {
   position: absolute; bottom: 50px; left: 0; width: 220px;
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  /* Solid background (like .popover) — legibility must NOT depend on backdrop-filter, which some
+     Electron/GPU contexts don't render, causing the chat behind to bleed through + hard-to-select items. */
+  background: var(--surface);
   backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border: 1px solid var(--border); border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 8px;
