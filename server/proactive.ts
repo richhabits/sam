@@ -77,23 +77,29 @@ function hhmm(d = new Date()) { return d.toLocaleTimeString("en-GB", { hour: "2-
 function today() { return new Date().toLocaleDateString("en-GB"); }
 
 import { pushNotify } from "./push.ts";
+import { isEnabled } from "./consent.ts";
+import { logAutonomy } from "./autonomy-log.ts";
 
 export function startProactive(composeBrief: () => Promise<string>) {
   if (process.env.SAM_NO_PROACTIVE === "1") return;
   const tick = async () => {
     try {
-      // 1) due nudges → notify + queue
-      const due = dueNudges();
-      if (due.length) {
-        for (const n of due) { desktopNotify("SAM — reminder", n.text); void pushNotify("⏰ SAM reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); }
-        markNotified(due.map((n) => n.id));
+      // 1) due reminders → notify + queue — ONLY if the user enabled the "reminders" behavior (off by default).
+      if (isEnabled("reminders")) {
+        const due = dueNudges();
+        if (due.length) {
+          for (const n of due) { desktopNotify("SAM — reminder", n.text); void pushNotify("⏰ SAM reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "reminders", kind: "acted", summary: `Reminded: ${n.text}` }); }
+          markNotified(due.map((n) => n.id));
+        }
       }
-      // 2) morning brief — once per day, at/after the brief time
-      const st = load<{ lastBrief?: string }>(STATE, {});
-      if (st.lastBrief !== today() && hhmm() >= briefTime()) {
-        save(STATE, { ...st, lastBrief: today() });   // mark first (avoid double-fire)
-        const brief = await composeBrief().catch(() => "");
-        if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", b); pending.push({ type: "brief", text: brief, at: hhmm() }); }
+      // 2) morning brief — once per day, at/after the brief time — ONLY if "daily-briefing" is enabled (off by default).
+      if (isEnabled("daily-briefing")) {
+        const st = load<{ lastBrief?: string }>(STATE, {});
+        if (st.lastBrief !== today() && hhmm() >= briefTime()) {
+          save(STATE, { ...st, lastBrief: today() });   // mark first (avoid double-fire)
+          const brief = await composeBrief().catch(() => "");
+          if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", b); pending.push({ type: "brief", text: brief, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "daily-briefing", kind: "acted", summary: "Delivered the morning briefing" }); }
+        }
       }
     } catch { /* never let the timer crash the app */ }
   };
