@@ -1,0 +1,60 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"files": {
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/dist-electron",
+			"!**/dist-app",
+			"!**/node_modules",
+			"!**/vault",
+			"!**/docs/index.html",
+			"!**/packaging/out",
+			"!**/coverage",
+			"!**/*.min.js",
+			"!**/*.svg",
+			"!**/docs/_template.html"
+		]
+	},
+	"formatter": { "enabled": false },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"a11y": {
+				"noAutofocus": "off",
+				"useMediaCaption": "off",
+				"noStaticElementInteractions": "warn",
+				"useKeyWithClickEvents": "warn",
+				"useButtonType": "warn"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noAssignInExpressions": "warn",
+				"noConfusingVoidType": "off",
+				"noArrayIndexKey": "warn",
+				"useIterableCallbackReturn": "warn"
+			},
+			"complexity": {
+				"noForEach": "off",
+				"useLiteralKeys": "off",
+				"noImportantStyles": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "warn"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useNodejsImportProtocol": "warn",
+				"noParameterAssign": "off",
+				"useTemplate": "off",
+				"noDescendingSpecificity": "off"
+			},
+			"performance": { "noDelete": "off" }
+		}
+	}
+}

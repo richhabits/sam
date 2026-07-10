@@ -1,0 +1,3 @@
+# Canonicalise commit authorship for `git shortlog`/`git log` without rewriting history.
+# One old commit is authored under a personal display name; map it to the project identity.
+HECTIC <richhabits@users.noreply.github.com> HECTIC <101016056+richhabits@users.noreply.github.com>

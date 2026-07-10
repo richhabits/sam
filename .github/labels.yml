@@ -1,0 +1,53 @@
+# SAM label taxonomy. Sync with a labeler action (e.g. crazy-max/ghaction-github-labeler)
+# or import manually via `gh label create`. Kept in-repo so the taxonomy is reviewable.
+- name: security
+  color: "b60205"
+  description: Security-relevant — triaged first
+- name: bug
+  color: "d73a4a"
+  description: Something isn't working
+- name: fix
+  color: "0e8a16"
+  description: A fix for a reported problem
+- name: feature
+  color: "1d76db"
+  description: New capability
+- name: enhancement
+  color: "a2eeef"
+  description: Improvement to something that exists
+- name: chore
+  color: "fef2c0"
+  description: Maintenance / housekeeping
+- name: dependencies
+  color: "0366d6"
+  description: Dependency bumps
+- name: ci
+  color: "c5def5"
+  description: CI / build pipeline
+- name: docs
+  color: "0075ca"
+  description: Documentation
+- name: good first issue
+  color: "7057ff"
+  description: Good for newcomers
+- name: help wanted
+  color: "008672"
+  description: Extra attention is welcome
+- name: roadmap
+  color: "5319e7"
+  description: Planned direction
+- name: pinned
+  color: "fbca04"
+  description: Won't be auto-closed by stale-bot
+- name: stale
+  color: "cccccc"
+  description: No recent activity
+- name: work-in-progress
+  color: "ededed"
+  description: Not ready to merge
+- name: major
+  color: "b60205"
+  description: Breaking change
+- name: minor
+  color: "1d76db"
+  description: Backwards-compatible feature

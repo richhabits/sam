@@ -73,6 +73,24 @@ describe("sandbox (async)", () => {
   it("blocks eval inside the sandbox", async () => {
     await expect(F.sandboxRun("(i)=>eval('1+1')", "")).rejects.toBeTruthy();
   });
+  it("refuses the canonical vm constructor-chain escape (scan + runtime isolate)", async () => {
+    const escapeCode = `(i)=>this.constructor.constructor("return process")()`;
+    // 1) the static scan catches the .constructor access before it ever runs
+    expect(F.scanCode(escapeCode).ok).toBe(false);
+    // 2) defence-in-depth: even bypassing the scan, the child isolate contains it (null `this`, no
+    //    ambient globals, codegen disabled) so it throws instead of reaching host `process`.
+    await expect(F.sandboxRun(escapeCode, "")).rejects.toBeTruthy();
+  });
+  it("an obfuscated bracket-notation + charcode escape cannot reach host process", async () => {
+    // Bypasses the regex (no literal `.constructor`, no literal `process`) — the ISOLATE must stop it.
+    const obf = `(i)=>{var k=String.fromCharCode(112,114,111,99,101,115,115); return this["con"+"structor"]["con"+"structor"]("return this["+JSON.stringify(k)+"]")()}`;
+    await expect(F.sandboxRun(obf, "")).rejects.toBeTruthy();
+  });
+  it("a net tool cannot escape via the sam shim's constructor (process-level codegen off)", async () => {
+    // sam.fetch is a HOST function; reaching host Function via its constructor chain must be dead.
+    const escapeCode = `(i,sam)=>{ try { return String(sam.fetch.constructor.constructor("return 42")()); } catch (e) { return "BLOCKED"; } }`;
+    await expect(F.sandboxRun(escapeCode, "", ["net"], "netesc")).resolves.toBe("BLOCKED");
+  });
 });
 
 describe("live registry + hard rules", () => {

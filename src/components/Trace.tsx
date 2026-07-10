@@ -1,7 +1,4 @@
-// Progress/trace UI — the Uber-style "A → X" journey of steps SAM takes on a turn.
-// Pure and self-contained (no app state); extracted from App.tsx to keep that file
-// focused on the chat surface + state.
-import React from "react";
+
 
 // Turn a step label into text with any URL rendered as a compact source link.
 function traceLine(t: string) {

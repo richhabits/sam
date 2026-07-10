@@ -329,7 +329,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 /* PWA installed (standalone) — use the full screen height incl. safe areas */
 @media (display-mode: standalone) {
-  .app { min-height: 100vh; min-height: 100dvh; }
+  .app { min-height: 100vh; }
+  @supports (min-height: 100dvh) { .app { min-height: 100dvh; } }
   .bar { padding-top: calc(8px + env(safe-area-inset-top)); }
 }
 

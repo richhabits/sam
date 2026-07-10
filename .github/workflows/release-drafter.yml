@@ -1,0 +1,24 @@
+name: Release Drafter
+# Runs only on push to the default branch — where release-drafter's config lives and where it drafts
+# the next release. (It intentionally does NOT run on PRs: the config must exist on the default branch,
+# so a PR that introduces it would always fail the lookup — a false red. No autolabeler here.)
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release-drafter-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  update_release_draft:
+    permissions:
+      contents: write      # create/update the draft release
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

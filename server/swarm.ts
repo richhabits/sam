@@ -5,9 +5,9 @@
 //  wait for UI approval.
 // ─────────────────────────────────────────────────────────────
 
-import { runModel, Tier } from "./models.ts";
-import { runAgent, resumeAgent, AgentResult } from "./agent.ts";
-import { SPECIALISTS, NINJAS, Specialist } from "./agents.ts";
+import { runModel, type Tier } from "./models.ts";
+import { runAgent, resumeAgent, type AgentResult } from "./agent.ts";
+import { SPECIALISTS, NINJAS, } from "./agents.ts";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -163,7 +163,7 @@ async function runAgentLoop(swarmId: string, agentId: string) {
   const s = getSwarm(swarmId);
   if (!s) return;
   const a = s.agents.find((x) => x.id === agentId);
-  if (!a || a.status !== "pending") return;
+  if (a?.status !== "pending") return;
 
   updateSwarm(swarmId, (sw) => { sw.agents.find((x) => x.id === agentId)!.status = "running"; });
   const spec = byId(a.specialistId)!;
@@ -186,7 +186,7 @@ export async function approveAgent(swarmId: string, agentId: string, approved: b
   const s = getSwarm(swarmId);
   if (!s) throw new Error("Swarm not found");
   const a = s.agents.find((x) => x.id === agentId);
-  if (!a || a.status !== "paused") throw new Error("Agent not paused");
+  if (a?.status !== "paused") throw new Error("Agent not paused");
 
   updateSwarm(swarmId, (sw) => {
     const ag = sw.agents.find((x) => x.id === agentId)!;
