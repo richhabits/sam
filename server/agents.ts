@@ -177,6 +177,14 @@ function pickRoster(request: string): Specialist[] {
 
 // Orchestrator: break the request into a dynamic dependency graph.
 async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
+  // DEMO/TEST override: SAM_DEMO_CREW=scout,quill,maestro pins an exact crew (parallel, no model
+  // planning) so the demo recording is deterministic. Unset in normal use → falls through to the
+  // model planner below. Invalid ids are ignored; an all-invalid list falls through too.
+  const pinned = (process.env.SAM_DEMO_CREW || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (pinned.length) {
+    const valid = pinned.filter((id) => byId(id));
+    if (valid.length) return valid.map((id, i) => ({ id: `t${i + 1}`, specialist: id, task: request, dependsOn: [] }));
+  }
   const roster = pickRoster(request).map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
   const sys = `You are SAM's orchestrator. Break the request into the FEWEST subtasks that fully cover it, and assign each to the ONE best-fit specialist.
 
