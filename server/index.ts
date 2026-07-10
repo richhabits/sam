@@ -44,6 +44,8 @@ import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
 import { evaluateTriggers } from "./triggers.ts";
 import { listWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, runWorkflow, recordRun, dangerousStepsIn, type Workflow } from "./workflows.ts";
 import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
+import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
+import { isEnabled as consentEnabled } from "./consent.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -1020,6 +1022,19 @@ app.post("/api/workflows/:id/run", async (req, res) => {
   recordRun(wf.id, run);
   res.json({ run });
 });
+
+// ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
+// Nothing here is ever transmitted (see preferences.ts privacy invariant). Learning is OFF unless the
+// user enabled the "learn-preferences" consent behaviour.
+app.get("/api/preferences", (_req, res) => res.json({ preferences: listPreferences(), learning: consentEnabled("learn-preferences") }));
+app.post("/api/preferences/learn", (req, res) => {
+  if (!consentEnabled("learn-preferences")) return res.json({ learned: false, reason: "learning is off — enable it in “What can SAM do on its own?”" });
+  const { key, value } = req.body || {};
+  if (!key || value == null) return res.status(400).json({ error: "key + value required" });
+  res.json({ learned: true, preference: learnPreference(String(key), String(value), new Date().toISOString()) });
+});
+app.post("/api/preferences/forget", (req, res) => res.json({ ok: forgetPreference(String(req.body?.key || "")) }));
+app.post("/api/preferences/reset", (_req, res) => { resetPreferences(); res.json({ ok: true }); });
 
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
