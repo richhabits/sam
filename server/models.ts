@@ -623,7 +623,7 @@ export async function runVision(system: string, prompt: string, images: ImagePar
           return { text, provider: `ollama (${ollamaModel})`, tier: "local" };
         }
       }
-    } catch (e: any) {
+    } catch (_e: any) {
       // Fall through to the offline message below if Ollama fails/isn't running
     }
 

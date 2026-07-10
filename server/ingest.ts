@@ -11,7 +11,7 @@
 
 import { mkdirSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { join, dirname, extname, basename, resolve } from "node:path";
+import { join, dirname, extname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -122,7 +122,8 @@ async function* walk(dir: string, depth = 0): AsyncGenerator<{ path: string; siz
   try { names = await readdir(dir); } catch { return; }
   for (const name of names) {
     const full = join(dir, name);
-    let s; try { s = await stat(full); } catch { continue; }
+    let s: Awaited<ReturnType<typeof stat>>;
+    try { s = await stat(full); } catch { continue; }
     if (s.isDirectory()) {
       if (!skipDir(name)) yield* walk(full, depth + 1);
       continue;
