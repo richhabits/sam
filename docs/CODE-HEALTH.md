@@ -22,6 +22,8 @@ The honest result of the dead-code + dependency audit: **SAM's codebase is alrea
 
 ## Enforced going forward (the point of this pass)
 - **Self-hosted-runner security**: fork-PR lock in place before the runner exists (see [PIPELINE.md](PIPELINE.md)).
-- _Remaining v1.6 clean-code items (queued):_ a strict lint/format gate (Biome or ESLint+Prettier — no-floating-promises, complexity ceiling), `dependency-cruiser` module-boundary rules in CI (no circular deps, no cross-layer reach), a `c8` coverage floor set at the current level (can only rise), and an Electron bundle-size analysis. These turn "clean today" into "can't rot."
+- **CI concurrency**: superseded runs auto-cancel; release builds never cancel mid-flight.
+- **Biome — configured, gate pending triage.** `biome.json` is committed with the **linter on** (correctness) and the **formatter deliberately OFF** — reformatting SAM's distinctive dense style is a reviewable aesthetic decision, not one to impose. Baseline against Biome's recommended rules: **231 errors + 7 warnings** (normal for a codebase not born under Biome). Wiring the *blocking* gate needs a one-pass triage: for each rule class, either fix or consciously disable in `biome.json`. That's a your-standards call — flagged, not force-fixed overnight.
+- _Still queued:_ `dependency-cruiser` module-boundary rules (no circular deps / cross-layer reach), a `c8` coverage floor, and an Electron bundle-size analysis.
 
 _Regenerate the scan: `npx depcheck`, `npx ts-prune`._
