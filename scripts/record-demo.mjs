@@ -45,13 +45,20 @@ async function main() {
   try { pw = await import("playwright"); }
   catch { try { pw = await import("playwright-core"); } catch { console.error("✗ neither playwright nor playwright-core is installed — `npx playwright install chromium`. Skipping."); process.exit(1); } }
 
+  // Pin the demo crew deterministically (research→Scout, copy→Quill, design→Maestro). Override with
+  // SAM_DEMO_CREW=<ids>. NOTE: this only takes effect on a server THIS script boots — if SAM is already
+  // running, restart it with SAM_DEMO_CREW set, or the crew reverts to model planning.
+  const crew = process.env.SAM_DEMO_CREW || "scout,quill,maestro";
+
   // Boot SAM if it isn't already serving.
   let server;
   if (!(await up(URL))) {
-    console.log("▸ booting SAM…");
-    server = spawn("node", ["dist/server.mjs"], { cwd: root, stdio: "ignore", detached: true });
+    console.log(`▸ booting SAM… (crew pinned: ${crew})`);
+    server = spawn("node", ["dist/server.mjs"], { cwd: root, stdio: "ignore", detached: true, env: { ...process.env, SAM_DEMO_CREW: crew } });
     for (let i = 0; i < 30 && !(await up(URL)); i++) await new Promise((r) => setTimeout(r, 1000));
     if (!(await up(URL))) { console.error("✗ SAM didn't boot"); process.exit(1); }
+  } else {
+    console.warn(`⚠ SAM is already running — the pinned crew (${crew}) won't apply to it. Stop it and let this script boot SAM (with SAM_DEMO_CREW set) for a deterministic crew.`);
   }
 
   // Warn early if no brain is configured — otherwise the scripted prompt records an empty answer.
