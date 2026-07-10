@@ -8,5 +8,12 @@ export default defineConfig({
     setupFiles: ["./server/test-setup.ts"],
     // e2e/ holds Playwright Electron specs (run via `npx playwright test`, not vitest).
     exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary"],
+      // Ratchet-only floor — set just below the current baseline so coverage can never REGRESS.
+      // Raise these numbers as tests are added; never lower them. Run via `npm run test:coverage`.
+      thresholds: { statements: 22, branches: 18, functions: 18, lines: 24 },
+    },
   },
 });
