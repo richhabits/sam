@@ -15,6 +15,9 @@ const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
 const Dashboard = lazy(() => import("./Dashboard"));
+const AutonomyPane = lazy(() => import("./AutonomyPane"));
+const LearnedPane = lazy(() => import("./LearnedPane"));
+const WorkflowsPane = lazy(() => import("./WorkflowsPane"));
 
 interface Profile { name: string; about?: string; language?: string }
 // Multiple people can share one SAM — each profile has its OWN memory (server namespaces
@@ -213,6 +216,9 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [autonomyOpen, setAutonomyOpen] = useState(false);
+  const [learnedOpen, setLearnedOpen] = useState(false);
+  const [workflowsOpen, setWorkflowsOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -354,7 +360,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1015,6 +1021,9 @@ export default function App() {
             <button className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">📊 Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
             <button className="pop-opt" onClick={() => { setWizardOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">⚡ Power up (add free keys)</span><span className="pop-opt-sub">60-second wizard — validate + pool free brains</span></button>
             <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
+            <button className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">🕹️ What can SAM do on its own?</span><span className="pop-opt-sub">Proactivity — all off until you allow it, with a full log</span></button>
+            <button className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">🔗 Workflows</span><span className="pop-opt-sub">Saved multi-step sequences — dangerous steps pause to ask</span></button>
+            <button className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">🧠 What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
             <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
               <button key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
@@ -1528,6 +1537,9 @@ export default function App() {
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} />}
         {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
+        {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}
+        {learnedOpen && <LearnedPane onClose={() => setLearnedOpen(false)} />}
+        {workflowsOpen && <WorkflowsPane onClose={() => setWorkflowsOpen(false)} />}
       </Suspense>
 
       {toolsOpen && (
