@@ -52,6 +52,17 @@ import {
   pruneOldLogs,
 } from "./vault.ts";
 
+const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+
+if (
+  process.argv.includes("--version") ||
+  process.argv.includes("version")
+) {
+  console.log(version);
+  process.exit(0);
+}
+
+
 // RESILIENCE: a single unhandled async error must never take SAM down. Log it and stay up —
 // an always-on personal assistant that dies on one bad request/response is worse than useless.
 process.on("unhandledRejection", (reason) => { try { console.error("[SAM] unhandledRejection:", reason instanceof Error ? reason.message : reason); } catch {} });
@@ -1232,9 +1243,12 @@ if (existsSync(DIST)) {
 // LAN but requires the token on EVERY request (cookie set on first visit via ?token=…).
 // We refuse to open the network without a strong token — no token, no remote. Note it's
 // plain HTTP on your LAN: fine on home Wi-Fi, don't use on networks you don't trust.
+
 const REMOTE = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
 if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
 const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
+
+
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
   if (REMOTE) {
