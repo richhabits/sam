@@ -1,6 +1,6 @@
 {
   "name": "sam",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -38,7 +38,8 @@
     "platforms": "tsx scripts/platform-matrix.ts",
     "test:coverage": "vitest run --coverage",
     "lint": "biome lint .",
-    "lint:fix": "biome lint --write ."
+    "lint:fix": "biome lint --write .",
+    "create-tool": "node scripts/create-tool.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

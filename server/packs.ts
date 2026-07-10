@@ -33,7 +33,9 @@ export interface PackContents {
 }
 export interface Pack {
   format: string;
-  meta: { name: string; description: string; author: string; createdAt: number };
+  // v1.8: `version` (semver of the pack itself) + `dependencies` (names of other packs it needs) are
+  // part of the signed canonical bytes. Optional so pre-v1.8 packs still verify.
+  meta: { name: string; description: string; author: string; createdAt: number; version?: string; dependencies?: string[] };
   contents: PackContents;
   publicKey?: string;   // base64 SPKI der of the author's Ed25519 key
   sig?: string;         // base64 signature over canonical(meta+contents)
@@ -57,10 +59,10 @@ function loadKeys(): { publicKey: string; privateKey: string } {
 }
 
 // ── EXPORT ────────────────────────────────────────────────────
-export function exportPack(meta: { name: string; description?: string; author?: string }, contents: PackContents, iso: number): string {
+export function exportPack(meta: { name: string; description?: string; author?: string; version?: string; dependencies?: string[] }, contents: PackContents, iso: number): string {
   const pack: Pack = {
     format: PACK_FORMAT,
-    meta: { name: meta.name || "Untitled Pack", description: meta.description || "", author: meta.author || "anonymous", createdAt: iso },
+    meta: { name: meta.name || "Untitled Pack", description: meta.description || "", author: meta.author || "anonymous", createdAt: iso, version: meta.version || "1.0.0", dependencies: meta.dependencies || [] },
     contents: {
       skills: contents.skills || [], tools: contents.tools || [],
       prompts: contents.prompts || [], watchedTemplates: contents.watchedTemplates || [],
@@ -163,3 +165,9 @@ export async function applyPack(json: string, choices: ApplyChoice, iso: number)
 
 // The install's public signing key (so the user can share it / prove authorship).
 export function myPackKey(): string { return loadKeys().publicKey; }
+
+// v1.8: which declared dependencies (other packs) are NOT already installed. The importer surfaces
+// these so a pack that builds on another tells you what else you need — nothing auto-installs.
+export function unmetDependencies(pack: Pack, installedPackNames: Set<string>): string[] {
+  return (pack.meta?.dependencies || []).filter((d) => !installedPackNames.has(d));
+}
