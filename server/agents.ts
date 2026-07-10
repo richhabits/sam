@@ -183,7 +183,13 @@ async function makePlan(request: string, tier: Tier): Promise<PlanItem[]> {
   const pinned = (process.env.SAM_DEMO_CREW || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
   if (pinned.length) {
     const valid = pinned.filter((id) => byId(id));
-    if (valid.length) return valid.map((id, i) => ({ id: `t${i + 1}`, specialist: id, task: request, dependsOn: [] }));
+    if (valid.length) {
+      // Give each pinned specialist its own task when the request splits cleanly into one clause per
+      // agent (comma / "and"), else the whole request. Keeps the crew cards legible + instant.
+      const clauses = request.split(/,|\band\b/i).map((c) => c.trim()).filter(Boolean);
+      const tasks = clauses.length === valid.length ? clauses : valid.map(() => request);
+      return valid.map((id, i) => ({ id: `t${i + 1}`, specialist: id, task: tasks[i], dependsOn: [] }));
+    }
   }
   const roster = pickRoster(request).map((s) => `- ${s.id} (${s.name}): ${s.brief}`).join("\n");
   const sys = `You are SAM's orchestrator. Break the request into the FEWEST subtasks that fully cover it, and assign each to the ONE best-fit specialist.
