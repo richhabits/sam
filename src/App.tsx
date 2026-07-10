@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, AgentResult, Attachment, Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster } from "./lib/api";
+import type React from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";

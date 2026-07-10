@@ -6,7 +6,7 @@
 //  Opt-in (the "big guns") — kept free via the rotating providers.
 // ─────────────────────────────────────────────────────────────
 
-import { runModel, Tier } from "./models.ts";
+import { runModel, type Tier } from "./models.ts";
 import { runAgent } from "./agent.ts";
 
 export interface Specialist { id: string; name: string; emoji: string; modeledOn: string; brief: string }

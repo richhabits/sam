@@ -10,9 +10,9 @@ let currentUrl: string | null = null;    // object URL to revoke when done/stopp
 let _level = 0;          // live amplitude 0..1
 let _speaking = false;
 let raf = 0;
-let audioCtx: AudioContext | null = null;
+const audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
-let tapped: HTMLAudioElement | null = null;
+const tapped: HTMLAudioElement | null = null;
 
 export function voiceLevel() { return _level; }
 
@@ -53,7 +53,7 @@ export function stopSpeaking() {
   _speaking = false;
 }
 
-function clean(text: string) { return text.replace(/[*#`_>\[\]]/g, "").slice(0, 900); }
+function clean(text: string) { return text.replace(/[*#`_>[\]]/g, "").slice(0, 900); }
 
 function browserSpeak(text: string, onDone?: () => void) {
   try {

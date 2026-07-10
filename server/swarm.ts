@@ -5,8 +5,8 @@
 //  wait for UI approval.
 // ─────────────────────────────────────────────────────────────
 
-import { runModel, Tier } from "./models.ts";
-import { runAgent, resumeAgent, AgentResult } from "./agent.ts";
+import { runModel, type Tier } from "./models.ts";
+import { runAgent, resumeAgent, type AgentResult } from "./agent.ts";
 import { SPECIALISTS, NINJAS, Specialist } from "./agents.ts";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";

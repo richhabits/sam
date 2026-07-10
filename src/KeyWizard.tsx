@@ -6,8 +6,8 @@ import { useEscape } from "./lib/useOverlay";
 // SAM already works free out of the box — this is a pure upgrade, never a gate.
 const PROVIDERS = [
   { id: "groq",       label: "Groq",          note: "fastest · ~30-sec signup", url: "https://console.groq.com/keys",        rx: /^gsk_[A-Za-z0-9]{20,}$/ },
-  { id: "gemini",     label: "Google Gemini", note: "adds photos & vision",     url: "https://aistudio.google.com/apikey",   rx: /^AIza[A-Za-z0-9_\-]{30,}$/ },
-  { id: "openrouter", label: "OpenRouter",    note: "300+ models, one key",     url: "https://openrouter.ai/keys",           rx: /^sk-or-[A-Za-z0-9\-]{20,}$/ },
+  { id: "gemini",     label: "Google Gemini", note: "adds photos & vision",     url: "https://aistudio.google.com/apikey",   rx: /^AIza[A-Za-z0-9_-]{30,}$/ },
+  { id: "openrouter", label: "OpenRouter",    note: "300+ models, one key",     url: "https://openrouter.ai/keys",           rx: /^sk-or-[A-Za-z0-9-]{20,}$/ },
   { id: "mistral",    label: "Mistral",       note: "strong, generous free",    url: "https://console.mistral.ai/api-keys",  rx: /^[A-Za-z0-9]{32}$/ },
 ];
 type St = "idle" | "checking" | "ok" | "bad";
