@@ -123,7 +123,7 @@ function parsePlan(text: string): PlanItem[] {
   try {
     const arr = JSON.parse(m[0]);
     return Array.isArray(arr)
-      ? arr.filter((x) => x && x.id && byId(x.specialist) && x.task).map((x) => ({
+      ? arr.filter((x) => x?.id && byId(x.specialist) && x.task).map((x) => ({
           id: String(x.id),
           specialist: String(x.specialist),
           task: String(x.task),

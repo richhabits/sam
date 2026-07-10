@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 

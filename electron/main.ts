@@ -4,7 +4,6 @@ import "./preboot.ts";
 
 import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen, clipboard } from "electron";
 import path from "node:path";
-import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
 

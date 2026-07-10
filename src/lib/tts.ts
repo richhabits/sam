@@ -10,9 +10,9 @@ let currentUrl: string | null = null;    // object URL to revoke when done/stopp
 let _level = 0;          // live amplitude 0..1
 let _speaking = false;
 let raf = 0;
-const audioCtx: AudioContext | null = null;
+const _audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
-const tapped: HTMLAudioElement | null = null;
+const _tapped: HTMLAudioElement | null = null;
 
 export function voiceLevel() { return _level; }
 

@@ -99,7 +99,7 @@ export function unlockWithPassphrase(passphrase: string): boolean {
 
 // Boot auto-unlock from the keychain. Returns true if it unlocked without a passphrase.
 export function unlockFromKeychain(): boolean {
-  const c = loadConfig(); if (!c || !c.keychain) return false;
+  const c = loadConfig(); if (!c?.keychain) return false;
   const hex = keychainRetrieve(); if (!hex) return false;
   try { sessionKey = Buffer.from(hex, "hex"); return sessionKey.length === 32; } catch { sessionKey = null; return false; }
 }
@@ -119,7 +119,7 @@ export function seal(plaintext: string): string {
   return encrypt(plaintext, sessionKey);
 }
 export function open(data: string): string {
-  if (!data || !data.startsWith("SAMENC1.")) return data;   // not sealed → return as-is (migration-friendly)
+  if (!data?.startsWith("SAMENC1.")) return data;   // not sealed → return as-is (migration-friendly)
   if (!sessionKey) throw new Error("vault is locked");
   return decrypt(data, sessionKey);
 }

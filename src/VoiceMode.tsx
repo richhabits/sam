@@ -65,7 +65,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       // Vite proxy; the file:// shim in main.tsx points it at the local server in a
       // packaged build). Avoids a needless cross-origin call in dev.
       const res = await fetch("/api/voice/token").catch(() => null);
-      if (!res || !res.ok) throw new Error("No token");
+      if (!res?.ok) throw new Error("No token");
       const { client_secret: { value: token } } = await res.json();
 
       // 2. Setup WebRTC
