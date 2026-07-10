@@ -2,6 +2,11 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.8.1] - 2026-07-10 — patch
+
+- **Fix:** the "+" (actions) menu was see-through when `backdrop-filter` didn't render solidly in the
+  packaged app, making items hard to read/select. It's now a solid background like the settings menu.
+
 ## [1.8.0] - 2026-07-10 — "Indispensable"
 
 Retention, not acquisition: SAM now acts before you ask, chains steps into workflows, learns you
