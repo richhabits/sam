@@ -23,8 +23,9 @@ curl -fsSL https://richhabits.github.io/sam/install.sh | bash
 ```
 **macOS · Linux — one paste.** Windows: `irm https://richhabits.github.io/sam/install.ps1 | iex`
 
-<!-- Hero demo — regenerated each release by scripts/record-demo.mjs -->
-<img alt="SAM demo" src="docs/media/demo.gif" width="720">
+<!-- Hero: static preview until the demo GIF is recorded on a real machine (scripts/record-demo.mjs).
+     Swap the src back to docs/media/demo.gif once it's generated. -->
+<img alt="SAM — free, private, local-first AI assistant" src="docs/media/social-preview.png" width="720">
 
 ⭐ **[Star SAM](https://github.com/richhabits/sam)** if you want a free, private AI that actually does the work.
 
