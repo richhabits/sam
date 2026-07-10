@@ -35,7 +35,10 @@
     "bench": "tsx scripts/bench.ts",
     "rollback": "tsx scripts/rollback.ts",
     "stats": "tsx scripts/generate-stats.ts",
-    "platforms": "tsx scripts/platform-matrix.ts"
+    "platforms": "tsx scripts/platform-matrix.ts",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write ."
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -67,6 +70,7 @@
     "@types/react-dom": "^18.3.5",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.9",
     "concurrently": "^9.1.0",
     "cross-env": "^10.1.0",
     "electron": "^43.0.0",
