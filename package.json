@@ -38,7 +38,8 @@
     "platforms": "tsx scripts/platform-matrix.ts",
     "test:coverage": "vitest run --coverage",
     "lint": "biome lint .",
-    "lint:fix": "biome lint --write ."
+    "lint:fix": "biome lint --write .",
+    "create-tool": "node scripts/create-tool.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
