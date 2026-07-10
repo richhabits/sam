@@ -15,6 +15,9 @@ name: Overlay E2E
 on:
   push: { branches: [main, "release/**"] }
   workflow_dispatch:
+concurrency:
+  group: overlay-e2e-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   overlay:
     runs-on: macos-latest   # v1.6 Phase 1 moves this to: [self-hosted, macOS, gui] once the runner is registered

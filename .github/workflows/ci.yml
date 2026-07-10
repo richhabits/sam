@@ -2,6 +2,10 @@ name: CI
 on:
   push: { branches: [main] }
   pull_request: { branches: [main] }
+# Auto-cancel superseded runs on the same branch/PR — no wasted minutes on stale pushes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
