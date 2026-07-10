@@ -55,6 +55,8 @@ jobs:
   # Proves the "universal tools" claim: SAM boots everywhere, the registry is intact, and every
   # macOS-only tool degrades cleanly (0 ungated-risk) — not just "it compiled on Linux".
   cross-platform:
+    # Skip the heavy 3-OS matrix on DRAFT PRs (still runs on every push to main + ready PRs).
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     strategy:
       fail-fast: false
       matrix:
