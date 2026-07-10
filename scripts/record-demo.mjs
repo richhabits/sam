@@ -3,10 +3,14 @@
 //  SAM demo recorder — regenerates the README/landing hero media each release so it never goes stale.
 //  Drives a real SAM session in a headless browser, records it, and writes docs/media/demo.gif (+ .mp4).
 //
-//  Deps (dev-only, not shipped): playwright + ffmpeg.
-//    npm i -D playwright && npx playwright install chromium
-//    brew install ffmpeg   (or apt-get install ffmpeg)
+//  Deps (dev-only, not shipped): playwright (or the repo's playwright-core) + ffmpeg + a chromium build.
+//    npx playwright install chromium        # browser binary (works for playwright-core too)
+//    brew install ffmpeg                     # or apt-get install ffmpeg
 //  Run:  node scripts/record-demo.mjs        (boots SAM on :8787 if it isn't already up)
+//
+//  IMPORTANT — record on a machine with a WORKING BRAIN (free-tier keys in .env, or a local Ollama
+//  model). The scripted prompt fires real tools; with no brain configured the answer is empty and the
+//  GIF is useless. This is why it's not a hosted-CI job — run it where SAM actually answers.
 // ─────────────────────────────────────────────────────────────
 import { spawn, execSync } from "node:child_process";
 import { mkdirSync, readdirSync, renameSync } from "node:fs";
@@ -26,8 +30,11 @@ async function up(url) { try { const r = await fetch(url + "/api/health", { sign
 async function main() {
   mkdirSync(outDir, { recursive: true });
   if (!have("ffmpeg")) { console.error("✗ ffmpeg not found — install it (brew install ffmpeg). Skipping."); process.exit(1); }
+  // Prefer full `playwright`; fall back to the repo's `playwright-core` (used by the overlay e2e) so no
+  // extra install is needed — either way you still need the chromium binary (`npx playwright install chromium`).
   let pw;
-  try { pw = await import("playwright"); } catch { console.error("✗ playwright not installed — `npm i -D playwright && npx playwright install chromium`. Skipping."); process.exit(1); }
+  try { pw = await import("playwright"); }
+  catch { try { pw = await import("playwright-core"); } catch { console.error("✗ neither playwright nor playwright-core is installed — `npx playwright install chromium`. Skipping."); process.exit(1); } }
 
   // Boot SAM if it isn't already serving.
   let server;
@@ -37,6 +44,17 @@ async function main() {
     for (let i = 0; i < 30 && !(await up(URL)); i++) await new Promise((r) => setTimeout(r, 1000));
     if (!(await up(URL))) { console.error("✗ SAM didn't boot"); process.exit(1); }
   }
+
+  // Warn early if no brain is configured — otherwise the scripted prompt records an empty answer.
+  // /api/keys → { local: { ollama }, providers: [{ id, keys }] }. A brain exists if a provider has a
+  // key OR a local Ollama model is set. (Best-effort: it can't tell if Ollama is actually running.)
+  try {
+    const k = await (await fetch(URL + "/api/keys", { signal: AbortSignal.timeout(2000) })).json();
+    const anyKeys = Array.isArray(k?.providers) && k.providers.some((p) => (p?.keys ?? 0) > 0);
+    const ollama = !!k?.local?.ollama;
+    if (!anyKeys && !ollama) console.warn("⚠ No AI brain configured (no provider keys in .env, no local Ollama). The scripted prompt will record an EMPTY answer — set up a brain before recording.");
+    else if (!anyKeys && ollama) console.warn(`ℹ Only a local Ollama brain (${k.local.ollama}) is configured — make sure Ollama is actually running, or the demo answer will be empty.`);
+  } catch { /* endpoint shape varies; non-fatal */ }
 
   const browser = await pw.chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, recordVideo: { dir: outDir, size: { width: 1280, height: 720 } } });
