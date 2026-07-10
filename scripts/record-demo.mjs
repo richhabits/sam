@@ -9,7 +9,7 @@
 //  Run:  node scripts/record-demo.mjs        (boots SAM on :8787 if it isn't already up)
 // ─────────────────────────────────────────────────────────────
 import { spawn, execSync } from "node:child_process";
-import { mkdirSync, existsSync, readdirSync, renameSync } from "node:fs";
+import { mkdirSync, readdirSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 

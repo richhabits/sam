@@ -7,7 +7,7 @@
 //  Edit COPY in docs/_template.html; never edit docs/index.html.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 

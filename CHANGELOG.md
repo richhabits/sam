@@ -2,6 +2,27 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.6.0] - 2026-07-10 — "Launch-Grade"
+
+The pre-launch hardening pass: a full adversarial security audit, a personal-data scrub, an enforced born-clean lint gate, and the finished universal-copy sweep. No cost/latency regression. **1 critical security fix.**
+
+### 🔒 Security
+- **CRITICAL — forge sandbox RCE closed.** A forged/imported (`.sampack`) tool with **no declared capabilities** (so `confirm`-tier, eligible to auto-run under Autopilot) could escape the `node:vm` sandbox to the host `process` → `require('child_process')` → **full RCE, bypassing the entire tool gate**. Reproduced via bracket-notation `constructor` access + `String.fromCharCode` obfuscation that slipped the static scan. `node:vm` is not a security boundary; forged code now runs in a **separate process** with `--disallow-code-generation-from-strings` (eval/Function disabled isolate-wide), a **stripped env** (no keys reach it), no ambient globals, and null-proto `this`. Locked by 3 regression tests (direct / obfuscated / capability-shim routes).
+- **Prompt-injection fence widened** to every attacker-reachable ingestion path (file/repo reads, clipboard, calendar, notes, RSS/whois, research/notebook) — each proven fenced by test.
+- **`docs/SECURITY-AUDIT.md`** added as a trust asset; `SECURITY.md` corrected; `.gitignore` now covers every signing-cert format. `npm audit` 0; `gitleaks` 0 across all history.
+
+### 🧹 Personal-data scrub
+- Working tree cleared of personal references; README License contradiction fixed (**"Proprietary"** → MIT, matching LICENSE + badge). `.mailmap` canonicalises authorship (no history rewrite).
+
+### ✅ Code quality
+- **Biome migrated 1.9.4→2.5.3** (the old config errored out entirely) and a **blocking lint gate wired into CI** (error-level only; 0 errors). 5 real bugs fixed by hand; style/CSS-noise disabled; a11y/hook-deps/`useButtonType` kept as advisory warnings. Ratchet-only **coverage floor**, `.dependency-cruiser.cjs` boundaries, `@biomejs/biome` pinned.
+
+### 🌍 Universal + repo polish
+- README de-Mac'd (universal-first copy, "Works everywhere" strip + badge); broken hero image fixed. CODEOWNERS, release-drafter, kind stale-bot, label taxonomy, draft-PR skip on the heavy 3-OS matrix, fork-PR lock + `PIPELINE.md` + `CODE-HEALTH.md`.
+
+### Still reproducible
+- Free-first router: **~86% cheaper / ~46% faster** across the fixed 20-task suite, **100% free-or-local** (`npm run bench`).
+
 ## [1.5.0] - 2026-07-09 — "Launch & Loop"
 
 Closes every caveat v1.4 deferred, makes updates safe for a growing user base, and adds the machinery for the community to extend + share SAM. **MIT-licensed now.** No cost/latency regression (bench: within 0.3%).

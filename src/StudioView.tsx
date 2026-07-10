@@ -6,7 +6,7 @@ import { useState } from "react";
 // media matrix (/api/studio/*) — Pollinations → keyed lanes → fal/Novita — so it works with
 // ZERO keys and never needs a paid MUAPI key.
 
-const pollinated = (q: string, seed: number) =>
+const _pollinated = (q: string, seed: number) =>
   `https://image.pollinations.ai/prompt/${encodeURIComponent(q)}?width=220&height=150&nologo=true&seed=${seed}`;
 
 const STYLES = [
@@ -109,7 +109,7 @@ export default function StudioView() {
 
         <div className="stu-label">Style</div>
         <div className="stu-styles">
-          {STYLES.map((s, i) => (
+          {STYLES.map((s, _i) => (
             <button key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
               style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.label}>
               <span className="stu-style-label">{s.label}</span>

@@ -7,10 +7,10 @@
 //  chunked + embedded LOCALLY (free, private) next to memory.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname, extname, basename } from "node:path";
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import { openDb } from "./db.ts";
 import { embed, embedOne, cosine } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";
@@ -68,7 +68,7 @@ async function storeSource(notebookId: string, source: string, title: string, ra
   const chunks = chunkText(raw);
   if (!chunks.length) return 0;
   const e = await embed(chunks, false, pinnedModel());
-  if (!e || !e.vectors.length) throw new Error("no embedding provider (start Ollama, or add a free key)");
+  if (!e?.vectors.length) throw new Error("no embedding provider (start Ollama, or add a free key)");
   const ins = db().prepare(`INSERT INTO nb_chunks (id, notebook, source, title, idx, text, vec, model, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const tx = db().transaction(() => {
     for (let i = 0; i < chunks.length; i++) {
