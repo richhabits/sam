@@ -2,6 +2,36 @@
 
 All notable changes to SAM. Newest first.
 
+## [1.8.0] - 2026-07-10 — "Indispensable"
+
+Retention, not acquisition: SAM now acts before you ask, chains steps into workflows, learns you
+(privately), and hosts a platform. Every autonomous path is off by default, gates dangerous actions, and
+logs itself. No cost/latency regression (bench: −86% vs v1.3 holds; +27 tests → 220).
+
+### Proactive (within hard consent rails)
+- **Consent architecture** — a single "What can SAM do on its own?" pane. Every proactive behavior is
+  OFF by default and individually toggleable. Enabling a behavior is autonomy in *scheduling*, never in
+  *permissions* — dangerous tools still ALWAYS ask.
+- **Triggers** surface *suggestion cards* (a new file, a due reminder) — they can never execute a tool.
+- **Autonomy log** — an append-only, local, never-uploaded record of everything SAM did or suggested.
+
+### Workflows
+- Named, saved, repeatable multi-step sequences. The run engine **PAUSES at the first dangerous step**
+  and never runs it unattended — even for an armed, scheduled run. 6 starter workflows shipped.
+
+### SAM learns you (100% on-device)
+- **Preference memory** — durable patterns (preferred brain, formats), stored only locally, inspectable
+  and deletable in the "What SAM has learned about you" pane. Learned state **never leaves the device**
+  (a tripwire test locks the module off the wire). Reset-everything button.
+
+### Platform
+- Versioned packs with dependency declarations; `docs/BUILD-A-TOOL.md`, `BUILD-A-PACK.md`,
+  `ADD-A-PROVIDER.md`; `npm run create-tool`. Brain-agnostic — a new provider is a one-line config drop.
+
+### Sustain
+- Bench re-run (no regression); `docs/ARCHITECTURE.md`; a supporter tier scaffolded **OFF** that never
+  paywalls core and never adds telemetry.
+
 ## [1.6.0] - 2026-07-10 — "Launch-Grade"
 
 The pre-launch hardening pass: a full adversarial security audit, a personal-data scrub, an enforced born-clean lint gate, and the finished universal-copy sweep. No cost/latency regression. **1 critical security fix.**

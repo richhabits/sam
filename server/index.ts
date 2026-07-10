@@ -39,6 +39,13 @@ import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges, desktopNotify } from "./proactive.ts";
+import { consentState, setEnabled as setConsent, disableAll as consentDisableAll } from "./consent.ts";
+import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
+import { evaluateTriggers } from "./triggers.ts";
+import { listWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, runWorkflow, recordRun, dangerousStepsIn, type Workflow } from "./workflows.ts";
+import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
+import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
+import { isEnabled as consentEnabled } from "./consent.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -955,6 +962,79 @@ app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges
 // ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
 app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
 app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
+
+// ── Autonomy consent (v1.8) — the "What can SAM do on its own?" pane + the autonomy log.
+// Reading is fine remotely; CHANGING what SAM may do autonomously is a security setting → loopback-only
+// (a phone on a scoped token must never be able to grant SAM new autonomy).
+app.get("/api/consent", (_req, res) => res.json({ behaviors: consentState() }));
+app.post("/api/consent", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const ok = setConsent(String(req.body?.behavior || "") as any, !!req.body?.on);
+  return ok ? res.json({ behaviors: consentState() }) : res.status(400).json({ error: "unknown behavior" });
+});
+app.post("/api/consent/disable-all", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  consentDisableAll(); res.json({ behaviors: consentState() });
+});
+app.get("/api/autonomy-log", (req, res) => res.json({ entries: readAutonomyLog(Number(req.query.limit) || 100) }));
+app.post("/api/autonomy-log/clear", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  clearAutonomyLog(); res.json({ ok: true });
+});
+// Current suggestion cards — evaluates triggers against the live world (due reminders now; file-watch
+// wiring surfaces here as the life index reports new files). Data only — nothing runs from this call.
+app.get("/api/suggestions", (_req, res) => {
+  const dueReminders = listNudges().filter((n) => n.due && new Date(n.due).getTime() <= Date.now()).map((n) => ({ id: n.id, text: n.text }));
+  res.json({ cards: evaluateTriggers({ now: new Date().toISOString(), dueReminders }) });
+});
+
+// ── Workflows (v1.8) — named, saved, repeatable multi-step sequences. ──
+app.get("/api/workflows", (_req, res) => res.json({ workflows: listWorkflows().map((w) => ({ ...w, dangerousSteps: dangerousStepsIn(w).map((s) => s.id) })) }));
+app.post("/api/workflows", (req, res) => {
+  const wf = req.body as Workflow;
+  const r = saveWorkflow({ ...wf, runs: wf.runs || [], armed: !!wf.armed, createdAt: wf.createdAt || new Date().toISOString(), version: wf.version || 1 });
+  return r.ok ? res.json({ ok: true }) : res.status(400).json({ error: r.reason });
+});
+app.delete("/api/workflows/:id", (req, res) => res.json({ ok: deleteWorkflow(req.params.id) }));
+app.post("/api/workflows/install-starters", (_req, res) => {
+  const now = new Date().toISOString();
+  let n = 0;
+  for (const t of STARTER_WORKFLOWS) { if (!getWorkflow(t.id)) { saveWorkflow({ ...t, armed: false, createdAt: now, runs: [] }); n++; } }
+  res.json({ installed: n, workflows: listWorkflows().length });
+});
+// Run a workflow. The engine PAUSES at any dangerous step (never runs it). The executor here auto-runs
+// only SAFE tools; a confirm-tier step defers with a note so it's run with the user present. Brain steps
+// use the free/local tier so a run stays on the cost-cutting cascade.
+app.post("/api/workflows/:id/run", async (req, res) => {
+  const wf = getWorkflow(req.params.id);
+  if (!wf) return res.status(404).json({ error: "no such workflow" });
+  const { toolByName } = await import("./tools.ts");
+  const run = await runWorkflow(wf, {
+    now: new Date().toISOString(),
+    execTool: async (tool, input) => {
+      const t = toolByName(tool);
+      if (!t) return `(no such tool: ${tool})`;
+      if (!t.safe) return `(“${tool}” needs your approval — run it with SAM open)`;   // confirm-tier defers; dangerous already paused
+      try { return await t.run(input); } catch (e: any) { return `(error: ${e?.message || e})`; }
+    },
+    execBrain: async (prompt) => (await runModel((process.env.DEFAULT_TIER as Tier) || "free", "You are SAM, running a saved workflow step. Do this step and hand back a tight result.", prompt)).text,
+  });
+  recordRun(wf.id, run);
+  res.json({ run });
+});
+
+// ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
+// Nothing here is ever transmitted (see preferences.ts privacy invariant). Learning is OFF unless the
+// user enabled the "learn-preferences" consent behaviour.
+app.get("/api/preferences", (_req, res) => res.json({ preferences: listPreferences(), learning: consentEnabled("learn-preferences") }));
+app.post("/api/preferences/learn", (req, res) => {
+  if (!consentEnabled("learn-preferences")) return res.json({ learned: false, reason: "learning is off — enable it in “What can SAM do on its own?”" });
+  const { key, value } = req.body || {};
+  if (!key || value == null) return res.status(400).json({ error: "key + value required" });
+  res.json({ learned: true, preference: learnPreference(String(key), String(value), new Date().toISOString()) });
+});
+app.post("/api/preferences/forget", (req, res) => res.json({ ok: forgetPreference(String(req.body?.key || "")) }));
+app.post("/api/preferences/reset", (_req, res) => { resetPreferences(); res.json({ ok: true }); });
 
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
