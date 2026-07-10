@@ -39,6 +39,9 @@ import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
 import { startProactive, takePending, listNudges, desktopNotify } from "./proactive.ts";
+import { consentState, setEnabled as setConsent, disableAll as consentDisableAll } from "./consent.ts";
+import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
+import { evaluateTriggers } from "./triggers.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -955,6 +958,31 @@ app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges
 // ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
 app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
 app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
+
+// ── Autonomy consent (v1.8) — the "What can SAM do on its own?" pane + the autonomy log.
+// Reading is fine remotely; CHANGING what SAM may do autonomously is a security setting → loopback-only
+// (a phone on a scoped token must never be able to grant SAM new autonomy).
+app.get("/api/consent", (_req, res) => res.json({ behaviors: consentState() }));
+app.post("/api/consent", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  const ok = setConsent(String(req.body?.behavior || "") as any, !!req.body?.on);
+  return ok ? res.json({ behaviors: consentState() }) : res.status(400).json({ error: "unknown behavior" });
+});
+app.post("/api/consent/disable-all", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  consentDisableAll(); res.json({ behaviors: consentState() });
+});
+app.get("/api/autonomy-log", (req, res) => res.json({ entries: readAutonomyLog(Number(req.query.limit) || 100) }));
+app.post("/api/autonomy-log/clear", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  clearAutonomyLog(); res.json({ ok: true });
+});
+// Current suggestion cards — evaluates triggers against the live world (due reminders now; file-watch
+// wiring surfaces here as the life index reports new files). Data only — nothing runs from this call.
+app.get("/api/suggestions", (_req, res) => {
+  const dueReminders = listNudges().filter((n) => n.due && new Date(n.due).getTime() <= Date.now()).map((n) => ({ id: n.id, text: n.text }));
+  res.json({ cards: evaluateTriggers({ now: new Date().toISOString(), dueReminders }) });
+});
 
 // ── People SAM knows by sight (local, private) ──
 app.get("/api/people", (_req, res) => res.json(listPeople()));
