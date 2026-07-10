@@ -73,9 +73,12 @@ object. Three regression tests cover the direct, obfuscated, and capability-shim
 — all green together. Cross-platform matrix (macOS/Windows/Linux) unchanged. `main` is a clean
 fast-forward (no conflicts).
 
+## Version
+
+Bumped to **1.6.0** (`package.json` + lockfile) with a `CHANGELOG.md` entry — this PR is tag-ready.
+
 ## ⚠️ Before merging / launching (not in this PR)
 
-- [ ] **Version bump** — `package.json` is still `1.5.0`; bump to `1.6.0` + CHANGELOG before tagging.
 - [ ] Record the demo GIF on the self-hosted runner → swap the hero `src` back to `docs/media/demo.gif`;
       grab per-OS screenshots. *(Do this before filing submissions — gatekeepers click straight through.)*
 - [ ] File the staged external submissions (winget/Flathub/awesome ×5) **after** push + GIF.
