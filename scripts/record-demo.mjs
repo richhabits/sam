@@ -2,6 +2,9 @@
 // ─────────────────────────────────────────────────────────────
 //  SAM demo recorder — regenerates the README/landing hero media each release so it never goes stale.
 //  Drives a real SAM session in a headless browser, records it, and writes docs/media/demo.gif (+ .mp4).
+//  The scripted session fires `/team …` so the hero shows SAM's distinctive move: a crew of specialists
+//  assembling and working in parallel. A team runs longer than a single answer, so the GIF is longer too
+//  — tune SAM_DEMO_WAIT_MS (default 16000) down if docs/media/demo.gif comes out too heavy for the README.
 //
 //  Deps (dev-only, not shipped): playwright (or the repo's playwright-core) + ffmpeg + a chromium build.
 //    npx playwright install chromium        # browser binary (works for playwright-core too)
@@ -20,9 +23,12 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "docs/media");
 const URL = process.env.SAM_URL || "http://127.0.0.1:8787";
-const SCRIPT = [                        // the scripted session — a real prompt that fires a real tool
-  "what's the weather today and directions to the nearest coffee?",
+// The scripted session. `/team <request>` assembles a crew of specialists that run in parallel — the
+// UI renders the crew with agents going active → done, which is the distinctive money-shot for the hero.
+const SCRIPT = [
+  "/team research my 3 competitors and draft a launch post",
 ];
+const ANSWER_WAIT_MS = Number(process.env.SAM_DEMO_WAIT_MS || 16000);   // a team runs longer than a single answer — give the crew time to assemble + work on screen
 
 function have(cmd) { try { execSync(`command -v ${cmd}`, { stdio: "ignore" }); return true; } catch { return false; } }
 async function up(url) { try { const r = await fetch(url + "/api/health", { signal: AbortSignal.timeout(1500) }); return r.ok; } catch { return false; } }
@@ -72,7 +78,7 @@ async function main() {
     await box.click();
     for (const ch of line) { await box.type(ch, { delay: 28 }); }   // human-paced typing reads well on GIF
     await box.press("Enter");
-    await page.waitForTimeout(9000);   // let the answer stream + a tool fire
+    await page.waitForTimeout(ANSWER_WAIT_MS);   // let the crew assemble + run visibly
   }
   await page.waitForTimeout(1200);
   await ctx.close();   // flushes the video
