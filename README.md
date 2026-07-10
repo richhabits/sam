@@ -208,8 +208,8 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 ## License
 
-**Proprietary — © 2026 HECTIC. All rights reserved.** See [LICENSE](LICENSE).
-Shared for personal use and testing; not for redistribution or commercial use without permission.
+**MIT** © 2026 HECTIC. See [LICENSE](LICENSE).
+Free to use, modify, and redistribute — including commercially — with attribution.
 
 <div align="center">
 
