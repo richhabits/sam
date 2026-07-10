@@ -1,7 +1,7 @@
 // SAM service worker — push notifications + installable offline shell.
 const CACHE = "sam-shell-v2";
 
-self.addEventListener("install", (e) => { self.skipWaiting(); });
+self.addEventListener("install", (_e) => { self.skipWaiting(); });
 self.addEventListener("activate", (e) => { e.waitUntil(self.clients.claim()); });
 
 // 🔔 Push — SAM sent something (brief, reminder, task result) while the app was closed.
@@ -21,10 +21,10 @@ self.addEventListener("push", (event) => {
 // Tap the notification → focus SAM if open, else open it.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
+  const url = (event.notification.data?.url) || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) { if ("focus" in c) { c.navigate && c.navigate(url); return c.focus(); } }
+      for (const c of list) { if ("focus" in c) { c.navigate?.(url); return c.focus(); } }
       return self.clients.openWindow(url);
     })
   );

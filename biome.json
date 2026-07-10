@@ -22,20 +22,37 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended",
+			"a11y": {
+				"noAutofocus": "off",
+				"useMediaCaption": "off",
+				"noStaticElementInteractions": "warn",
+				"useKeyWithClickEvents": "warn",
+				"useButtonType": "warn"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
 			"suspicious": {
 				"noExplicitAny": "off",
 				"noAssignInExpressions": "warn",
-				"noConfusingVoidType": "off"
+				"noConfusingVoidType": "off",
+				"noArrayIndexKey": "warn",
+				"useIterableCallbackReturn": "warn"
 			},
 			"complexity": {
 				"noForEach": "off",
-				"useLiteralKeys": "off"
+				"useLiteralKeys": "off",
+				"noImportantStyles": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "warn"
 			},
 			"style": {
 				"noNonNullAssertion": "off",
 				"useNodejsImportProtocol": "warn",
 				"noParameterAssign": "off",
-				"useTemplate": "off"
+				"useTemplate": "off",
+				"noDescendingSpecificity": "off"
 			},
 			"performance": { "noDelete": "off" }
 		}

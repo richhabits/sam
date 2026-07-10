@@ -74,12 +74,12 @@ describe("sandbox (async)", () => {
     await expect(F.sandboxRun("(i)=>eval('1+1')", "")).rejects.toBeTruthy();
   });
   it("refuses the canonical vm constructor-chain escape (scan + runtime isolate)", async () => {
-    const escape = `(i)=>this.constructor.constructor("return process")()`;
+    const escapeCode = `(i)=>this.constructor.constructor("return process")()`;
     // 1) the static scan catches the .constructor access before it ever runs
-    expect(F.scanCode(escape).ok).toBe(false);
+    expect(F.scanCode(escapeCode).ok).toBe(false);
     // 2) defence-in-depth: even bypassing the scan, the child isolate contains it (null `this`, no
     //    ambient globals, codegen disabled) so it throws instead of reaching host `process`.
-    await expect(F.sandboxRun(escape, "")).rejects.toBeTruthy();
+    await expect(F.sandboxRun(escapeCode, "")).rejects.toBeTruthy();
   });
   it("an obfuscated bracket-notation + charcode escape cannot reach host process", async () => {
     // Bypasses the regex (no literal `.constructor`, no literal `process`) — the ISOLATE must stop it.
@@ -88,8 +88,8 @@ describe("sandbox (async)", () => {
   });
   it("a net tool cannot escape via the sam shim's constructor (process-level codegen off)", async () => {
     // sam.fetch is a HOST function; reaching host Function via its constructor chain must be dead.
-    const escape = `(i,sam)=>{ try { return String(sam.fetch.constructor.constructor("return 42")()); } catch (e) { return "BLOCKED"; } }`;
-    await expect(F.sandboxRun(escape, "", ["net"], "netesc")).resolves.toBe("BLOCKED");
+    const escapeCode = `(i,sam)=>{ try { return String(sam.fetch.constructor.constructor("return 42")()); } catch (e) { return "BLOCKED"; } }`;
+    await expect(F.sandboxRun(escapeCode, "", ["net"], "netesc")).resolves.toBe("BLOCKED");
   });
 });
 

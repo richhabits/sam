@@ -8,7 +8,7 @@
 //  scrubbed before it ever reaches the clipboard.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, statSync, renameSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, appendFileSync, statSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir, platform, release, totalmem, arch } from "node:os";
 import { fileURLToPath } from "node:url";

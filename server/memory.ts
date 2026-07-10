@@ -9,7 +9,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 import { openDb } from "./db.ts";
 import { embedOne, cosine } from "./embeddings.ts";
 
@@ -183,7 +182,7 @@ export function memoryStats() {
 
 export function forget(id: string): boolean {
   const result = db.prepare("DELETE FROM memories WHERE id = ?").run(id);
-  if (result.changes > 0) for (const [m, idx] of _vecCache) {   // keep the index in sync
+  if (result.changes > 0) for (const [_m, idx] of _vecCache) {   // keep the index in sync
     const i = idx.findIndex((r) => r.id === id);
     if (i >= 0) { idx.splice(i, 1); break; }
   }

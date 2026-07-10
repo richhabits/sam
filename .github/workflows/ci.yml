@@ -16,6 +16,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Lint gate — Biome. Fails the build on ERROR-level rules only (warnings are advisory and
+      # don't block). Keeps the codebase born-clean without churning the intentional dense style.
+      - run: npm run lint
       - run: npm test
       # Type-check — `vite build` uses esbuild which strips types WITHOUT checking them,
       # so type errors slip through the build. This catches them.
