@@ -42,6 +42,8 @@ import { startProactive, takePending, listNudges, desktopNotify } from "./proact
 import { consentState, setEnabled as setConsent, disableAll as consentDisableAll } from "./consent.ts";
 import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
 import { evaluateTriggers } from "./triggers.ts";
+import { listWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, runWorkflow, recordRun, dangerousStepsIn, type Workflow } from "./workflows.ts";
+import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -982,6 +984,41 @@ app.post("/api/autonomy-log/clear", (req, res) => {
 app.get("/api/suggestions", (_req, res) => {
   const dueReminders = listNudges().filter((n) => n.due && new Date(n.due).getTime() <= Date.now()).map((n) => ({ id: n.id, text: n.text }));
   res.json({ cards: evaluateTriggers({ now: new Date().toISOString(), dueReminders }) });
+});
+
+// ── Workflows (v1.8) — named, saved, repeatable multi-step sequences. ──
+app.get("/api/workflows", (_req, res) => res.json({ workflows: listWorkflows().map((w) => ({ ...w, dangerousSteps: dangerousStepsIn(w).map((s) => s.id) })) }));
+app.post("/api/workflows", (req, res) => {
+  const wf = req.body as Workflow;
+  const r = saveWorkflow({ ...wf, runs: wf.runs || [], armed: !!wf.armed, createdAt: wf.createdAt || new Date().toISOString(), version: wf.version || 1 });
+  return r.ok ? res.json({ ok: true }) : res.status(400).json({ error: r.reason });
+});
+app.delete("/api/workflows/:id", (req, res) => res.json({ ok: deleteWorkflow(req.params.id) }));
+app.post("/api/workflows/install-starters", (_req, res) => {
+  const now = new Date().toISOString();
+  let n = 0;
+  for (const t of STARTER_WORKFLOWS) { if (!getWorkflow(t.id)) { saveWorkflow({ ...t, armed: false, createdAt: now, runs: [] }); n++; } }
+  res.json({ installed: n, workflows: listWorkflows().length });
+});
+// Run a workflow. The engine PAUSES at any dangerous step (never runs it). The executor here auto-runs
+// only SAFE tools; a confirm-tier step defers with a note so it's run with the user present. Brain steps
+// use the free/local tier so a run stays on the cost-cutting cascade.
+app.post("/api/workflows/:id/run", async (req, res) => {
+  const wf = getWorkflow(req.params.id);
+  if (!wf) return res.status(404).json({ error: "no such workflow" });
+  const { toolByName } = await import("./tools.ts");
+  const run = await runWorkflow(wf, {
+    now: new Date().toISOString(),
+    execTool: async (tool, input) => {
+      const t = toolByName(tool);
+      if (!t) return `(no such tool: ${tool})`;
+      if (!t.safe) return `(“${tool}” needs your approval — run it with SAM open)`;   // confirm-tier defers; dangerous already paused
+      try { return await t.run(input); } catch (e: any) { return `(error: ${e?.message || e})`; }
+    },
+    execBrain: async (prompt) => (await runModel((process.env.DEFAULT_TIER as Tier) || "free", "You are SAM, running a saved workflow step. Do this step and hand back a tight result.", prompt)).text,
+  });
+  recordRun(wf.id, run);
+  res.json({ run });
 });
 
 // ── People SAM knows by sight (local, private) ──
