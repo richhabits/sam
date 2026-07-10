@@ -29,6 +29,10 @@ on:
         description: "Attach installers to the release for this version (must already exist)"
         type: boolean
         default: false
+# Serialise per release/ref, but NEVER cancel an in-flight release build (signing/notarization must finish).
+concurrency:
+  group: build-desktop-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write   # attach installers to the release
