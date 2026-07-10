@@ -23,10 +23,13 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "docs/media");
 const URL = process.env.SAM_URL || "http://127.0.0.1:8787";
-// The scripted session. `/team <request>` assembles a crew of specialists that run in parallel — the
-// UI renders the crew with agents going active → done, which is the distinctive money-shot for the hero.
+// The scripted session. `/team <request>` assembles a crew that runs in parallel — the UI renders each
+// agent going active → done (the distinctive money-shot). The crew is planned by the model from the
+// request (server/agents.ts makePlan), so three clean, distinct workstreams steer it toward exactly the
+// trio we want on screen: research → Scout 🔬, copy → Quill ✍️, design → Maestro 🎨. It's model-planned,
+// not hard-wired, so an occasional take may add/swap one — re-run if the crew composition isn't clean.
 const SCRIPT = [
-  "/team research my 3 competitors and draft a launch post",
+  "/team research my top 3 competitors, write the launch copy, and design the landing page",
 ];
 const ANSWER_WAIT_MS = Number(process.env.SAM_DEMO_WAIT_MS || 16000);   // a team runs longer than a single answer — give the crew time to assemble + work on screen
 
