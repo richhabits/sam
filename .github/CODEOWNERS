@@ -1,0 +1,11 @@
+# Default owner for everything — review requests route here automatically.
+* @richhabits
+
+# Security-critical surfaces get extra scrutiny (same owner today; split out as the team grows).
+/server/authz.ts        @richhabits
+/server/forge.ts        @richhabits
+/server/remote-tokens.ts @richhabits
+/gateway/               @richhabits
+/SECURITY.md            @richhabits
+/docs/SECURITY-AUDIT.md @richhabits
+/.github/               @richhabits
