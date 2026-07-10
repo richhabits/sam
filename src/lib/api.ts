@@ -184,3 +184,19 @@ export const deleteNotebook = (id: string) => fetch(`/api/notebooks/${encodeURIC
 // 🚀 Sign & ship
 export const getSigningStatus = () => fetch("/api/signing/status").then((r) => r.json());
 export const genAndroidKeystore = () => fetch("/api/signing/android-keystore", { method: "POST" }).then((r) => r.json());
+
+// ── v1.8 — autonomy consent, learning, workflows ──
+const post = (url: string, body?: any) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
+export const getConsent = () => fetch("/api/consent").then((r) => r.json());
+export const setConsent = (behavior: string, on: boolean) => post("/api/consent", { behavior, on });
+export const consentDisableAll = () => post("/api/consent/disable-all");
+export const getAutonomyLog = () => fetch("/api/autonomy-log").then((r) => r.json());
+export const clearAutonomyLog = () => post("/api/autonomy-log/clear");
+export const getSuggestions = () => fetch("/api/suggestions").then((r) => r.json());
+export const getPreferences = () => fetch("/api/preferences").then((r) => r.json());
+export const forgetPreference = (key: string) => post("/api/preferences/forget", { key });
+export const resetPreferences = () => post("/api/preferences/reset");
+export const getWorkflows = () => fetch("/api/workflows").then((r) => r.json());
+export const installStarterWorkflows = () => post("/api/workflows/install-starters");
+export const runWorkflowApi = (id: string) => post(`/api/workflows/${id}/run`);
+export const deleteWorkflowApi = (id: string) => fetch(`/api/workflows/${id}`, { method: "DELETE" }).then((r) => r.json());
