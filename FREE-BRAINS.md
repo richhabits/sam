@@ -20,7 +20,7 @@ The trick that makes the rest painless: **one email + one password for everythin
 You create these — SAM never signs up on its own (that breaks providers' rules and gets accounts
 banned). You stay in control; SAM just uses the keys you paste in.
 
-1. **Make SAM an email** — e.g. a free Gmail like `yourname.sam@gmail.com`, or `sam@yourdomain.com`.
+1. **Make SAM an email** — e.g. a free Gmail like `you@example.com`, or `sam@yourdomain.com`.
    This becomes SAM's identity for every free account below.
 2. **Pick ONE strong password** for it — call it SAM's password. Write it in a password manager
    (iCloud Keychain, 1Password, Bitpass…) so you never retype it.
