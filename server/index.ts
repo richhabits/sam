@@ -48,6 +48,7 @@ import { listPreferences, learnPreference, forgetPreference, resetPreferences } 
 import { isEnabled as consentEnabled } from "./consent.ts";
 import { recordTask, recordWorkflowRun, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
 import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload } from "./telemetry.ts";
+import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -1040,6 +1041,10 @@ app.get("/api/telemetry", (_req, res) => res.json({ enabled: telemetryEnabled(),
 app.post("/api/telemetry", (req, res) => { setTelemetry(!!req.body?.on, new Date().toISOString()); res.json({ enabled: telemetryEnabled(), decided: true }); });
 // Exactly what WOULD be sent, so the user can inspect it before deciding (transparency, no dark pattern).
 app.get("/api/telemetry/preview", (_req, res) => res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." }));
+
+// ── Billing (v2.0) — OFF by default. NEVER gates core (coreGated is always false). ──
+app.get("/api/billing", (_req, res) => res.json(billingStatus()));
+app.post("/api/billing/checkout", (req, res) => res.json(billingCheckout(String(req.body?.plan || "") as Plan)));
 
 // ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
 // Nothing here is ever transmitted (see preferences.ts privacy invariant). Learning is OFF unless the
