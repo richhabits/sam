@@ -1223,3 +1223,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .wf-run-result.paused { color: var(--accent-text); background: var(--accent-soft); }
 .wf-run-result.done { color: var(--c-ok); background: color-mix(in srgb, var(--c-ok) 12%, transparent); }
 .wf-run-result.error { color: var(--c-err); background: var(--c-err-bg); }
+
+/* ── v2.0 "Your SAM" dashboard ─────────────────────────────────────────── */
+.drawer.yoursam { max-width: 560px; }
+.ys-hero { display: flex; align-items: center; gap: 12px; background: color-mix(in srgb, var(--c-ok) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c-ok) 30%, var(--border)); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; color: var(--text); line-height: 1.4; }
+.ys-hero-lock { font-size: 22px; }
+.ys-hero-sub { color: var(--muted); font-size: 12.5px; }
+.ys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+.ys-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; text-align: center; }
+.ys-stat-big { font-size: 24px; font-weight: 700; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.ys-stat-label { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.ys-tools { display: flex; flex-direction: column; gap: 4px; }
+.ys-tool { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+.ys-tool-name { color: var(--text); }
+.ys-tool-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ys-tel { display: flex; flex-direction: column; gap: 8px; }
+.ys-preview-btn { align-self: flex-start; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--accent-text); background: none; border: none; cursor: pointer; padding: 2px 0; }
+.ys-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); overflow-x: auto; white-space: pre; margin: 0; }
