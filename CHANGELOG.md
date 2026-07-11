@@ -2,6 +2,32 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.0.0] - 2026-07-11 — "Worth Money"
+
+The business layer — not new features. Measurement, activation, retention surfacing, and an honest
+monetization path, none of it compromising the free/local/private promise (which is now stated louder).
+Default build phones home nothing; 233 tests.
+
+### Measurement (privately)
+- **Local analytics** — SAM tracks its OWN usage on-device (tasks, tools, workflows, retention days,
+  cache hits) and shows it to YOU. Counts + dates only, never content.
+- **Opt-in anonymous telemetry** — OFF by default, neutral first-run choice. If enabled, only a closed
+  whitelist of aggregate fields is ever sent (version, OS, active-today, feature counts) — content can
+  NEVER appear (whitelist + poisoned-payload test + drift tripwire). `docs/PRIVACY.md` is exact.
+
+### "Your SAM" dashboard
+- Your usage, computed locally: "🔒 0 bytes of your data have left this device", days with SAM, tasks,
+  ~hours saved, things learned about you — and the neutral telemetry opt-in with a live payload preview.
+
+### Monetization path (OFF by default, never gates core)
+- `billing.ts` — free/local/private core is untouchable (`coreGated()` is a typed-false tripwire).
+  SAM Cloud (hosted brains, higher limits), Supporter, and SAM Teams (scaffold) unlock only optional
+  extras. Honest, inert Stripe scaffold behind `SAM_BILLING`. `docs/BUSINESS.md` has the unit economics.
+
+### Value story
+- `docs/TRACTION.md`, `POSITIONING.md`, `COMPETITIVE.md` — the growth/positioning story in an acquirer's
+  language, honest about where SAM does and doesn't win.
+
 ## [1.8.1] - 2026-07-10 — patch
 
 - **Fix:** the "+" (actions) menu was see-through when `backdrop-filter` didn't render solidly in the
