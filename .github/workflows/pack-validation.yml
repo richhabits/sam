@@ -1,0 +1,20 @@
+name: Validate packs
+# Every PR that touches packs runs the same safety gate the app runs on import: structure + signature +
+# the forge static-scan on every forged tool. A malformed or unsafe pack can't merge. Safe for fork PRs
+# (read-only, no secrets).
+on:
+  pull_request:
+    paths: ["packs/**", "community/**", "scripts/validate-packs.ts"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Validate every pack (structure + signature + forge scan)
+        run: npm run validate-packs

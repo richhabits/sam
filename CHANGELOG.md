@@ -2,6 +2,31 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.1.0] - 2026-07-11 — "Autopilot"
+
+Makes SAM *maintain itself* — automated ops, self-service support, community rails, and a feedback loop —
+so the founder's time goes to the one thing that can't be automated: launching + talking to users. 240 tests.
+
+### Self-service (users onboard without you)
+- **"SAM isn't working?"** — a one-click self-heal that checks the common failures (no brain, Ollama down,
+  offline, vault, macOS Accessibility) and shows the exact fix. `docs/TROUBLESHOOTING.md` for search.
+- Issue templates route setup questions to the in-app check + Discussions before they become issues.
+
+### Self-maintaining repo
+- **Daily health watchdog** (suite + audit + stats-drift + gitleaks → opens an issue on failure),
+  **weekly latest-deps canary**, **Dependabot auto-merge** for patch/minor that passes full CI.
+
+### Community rails
+- `npm run create-pack` + `npm run validate-packs`; **pack-validation CI** runs the app's safety gate
+  (structure + signature + forge scan) on every pack PR; a scaffolded first-PR path in CONTRIBUTING.
+
+### Feedback loop
+- **Monthly auto-digest** (stars, merged packs, top-👍 features, alerts → a draft issue); the signal→roadmap
+  model (`docs/ROADMAP-SIGNAL.md`) on the opt-in v2.0 telemetry + GitHub Discussions.
+
+### Launch execution
+- `docs/launch/GO.md` (ordered launch-day script + pre-written hostile-Q answers) and a 72-hour triage plan.
+
 ## [2.0.0] - 2026-07-11 — "Worth Money"
 
 The business layer — not new features. Measurement, activation, retention surfacing, and an honest

@@ -1240,3 +1240,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .ys-tel { display: flex; flex-direction: column; gap: 8px; }
 .ys-preview-btn { align-self: flex-start; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--accent-text); background: none; border: none; cursor: pointer; padding: 2px 0; }
 .ys-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); overflow-x: auto; white-space: pre; margin: 0; }
+
+/* ── v2.1 Doctor ("SAM isn't working") ─────────────────────────────────── */
+.drawer.doctor { max-width: 520px; }
+.dr-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.dr-check { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 12px; padding: 12px 14px; }
+.dr-check.ok { border-left-color: var(--c-ok); }
+.dr-check.warn { border-left-color: #F59E0B; }
+.dr-check.fail { border-left-color: var(--c-err); }
+.dr-check-top { display: flex; align-items: center; gap: 8px; }
+.dr-label { font-size: 14px; font-weight: 650; color: var(--text); }
+.dr-detail { font-size: 13px; color: var(--muted); margin: 4px 0 0 26px; line-height: 1.45; }
+.dr-fix { font-size: 13px; color: var(--text); margin: 7px 0 0 26px; padding: 8px 11px; background: var(--accent-soft); border-radius: 9px; line-height: 1.45; }
+.dr-fix b { color: var(--accent-text); }
+.dr-rerun { align-self: flex-start; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); border: none; border-radius: 10px; padding: 8px 15px; cursor: pointer; }
+.dr-rerun:disabled { opacity: .6; }
+.dr-more { display: inline-block; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
