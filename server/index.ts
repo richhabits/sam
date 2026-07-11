@@ -46,6 +46,9 @@ import { listWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, runWorkflow, 
 import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
 import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
 import { isEnabled as consentEnabled } from "./consent.ts";
+import { recordTask, recordWorkflowRun, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
+import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload } from "./telemetry.ts";
+import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -480,6 +483,7 @@ app.post("/api/command", async (req, res) => {
   const images = atts.filter((a) => a?.kind === "image" && a.data);
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
+  recordTask(new Date().toISOString());   // LOCAL analytics only — a count + date, never the message
 
   // TURBO: one fast model call on the quickest free provider — skip tools, embedding,
   // recall and routing entirely. Trades the tool loop for raw speed.
@@ -1020,8 +1024,27 @@ app.post("/api/workflows/:id/run", async (req, res) => {
     execBrain: async (prompt) => (await runModel((process.env.DEFAULT_TIER as Tier) || "free", "You are SAM, running a saved workflow step. Do this step and hand back a tight result.", prompt)).text,
   });
   recordRun(wf.id, run);
+  recordWorkflowRun(new Date().toISOString());   // local count only
   res.json({ run });
 });
+
+// ── Measurement (v2.0) — "Your SAM" stats (local) + opt-in anonymous telemetry ──
+// Analytics is 100% on-device. The dashboard also reports how many preferences SAM has learned and the
+// honest "0 data left your device" (unless the user opted into telemetry).
+app.get("/api/analytics", (_req, res) => {
+  const s = analyticsSummary(new Date().toISOString());
+  res.json({ ...s, preferencesLearned: listPreferences().length, telemetry: { enabled: telemetryEnabled(), decided: telemetryDecided() } });
+});
+app.post("/api/analytics/reset", (_req, res) => { resetAnalytics(); res.json({ ok: true }); });
+// Telemetry: the user's explicit, neutral opt-in. OFF by default; nothing is sent unless enabled.
+app.get("/api/telemetry", (_req, res) => res.json({ enabled: telemetryEnabled(), decided: telemetryDecided() }));
+app.post("/api/telemetry", (req, res) => { setTelemetry(!!req.body?.on, new Date().toISOString()); res.json({ enabled: telemetryEnabled(), decided: true }); });
+// Exactly what WOULD be sent, so the user can inspect it before deciding (transparency, no dark pattern).
+app.get("/api/telemetry/preview", (_req, res) => res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." }));
+
+// ── Billing (v2.0) — OFF by default. NEVER gates core (coreGated is always false). ──
+app.get("/api/billing", (_req, res) => res.json(billingStatus()));
+app.post("/api/billing/checkout", (req, res) => res.json(billingCheckout(String(req.body?.plan || "") as Plan)));
 
 // ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
 // Nothing here is ever transmitted (see preferences.ts privacy invariant). Learning is OFF unless the
