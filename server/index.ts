@@ -49,6 +49,7 @@ import { isEnabled as consentEnabled } from "./consent.ts";
 import { recordTask, recordWorkflowRun, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
 import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload } from "./telemetry.ts";
 import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
+import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
@@ -1041,6 +1042,19 @@ app.get("/api/telemetry", (_req, res) => res.json({ enabled: telemetryEnabled(),
 app.post("/api/telemetry", (req, res) => { setTelemetry(!!req.body?.on, new Date().toISOString()); res.json({ enabled: telemetryEnabled(), decided: true }); });
 // Exactly what WOULD be sent, so the user can inspect it before deciding (transparency, no dark pattern).
 app.get("/api/telemetry/preview", (_req, res) => res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." }));
+
+// ── Doctor (v2.1) — "SAM isn't working" self-heal. Gathers the live world, returns exact fixes. ──
+app.get("/api/doctor", async (_req, res) => {
+  const st = providersStatus();
+  const hasCloudKeys = Array.isArray(st?.providers) && st.providers.some((p: any) => (p?.keys ?? 0) > 0);
+  const ollamaConfigured = !!st?.local?.ollama;
+  const ping = async (url: string, ms: number) => { try { const r = await fetch(url, { signal: AbortSignal.timeout(ms) }); return r.ok || r.status < 500; } catch { return false; } };
+  const ollamaReachable = ollamaConfigured ? await ping("http://127.0.0.1:11434/api/tags", 1500) : false;
+  const online = await ping("https://api.github.com/zen", 2500).catch(() => false);
+  let vaultWritable = true;
+  try { const { writeFileSync, unlinkSync } = await import("node:fs"); const p = join(process.env.VAULT_DIR || join(REPO_ROOT, "vault"), ".doctor-probe"); writeFileSync(p, "ok"); unlinkSync(p); } catch { vaultWritable = false; }
+  res.json(runDoctor({ hasCloudKeys, ollamaConfigured, ollamaReachable, online, vaultWritable, platform: process.platform }));
+});
 
 // ── Billing (v2.0) — OFF by default. NEVER gates core (coreGated is always false). ──
 app.get("/api/billing", (_req, res) => res.json(billingStatus()));
