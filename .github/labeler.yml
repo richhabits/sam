@@ -1,0 +1,15 @@
+# Auto-label PRs by what they touch (actions/labeler). Helps triage stranger PRs at a glance.
+security:
+  - changed-files: [{ any-glob-to-any-file: ["server/authz.ts", "server/forge.ts", "server/telemetry.ts", "SECURITY.md", "docs/SECURITY-AUDIT.md"] }]
+docs:
+  - changed-files: [{ any-glob-to-any-file: ["docs/**", "**/*.md"] }]
+ci:
+  - changed-files: [{ any-glob-to-any-file: [".github/**"] }]
+ui:
+  - changed-files: [{ any-glob-to-any-file: ["src/**", "electron/**"] }]
+tests:
+  - changed-files: [{ any-glob-to-any-file: ["**/*.test.ts"] }]
+packs:
+  - changed-files: [{ any-glob-to-any-file: ["packs/**", "server/packs.ts", "community/**"] }]
+dependencies:
+  - changed-files: [{ any-glob-to-any-file: ["package.json", "package-lock.json"] }]

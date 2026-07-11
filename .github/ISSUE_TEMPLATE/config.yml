@@ -1,8 +1,16 @@
-blank_issues_enabled: true
+# Force template routing (bug / feature / question) and divert the top setup questions to self-service
+# help BEFORE they become issues. The goal: automation + docs absorb the common 80%.
+blank_issues_enabled: false
 contact_links:
-  - name: 💬 Discussions
-    url: https://github.com/richhabits/sam/discussions
-    about: Questions, ideas, and show-and-tell.
+  - name: 🩺 SAM isn't working? Try the in-app check first
+    url: https://github.com/richhabits/sam/blob/main/docs/TROUBLESHOOTING.md
+    about: Settings → "SAM isn't working" auto-diagnoses no-brain / Ollama / Gatekeeper / Accessibility / port issues and gives the exact fix. Most setup problems are answered here.
+  - name: ❓ Question or how-to
+    url: https://github.com/richhabits/sam/discussions/categories/q-a
+    about: Ask in Discussions Q&A — faster than an issue, and the answer helps the next person.
+  - name: 💡 Idea / feature request
+    url: https://github.com/richhabits/sam/discussions/categories/ideas
+    about: Share + upvote ideas in Discussions so the most-wanted surface themselves.
   - name: 🔒 Security
     url: https://github.com/richhabits/sam/blob/main/SECURITY.md
-    about: Report a vulnerability privately (please don't open a public issue).
+    about: Report a vulnerability privately via Security Advisories — please don't open a public issue.
