@@ -8,7 +8,7 @@ how the community extends SAM without touching the repo.
 
 ```jsonc
 {
-  "format": "sam-pack/1",
+  "format": "sampack/1",
   "meta": {
     "name": "Landlord Pack",
     "description": "Playbooks + tools for property management",
