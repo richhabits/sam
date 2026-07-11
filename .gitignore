@@ -85,3 +85,12 @@ vault/.device-id
 
 # generated package manifests (filled at release)
 packaging/out/
+
+# test/CI artifacts (playwright, recordings, stray root probe scripts)
+test-results/
+playwright-report/
+*.webm
+/verify-*.mjs
+/capture-*.mjs
+/*-shot.mjs
+/*-smoke.mjs
