@@ -57,12 +57,12 @@ describe("PRIVACY INVARIANT — content can NEVER be in a telemetry payload", ()
     T.setTelemetry(true, NOW);
     const poisoned = analytics({
       // simulate the worst case: sensitive strings smuggled into the local store
-      toolUses: { "read_file:/Users/romeo/taxes-2026.pdf": 3, "send_email:boss@acme.com": 1 } as any,
+      toolUses: { "read_file:/Users/alex/taxes-2026.pdf": 3, "send_email:boss@acme.com": 1 } as any,
       ...( { userPrompt: "my bank password is hunter2", lastMessage: "SECRET_CONTENT_XYZ" } as any ),
     });
     const p = T.buildPayload(poisoned, "2.0.0", "darwin", NOW)!;
     const wire = JSON.stringify(p);
-    for (const secret of ["taxes-2026", "romeo", "boss@acme.com", "hunter2", "SECRET_CONTENT_XYZ", "/Users/"]) {
+    for (const secret of ["taxes-2026", "alex", "boss@acme.com", "hunter2", "SECRET_CONTENT_XYZ", "/Users/"]) {
       expect(wire).not.toContain(secret);
     }
     expect((p.features as any).toolUses).toBe(4);        // the poisoned keys collapsed to a plain count
