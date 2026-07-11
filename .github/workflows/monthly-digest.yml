@@ -1,0 +1,51 @@
+name: Monthly digest
+# On the 1st of each month, assemble "the state of SAM" into a draft issue so the maintainer always knows
+# where to point effort without digging: stars, merged PRs (incl. packs), most-wanted features (by 👍),
+# open bugs, and any open watchdog/setup alerts. Pure read + one issue — free.
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const since = new Date(Date.now() - 30 * 864e5).toISOString();
+            const repoData = (await github.rest.repos.get({ owner, repo })).data;
+
+            // merged PRs in the last 30d (packs = the growth flywheel)
+            const prs = (await github.rest.search.issuesAndPullRequests({ q: `repo:${owner}/${repo} is:pr is:merged merged:>=${since.slice(0,10)}`, per_page: 100 })).data;
+            const packPRs = prs.items.filter(p => (p.labels||[]).some(l => l.name === "packs"));
+
+            // most-wanted open features by 👍
+            const feats = (await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: "feature", per_page: 100 })).data
+              .sort((a,b) => (b.reactions?.["+1"]||0) - (a.reactions?.["+1"]||0)).slice(0,5);
+
+            const bugs = (await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: "bug", per_page: 1 })).data;
+            const alerts = (await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: "watchdog", per_page: 5 })).data;
+
+            const month = new Date().toISOString().slice(0,7);
+            const body = [
+              `## 📊 SAM — ${month}`,
+              ``,
+              `- ⭐ **Stars:** ${repoData.stargazers_count}   ·   🍴 Forks: ${repoData.forks_count}   ·   🐛 Open bugs: ${bugs.length ? "(see label)" : 0}`,
+              `- 🔀 **Merged PRs (30d):** ${prs.total_count}   ·   📦 pack PRs merged: ${packPRs.length}`,
+              alerts.length ? `- 🚨 **Open health alerts:** ${alerts.length} — check the \`watchdog\` label` : `- ✅ No open health alerts`,
+              ``,
+              `### 🔝 Most-wanted features (by 👍)`,
+              feats.length ? feats.map(f => `- [${f.reactions?.["+1"]||0} 👍] ${f.title} (#${f.number})`).join("\n") : "_none yet_",
+              ``,
+              `### Where to point effort`,
+              `Build what the top feature requests + failing-setup signals say — not assumptions. (Add opt-in aggregate telemetry, once the endpoint is deployed, to see which features correlate with retention.)`,
+              ``,
+              `_Auto-generated. Close when reviewed._`,
+            ].join("\n");
+
+            await github.rest.issues.create({ owner, repo, title: `📊 SAM monthly digest — ${month}`, body, labels: ["digest"] });
