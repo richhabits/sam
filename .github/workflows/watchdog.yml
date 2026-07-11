@@ -1,0 +1,44 @@
+name: Health Watchdog
+# Runs the full health suite on main every day and OPENS A LABELED ISSUE if anything's wrong — so the
+# repo tells the maintainer it's rotting instead of rotting silently. Free (one ubuntu run/day).
+on:
+  schedule:
+    - cron: "0 8 * * *"   # daily 08:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write        # to file the alert
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Lint · types · tests · build
+        run: npm run lint && npx tsc --noEmit && npm test && npm run build
+      - name: Dependency audit (high/critical fail)
+        run: npm audit --audit-level=high
+      - name: Advertised stats not drifted
+        run: |
+          npm run stats
+          git diff --exit-code docs/stats.json README.md || { echo "::error::stats drifted"; exit 1; }
+      - name: Gitleaks (full history)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # On ANY failure above → open (or reuse) a dated alert issue so it's impossible to miss.
+      - name: Open an alert issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Health watchdog failed — ${new Date().toISOString().slice(0,10)}`;
+            const body = `The daily health watchdog failed. See the run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nSomething on \`main\` needs attention (lint / types / tests / build / audit / stats-drift / secrets).`;
+            const existing = await github.rest.issues.listForRepo({ owner: context.repo.owner, repo: context.repo.repo, state: "open", labels: "watchdog" });
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ["watchdog", "ci"] });
+            }
