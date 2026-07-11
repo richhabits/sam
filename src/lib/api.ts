@@ -200,3 +200,10 @@ export const getWorkflows = () => fetch("/api/workflows").then((r) => r.json());
 export const installStarterWorkflows = () => post("/api/workflows/install-starters");
 export const runWorkflowApi = (id: string) => post(`/api/workflows/${id}/run`);
 export const deleteWorkflowApi = (id: string) => fetch(`/api/workflows/${id}`, { method: "DELETE" }).then((r) => r.json());
+
+// ── v2.0 — measurement (local analytics + opt-in telemetry) ──
+export const getAnalytics = () => fetch("/api/analytics").then((r) => r.json());
+export const resetAnalytics = () => post("/api/analytics/reset");
+export const getTelemetry = () => fetch("/api/telemetry").then((r) => r.json());
+export const setTelemetry = (on: boolean) => post("/api/telemetry", { on });
+export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r) => r.json());
