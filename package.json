@@ -39,7 +39,9 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
-    "create-tool": "node scripts/create-tool.mjs"
+    "create-tool": "node scripts/create-tool.mjs",
+    "create-pack": "node scripts/create-pack.mjs",
+    "validate-packs": "tsx scripts/validate-packs.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
