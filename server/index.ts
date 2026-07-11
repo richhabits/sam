@@ -1039,7 +1039,13 @@ app.get("/api/analytics", (_req, res) => {
 app.post("/api/analytics/reset", (_req, res) => { resetAnalytics(); res.json({ ok: true }); });
 // Telemetry: the user's explicit, neutral opt-in. OFF by default; nothing is sent unless enabled.
 app.get("/api/telemetry", (_req, res) => res.json({ enabled: telemetryEnabled(), decided: telemetryDecided() }));
-app.post("/api/telemetry", (req, res) => { setTelemetry(!!req.body?.on, new Date().toISOString()); res.json({ enabled: telemetryEnabled(), decided: true }); });
+app.post("/api/telemetry", (req, res) => {
+  // Enabling telemetry causes anonymous data to LEAVE the device — a privacy-posture change, so it's
+  // decided AT THE MACHINE only, exactly like /api/consent. A scoped phone token must never flip it on.
+  if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+  setTelemetry(!!req.body?.on, new Date().toISOString());
+  res.json({ enabled: telemetryEnabled(), decided: true });
+});
 // Exactly what WOULD be sent, so the user can inspect it before deciding (transparency, no dark pattern).
 app.get("/api/telemetry/preview", (_req, res) => res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." }));
 
