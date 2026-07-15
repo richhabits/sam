@@ -96,11 +96,21 @@ export async function buildIndexes(skills: Skill[]): Promise<void> {
 // Relevant tools for this query vector: core + top-k semantic matches. On a miss
 // (no index yet / model mismatch), falls back to CORE + a keyword-matched subset
 // of the query — NOT all 128 tools, which is a ~5k-token bomb on a free 3B model.
+// Minimum cosine for a tool to be RELEVANT enough to offer. Below this the match is
+// noise — e.g. "how's the England game going" tops out at ~0.44 (weather/emails), so
+// without a floor the model was handed weather_forecast_7day and ran a 7-day forecast
+// for a football question. Real tool intent sits at 0.57+ (weather 0.57, send-text 0.65,
+// screenshot 0.86), so 0.50 drops the noise with margin to spare. Mirrors selectSkillId's
+// 0.32 gate. On a below-floor turn the model still has CORE (incl. web_search) to fall back on.
+const TOOL_MATCH_FLOOR = 0.5;
+
 export function selectTools(q: { model: string; vec: number[] } | null, k = 8, text = ""): string[] {
   if (q && q.model === model && toolIdx.length) {
     const top = toolIdx
       .map((t) => ({ name: t.name, s: cosine(t.vec, q.vec) }))
-      .sort((a, b) => b.s - a.s).slice(0, k).map((x) => x.name);
+      .sort((a, b) => b.s - a.s)
+      .filter((x) => x.s >= TOOL_MATCH_FLOOR)
+      .slice(0, k).map((x) => x.name);
     return Array.from(new Set([...CORE, ...top]));
   }
   const words = text.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
