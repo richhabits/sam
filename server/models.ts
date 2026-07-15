@@ -555,6 +555,18 @@ export async function streamModel(tier: Tier, system: string, prompt: string, on
 
 // ── VISION · look at photos/images (free via Gemini multimodal) ──
 export interface ImagePart { mime: string; data: string } // data = raw base64
+
+// Groq's vision guardrail frequently refuses perfectly benign photos — especially ones
+// with a person/face — returning a canned "I can't help with that." Treat that (and a
+// blank reply) as a MISS so we fall through to a real vision lane instead of surfacing
+// the refusal to the user. Kept local so this low-level module stays dependency-free
+// (mirrors classify.ts's selfCheckFailed).
+const VISION_REFUSAL_RE = /i can[’'`]?t (help|assist)|i(?:'?m| am)? ?(?:un)?able to (?:help|assist|process)|i cannot (?:help|assist|process)/i;
+function visionRefused(text: string): boolean {
+  const a = (text || "").trim();
+  return a.length < 8 || VISION_REFUSAL_RE.test(a);
+}
+
 export async function runVision(system: string, prompt: string, images: ImagePart[]): Promise<ModelResult> {
   // LANE 0 · Groq llama-4-scout (free tier, very fast) — vision without a Gemini key.
   {
@@ -570,7 +582,8 @@ export async function runVision(system: string, prompt: string, images: ImagePar
         });
         if (r.ok) {
           const text = (await r.json())?.choices?.[0]?.message?.content?.trim() || "";
-          if (text) { reportSuccess("groq", gk); return { text, provider: "groq:llama-4-scout (vision)", tier: "free" }; }
+          // Only accept a real answer — if Groq refused/blanked, fall through to Gemini/Ollama.
+          if (text && !visionRefused(text)) { reportSuccess("groq", gk); return { text, provider: "groq:llama-4-scout (vision)", tier: "free" }; }
         } else reportFailure("groq", gk, r.status);
       } catch { /* fall through to Gemini */ }
     }
