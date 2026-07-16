@@ -105,6 +105,15 @@ const SUGGESTIONS = [
 type Quality = "turbo" | "auto" | "private" | "best";
 // "turbo" is a signal the server maps to the fastest free provider + a single call (no tools).
 const QUALITY_TIER: Record<Quality, string | undefined> = { turbo: "turbo", auto: "free", private: "local", best: "premium" };
+// Persona voices (mirrors server PERSONAS) — same brain + shared memory, tone only. Default warm "sam".
+const PERSONA_OPTS = [
+  { id: "sam", label: "SAM", emoji: "🧠", blurb: "warm & sharp" },
+  { id: "pa", label: "PA", emoji: "📋", blurb: "crisp & professional" },
+  { id: "coach", label: "Coach", emoji: "🔥", blurb: "direct, all momentum" },
+  { id: "gran", label: "Gran", emoji: "🫖", blurb: "warm & caring" },
+  { id: "mum", label: "Mum", emoji: "🧡", blurb: "nurturing, on-track" },
+  { id: "dad", label: "Dad", emoji: "🧢", blurb: "blunt, tough love" },
+];
 
 const LS = "sam.v2";
 function loadState(): { convos: Convo[]; activeId: string; brand: string; quality: Quality } {
@@ -184,6 +193,8 @@ export default function App() {
 
   const [brand, setBrand] = useState<string>(init.brand);
   const [mode, setMode] = useState<"business" | "personal">(() => { try { return (localStorage.getItem("sam.mode") as any) || "business"; } catch { return "business"; } });
+  // Persona: a switchable VOICE over the ONE shared memory (default warm "sam"). Tone only.
+  const [persona, setPersona] = useState<string>(() => { try { return localStorage.getItem("sam.persona") || "sam"; } catch { return "sam"; } });
   const [quality, setQuality] = useState<Quality>(init.quality);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -208,7 +219,7 @@ export default function App() {
   function upsertProfile(p: Profile) {
     setProfiles((list) => { const next = [p, ...list.filter((x) => x.name.toLowerCase() !== p.name.toLowerCase())]; saveProfiles(next); return next; });
   }
-  function switchTo(p: Profile) { setProfile(p); setUser({ ...p, mode }); newChat(); sysNote(`👋 Switched to ${p.name} — this is ${p.name}'s SAM (own memory & chats).`); }
+  function switchTo(p: Profile) { setProfile(p); setUser({ ...p, mode, persona }); newChat(); sysNote(`👋 Switched to ${p.name} — this is ${p.name}'s SAM (own memory & chats).`); }
   const [onboardName, setOnboardName] = useState("");
   const [onboardAbout, setOnboardAbout] = useState("");
   const [onboardLang, setOnboardLang] = useState("English");
@@ -394,7 +405,7 @@ export default function App() {
   useEffect(() => { try { const darkSkin = ["jarvis","ember","stealth","midnight","nord","dracula","aurora"].includes(skin); document.documentElement.setAttribute("data-theme", (dark || darkSkin) ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark, skin]);
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
-  useEffect(() => { setUser({ ...profile, mode }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); } catch {} }, [profile, mode]);
+  useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch {} }, [profile, mode, persona]);
 
   // Hands-free wake: whistle or double-clap opens Voice Mode.
   useEffect(() => {
@@ -411,7 +422,7 @@ export default function App() {
     const name = onboardName.trim();
     if (!name) return;
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
-    setProfile(p); setUser({ ...p, mode }); upsertProfile(p);
+    setProfile(p); setUser({ ...p, mode, persona }); upsertProfile(p);
     // Optional free Groq key — if pasted, save it silently (SAM still works fine without it).
     if (onboardKey.trim()) fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "groq", keys: onboardKey.trim() }) }).catch(() => {});
     // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
@@ -794,6 +805,16 @@ export default function App() {
     const atts = attachments;
     if ((!value && !atts.length) || loading) return;
     if (value.startsWith("/") && !atts.length && handleSlash(value)) { setInput(""); return; }
+    // Natural persona switch — "be my coach", "SAM be my gran", "switch to PA", "act like my dad".
+    if (!atts.length) {
+      const pm = value.match(/^\s*(?:sam[,!.\s]*)?(?:be|become|switch to|talk like|act like|go)\s+(?:my\s+)?(sam|pa|coach|gran(?:ny|dma)?|mum|mom|dad|assistant)\b/i);
+      if (pm) {
+        const raw = pm[1].toLowerCase();
+        const id = raw.startsWith("gran") ? "gran" : raw === "mom" ? "mum" : raw === "assistant" ? "pa" : raw;
+        const p = PERSONA_OPTS.find((x) => x.id === id);
+        if (p) { setPersona(id); setInput(""); sysNote(`${p.emoji} You've got it — I'm your ${p.label} now. Same memory, ${p.blurb}.`); return; }
+      }
+    }
     setInput(""); setPending(null); setAttachments([]);
     const label = value || (atts.length ? `📎 ${atts.map((a) => a.name).join(", ")}` : "");
     // Prior turns → context so "proceed"/"continue"/"1 then 2" know the thread. `messages`
@@ -969,6 +990,12 @@ export default function App() {
             <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
             <button role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}>🏠 Personal</button>
           </div>
+          {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
+          <label className="persona-pick" title="Who SAM sounds like — same memory, different voice">
+            <select value={persona} onChange={(e) => { setPersona(e.target.value); const p = PERSONA_OPTS.find((x) => x.id === e.target.value); sysNote(`${p?.emoji || "🧠"} SAM is now your ${p?.label || "SAM"} — same memory, ${p?.blurb || "your voice"}.`); }}>
+              {PERSONA_OPTS.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>)}
+            </select>
+          </label>
           {mode === "business" && (
             <label className="biz">
               <span className="biz-label">Brand</span>
