@@ -193,6 +193,21 @@ export function listRecent(limit = 10): { id: string; text: string; ts: number }
   return db.prepare("SELECT id, text, ts FROM memories ORDER BY ts DESC LIMIT ?").all(limit) as { id: string; text: string; ts: number }[];
 }
 
+// Recent memories of a given kind (plan/decision/task) for a user — newest first. Used to
+// re-anchor "proceed"/"continue" on the actual plan we agreed, and to group the dashboard.
+export function listByKind(kind: string, user?: string, limit = 8): { id: string; text: string; ts: number }[] {
+  const ns = normUser(user); adoptLegacy(ns);
+  return db.prepare("SELECT id, text, ts FROM memories WHERE kind = ? AND (user = ? OR user = '') ORDER BY ts DESC LIMIT ?")
+    .all(kind, ns, limit) as { id: string; text: string; ts: number }[];
+}
+
+// Everything SAM has stored for a user, with its kind — powers the "What SAM remembers" dashboard.
+export function listAll(user?: string): { id: string; text: string; kind: string; ts: number }[] {
+  const ns = normUser(user); adoptLegacy(ns);
+  return db.prepare("SELECT id, text, kind, ts FROM memories WHERE (user = ? OR user = '') ORDER BY ts DESC")
+    .all(ns) as { id: string; text: string; kind: string; ts: number }[];
+}
+
 export function clearAll(): void {
   db.prepare("DELETE FROM memories").run();
   _vecCache.clear();
