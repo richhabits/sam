@@ -19,7 +19,7 @@ export interface AgentResult {
   message?: string;
 }
 
-export interface UserProfile { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
+export interface UserProfile { name?: string; about?: string; mode?: "business" | "personal"; language?: string; persona?: string }
 let USER: UserProfile = {};
 export function setUser(u: UserProfile) { USER = u || {}; }
 

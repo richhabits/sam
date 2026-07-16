@@ -61,7 +61,7 @@ import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import * as notebook from "./notebook.ts";
 import { signingStatus, generateAndroidKeystore } from "./signing.ts";
-import { operatingDoctrine } from "./persona.ts";
+import { operatingDoctrine, personaVoice, PERSONAS } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
 import {
@@ -342,7 +342,7 @@ function recallMemory(): string {
   return `\n## Recent conversation (remember this for continuity)\n${lines}`;
 }
 
-interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
+interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string; persona?: string }
 
 // The core SAM persona — addresses whoever is actually using SAM.
 // Pull the best-matching passages from the ingested document library (roadmap #93:
@@ -366,6 +366,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   if (lean) {
     return [
       `You are SAM — ${name}'s personal AI assistant. Confident, warm, sharp, a little flair — never robotic. Call them ${name} now and then.`,
+      personaVoice(user?.persona, name),   // same brain, chosen tone — even quick replies feel like the right voice
       `Keep it tight and correct. Never bluff; if you're unsure, say so.`,
       user?.language && !/^en|english/i.test(user.language) ? `Always reply to ${name} in ${user.language}.` : ``,
       `Today & current time: ${nowText()}`,
@@ -391,6 +392,8 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- YOUR OWN SETUP (know this about yourself): you run FREE out of the box — no keys, no setup. Extra keys are OPTIONAL and are added in Settings (the 🔑 button up top), NEVER by editing files. So NEVER tell ${name} to edit a .env or any file, never say where a config file lives, and never ask them to paste an API key into the chat (you can't take keys safely there — they go in Settings). If you ever hit a "couldn't reach a brain" blip, it's a brief free-lane hiccup — just tell them to try again in a moment; restarting is NOT required and never loses their settings.`,
     ``,
     operatingDoctrine(name),
+    ``,
+    personaVoice(user?.persona, name),   // switchable VOICE over the one shared memory — tone only, honesty always
     ``,
     user?.language && !/^en|english/i.test(user.language) ? `## Language\nAlways reply to ${name} in ${user.language}, naturally and fluently — no matter what language they write in.` : ``,
     ``,
@@ -698,6 +701,9 @@ app.post("/api/memory/forget", (req, res) => {
   const id = String(req.body?.id || "");
   res.json({ ok: id ? forget(id) : false });
 });
+
+// Persona presets for the switcher — same brain + shared memory, tone only.
+app.get("/api/personas", (_req, res) => res.json({ personas: PERSONAS }));
 
 // ── APPROVE / DECLINE a risky action, then continue ──────────
 app.post("/api/confirm", async (req, res) => {
