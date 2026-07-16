@@ -38,7 +38,24 @@ permissions:
   contents: write   # attach installers to the release
 
 jobs:
+  # RELEASE GATE — tests + type-check must pass before ANY installer is built or published.
+  # Standalone so ALL build legs (mac arm64/x64, win, linux) depend on it — not just one matrix leg.
+  test-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Test + type-check
+        run: |
+          npm test
+          npx tsc --noEmit
+
   build:
+    needs: test-gate   # no installer builds or publishes unless the gate is green
     strategy:
       fail-fast: false
       matrix:
@@ -67,14 +84,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Gate the release on green tests + a clean type-check — never ship a red build.
-      # (Run once, on the arm64 mac job, to avoid tripling CI time on identical unit tests.)
-      - name: Test + type-check (release gate)
-        if: matrix.platform == 'mac' && matrix.arch == 'arm64'
-        run: |
-          npm test
-          npx tsc --noEmit
-
+      # (Tests + type-check now run once in the standalone `test-gate` job above, which every
+      #  build leg depends on — so a red build can never ship any installer.)
       - name: Build web + server bundles
         run: npm run build
 

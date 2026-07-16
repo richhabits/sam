@@ -135,6 +135,7 @@ async function callGemini(system: string, prompt: string, key: string): Promise<
     `https://generativelanguage.googleapis.com/v1beta/models/` +
     `gemini-2.5-flash:generateContent?key=${key}`;
   const r = await fetch(url, {
+    signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -153,6 +154,7 @@ async function callGemini(system: string, prompt: string, key: string): Promise<
 // ── PREMIUM · Claude (raw fetch — no SDK dependency) ─────────
 async function callAnthropic(system: string, prompt: string, key: string): Promise<string> {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
+    signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -464,6 +466,7 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
 // ── STREAMING · token-by-token for the "types as it thinks" feel ──
 async function streamOpenAICompat(base: string, model: string, system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
   const r = await fetch(`${base}/chat/completions`, {
+    signal: AbortSignal.timeout(30000),   // bound inter-chunk stalls so a hung stream can't wedge the SSE
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({ model, max_tokens: 1500, stream: true, messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }),
@@ -486,6 +489,7 @@ async function streamOpenAICompat(base: string, model: string, system: string, p
 
 async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${key}`, {
+    signal: AbortSignal.timeout(30000),   // bound inter-chunk stalls so a hung stream can't wedge the SSE
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 6000, thinkingConfig: { thinkingBudget: 0 } } }),
   });
