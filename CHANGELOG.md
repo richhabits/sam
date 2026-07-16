@@ -2,6 +2,32 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.1.2] - 2026-07-16 — "Audited"
+
+A deep pre-launch security + correctness audit (four independent passes over the whole codebase),
+with every finding fixed and the high-severity ones proven with tests. Nothing here changes the
+free/local/private promise — it hardens it.
+
+### Security
+- **Remote scope hardening (HIGH):** `/api/autopilot` and `/api/allow` are now loopback-only, like every
+  other posture-changing setting. A scoped "no-dangerous" phone token can no longer flip Autopilot on or
+  grant standing permissions to escalate itself. Proven fails-closed (remote → 403, owner → still works).
+- The `/api/team` and `/api/ninjas` crews now honour a restricted remote token's scope (dangerous tools
+  pause for approval, never auto-run). P2P task token is now constant-time with a length floor.
+
+### Privacy
+- IP-based geolocation is now **opt-in** (`SAM_GEO`) instead of a silent call at boot — nothing about your
+  location leaves the device by default. Set `SAM_LOCATION` to fix it manually with no network at all.
+
+### Correctness
+- Model calls that could stall now time out (30s) instead of hanging a reply for minutes.
+- The answer cache is brand-aware — a cached answer for one brand can never be shown for another.
+- Streaming tool-calls are more robust (malformed-JSON repair; brace-in-string safe parsing).
+
+### Build / packaging
+- The release gate (tests + type-check) now blocks **all** installers, not just one — a red build can't ship.
+- Installers are leaner (source/dev dirs no longer packed); Electron entrypoints are now type-checked.
+
 ## [2.1.1] - 2026-07-16 — "Mind"
 
 Makes SAM's one real advantage — that it *remembers you and gets more useful over time* — actually hold up,
