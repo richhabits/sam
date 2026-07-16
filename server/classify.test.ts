@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classify, route, selfCheckFailed, nextTierUp } from "./classify.ts";
+import { classify, route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 
 describe("classify", () => {
   it("greetings & acks are trivial → local + lean", () => {
@@ -8,6 +8,22 @@ describe("classify", () => {
       expect(v.klass).toBe("trivial");
       expect(v.lean).toBe(true);
     }
+  });
+
+  // ANTI-AMNESIA: the exact failure from the field — "ok proceed with plan" came back
+  // "there is no plan, this conversation just started". Continuation commands must NEVER be
+  // classified lean (which drops memory) — they need the thread + agreed plan.
+  it("continuation commands are never lean (proceed/continue/do step 1/1 then 2 then 3)", () => {
+    for (const m of ["proceed", "continue", "ok proceed with the plan", "do step 1", "1 then 2 then 3", "finish it", "complete until done", "keep going", "next step", "go ahead"]) {
+      expect(CONTINUATION_RE.test(m), `CONTINUATION_RE should match "${m}"`).toBe(true);
+      expect(classify(m).lean, `"${m}" must not be lean`).toBe(false);
+    }
+  });
+
+  it("bare acknowledgements stay trivial (not swept up as continuations)", () => {
+    // "thanks"/"cheers" carry no continuation intent — the token diet still applies to them.
+    expect(CONTINUATION_RE.test("thanks")).toBe(false);
+    expect(CONTINUATION_RE.test("cheers mate")).toBe(false);
   });
 
   it("simple maths is trivial", () => {

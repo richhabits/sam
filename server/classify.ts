@@ -36,6 +36,11 @@ const SIMPLE_MATH_RE = /^\s*(what('?s| is)\s+)?(\d+% of\s+)?[-+*/x×÷\d\s().,%]
 // Signals a genuinely harder reasoning task — worth the strong (deep) lane.
 const HARD_RE = /\b(analy[sz]e|strateg(y|ic|ise|ize)|compare|pros and cons|trade-?offs?|think through|reason through|evaluate|assess|deep dive|break ?down|architect|design a|plan out|weigh up|implications?|framework|end[- ]to[- ]end)\b/i;
 
+// Continuation commands — "proceed / continue / do step 1 / 1 then 2 then 3 / finish it /
+// complete until done". These are meaningless without the thread + any plan we agreed, so
+// they must NEVER take the lean (memory-free) path: force full context injection.
+export const CONTINUATION_RE = /^\s*(ok(ay)?|yes|yeah|yep|sure|right|cool|great|alright|please|now|then|so)?[\s,]*(proceed|continue|carry on|keep going|go on|go ahead|next(\s+step)?|do it|do that|do step|finish(\s+it|\s+up)?|complete(\s+it)?(\s+until\s+done)?|until\s+done|make it happen|run it|let'?s go|and then\b|then\s*\d|step\s*\d|\d\s*(,|then|and)\s*\d)/i;
+
 // Classify a message into a cascade class. Cheap heuristics, ordered by priority.
 export function classify(message: string): Verdict {
   const m = (message || "").trim();
@@ -43,6 +48,10 @@ export function classify(message: string): Verdict {
 
   // 1) Live/current info → must use tools. Not trivial even if short ("what time is it?").
   if (needsLiveInfo(m)) return { klass: "needs-tools", reason: "needs-tools → free + tools", lean: false };
+
+  // 1b) Continuation ("proceed", "do step 1", "1 then 2 then 3") — never lean; it needs the
+  //     thread + any agreed plan pulled from memory to know WHAT it's continuing.
+  if (CONTINUATION_RE.test(m)) return { klass: "standard", reason: "continuation → free + full context", lean: false };
 
   // 2) Trivial — greetings/acks, tiny maths, or short self-contained one-liners.
   if (TRIVIAL_RE.test(m) || SIMPLE_MATH_RE.test(m)) return { klass: "trivial", reason: "trivial → local", lean: true };

@@ -28,9 +28,9 @@ import { previousRelease } from "./rollback.ts";
 import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
-import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
+import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
-import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
+import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -61,7 +61,7 @@ import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import * as notebook from "./notebook.ts";
 import { signingStatus, generateAndroidKeystore } from "./signing.ts";
-import { operatingDoctrine } from "./persona.ts";
+import { operatingDoctrine, personaVoice, PERSONAS } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
 import {
@@ -342,7 +342,7 @@ function recallMemory(): string {
   return `\n## Recent conversation (remember this for continuity)\n${lines}`;
 }
 
-interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string }
+interface User { name?: string; about?: string; mode?: "business" | "personal"; language?: string; persona?: string }
 
 // The core SAM persona — addresses whoever is actually using SAM.
 // Pull the best-matching passages from the ingested document library (roadmap #93:
@@ -366,6 +366,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   if (lean) {
     return [
       `You are SAM — ${name}'s personal AI assistant. Confident, warm, sharp, a little flair — never robotic. Call them ${name} now and then.`,
+      personaVoice(user?.persona, name),   // same brain, chosen tone — even quick replies feel like the right voice
       `Keep it tight and correct. Never bluff; if you're unsure, say so.`,
       user?.language && !/^en|english/i.test(user.language) ? `Always reply to ${name} in ${user.language}.` : ``,
       `Today & current time: ${nowText()}`,
@@ -375,7 +376,9 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   }
   const pctx = mode === "business" ? projectsContext() : "";   // compute once (was called twice)
   return [
-    `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
+    personaVoice(user?.persona, name),   // LEAD with the chosen voice — switchable tone over the one shared memory
+    ``,
+    `You are SAM — ${name}'s personal AI assistant. Substance first, and speak in the voice set above. Confident, sharp, human — never robotic or corporate. Call them ${name} now and then.`,
     `Think like the OGs, always: Apple (make it simple, make it just-work), Elon (first principles, 10x, move fast), Amazon (obsess the outcome, build to scale from day one), Branson (bold but calm), Alan Sugar (blunt, numbers, no fluff) — with big-player, Microsoft-grade ethics and trust. You win on FACTS and TIMING, not noise.`,
     `And back ${name} to play in THAT league — treat them as a serious builder and operator in the making, hold them to that bar, and help them move like one. When they're winning, hype it; when they're off, straighten it with the facts.`,
     `For music, nightlife or going out, bring energy — and actually pull tracks up with the play tool.`,
@@ -387,7 +390,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- BORG MODE: always learn, adapt and evolve. Assimilate the best of what's out there and make it ours, better. FREE at all costs FIRST — exhaust every free/local option before you even consider paid; escalate to paid (X→Y→Z) only as a genuine last resort, and say why. Comprehensive, always-on.`,
     `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
-    `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in their memory + reality.`,
+    `- If ${name}'s ranting/gassed, be the calm head — hear them out, ground it in the facts + their memory, point to the smart move. Say it in YOUR current voice, not a canned line.`,
     `- YOUR OWN SETUP (know this about yourself): you run FREE out of the box — no keys, no setup. Extra keys are OPTIONAL and are added in Settings (the 🔑 button up top), NEVER by editing files. So NEVER tell ${name} to edit a .env or any file, never say where a config file lives, and never ask them to paste an API key into the chat (you can't take keys safely there — they go in Settings). If you ever hit a "couldn't reach a brain" blip, it's a brief free-lane hiccup — just tell them to try again in a moment; restarting is NOT required and never loses their settings.`,
     ``,
     operatingDoctrine(name),
@@ -415,6 +418,9 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     docs ? `\n## From ${name}'s documents (indexed library — real excerpts; cite the file in [brackets] when you use one; use search_docs to dig deeper)\n${docs}` : ``,
     interactive ? recallMemory() : ``,   // recent-exchange context only helps live turns, not Team/swarm/background jobs
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
+    // Recency wins: a final, hard reminder of the chosen voice — small free models weight the
+    // last instruction most, so this makes the persona actually land (only when non-default).
+    user?.persona && user.persona !== "sam" ? `\n${personaVoice(user.persona, name)}\nStay in this voice for your reply.` : ``,
   ].filter(Boolean).join("\n");
 }
 
@@ -457,21 +463,47 @@ function worthRemembering(msg: string): boolean {
 // Turn an exchange into 0-3 durable atomic facts and store them (fire-and-forget).
 // Runs on LOCAL so it never eats the cloud quota that answers need. Stores FACTS
 // not raw logs (avoids context poisoning).
+// SAM's replies often CONTAIN the durable thing (a plan it laid out, a decision reached) —
+// so we extract from the whole exchange, not just when the user stated a fact.
+const PLAN_SIGNAL_RE = /\b(plan|step\s*\d|steps?:|here'?s (the|a) plan|action plan|i'?d recommend|recommendation|strateg|let'?s go with|we'?ll|decision|decided|go with|next steps?|to-?do|open loop|action items?)\b/i;
+
 async function learnFrom(userMsg: string, samMsg: string, name: string) {
-  if (!worthRemembering(userMsg)) return;
+  // Extract when the user revealed something durable OR the exchange settled a plan/decision.
+  if (!worthRemembering(userMsg) && !PLAN_SIGNAL_RE.test(samMsg || "")) return;
   try {
-    const sys = "You pull DURABLE, long-term facts about a person out of a conversation and return clean, atomic statements. Output ONLY a JSON array of strings, or [] when nothing is worth keeping. Be strict — most exchanges yield [].";
+    const sys = "You extract DURABLE memory from a conversation for a personal assistant. Return ONLY a JSON array of {\"type\",\"text\"} objects (type ∈ fact | plan | decision | task), or [] when nothing is worth keeping. Be strict — most exchanges yield [].";
     const prompt =
-      `From the exchange below, extract 0-3 facts worth remembering about ${name} long-term — things still true and useful next week: preferences, people in their life, projects/brands, decisions, recurring details, contacts, constraints.\n` +
-      `STRICT — return [] unless something genuinely qualifies. Skip: small talk, questions, one-off tasks, transient state ("tired today"), anything ${name} didn't actually reveal, and anything obvious or already generic.\n` +
-      `Each fact must stand alone — name the subject ("${name} prefers X", never just "prefers X") — and be one clean statement.\n\n` +
-      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nFacts (JSON array of strings, or []):`;
-    const r = await runModel("local", sys, prompt);   // local first — don't spend cloud quota on background work
-    const m = r.text.match(/\[[\s\S]*\]/);
-    if (!m) return;
-    const facts = JSON.parse(m[0]);
-    if (Array.isArray(facts)) for (const f of facts) if (typeof f === "string" && f.length > 6) await remember(f, "fact", name);
+      `From the exchange below, capture 0-4 items worth remembering long-term about ${name} and their work:\n` +
+      `- fact: a durable personal fact ("${name} prefers X", a person in their life, a project/brand, a contact, a constraint).\n` +
+      `- plan: a concrete multi-step plan you AGREED — keep the steps, compact, so "proceed" later can act on it.\n` +
+      `- decision: a choice that was actually made ("${name} chose premium positioning for Ghost Detail").\n` +
+      `- task: an open loop / to-do still outstanding ("invoice #38 unpaid").\n` +
+      `STRICT — return [] unless something genuinely qualifies. Skip small talk, questions, transient state ("tired today"), and anything not actually established. Name the subject in each text so it stands alone.\n\n` +
+      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nJSON array of {type,text} (or []):`;
+    const r = await runModel("local", sys, prompt);   // LOCAL only — background memory never spends cloud quota (free promise)
+    const mm = r.text.match(/\[[\s\S]*\]/);
+    if (!mm) return;
+    const items = JSON.parse(mm[0]);
+    if (!Array.isArray(items)) return;
+    for (const it of items) {
+      // Tolerate both {type,text} and bare strings (older model outputs) → default to "fact".
+      const text = (typeof it === "string" ? it : it?.text) || "";
+      const type = ["fact", "plan", "decision", "task"].includes(it?.type) ? it.type : "fact";
+      if (typeof text === "string" && text.trim().length > 6) await remember(text.trim(), type, name);
+    }
   } catch { /* memory is best-effort */ }
+}
+
+// On a continuation ("proceed"/"do step 1"), re-surface the plans/decisions/open loops we've
+// agreed — so SAM knows WHAT to continue even beyond the client's recent-turns window. Local,
+// on-device, zero-cost: just a SQLite read of the user's own memory.
+function openPlans(name?: string): string {
+  const rows = [
+    ...listByKind("plan", name, 3).map((x) => `- [plan] ${clip(x.text, 320)}`),
+    ...listByKind("decision", name, 2).map((x) => `- [decision] ${clip(x.text, 220)}`),
+    ...listByKind("task", name, 3).map((x) => `- [open loop] ${clip(x.text, 180)}`),
+  ];
+  return rows.length ? `\n## What we've been working on — pick up from here\n${rows.join("\n")}` : "";
 }
 
 // ── MAIN COMMAND LOOP ────────────────────────────────────────
@@ -515,7 +547,8 @@ app.post("/api/command", async (req, res) => {
   let { skill, chosen, reason, lean, klass } = pickTier(message || "look at this", tier);
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
-  const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  let recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  if (CONTINUATION_RE.test(message || "")) recalled = (recalled ? recalled + "\n" : "") + openPlans(user?.name);   // re-anchor "proceed" on the agreed plan
   const docs = (fast || lean) ? "" : recallDocs(qvec);
   let toolNames = fast ? undefined : selectTools(qvec, 8, message);
   // SCOPED REMOTE TOKENS: a non-`full` remote device (e.g. the iOS companion on `no-dangerous`)
@@ -541,7 +574,7 @@ app.post("/api/command", async (req, res) => {
   // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
   // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
   const canCache = !atts.length && !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
   if (canCache && !noCache) {
     const t0 = Date.now();
     const hit = cacheLookup(message, fp, qvec);
@@ -613,7 +646,8 @@ app.post("/api/stream", async (req, res) => {
     let { skill, chosen, reason, lean, klass } = pickTier(message, tier);
     const semanticSkillId = selectSkillId(qvec);
     if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
-    const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    let recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    if (CONTINUATION_RE.test(message || "")) recalled = (recalled ? recalled + "\n" : "") + openPlans(user?.name);   // re-anchor "proceed" on the agreed plan
     const docs = (fast || lean) ? "" : recallDocs(qvec);
     let toolNames = fast ? undefined : selectTools(qvec, 8, message);
     const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token
@@ -623,7 +657,7 @@ app.post("/api/stream", async (req, res) => {
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
     const canCache = !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
     if (canCache && !noCache) {
       const t0 = Date.now();
       const hit = cacheLookup(message, fp, qvec);
@@ -655,6 +689,24 @@ app.post("/api/stream", async (req, res) => {
   send({ type: "end", projectId: projectId || "" });
   res.end();
 });
+
+// ── MEMORY DASHBOARD — "What SAM remembers about you." 100% on-device (SQLite); nothing
+//    here ever leaves the machine. Grouped by kind so the user sees facts, plans, decisions
+//    and open loops, and can delete any of them. Trust surface + loveability moment. ──
+app.get("/api/memory", (req, res) => {
+  const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
+  const items = listAll(name);
+  const groups: Record<string, { id: string; text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
+  for (const it of items) (groups[it.kind] ||= []).push({ id: it.id, text: it.text, ts: it.ts });
+  res.json({ groups, count: items.length, private: true, note: "All local — nothing left your device." });
+});
+app.post("/api/memory/forget", (req, res) => {
+  const id = String(req.body?.id || "");
+  res.json({ ok: id ? forget(id) : false });
+});
+
+// Persona presets for the switcher — same brain + shared memory, tone only.
+app.get("/api/personas", (_req, res) => res.json({ personas: PERSONAS }));
 
 // ── APPROVE / DECLINE a risky action, then continue ──────────
 app.post("/api/confirm", async (req, res) => {
