@@ -193,6 +193,20 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 ---
 
+## Uninstall — clean and complete
+
+SAM keeps **everything** in one folder, so removing it is total — no scattered files, no leftovers.
+
+1. **Quit SAM**, then drag the app to the Trash (or delete the folder you cloned).
+2. **Delete your data folder** (memory, keys, vault, settings) — all of SAM lives here:
+   - **macOS:** `~/Library/Application Support/SAM`
+   - **Windows:** `%APPDATA%\SAM`  (i.e. `C:\Users\<you>\AppData\Roaming\SAM`)
+   - **Linux:** `~/.config/SAM`
+
+That's it — nothing lives outside those two places. Your data was never anywhere else (no cloud account to close, nothing to “request deletion” for). Try it risk-free; remove it in ten seconds.
+
+---
+
 ## Use SAM on your phone 📱
 
 **Same Wi-Fi (easiest):** ⚙ Settings → **📱 Use SAM on your phone** → *Turn on phone access* → restart SAM → **scan the QR** with your phone camera. It opens SAM already signed in; tap **Share → Add to Home Screen** to install it like an app (camera, voice, everything). A private token gates every request; loopback stays untouched.
@@ -209,10 +223,18 @@ SAM checks for updates on launch — a few seconds after boot it compares your c
 
 ---
 
+## Found a bug? / Feedback
+
+Open an [issue](https://github.com/richhabits/sam/issues/new/choose) (bug reports + feature requests have templates) or start a [Discussion](https://github.com/richhabits/sam/discussions). Good catches get fixed fast — that's the whole point of shipping in the open.
+
+---
+
 ## License
 
-**MIT** © 2026 HECTIC. See [LICENSE](LICENSE).
-Free to use, modify, and redistribute — including commercially — with attribution.
+**MIT** © 2026 Hectic Radio Ltd. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+The **code** is free to use, modify, and redistribute — including commercially — with attribution.
+
+*"SAM", "Smart Artificial Mind", and the SAM logo are trademarks of Hectic Radio Ltd — the MIT license covers the code, not the name or brand. Forks are welcome; just don't imply they're the official SAM.*
 
 <div align="center">
 

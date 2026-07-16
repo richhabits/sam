@@ -1,0 +1,23 @@
+SAM — Smart Artificial Mind
+Copyright © 2026 Hectic Radio Ltd. All rights reserved where not granted by the LICENSE.
+
+This software is released under the MIT License (see LICENSE). You are free to use,
+modify, and distribute the code under those terms. This NOTICE records authorship,
+ownership, and marks — it does not change the MIT grant.
+
+Authorship & ownership
+----------------------
+SAM was created and directed by Hectic Radio Ltd. The implementation was human-directed
+and AI-assisted (portions of the code were written by Claude under the author's direction
+and review) — the standard, disclosed way modern software is built. Copyright in the
+resulting work is held by Hectic Radio Ltd.
+
+Trademarks
+----------
+"SAM", "Smart Artificial Mind", and the SAM logo are trademarks of Hectic Radio Ltd.
+The MIT License covers the CODE only — it does not grant any right to use these names or
+marks. Forks and derivative works must not use the SAM name or logo in a way that implies
+endorsement by, or origin from, Hectic Radio Ltd, and must be clearly identified as
+independent. Nominative reference (e.g. "based on SAM") is fine.
+
+Third-party components are distributed under their own licenses.
