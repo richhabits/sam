@@ -94,3 +94,7 @@ playwright-report/
 /capture-*.mjs
 /*-shot.mjs
 /*-smoke.mjs
+
+# bench outputs (keep bench/ source, ignore generated results)
+bench/results/
+bench/*.out.json
