@@ -2,6 +2,33 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.1.1] - 2026-07-16 — "Mind"
+
+Makes SAM's one real advantage — that it *remembers you and gets more useful over time* — actually hold up,
+and gives it a voice you can choose. Everything here stays free, local and private; nothing learned leaves
+your machine. 246 tests.
+
+### Memory that threads (the USP, fixed)
+- **Never lose the thread** — conversation history is carried end-to-end, so "proceed", "continue", "do step 1"
+  and "1 then 2 then 3" know exactly what they're continuing. The old "there is no plan, this conversation just
+  started" failure is now structurally impossible (locked by a regression test).
+- **Remembers plans & decisions, not just facts** — the memory extractor now captures agreed plans, decisions
+  and open loops (kind: plan/decision/task), so "proceed with the plan" retrieves the actual plan. Still learned
+  on the *local* model — zero cloud cost, on-device.
+- **Continuation is never context-starved** — quick continuation commands always get the thread + relevant memory.
+- **"What SAM remembers about you"** — a local memory view (facts / plans / decisions / open loops), all on-device
+  and deletable. Nothing left your machine.
+
+### A voice you choose (loveable, not sycophantic)
+- **Switchable personas over ONE shared memory** — SAM, PA, Coach, Gran, Mum, Dad. Same brain, same memory of you,
+  tone only. Switch in the UI or just say "be my coach". Warm by default.
+- Every persona keeps a hard honesty guardrail — warm ≠ yes-man; no voice flatters or goes along with something
+  bad for you just to keep you happy.
+
+### Fixes
+- Vision falls through to a real lane when a provider's guardrail refuses a benign photo (camera "I can't help with that").
+- Tool routing gained a relevance floor — no more running a weather forecast for "how's the England game going".
+
 ## [2.1.0] - 2026-07-11 — "Autopilot"
 
 Makes SAM *maintain itself* — automated ops, self-service support, community rails, and a feedback loop —
