@@ -11,6 +11,16 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// ── `--version` / `version` → print the version and exit, before the server binds (issue #13).
+//    Uses the packaged version if Electron set it, else reads it from package.json. ──
+if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
+  let v = process.env.SAM_APP_VERSION || "";
+  if (!v) { try { v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8")).version || ""; } catch { /* fall back below */ } }
+  console.log(`SAM ${v || "unknown"}`);
+  process.exit(0);
+}
+
 import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
