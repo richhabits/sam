@@ -477,9 +477,25 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
 // ── MAIN COMMAND LOOP ────────────────────────────────────────
 //  Runs the AGENT: SAM can use tools. Safe tools run automatically;
 //  a risky tool returns kind:"pending" for the user to approve.
+// Prior turns from the client → a compact transcript the model reads as context, so
+// "proceed" / "continue" / "1 then 2" actually know what we were talking about. Bounded
+// (last 10 turns, each clipped) to protect free-tier token budgets. Empty when there's
+// no history — callers then behave exactly as before.
+type ClientTurn = { role?: string; text?: string };
+function formatHistory(history: unknown): string {
+  if (!Array.isArray(history)) return "";
+  const turns = (history as ClientTurn[])
+    .filter((t) => t && typeof t.text === "string" && t.text.trim())
+    .slice(-10)
+    .map((t) => `${t.role === "user" ? "User" : "SAM"}: ${t.text!.trim().slice(0, 1200)}`);
+  if (!turns.length) return "";
+  return `Conversation so far (context — the user's NEW message comes after this):\n${turns.join("\n")}`;
+}
+
 app.post("/api/command", async (req, res) => {
-  const { message, projectId, tier: rawTier, user, attachments, noCache } = req.body as
-    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[]; noCache?: boolean };
+  const { message, projectId, tier: rawTier, user, attachments, noCache, history } = req.body as
+    { message: string; projectId?: string; tier?: string; user?: User; attachments?: any[]; noCache?: boolean; history?: ClientTurn[] };
+  const convo = formatHistory(history);
   const atts = Array.isArray(attachments) ? attachments : [];
   const images = atts.filter((a) => a?.kind === "image" && a.data);
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
@@ -524,7 +540,7 @@ app.post("/api/command", async (req, res) => {
   // ── SEMANTIC CACHE (Phase 2) — same question, same context → instant + 0 tokens ──
   // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
   // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
-  const canCache = !atts.length && !!message && cacheable(message);
+  const canCache = !atts.length && !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
   const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
   if (canCache && !noCache) {
     const t0 = Date.now();
@@ -544,7 +560,7 @@ app.post("/api/command", async (req, res) => {
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason);   // restricted ⇒ swarm-mode: dangerous never auto-runs
+  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason, convo);   // restricted ⇒ swarm-mode: dangerous never auto-runs
   let escalated = false, answeredTier = chosen, badgeReason = reason;
 
   // WRONG-TIER SELF-CHECK: if a cheap answer that used NO tools looks truncated/refused/empty,
@@ -553,7 +569,7 @@ app.post("/api/command", async (req, res) => {
   if (r.kind === "final" && !turbo && r.trace.length === 0 && selfCheckFailed(r.text || "", message)) {
     const up = nextTierUp(chosen, autoPremiumAllowed());
     if (up) {
-      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`);
+      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`, convo);
       if (up2.kind === "final" && !selfCheckFailed(up2.text || "", message)) {
         r = up2; escalated = true; answeredTier = up; badgeReason = `${reason} · escalated → ${up}`;
       }
@@ -577,8 +593,9 @@ app.post("/api/command", async (req, res) => {
 
 // ── STREAMING command (SSE) — tokens + tool events as they happen ──
 app.post("/api/stream", async (req, res) => {
-  const { message, projectId, tier: rawTier, user, noCache } = req.body as { message: string; projectId?: string; tier?: string; user?: User; noCache?: boolean };
+  const { message, projectId, tier: rawTier, user, noCache, history } = req.body as { message: string; projectId?: string; tier?: string; user?: User; noCache?: boolean; history?: ClientTurn[] };
   if (!message?.trim()) return res.status(400).json({ error: "empty message" });
+  const convo = formatHistory(history);
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -605,7 +622,7 @@ app.post("/api/stream", async (req, res) => {
     const userName = (user?.name || "the user").trim();
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
-    const canCache = !!message && cacheable(message);
+    const canCache = !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
     const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
     if (canCache && !noCache) {
       const t0 = Date.now();
@@ -631,7 +648,7 @@ app.post("/api/stream", async (req, res) => {
         // Cache tool-free finals only (reproducible; never a dangerous-tool run).
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
-    }, turbo);
+    }, turbo, convo);
   } catch (_e: any) {
     send({ type: "done", text: "Something went wrong mid-answer.", trace: [] });
   }
