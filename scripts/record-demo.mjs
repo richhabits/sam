@@ -28,10 +28,19 @@ const URL = process.env.SAM_URL || "http://127.0.0.1:8787";
 // request (server/agents.ts makePlan), so three clean, distinct workstreams steer it toward exactly the
 // trio we want on screen: research → Scout 🔬, copy → Quill ✍️, design → Maestro 🎨. It's model-planned,
 // not hard-wired, so an occasional take may add/swap one — re-run if the crew composition isn't clean.
-const SCRIPT = [
-  "/team research my top 3 competitors, write the launch copy, and design the landing page",
-];
-const ANSWER_WAIT_MS = Number(process.env.SAM_DEMO_WAIT_MS || 16000);   // a team runs longer than a single answer — give the crew time to assemble + work on screen
+// The scripted session — SAM's real edge on screen: it REMEMBERS YOU. Turn 1 tells it about the
+// brand; turn 2 asks for work and SAM uses what it just learned, no re-explaining. That "it kept the
+// thread and knows my world" beat is the hook ChatGPT/Claude don't give you out of the box.
+// Override with SAM_DEMO_SCRIPT (JSON array of strings) for a different scenario.
+const SCRIPT = process.env.SAM_DEMO_SCRIPT
+  ? JSON.parse(process.env.SAM_DEMO_SCRIPT)
+  : [
+      // "don't act yet" keeps turn 1 a clean acknowledgement (no tool detours), so the memory beat reads clearly.
+      "Just remember this about me for later — don't do anything yet: my brand is Hectic Bullz, I make content for French bulldog owners, and my brand colour is teal.",
+      "perfect — now write me a punchy Instagram bio",
+    ];
+const ANSWER_WAIT_MS = Number(process.env.SAM_DEMO_WAIT_MS || 8000);   // chat replies stream in quickly — no team to assemble, so keep the GIF tight
+const FINAL_HOLD_MS = Number(process.env.SAM_DEMO_HOLD_MS || 4000);    // hold on the last answer (the payoff) so it's clearly on screen at the end
 
 function have(cmd) { try { execSync(`command -v ${cmd}`, { stdio: "ignore" }); return true; } catch { return false; } }
 async function up(url) { try { const r = await fetch(url + "/api/health", { signal: AbortSignal.timeout(1500) }); return r.ok; } catch { return false; } }
@@ -88,9 +97,9 @@ async function main() {
     await box.click();
     for (const ch of line) { await box.type(ch, { delay: 28 }); }   // human-paced typing reads well on GIF
     await box.press("Enter");
-    await page.waitForTimeout(ANSWER_WAIT_MS);   // let the crew assemble + run visibly
+    await page.waitForTimeout(ANSWER_WAIT_MS);   // let the answer stream in visibly
   }
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(FINAL_HOLD_MS);   // hold on the payoff answer
   await ctx.close();   // flushes the video
   await browser.close();
   if (server) process.kill(-server.pid);
@@ -102,7 +111,7 @@ async function main() {
   renameSync(webm, join(outDir, "_raw.webm"));
   execSync(`ffmpeg -y -i "${join(outDir, "_raw.webm")}" -movflags +faststart -pix_fmt yuv420p "${mp4}"`, { stdio: "ignore" });
   // GIF: 12fps, 960px wide, palette for crisp color + small size.
-  execSync(`ffmpeg -y -i "${mp4}" -vf "fps=12,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gif}"`, { stdio: "ignore" });
+  execSync(`ffmpeg -y -i "${mp4}" -vf "fps=10,scale=860:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gif}"`, { stdio: "ignore" });
   console.log(`✓ wrote ${gif} + ${mp4}`);
 }
 main().catch((e) => { console.error(e); process.exit(1); });
