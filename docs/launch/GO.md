@@ -4,8 +4,10 @@ The one un-automatable act. Everything else is built; this is you, a keyboard, a
 top to bottom. All the copy already exists in this folder — this is the *order* and the *live responses*.
 
 ## Pre-flight (the night before)
-- [ ] `docs/media/demo.gif` is current and shows the `/team` crew (it is).
-- [ ] Latest release is live + Gatekeeper-accepted (v2.0.0 ✓).
+- [ ] `docs/media/demo.gif` is current and shows the **memory hook** — you tell SAM about your brand, it
+      writes an on-brand bio from what it remembered ("it remembers you", your strongest pitch). (It is.)
+- [ ] Latest release is live + Gatekeeper-accepted: **v2.1.2 ✓** (signed + notarized, verified on the
+      downloaded dmg — not just a green CI job).
 - [ ] Skim the hostile-Q answers below until you can paste them from memory.
 - [ ] Clear your calendar for launch morning + the next 6 hours. You're replying, not building.
 
