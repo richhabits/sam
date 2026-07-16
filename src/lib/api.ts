@@ -25,11 +25,14 @@ export function setUser(u: UserProfile) { USER = u || {}; }
 
 export interface Attachment { kind: "image" | "text"; name: string; mime?: string; data?: string; text?: string }
 
-export async function command(message: string, projectId?: string, tier?: string, signal?: AbortSignal, attachments?: Attachment[]): Promise<AgentResult> {
+// A prior conversation turn, sent so the model has context for "proceed"/"continue".
+export interface ChatTurn { role: "user" | "sam"; text: string }
+
+export async function command(message: string, projectId?: string, tier?: string, signal?: AbortSignal, attachments?: Attachment[], history?: ChatTurn[]): Promise<AgentResult> {
   const res = await fetch("/api/command", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, projectId, tier, user: USER, attachments }),
+    body: JSON.stringify({ message, projectId, tier, user: USER, attachments, history }),
     signal,
   });
   if (!res.ok) throw new Error("command failed");
@@ -50,10 +53,10 @@ export async function confirm(pending: AgentResult, approved: boolean, always = 
 }
 
 // Streaming command — calls onEvent for each {type: token|tool|pending|done} event.
-export async function streamCommand(message: string, projectId: string | undefined, tier: string | undefined, onEvent: (e: any) => void, signal?: AbortSignal): Promise<void> {
+export async function streamCommand(message: string, projectId: string | undefined, tier: string | undefined, onEvent: (e: any) => void, signal?: AbortSignal, history?: ChatTurn[]): Promise<void> {
   const res = await fetch("/api/stream", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, projectId, tier, user: USER }), signal,
+    body: JSON.stringify({ message, projectId, tier, user: USER, history }), signal,
   });
   if (!res.ok || !res.body) throw new Error("stream failed");
   const reader = res.body.getReader(); const dec = new TextDecoder();

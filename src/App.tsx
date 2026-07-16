@@ -796,13 +796,16 @@ export default function App() {
     if (value.startsWith("/") && !atts.length && handleSlash(value)) { setInput(""); return; }
     setInput(""); setPending(null); setAttachments([]);
     const label = value || (atts.length ? `📎 ${atts.map((a) => a.name).join(", ")}` : "");
+    // Prior turns → context so "proceed"/"continue"/"1 then 2" know the thread. `messages`
+    // here is the state BEFORE this turn's user message is appended just below.
+    const history = messages.filter((m) => m.text?.trim()).slice(-10).map((m) => ({ role: m.role, text: m.text }));
     setMessages((m) => [...m, { role: "user", text: label, at: now() }]);
     setLoading(true);
     abortRef.current = new AbortController();
 
     // Attachments (photos/files) → non-streaming vision/file path.
     if (atts.length) {
-      try { handleResult(await command(value || "Have a look at this.", brand || undefined, QUALITY_TIER[quality], abortRef.current.signal, atts)); }
+      try { handleResult(await command(value || "Have a look at this.", brand || undefined, QUALITY_TIER[quality], abortRef.current.signal, atts, history)); }
       catch { setMessages((m) => [...m, { role: "sam", text: "I couldn't reach my brain just now.", at: now() }]); }
       setLoading(false); abortRef.current = null; return;
     }
@@ -823,7 +826,7 @@ export default function App() {
     };
     // Seamless: if the brain is still warming up, retry once quietly before erroring.
     for (let attempt = 0; attempt < 2; attempt++) {
-      try { await streamCommand(value, brand || undefined, QUALITY_TIER[quality], onEvent, abortRef.current.signal); break; }
+      try { await streamCommand(value, brand || undefined, QUALITY_TIER[quality], onEvent, abortRef.current.signal, history); break; }
       catch (err: any) {
         if (err?.name === "AbortError") { setLive(null); break; }
         if (!produced && attempt === 0) { await new Promise((r) => setTimeout(r, 900)); setLive({ text: "", trace: [] }); continue; }
