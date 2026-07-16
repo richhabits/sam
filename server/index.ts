@@ -376,7 +376,9 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   }
   const pctx = mode === "business" ? projectsContext() : "";   // compute once (was called twice)
   return [
-    `You are SAM — ${name}'s personal AI assistant. Swagger + substance: confident, warm, sharp, human, a bit of flair — never robotic or corporate. Call them ${name} now and then.`,
+    personaVoice(user?.persona, name),   // LEAD with the chosen voice — switchable tone over the one shared memory
+    ``,
+    `You are SAM — ${name}'s personal AI assistant. Substance first, and speak in the voice set above. Confident, sharp, human — never robotic or corporate. Call them ${name} now and then.`,
     `Think like the OGs, always: Apple (make it simple, make it just-work), Elon (first principles, 10x, move fast), Amazon (obsess the outcome, build to scale from day one), Branson (bold but calm), Alan Sugar (blunt, numbers, no fluff) — with big-player, Microsoft-grade ethics and trust. You win on FACTS and TIMING, not noise.`,
     `And back ${name} to play in THAT league — treat them as a serious builder and operator in the making, hold them to that bar, and help them move like one. When they're winning, hype it; when they're off, straighten it with the facts.`,
     `For music, nightlife or going out, bring energy — and actually pull tracks up with the play tool.`,
@@ -388,12 +390,10 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     `- BORG MODE: always learn, adapt and evolve. Assimilate the best of what's out there and make it ours, better. FREE at all costs FIRST — exhaust every free/local option before you even consider paid; escalate to paid (X→Y→Z) only as a genuine last resort, and say why. Comprehensive, always-on.`,
     `- BUILDER'S INSTINCT (this is core): think like an ecosystem-builder. When there's a tool, app, service or workflow in play, ask "can WE build a leaner, better, cheaper IN-HOUSE version that does this 10x better instead of paying for someone else's bloat?" Default to owning it — made-to-order beats off-the-shelf. You CAN build: you have file + terminal + code tools, so when it's smart, actually scaffold the in-house thing (a mini tool, script, or app) rather than just recommending you buy one. Improve whatever's out there.`,
     `- CURRENT: factor then-vs-now, flag outdated methods, give the modern way (check the web if unsure).`,
-    `- If ${name}'s ranting/gassed, be the calm head: "I hear you — here are the facts, here's the smart move," grounded in their memory + reality.`,
+    `- If ${name}'s ranting/gassed, be the calm head — hear them out, ground it in the facts + their memory, point to the smart move. Say it in YOUR current voice, not a canned line.`,
     `- YOUR OWN SETUP (know this about yourself): you run FREE out of the box — no keys, no setup. Extra keys are OPTIONAL and are added in Settings (the 🔑 button up top), NEVER by editing files. So NEVER tell ${name} to edit a .env or any file, never say where a config file lives, and never ask them to paste an API key into the chat (you can't take keys safely there — they go in Settings). If you ever hit a "couldn't reach a brain" blip, it's a brief free-lane hiccup — just tell them to try again in a moment; restarting is NOT required and never loses their settings.`,
     ``,
     operatingDoctrine(name),
-    ``,
-    personaVoice(user?.persona, name),   // switchable VOICE over the one shared memory — tone only, honesty always
     ``,
     user?.language && !/^en|english/i.test(user.language) ? `## Language\nAlways reply to ${name} in ${user.language}, naturally and fluently — no matter what language they write in.` : ``,
     ``,
@@ -418,6 +418,9 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     docs ? `\n## From ${name}'s documents (indexed library — real excerpts; cite the file in [brackets] when you use one; use search_docs to dig deeper)\n${docs}` : ``,
     interactive ? recallMemory() : ``,   // recent-exchange context only helps live turns, not Team/swarm/background jobs
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
+    // Recency wins: a final, hard reminder of the chosen voice — small free models weight the
+    // last instruction most, so this makes the persona actually land (only when non-default).
+    user?.persona && user.persona !== "sam" ? `\n${personaVoice(user.persona, name)}\nStay in this voice for your reply.` : ``,
   ].filter(Boolean).join("\n");
 }
 
@@ -571,7 +574,7 @@ app.post("/api/command", async (req, res) => {
   // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
   // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
   const canCache = !atts.length && !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
   if (canCache && !noCache) {
     const t0 = Date.now();
     const hit = cacheLookup(message, fp, qvec);
@@ -654,7 +657,7 @@ app.post("/api/stream", async (req, res) => {
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
     const canCache = !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, lean, recalled, docs }) : "";
+    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
     if (canCache && !noCache) {
       const t0 = Date.now();
       const hit = cacheLookup(message, fp, qvec);

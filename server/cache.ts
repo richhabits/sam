@@ -91,11 +91,12 @@ export function cacheable(message: string): boolean {
 }
 
 // Fingerprint the ACTUAL context that shaped the answer, so a change to any source misses.
-export function fingerprint(parts: { skillId?: string | null; userName?: string; mode?: string; lean?: boolean; recalled?: string; docs?: string }): string {
+export function fingerprint(parts: { skillId?: string | null; userName?: string; mode?: string; persona?: string; lean?: boolean; recalled?: string; docs?: string }): string {
   const sig = [
     parts.skillId || "-",
     (parts.userName || "-").toLowerCase().trim(),
     parts.mode || "-",
+    parts.persona || "sam",   // voice is part of the answer — never replay one persona's reply for another
     parts.lean ? "lean" : "full",
     normalize(parts.recalled || ""),
     normalize(parts.docs || ""),
