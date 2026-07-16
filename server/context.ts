@@ -19,6 +19,9 @@ export function nowText(): string {
 // Fetch approximate location from IP (free, no key). Cached ~6h.
 export async function fetchLocation(force = false): Promise<string> {
   if (process.env.SAM_LOCATION) return process.env.SAM_LOCATION;   // manual override wins
+  // PRIVACY: IP geolocation sends your public IP to a third party (ipwho.is), so it's OPT-IN —
+  // off by default (no boot phone-home). Enable with SAM_GEO=1, or set SAM_LOCATION="City, Country".
+  if (!/^(1|true|on|yes)$/i.test(process.env.SAM_GEO || "")) return LOC;
   if (LOC && !force && Date.now() - locAt < 6 * 3600_000) return LOC;
   try {
     const r = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(5000) });

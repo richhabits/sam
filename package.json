@@ -100,7 +100,16 @@
       "!.env.*",
       "!**/*.test.*",
       "!dist-app/**",
-      "!.git/**"
+      "!.git/**",
+      "!src/**",
+      "!server/**",
+      "!scripts/**",
+      "!e2e/**",
+      "!bench/**",
+      "!docs/**",
+      "!.github/**",
+      "!community/**",
+      "!gateway/**"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**",

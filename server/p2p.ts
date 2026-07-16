@@ -12,6 +12,15 @@
 import { Bonjour } from "bonjour-service";
 import express from "express";
 import { hostname } from "node:os";
+import { timingSafeEqual } from "node:crypto";
+
+// Constant-time token check with a length floor — a short/absent token is never accepted, and
+// comparison doesn't leak length/prefix via timing (mirrors the main remote-token gate).
+function p2pTokenOk(got: string | undefined): boolean {
+  if (!P2P_TOKEN || P2P_TOKEN.length < 16 || !got) return false;
+  const a = Buffer.from(got), b = Buffer.from(P2P_TOKEN);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export interface Peer {
   id: string;
@@ -146,7 +155,7 @@ export function startP2PServer(
   // Receive a task from another SAM — token-gated: this runs our agent loop, so an
   // unauthenticated LAN caller must never reach it.
   p2p.post("/p2p/task", async (req, res) => {
-    if (!P2P_TOKEN || req.get("x-sam-p2p-token") !== P2P_TOKEN) {
+    if (!p2pTokenOk(req.get("x-sam-p2p-token"))) {
       return res.status(403).json({ ok: false, error: "unauthorized peer" });
     }
     const { from, message, project } = req.body || {};

@@ -217,7 +217,7 @@ export type TeamEvent =
   | { type: "final"; text: string; provider?: string };
 
 // Run the whole team on a request using topological dependency execution.
-export async function runTeam(request: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
+export async function runTeam(request: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void, swarm = false): Promise<string> {
   const plan = await makePlan(request, tier);
   emit({ type: "plan", plan: plan.map((p) => { const s = byId(p.specialist)!; return { id: p.id, specialist: p.specialist, name: s.name, emoji: s.emoji, task: p.task, dependsOn: p.dependsOn }; }) });
 
@@ -254,7 +254,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 
     let output = "";
     try {
-      const r = await runAgent(sys, item.task, tier, toolPool(s));   // scoped tools = this specialist's mode
+      const r = await runAgent(sys, item.task, tier, toolPool(s), false, swarm);   // scoped tools = this specialist's mode; swarm ⇒ dangerous never auto-runs (restricted remote token)
       output = r.kind === "final" ? (r.text || "") : `(needs approval to ${r.tool})`;
     } catch (e: any) { output = `(couldn't complete: ${e?.message || e})`; }
 
@@ -283,7 +283,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
         emit({ type: "agent-start", id: f.id, name: s.name, emoji: s.emoji, task: f.task });
         const fsys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nThis is a FOLLOW-UP to close a gap the orchestrator found — do exactly this, tightly, and hand back a finished deliverable.\n\n## Work already done:\n${soFar}`;
         let out = "";
-        try { const rr = await runAgent(fsys, f.task, tier, toolPool(s)); out = rr.kind === "final" ? (rr.text || "") : `(needs approval to ${rr.tool})`; }
+        try { const rr = await runAgent(fsys, f.task, tier, toolPool(s), false, swarm); out = rr.kind === "final" ? (rr.text || "") : `(needs approval to ${rr.tool})`; }
         catch (e: any) { out = `(couldn't complete: ${e?.message || e})`; }
         emit({ type: "agent-done", id: f.id, name: s.name, emoji: s.emoji, output: out });
         results.push({ s, task: f.task, output: out });
@@ -300,7 +300,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
 }
 
 // 🥷 Deploy the Ninjas: Hawk hunts problems → Reaper & Chaser deal with them → hit-list.
-export async function runNinjas(target: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void): Promise<string> {
+export async function runNinjas(target: string, tier: Tier, baseSystem: string, emit: (e: TeamEvent) => void, swarm = false): Promise<string> {
   const hawk = NINJAS[0];
   emit({ type: "plan", plan: NINJAS.map((n) => ({ id: n.id, specialist: n.id, name: n.name, emoji: n.emoji, task: n.id === "hawk" ? "hunt the problems" : "deal with them" })) });
 
@@ -308,7 +308,7 @@ export async function runNinjas(target: string, tier: Tier, baseSystem: string, 
   emit({ type: "agent-start", id: hawk.id, name: hawk.name, emoji: hawk.emoji, task: "hunting problems" });
   const hawkSys = `${baseSystem}\n\n## You are Hawk 🦅 — ${hawk.modeledOn}. ${hawk.brief}\nUse your tools to check reality (files, repos, calendar, etc.) where it helps. Return a tight, ranked list of the REAL problems.`;
   let found = "";
-  try { const r = await runAgent(hawkSys, `Hunt down every problem, risk, blocker, overdue item, loose end or weak point in: ${target}`, tier); found = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
+  try { const r = await runAgent(hawkSys, `Hunt down every problem, risk, blocker, overdue item, loose end or weak point in: ${target}`, tier, undefined, false, swarm); found = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
   catch (e: any) { found = `(couldn't complete: ${e?.message || e})`; }
   emit({ type: "agent-done", id: hawk.id, name: hawk.name, emoji: hawk.emoji, output: found });
 
@@ -318,7 +318,7 @@ export async function runNinjas(target: string, tier: Tier, baseSystem: string, 
     emit({ type: "agent-start", id: n.id, name: n.name, emoji: n.emoji, task: n.id === "reaper" ? "fixing what can be fixed" : "chasing what's owed" });
     const sys = `${baseSystem}\n\n## You are ${n.name} ${n.emoji} — ${n.modeledOn}. ${n.brief}\nWork ONLY from the problems Hawk found below. Be decisive and concrete — fix/act where safe, draft what closes it. No waffle.`;
     let out = "";
-    try { const r = await runAgent(sys, `Problems Hawk found:\n${found}\n\nTarget: ${target}\n\nYour move:`, tier); out = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
+    try { const r = await runAgent(sys, `Problems Hawk found:\n${found}\n\nTarget: ${target}\n\nYour move:`, tier, undefined, false, swarm); out = r.kind === "final" ? (r.text || "") : "(paused for approval)"; }
     catch (e: any) { out = `(couldn't complete: ${e?.message || e})`; }
     emit({ type: "agent-done", id: n.id, name: n.name, emoji: n.emoji, output: out });
     return { n, out };

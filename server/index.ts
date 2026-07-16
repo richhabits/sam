@@ -574,7 +574,7 @@ app.post("/api/command", async (req, res) => {
   // Only for plain-text messages (no attachments) that are safe to cache. The fingerprint
   // pins the exact context so a changed fact/file misses. `noCache` (the re-ask-fresh tap) skips it.
   const canCache = !atts.length && !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-  const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
+  const fp = canCache ? fingerprint({ skillId: skill?.id, projectId, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
   if (canCache && !noCache) {
     const t0 = Date.now();
     const hit = cacheLookup(message, fp, qvec);
@@ -657,7 +657,7 @@ app.post("/api/stream", async (req, res) => {
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
     const canCache = !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
-    const fp = canCache ? fingerprint({ skillId: skill?.id, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
+    const fp = canCache ? fingerprint({ skillId: skill?.id, projectId, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
     if (canCache && !noCache) {
       const t0 = Date.now();
       const hit = cacheLookup(message, fp, qvec);
@@ -735,6 +735,7 @@ app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, 
 // ── STANDING AUTHORIZATIONS ("yes, always allow X") ──────────
 app.get("/api/allow", (_req, res) => res.json({ allowed: listAllowed() }));
 app.post("/api/allow", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "Standing authorizations can only be changed on this computer, not remotely." });
   const { tool, on } = req.body as { tool: string; on: boolean };
   if (!tool) return res.status(400).json({ error: "no tool" });
   on ? allow(tool) : disallow(tool);
@@ -1035,7 +1036,7 @@ app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges
 
 // ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
 app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
-app.post("/api/autopilot", (req, res) => { setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
+app.post("/api/autopilot", (req, res) => { if (!isLoopback(req)) return res.status(403).json({ error: "Autopilot can only be toggled on this computer, not remotely." }); setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
 
 // ── Autonomy consent (v1.8) — the "What can SAM do on its own?" pane + the autonomy log.
 // Reading is fine remotely; CHANGING what SAM may do autonomously is a security setting → loopback-only
@@ -1274,7 +1275,8 @@ async function runSquad(kind: "team" | "ninjas", req: any, res: any) {
   try {
     const system = buildSystem(routeSkill(message, SKILLS)?.body || "", projectId, user, "");
     const run = kind === "ninjas" ? runNinjas : runTeam;
-    const text = await run(message, (process.env.DEFAULT_TIER as Tier) || "free", system, send);
+    const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token ⇒ dangerous tools never auto-run
+    const text = await run(message, (process.env.DEFAULT_TIER as Tier) || "free", system, send, restricted);
     logExchange({ user: `[${kind}] ${message}`, sam: text, skill: kind, project: projectId, provider: kind });
   } catch (e: any) { send({ type: "final", text: `The ${kind} hit a snag: ` + (e?.message || e) }); }
   send({ type: "end" });

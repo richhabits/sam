@@ -114,20 +114,33 @@ function tryToolJson(cand: string): { tool: string; input: any } | null {
     return accept(JSON.parse(fixed));
   } catch { return null; }
 }
+// Index of the matching close-brace for the `{` at `start`, IGNORING braces inside JSON string
+// literals — so a `}` in a string value (e.g. {"cmd":"echo }"}) doesn't end the object early and
+// silently drop the tool call. Returns -1 if unbalanced.
+function matchBrace(s: string, start: number): number {
+  let depth = 0, inStr = false, esc = false;
+  for (let j = start; j < s.length; j++) {
+    const c = s[j];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}") { depth--; if (depth === 0) return j; }
+  }
+  return -1;
+}
+
 export function parseToolCall(text: string): { tool: string; input: any } | null {
   const cleaned = text.replace(/```json/gi, "```").trim();
-  // scan for balanced JSON objects
+  // scan for balanced JSON objects (string-aware, so braces inside string values don't misbalance)
   for (let i = 0; i < cleaned.length; i++) {
     if (cleaned[i] !== "{") continue;
-    let depth = 0;
-    for (let j = i; j < cleaned.length; j++) {
-      if (cleaned[j] === "{") depth++;
-      else if (cleaned[j] === "}") { depth--; if (depth === 0) {
-        const hit = tryToolJson(cleaned.slice(i, j + 1));
-        if (hit) return hit;
-        break;
-      }}
-    }
+    const end = matchBrace(cleaned, i);
+    if (end < 0) continue;
+    const hit = tryToolJson(cleaned.slice(i, end + 1));
+    if (hit) return hit;
   }
   return null;
 }
@@ -143,19 +156,14 @@ export function parseToolBatch(text: string): { tool: string; input: any }[] | n
   // find the enclosing object
   const start = cleaned.lastIndexOf("{", i);
   if (start < 0) return null;
-  let depth = 0;
-  for (let j = start; j < cleaned.length; j++) {
-    if (cleaned[j] === "{") depth++;
-    else if (cleaned[j] === "}") { depth--; if (depth === 0) {
-      try {
-        const obj = JSON.parse(cleaned.slice(start, j + 1));
-        if (!Array.isArray(obj?.tools)) return null;
-        const calls = obj.tools.filter((c: any) => c && typeof c.tool === "string").map((c: any) => ({ tool: c.tool, input: c.input ?? {} }));
-        return calls.length >= 2 ? calls : null;   // a "batch" of one is just a normal call
-      } catch { return null; }
-    }}
-  }
-  return null;
+  const end = matchBrace(cleaned, start);   // string-aware — braces inside a string value can't end it early
+  if (end < 0) return null;
+  try {
+    const obj = JSON.parse(cleaned.slice(start, end + 1));
+    if (!Array.isArray(obj?.tools)) return null;
+    const calls = obj.tools.filter((c: any) => c && typeof c.tool === "string").map((c: any) => ({ tool: c.tool, input: c.input ?? {} }));
+    return calls.length >= 2 ? calls : null;   // a "batch" of one is just a normal call
+  } catch { return null; }
 }
 
 // Run a batch of tool calls CONCURRENTLY — but only when EVERY tool is safe/auto-runnable, so the
@@ -321,7 +329,16 @@ export async function runAgentStream(system: string, message: string, tier: Tier
         continue;
       }
     }
-    const call = parseToolCall(finalText) || (batch ? batch[0] : null);
+    let call = parseToolCall(finalText) || (batch ? batch[0] : null);
+
+    // Repair: small models often intend a tool but emit invalid JSON. Re-emit clean JSON (silently)
+    // before we'd otherwise leak the raw {"tool":…} to the user as the answer (mirrors loop()).
+    if (!call && /["']?tool["']?\s*:/.test(finalText)) {
+      const fix = await streamModel(tier, sys, prompt +
+        `\n\nYour last reply looked like a tool call but wasn't valid JSON:\n${finalText.slice(0, 300)}\n\n` +
+        `Re-emit ONLY the JSON object {"tool":"<name>","input":{...}} and nothing else.`, () => {});
+      call = parseToolCall(fix.text);
+    }
 
     if (call) {
       const tool = toolByName(call.tool);
