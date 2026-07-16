@@ -28,9 +28,9 @@ import { previousRelease } from "./rollback.ts";
 import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
-import { route, selfCheckFailed, nextTierUp } from "./classify.ts";
+import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
-import { remember, recallWith, memoryStats, pinnedModel } from "./memory.ts";
+import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -457,21 +457,47 @@ function worthRemembering(msg: string): boolean {
 // Turn an exchange into 0-3 durable atomic facts and store them (fire-and-forget).
 // Runs on LOCAL so it never eats the cloud quota that answers need. Stores FACTS
 // not raw logs (avoids context poisoning).
+// SAM's replies often CONTAIN the durable thing (a plan it laid out, a decision reached) —
+// so we extract from the whole exchange, not just when the user stated a fact.
+const PLAN_SIGNAL_RE = /\b(plan|step\s*\d|steps?:|here'?s (the|a) plan|action plan|i'?d recommend|recommendation|strateg|let'?s go with|we'?ll|decision|decided|go with|next steps?|to-?do|open loop|action items?)\b/i;
+
 async function learnFrom(userMsg: string, samMsg: string, name: string) {
-  if (!worthRemembering(userMsg)) return;
+  // Extract when the user revealed something durable OR the exchange settled a plan/decision.
+  if (!worthRemembering(userMsg) && !PLAN_SIGNAL_RE.test(samMsg || "")) return;
   try {
-    const sys = "You pull DURABLE, long-term facts about a person out of a conversation and return clean, atomic statements. Output ONLY a JSON array of strings, or [] when nothing is worth keeping. Be strict — most exchanges yield [].";
+    const sys = "You extract DURABLE memory from a conversation for a personal assistant. Return ONLY a JSON array of {\"type\",\"text\"} objects (type ∈ fact | plan | decision | task), or [] when nothing is worth keeping. Be strict — most exchanges yield [].";
     const prompt =
-      `From the exchange below, extract 0-3 facts worth remembering about ${name} long-term — things still true and useful next week: preferences, people in their life, projects/brands, decisions, recurring details, contacts, constraints.\n` +
-      `STRICT — return [] unless something genuinely qualifies. Skip: small talk, questions, one-off tasks, transient state ("tired today"), anything ${name} didn't actually reveal, and anything obvious or already generic.\n` +
-      `Each fact must stand alone — name the subject ("${name} prefers X", never just "prefers X") — and be one clean statement.\n\n` +
-      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nFacts (JSON array of strings, or []):`;
-    const r = await runModel("local", sys, prompt);   // local first — don't spend cloud quota on background work
-    const m = r.text.match(/\[[\s\S]*\]/);
-    if (!m) return;
-    const facts = JSON.parse(m[0]);
-    if (Array.isArray(facts)) for (const f of facts) if (typeof f === "string" && f.length > 6) await remember(f, "fact", name);
+      `From the exchange below, capture 0-4 items worth remembering long-term about ${name} and their work:\n` +
+      `- fact: a durable personal fact ("${name} prefers X", a person in their life, a project/brand, a contact, a constraint).\n` +
+      `- plan: a concrete multi-step plan you AGREED — keep the steps, compact, so "proceed" later can act on it.\n` +
+      `- decision: a choice that was actually made ("${name} chose premium positioning for Ghost Detail").\n` +
+      `- task: an open loop / to-do still outstanding ("invoice #38 unpaid").\n` +
+      `STRICT — return [] unless something genuinely qualifies. Skip small talk, questions, transient state ("tired today"), and anything not actually established. Name the subject in each text so it stands alone.\n\n` +
+      `${name}: ${userMsg}\nSAM: ${samMsg}\n\nJSON array of {type,text} (or []):`;
+    const r = await runModel("local", sys, prompt);   // LOCAL only — background memory never spends cloud quota (free promise)
+    const mm = r.text.match(/\[[\s\S]*\]/);
+    if (!mm) return;
+    const items = JSON.parse(mm[0]);
+    if (!Array.isArray(items)) return;
+    for (const it of items) {
+      // Tolerate both {type,text} and bare strings (older model outputs) → default to "fact".
+      const text = (typeof it === "string" ? it : it?.text) || "";
+      const type = ["fact", "plan", "decision", "task"].includes(it?.type) ? it.type : "fact";
+      if (typeof text === "string" && text.trim().length > 6) await remember(text.trim(), type, name);
+    }
   } catch { /* memory is best-effort */ }
+}
+
+// On a continuation ("proceed"/"do step 1"), re-surface the plans/decisions/open loops we've
+// agreed — so SAM knows WHAT to continue even beyond the client's recent-turns window. Local,
+// on-device, zero-cost: just a SQLite read of the user's own memory.
+function openPlans(name?: string): string {
+  const rows = [
+    ...listByKind("plan", name, 3).map((x) => `- [plan] ${clip(x.text, 320)}`),
+    ...listByKind("decision", name, 2).map((x) => `- [decision] ${clip(x.text, 220)}`),
+    ...listByKind("task", name, 3).map((x) => `- [open loop] ${clip(x.text, 180)}`),
+  ];
+  return rows.length ? `\n## What we've been working on — pick up from here\n${rows.join("\n")}` : "";
 }
 
 // ── MAIN COMMAND LOOP ────────────────────────────────────────
@@ -515,7 +541,8 @@ app.post("/api/command", async (req, res) => {
   let { skill, chosen, reason, lean, klass } = pickTier(message || "look at this", tier);
   const semanticSkillId = selectSkillId(qvec);   // no-op when qvec is null
   if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
-  const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  let recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+  if (CONTINUATION_RE.test(message || "")) recalled = (recalled ? recalled + "\n" : "") + openPlans(user?.name);   // re-anchor "proceed" on the agreed plan
   const docs = (fast || lean) ? "" : recallDocs(qvec);
   let toolNames = fast ? undefined : selectTools(qvec, 8, message);
   // SCOPED REMOTE TOKENS: a non-`full` remote device (e.g. the iOS companion on `no-dangerous`)
@@ -613,7 +640,8 @@ app.post("/api/stream", async (req, res) => {
     let { skill, chosen, reason, lean, klass } = pickTier(message, tier);
     const semanticSkillId = selectSkillId(qvec);
     if (semanticSkillId) { const s = SKILLS.find((x) => x.id === semanticSkillId); if (s) { skill = s; if (s.tier === "local") chosen = tier || "local"; } }
-    const recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    let recalled = (!fast && !lean) ? dietRecall(qvec, user?.name) : "";
+    if (CONTINUATION_RE.test(message || "")) recalled = (recalled ? recalled + "\n" : "") + openPlans(user?.name);   // re-anchor "proceed" on the agreed plan
     const docs = (fast || lean) ? "" : recallDocs(qvec);
     let toolNames = fast ? undefined : selectTools(qvec, 8, message);
     const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token
@@ -654,6 +682,21 @@ app.post("/api/stream", async (req, res) => {
   }
   send({ type: "end", projectId: projectId || "" });
   res.end();
+});
+
+// ── MEMORY DASHBOARD — "What SAM remembers about you." 100% on-device (SQLite); nothing
+//    here ever leaves the machine. Grouped by kind so the user sees facts, plans, decisions
+//    and open loops, and can delete any of them. Trust surface + loveability moment. ──
+app.get("/api/memory", (req, res) => {
+  const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
+  const items = listAll(name);
+  const groups: Record<string, { id: string; text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
+  for (const it of items) (groups[it.kind] ||= []).push({ id: it.id, text: it.text, ts: it.ts });
+  res.json({ groups, count: items.length, private: true, note: "All local — nothing left your device." });
+});
+app.post("/api/memory/forget", (req, res) => {
+  const id = String(req.body?.id || "");
+  res.json({ ok: id ? forget(id) : false });
 });
 
 // ── APPROVE / DECLINE a risky action, then continue ──────────
