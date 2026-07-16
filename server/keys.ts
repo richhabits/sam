@@ -114,4 +114,7 @@ export function poolSize(provider: string): number { return POOLS[provider]?.siz
 export function keyStatus() { return Object.values(POOLS).map((p) => p.status()); }
 
 const summary = Object.entries(POOLS).filter(([, p]) => p.size > 0).map(([name, p]) => `${name}×${p.size}`).join(", ");
-console.log(`  keys pooled     · ${summary || "none yet (add *_API_KEYS to .env)"}`);
+// Skip the boot banner for `--version`/`version` so the CLI prints only the version (issue #13).
+if (!process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
+  console.log(`  keys pooled     · ${summary || "none yet (add *_API_KEYS to .env)"}`);
+}
