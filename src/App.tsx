@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -200,6 +200,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [mem, setMem] = useState<{ groups: Record<string, { id: string; text: string; ts: number }[]>; count: number; note: string } | null>(null);
+  const loadMemory = () => getMemory().then(setMem).catch(() => setMem({ groups: {}, count: 0, note: "" }));
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pending, setPending] = useState<AgentResult | null>(null);
@@ -406,6 +408,7 @@ export default function App() {
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
   useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch {} }, [profile, mode, persona]);
+  useEffect(() => { if (memoryOpen) loadMemory(); }, [memoryOpen]);   // load the real learned memory when the drawer opens
 
   // Hands-free wake: whistle or double-clap opens Voice Mode.
   useEffect(() => {
@@ -1423,12 +1426,31 @@ export default function App() {
         <div className="drawer-wrap" onClick={() => setMemoryOpen(false)}>
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
-              <div><div className="drawer-title">What SAM remembers</div><div className="drawer-sub">Today's history — saved privately on your computer.</div></div>
+              <div><div className="drawer-title">What SAM remembers about you</div><div className="drawer-sub">{mem ? `${mem.count} thing${mem.count === 1 ? "" : "s"} learned · all on your computer — nothing left your device` : "Loading…"}</div></div>
               <button className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
             </div>
-            {log.length === 0
-              ? <div className="drawer-empty">Nothing yet today. Anything you chat about gets saved here so SAM remembers next time.</div>
-              : <ul className="drawer-list">{log.map((l, i) => (<li key={i}><span className="d-time">{l.time}</span><span className="d-msg">{l.msg}</span></li>))}</ul>}
+            {(() => {
+              const KINDS: [string, string][] = [["fact", "🧠 Facts"], ["plan", "🗺️ Plans"], ["decision", "✅ Decisions"], ["task", "📌 Open loops"]];
+              const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => {});
+              if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.</div>;
+              return <div className="mem-groups">
+                {KINDS.map(([kind, label]) => {
+                  const items = mem?.groups?.[kind] || [];
+                  if (!items.length) return null;
+                  return <div key={kind} className="mem-group">
+                    <div className="mem-group-title">{label} <span className="mem-count">{items.length}</span></div>
+                    <ul className="drawer-list">
+                      {items.map((it) => (
+                        <li key={it.id} className="mem-item">
+                          <span className="d-msg">{it.text}</span>
+                          <button className="mem-del" title="Forget this" onClick={() => del(it.id)}>✕</button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>;
+                })}
+              </div>;
+            })()}
           </aside>
         </div>
       )}

@@ -155,6 +155,12 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json();
 }
 
+export interface MemoryItem { id: string; text: string; ts: number }
+export interface MemoryData { groups: Record<string, MemoryItem[]>; count: number; private: boolean; note: string }
+// "What SAM remembers about you" — the real learned memory (facts/plans/decisions/open loops), 100% local.
+export async function getMemory() { return api<MemoryData>(`/api/memory?user=${encodeURIComponent(USER.name || "")}`); }
+export async function forgetMemory(id: string) { return api<{ ok: boolean }>("/api/memory/forget", { method: "POST", body: JSON.stringify({ id }) }); }
+
 export async function getSwarms() { return api<any>("/api/swarms"); }
 export async function startSwarm(goal: string, projectId?: string, tier?: "local"|"free"|"premium") {
   return api<any>("/api/swarms", { method: "POST", body: JSON.stringify({ goal, projectId, tier }) });
