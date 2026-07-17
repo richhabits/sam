@@ -1325,3 +1325,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .mkt-row:hover .mkt-del { opacity: 1; }
 .mkt-empty { color: var(--muted); font-size: 13px; padding: 14px; text-align: center; }
 .mkt-note { margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; }
+
+/* ── Colosseum leaderboard — Elo ranking of the free brains (llm-colosseum strip-map) ── */
+.lb-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; }
+.lb-row:first-child { border-color: var(--accent); background: var(--accent-soft); }
+.lb-rank { width: 24px; text-align: center; font-weight: 700; font-size: 14px; }
+.lb-name { flex: 1; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-wlt { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+.lb-elo { font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700; min-width: 44px; text-align: right; }

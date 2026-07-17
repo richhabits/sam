@@ -39,7 +39,7 @@ import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
-import { TOOLS } from "./tools.ts";
+import { TOOLS, benchmarkBrains } from "./tools.ts";
 import { quotes as marketQuotes } from "./markets.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
@@ -719,6 +719,14 @@ app.post("/api/stream", async (req, res) => {
 // ── MEMORY DASHBOARD — "What SAM remembers about you." 100% on-device (SQLite); nothing
 //    here ever leaves the machine. Grouped by kind so the user sees facts, plans, decisions
 //    and open loops, and can delete any of them. Trust surface + loveability moment. ──
+// Model Colosseum — run an Elo benchmark of SAM's free brains (see server/colosseum.ts).
+// POST because it fires real model calls (a round-robin of judged matches) — takes ~a minute.
+app.post("/api/arena", async (req, res) => {
+  const { prompt, brains } = (req.body || {}) as { prompt?: string; brains?: string[] };
+  try { res.json(await benchmarkBrains({ prompt, brains })); }
+  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+
 // Live market quotes for the Markets panel — keyless, free (see server/markets.ts).
 app.get("/api/quotes", async (req, res) => {
   const symbols = String(req.query.symbols || "").split(",").map((s) => s.trim()).filter(Boolean);
