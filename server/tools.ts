@@ -1037,6 +1037,9 @@ export async function benchmarkBrains(
   const all = availableBrains();
   if (all.length < 2) return { error: "Need at least 2 available brains to run the arena — add a free key or two." };
   const chosen = Array.isArray(opts.brains) && opts.brains.length ? all.filter((b) => opts.brains!.includes(b.id)) : all.slice(0, opts.maxBrains ?? 4);
+  // Guard on CHOSEN competitors, not just available — a 1-brain "benchmark" would otherwise
+  // persist a degenerate ranking and corrupt routing (the champion would be that lone brain).
+  if (chosen.length < 2) return { error: "Need at least 2 valid brains to benchmark — got " + chosen.length + "." };
   const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
   const prompts = opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT];
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
