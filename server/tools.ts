@@ -561,6 +561,63 @@ async function diskSpace(path: string): Promise<string> {
   } catch (e: any) { return `Could not check disk space for ${path || "~"}: ${e?.message}`; }
 }
 
+// find_files — walk a folder (bounded) and list files whose NAME matches a query (case-insensitive
+// substring), so the user can locate "where's that invoice pdf". Read-only, cross-platform, skips
+// heavy/system dirs like the walks above. Scan is capped so it can't run away on a giant tree.
+async function findFiles(query: string, path: string): Promise<string> {
+  const CAP = 5000;   // max files scanned before we stop and say so
+  const MAX = 30;     // max matches shown
+  const q = String(query ?? "").trim().toLowerCase();
+  if (!q) return `What should I look for? Give me a name (or part of one) to search for.`;
+  try {
+    const root = safePath(path || "~");
+    const st = await stat(root).catch(() => null);
+    if (!st) return `Could not read ${path || "~"}: no such folder (or no permission).`;
+    if (!st.isDirectory()) return `${path || "~"} is a file, not a folder — try read_file instead.`;
+
+    let scanned = 0, capped = false;
+    const matches: { name: string; mtime: number; bytes: number }[] = [];
+
+    // Iterative BFS so we don't blow the stack on deep trees; bounded by CAP.
+    const queue = [root];
+    while (queue.length) {
+      const dir = queue.shift()!;
+      let entries: any[];
+      try { entries = await readdir(dir, { withFileTypes: true }); } catch { continue; }
+      for (const e of entries) {
+        if (scanned >= CAP) { capped = true; break; }
+        if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+        const full = join(dir, e.name);
+        if (e.isDirectory()) { queue.push(full); continue; }
+        let s: any;
+        try { s = await stat(full); } catch { continue; }
+        scanned++;
+        if (e.name.toLowerCase().includes(q)) {
+          matches.push({ name: full.replace(homedir(), "~"), mtime: s.mtimeMs, bytes: s.size });
+        }
+      }
+      if (capped) break;
+    }
+
+    if (scanned === 0) return `📂 ${path || "~"} — empty (no readable files).`;
+    if (matches.length === 0) {
+      return `🔍 No files matching "${query}" in ${path || "~"} (searched ${scanned}${capped ? `, capped at ${CAP} — folder is larger` : ""}).`;
+    }
+
+    matches.sort((a, b) => b.mtime - a.mtime);   // newest-modified first
+    const shown = matches.slice(0, MAX)
+      .map((f) => `· ${f.name} — ${humanSize(f.bytes)}`)
+      .join("\n");
+
+    return [
+      `🔍 Files matching "${query}" in ${path || "~"}`,
+      `Found ${matches.length}${matches.length > MAX ? ` (showing first ${MAX})` : ""} of ${scanned} scanned${capped ? ` (scan capped at ${CAP} — folder is larger)` : ""}, newest first:`,
+      ``,
+      shown,
+    ].join("\n");
+  } catch (e: any) { return `Could not search ${path || "~"}: ${e?.message}`; }
+}
+
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   // Graceful cross-platform degrade: the model reads this and tells the user honestly
@@ -1079,6 +1136,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Finding recent files in ${i.path ?? i ?? "~"}`, run: (i) => recentFiles(i.path ?? i ?? "~", i.limit) },
   { name: "disk_space", safe: true, description: "Report free / used / total disk space for the drive holding a path — check 'am I running low on space'. input: a path (supports ~; defaults to home).", params: "path?",
     activity: (i) => `Checking disk space for ${i?.path ?? i ?? "~"}`, run: (i) => diskSpace(i?.path ?? i ?? "~") },
+  { name: "find_files", safe: true, description: "Find files by name in a folder (case-insensitive substring match), newest-modified first — great for 'where's that invoice pdf'. input: { query, path? } (path supports ~; defaults to home).", params: "query, path?",
+    activity: (i) => `Searching for "${i?.query ?? i}" in ${i?.path ?? "~"}`, run: (i) => findFiles(i?.query ?? i, i?.path ?? "~") },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
