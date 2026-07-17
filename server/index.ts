@@ -477,6 +477,14 @@ function worthRemembering(msg: string): boolean {
 // so we extract from the whole exchange, not just when the user stated a fact.
 const PLAN_SIGNAL_RE = /\b(plan|step\s*\d|steps?:|here'?s (the|a) plan|action plan|i'?d recommend|recommendation|strateg|let'?s go with|we'?ll|decision|decided|go with|next steps?|to-?do|open loop|action items?)\b/i;
 
+// A "fact" that's actually noise: a bare single-token slug ("mainline" — no standalone meaning),
+// or a transient reading (a weather result / "currently …" isn't a durable fact worth keeping).
+const TRANSIENT_FACT_RE = /\b(currently|right now|at the moment|as of|feels like|temperature|humidity|weather)\b|°\s?[cf]\b|\d+\s?(°|km\/h|mph|%)/i;
+function isNoisyFact(text: string): boolean {
+  const t = text.trim();
+  return !/\s/.test(t) || TRANSIENT_FACT_RE.test(t);
+}
+
 async function learnFrom(userMsg: string, samMsg: string, name: string) {
   // Extract when the user revealed something durable OR the exchange settled a plan/decision.
   if (!worthRemembering(userMsg) && !PLAN_SIGNAL_RE.test(samMsg || "")) return;
@@ -499,7 +507,11 @@ async function learnFrom(userMsg: string, samMsg: string, name: string) {
       // Tolerate both {type,text} and bare strings (older model outputs) → default to "fact".
       const text = (typeof it === "string" ? it : it?.text) || "";
       const type = ["fact", "plan", "decision", "task"].includes(it?.type) ? it.type : "fact";
-      if (typeof text === "string" && text.trim().length > 6) await remember(text.trim(), type, name);
+      const clean = typeof text === "string" ? text.trim() : "";
+      // Quality gate for FACTS: skip noise the extractor sometimes leaks — bare single-token
+      // slugs ("mainline") and transient readings (a weather result isn't a durable fact).
+      if (type === "fact" && isNoisyFact(clean)) continue;
+      if (clean.length > 6) await remember(clean, type, name);
     }
   } catch { /* memory is best-effort */ }
 }
