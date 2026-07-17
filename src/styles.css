@@ -996,7 +996,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .side { border-right: 1px solid var(--border); }
 .ctx { border-left: 1px solid var(--border); gap: 7px; padding: 16px 14px; overflow-y: auto; }
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; }
-.side-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.side-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .side-new { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; width: 26px; height: 26px; color: var(--text); font-size: 15px; cursor: pointer; }
 .side-list { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0 8px; display: flex; flex-direction: column; gap: 2px; }
 .side-list li { display: flex; align-items: center; border-radius: 10px; }
@@ -1010,9 +1010,9 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .side-foot:hover { border-color: var(--accent); color: var(--accent-text); }
 .ctx-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .ctx-brand { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-.ctx-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-top: 8px; }
-.ctx-act { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13.5px; cursor: pointer; }
-.ctx-act:hover { border-color: var(--accent); color: var(--accent-text); }
+.ctx-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 14px; }
+.ctx-act { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13.5px; letter-spacing: -.01em; cursor: pointer; }
+.ctx-act:hover { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-text); }
 @media (max-width: 1080px) { .shell { grid-template-columns: 1fr; } .side, .ctx { display: none; } }
 
 /* Sidebar folders */
