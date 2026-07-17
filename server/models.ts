@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recordModelCall, estTokens } from "./metrics.ts";
-import { loadRanking } from "./colosseum.ts";
+import { loadRanking, rankingStale } from "./colosseum.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -354,7 +354,8 @@ function spreadLoad(ranked: Provider[]): Provider[] {
 // keeping the incoming lane order as a stable tiebreaker. No ranking on file ⇒ pool unchanged.
 export function arenaSort(pool: Provider[]): Provider[] {
   const rank = loadRanking();
-  if (!rank) return pool;
+  // No ranking, or one too old to trust → keep the incoming (static lane) order.
+  if (!rank || rankingStale(rank.ts, Date.now())) return pool;
   const elo = (id: string) => rank.elo[id] ?? 1000;     // unranked brain = neutral 1000
   return pool.map((p, i) => ({ p, i })).sort((a, b) => elo(b.p.id) - elo(a.p.id) || a.i - b.i).map((x) => x.p);
 }
@@ -663,7 +664,7 @@ export function providersStatus() {
     local: { ollama: OLLAMA_MODEL },
     pools: keyStatus(),
     providers: PROVIDERS.map((p) => ({ id: p.id, tier: p.tier, keys: poolSize(p.id) })),
-    arena: (() => { const r = loadRanking(); return r ? { top: r.top, ts: r.ts } : null; })(),   // colosseum champion steering the free tier
+    arena: (() => { const r = loadRanking(); if (!r) return null; const stale = rankingStale(r.ts, Date.now()); return { top: r.top, ts: r.ts, stale, steering: !stale }; })(),   // colosseum champion; steering only while fresh
   };
 }
 
