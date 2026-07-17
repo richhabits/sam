@@ -1151,7 +1151,7 @@ app.get("/api/doctor", async (_req, res) => {
   const online = await ping("https://api.github.com/zen", 2500).catch(() => false);
   let vaultWritable = true;
   try { const { writeFileSync, unlinkSync } = await import("node:fs"); const p = join(process.env.VAULT_DIR || join(REPO_ROOT, "vault"), ".doctor-probe"); writeFileSync(p, "ok"); unlinkSync(p); } catch { vaultWritable = false; }
-  res.json(runDoctor({ hasCloudKeys, ollamaConfigured, ollamaReachable, online, vaultWritable, platform: process.platform }));
+  res.json(runDoctor({ hasCloudKeys, ollamaConfigured, ollamaReachable, online, vaultWritable, platform: process.platform, ramGb: os.totalmem() / 1024 ** 3 }));
 });
 
 // ── Billing (v2.0) — OFF by default. NEVER gates core (coreGated is always false). ──
