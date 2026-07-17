@@ -76,7 +76,7 @@ import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
-import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard } from "./colosseum.ts";
+import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, type ArenaResult } from "./colosseum.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
@@ -1029,6 +1029,21 @@ async function renderVideoTool(input: any): Promise<string> {
   }
 }
 
+// ── MODEL COLOSSEUM (llm-colosseum strip-map) — wired arena run, shared by the tool + /api/arena ──
+const ARENA_DEFAULT_PROMPT = "Explain why the sky is blue in two sentences a 10-year-old would understand.";
+export async function benchmarkBrains(
+  opts: { prompt?: string; prompts?: string[]; brains?: string[]; maxBrains?: number } = {},
+): Promise<ArenaResult | { error: string }> {
+  const all = availableBrains();
+  if (all.length < 2) return { error: "Need at least 2 available brains to run the arena — add a free key or two." };
+  const chosen = Array.isArray(opts.brains) && opts.brains.length ? all.filter((b) => opts.brains!.includes(b.id)) : all.slice(0, opts.maxBrains ?? 4);
+  const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
+  const prompts = opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT];
+  const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
+  const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
+  return runArena(competitors, prompts, answer, judge);
+}
+
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
@@ -1041,18 +1056,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => { const raw = i?.symbols ?? i; const syms = Array.isArray(raw) ? raw.map(String) : String(raw || "").split(","); return formatQuotes(await marketQuotes(syms)); } },
   { name: "model_arena", safe: true, description: "Benchmark SAM's free brains head-to-head: each answers the same prompt, an impartial judge picks the winner, and they're ranked by Elo — a 'colosseum' for your rotating free models. input: {prompt?} (or {prompts?, brains?}); defaults to a small set.", params: "{prompt?}",
     activity: () => "Running the model colosseum",
-    run: async (i) => {
-      const all = availableBrains();
-      if (all.length < 2) return "Need at least 2 available brains to run the arena — add a free key or two.";
-      const chosen = Array.isArray(i?.brains) ? all.filter((b) => i.brains.includes(b.id)) : all.slice(0, 4);
-      const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
-      const prompts = Array.isArray(i?.prompts) ? i.prompts.map(String)
-        : i?.prompt ? [String(i.prompt)]
-        : ["Explain why the sky is blue in two sentences a 10-year-old would understand."];
-      const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
-      const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
-      return formatLeaderboard(await runArena(competitors, prompts, answer, judge));
-    } },
+    run: async (i) => { const r = await benchmarkBrains({ prompt: i?.prompt, prompts: i?.prompts, brains: i?.brains }); return "error" in r ? r.error : formatLeaderboard(r); } },
   { name: "retrieve_full", safe: true, description: "Pull back the FULL text of an earlier tool output that was compressed to save tokens (you'll have seen an id like 'web_fetch#3'). input: {id}.", params: "{id}",
     activity: (i) => `Retrieving full output ${i.id ?? i}`, run: async (i) => retrieveFullOutput(String((i.id ?? i) || "")) ?? "That compressed output is no longer cached." },
 
