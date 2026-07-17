@@ -84,6 +84,7 @@ export const getQuotes = (symbols: string) =>
   fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`).then((r) => r.json());
 export const runArena = (prompt?: string) =>
   fetch("/api/arena", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) }).then((r) => r.json());
+export const getArena = () => fetch("/api/arena").then((r) => r.json());
 export const getTools = () => fetch("/api/tools").then((r) => r.json());
 
 // Admin — manage provider API keys (rolling pools) + config from the app.
