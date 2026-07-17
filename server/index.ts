@@ -40,7 +40,7 @@ import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
-import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget } from "./memory.ts";
+import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -725,6 +725,25 @@ app.get("/api/memory", (req, res) => {
 app.post("/api/memory/forget", (req, res) => {
   const id = String(req.body?.id || "");
   res.json({ ok: id ? forget(id) : false });
+});
+// Export this user's memory as a downloadable Markdown file — 100% local, nothing leaves the device.
+app.get("/api/memory/export", (req, res) => {
+  const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
+  const items = listAll(name);
+  const groups: Record<string, { text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
+  for (const it of items) (groups[it.kind] ||= []).push({ text: it.text, ts: it.ts });
+  const section = (title: string, rows: { text: string; ts: number }[]) =>
+    `## ${title}\n\n` + (rows.length ? rows.map((r) => `- ${r.text}  _(${new Date(r.ts).toISOString().slice(0, 10)})_`).join("\n") : "_(none)_") + "\n";
+  const markdown = `# What SAM remembers about you\n\n_${items.length} memories · exported ${new Date().toISOString().slice(0, 10)} · all local_\n\n`
+    + section("Facts", groups.fact) + "\n" + section("Plans", groups.plan) + "\n"
+    + section("Decisions", groups.decision) + "\n" + section("Open loops", groups.task);
+  res.json({ markdown });
+});
+// Wipe this user's memory (scoped delete). Returns how many were cleared.
+app.post("/api/memory/clear", (req, res) => {
+  const name = (String(req.body?.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
+  const cleared = clearUser(name);
+  res.json({ ok: true, cleared });
 });
 
 // Persona presets for the switcher — same brain + shared memory, tone only.
