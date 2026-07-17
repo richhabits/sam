@@ -11,7 +11,7 @@
 import { exec, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
-import { existsSync, readdirSync, mkdirSync } from "node:fs";
+import { existsSync, readdirSync, mkdirSync, statfsSync } from "node:fs";
 
 // ── Cross-platform file search (NO shell) — works on Windows/Linux/Mac identically. Mac keeps its
 //    fast Spotlight `mdfind` path where called; this is the portable fallback. Walk is bounded so it
@@ -542,6 +542,25 @@ async function recentFiles(path: string, limit = 15): Promise<string> {
   } catch (e: any) { return `Could not scan ${path}: ${e?.message}`; }
 }
 
+// disk_space — report free / used / total space for the drive holding a given path (default ~), so the
+// user can check "am I running low on space". Read-only, cross-platform (statfsSync works on mac/linux/
+// win), no shell/deps. Friendly non-throwing handling if the path is bad or statfs is unavailable.
+async function diskSpace(path: string): Promise<string> {
+  try {
+    const target = safePath(path || "~");
+    let fs: any;
+    try { fs = statfsSync(target); }
+    catch { return `Could not check disk space for ${path || "~"}: no such path (or no permission).`; }
+    const bsize = Number(fs.bsize) || 0;
+    const total = bsize * Number(fs.blocks);
+    const free = bsize * Number(fs.bavail);   // space available to the user (not root-reserved)
+    if (!total) return `Disk info isn't available on this system.`;
+    const used = Math.max(0, total - free);
+    const pct = Math.round((used / total) * 100);
+    return `Disk: ${humanSize(free)} free of ${humanSize(total)} (${pct}% used)`;
+  } catch (e: any) { return `Could not check disk space for ${path || "~"}: ${e?.message}`; }
+}
+
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   // Graceful cross-platform degrade: the model reads this and tells the user honestly
@@ -1058,6 +1077,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Hunting duplicates in ${i.path ?? i ?? "~"}`, run: (i) => findDuplicates(i.path ?? i ?? "~") },
   { name: "recent_files", safe: true, description: "List the most recently modified files in a folder (name, when, size), newest first — great for 'what did I work on lately'. input: { path, limit? } (path supports ~; limit defaults to 15).", params: "path, limit?",
     activity: (i) => `Finding recent files in ${i.path ?? i ?? "~"}`, run: (i) => recentFiles(i.path ?? i ?? "~", i.limit) },
+  { name: "disk_space", safe: true, description: "Report free / used / total disk space for the drive holding a path — check 'am I running low on space'. input: a path (supports ~; defaults to home).", params: "path?",
+    activity: (i) => `Checking disk space for ${i?.path ?? i ?? "~"}`, run: (i) => diskSpace(i?.path ?? i ?? "~") },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
