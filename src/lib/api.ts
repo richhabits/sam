@@ -160,6 +160,9 @@ export interface MemoryData { groups: Record<string, MemoryItem[]>; count: numbe
 // "What SAM remembers about you" — the real learned memory (facts/plans/decisions/open loops), 100% local.
 export async function getMemory() { return api<MemoryData>(`/api/memory?user=${encodeURIComponent(USER.name || "")}`); }
 export async function forgetMemory(id: string) { return api<{ ok: boolean }>("/api/memory/forget", { method: "POST", body: JSON.stringify({ id }) }); }
+// Export your memory as Markdown (100% local) and wipe it (scoped to you).
+export async function exportMemory() { return api<{ markdown: string }>(`/api/memory/export?user=${encodeURIComponent(USER.name || "")}`); }
+export async function clearMemory() { return api<{ ok: boolean; cleared: number }>("/api/memory/clear", { method: "POST", body: JSON.stringify({ user: USER.name || "" }) }); }
 
 export async function getSwarms() { return api<any>("/api/swarms"); }
 export async function startSwarm(goal: string, projectId?: string, tier?: "local"|"free"|"premium") {
