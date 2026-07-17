@@ -22,6 +22,10 @@ const STYLES = [
   { id: "pixel", label: "Pixel Art", suffix: "pixel art, 16-bit, retro game, crisp pixels", pv: "16-bit pixel art fantasy village, retro game scene" },
   { id: "comic", label: "Comic", suffix: "comic book art, bold ink outlines, halftone, dynamic", pv: "comic book superhero, bold ink, halftone, dynamic action" },
   { id: "fantasy", label: "Fantasy", suffix: "epic fantasy, dramatic, magical, highly detailed, concept art", pv: "epic fantasy castle, dragons, magic, dramatic sky, concept art" },
+  { id: "lineart", label: "Line Art", suffix: "clean line art, minimal single-weight strokes, black on white, no shading", pv: "minimal line art of a face, single continuous stroke, elegant" },
+  { id: "vapor", label: "Vaporwave", suffix: "vaporwave, 80s retro, neon pastel gradients, chrome, glitch grid", pv: "vaporwave sunset, palm trees, pink and teal grid, retro chrome" },
+  { id: "clay", label: "Claymation", suffix: "claymation, stop-motion, handmade plasticine, soft studio light, fingerprint texture", pv: "claymation fox character, stop-motion, plasticine, soft light" },
+  { id: "blueprint", label: "Blueprint", suffix: "technical blueprint, white schematic lines on blue, precise, annotated, drafting", pv: "blueprint schematic of a rocket, white lines on blue, annotated" },
 ];
 
 // Cinematic camera moves (video) — Higgsfield's signature, done via prompt direction.
