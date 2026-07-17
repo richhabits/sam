@@ -113,6 +113,8 @@ const PERSONA_OPTS = [
   { id: "gran", label: "Gran", emoji: "🫖", blurb: "warm & caring" },
   { id: "mum", label: "Mum", emoji: "🧡", blurb: "nurturing, on-track" },
   { id: "dad", label: "Dad", emoji: "🧢", blurb: "blunt, tough love" },
+  { id: "bestie", label: "Bestie", emoji: "💜", blurb: "playful, hyped up" },
+  { id: "mentor", label: "Mentor", emoji: "🧭", blurb: "calm, big-picture" },
 ];
 
 const LS = "sam.v2";
@@ -811,7 +813,7 @@ export default function App() {
     if (value.startsWith("/") && !atts.length && handleSlash(value)) { setInput(""); return; }
     // Natural persona switch — "be my coach", "SAM be my gran", "switch to PA", "act like my dad".
     if (!atts.length) {
-      const pm = value.match(/^\s*(?:sam[,!.\s]*)?(?:be|become|switch to|talk like|act like|go)\s+(?:my\s+)?(sam|pa|coach|gran(?:ny|dma)?|mum|mom|dad|assistant)\b/i);
+      const pm = value.match(/^\s*(?:sam[,!.\s]*)?(?:be|become|switch to|talk like|act like|go)\s+(?:my\s+)?(sam|pa|coach|gran(?:ny|dma)?|mum|mom|dad|bestie|mentor|assistant)\b/i);
       if (pm) {
         const raw = pm[1].toLowerCase();
         const id = raw.startsWith("gran") ? "gran" : raw === "mom" ? "mum" : raw === "assistant" ? "pa" : raw;
