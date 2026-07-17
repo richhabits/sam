@@ -41,7 +41,7 @@ import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS, benchmarkBrains } from "./tools.ts";
 import { quotes as marketQuotes } from "./markets.ts";
-import { loadRanking, rankingStale, rankingAgeDays } from "./colosseum.ts";
+import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colosseum.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
@@ -733,6 +733,8 @@ app.get("/api/arena", (_req, res) => {
   if (!r) return res.json({ current: null });
   res.json({ current: r, stale: rankingStale(r.ts, Date.now()), ageDays: rankingAgeDays(r.ts, Date.now()) });
 });
+// Forget the ranking → free-tier routing reverts to its default (static lane) order.
+app.delete("/api/arena", (_req, res) => { clearRanking(); res.json({ current: null }); });
 
 // Live market quotes for the Markets panel — keyless, free (see server/markets.ts).
 app.get("/api/quotes", async (req, res) => {

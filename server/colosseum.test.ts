@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type ArenaResult, type Competitor, expectedScore, formatLeaderboard, loadRanking, parseVerdict, RANKING_MAX_AGE_DAYS, rankingStale, runArena, saveRanking, updateElo } from "./colosseum.ts";
+import { type ArenaResult, type Competitor, clearRanking, expectedScore, formatLeaderboard, loadRanking, parseVerdict, RANKING_MAX_AGE_DAYS, rankingStale, runArena, saveRanking, updateElo } from "./colosseum.ts";
 import { arenaSort } from "./models.ts";
 
 describe("Elo", () => {
@@ -84,6 +84,14 @@ describe("ranking → routing", () => {
     const r = loadRanking();
     expect(r?.top).toBe("groq");
     expect(r?.elo.groq).toBe(1046);
+  });
+
+  it("clearRanking forgets it → routing has nothing to steer by", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");
+    expect(loadRanking()).not.toBeNull();
+    clearRanking();
+    expect(loadRanking()).toBeNull();
+    expect(arenaSort([P("cerebras"), P("groq")]).map((p) => p.id)).toEqual(["cerebras", "groq"]);   // back to static order
   });
 
   it("arenaSort tries the higher-Elo brain first once a benchmark is on file", () => {
