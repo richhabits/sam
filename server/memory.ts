@@ -213,3 +213,12 @@ export function clearAll(): void {
   _vecCache.clear();
   _pinned = null;   // vault is empty again — re-pin to whatever model next writes
 }
+
+// Wipe ONE user's memories (scoped — a family member can't nuke the owner's history).
+// Returns how many were cleared. Powers "Forget everything" in the memory dashboard.
+export function clearUser(user?: string): number {
+  const ns = normUser(user); adoptLegacy(ns);
+  const result = db.prepare("DELETE FROM memories WHERE user = ?").run(ns);
+  if (result.changes > 0) _vecCache.clear();   // drop the in-memory index — rebuilt lazily
+  return result.changes;
+}
