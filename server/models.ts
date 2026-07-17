@@ -356,8 +356,24 @@ export function arenaSort(pool: Provider[]): Provider[] {
   const rank = loadRanking();
   // No ranking, or one too old to trust → keep the incoming (static lane) order.
   if (!rank || rankingStale(rank.ts, Date.now())) return pool;
-  const elo = (id: string) => rank.elo[id] ?? 1000;     // unranked brain = neutral 1000
+  // Ranked brains lead in Elo order; UNRANKED brains fall BELOW all of them — a brain we tested
+  // and rated (even one that lost) beats one we never tested, instead of a neutral 1000 that let
+  // untested brains leapfrog the benchmark's losers. Finite floor keeps the comparator NaN-free.
+  const vals = Object.values(rank.elo);
+  const floor = (vals.length ? Math.min(...vals) : 1000) - 1;
+  const elo = (id: string) => rank.elo[id] ?? floor;
   return pool.map((p, i) => ({ p, i })).sort((a, b) => elo(b.p.id) - elo(a.p.id) || a.i - b.i).map((x) => x.p);
+}
+
+// Free-tier ordering. With an active ranking: PIN the champion first (always tried first, falling
+// through only if it's actually down), then spread-load the runners-up so their quotas still
+// rotate. Without a ranking: the original behaviour — spread-load the static lane order.
+export function freeOrder(pool: Provider[], lane: Lane): Provider[] {
+  const laned = laneSort(pool, lane);
+  const rank = loadRanking();
+  if (!rank || rankingStale(rank.ts, Date.now())) return spreadLoad(laned);
+  const sorted = arenaSort(laned);
+  return sorted.length > 1 ? [sorted[0], ...spreadLoad(sorted.slice(1))] : sorted;
 }
 
 // ── DISPATCH with graceful fallback ──────────────────────────
@@ -437,7 +453,7 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
     const pool = PROVIDERS.filter((p) => p.tier === t && (poolSize(p.id) > 0 || p.noKey));
     // Free tier: best model for the task FIRST (lane), then spread load across the top few
     // (Oliver Twist) so no single free quota burns out. Still falls through ALL on failure.
-    const ranked = t === "free" ? spreadLoad(arenaSort(laneSort(pool, lane))) : pool;
+    const ranked = t === "free" ? freeOrder(pool, lane) : pool;
     for (const prov of ranked) {
       const text = await tryProvider(prov, system, prompt);
       if (text) return { text, provider: prov.label, tier: t };

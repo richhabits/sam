@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type ArenaResult, type Competitor, clearRanking, expectedScore, formatLeaderboard, loadRanking, parseVerdict, RANKING_MAX_AGE_DAYS, rankingStale, runArena, saveRanking, updateElo } from "./colosseum.ts";
-import { arenaSort } from "./models.ts";
+import { arenaSort, freeOrder } from "./models.ts";
 
 describe("Elo", () => {
   it("equal ratings expect a coin flip", () => {
@@ -103,7 +103,21 @@ describe("ranking → routing", () => {
   it("leaves unranked brains in their incoming order (stable)", () => {
     saveRanking(result, "2026-07-17T00:00:00Z");
     const ordered = arenaSort([P("mystery1"), P("mystery2")]).map((p) => p.id);
-    expect(ordered).toEqual(["mystery1", "mystery2"]);   // both neutral 1000 → order preserved
+    expect(ordered).toEqual(["mystery1", "mystery2"]);   // both unranked → tie at floor → order preserved
+  });
+
+  it("ranks a TESTED brain (even a loser) above an UNTESTED one", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");   // cerebras is in the ranking at 970 (it lost)
+    const ordered = arenaSort([P("mystery"), P("cerebras")]).map((p) => p.id);
+    expect(ordered).toEqual(["cerebras", "mystery"]);   // no more untested-leapfrogs-a-loser
+  });
+
+  it("freeOrder PINS the champion first on every call (spread-loads only the rest)", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");   // groq is champion (1046)
+    const pool = [P("cerebras"), P("groq"), P("nvidia"), P("mistral")];
+    for (let i = 0; i < 5; i++) {
+      expect(freeOrder(pool, "fast")[0].id).toBe("groq");   // champion first despite spreadLoad rotation
+    }
   });
 
   it("ignores a stale ranking — routing falls back to the incoming order", () => {
