@@ -82,6 +82,19 @@ export async function runArena(
 // ── persisted ranking → steers routing (the free-tier cascade prefers higher-Elo brains) ──
 export interface SavedRanking { ts: string; top: string; elo: Record<string, number>; }
 
+// A ranking older than this is ignored — a benchmark that stopped running weeks ago shouldn't
+// keep pinning routing to a brain that may have changed. Past the window, routing falls back to
+// the static lane order until a fresh benchmark runs.
+export const RANKING_MAX_AGE_DAYS = 7;
+
+export function rankingAgeDays(ts: string, nowMs: number): number {
+  const t = Date.parse(ts);
+  return Number.isFinite(t) ? (nowMs - t) / 86_400_000 : Number.POSITIVE_INFINITY;
+}
+export function rankingStale(ts: string, nowMs: number): boolean {
+  return rankingAgeDays(ts, nowMs) > RANKING_MAX_AGE_DAYS;   // unparseable ts ⇒ Infinity ⇒ stale
+}
+
 const vaultDir = () => process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const rankFile = () => join(vaultDir(), "arena-ranking.json");
 let _cache: { at: number; val: SavedRanking | null } | null = null;

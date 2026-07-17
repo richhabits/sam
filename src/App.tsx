@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -234,10 +234,12 @@ export default function App() {
   const [colosseumOpen, setColosseumOpen] = useState(false);
   const [arena, setArena] = useState<{ leaderboard?: any[]; log?: any[]; error?: string } | null>(null);
   const [arenaLoading, setArenaLoading] = useState(false);
+  const [arenaStatus, setArenaStatus] = useState<{ current?: any; stale?: boolean; ageDays?: number } | null>(null);
   const runBenchmark = () => {
     setArenaLoading(true); setArena(null);
-    runArena().then(setArena).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
+    runArena().then((r) => { setArena(r); getArena().then(setArenaStatus).catch(() => {}); }).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
   };
+  useEffect(() => { if (colosseumOpen) getArena().then(setArenaStatus).catch(() => setArenaStatus(null)); }, [colosseumOpen]);
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -1488,6 +1490,13 @@ export default function App() {
               <div><div className="drawer-title">⚔️ Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
               <button className="admin-save" onClick={runBenchmark} disabled={arenaLoading}>{arenaLoading ? "Fighting…" : "Run benchmark"}</button>
             </div>
+            {arenaStatus?.current && !arenaLoading && (
+              <div className={arenaStatus.stale ? "lb-fresh stale" : "lb-fresh"}>
+                {arenaStatus.stale
+                  ? `⚠️ Last ranking is ${Math.round(arenaStatus.ageDays ?? 0)}d old — too stale to trust, so routing is back to its default order. Run a benchmark to refresh.`
+                  : `🧭 Steering routing now: ${arenaStatus.current.top} first · ranked ${(arenaStatus.ageDays ?? 0) < 1 ? "today" : `${Math.round(arenaStatus.ageDays ?? 0)}d ago`}.`}
+              </div>
+            )}
             {arenaLoading && <div className="mkt-empty">Each brain answers, an impartial judge scores every match — this takes about a minute.</div>}
             {arena?.error && <div className="mkt-empty">{arena.error}</div>}
             {!arenaLoading && !arena && <div className="mkt-empty">Press <b>Run benchmark</b> — SAM pits its rotating free brains against each other and ranks who wins.</div>}
