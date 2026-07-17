@@ -328,6 +328,75 @@ async function listDir(path: string): Promise<string> {
     return rows.join("\n") || "(empty)";
   } catch (e: any) { return `Could not list ${path}: ${e?.message}`; }
 }
+// Human-readable byte size (portable, no deps) — 1234 → "1.2 KB".
+function humanSize(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let n = bytes, u = 0;
+  while (n >= 1024 && u < units.length - 1) { n /= 1024; u++; }
+  return `${u === 0 ? n : n.toFixed(1)} ${units[u]}`;
+}
+// folder_digest — walk a folder (bounded) and summarise it: file count, total size, top file
+// types, and the biggest files. Read-only, cross-platform, skips heavy/system dirs like the search
+// walk above. Scan is capped so it can't run away on a giant tree.
+async function folderDigest(path: string): Promise<string> {
+  const CAP = 5000;   // max files scanned before we stop and say so
+  try {
+    const root = safePath(path || "~");
+    const st = await stat(root).catch(() => null);
+    if (!st) return `Could not read ${path}: no such folder (or no permission).`;
+    if (!st.isDirectory()) return `${path} is a file, not a folder — try read_file instead.`;
+
+    let scanned = 0, totalBytes = 0, capped = false;
+    const byExt = new Map<string, { count: number; bytes: number }>();
+    const biggest: { name: string; bytes: number }[] = [];   // kept sorted desc, top 5
+
+    // Iterative BFS so we don't blow the stack on deep trees; bounded by CAP.
+    const queue = [root];
+    while (queue.length) {
+      const dir = queue.shift()!;
+      let entries: any[];
+      try { entries = await readdir(dir, { withFileTypes: true }); } catch { continue; }
+      for (const e of entries) {
+        if (scanned >= CAP) { capped = true; break; }
+        if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+        const full = join(dir, e.name);
+        if (e.isDirectory()) { queue.push(full); continue; }
+        let s: any;
+        try { s = await stat(full); } catch { continue; }
+        scanned++;
+        totalBytes += s.size;
+        const ext = (extname(e.name).toLowerCase() || "(no ext)").replace(/^\./, "");
+        const cur = byExt.get(ext) || { count: 0, bytes: 0 };
+        cur.count++; cur.bytes += s.size; byExt.set(ext, cur);
+        if (biggest.length < 5 || s.size > biggest[biggest.length - 1].bytes) {
+          biggest.push({ name: full.replace(homedir(), "~"), bytes: s.size });
+          biggest.sort((a, b) => b.bytes - a.bytes);
+          if (biggest.length > 5) biggest.pop();
+        }
+      }
+      if (capped) break;
+    }
+
+    if (scanned === 0) return `📂 ${path} — empty (no readable files).`;
+
+    const topExts = [...byExt.entries()]
+      .sort((a, b) => b[1].count - a[1].count).slice(0, 8)
+      .map(([ext, v]) => `  • ${ext} — ${v.count} file${v.count === 1 ? "" : "s"} (${humanSize(v.bytes)})`)
+      .join("\n");
+    const bigList = biggest.map((b) => `  • ${basename(b.name)} — ${humanSize(b.bytes)}`).join("\n");
+
+    return [
+      `📂 Digest of ${path}`,
+      `Files: ${scanned}${capped ? ` (scan capped at ${CAP} — folder is larger)` : ""}   ·   Total size: ${humanSize(totalBytes)}`,
+      ``,
+      `By type:`,
+      topExts,
+      ``,
+      `Largest files:`,
+      bigList,
+    ].join("\n");
+  } catch (e: any) { return `Could not digest ${path}: ${e?.message}`; }
+}
 
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
@@ -839,6 +908,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Reading file ${i.path ?? i}`, run: (i) => readFileTool(i.path ?? i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
+  { name: "folder_digest", safe: true, description: "Summarise a folder: file count, total size, top file types, and the largest files. input: a folder path (supports ~).", params: "path",
+    activity: (i) => `Sizing up ${i.path ?? i ?? "~"}`, run: (i) => folderDigest(i.path ?? i ?? "~") },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
