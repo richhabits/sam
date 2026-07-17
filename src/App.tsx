@@ -207,6 +207,7 @@ export default function App() {
   const loadMemory = () => getMemory().then(setMem).catch(() => setMem({ groups: {}, count: 0, note: "" }));
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [ctxOpen, setCtxOpen] = useState(false);   // mobile: Context/Quick-actions slide-in drawer
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -380,7 +381,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -983,6 +984,8 @@ export default function App() {
         <div className="brandmark">
           <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
           <span className="dot-live" title={status ? "Connected" : "Starting…"} />
+          {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
+          <button className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
           <span className="wordmark">SAM<span className="wm-dot">.</span></span>
           <span className="tag">by <b>HECTIC</b></span>
         </div>
@@ -1379,7 +1382,9 @@ export default function App() {
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
       </div>
-      <aside className="ctx">
+      {ctxOpen && <div className="ctx-scrim" onClick={() => setCtxOpen(false)} />}
+      <aside className={ctxOpen ? "ctx open" : "ctx"}
+        onClick={(e) => { if ((e.target as HTMLElement).closest(".ctx-act")) setCtxOpen(false); }}>
         <div className="ctx-title">Context</div>
         <div className="ctx-brand">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</div>
         <div className="ctx-label">Quick actions</div>
