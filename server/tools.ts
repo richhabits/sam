@@ -54,6 +54,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 import type { Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
+import { renderVideo, titleCard } from "./render.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
 import { logSecurity, securityStatus } from "./security.ts";
@@ -998,6 +999,34 @@ async function browserRead() {
 }
 
 
+// ── VIDEO RENDER (HTML → MP4, ported from hyperframes) ───────
+async function renderVideoTool(input: any): Promise<string> {
+  try {
+    const raw = typeof input?.html === "string" && input.html.trim() ? input.html : null;
+    const html = raw ?? titleCard({
+      title: String(input?.title ?? "SAM"),
+      subtitle: input?.subtitle != null ? String(input.subtitle) : undefined,
+      bg: input?.bg, fg: input?.fg,
+    });
+    const deskt = join(homedir(), "Desktop");
+    const out = input?.out
+      ? resolve(String(input.out).replace(/^~/, homedir()))
+      : join(existsSync(deskt) ? deskt : homedir(), `sam-video-${Date.now()}.mp4`);
+    const r = await renderVideo({
+      html,
+      durationMs: Number(input?.durationMs ?? 4000),
+      fps: input?.fps ? Number(input.fps) : 30,
+      width: input?.width ? Number(input.width) : 1280,
+      height: input?.height ? Number(input.height) : 720,
+      out,
+    });
+    return `Rendered ${r.frames} frames → ${r.path} (${r.width}×${r.height}, ` +
+      `${(r.durationMs / 1000).toFixed(1)}s @ ${r.fps}fps). Deterministic — the same input reproduces this exact file.`;
+  } catch (e: any) {
+    return `Video render failed: ${e?.message ?? e}`;
+  }
+}
+
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
@@ -1007,6 +1036,14 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Reading ${i.url ?? i}`, run: (i) => webFetch(i.url ?? i) },
   { name: "retrieve_full", safe: true, description: "Pull back the FULL text of an earlier tool output that was compressed to save tokens (you'll have seen an id like 'web_fetch#3'). input: {id}.", params: "{id}",
     activity: (i) => `Retrieving full output ${i.id ?? i}`, run: async (i) => retrieveFullOutput(String((i.id ?? i) || "")) ?? "That compressed output is no longer cached." },
+
+  // 🎬 render an HTML composition to a deterministic MP4 (write HTML, get video)
+  { name: "render_video", safe: false,
+    description: "Render an MP4 VIDEO from an HTML composition. Deterministic — the same input always produces the same file. Give raw {html} (any HTML/CSS/JS with animations), OR use the built-in title card via {title, subtitle?, bg?, fg?}. Optional {durationMs (default 4000), fps (30), width (1280), height (720), out}. Uses SAM's own Chromium + FFmpeg — no cloud, no cost.",
+    params: "{html? | title, subtitle?, bg?, fg?, durationMs?, fps?, width?, height?, out?}",
+    activity: (i) => `Rendering a video${i?.title ? ` — “${i.title}”` : ""}`,
+    preview: (i) => `Render MP4 ${i?.html ? "from custom HTML" : `title card: “${i?.title ?? "SAM"}”`} · ${(Number(i?.durationMs ?? 4000) / 1000).toFixed(1)}s @ ${i?.fps ?? 30}fps → ${i?.out ?? "~/Desktop"}`,
+    run: (i) => renderVideoTool(i) },
 
   // ── 📓 NOTEBOOKS (NotebookLM, but yours & free) + 🔎 deep research + 🛰️ 24/7 agent ──
   { name: "notebook_add", safe: true, description: "Add a source to a notebook (creates it if new) so SAM can answer grounded questions about it. input: {notebook, url? | file? | text?, title?}. Sources: a web page URL, a file path (pdf/docx/txt/md/csv), or pasted text.", params: "{notebook, url?, file?, text?, title?}",
