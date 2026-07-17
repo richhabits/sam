@@ -66,7 +66,7 @@ import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
 import { vapidPublicKey, addSubscription, pushNotify, subscriberCount } from "./push.ts";
-import { loadSkills, routeSkill } from "./skills.ts";
+import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import * as notebook from "./notebook.ts";
@@ -198,6 +198,9 @@ const BENCH_MODE = process.env.SAM_BENCH_MOCK === "1";
 if (BENCH_MODE) clearCache();   // every benchmark run starts from an empty cache (reproducible)
 if (!BENCH_MODE) installCrashHandlers();   // local-only rotating crash log (never uploaded)
 const SKILLS = loadSkills();
+// Warn (don't crash) if any skill's `tools:` allowlist names a tool SAM doesn't have — a typo
+// would otherwise silently deny that tool for that skill forever.
+for (const w of validateSkillTools(SKILLS, new Set(TOOLS.map((t) => t.name)))) console.warn(`[skills] ${w}`);
 
 // ── Brand ──────────────────────────────────────────────
 const C = { o: "\x1b[38;5;208m", d: "\x1b[2m", b: "\x1b[1m", r: "\x1b[0m" };
@@ -615,7 +618,7 @@ app.post("/api/command", async (req, res) => {
   let fullMessage = message || "";
   if (texts.length) fullMessage += "\n\n" + texts.map((t) => `[Attached file: ${t.name}]\n${t.text}`).join("\n\n");
 
-  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason, convo);   // restricted ⇒ swarm-mode: dangerous never auto-runs
+  let r = await runAgent(system, fullMessage, chosen, toolNames, turbo, restricted, reason, convo, skill?.tools);   // restricted ⇒ swarm-mode: dangerous never auto-runs; skill?.tools ⇒ capability allowlist
   let escalated = false, answeredTier = chosen, badgeReason = reason;
 
   // WRONG-TIER SELF-CHECK: if a cheap answer that used NO tools looks truncated/refused/empty,
@@ -624,7 +627,7 @@ app.post("/api/command", async (req, res) => {
   if (r.kind === "final" && !turbo && r.trace.length === 0 && selfCheckFailed(r.text || "", message)) {
     const up = nextTierUp(chosen, autoPremiumAllowed());
     if (up) {
-      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`, convo);
+      const up2 = await runAgent(system, fullMessage, up, toolNames, turbo, restricted, `escalated ${chosen}→${up}`, convo, skill?.tools);
       if (up2.kind === "final" && !selfCheckFailed(up2.text || "", message)) {
         r = up2; escalated = true; answeredTier = up; badgeReason = `${reason} · escalated → ${up}`;
       }
@@ -704,7 +707,7 @@ app.post("/api/stream", async (req, res) => {
         // Cache tool-free finals only (reproducible; never a dangerous-tool run).
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
-    }, turbo, convo);
+    }, turbo, convo, skill?.tools);   // skill?.tools ⇒ capability allowlist enforced at dispatch
   } catch (_e: any) {
     send({ type: "done", text: "Something went wrong mid-answer.", trace: [] });
   }
