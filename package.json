@@ -10,6 +10,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "concurrently -k -n \"SERVER,HUD\" -c \"#E8673A,#C4A882\" \"npm:dev:server\" \"npm:dev:hud\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:hud": "vite",

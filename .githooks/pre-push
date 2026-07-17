@@ -1,0 +1,28 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────
+#  SAM · pre-push — mirror CI's "no stats drift" gate locally so a stale-stats
+#  push never reaches GitHub (and never burns a red CI run). Regenerates the
+#  advertised numbers; if the committed copies differ, blocks the push and leaves
+#  the freshly-generated files in the working tree to review + commit.
+#  Activated via `core.hooksPath .githooks` (set by the package.json "prepare" script).
+# ─────────────────────────────────────────────────────────────
+command -v npm >/dev/null 2>&1 || exit 0   # no npm here (odd env) → don't block the push
+
+# Regenerate advertised stats. If the generator itself is broken, don't hard-block —
+# CI still gates on it; a local tooling glitch shouldn't trap your push.
+npm run --silent stats >/dev/null 2>&1 || {
+  echo "pre-push: 'npm run stats' failed to run — skipping the drift check (CI will still gate)."
+  exit 0
+}
+
+if ! git diff --quiet -- docs/stats.json docs/repo-description.txt README.md; then
+  echo ""
+  echo "✗ push blocked — advertised stats were stale (just regenerated them)."
+  echo "  A tool/skill/agent/provider changed without \`npm run stats\`. Review & commit:"
+  echo ""
+  echo "    git add docs/stats.json docs/repo-description.txt README.md"
+  echo "    git commit -m 'chore: sync stats' && git push"
+  echo ""
+  exit 1
+fi
+exit 0
