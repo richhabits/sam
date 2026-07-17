@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recordModelCall, estTokens } from "./metrics.ts";
+import { loadRanking } from "./colosseum.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -349,6 +350,15 @@ function spreadLoad(ranked: Provider[]): Provider[] {
   return [...ranked.slice(start, spread), ...ranked.slice(0, start), ...ranked.slice(spread)];
 }
 
+// Colosseum → routing: once a benchmark has run, prefer the brains it rated higher (Elo desc),
+// keeping the incoming lane order as a stable tiebreaker. No ranking on file ⇒ pool unchanged.
+export function arenaSort(pool: Provider[]): Provider[] {
+  const rank = loadRanking();
+  if (!rank) return pool;
+  const elo = (id: string) => rank.elo[id] ?? 1000;     // unranked brain = neutral 1000
+  return pool.map((p, i) => ({ p, i })).sort((a, b) => elo(b.p.id) - elo(a.p.id) || a.i - b.i).map((x) => x.p);
+}
+
 // ── DISPATCH with graceful fallback ──────────────────────────
 // ── TASK-AWARE LANES ─────────────────────────────────────────
 // 30+ free models is a lot of firepower — so use the RIGHT one FIRST for the job:
@@ -426,7 +436,7 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
     const pool = PROVIDERS.filter((p) => p.tier === t && (poolSize(p.id) > 0 || p.noKey));
     // Free tier: best model for the task FIRST (lane), then spread load across the top few
     // (Oliver Twist) so no single free quota burns out. Still falls through ALL on failure.
-    const ranked = t === "free" ? spreadLoad(laneSort(pool, lane)) : pool;
+    const ranked = t === "free" ? spreadLoad(arenaSort(laneSort(pool, lane))) : pool;
     for (const prov of ranked) {
       const text = await tryProvider(prov, system, prompt);
       if (text) return { text, provider: prov.label, tier: t };
@@ -653,6 +663,7 @@ export function providersStatus() {
     local: { ollama: OLLAMA_MODEL },
     pools: keyStatus(),
     providers: PROVIDERS.map((p) => ({ id: p.id, tier: p.tier, keys: poolSize(p.id) })),
+    arena: (() => { const r = loadRanking(); return r ? { top: r.top, ts: r.ts } : null; })(),   // colosseum champion steering the free tier
   };
 }
 

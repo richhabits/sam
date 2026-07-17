@@ -76,7 +76,7 @@ import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
-import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, type ArenaResult } from "./colosseum.ts";
+import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, saveRanking, type ArenaResult } from "./colosseum.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
@@ -1041,7 +1041,9 @@ export async function benchmarkBrains(
   const prompts = opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT];
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
   const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
-  return runArena(competitors, prompts, answer, judge);
+  const result = await runArena(competitors, prompts, answer, judge);
+  saveRanking(result, new Date().toISOString());   // persist → the free-tier cascade now prefers the winner
+  return result;
 }
 
 // ── REGISTRY ─────────────────────────────────────────────────

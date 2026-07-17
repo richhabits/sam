@@ -3,6 +3,9 @@
 // brains against each other on real prompts, let an impartial judge pick the winner, and rank
 // them by Elo. SAM sells "free brains rotating" — this is the leaderboard that says which is
 // actually winning. Core logic takes injected answer/judge fns, so it's testable without network.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface Competitor { id: string; label: string; }
 export interface Rating { id: string; label: string; elo: number; wins: number; losses: number; ties: number; games: number; }
@@ -74,6 +77,33 @@ export async function runArena(
 
   const leaderboard = [...R.values()].sort((p, q) => q.elo - p.elo);
   return { leaderboard, log };
+}
+
+// ── persisted ranking → steers routing (the free-tier cascade prefers higher-Elo brains) ──
+export interface SavedRanking { ts: string; top: string; elo: Record<string, number>; }
+
+const vaultDir = () => process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
+const rankFile = () => join(vaultDir(), "arena-ranking.json");
+let _cache: { at: number; val: SavedRanking | null } | null = null;
+
+export function saveRanking(r: ArenaResult, now: string): void {
+  if (!r.leaderboard.length) return;
+  const elo: Record<string, number> = {};
+  for (const x of r.leaderboard) elo[x.id] = Math.round(x.elo);
+  const payload: SavedRanking = { ts: now, top: r.leaderboard[0].id, elo };
+  try {
+    mkdirSync(vaultDir(), { recursive: true });
+    writeFileSync(rankFile(), JSON.stringify(payload, null, 2));
+    _cache = { at: 0, val: payload };   // force fresh read next call, but keep the value handy
+  } catch { /* best-effort — routing just falls back to the static order */ }
+}
+
+export function loadRanking(): SavedRanking | null {
+  if (_cache && Date.now() - _cache.at < 5000) return _cache.val;   // cheap cache off the routing hot path
+  let val: SavedRanking | null = null;
+  try { if (existsSync(rankFile())) val = JSON.parse(readFileSync(rankFile(), "utf8")); } catch { /* ignore */ }
+  _cache = { at: Date.now(), val };
+  return val;
 }
 
 export function formatLeaderboard(r: ArenaResult): string {
