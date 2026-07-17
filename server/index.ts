@@ -722,8 +722,8 @@ app.post("/api/stream", async (req, res) => {
 // Model Colosseum — run an Elo benchmark of SAM's free brains (see server/colosseum.ts).
 // POST because it fires real model calls (a round-robin of judged matches) — takes ~a minute.
 app.post("/api/arena", async (req, res) => {
-  const { prompt, brains } = (req.body || {}) as { prompt?: string; brains?: string[] };
-  try { res.json(await benchmarkBrains({ prompt, brains })); }
+  const { prompt, prompts, brains } = (req.body || {}) as { prompt?: string; prompts?: string[]; brains?: string[] };
+  try { res.json(await benchmarkBrains({ prompt, prompts, brains })); }
   catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
 });
 
