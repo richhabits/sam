@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -1427,7 +1427,19 @@ export default function App() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">What SAM remembers about you</div><div className="drawer-sub">{mem ? `${mem.count} thing${mem.count === 1 ? "" : "s"} learned · all on your computer — nothing left your device` : "Loading…"}</div></div>
-              <button className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {/* Export → download a local Markdown file. Wipe → confirm, scoped delete, reload. Both 100% local. */}
+                <button className="icon-btn" title="Download your memory as a Markdown file (stays on your device)" onClick={async () => {
+                  const { markdown } = await exportMemory();
+                  const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
+                  const a = document.createElement("a"); a.href = url; a.download = "sam-memory.md"; a.click(); URL.revokeObjectURL(url);
+                }}>⬇︎ Export</button>
+                <button className="icon-btn" title="Forget everything SAM has learned about you" onClick={async () => {
+                  if (!window.confirm("Forget everything SAM has learned about you? This can't be undone.")) return;
+                  await clearMemory(); loadMemory();
+                }}>🗑 Forget everything</button>
+                <button className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
+              </div>
             </div>
             {(() => {
               const KINDS: [string, string][] = [["fact", "🧠 Facts"], ["plan", "🗺️ Plans"], ["decision", "✅ Decisions"], ["task", "📌 Open loops"]];

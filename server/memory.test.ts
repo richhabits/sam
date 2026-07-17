@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { remember, recallWith, forget, memoryStats } from "./memory.ts";
+import { remember, recallWith, forget, memoryStats, clearUser } from "./memory.ts";
 import { rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -45,5 +45,11 @@ describe("Memory Subsystem", () => {
     const ok = forget("fake-id-123");
     // Since fake-id doesn't exist, it might return false, but it shouldn't crash
     expect(typeof ok).toBe("boolean");
+  });
+
+  it("clearUser wipes a user's memory and returns a count", () => {
+    // Scoped wipe — returns how many rows were cleared (0 for an empty/unknown user).
+    const cleared = clearUser("nobody-here");
+    expect(typeof cleared).toBe("number");
   });
 });
