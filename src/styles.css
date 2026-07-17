@@ -298,6 +298,7 @@ button { font-family: inherit; cursor: pointer; }
 .d-msg { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 
 /* "What SAM remembers about you" — grouped learned memory, each item deletable */
+.mem-search { width: 100%; box-sizing: border-box; font-size: 14px; padding: 10px 12px; margin-bottom: 18px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; }
 .mem-groups { display: flex; flex-direction: column; gap: 18px; }
 .mem-group-title { font-size: 13px; font-weight: 700; color: var(--text); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
 .mem-count { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
