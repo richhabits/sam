@@ -3,7 +3,7 @@
 // brains against each other on real prompts, let an impartial judge pick the winner, and rank
 // them by Elo. SAM sells "free brains rotating" — this is the leaderboard that says which is
 // actually winning. Core logic takes injected answer/judge fns, so it's testable without network.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -109,6 +109,12 @@ export function saveRanking(r: ArenaResult, now: string): void {
     writeFileSync(rankFile(), JSON.stringify(payload, null, 2));
     _cache = { at: 0, val: payload };   // force fresh read next call, but keep the value handy
   } catch { /* best-effort — routing just falls back to the static order */ }
+}
+
+// Forget the ranking → routing reverts to the static lane order (arenaSort no-ops on null).
+export function clearRanking(): void {
+  try { if (existsSync(rankFile())) rmSync(rankFile()); } catch { /* ignore */ }
+  _cache = { at: Date.now(), val: null };
 }
 
 export function loadRanking(): SavedRanking | null {

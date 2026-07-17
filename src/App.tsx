@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -240,6 +240,7 @@ export default function App() {
     runArena().then((r) => { setArena(r); getArena().then(setArenaStatus).catch(() => {}); }).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
   };
   useEffect(() => { if (colosseumOpen) getArena().then(setArenaStatus).catch(() => setArenaStatus(null)); }, [colosseumOpen]);
+  const resetRanking = () => { clearArena().then(() => { setArenaStatus({ current: null }); setArena(null); }).catch(() => {}); };
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -1495,6 +1496,7 @@ export default function App() {
                 {arenaStatus.stale
                   ? `⚠️ Last ranking is ${Math.round(arenaStatus.ageDays ?? 0)}d old — too stale to trust, so routing is back to its default order. Run a benchmark to refresh.`
                   : `🧭 Steering routing now: ${arenaStatus.current.top} first · ranked ${(arenaStatus.ageDays ?? 0) < 1 ? "today" : `${Math.round(arenaStatus.ageDays ?? 0)}d ago`}.`}
+                <button className="lb-reset" onClick={resetRanking} title="Forget the ranking — free-tier routing goes back to its default order">Reset to default</button>
               </div>
             )}
             {arenaLoading && <div className="mkt-empty">Each brain answers, an impartial judge scores every match — this takes about a minute.</div>}
