@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { type Competitor, expectedScore, formatLeaderboard, parseVerdict, runArena, updateElo } from "./colosseum.ts";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type ArenaResult, type Competitor, expectedScore, formatLeaderboard, loadRanking, parseVerdict, runArena, saveRanking, updateElo } from "./colosseum.ts";
+import { arenaSort } from "./models.ts";
 
 describe("Elo", () => {
   it("equal ratings expect a coin flip", () => {
@@ -59,5 +63,38 @@ describe("runArena", () => {
     const r = await runArena(brains, ["q"], answer, skillJudge);
     expect(formatLeaderboard(r)).toMatch(/Model Colosseum/);
     expect(formatLeaderboard(r)).toMatch(/strong/);
+  });
+});
+
+describe("ranking → routing", () => {
+  const prev = process.env.VAULT_DIR;
+  beforeAll(() => { process.env.VAULT_DIR = mkdtempSync(join(tmpdir(), "sam-arena-")); });
+  afterAll(() => { if (prev === undefined) delete process.env.VAULT_DIR; else process.env.VAULT_DIR = prev; });
+
+  const result: ArenaResult = {
+    log: [], leaderboard: [
+      { id: "groq", label: "groq", elo: 1046, wins: 3, losses: 0, ties: 0, games: 3 },
+      { id: "cerebras", label: "cerebras", elo: 970, wins: 0, losses: 3, ties: 0, games: 3 },
+    ],
+  };
+  const P = (id: string) => ({ id, tier: "free" as const, label: id, run: async () => "" });
+
+  it("saves and reloads the ranking", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");
+    const r = loadRanking();
+    expect(r?.top).toBe("groq");
+    expect(r?.elo.groq).toBe(1046);
+  });
+
+  it("arenaSort tries the higher-Elo brain first once a benchmark is on file", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");
+    const ordered = arenaSort([P("cerebras"), P("groq")]).map((p) => p.id);
+    expect(ordered[0]).toBe("groq");   // arena winner leads, even though it was passed in second
+  });
+
+  it("leaves unranked brains in their incoming order (stable)", () => {
+    saveRanking(result, "2026-07-17T00:00:00Z");
+    const ordered = arenaSort([P("mystery1"), P("mystery2")]).map((p) => p.id);
+    expect(ordered).toEqual(["mystery1", "mystery2"]);   // both neutral 1000 → order preserved
   });
 });
