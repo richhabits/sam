@@ -1388,7 +1388,7 @@ export default function App() {
               <span className="ctx-swarm-prog">{s.status === "planning" ? "…" : s.status === "paused" ? "⏸" : `${done}/${s.agents.length}`}</span>
             </button>;
           })}
-          {status?.vault?.count != null && <div className="ctx-row"><span className="ctx-ic">📚</span>{status.vault.count} memories</div>}
+          {status?.vault?.count != null && status.vault.count > 0 && <button className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
           <div className="ctx-row"><span className="ctx-ic">{quality === "private" ? "🔒" : quality === "best" ? "✨" : "⚡"}</span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
           {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
           {elon && <div className="ctx-row danger"><span className="ctx-ic">⚡</span>Elon Mode ON</div>}
