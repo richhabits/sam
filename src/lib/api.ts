@@ -80,6 +80,8 @@ export const setAllow = (tool: string, on: boolean) =>
 export const getProjects = () => fetch("/api/projects").then((r) => r.json());
 export const getLog = () => fetch("/api/vault/log").then((r) => r.json());
 export const getStatus = () => fetch("/api/status").then((r) => r.json());
+export const getQuotes = (symbols: string) =>
+  fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`).then((r) => r.json());
 export const getTools = () => fetch("/api/tools").then((r) => r.json());
 
 // Admin — manage provider API keys (rolling pools) + config from the app.

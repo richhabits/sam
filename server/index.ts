@@ -40,6 +40,7 @@ import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS } from "./tools.ts";
+import { quotes as marketQuotes } from "./markets.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
@@ -718,6 +719,13 @@ app.post("/api/stream", async (req, res) => {
 // ── MEMORY DASHBOARD — "What SAM remembers about you." 100% on-device (SQLite); nothing
 //    here ever leaves the machine. Grouped by kind so the user sees facts, plans, decisions
 //    and open loops, and can delete any of them. Trust surface + loveability moment. ──
+// Live market quotes for the Markets panel — keyless, free (see server/markets.ts).
+app.get("/api/quotes", async (req, res) => {
+  const symbols = String(req.query.symbols || "").split(",").map((s) => s.trim()).filter(Boolean);
+  try { res.json({ quotes: await marketQuotes(symbols) }); }
+  catch (e: any) { res.status(500).json({ quotes: [], error: String(e?.message || e) }); }
+});
+
 app.get("/api/memory", (req, res) => {
   const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
   const items = listAll(name);
