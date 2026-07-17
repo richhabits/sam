@@ -102,21 +102,26 @@ button { font-family: inherit; cursor: pointer; }
 /* settings popover */
 .pop-scrim { position: fixed; inset: 0; z-index: 59; background: transparent; }
 .popover {
-  position: fixed; top: 58px; right: 16px; width: 288px;
+  position: fixed; top: 58px; right: 16px; width: 304px;
   max-height: calc(100vh - 84px); overflow-y: auto; overscroll-behavior: contain;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 16px; box-shadow: 0 12px 40px rgba(28,25,23,.22), 0 2px 8px rgba(28,25,23,.12);
-  padding: 10px; z-index: 60;
+  border-radius: 18px; box-shadow: 0 16px 48px rgba(28,25,23,.20), 0 2px 8px rgba(28,25,23,.10);
+  padding: 8px 10px 12px; z-index: 60;
   animation: pop-in .16s cubic-bezier(.2,.8,.2,1);
 }
 @media (prefers-color-scheme: dark) { .popover { box-shadow: 0 16px 50px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
-.pop-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 4px 6px 8px; }
-.pop-opt { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; }
+/* Settings popover — Apple-style grouped list: consistent row footprint, selection shown by a
+   subtle fill + checkmark (not a per-row border that makes some rows float), calm rhythm. */
+.pop-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 15px 8px 5px; }
+.pop-title:first-child { padding-top: 2px; }
+.pop-opt { position: relative; display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 9px 34px 9px 12px; }
 .pop-opt:hover { background: var(--bg); }
-.pop-opt.on { background: var(--accent-soft); border-color: var(--accent); }
-.pop-opt-name { font-size: 14px; font-weight: 600; color: var(--text); }
-.pop-opt-sub { font-size: 12px; color: var(--muted); }
+.pop-opt.on { background: var(--accent-soft); }
+.pop-opt.on::after { content: "✓"; position: absolute; right: 13px; top: 11px; font-size: 13px; font-weight: 700; color: var(--accent-text, var(--accent)); }
+.pop-opt-name { font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.pop-opt.on .pop-opt-name { color: var(--accent-text, var(--accent)); }
+.pop-opt-sub { font-size: 12px; color: var(--muted); line-height: 1.35; }
 .pop-note { font-size: 12px; color: var(--muted); padding: 10px 6px 4px; border-top: 1px solid var(--border); margin-top: 6px; }
 
 /* ── Conversation ───────────────────────────── */

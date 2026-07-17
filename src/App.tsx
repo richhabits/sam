@@ -1036,13 +1036,13 @@ export default function App() {
                 <span className="pop-opt-sub">{q === "turbo" ? "Fastest — one quick call, no tools" : q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
               </button>
             ))}
-            <div className="pop-title" style={{ marginTop: 6 }}>🎛️ Audio &amp; Camera — you're in control</div>
+            <div className="pop-title">Audio &amp; camera</div>
             <button className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">🔇 Stop ALL audio &amp; camera</span><span className="pop-opt-sub">Instantly kills mic, voice, wake word &amp; Guardian</span></button>
             <button className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">🎤 Mic — dictate {listening ? "· LISTENING" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off — click to talk (or the 🎤 in the message box)"}</span></button>
             <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">🔊 SAM talks back {speakReplies ? "· ON" : ""}</span><span className="pop-opt-sub">{speakReplies ? "On — reads replies aloud" : "Off"}</span></button>
             <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">🎵 Wake word {wakeOn ? "· ON" : ""}</span><span className="pop-opt-sub">{wakeOn ? "On — mic listens for a whistle/clap" : "Off — NOTHING listens unless you tap 🎤"}</span></button>
             <button className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">🛡️ Guardian camera {guardian ? "· ON" : ""}</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off — camera is not active"}</span></button>
-            <div className="pop-title" style={{ marginTop: 6 }}>Preferences</div>
+            <div className="pop-title">Preferences</div>
             <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
             <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">✈️ Autopilot {autopilot ? "· ON" : ""}</span><span className="pop-opt-sub">{autopilot ? "SAM handles routine work without asking (serious stuff still asks)" : "Off — SAM asks before anything risky"}</span></button>
             <button className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">⚡ Elon Mode {elon ? "· ON" : ""}</span><span className="pop-opt-sub">{elon ? "OFF-LEASH — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses EVERY safety prompt. Deletes go to a trash bin; catastrophic commands still blocked."}</span></button>
