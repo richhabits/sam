@@ -477,6 +477,71 @@ async function findDuplicates(path: string): Promise<string> {
   } catch (e: any) { return `Could not scan ${path}: ${e?.message}`; }
 }
 
+// Friendly "how long ago" — 90_000ms → "2 min ago". Falls back to a plain date once it's
+// more than a week old, so old files read cleanly instead of "413 days ago".
+function relativeTime(then: number, now = Date.now()): string {
+  const diff = Math.max(0, now - then);
+  const sec = Math.round(diff / 1000);
+  if (sec < 45) return "just now";
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
+  const day = Math.round(hr / 24);
+  if (day <= 7) return `${day} day${day === 1 ? "" : "s"} ago`;
+  return new Date(then).toISOString().slice(0, 10);   // YYYY-MM-DD for anything older
+}
+
+// recent_files — walk a folder (bounded) and list the most recently modified files, newest first, so
+// the user can quickly find "what did I work on lately". Read-only, cross-platform, skips heavy/system
+// dirs like the walks above. Scan is capped so it can't run away on a giant tree.
+async function recentFiles(path: string, limit = 15): Promise<string> {
+  const CAP = 5000;   // max files scanned before we stop and say so
+  const n = Math.max(1, Math.min(100, Number(limit) || 15));
+  try {
+    const root = safePath(path || "~");
+    const st = await stat(root).catch(() => null);
+    if (!st) return `Could not read ${path}: no such folder (or no permission).`;
+    if (!st.isDirectory()) return `${path} is a file, not a folder — try read_file instead.`;
+
+    let scanned = 0, capped = false;
+    const files: { name: string; mtime: number; bytes: number }[] = [];
+
+    // Iterative BFS so we don't blow the stack on deep trees; bounded by CAP.
+    const queue = [root];
+    while (queue.length) {
+      const dir = queue.shift()!;
+      let entries: any[];
+      try { entries = await readdir(dir, { withFileTypes: true }); } catch { continue; }
+      for (const e of entries) {
+        if (scanned >= CAP) { capped = true; break; }
+        if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+        const full = join(dir, e.name);
+        if (e.isDirectory()) { queue.push(full); continue; }
+        let s: any;
+        try { s = await stat(full); } catch { continue; }
+        scanned++;
+        files.push({ name: full.replace(homedir(), "~"), mtime: s.mtimeMs, bytes: s.size });
+      }
+      if (capped) break;
+    }
+
+    if (scanned === 0) return `📂 ${path} — empty (no readable files).`;
+
+    files.sort((a, b) => b.mtime - a.mtime);   // most recently modified first
+    const top = files.slice(0, n)
+      .map((f) => `· ${f.name} — ${relativeTime(f.mtime)}, ${humanSize(f.bytes)}`)
+      .join("\n");
+
+    return [
+      `🕒 Recent files in ${path}`,
+      `Showing ${Math.min(n, files.length)} of ${scanned}${capped ? ` (scan capped at ${CAP} — folder is larger)` : ""}, newest first:`,
+      ``,
+      top,
+    ].join("\n");
+  } catch (e: any) { return `Could not scan ${path}: ${e?.message}`; }
+}
+
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   // Graceful cross-platform degrade: the model reads this and tells the user honestly
@@ -991,6 +1056,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Sizing up ${i.path ?? i ?? "~"}`, run: (i) => folderDigest(i.path ?? i ?? "~") },
   { name: "find_duplicates", safe: true, description: "Find duplicate files (identical contents) in a folder, grouped, with total reclaimable space. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Hunting duplicates in ${i.path ?? i ?? "~"}`, run: (i) => findDuplicates(i.path ?? i ?? "~") },
+  { name: "recent_files", safe: true, description: "List the most recently modified files in a folder (name, when, size), newest first — great for 'what did I work on lately'. input: { path, limit? } (path supports ~; limit defaults to 15).", params: "path, limit?",
+    activity: (i) => `Finding recent files in ${i.path ?? i ?? "~"}`, run: (i) => recentFiles(i.path ?? i ?? "~", i.limit) },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
