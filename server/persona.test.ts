@@ -23,8 +23,8 @@ describe("personas", () => {
     expect(def.toLowerCase()).toContain("warm");
   });
 
-  it("ships the full relationship set (gran/mum/dad/PA/coach + default SAM)", () => {
+  it("ships the full relationship set (gran/mum/dad/PA/coach/bestie/mentor + default SAM)", () => {
     const ids = PERSONAS.map((p) => p.id);
-    for (const id of ["sam", "pa", "coach", "gran", "mum", "dad"]) expect(ids).toContain(id);
+    for (const id of ["sam", "pa", "coach", "gran", "mum", "dad", "bestie", "mentor"]) expect(ids).toContain(id);
   });
 });
