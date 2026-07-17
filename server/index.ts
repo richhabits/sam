@@ -41,6 +41,7 @@ import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
 import { TOOLS, benchmarkBrains } from "./tools.ts";
 import { quotes as marketQuotes } from "./markets.ts";
+import { loadRanking, rankingStale, rankingAgeDays } from "./colosseum.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
@@ -725,6 +726,12 @@ app.post("/api/arena", async (req, res) => {
   const { prompt, prompts, brains } = (req.body || {}) as { prompt?: string; prompts?: string[]; brains?: string[] };
   try { res.json(await benchmarkBrains({ prompt, prompts, brains })); }
   catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+// Current persisted ranking + freshness — the panel shows this on open (is it still steering?).
+app.get("/api/arena", (_req, res) => {
+  const r = loadRanking();
+  if (!r) return res.json({ current: null });
+  res.json({ current: r, stale: rankingStale(r.ts, Date.now()), ageDays: rankingAgeDays(r.ts, Date.now()) });
 });
 
 // Live market quotes for the Markets panel — keyless, free (see server/markets.ts).

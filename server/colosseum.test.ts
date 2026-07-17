@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type ArenaResult, type Competitor, expectedScore, formatLeaderboard, loadRanking, parseVerdict, runArena, saveRanking, updateElo } from "./colosseum.ts";
+import { type ArenaResult, type Competitor, expectedScore, formatLeaderboard, loadRanking, parseVerdict, RANKING_MAX_AGE_DAYS, rankingStale, runArena, saveRanking, updateElo } from "./colosseum.ts";
 import { arenaSort } from "./models.ts";
 
 describe("Elo", () => {
@@ -96,5 +96,24 @@ describe("ranking → routing", () => {
     saveRanking(result, "2026-07-17T00:00:00Z");
     const ordered = arenaSort([P("mystery1"), P("mystery2")]).map((p) => p.id);
     expect(ordered).toEqual(["mystery1", "mystery2"]);   // both neutral 1000 → order preserved
+  });
+
+  it("ignores a stale ranking — routing falls back to the incoming order", () => {
+    // save a ranking dated well past the window, then confirm the winner is NOT promoted
+    const old = new Date(Date.now() - (RANKING_MAX_AGE_DAYS + 3) * 86_400_000).toISOString();
+    saveRanking(result, old);
+    const ordered = arenaSort([P("cerebras"), P("groq")]).map((p) => p.id);
+    expect(ordered).toEqual(["cerebras", "groq"]);   // stale → static order kept (groq NOT pulled first)
+  });
+});
+
+describe("rankingStale", () => {
+  const now = Date.parse("2026-07-17T12:00:00Z");
+  it("fresh within the window, stale past it", () => {
+    expect(rankingStale("2026-07-17T00:00:00Z", now)).toBe(false);            // hours old
+    expect(rankingStale("2026-07-01T00:00:00Z", now)).toBe(true);             // ~16 days old
+  });
+  it("treats an unparseable timestamp as stale", () => {
+    expect(rankingStale("not-a-date", now)).toBe(true);
   });
 });
