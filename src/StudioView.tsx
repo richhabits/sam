@@ -42,6 +42,10 @@ const MOTIONS = [
   { id: "handheld", label: "Handheld", phrase: "handheld camera, subtle natural shake, documentary" },
   { id: "tilt", label: "Tilt Up", phrase: "camera tilts slowly upward" },
   { id: "zoom", label: "Slow Zoom", phrase: "slow cinematic zoom" },
+  { id: "whip", label: "Whip Pan", phrase: "fast blurred whip pan to the next shot" },
+  { id: "bullet", label: "Bullet Time", phrase: "frozen-moment camera arc around the subject" },
+  { id: "dutch", label: "Dutch Angle", phrase: "tilted tense canted framing, unsettling angle" },
+  { id: "boom", label: "Boom Down", phrase: "camera booms downward toward the subject" },
 ];
 
 const RATIOS = [
