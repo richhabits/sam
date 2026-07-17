@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -230,6 +230,14 @@ export default function App() {
     const next = [...watchlist, t]; setWatchlist(next); setTickerInput(""); loadQuotes(next);
   };
   const removeTicker = (sym: string) => { const next = watchlist.filter((s) => s !== sym); setWatchlist(next); loadQuotes(next); };
+  // ── Model Colosseum: Elo leaderboard of SAM's free brains (llm-colosseum strip-map) ──
+  const [colosseumOpen, setColosseumOpen] = useState(false);
+  const [arena, setArena] = useState<{ leaderboard?: any[]; log?: any[]; error?: string } | null>(null);
+  const [arenaLoading, setArenaLoading] = useState(false);
+  const runBenchmark = () => {
+    setArenaLoading(true); setArena(null);
+    runArena().then(setArena).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
+  };
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -403,7 +411,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1416,6 +1424,7 @@ export default function App() {
         <button className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
         <button className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
         <button className="ctx-act" onClick={() => setMarketsOpen(true)}>📈 Markets</button>
+        <button className="ctx-act" onClick={() => setColosseumOpen(true)}>⚔️ Colosseum</button>
         <button className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
         <div className="ctx-label">Live status</div>
         <div className="ctx-live">
@@ -1469,6 +1478,32 @@ export default function App() {
               ))}
             </ul>
             <div className="mkt-note">Not financial advice · quotes may be delayed.</div>
+          </aside>
+        </div>
+      )}
+      {colosseumOpen && (
+        <div className="drawer-wrap" onClick={() => setColosseumOpen(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-head">
+              <div><div className="drawer-title">⚔️ Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
+              <button className="admin-save" onClick={runBenchmark} disabled={arenaLoading}>{arenaLoading ? "Fighting…" : "Run benchmark"}</button>
+            </div>
+            {arenaLoading && <div className="mkt-empty">Each brain answers, an impartial judge scores every match — this takes about a minute.</div>}
+            {arena?.error && <div className="mkt-empty">{arena.error}</div>}
+            {!arenaLoading && !arena && <div className="mkt-empty">Press <b>Run benchmark</b> — SAM pits its rotating free brains against each other and ranks who wins.</div>}
+            {arena?.leaderboard && (
+              <ol className="lb-list">
+                {arena.leaderboard.map((r: any, i: number) => (
+                  <li key={r.id} className="lb-row">
+                    <span className="lb-rank">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</span>
+                    <span className="lb-name">{r.label}</span>
+                    <span className="lb-wlt">{r.wins}-{r.losses}-{r.ties}</span>
+                    <span className="lb-elo">{Math.round(r.elo)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {arena?.log && <div className="mkt-note">{arena.log.length} matches judged · winner by helpfulness, correctness &amp; clarity</div>}
           </aside>
         </div>
       )}
