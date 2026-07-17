@@ -1306,3 +1306,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dr-rerun { align-self: flex-start; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); border: none; border-radius: 10px; padding: 8px 15px; cursor: pointer; }
 .dr-rerun:disabled { opacity: .6; }
 .dr-more { display: inline-block; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+
+/* ── Markets panel — live keyless watchlist (Fincept strip-map) ── */
+.mkt-add { display: flex; gap: 8px; margin: 4px 0 12px; }
+.mkt-add input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; color: var(--text); font-size: 14px; }
+.mkt-add input:focus { outline: none; border-color: var(--accent); }
+.mkt-add button { flex: none; width: 40px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 18px; cursor: pointer; }
+.mkt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mkt-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; }
+.mkt-sym { flex: 1; font-weight: 700; font-size: 14px; letter-spacing: -.01em; }
+.mkt-nums { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.mkt-price { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; }
+.mkt-chg { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+.mkt-chg.up { color: #16a34a; }
+.mkt-chg.down { color: #ef4444; }
+.mkt-err { font-size: 12px; color: var(--muted); }
+.mkt-del { background: none; border: 0; color: var(--muted); font-size: 12px; padding: 4px 6px; opacity: .45; cursor: pointer; }
+.mkt-row:hover .mkt-del { opacity: 1; }
+.mkt-empty { color: var(--muted); font-size: 13px; padding: 14px; text-align: center; }
+.mkt-note { margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; }
