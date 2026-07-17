@@ -9,9 +9,17 @@ cd /Users/romeovalentine/sam || exit 1
 mkdir -p logs
 STAMP="$(date '+%Y-%m-%d %H:%M:%S %Z')"
 
-# SAM up? (cheap probe) — if not, skip cleanly.
+# Mac-side guard (the "Mac watches Mac" half; the cloud watchdog reads GitHub).
+# Fires a local macOS notification when the nightly fails to land a champion. Best-effort:
+# osascript failures must never break the sacred loop, so every call is `|| true`.
+notify() {
+  /usr/bin/osascript -e "display notification \"$1\" with title \"SAM nightly\" sound name \"Basso\"" >/dev/null 2>&1 || true
+}
+
+# SAM up? (cheap probe) — if not, skip cleanly (but flag it: a skip is a nightly that didn't land).
 if ! curl -sf -o /dev/null --max-time 5 "http://localhost:${PORT}/api/status"; then
   echo "${STAMP} · SAM not running on :${PORT} — benchmark skipped" >> logs/daily_benchmark.log
+  notify "Skipped — SAM not running on :${PORT}. Nightly did not land."
   exit 0
 fi
 
@@ -30,3 +38,10 @@ except Exception as e:
     print("unparseable response (%s)" % e)' 2>/dev/null)"
 
 echo "${STAMP} · ${TOP:-no response}" >> logs/daily_benchmark.log
+
+# A landed nightly writes a "champion:" line. Anything else (error, unparseable, no
+# response) means the benchmark ran but produced no ranking — alert locally.
+case "${TOP:-no response}" in
+  champion:*) : ;; # landed cleanly, stay silent
+  *) notify "Ran but no champion: ${TOP:-no response}. Ranking not refreshed." ;;
+esac
