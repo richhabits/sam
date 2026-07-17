@@ -55,6 +55,7 @@ const require = createRequire(import.meta.url);
 import type { Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { renderVideo, titleCard } from "./render.ts";
+import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
 import { logSecurity, securityStatus } from "./security.ts";
@@ -1034,6 +1035,9 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Searching the web for “${i.query ?? i}”`, run: (i) => webSearch(i.query ?? i) },
   { name: "web_fetch", safe: true, description: "Open a URL and read its text. input: a url string.", params: "url",
     activity: (i) => `Reading ${i.url ?? i}`, run: (i) => webFetch(i.url ?? i) },
+  { name: "market_quote", safe: true, description: "Get LIVE market quotes for one or more tickers — stocks (AAPL), ETFs (VUSA.L), indices (^GSPC), FX (GBPUSD=X), crypto (BTC-USD). Free, no API key. input: {symbols} — a comma-separated string or an array.", params: "{symbols}",
+    activity: (i) => `Checking quotes: ${Array.isArray(i?.symbols) ? i.symbols.join(", ") : (i?.symbols ?? i)}`,
+    run: async (i) => { const raw = i?.symbols ?? i; const syms = Array.isArray(raw) ? raw.map(String) : String(raw || "").split(","); return formatQuotes(await marketQuotes(syms)); } },
   { name: "retrieve_full", safe: true, description: "Pull back the FULL text of an earlier tool output that was compressed to save tokens (you'll have seen an id like 'web_fetch#3'). input: {id}.", params: "{id}",
     activity: (i) => `Retrieving full output ${i.id ?? i}`, run: async (i) => retrieveFullOutput(String((i.id ?? i) || "")) ?? "That compressed output is no longer cached." },
 
