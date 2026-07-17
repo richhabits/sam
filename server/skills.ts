@@ -18,19 +18,40 @@ export interface Skill {
   name: string;
   tier: "local" | "free" | "premium";
   triggers: string[]; // keywords that route to this skill
+  tools?: string[]; // capability allowlist — when set, the agent may ONLY run these tools
   body: string; // full SKILL.md content (the playbook)
 }
 
-// Parse the YAML-ish front matter at the top of each SKILL.md
-function parseFrontMatter(raw: string) {
-  const meta: Record<string, string> = {};
+// Parse the YAML-ish front matter at the top of each SKILL.md. Supports `key: value`, an inline
+// list `key: [a, b]`, and a block list (`key:` then `  - a` lines) — enough for a `tools:` array.
+export function parseFrontMatter(raw: string) {
+  const meta: Record<string, string | string[]> = {};
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!m) return { meta, body: raw };
+  let listKey: string | null = null;
   for (const line of m[1].split("\n")) {
+    const item = line.match(/^\s*-\s+(.*)$/);
+    if (listKey && item) { (meta[listKey] as string[]).push(unquote(item[1])); continue; }
+    listKey = null;
     const idx = line.indexOf(":");
-    if (idx > -1) meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    if (idx < 0) continue;
+    const key = line.slice(0, idx).trim();
+    const val = line.slice(idx + 1).trim();
+    if (val === "") { meta[key] = []; listKey = key; }                         // block list follows
+    else if (val.startsWith("[") && val.endsWith("]")) {                       // inline list
+      meta[key] = val.slice(1, -1).split(",").map(unquote).filter(Boolean);
+    } else meta[key] = val;
   }
   return { meta, body: m[2].trim() };
+}
+
+const unquote = (s: string) => s.trim().replace(/^["']|["']$/g, "");
+
+// Normalise a frontmatter value that may be a string, a CSV string, or already a list.
+function asList(v: string | string[] | undefined): string[] {
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === "string" && v.trim()) return v.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
 }
 
 export function loadSkills(): Skill[] {
@@ -40,15 +61,30 @@ export function loadSkills(): Skill[] {
     const path = join(SKILLS_DIR, dir, "SKILL.md");
     if (!existsSync(path)) continue;
     const { meta, body } = parseFrontMatter(readFileSync(path, "utf8"));
+    const declared = asList(meta.tools);
     skills.push({
       id: dir,
-      name: meta.name || dir,
+      name: (typeof meta.name === "string" && meta.name) || dir,
       tier: (meta.tier as any) || "free",
-      triggers: (meta.triggers || "").split(",").map((s) => s.trim()).filter(Boolean),
+      triggers: asList(meta.triggers),
+      // only set an allowlist when the skill actually declares tools — undefined = unrestricted
+      tools: declared.length ? declared : undefined,
       body,
     });
   }
   return skills;
+}
+
+// Load-time safety net: warn about any skill that declares a tool SAM doesn't have (a typo would
+// otherwise silently deny that tool forever). Call once at boot with the real tool-name set.
+export function validateSkillTools(skills: Skill[], validNames: Set<string>): string[] {
+  const warnings: string[] = [];
+  for (const s of skills) {
+    for (const t of s.tools ?? []) {
+      if (!validNames.has(t)) warnings.push(`skill "${s.id}" declares unknown tool "${t}"`);
+    }
+  }
+  return warnings;
 }
 
 // Pick the best skill for a message by trigger-word overlap.
