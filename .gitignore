@@ -98,3 +98,6 @@ playwright-report/
 # bench outputs (keep bench/ source, ignore generated results)
 bench/results/
 bench/*.out.json
+
+# agent worktrees (transient, live inside the repo)
+.claude/worktrees/
