@@ -84,3 +84,40 @@ describe("agent loop", () => {
     expect(r.trace.length).toBe(0);
   });
 });
+
+// allow = the SKILL.md `tools:` allowlist. 9th positional arg to runAgent.
+const withAllow = (allow: string[]) =>
+  ["local" as const, undefined, false, false, undefined, undefined, allow] as const;
+
+describe("capability scope (SKILL.md tools: allowlist)", () => {
+  it("DENIES an out-of-scope tool and never runs it (nudges the model instead)", async () => {
+    replies.push('{"tool":"web_search","input":{"query":"x"}}');   // web_search NOT in the allowlist
+    replies.push("Answered without it.");
+    const r = await runAgent("SYS", "q", ...withAllow(["get_datetime"]));
+    expect(r.kind).toBe("final");
+    expect(r.trace.length).toBe(0);                    // the safe tool would have run if allowed — it didn't
+  });
+
+  it("ALLOWS a declared in-scope tool to run", async () => {
+    replies.push('{"tool":"get_datetime","input":{}}');
+    replies.push("The time is now.");
+    const r = await runAgent("SYS", "time?", ...withAllow(["get_datetime"]));
+    expect(r.kind).toBe("final");
+    expect(r.trace.length).toBe(1);                    // in-scope tool ran
+  });
+
+  it("no allowlist ⇒ unrestricted (backward compatible)", async () => {
+    replies.push('{"tool":"get_datetime","input":{}}');
+    replies.push("The time is now.");
+    const r = await runAgent("SYS", "time?", "local");   // allow undefined
+    expect(r.trace.length).toBe(1);
+  });
+
+  it("an out-of-scope RISKY tool is denied BEFORE the approval prompt (scope beats surface)", async () => {
+    replies.push('{"tool":"run_command","input":{"command":"echo hi"}}');   // risky AND out of scope
+    replies.push("Did it another way.");
+    const r = await runAgent("SYS", "run echo", ...withAllow(["get_datetime"]));
+    expect(r.kind).toBe("final");                       // NOT pending — never surfaced for approval
+    expect(r.trace.length).toBe(0);
+  });
+});

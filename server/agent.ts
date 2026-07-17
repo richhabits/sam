@@ -171,9 +171,22 @@ export function parseToolBatch(text: string): { tool: string; input: any }[] | n
 // falls back to the normal one-at-a-time (gated) path. This is the Phase 6 perceived-speed win:
 // N independent lookups (search + datetime + read_file) finish in the time of the slowest, not the sum.
 export interface BatchRun { parallel: boolean; results?: { tool: string; result: string; activity: string }[] }
-export async function executeToolBatch(calls: { tool: string; input: any }[], swarm = false): Promise<BatchRun> {
+
+// Capability scoping (SKILL.md `tools:` allowlist). When the active skill declares an allowlist,
+// any tool call outside it is DENIED — the model is nudged to pick an allowed tool. `allow`
+// undefined = no restriction: skills without a declared list, and every non-skill entrypoint,
+// behave exactly as before (fully backward-compatible). This is capability-based blast-radius
+// control on top of the existing safe/approval gate — a scoped skill can't reach a tool it
+// never declared, even under prompt injection.
+export function outOfScope(toolName: string, allow?: string[]): boolean {
+  return Array.isArray(allow) && !allow.includes(toolName);
+}
+
+export async function executeToolBatch(calls: { tool: string; input: any }[], swarm = false, allow?: string[]): Promise<BatchRun> {
   const tools = calls.map((c) => toolByName(c.tool));
-  if (tools.some((t, i) => !t || (!t.safe && !mayAutoRun(calls[i].tool, swarm)))) return { parallel: false };
+  // Any out-of-scope call sinks the parallel path → falls back to the sequential path, which
+  // denies it per-call with a message (rather than silently dropping it from a batch).
+  if (tools.some((t, i) => !t || outOfScope(calls[i].tool, allow) || (!t.safe && !mayAutoRun(calls[i].tool, swarm)))) return { parallel: false };
   const results = await Promise.all(calls.map(async (c, i) => {
     const t = tools[i]!;
     let result: string;
@@ -184,7 +197,7 @@ export async function executeToolBatch(calls: { tool: string; input: any }[], sw
 }
 
 // Core loop. `prompt` is the running transcript (the user's request + tool results).
-async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false): Promise<AgentResult> {
+async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false, allow?: string[]): Promise<AgentResult> {
   for (let step = 0; step < MAX_STEPS; step++) {
     // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
     // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
@@ -194,7 +207,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     // Run them concurrently (only when all are safe/auto) — N lookups take the time of the slowest.
     const batch = parseToolBatch(res.text);
     if (batch) {
-      const run = await executeToolBatch(batch, swarm);
+      const run = await executeToolBatch(batch, swarm, allow);
       if (run.parallel) {
         for (const r of run.results!) { trace.push(r.activity); prompt = trimPrompt(prompt + `\n\n[ran ${r.tool}] → ${r.result}`); }
         continue;
@@ -218,6 +231,12 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     if (!tool) {
       // model named a tool that doesn't exist — nudge and continue
       prompt += `\n\n[SAM tried tool "${call.tool}" — no such tool. Available: ${TOOLS.map((t) => t.name).join(", ")}]`;
+      continue;
+    }
+
+    if (outOfScope(call.tool, allow)) {
+      // capability scope: this skill didn't declare this tool — deny and nudge, never run.
+      prompt += `\n\n[SAM tried tool "${call.tool}" — not permitted for this skill. Allowed: ${allow!.join(", ") || "none"}]`;
       continue;
     }
 
@@ -266,7 +285,7 @@ export function needsLiveInfo(message: string): boolean {
 
 // Fresh request. `toolNames` = the relevant tools to expose (semantic routing).
 // `forceFast` (Turbo) forces the single-call path even for tool-shaped messages.
-export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false, reason?: string, history?: string): Promise<AgentResult> {
+export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false, reason?: string, history?: string, allow?: string[]): Promise<AgentResult> {
   // Prior turns (already formatted "User: …/SAM: …") so "proceed"/"continue" have context.
   const convo = history ? `${history}\n\n` : "";
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
@@ -275,7 +294,7 @@ export function runAgent(system: string, message: string, tier: Tier, toolNames?
       .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
   }
   const prompt = `${convo}User: ${message}`;
-  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm);   // swarm=true → dangerous never auto-runs (even in Elon)
+  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm, allow);   // swarm=true → dangerous never auto-runs (even in Elon)
 }
 
 // ── STREAMING variant — emits typed events for live token/tool UX ──
@@ -285,7 +304,7 @@ export type StreamEvent =
   | { type: "pending"; tool: string; input: any; preview: string; activity: string; transcript: string; trace: string[]; provider?: string }
   | { type: "done"; text: string; provider?: string; trace: string[] };
 
-export async function runAgentStream(system: string, message: string, tier: Tier, toolNames: string[] | undefined, emit: (e: StreamEvent) => void, forceFast = false, history?: string): Promise<void> {
+export async function runAgentStream(system: string, message: string, tier: Tier, toolNames: string[] | undefined, emit: (e: StreamEvent) => void, forceFast = false, history?: string, allow?: string[]): Promise<void> {
   const trace: string[] = [];
   // Prior turns (already formatted "User: …/SAM: …") so "proceed"/"continue" have context.
   const convo = history ? `${history}\n\n` : "";
@@ -323,7 +342,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
     // PARALLEL BATCH (Phase 6) — run several independent safe lookups at once, streaming progress.
     const batch = parseToolBatch(finalText);
     if (batch) {
-      const run = await executeToolBatch(batch);
+      const run = await executeToolBatch(batch, false, allow);
       if (run.parallel) {
         for (const r of run.results!) { trace.push(r.activity); emit({ type: "tool", activity: r.activity }); prompt = trimPrompt(prompt + `\n\n[ran ${r.tool}] → ${r.result}`); }
         continue;
@@ -343,6 +362,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
     if (call) {
       const tool = toolByName(call.tool);
       if (!tool) { prompt += `\n\n[SAM tried tool "${call.tool}" — no such tool.]`; continue; }
+      if (outOfScope(call.tool, allow)) { prompt += `\n\n[SAM tried tool "${call.tool}" — not permitted for this skill.]`; continue; }
       if (!tool.safe && !mayAutoRun(tool.name)) {
         emit({ type: "pending", tool: tool.name, input: call.input, preview: tool.preview?.(call.input) || tool.description, activity: tool.activity(call.input), transcript: prompt, trace, provider: res.provider });
         return;
