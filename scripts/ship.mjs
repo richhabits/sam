@@ -15,6 +15,7 @@ try {
   if (!quiet("git status --porcelain")) { console.log("Nothing to ship — no changes."); process.exit(0); }
 
   console.log("\n🧪 testing…");   run("npm test");
+  console.log("\n📊 syncing stats…"); run("npm run stats");   // keep advertised counts current — CI gates on "no stats drift"
   console.log("\n🎨 refreshing landing…"); run("node scripts/gen-landing.mjs");
   // NOTE: og.png is NOT regenerated here on purpose — each render is a new ~364KB binary
   // blob in git history, and the counts rarely change. Run `npm run og` by hand when they do.
