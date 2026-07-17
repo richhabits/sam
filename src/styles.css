@@ -1013,6 +1013,10 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .ctx-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 14px; }
 .ctx-act { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13.5px; letter-spacing: -.01em; cursor: pointer; }
 .ctx-act:hover { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-text); }
+
+/* A hair of word-spacing so emoji don't jam against their label (header pills, quick actions,
+   settings rows) — the standard space next to an emoji glyph reads too tight otherwise. */
+.icon-btn, .chip, .ctx-act, .pop-opt-name, .mode-toggle button { word-spacing: .14em; }
 @media (max-width: 1080px) { .shell { grid-template-columns: 1fr; } .side, .ctx { display: none; } }
 
 /* Sidebar folders */
