@@ -1503,6 +1503,9 @@ export default function App() {
                 ))}
               </ol>
             )}
+            {arena?.leaderboard && arena.leaderboard.length > 0 && (
+              <div className="lb-steer">🧭 <b>{arena.leaderboard[0].label}</b> now answers first — this ranking steers SAM's free-tier routing.</div>
+            )}
             {arena?.log && <div className="mkt-note">{arena.log.length} matches judged · winner by helpfulness, correctness &amp; clarity</div>}
           </aside>
         </div>
