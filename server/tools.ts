@@ -398,6 +398,85 @@ async function folderDigest(path: string): Promise<string> {
   } catch (e: any) { return `Could not digest ${path}: ${e?.message}`; }
 }
 
+// find_duplicates — walk a folder (bounded) and find files with identical contents so the user can
+// reclaim space. Read-only, cross-platform, skips heavy/system dirs like the walks above. Efficient:
+// group candidates by SIZE first, then only hash (SHA-256) files whose size collides — never hash
+// everything. Reports the biggest duplicate groups and total reclaimable space. Scan is capped.
+async function findDuplicates(path: string): Promise<string> {
+  const CAP = 5000;   // max files scanned before we stop and say so
+  try {
+    const root = safePath(path || "~");
+    const st = await stat(root).catch(() => null);
+    if (!st) return `Could not read ${path}: no such folder (or no permission).`;
+    if (!st.isDirectory()) return `${path} is a file, not a folder — try folder_digest instead.`;
+
+    // Pass 1 — group files by size (cheap). Only sizes shared by 2+ files can hold duplicates.
+    let scanned = 0, capped = false;
+    const bySize = new Map<number, string[]>();
+    const queue = [root];
+    while (queue.length) {
+      const dir = queue.shift()!;
+      let entries: any[];
+      try { entries = await readdir(dir, { withFileTypes: true }); } catch { continue; }
+      for (const e of entries) {
+        if (scanned >= CAP) { capped = true; break; }
+        if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+        const full = join(dir, e.name);
+        if (e.isDirectory()) { queue.push(full); continue; }
+        let s: any;
+        try { s = await stat(full); } catch { continue; }
+        scanned++;
+        if (s.size === 0) continue;   // ignore empty files — never worth reporting
+        const cur = bySize.get(s.size) || [];
+        cur.push(full); bySize.set(s.size, cur);
+      }
+      if (capped) break;
+    }
+
+    if (scanned === 0) return `📂 ${path} — empty (no readable files).`;
+
+    // Pass 2 — for each colliding size, hash the contents and group truly-identical files.
+    const groups: { size: number; files: string[] }[] = [];
+    for (const [size, files] of bySize) {
+      if (files.length < 2) continue;   // unique size → can't be a duplicate, skip hashing
+      const byHash = new Map<string, string[]>();
+      for (const f of files) {
+        let hash: string;
+        try { hash = createHash("sha256").update(await readFile(f)).digest("hex"); } catch { continue; }
+        const cur = byHash.get(hash) || [];
+        cur.push(f); byHash.set(hash, cur);
+      }
+      for (const dups of byHash.values()) {
+        if (dups.length >= 2) groups.push({ size, files: dups });
+      }
+    }
+
+    if (groups.length === 0) {
+      return `✅ ${path} — no duplicate files found among ${scanned} scanned${capped ? ` (scan capped at ${CAP})` : ""}.`;
+    }
+
+    // Reclaimable space = every copy beyond the first, across all groups.
+    let reclaimable = 0, dupCount = 0;
+    for (const g of groups) { reclaimable += g.size * (g.files.length - 1); dupCount += g.files.length - 1; }
+    groups.sort((a, b) => b.size * (b.files.length - 1) - a.size * (a.files.length - 1));
+
+    const top = groups.slice(0, 5).map((g) => {
+      const names = g.files.slice(0, 4).map((f) => `    ${f.replace(homedir(), "~")}`).join("\n");
+      const more = g.files.length > 4 ? `\n    …and ${g.files.length - 4} more` : "";
+      return `  • ${g.files.length} copies × ${humanSize(g.size)} (reclaim ${humanSize(g.size * (g.files.length - 1))}):\n${names}${more}`;
+    }).join("\n");
+
+    return [
+      `📂 Duplicates in ${path}`,
+      `Found ${groups.length} duplicate group${groups.length === 1 ? "" : "s"} · ${dupCount} redundant file${dupCount === 1 ? "" : "s"} · reclaimable ${humanSize(reclaimable)}`,
+      `(scanned ${scanned}${capped ? `, capped at ${CAP} — folder is larger` : ""})`,
+      ``,
+      `Top groups:`,
+      top,
+    ].join("\n");
+  } catch (e: any) { return `Could not scan ${path}: ${e?.message}`; }
+}
+
 // ── macOS CONTROL · mouse / keyboard / apps / screen ─────────
 async function osa(script: string): Promise<string> {
   // Graceful cross-platform degrade: the model reads this and tells the user honestly
@@ -910,6 +989,8 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
   { name: "folder_digest", safe: true, description: "Summarise a folder: file count, total size, top file types, and the largest files. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Sizing up ${i.path ?? i ?? "~"}`, run: (i) => folderDigest(i.path ?? i ?? "~") },
+  { name: "find_duplicates", safe: true, description: "Find duplicate files (identical contents) in a folder, grouped, with total reclaimable space. input: a folder path (supports ~).", params: "path",
+    activity: (i) => `Hunting duplicates in ${i.path ?? i ?? "~"}`, run: (i) => findDuplicates(i.path ?? i ?? "~") },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
