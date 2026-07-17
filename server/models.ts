@@ -655,3 +655,14 @@ export function providersStatus() {
     providers: PROVIDERS.map((p) => ({ id: p.id, tier: p.tier, keys: poolSize(p.id) })),
   };
 }
+
+// ── Model Colosseum support ──
+// The brains usable RIGHT NOW (have a key, or need none) — the arena's eligible competitors.
+export function availableBrains(): { id: string; tier: Tier; label: string }[] {
+  return PROVIDERS.filter((p) => p.noKey || poolSize(p.id) > 0).map((p) => ({ id: p.id, tier: p.tier, label: p.label }));
+}
+// Run ONE named brain directly (bypasses the cascade) so distinct models can go head-to-head.
+export async function runBrain(id: string, system: string, prompt: string): Promise<string | null> {
+  const prov = PROVIDERS.find((p) => p.id === id);
+  return prov ? tryProvider(prov, system, prompt) : null;
+}

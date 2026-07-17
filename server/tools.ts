@@ -75,7 +75,8 @@ import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
-import { runVision, runModel } from "./models.ts";
+import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
+import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard } from "./colosseum.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
@@ -1038,6 +1039,20 @@ export const TOOLS: Tool[] = [
   { name: "market_quote", safe: true, description: "Get LIVE market quotes for one or more tickers — stocks (AAPL), ETFs (VUSA.L), indices (^GSPC), FX (GBPUSD=X), crypto (BTC-USD). Free, no API key. input: {symbols} — a comma-separated string or an array.", params: "{symbols}",
     activity: (i) => `Checking quotes: ${Array.isArray(i?.symbols) ? i.symbols.join(", ") : (i?.symbols ?? i)}`,
     run: async (i) => { const raw = i?.symbols ?? i; const syms = Array.isArray(raw) ? raw.map(String) : String(raw || "").split(","); return formatQuotes(await marketQuotes(syms)); } },
+  { name: "model_arena", safe: true, description: "Benchmark SAM's free brains head-to-head: each answers the same prompt, an impartial judge picks the winner, and they're ranked by Elo — a 'colosseum' for your rotating free models. input: {prompt?} (or {prompts?, brains?}); defaults to a small set.", params: "{prompt?}",
+    activity: () => "Running the model colosseum",
+    run: async (i) => {
+      const all = availableBrains();
+      if (all.length < 2) return "Need at least 2 available brains to run the arena — add a free key or two.";
+      const chosen = Array.isArray(i?.brains) ? all.filter((b) => i.brains.includes(b.id)) : all.slice(0, 4);
+      const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
+      const prompts = Array.isArray(i?.prompts) ? i.prompts.map(String)
+        : i?.prompt ? [String(i.prompt)]
+        : ["Explain why the sky is blue in two sentences a 10-year-old would understand."];
+      const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
+      const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
+      return formatLeaderboard(await runArena(competitors, prompts, answer, judge));
+    } },
   { name: "retrieve_full", safe: true, description: "Pull back the FULL text of an earlier tool output that was compressed to save tokens (you'll have seen an id like 'web_fetch#3'). input: {id}.", params: "{id}",
     activity: (i) => `Retrieving full output ${i.id ?? i}`, run: async (i) => retrieveFullOutput(String((i.id ?? i) || "")) ?? "That compressed output is no longer cached." },
 
