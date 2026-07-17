@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -208,6 +208,28 @@ export default function App() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(false);   // mobile: Context/Quick-actions slide-in drawer
+  // ── Markets panel: a keyless live watchlist (Fincept strip-map) ──
+  const [marketsOpen, setMarketsOpen] = useState(false);
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sam.watchlist") || "") || ["AAPL", "MSFT", "NVDA", "BTC-USD", "^GSPC"]; }
+    catch { return ["AAPL", "MSFT", "NVDA", "BTC-USD", "^GSPC"]; }
+  });
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [tickerInput, setTickerInput] = useState("");
+  const loadQuotes = (list = watchlist) => {
+    if (!list.length) { setQuotes([]); return; }
+    setQuotesLoading(true);
+    getQuotes(list.join(",")).then((r) => setQuotes(r.quotes || [])).catch(() => {}).finally(() => setQuotesLoading(false));
+  };
+  useEffect(() => { localStorage.setItem("sam.watchlist", JSON.stringify(watchlist)); }, [watchlist]);
+  useEffect(() => { if (marketsOpen) loadQuotes(); }, [marketsOpen]);   // refresh on open
+  const addTicker = () => {
+    const t = tickerInput.trim().toUpperCase();
+    if (!t || watchlist.includes(t)) { setTickerInput(""); return; }
+    const next = [...watchlist, t]; setWatchlist(next); setTickerInput(""); loadQuotes(next);
+  };
+  const removeTicker = (sym: string) => { const next = watchlist.filter((s) => s !== sym); setWatchlist(next); loadQuotes(next); };
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -381,7 +403,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1393,6 +1415,7 @@ export default function App() {
         <button className="ctx-act" onClick={openStudio}>🎨 Open Studio</button>
         <button className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
         <button className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
+        <button className="ctx-act" onClick={() => setMarketsOpen(true)}>📈 Markets</button>
         <button className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
         <div className="ctx-label">Live status</div>
         <div className="ctx-live">
@@ -1414,6 +1437,41 @@ export default function App() {
       </aside>
       </div>
 
+      {marketsOpen && (
+        <div className="drawer-wrap" onClick={() => setMarketsOpen(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-head">
+              <div><div className="drawer-title">Markets</div><div className="drawer-sub">Live quotes · free · no API key</div></div>
+              <button className="icon-btn" onClick={() => loadQuotes()} title="Refresh" aria-label="Refresh">{quotesLoading ? "…" : "⟳"}</button>
+            </div>
+            <div className="mkt-add">
+              <input value={tickerInput} onChange={(e) => setTickerInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addTicker(); }}
+                placeholder="Add a ticker — AAPL · BTC-USD · ^GSPC" aria-label="Add ticker" />
+              <button onClick={addTicker} title="Add">＋</button>
+            </div>
+            <ul className="mkt-list">
+              {quotesLoading && !quotes.length && <li className="mkt-empty">Loading…</li>}
+              {!quotesLoading && !watchlist.length && <li className="mkt-empty">No tickers yet — add one above.</li>}
+              {quotes.map((q) => (
+                <li key={q.symbol} className="mkt-row">
+                  <span className="mkt-sym">{q.symbol}</span>
+                  {q.ok ? (
+                    <span className="mkt-nums">
+                      <span className="mkt-price">{q.price.toFixed(2)}{q.currency && q.currency !== "USD" ? ` ${q.currency}` : ""}</span>
+                      <span className={"mkt-chg " + (q.change > 0 ? "up" : q.change < 0 ? "down" : "")}>
+                        {q.change > 0 ? "▲" : q.change < 0 ? "▼" : "→"} {q.change >= 0 ? "+" : ""}{q.changePct.toFixed(2)}%
+                      </span>
+                    </span>
+                  ) : <span className="mkt-err">{q.error || "no data"}</span>}
+                  <button className="mkt-del" onClick={() => removeTicker(q.symbol)} aria-label="Remove">✕</button>
+                </li>
+              ))}
+            </ul>
+            <div className="mkt-note">Not financial advice · quotes may be delayed.</div>
+          </aside>
+        </div>
+      )}
       {historyOpen && (
         <div className="drawer-wrap left" onClick={() => setHistoryOpen(false)}>
           <aside className="drawer drawer-l" onClick={(e) => e.stopPropagation()}>
