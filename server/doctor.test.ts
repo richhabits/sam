@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runDoctor, type DoctorWorld } from "./doctor.ts";
+import { runDoctor, modelForRam, type DoctorWorld } from "./doctor.ts";
 
 const world = (over: Partial<DoctorWorld> = {}): DoctorWorld => ({
   hasCloudKeys: true, ollamaConfigured: false, ollamaReachable: false, online: true, vaultWritable: true, platform: "linux", ...over,
@@ -49,5 +49,18 @@ describe("doctor — turns failures into exact fixes", () => {
   it("macOS adds the overlay/Accessibility guidance", () => {
     expect(byId(runDoctor(world({ platform: "darwin" })), "accessibility").fix).toMatch(/Accessibility/i);
     expect(runDoctor(world({ platform: "win32" })).checks.some((c) => c.id === "accessibility")).toBe(false);
+  });
+
+  it("recommends a local model sized to the machine's RAM", () => {
+    expect(modelForRam(6).model).toBe("llama3.2:3b");    // small machine → 3B
+    expect(modelForRam(12).model).toBe("llama3.1:8b");   // 16GB-class → 7-8B sweet spot
+    expect(modelForRam(24).model).toBe("qwen2.5:14b");   // 32GB → up to 14B
+    expect(modelForRam(64).model).toBe("qwen2.5:32b");   // big rig → 32B+
+    expect(modelForRam(undefined).model).toBe("llama3.2:3b"); // unknown RAM → safe small default
+  });
+
+  it("the Ollama fix suggests a RAM-appropriate model", () => {
+    const r = runDoctor(world({ hasCloudKeys: false, ollamaConfigured: true, ollamaReachable: false, ramGb: 12 }));
+    expect(byId(r, "ollama").fix).toContain("llama3.1:8b");
   });
 });
