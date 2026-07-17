@@ -1,8 +1,8 @@
 # BOARD — SAM living state
 
 *Read at boot, update at session end (CLAUDE.md doctrine #9). Newest truth wins; keep it
-honest and short. Last updated: 2026-07-18 00:13 BST, by the Cowork session (master-prompt
-landed on the Mac + reconciled against verified reality).*
+honest and short. Last updated: 2026-07-18 00:38 BST, by the Cowork session (master-prompt
+landed + reconciled + both watchdog halves wired).*
 
 ## Loops (the machine running itself)
 
@@ -40,6 +40,7 @@ landed on the Mac + reconciled against verified reality).*
 
 ## Recently done (receipts)
 
+- 07-18: Two-sided nightly watchdog wired. **Cloud** (`trig_01NSKNi9Kzhgq3itShZyyDd5`, cron `0 7 * * *` = 08:00 London): reads GitHub Actions on `richhabits/sam` main, pings only on red, silent on green — a smoke alarm, never a builder. **Mac** (`scripts/daily_benchmark.sh`, pushed `d3f3d39`): fires a macOS notification when SAM is down at benchmark time or the arena writes no champion line; best-effort osascript, guarded so it can't break the loop; verified loop still loads (`runs=0`, program /bin/bash). Cloud watches GitHub; Mac watches Mac.
 - 07-18: Master-prompt landed on the Mac — `CLAUDE.md` (doctrine, auto-loads every session) + `docs/BOARD.md` (this file) created on `main` @ `8ab6f4f`. Reconciled BOARD against verified reality: FLIP IT lives at `~/flip-it` (sibling repo), both loops have verified entrypoints, `mom_12_1` already wired.
 - 07-17: Colosseum routing order fixed (3 real bugs: spread-load rotated the champion; unranked leapfrogged tested losers; 1-brain benchmark corrupted ranking). 16 tests, merged `8ab6f4f`, CI green.
 - 07-17: FLIP IT paper-forward loop built + verified (8/8 tests; 10.6% realized vs 10% target on 70-day backdated demo; amendment machinery refuses unlogged runs).
