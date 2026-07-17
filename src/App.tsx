@@ -201,6 +201,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [mem, setMem] = useState<{ groups: Record<string, { id: string; text: string; ts: number }[]>; count: number; note: string } | null>(null);
+  const [memQuery, setMemQuery] = useState("");
   const loadMemory = () => getMemory().then(setMem).catch(() => setMem({ groups: {}, count: 0, note: "" }));
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -408,7 +409,7 @@ export default function App() {
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
   useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch {} }, [profile, mode, persona]);
-  useEffect(() => { if (memoryOpen) loadMemory(); }, [memoryOpen]);   // load the real learned memory when the drawer opens
+  useEffect(() => { if (memoryOpen) { loadMemory(); setMemQuery(""); } }, [memoryOpen]);   // load the real learned memory when the drawer opens
 
   // Hands-free wake: whistle or double-clap opens Voice Mode.
   useEffect(() => {
@@ -1445,9 +1446,14 @@ export default function App() {
               const KINDS: [string, string][] = [["fact", "🧠 Facts"], ["plan", "🗺️ Plans"], ["decision", "✅ Decisions"], ["task", "📌 Open loops"]];
               const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => {});
               if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.</div>;
-              return <div className="mem-groups">
+              const q = memQuery.trim().toLowerCase();
+              const match = (items: { id: string; text: string; ts: number }[]) => q ? items.filter((it) => it.text.toLowerCase().includes(q)) : items;
+              const anyMatch = KINDS.some(([kind]) => match(mem?.groups?.[kind] || []).length);
+              return <>
+                <input className="mem-search" value={memQuery} onChange={(e) => setMemQuery(e.target.value)} placeholder="🔍 Search your memory…" />
+                {!anyMatch && q ? <div className="drawer-empty">No memories match “{memQuery}”.</div> : <div className="mem-groups">
                 {KINDS.map(([kind, label]) => {
-                  const items = mem?.groups?.[kind] || [];
+                  const items = match(mem?.groups?.[kind] || []);
                   if (!items.length) return null;
                   return <div key={kind} className="mem-group">
                     <div className="mem-group-title">{label} <span className="mem-count">{items.length}</span></div>
@@ -1461,7 +1467,8 @@ export default function App() {
                     </ul>
                   </div>;
                 })}
-              </div>;
+              </div>}
+              </>;
             })()}
           </aside>
         </div>
