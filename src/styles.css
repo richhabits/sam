@@ -1026,7 +1026,26 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* A hair of word-spacing so emoji don't jam against their label (header pills, quick actions,
    settings rows) — the standard space next to an emoji glyph reads too tight otherwise. */
 .icon-btn, .chip, .mode-toggle button { word-spacing: .06em; }
-@media (max-width: 1080px) { .shell { grid-template-columns: 1fr; } .side, .ctx { display: none; } }
+/* The mobile entry point for the Context panel — hidden on desktop where .ctx is always visible. */
+.ctx-toggle { display: none; }
+@media (max-width: 1080px) {
+  .shell { grid-template-columns: 1fr; }
+  .side { display: none; }                    /* chats stay reachable via the ☰ history drawer */
+  .ctx-toggle { display: inline-flex; }        /* ◧ opens Context + Quick actions on mobile */
+  /* Context was display:none here, which stranded Quick actions + Live status on mobile.
+     Make it a slide-in right drawer instead (same feel as the history drawer). */
+  .ctx {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 86vw); z-index: 46;
+    background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    transform: translateX(101%); transition: transform .22s cubic-bezier(.2, .7, .2, 1);
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .ctx.open { transform: translateX(0); }
+  .ctx-scrim {
+    position: fixed; inset: 0; z-index: 45; background: rgba(0, 0, 0, .38);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: scrim-in .18s ease;
+  }
+}
 
 /* Sidebar folders */
 .side-folders { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 8px; }
