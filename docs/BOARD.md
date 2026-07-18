@@ -77,6 +77,22 @@ off unless `SAM_REMOTE=1` + a ≥16-char token, checked with `timingSafeEqual` a
     refactor across shared files and is the next real piece of work here, not a late-session
     change. 415 tests green.
 
+**✅ Single provider registry — the refactor is done.** `server/providers.registry.ts` is now the
+one hand-written provider list (43 entries). `keys.ts` pools, `index.ts` PROVIDER_ENV and the
+Settings list all **derive** from it; `src/Admin.tsx` has **no provider list at all** — it renders
+what `/api/admin/config` sends, so the `src/`↔`server/` boundary stays clean and there is still
+only one list. Adding a provider is now one line: it is pooled, saveable and visible at once.
+  - **What deliberately stays separate:** the `run()` closures and lane preferences in
+    `models.ts`. Those are *behaviour* (how to call it, when to prefer it); the registry is
+    *identity* (name, env var, how it appears). Mixing them is what made the old setup drift —
+    and `providers.drift.test.ts` (7 tests) enforces that the two agree.
+  - **The tests assert the derivation is real, not a copy** — they fail if anyone re-hardcodes
+    the pools, PROVIDER_ENV, or a `PROVIDERS` literal back into `Admin.tsx`. Verified by doing
+    exactly that and watching CI go red.
+  - Fixed en route: `leonardo` was miscategorised (it has a real pool, so it is saveable
+    normally now — the earlier config-style workaround is gone), and `fal` was a special case in
+    `PROVIDER_ENV`; both are ordinary registry entries. **0 special cases left.** 416 tests green.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,

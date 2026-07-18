@@ -1,77 +1,80 @@
 /**
- * Provider identity lives in FIVE places, and every provider bug found on 2026-07-18 was drift
- * between them:
- *   server/models.ts   — the runtime provider list + lane preferences
- *   server/keys.ts     — the rotating key pools
- *   server/index.ts    — PROVIDER_ENV (what /api/admin/keys can actually save)
- *   src/Admin.tsx      — what Settings offers
- *   .env.example       — what a human setting up can discover
+ * Provider identity used to live in FIVE hand-maintained lists (models.ts, keys.ts,
+ * index.ts PROVIDER_ENV, src/Admin.tsx, .env.example). Nothing kept them in step, and on
+ * 2026-07-18 that drift produced four bugs in one day — 19 providers undocumented, `hermes`
+ * offered in Settings but unsaveable (400), baidu/tencent/volcengine invisible, `leonardo`
+ * posted to the wrong endpoint.
  *
- * The bugs: 19 providers missing from .env.example (invisible to setup) · `hermes` offered in
- * Settings but absent from PROVIDER_ENV, so saving a key returned 400 · baidu/tencent/volcengine
- * wired but absent from the UI · `leonardo` posted to the wrong endpoint.
- *
- * The real fix is ONE registry the rest derive from — a refactor across shared files, filed as
- * the next step. Until then this test makes the invariant enforced rather than hoped: adding a
- * provider to one list and forgetting the others now fails CI instead of shipping silently.
+ * They now DERIVE from server/providers.registry.ts. These tests hold that line: they check the
+ * derivation is real (not a copy that will drift again), that the one remaining hand-written
+ * list — models.ts's run() closures — still matches, and that the refactor didn't reopen the
+ * security gate.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
+import { PROVIDER_REGISTRY, POOLED, PROVIDER_ENV, uiCatalogue } from "./providers.registry.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
-
 const models = read("server/models.ts");
-const keys = read("server/keys.ts");
-const index = read("server/index.ts");
 const admin = read("src/Admin.tsx");
+const index = read("server/index.ts");
+const keys = read("server/keys.ts");
 const envExample = read(".env.example");
 
 const all = (re: RegExp, s: string) => [...s.matchAll(re)].map((m) => m[1]);
-
-const runtime = new Set(all(/\{ id: "([a-z0-9-]+)", tier:/g, models));
+const runtime = all(/\{ id: "([a-z0-9-]+)", tier:/g, models);
 const noKey = new Set(all(/\{ id: "([a-z0-9-]+)", tier: "free", noKey: true/g, models));
-const pools = new Set(all(/^\s*([a-z0-9]+):\s*readPool\(/gm, keys));
-const envBlock = index.slice(index.indexOf("const PROVIDER_ENV"), index.indexOf("const CONFIG_ENV"));
-const saveable = new Set(all(/([a-z0-9]+):\s*"[A-Z0-9_]+"/g, envBlock));
-const offered = new Set(all(/\{ id: "([a-z0-9-]+)", label:/g, admin));
-const CONFIG_STYLE = new Set(["leonardo"]);   // saved via /api/admin/config, not the key pools
+const registryIds = new Set(PROVIDER_REGISTRY.map((p) => p.id));
 
-const keyed = [...runtime].filter((p) => !noKey.has(p));
-
-describe("provider lists must not drift", () => {
-  it("every keyed provider has a rotating key pool", () => {
-    expect(keyed.filter((p) => !pools.has(p))).toEqual([]);
+describe("the registry is the single source", () => {
+  it("every runtime provider that takes a key is in the registry", () => {
+    // models.ts still hand-lists run() closures — that's BEHAVIOUR, deliberately separate.
+    // But its ids must exist here, or a brain can run with no way to give it a key.
+    const orphans = runtime.filter((id) => !noKey.has(id) && !registryIds.has(id));
+    expect(orphans, `runtime providers missing from the registry: ${orphans.join(", ")}`).toEqual([]);
   });
 
-  it("every keyed provider is saveable via /api/admin/keys", () => {
-    // Without this, Settings shows the provider and saving returns 400 unknown provider.
-    expect(keyed.filter((p) => !saveable.has(p))).toEqual([]);
+  it("every registry entry is actually used somewhere", () => {
+    // Not every entry is a chat brain: `fal` and `leonardo` are image/video backends consumed by
+    // tools.ts. The rule that matters is that nothing sits in the registry unused — a provider
+    // offered in Settings that no code ever calls is a key the user wastes time obtaining.
+    const tools = read("server/tools.ts");
+    const dead = PROVIDER_REGISTRY.filter((p) => !runtime.includes(p.id) && !tools.includes(`"${p.id}"`));
+    expect(dead.map((p) => p.id), "offered in Settings but never used by any code").toEqual([]);
   });
 
-  it("nothing is offered in Settings that cannot be saved", () => {
-    expect([...offered].filter((p) => !saveable.has(p) && !CONFIG_STYLE.has(p))).toEqual([]);
+  it("pools and PROVIDER_ENV are DERIVED, not copies", () => {
+    // If someone re-hardcodes either list, these break — which is the whole point.
+    expect(keys).toContain("POOLED.map(");
+    expect(index).toContain("REGISTRY_ENV");
+    expect(POOLED.length).toBe(PROVIDER_REGISTRY.filter((p) => p.envPlural && p.envSingular).length);
+    expect(Object.keys(PROVIDER_ENV).length).toBeGreaterThanOrEqual(POOLED.length);
   });
 
-  it("every keyed provider is discoverable in Settings", () => {
-    expect(keyed.filter((p) => !offered.has(p))).toEqual([]);
+  it("Settings has no hardcoded provider list of its own", () => {
+    // src/ never imports server/; the UI renders what /api/admin/config sends. A literal list
+    // reappearing here is the fifth copy coming back.
+    expect(admin).not.toMatch(/const PROVIDERS:\s*Prov\[\]\s*=\s*\[/);
+    expect(index).toContain("uiCatalogue()");
+  });
+
+  it("the UI catalogue never leaks env var names", () => {
+    expect(JSON.stringify(uiCatalogue())).not.toMatch(/API_KEY/);
   });
 
   it("every pooled provider is documented in .env.example", () => {
-    const undocumented = [...all(/^\s*([a-z0-9]+):\s*readPool\("[a-z0-9]+",\s*"([A-Z0-9_]+)",\s*"([A-Z0-9_]+)"/gm, keys)];
-    const rows = [...keys.matchAll(/^\s*([a-z0-9]+):\s*readPool\("[a-z0-9]+",\s*"([A-Z0-9_]+)",\s*"([A-Z0-9_]+)"/gm)];
-    const missing = rows.filter(([, , plural, singular]) => !envExample.includes(plural) && !envExample.includes(singular)).map((m) => m[1]);
-    expect(missing, `undocumented: ${missing.join(", ")}`).toEqual([]);
-    expect(undocumented.length).toBeGreaterThan(0);   // guard: the regex must actually match rows
+    const missing = POOLED.filter((p) => !envExample.includes(p.envPlural!) && !envExample.includes(p.envSingular!));
+    expect(missing.map((p) => p.id), "undocumented — invisible to anyone setting up").toEqual([]);
   });
 });
 
 describe("credential writes stay local-only", () => {
   it("/api/admin/keys and /api/admin/config are loopback-gated", () => {
-    // They write API keys and integration tokens (Slack, Discord, Notion, Cloudflare) — a remote
-    // token-holder must not be able to redirect SAM's outbound integrations.
+    // CONFIG_ENV can write the Slack token, Discord webhook, Notion/Linear and Cloudflare keys —
+    // a remote token-holder must not be able to redirect SAM's outbound integrations.
     for (const route of ['app.post("/api/admin/keys"', 'app.post("/api/admin/config"']) {
       const at = index.indexOf(route);
       expect(at, `${route} not found`).toBeGreaterThan(-1);
