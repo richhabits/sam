@@ -1877,3 +1877,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .use-badge { display: inline-flex; align-items: center; gap: 4px; }
 .use-foot { display: flex; align-items: flex-start; gap: 7px; }
 .use-foot .ic { flex: none; margin-top: 2px; opacity: .8; }
+
+/* Handoff prompt — step 1 of import. A raw ChatGPT export is tens of thousands of lines of
+   mostly noise; this asks the assistant that already knows you to write one page instead. */
+.handoff { margin: 14px 0 10px; padding: 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 12px; }
+.handoff-h { display: flex; align-items: center; gap: 9px; }
+.handoff-step { flex: none; width: 20px; height: 20px; border-radius: 999px; background: var(--accent);
+  color: var(--on-accent); font-size: 11px; font-weight: 700; display: inline-flex;
+  align-items: center; justify-content: center; }
+.handoff-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.handoff-copy { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  appearance: none; border: 1px solid var(--border); border-radius: 9px; background: var(--surface);
+  color: var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.handoff-copy:hover { border-color: var(--accent); }
+.handoff-sub { margin: 6px 0 8px; font-size: 12px; color: var(--muted); }
+.handoff-text { width: 100%; padding: 9px 10px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 9px; color: var(--muted);
+  font: inherit; font-size: 11.5px; line-height: 1.45; resize: vertical; }
