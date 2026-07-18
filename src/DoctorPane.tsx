@@ -14,7 +14,7 @@ export default function DoctorPane({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   useEscape(onClose);
 
-  const run = () => { setLoading(true); getDoctor().then(setR).catch(() => {}).finally(() => setLoading(false)); };
+  const run = () => { setLoading(true); getDoctor().then(setR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}).finally(() => setLoading(false)); };
   // biome-ignore lint/correctness/useExhaustiveDependencies: run checks once on mount
   useEffect(() => { run(); }, []);
 

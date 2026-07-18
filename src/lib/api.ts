@@ -67,7 +67,7 @@ export async function streamCommand(message: string, projectId: string | undefin
     const parts = buf.split("\n\n"); buf = parts.pop() || "";
     for (const p of parts) {
       const line = p.trim(); if (!line.startsWith("data:")) continue;
-      try { onEvent(JSON.parse(line.slice(5).trim())); } catch {}
+      try { onEvent(JSON.parse(line.slice(5).trim())); } catch { /* corrupt stored value — treat as absent and use the default */ }
     }
   }
 }
@@ -134,7 +134,7 @@ export async function streamTeam(message: string, projectId: string | undefined,
     const { done, value } = await reader.read(); if (done) break;
     buf += dec.decode(value, { stream: true });
     const parts = buf.split("\n\n"); buf = parts.pop() || "";
-    for (const p of parts) { const line = p.trim(); if (!line.startsWith("data:")) continue; try { onEvent(JSON.parse(line.slice(5).trim())); } catch {} }
+    for (const p of parts) { const line = p.trim(); if (!line.startsWith("data:")) continue; try { onEvent(JSON.parse(line.slice(5).trim())); } catch { /* corrupt stored value — treat as absent and use the default */ } }
   }
 }
 export const getRoster = () => fetch("/api/team/roster").then((r) => r.json());

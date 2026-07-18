@@ -53,11 +53,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       // failed fetch would render an EMPTY settings panel — indistinguishable from "SAM has no
       // providers". Swallowing the error here is what made that silent, so it is surfaced below.
     }).catch(() => setCfgErr("Couldn't load settings from SAM. Is it running on this machine?"));
-    getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
-    getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
-    pushEnabled().then(setPushOn).catch(() => {});
-    getMcpPresets().then((r) => setMcp(r.presets || [])).catch(() => {});
-    getSigningStatus().then(setSigning).catch(() => {});
+    getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); else setPhoneQR(""); }).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    pushEnabled().then(setPushOn).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    getMcpPresets().then((r) => setMcp(r.presets || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount; refresh is stable
   useEffect(() => { refresh(); }, []);
@@ -280,7 +280,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                   <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
                     if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
                     const r = await regeneratePhone().catch(() => ({ ok: false }));
-                    if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
+                    if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
                   }}>🔁 New token</button>
                   <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
                     if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
@@ -380,9 +380,9 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
                 if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
                 if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
-                setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh(); getSigningStatus().then(setSigning).catch(() => {});
+                setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh(); getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
               }}>{saved === "apple" ? "Saved ✓" : "Save"}</button>
-              <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {})}>↻ Re-check</button>
+              <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */})}>↻ Re-check</button>
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               setSigningMsg("Generating keystore…");
               const r = await genAndroidKeystore().catch(() => ({ ok: false, error: "failed" }));
               setSigningMsg(r.ok ? `✅ Keystore created (vault/signing/). Password saved — keep it safe.` : `⚠️ ${r.error || "couldn't create"}`);
-              getSigningStatus().then(setSigning).catch(() => {});
+              getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
             }}>{signing?.android?.hasKeystore ? "Keystore ready ✓" : "Generate Android keystore"}</button>
             {signingMsg && <span className="admin-note">{signingMsg}</span>}
           </div>

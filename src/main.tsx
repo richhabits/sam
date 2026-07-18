@@ -18,7 +18,7 @@ if (typeof location !== "undefined" && location.protocol === "file:") {
 
 // Register the service worker (push + offline shell). Only over http(s), not file:// (Electron).
 if (typeof location !== "undefined" && location.protocol.startsWith("http") && "serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {/* browser API unavailable in this context — optional enhancement */}));
 }
 
 // ?app=studio (dedicated Electron window or a tab) → the Creative Space, else the chat.

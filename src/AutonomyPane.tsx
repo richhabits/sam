@@ -20,9 +20,9 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
 
   const load = () => {
-    getConsent().then((d) => setBehaviors(d?.behaviors || [])).catch(() => {});
-    getSuggestions().then((d) => setCards(d?.cards || [])).catch(() => {});
-    getAutonomyLog().then((d) => setLog(d?.entries || [])).catch(() => {});
+    getConsent().then((d) => setBehaviors(d?.behaviors || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    getSuggestions().then((d) => setCards(d?.cards || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+    getAutonomyLog().then((d) => setLog(d?.entries || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: poll on mount; load is stable, cleaned up on unmount
   useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, []);

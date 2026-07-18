@@ -15,7 +15,7 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
   const [lastRun, setLastRun] = useState<Record<string, Run>>({});
   useEscape(onClose);
 
-  const load = () => getWorkflows().then((d) => setFlows(d?.workflows || [])).catch(() => {});
+  const load = () => getWorkflows().then((d) => setFlows(d?.workflows || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
 

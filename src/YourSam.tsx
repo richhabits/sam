@@ -19,7 +19,7 @@ export default function YourSam({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<any>(undefined);
   useEscape(onClose);
 
-  const load = () => getAnalytics().then(setS).catch(() => {});
+  const load = () => getAnalytics().then(setS).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
 

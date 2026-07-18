@@ -22,11 +22,23 @@ Many of the 129 are legitimately best-effort (telemetry, warm-up, "never break t
 guards). That is exactly the problem: **a deliberate swallow and an accidental one are
 byte-identical**, so review can't separate them and neither can a future session.
 
-**Recommendation — cheap and mechanical:** make the reason mandatory rather than optional.
-Biome's `noEmptyBlockStatements` turns a bare `catch {}` into a lint error; the fix per site is
-one comment. 129 sites is too large for a late-session sweep, so this is a decision, not a
-change I made unilaterally. Scoped to `src/` first (~60 sites, and the ones users actually see)
-it is an afternoon.
+**DONE for `src/` — 79 sites, 0 bare catches remain.** Not a blanket comment sweep: each was
+classified, and **seven were hiding user-visible failures**, now surfaced —
+  · **Elon Mode and Autopilot toggles** flipped in the UI even when the server write failed, so
+    the switch showed a state SAM was not in. They now revert and say so.
+  · **The onboarding key** was dropped silently — the user finished setup believing SAM was
+    configured when it wasn't. The worst version of this bug, and the exact class that bit
+    Settings today.
+  · **Memory delete** looked successful while the row stayed stored.
+  · **Arena reset** cleared the panel while routing kept steering by the "removed" champion.
+  · **Markets quotes** and **the crew roster** rendered empty on failure — "no data" and
+    "couldn't reach it" were indistinguishable.
+
+The other 72 are genuinely best-effort and now say *why* in one line (notifications denied,
+idempotent teardown, corrupt localStorage, background poll retries next tick). **`biome.json`
+enables `noEmptyBlockStatements` as an error scoped to `src/**`**, so a new bare catch fails
+lint — verified by adding one. **`server/` still has 49 bare vs 82 documented** and is the
+remaining half of this finding.
 
 ## 2. Three files hold 37% of the code
 

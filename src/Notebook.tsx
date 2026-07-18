@@ -27,11 +27,11 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh once on mount
   useEffect(() => { refresh(); }, []);
-  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => {}); setTurns([]); setAudio(""); }, [active]);
+  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => {/* audio playback is optional — never surface a chime failure */}); setTurns([]); setAudio(""); }, [active]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to newest on turns change
   useEffect(() => { chatRef.current?.scrollTo(0, chatRef.current.scrollHeight); }, [turns]);
 
-  function refresh() { listNotebooks().then((r) => { setBooks(r.notebooks || []); if (!active && r.notebooks?.[0]) setActive(r.notebooks[0].id); }).catch(() => {}); }
+  function refresh() { listNotebooks().then((r) => { setBooks(r.notebooks || []); if (!active && r.notebooks?.[0]) setActive(r.notebooks[0].id); }).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); }
 
   async function newBook() {
     const title = window.prompt("Name this notebook (e.g. 'Competitor research')");
