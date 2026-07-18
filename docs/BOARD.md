@@ -1,8 +1,8 @@
 # BOARD — SAM living state
 
 *Read at boot, update at session end (CLAUDE.md doctrine #9). Newest truth wins; keep it
-honest and short. Last updated: 2026-07-18, terminal session (mom_12_1_protected REJECTED at
-Gate 1; registry/clock mom_12_1 aligned; cage reviewed + 7 defects fixed; 99 tests green).*
+honest and short. Last updated: 2026-07-18, terminal session (design audit: all 4 findings
+closed; index.ts split; SSRF filtering tested; **431 tests green**).*
 
 ## Loops (the machine running itself)
 
@@ -15,8 +15,45 @@ Gate 1; registry/clock mom_12_1 aligned; cage reviewed + 7 defects fixed; 99 tes
 
 ### 🌙 SESSION END — 2026-07-18 (terminal). Read this first tomorrow.
 
-**Both repos clean, green, backed up.** SAM `main` = origin, **409 tests**, typecheck + build
-green, biome clean, `npm audit` 0 vulns. FLIP IT `30ba8a5`, **112 tests**, mirrored to
+**Both repos clean, green, backed up.** SAM `main` = origin `a98d155`, **431 tests**, typecheck
++ build green, biome clean, `npm audit` 0 vulns.
+
+**THE DESIGN AUDIT IS CLOSED — all four findings (`docs/DESIGN-AUDIT.md` has the numbers).**
+  · **#1 silent catches** — 0 bare repo-wide, 171 documented. Seven were hiding user-visible
+    failures (the worst: the onboarding key dropped silently, so setup *looked* complete).
+    `noEmptyBlockStatements` is now an error repo-wide, so a new one fails lint.
+  · **#3 no route tests** — `routes.contract.test.ts`, 6 assertions incl. every privileged write
+    being loopback-gated.
+  · **#4 circular imports** — both real cycles broken (`selftest` takes the list as a parameter;
+    `forge` gets `bindToolRegistry()` and throws if unbound), guarded by 3 tests.
+  · **#2 god files** — all four cheap route sections extracted (`routes.memory`/`workflows`/
+    `voice`/`creative`). **`index.ts` 1770 → 1638.** The rest need real state threading; the
+    MAIN COMMAND LOOP (11 shared identifiers) should stay where it is. `App.tsx` (1840) and
+    `tools.ts` (2513) deliberately untouched — `tools.ts` is a 181-entry registry and long by
+    nature.
+
+**The pattern worth carrying forward: three separate checks that could not fail, all reading
+green.** The contract test silently narrowed its own scope each time routes moved out; `app.all`
+was invisible to its route matcher — and the *only* `app.all` route is the muapi proxy, i.e. the
+one route most worth checking (wildcard path, outbound credential, hand-rolled SSRF filter) was
+the one it could not see; and that filter had no behavioural test at all. **A check that cannot
+fail is indistinguishable from a check that passed.** Every guard added this session was verified
+by reverting the fix and watching it go red. Treat "what can this check actually fail on?" as a
+standing question — I have no reason to think that was the last one.
+
+**CI actions bumped `checkout`/`setup-node` v4 → v5** (10 workflows, 20 refs). GitHub was
+force-running them on Node 24 with a deprecation warning; v5 is the drop-in that makes it
+official. `upload-artifact@v4` and `codeql-action@v4` are already current majors — left alone.
+**Only 4 of the 10 edited workflows are exercised by a push** (ci, overlay-e2e, pages,
+secret-scan). The other 6 — including **`build-desktop.yml`, the signed/notarized installer
+pipeline** — are tag/schedule/dispatch-triggered and are **unverified by this change**. Drop-in
+majors, low risk, but the first release after this is the real test: if it fails, look here first.
+
+**One live hazard now pinned in a test, worth knowing about:** the creative proxy is safe from
+`//evil.com/x` *only because the URL is string-concatenated*. `new URL(path, base)` — the more
+idiomatic form — resolves that to `evil.com` and would leak the muapi key. A tidy-up would
+introduce it while making the code look better. `routes.creative.ssrf.test.ts` asserts both
+branches plus the counterfactual, so that refactor fails loudly. FLIP IT `30ba8a5`, **112 tests**, mirrored to
 `/Volumes/ROMEO HQ/flip-it.git` — and that mirror was `git fsck`'d clean and **restore-tested**
 (cloned to scratch, suite ran green) after the drive was physically disconnected mid-session.
 
@@ -36,8 +73,9 @@ that auto-loads every session — mapped `flipit/` as an in-repo folder with `fl
 and `run_forward.py`. **None of it exists**: FLIP IT is a sibling repo at `~/flip-it`, its
 constitution is `FLIP_IT.md`, its CLI is `run.py`, and the verify crib's
 `python -m pytest flipit/tests -q` could only ever fail. Fixed. Also fixed two lint findings
-(both mine from today). Dead reference left standing: `docs/strips/AIRLLM_STRIP.md` →
-`docs/LOCAL-MODELS.md`, never written.
+(both mine from today). The AIRLLM dead reference is **fixed** — `docs/LOCAL-MODELS.md` now
+exists (Ollama setup, the private-mode-never-falls-back guarantee, warm start, and the honest
+ranking: quantized local > free cloud > 70B layer-streaming).
 
 **GLM 5.2 was already implemented** — `ZHIPU_MODEL=glm-5.2`, endpoint `open.bigmodel.cn`, and
 already **#2 in both the `deep` and `code` lanes** (after Hermes), so with a key it handles hard
