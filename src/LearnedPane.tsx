@@ -21,7 +21,10 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
   const toggleLearning = async () => { await setConsent("learn-preferences", !learning); load(); };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer learned" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

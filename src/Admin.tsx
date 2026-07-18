@@ -145,7 +145,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const totalKeys = (cfg?.providers || []).reduce((a: number, p: any) => a + p.keys, 0);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer admin" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

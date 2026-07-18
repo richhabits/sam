@@ -1008,11 +1008,16 @@ export default function App() {
   const customAccent = mode === "business" && activeBrand?.themeColor ? activeBrand.themeColor : undefined;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: app-level drag-and-drop dropzone; not a click control
     <div className="app" style={customAccent ? { "--accent": customAccent, "--accent-2": customAccent } as React.CSSProperties : undefined}
       onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!dragOver) setDragOver(true); } }}
       onDragLeave={(e) => { const rt = e.relatedTarget as Node | null; if (!rt || !e.currentTarget.contains(rt)) setDragOver(false); }}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}>
-      {dragOver && <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>}
+      {dragOver && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: dismissible drop overlay; click-anywhere or Esc dismisses
+        // biome-ignore lint/a11y/useKeyWithClickEvents: dismissible drop overlay; click-anywhere or Esc dismisses
+        <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>
+      )}
       <header className="bar">
         <div className="brandmark">
           <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
@@ -1063,6 +1068,8 @@ export default function App() {
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
         {settingsOpen && createPortal(<>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: popover scrim; click-outside close, Esc handled elsewhere */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: popover scrim; click-outside close, Esc handled elsewhere */}
           <div className="pop-scrim" onClick={() => setSettingsOpen(false)} />
           <div className="popover" role="menu">
             <div className="pop-title">Answer quality</div>
@@ -1181,6 +1188,7 @@ export default function App() {
         <button type="button" className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
       </aside>
       <div className="center">
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
       <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
         const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
         if (!btn) return;
@@ -1188,6 +1196,8 @@ export default function App() {
         navigator.clipboard.writeText(code).then(() => { btn.textContent = "Copied ✓"; setTimeout(() => { if (btn) btn.textContent = "Copy"; }, 1400); }).catch(() => {});
       }}>
         {findOpen && (
+          // biome-ignore lint/a11y/noStaticElementInteractions: onClick only stops propagation to the chat's delegated copy handler
+          // biome-ignore lint/a11y/useKeyWithClickEvents: onClick only stops propagation to the chat's delegated copy handler
           <div className="find-bar" onClick={(e) => e.stopPropagation()}>
             <span className="find-ic">🔍</span>
             <input ref={findRef} className="find-input" value={findQ} placeholder="Find in conversation…"
@@ -1375,6 +1385,7 @@ export default function App() {
         )}
         <div className="composer-inner">
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: hover wrapper (onMouseLeave dismiss); contains a real button */}
           <div className="plus-wrap" onMouseLeave={() => setPlusOpen(false)}>
             <button type="button" className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
             {plusOpen && (
@@ -1415,7 +1426,12 @@ export default function App() {
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
       </div>
-      {ctxOpen && <div className="ctx-scrim" onClick={() => setCtxOpen(false)} />}
+      {ctxOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: context-panel scrim; click-outside close
+        // biome-ignore lint/a11y/useKeyWithClickEvents: context-panel scrim; click-outside close
+        <div className="ctx-scrim" onClick={() => setCtxOpen(false)} />
+      )}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .ctx-act buttons, which are real buttons with keyboard access */}
       <aside className={ctxOpen ? "ctx open" : "ctx"}
         onClick={(e) => { if ((e.target as HTMLElement).closest(".ctx-act")) setCtxOpen(false); }}>
         <div className="ctx-title">Context</div>
@@ -1450,7 +1466,10 @@ export default function App() {
       </div>
 
       {marketsOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
         <div className="drawer-wrap" onClick={() => setMarketsOpen(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">Markets</div><div className="drawer-sub">Live quotes · free · no API key</div></div>
@@ -1485,7 +1504,10 @@ export default function App() {
         </div>
       )}
       {colosseumOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
         <div className="drawer-wrap" onClick={() => setColosseumOpen(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">⚔️ Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
@@ -1522,7 +1544,10 @@ export default function App() {
         </div>
       )}
       {historyOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
         <div className="drawer-wrap left" onClick={() => setHistoryOpen(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer drawer-l" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">Chats</div><div className="drawer-sub">Your conversations, saved on this computer.</div></div>
@@ -1547,7 +1572,10 @@ export default function App() {
       )}
 
       {memoryOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
         <div className="drawer-wrap" onClick={() => setMemoryOpen(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">What SAM remembers about you</div><div className="drawer-sub">{mem ? `${mem.count} thing${mem.count === 1 ? "" : "s"} learned · all on your computer — nothing left your device` : "Loading…"}</div></div>
@@ -1598,7 +1626,9 @@ export default function App() {
       )}
 
       {rosterOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal scrim; click-outside close, Esc handled elsewhere
         <div className="roster-scrim" onMouseDown={() => setRosterOpen(false)}>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: content panel; onMouseDown only stops scrim-close propagation */}
           <div className="roster" onMouseDown={(e) => e.stopPropagation()}>
             <div className="roster-head">
               <div>
@@ -1626,7 +1656,9 @@ export default function App() {
       )}
 
       {importOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal scrim; click-outside close, Esc handled elsewhere
         <div className="roster-scrim" onMouseDown={() => !importBusy && setImportOpen(false)}>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: content panel; onMouseDown only stops scrim-close propagation */}
           <div className="import-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="roster-head">
               <div>
@@ -1704,7 +1736,9 @@ export default function App() {
         const filtered = q ? acts.filter((a) => a.label.toLowerCase().includes(q)) : acts;
         const go = (a?: { run: () => void }) => { if (!a) return; setPalette(false); a.run(); };
         return (
+          // biome-ignore lint/a11y/noStaticElementInteractions: command-palette scrim; click-outside close, Esc handled elsewhere
           <div className="cmdp-scrim" onMouseDown={() => setPalette(false)}>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: content panel; onMouseDown only stops scrim-close propagation */}
             <div className="cmdp" onMouseDown={(e) => e.stopPropagation()}>
               <input ref={paletteRef} className="cmdp-input" value={pq} placeholder="Run a command…  ↑↓ move · ↵ run · esc close"
                 onChange={(e) => { setPq(e.target.value); setPi(0); }}
@@ -1717,6 +1751,7 @@ export default function App() {
                 {filtered.length === 0
                   ? <div className="cmdp-empty">No matching command.</div>
                   : filtered.map((a, i) => (
+                    // biome-ignore lint/a11y/noStaticElementInteractions: command-palette item; keyboard nav handled by the input's arrow/enter keydown
                     <div key={a.label} className={`cmdp-item ${i === pi ? "on" : ""}`} onMouseEnter={() => setPi(i)} onMouseDown={() => go(a)}>
                       <span className="cmdp-ic">{a.icon}</span>
                       <span className="cmdp-label">{a.label}</span>
@@ -1745,7 +1780,10 @@ export default function App() {
       </Suspense>
 
       {toolsOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
         <div className="drawer-wrap" onClick={() => setToolsOpen(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">What SAM can do</div><div className="drawer-sub">Reading &amp; searching happen automatically. 🔒 = SAM asks you first.</div></div>
