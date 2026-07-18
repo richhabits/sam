@@ -1693,3 +1693,187 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* The blurb is why you'd pick one — a native select could never show it. */
 .pp-blurb { flex: 1; min-width: 0; text-align: right; font-size: 12px; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============================================================================
+   NOTEBOOKS + PROGRESS TRACKER — glyphs, not clip-art.
+   Same reasoning as the icon pass above: emoji ignored the theme and, in the
+   tracker's 13px dot, rendered as unreadable colour smudges that could never
+   take the accent. Everything below just aligns the stroke glyphs with the
+   text they sit beside — no colours of their own, so all nine themes carry.
+   ========================================================================== */
+
+/* Header: baseline alignment was right for text-only, wrong once the title has a glyph. */
+.nb-head { align-items: center; }
+.nb-title { display: inline-flex; align-items: center; gap: 8px; }
+.nb-x { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Icon + label rows. */
+.nb-new, .nb-add-tabs button, .nb-audio-btn, .nb-play, .nb-cites, .nb-audio-head,
+.nb-source-ic, .nb-del { display: inline-flex; align-items: center; gap: 6px; }
+.nb-add-tabs button, .nb-new { justify-content: center; }
+.nb-cites, .nb-source-ic { color: var(--muted); }
+.nb-cites .ic, .nb-source-ic .ic { opacity: .75; }
+.nb-add-tabs button.on .ic { color: var(--accent-text, var(--accent)); }
+.nb-del { justify-content: center; padding: 4px 6px; border-radius: 8px; }
+.nb-del:hover { opacity: 1; background: var(--surface); }
+
+/* Tracker dot: the glyph takes the step's own colour, so a done step fades and the
+   active step picks up the accent — which is exactly what emoji could not do. */
+.tdot { color: var(--muted); }
+.tstep.active .tdot { color: var(--accent-text, var(--accent)); }
+.tico { display: block; vertical-align: 0; }
+
+/* ============================================================================
+   STUDIO — a studio, not a form.
+   The left panel was one column ~1.3 screens tall (16 style cards + 16 motion
+   chips + ratio + count + prompt + Generate), so on video the Generate button
+   sat below the fold and the emoji headings (🎨 🖼 🎬 🎥 ✨ ⬇︎ ⧉ ✎ ↻ ✕) read as
+   stickers on a light theme. Now: a fixed header (brand + mode + tabs), ONE
+   tab's controls in the only scrolling region, and a pinned prompt/Generate
+   footer — the panel itself never scrolls past a screen, whatever the mode.
+   ========================================================================== */
+.stu-panel { padding: 0; gap: 0; overflow: hidden; }
+.stu-head { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 0; flex: none; }
+.stu-brand { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.stu-brand .ic { color: var(--accent-text, var(--accent)); }
+.stu-mode .seg-btn { flex-direction: row; gap: 7px; font-size: 13px; padding: 8px 4px; }
+
+/* Tabs carry their current pick underneath, so switching tab never hides what's set —
+   and one word, not a sentence. */
+.stu-tabs { margin: 0; }
+.stu-tabs button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; }
+.stu-tabs em { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stu-tabs button.on em { color: var(--accent-text, var(--accent)); }
+
+/* The ONLY scrolling region in the panel. */
+.stu-tabbody { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 12px;
+  display: flex; flex-direction: column; gap: 8px; }
+
+/* Style cards reflow to as many columns as the panel is wide — 16 cards were 8 rows at two
+   columns, which is what made this a scroll in the first place. */
+.stu-styles { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 7px; }
+.stu-style { height: 62px; border-width: 1.5px; transition: transform .12s ease, border-color .12s ease; }
+.stu-style:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+.stu-style-tick { position: absolute; top: 5px; right: 5px; z-index: 1; display: flex;
+  align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 999px;
+  background: var(--accent); color: var(--on-accent); }
+@media (prefers-reduced-motion: reduce) { .stu-style { transition: none; } .stu-style:hover { transform: none; } }
+
+.stu-label { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.stu-label .ic { opacity: .8; }
+.stu-note { font-size: 12.5px; color: var(--muted); padding: 2px 0; }
+
+/* Ratio: the box IS the ratio. Five identical pills reading "16:9" made you parse text to
+   choose a shape. */
+.stu-ratios { display: flex; gap: 7px; flex-wrap: wrap; }
+.stu-ratio { flex: 1 1 62px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 9px 6px; appearance: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 11px; color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.stu-ratio-box { display: block; width: 30px; max-height: 30px; border-radius: 3px;
+  border: 1.75px solid currentColor; opacity: .75; }
+.stu-ratio:hover { color: var(--text); }
+.stu-ratio.on { border-color: var(--accent); color: var(--accent-text, var(--accent));
+  background: var(--accent-soft); }
+.stu-ratio.on .stu-ratio-box { opacity: 1; }
+.stu-count .seg-btn { flex-direction: row; font-size: 12px; padding: 8px 4px; }
+
+/* Prompt + Generate are pinned: the one thing you always need is never scrolled away. */
+.stu-foot { flex: none; display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 18px 16px; border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.stu-promptwrap { position: relative; display: flex; }
+.stu-promptwrap .stu-prompt { flex: 1; min-height: 76px; padding-bottom: 38px; }
+.stu-enhance { position: absolute; left: 9px; bottom: 9px; display: inline-flex; align-items: center;
+  gap: 5px; align-self: auto; padding: 5px 11px; font-size: 12px; }
+.stu-generate { margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px; font-size: 15px; }
+.stu-kbd { margin-left: 2px; padding: 1px 6px; border-radius: 6px; font: inherit; font-size: 11px;
+  font-weight: 700; background: color-mix(in srgb, var(--on-accent) 22%, transparent); opacity: .85; }
+.stu-generate:disabled .stu-kbd { display: none; }
+
+/* Canvas: an empty stage with one grey sentence looked unfinished. */
+.stu-hint-ic { display: block; margin: 0 auto 10px; color: var(--muted); opacity: .55; }
+.stu-hint-sub { opacity: .6; font-size: 13px; }
+.stu-act .ic { opacity: .8; }
+.stu-act:hover .ic { opacity: 1; }
+.stu-thumb { position: relative; }
+.stu-thumb-badge { position: absolute; left: 4px; bottom: 4px; display: flex; padding: 2px;
+  border-radius: 5px; background: rgba(0,0,0,.55); color: #fff; }
+
+@media (max-width: 720px) { .stu-tabbody { max-height: 42vh; } }
+
+/* ============================================================================
+   PANES — de-clip-art pass (Autonomy, Workflows, Doctor, Learned, Usage)
+   Same argument as the icon block above, applied to the five drawers that were
+   still using emoji as chrome: 🕹️ 🔗 🩺 🧠 📊 as titles, ✅⚠️❌ as status, ⏸ ▶ 🗑
+   as buttons. They ignored the theme, couldn't take the accent, and rendered as
+   stickers on the light themes.
+   Three structural fixes travel with it:
+     · Autonomy and Doctor were single columns tall enough to scroll several
+       screens — Autonomy is tabbed (.pop-tabs, same shape as Settings) and
+       Doctor/Workflows collapse to one row per item (.admin-rowhead, same shape
+       as the API-keys drawer).
+     · The bespoke .au-switch/.au-knob is retired in favour of the .sw switch
+       from Settings, so the app has ONE switch. The old rules stay above,
+       unreferenced, rather than being edited out of a shared file.
+     · States read as a word on the right — "OK", "Ready", "All off", "Asks" —
+       not as a sentence.
+   [appended block — nothing above this line is touched]
+   ========================================================================== */
+
+/* Titles carry a glyph, so they're a flex line rather than an emoji + text run. */
+.drawer-title { display: flex; align-items: center; gap: 9px; }
+.drawer-title .ic { color: var(--muted); opacity: .85; flex: none; }
+
+/* ── Autonomy ─────────────────────────────────────────────────────────────── */
+.drawer.autonomy .pop-tabs, .drawer.workflows .pop-tabs { margin-bottom: 14px; }
+/* .sw is 20px tall against the 22px .au-switch it replaces — nudge it onto the
+   label's first baseline in the flex-start row. */
+.au-behavior .sw { margin-top: 2px; }
+.au-pause { display: inline-flex; align-items: center; gap: 5px; }
+.au-log-icon { display: flex; color: var(--muted); }
+.au-log-row.acted .au-log-icon { color: var(--accent-text, var(--accent)); }
+.au-log-row.blocked .au-log-icon { color: var(--c-err); }
+
+/* ── Workflows: disclosure row + icon buttons ─────────────────────────────── */
+.wf-card { padding: 0; }
+.wf-card-head { gap: 4px; padding-right: 10px; }
+.wf-head { padding: 12px 14px; flex: 1; min-width: 0; }
+.wf-card .wf-body, .wf-card .wf-run-result { margin-left: 14px; margin-right: 14px; }
+.wf-card .wf-run-result { margin-bottom: 12px; }
+.wf-card:not(.open) .wf-run-result { margin-top: 0; padding-top: 0; background: none;
+  font-size: 11.5px; }
+.wf-run, .wf-install, .wf-run-result { display: inline-flex; align-items: center; gap: 6px; }
+.wf-run-result { justify-content: flex-start; }
+.wf-del { display: inline-flex; align-items: center; color: var(--muted); }
+.wf-del:hover { color: var(--c-err); }
+.wf-step { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── Doctor: the row is the summary, the body is why ──────────────────────── */
+.dr-check { padding: 0; }
+.dr-check-top { width: 100%; appearance: none; background: none; border: 0; cursor: pointer;
+  font: inherit; text-align: left; padding: 12px 14px; }
+.dr-icon { display: flex; flex: none; }
+.dr-check.ok .dr-icon { color: var(--c-ok); }
+.dr-check.warn .dr-icon { color: #F59E0B; }
+.dr-check.fail .dr-icon { color: var(--c-err); }
+.dr-label { flex: 1; min-width: 0; }
+/* A state is a word, right-aligned — not the detail sentence it used to be. */
+.dr-state { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.dr-check.warn .dr-state { color: #F59E0B; }
+.dr-check.fail .dr-state { color: var(--c-err); }
+.dr-check .dr-detail, .dr-check .dr-fix { margin-right: 14px; }
+.dr-check.open .dr-fix { margin-bottom: 12px; }
+.dr-check.open .dr-detail:last-child { padding-bottom: 12px; }
+.dr-rerun { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Learned: the on-device promise as a chip, not a clause ───────────────── */
+.learned-lock { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px;
+  padding: 1px 7px; border-radius: 999px; font-size: 11.5px;
+  background: color-mix(in srgb, var(--c-ok) 13%, transparent); }
+
+/* ── Usage ────────────────────────────────────────────────────────────────── */
+.use-badge { display: inline-flex; align-items: center; gap: 4px; }
+.use-foot { display: flex; align-items: flex-start; gap: 7px; }
+.use-foot .ic { flex: none; margin-top: 2px; opacity: .8; }

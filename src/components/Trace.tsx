@@ -1,4 +1,4 @@
-
+import Icon, { type IconName } from "../Icon";
 
 // Turn a step label into text with any URL rendered as a compact source link.
 function traceLine(t: string) {
@@ -11,30 +11,31 @@ function traceLine(t: string) {
 }
 
 // A mini icon for each step SAM takes — so you can watch the A→X journey.
-const STEP_ICONS: [RegExp, string][] = [
-  [/git ?hub|repo|issue|pull request|\bpr\b|commit|pushing|branch/i, "🐙"],
-  [/git status/i, "🔀"],
-  [/your apps/i, "📱"], [/your socials/i, "📲"],
-  [/search|google|looking up/i, "🔍"], [/read/i, "📖"],
-  [/weather/i, "🌤️"], [/location/i, "📍"], [/time/i, "🕐"],
-  [/email|mail|gmail/i, "📧"], [/call|ring|facetime|phone/i, "📞"],
-  [/message|imessage|text/i, "💬"], [/calendar|diary|event/i, "📅"],
-  [/remind/i, "⏰"], [/notif/i, "🔔"],
-  [/file|folder|desktop|spotlight/i, "📁"], [/screenshot|screen/i, "📸"],
-  [/music|play|song|track/i, "🎵"], [/download/i, "⬇️"],
-  [/open|browser|url|website/i, "🌐"], [/command|terminal|running/i, "💻"],
-  [/click|type|mouse|keyboard/i, "🖱️"],
+// Stroke glyphs, not emoji: at 13px the emoji were unreadable colour smudges that
+// ignored the theme, and the dot they sit in can't tint clip-art with the accent.
+const STEP_ICONS: [RegExp, IconName][] = [
+  [/git ?hub|repo|issue|pull request|\bpr\b|commit|pushing|branch|git status/i, "branch"],
+  [/your apps/i, "grid"], [/your socials/i, "people"],
+  [/search|google|looking up/i, "search"], [/read/i, "book"],
+  [/weather/i, "cloud"], [/location/i, "location"], [/time/i, "clock"],
+  [/email|mail|gmail/i, "mail"], [/call|ring|facetime|phone/i, "phone"],
+  [/message|imessage|text/i, "chat"], [/calendar|diary|event/i, "calendar"],
+  [/remind|notif/i, "bell"],
+  [/file|folder|desktop|spotlight/i, "folder"], [/screenshot|screen/i, "screen"],
+  [/music|play|song|track/i, "music"], [/download/i, "download"],
+  [/open|browser|url|website/i, "globe"], [/command|terminal|running/i, "terminal"],
+  [/click|type|mouse|keyboard/i, "cursor"],
 ];
-function stepIcon(a: string): string {
+function stepIcon(a: string): IconName {
   for (const [re, ic] of STEP_ICONS) if (re.test(a)) return ic;
-  return "⚙️";
+  return "settings";
 }
 
 // Uber-style live progress tracker: mini icons + a connecting line, the current
 // step pulsing, everything before it ticked off. Shows the journey from A → X.
 export function ProgressTracker({ steps, answering }: { steps: string[]; answering: boolean }) {
   const items = steps.map((s) => ({ icon: stepIcon(s), label: s.replace(/^✓\s*/, "") }));
-  if (answering) items.push({ icon: "✍️", label: "Writing your answer" });
+  if (answering) items.push({ icon: "pencil" as IconName, label: "Writing" });
   return (
     <div className="tracker" role="status" aria-label="SAM progress">
       {items.map((it, i) => {
@@ -42,7 +43,7 @@ export function ProgressTracker({ steps, answering }: { steps: string[]; answeri
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: render-only progress tracker; steps append in order
           <div key={i} className={`tstep ${isLast ? "active" : "done"}`}>
-            <span className="tdot"><span className="tico">{it.icon}</span></span>
+            <span className="tdot"><Icon name={it.icon} size={13} className="tico" /></span>
             <span className="tlabel">{traceLine(it.label)}</span>
           </div>
         );
@@ -58,7 +59,7 @@ export function TraceStrip({ steps }: { steps: string[] }) {
       {steps.map((t, j) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: render-only completed journey; steps are in order
         <div key={j} className="tstep done">
-          <span className="tdot"><span className="tico">{stepIcon(t)}</span></span>
+          <span className="tdot"><Icon name={stepIcon(t)} size={13} className="tico" /></span>
           <span className="tlabel">{traceLine(t.replace(/^✓\s*/, ""))}</span>
         </div>
       ))}

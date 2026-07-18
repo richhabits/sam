@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { getStatus } from "./lib/api";
+import Icon from "./Icon";
 import { useEscape } from "./lib/useOverlay";
 
-// 📊 Live Usage — even though it's all free, this shows WHERE SAM is spending each provider,
+// Live Usage — even though it's all free, this shows WHERE SAM is spending each provider,
 // which are rate-limited right now, and when they free up. So you can see if you're leaning on
 // one too hard → add another free key or let SAM spread the load.
 
@@ -41,14 +42,14 @@ export default function Usage({ onClose }: { onClose: () => void }) {
       <aside className="drawer usage" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">📊 Live usage</div>
-            <div className="drawer-sub">{freeWithKeys} free provider{freeWithKeys === 1 ? "" : "s"} connected · {totalUses} calls this session · SAM spreads work so your free quotas last.</div>
+            <div className="drawer-title"><Icon name="chart" size={19} /> Live usage</div>
+            <div className="drawer-sub">{freeWithKeys} free provider{freeWithKeys === 1 ? "" : "s"} · {totalUses} calls this session</div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" size={16} /></button>
         </div>
 
         {active.length === 0 && (
-          <div className="drawer-empty">No keyed providers yet — SAM's running on the free no-key brain. Add free keys (🔑 up top) and you'll see each one's usage here.</div>
+          <div className="drawer-empty">No keyed providers yet — SAM's running on the free no-key brain. Add free keys (<Icon name="key" size={14} /> up top) and you'll see each one's usage here.</div>
         )}
 
         <div className="use-list">
@@ -59,7 +60,9 @@ export default function Usage({ onClose }: { onClose: () => void }) {
                 <div className="use-top">
                   <span className="use-name">{p.provider}</span>
                   <span className={"use-badge " + (cooling ? "cool" : "ok")}>
-                    {cooling ? `⏳ resets ~${resetIn(p.coolingUntil)}` : `✓ ready`}
+                    {cooling
+                      ? <><Icon name="clock" size={12} /> {resetIn(p.coolingUntil)}</>
+                      : <><Icon name="check" size={12} /> Ready</>}
                   </span>
                   <span className="use-count">{p.uses} calls</span>
                 </div>
@@ -71,7 +74,7 @@ export default function Usage({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="use-foot">
-          💡 Seeing one provider maxed with others idle? SAM already rotates — but adding a second free key to a busy one (or a new provider) gives it more headroom. It's all free; this just shows the flow.
+          <Icon name="sparkle" size={14} /> One provider maxed while others idle? SAM already rotates — a second free key just gives it more headroom.
         </div>
       </aside>
     </div>

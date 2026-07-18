@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
 
-// 🎨 SAM Studio — a real creative studio (Higgsfield-style), free & on-brand.
+// SAM Studio — a real creative studio (Higgsfield-style), free & on-brand.
 // Visual style cards with LIVE preview images (free Pollinations), cinematic camera-motion
 // presets for video, aspect ratios, prompt-enhance, variations. Routes through SAM's free
 // media matrix (/api/studio/*) — Pollinations → keyed lanes → fal/Novita — so it works with
@@ -68,6 +69,8 @@ const RATIOS = [
 ];
 
 type Mode = "image" | "video";
+/** Which control group the left panel is showing. Tabs, so the panel never scrolls past a screen. */
+type Tab = "style" | "camera" | "output";
 /** A finished generation plus the exact settings that made it — so it can be re-run or tweaked. */
 type Item = { id: string; url: string; kind: Mode; prompt: string; style: string; motion: string; ratio: string; at: number };
 /** One generation request. Held as a value so "re-run" and "generate" are the same code path. */
@@ -101,6 +104,7 @@ function tidyError(raw: unknown, fallback: string): string {
 export default function StudioView() {
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<Mode>("image");
+  const [tab, setTab] = useState<Tab>("style");
   const [style, setStyle] = useState("cinematic");
   const [motion, setMotion] = useState("");
   const [ratio, setRatio] = useState("16:9");
@@ -129,6 +133,12 @@ export default function StudioView() {
   }, [busy]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Camera moves only exist for video, so the Camera tab disappears in image mode — leaving the
+  // panel parked on a tab that no longer renders would show an empty column.
+  useEffect(() => {
+    if (mode === "image") setTab((t) => (t === "camera" ? "style" : t));
+  }, [mode]);
 
   const toast = useCallback((msg: string) => {
     setNote(msg);
@@ -274,90 +284,154 @@ export default function StudioView() {
   }
 
   const modeLabel = mode === "video" ? "video" : count > 1 ? `${count} images` : "image";
+  const styleLabel = STYLES.find((s) => s.id === style)?.label ?? style;
+  const motionLabel = MOTIONS.find((m) => m.id === motion)?.label ?? "Static";
 
   return (
     <div className="studio">
-      {/* ── LEFT: command center ── */}
+      {/* ── LEFT: command center. Three fixed regions — header, one tab's controls, and the
+          prompt/Generate footer — so the panel itself never scrolls: only the tab body does. ── */}
       <aside className="stu-panel">
-        <div className="stu-brand">🎨 SAM <b>Studio</b></div>
+        <header className="stu-head">
+          <div className="stu-brand"><Icon name="studio" size={17} /><span>SAM <b>Studio</b></span></div>
 
-        <div className="stu-seg">
-          <button type="button" className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>🖼 Image</button>
-          <button type="button" className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>🎬 Video</button>
-        </div>
-
-        <div className="stu-label">Style</div>
-        <div className="stu-styles">
-          {STYLES.map((s) => (
-            <button type="button" key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
-              style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.suffix}>
-              <span className="stu-style-label">{s.label}</span>
+          <div className="seg stu-mode">
+            <button type="button" className={`seg-btn ${mode === "image" ? "on" : ""}`} onClick={() => setMode("image")}>
+              <Icon name="studio" size={15} /><span>Image</span>
             </button>
-          ))}
-        </div>
-
-        {mode === "video" && (<>
-          <div className="stu-label">🎥 Camera motion</div>
-          <div className="stu-motions">
-            {MOTIONS.map((m) => (
-              <button type="button" key={m.id || "static"} className={`stu-chip ${motion === m.id ? "on" : ""}`} onClick={() => setMotion(m.id)}>{m.label}</button>
-            ))}
+            <button type="button" className={`seg-btn ${mode === "video" ? "on" : ""}`} onClick={() => setMode("video")}>
+              <Icon name="video" size={15} /><span>Video</span>
+            </button>
           </div>
-        </>)}
 
-        <div className="stu-row2">
-          <div style={{ flex: 1 }}>
-            <div className="stu-label">Ratio</div>
-            <div className="stu-motions">{RATIOS.map((r) => <button type="button" key={r.id} className={`stu-chip ${ratio === r.id ? "on" : ""}`} onClick={() => setRatio(r.id)}>{r.label}</button>)}</div>
+          {/* Each tab carries its current pick, so switching away doesn't hide what's set. */}
+          <div className="pop-tabs stu-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === "style"} className={tab === "style" ? "on" : ""} onClick={() => setTab("style")}>
+              Style<em>{styleLabel}</em>
+            </button>
+            {mode === "video" && (
+              <button type="button" role="tab" aria-selected={tab === "camera"} className={tab === "camera" ? "on" : ""} onClick={() => setTab("camera")}>
+                Camera<em>{motionLabel}</em>
+              </button>
+            )}
+            <button type="button" role="tab" aria-selected={tab === "output"} className={tab === "output" ? "on" : ""} onClick={() => setTab("output")}>
+              Output<em>{mode === "image" && count > 1 ? `${ratio} · ${count}` : ratio}</em>
+            </button>
           </div>
-          {mode === "image" && (
-            <div>
-              <div className="stu-label">Count</div>
-              <div className="stu-motions">{[1, 2, 4].map((n) => <button type="button" key={n} className={`stu-chip ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>{n}</button>)}</div>
+        </header>
+
+        <div className="stu-tabbody">
+          {tab === "style" && (
+            <div className="stu-styles">
+              {STYLES.map((s) => (
+                <button type="button" key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
+                  style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.suffix}>
+                  <span className="stu-style-label">{s.label}</span>
+                  {style === s.id && <span className="stu-style-tick"><Icon name="check" size={13} /></span>}
+                </button>
+              ))}
             </div>
+          )}
+
+          {tab === "camera" && mode === "video" && (
+            <>
+              <div className="stu-label"><Icon name="camera" size={14} /> Camera motion</div>
+              <div className="stu-motions">
+                {MOTIONS.map((m) => (
+                  <button type="button" key={m.id || "static"} className={`stu-chip ${motion === m.id ? "on" : ""}`} onClick={() => setMotion(m.id)} title={m.phrase || "No camera movement"}>{m.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "output" && (
+            <>
+              <div className="stu-label"><Icon name="frame" size={14} /> Aspect ratio</div>
+              {/* The little box IS the ratio — five identical pills all reading "16:9" made you
+                  read text to pick a shape. */}
+              <div className="stu-ratios">
+                {RATIOS.map((r) => (
+                  <button type="button" key={r.id} className={`stu-ratio ${ratio === r.id ? "on" : ""}`} onClick={() => setRatio(r.id)}>
+                    <span className="stu-ratio-box" style={{ aspectRatio: `${r.w} / ${r.h}` }} />
+                    <span>{r.label}</span>
+                  </button>
+                ))}
+              </div>
+              {mode === "image" ? (
+                <>
+                  <div className="stu-label"><Icon name="copy" size={14} /> How many</div>
+                  <div className="seg stu-count">
+                    {[1, 2, 4].map((n) => (
+                      <button type="button" key={n} className={`seg-btn ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>
+                        <span>{n === 1 ? "One" : `${n} at once`}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="stu-note">Video comes back one clip at a time.</div>
+              )}
+            </>
           )}
         </div>
 
-        <div className="stu-label">Prompt</div>
-        <textarea className="stu-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
-          placeholder={`Describe your ${mode}…  (⌘↵ to generate)`}
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(currentSpec()); }} autoFocus />
-        <button type="button" className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing}>{enhancing ? "✨ Enhancing…" : "✨ Enhance my prompt"}</button>
-
-        {error && <div className="stu-error">{error}</div>}
-
-        {busy ? (
-          <div className="stu-running">
-            <div className="stu-runline">
-              <span className="stu-spin" />
-              <span>{mode === "video" ? "Filming your shot" : `Generating${pending > 1 ? ` — ${pending} left` : ""}`}</span>
-              <span className="stu-elapsed">{elapsed}s</span>
-            </div>
-            <button type="button" className="stu-stop" onClick={stop}>Stop waiting</button>
+        <footer className="stu-foot">
+          <div className="stu-promptwrap">
+            <textarea className="stu-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
+              placeholder={`Describe your ${mode}…`}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(currentSpec()); }} autoFocus />
+            <button type="button" className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing} title="Let SAM rewrite your prompt with more detail">
+              <Icon name="sparkle" size={14} /><span>{enhancing ? "Enhancing…" : "Enhance"}</span>
+            </button>
           </div>
-        ) : (
-          <button type="button" className="stu-generate" onClick={() => run(currentSpec())} disabled={!prompt.trim()}>
-            Generate {modeLabel}
-          </button>
-        )}
+
+          {error && <div className="stu-error">{error}</div>}
+
+          {busy ? (
+            <div className="stu-running">
+              <div className="stu-runline">
+                <span className="stu-spin" />
+                <span>{mode === "video" ? "Filming your shot" : `Generating${pending > 1 ? ` — ${pending} left` : ""}`}</span>
+                <span className="stu-elapsed">{elapsed}s</span>
+              </div>
+              <button type="button" className="stu-stop" onClick={stop}>Stop waiting</button>
+            </div>
+          ) : (
+            <button type="button" className="stu-generate" onClick={() => run(currentSpec())} disabled={!prompt.trim()}>
+              <Icon name="sparkle" size={16} /><span>Generate {modeLabel}</span><kbd className="stu-kbd">⌘↵</kbd>
+            </button>
+          )}
+        </footer>
       </aside>
 
       {/* ── RIGHT: immersive canvas ── */}
       <main className="stu-canvas">
         <div className="stu-stage">
-          {busy && !item && <div className="stu-hint">{mode === "video" ? `Filming your shot — a minute or two… (${elapsed}s)` : `Painting your image… (${elapsed}s)`}</div>}
-          {!busy && !item && <div className="stu-hint">Pick a <b>style</b>, write a prompt, hit <b>Generate</b>.<br /><span style={{ opacity: .6 }}>Free — no keys needed. Add a free fal/Novita key for video.</span></div>}
+          {busy && !item && (
+            <div className="stu-hint">
+              <span className="stu-hint-ic"><Icon name={mode === "video" ? "video" : "studio"} size={26} /></span>
+              {mode === "video" ? "Filming your shot — a minute or two…" : "Painting your image…"}
+              <br /><span className="stu-hint-sub">{elapsed}s</span>
+            </div>
+          )}
+          {!busy && !item && (
+            <div className="stu-hint">
+              <span className="stu-hint-ic"><Icon name="studio" size={26} /></span>
+              Pick a <b>style</b>, write a prompt, hit <b>Generate</b>.
+              <br /><span className="stu-hint-sub">Free — no keys needed. Add a free fal/Novita key for video.</span>
+            </div>
+          )}
           {item && (item.kind === "video"
             ? <video key={item.id} src={item.url} controls autoPlay loop className="stu-hero" />
             // A gallery entry can outlive the server's 60-file cache — drop it rather than show a broken tile.
             : <img key={item.id} src={item.url} alt={item.prompt} className="stu-hero" onError={() => remove(item)} />)}
           {item && (
             <div className="stu-actions">
-              <a className="stu-act" href={item.url} download target="_blank" rel="noreferrer" title="Download">⬇︎ Save</a>
-              {item.kind === "image" && <button type="button" className="stu-act" onClick={() => copyImage(item)} title="Copy image to clipboard">⧉ Copy</button>}
-              <button type="button" className="stu-act" onClick={() => reuse(item)} title="Load these settings into the panel to tweak">✎ Tweak</button>
-              <button type="button" className="stu-act" onClick={() => run({ prompt: item.prompt, style: item.style, motion: item.motion, ratio: item.ratio, mode: item.kind, n: 1 })} disabled={busy} title="Generate another with the same settings">↻ Again</button>
-              <button type="button" className="stu-act stu-act-del" onClick={() => remove(item)} title="Remove from gallery">✕</button>
+              <a className="stu-act" href={item.url} download target="_blank" rel="noreferrer" title="Download"><Icon name="download" size={15} /><span>Save</span></a>
+              {item.kind === "image" && <button type="button" className="stu-act" onClick={() => copyImage(item)} title="Copy image to clipboard"><Icon name="copy" size={15} /><span>Copy</span></button>}
+              <button type="button" className="stu-act" onClick={() => reuse(item)} title="Load these settings into the panel to tweak"><Icon name="pencil" size={15} /><span>Tweak</span></button>
+              <button type="button" className="stu-act" onClick={() => run({ prompt: item.prompt, style: item.style, motion: item.motion, ratio: item.ratio, mode: item.kind, n: 1 })} disabled={busy} title="Generate another with the same settings"><Icon name="refresh" size={15} /><span>Again</span></button>
+              <button type="button" className="stu-act stu-act-del" onClick={() => remove(item)} title="Remove from gallery" aria-label="Remove from gallery"><Icon name="trash" size={15} /></button>
             </div>
           )}
         </div>
@@ -381,7 +455,7 @@ export default function StudioView() {
             {items.map((it, i) => (
               <button type="button" key={it.id} className={`stu-thumb ${i === selected ? "on" : ""}`} onClick={() => setSelected(i)} title={it.prompt}>
                 {it.kind === "video"
-                  ? <video src={it.url} muted />
+                  ? <><video src={it.url} muted /><span className="stu-thumb-badge"><Icon name="video" size={12} /></span></>
                   : <img src={it.url} alt="" onError={() => remove(it)} />}
               </button>
             ))}
