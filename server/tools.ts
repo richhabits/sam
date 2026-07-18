@@ -64,7 +64,7 @@ import { addPerson, listPeople } from "./people.ts";
 import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
 import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
 import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
-import { forgeTool, listForged, forgedStats } from "./forge.ts";
+import { forgeTool, listForged, forgedStats, bindToolRegistry } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
@@ -2422,7 +2422,7 @@ export const TOOLS: Tool[] = [
   // ─── ADMIN: SELFTEST ──────────────────────────────────────────────────────
   { name: "run_selftest", safe: true, description: "Run SAM's full production health check: models, vault, tools, agents. Returns green/red per subsystem.", params: "(none)",
     activity: () => `Running production selftest`, run: async () => {
-      const r = await runSelftest();
+      const r = await runSelftest(TOOLS);
       const lines = [`SAM Selftest — ${r.ok ? "✅ ALL GREEN" : "❌ ISSUES FOUND"} (${r.timestamp})`];
       const s = r.subsystems;
       lines.push(`  Models  ${s.models.ok ? "✅" : "⚠️ "}  ${s.models.info}`);
@@ -2502,6 +2502,12 @@ export const TOOLS: Tool[] = [
       return `${s.enabled}/${s.total} forged tools enabled (${s.dangerous} dangerous):\n` + all.map((t) => `- ${t.name} [${t.enabled ? "on" : "off"}] ${t.caps.length ? `{${t.caps.join(",")}}` : ""} — ${t.explanation}`).join("\n");
     } },
 ];
+
+// forge.ts registers user-forged tools INTO this array at runtime. It used to import TOOLS
+// directly, making tools.ts ⇄ forge.ts a cycle and module-init order load-bearing. Binding here —
+// immediately after the registry exists — keeps the dependency one-way. forge throws if anything
+// calls it before this line runs, rather than silently registering nothing.
+bindToolRegistry(TOOLS);
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);
 

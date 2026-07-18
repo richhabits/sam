@@ -1,4 +1,7 @@
-import { TOOLS } from "./tools.ts";
+/** The tool list is PASSED IN rather than imported: selftest.ts and tools.ts used to import
+ *  each other (selftest wanted TOOLS, tools wanted runSelftest), which made module
+ *  initialisation order load-bearing and undocumented. Injection removes the cycle and lets a
+ *  test hand in any list it likes. */
 import { SPECIALISTS, NINJAS } from "./agents.ts";
 import { keyStatus } from "./keys.ts";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
@@ -15,7 +18,7 @@ export interface SelftestReport {
   };
 }
 
-export async function runSelftest(): Promise<SelftestReport> {
+export async function runSelftest(tools: { name: string }[]): Promise<SelftestReport> {
   let allOk = true;
 
   // 1. Models — SAM is free/local-first: a working brain = cloud key pools OR local
@@ -53,7 +56,7 @@ export async function runSelftest(): Promise<SelftestReport> {
   if (!vaultOk) allOk = false;
 
   // 3. Tools
-  const toolNames = TOOLS.map(t => t.name);
+  const toolNames = tools.map((t) => t.name);
   const uniqueTools = new Set(toolNames);
   const toolsOk = uniqueTools.size === toolNames.length && toolNames.length > 0;
   if (!toolsOk) allOk = false;
@@ -84,7 +87,11 @@ export async function runSelftest(): Promise<SelftestReport> {
 if (/[\\/]selftest\.(ts|mjs|js|cjs)$/.test(process.argv[1] || "")) {
   (async () => {
     console.log("🚀 Running SAM Production Selftest...");
-    const report = await runSelftest();
+    // Dynamic import, deliberately: this is the CLI entry, so it needs the real registry, but a
+    // top-level import would restore the very cycle this file was changed to remove. Resolved at
+    // call time, when tools.ts is fully evaluated.
+    const { TOOLS } = await import("./tools.ts");
+    const report = await runSelftest(TOOLS);
     console.log(JSON.stringify(report, null, 2));
     if (!report.ok) {
       console.error("❌ Selftest failed!");
