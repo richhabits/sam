@@ -1103,8 +1103,15 @@ export default function App() {
           {(() => {
             const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
             return (
-              <button type="button" className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setWizardOpen(true)}
-                title="Add your free AI keys — SAM rotates them so you never hit a limit">
+              <button
+                type="button"
+                className={"key-cta" + (n === 0 ? " needs" : "")}
+                // First run (no keys yet) → the 4-brain wizard, which is the gentler on-ramp.
+                // Once you HAVE keys, this button reads as "manage my keys", so it must open the
+                // full panel: the wizard lists 4 of 43 providers, so anyone hunting for a specific
+                // brain (GLM, Kimi) hit a dead end here and had no way through to the real list.
+                onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
+                title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
                 🔑 {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
               </button>
             );
@@ -1819,7 +1826,7 @@ export default function App() {
         {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
-        {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} />}
+        {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} onAllProviders={() => { setWizardOpen(false); setAdminOpen(true); }} />}
         {dashOpen && <Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} />}
         {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}
         {learnedOpen && <LearnedPane onClose={() => setLearnedOpen(false)} />}
