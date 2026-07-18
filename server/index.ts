@@ -46,6 +46,7 @@ import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colos
 import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./memory.ts";
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
+import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
@@ -955,40 +956,8 @@ app.post("/api/admin/elon-mode", (req, res) => {
 
 // Voice/TTS routes live in routes.voice.ts — self-contained (no index.ts-local state).
 registerVoiceRoutes(app);
+registerCreativeRoutes(app);
 
-// ── SAM Creative Space (Proxy to Muapi) ──────────────────────
-app.all("/api/creative/*", async (req, res) => {
-  // ONLY the muapi key — no OpenAI fallback: an OpenAI key isn't valid at muapi anyway,
-  // so the old fallback just leaked the user's OpenAI credential to a third party.
-  const apiKey = process.env.MUAPI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "No MUAPI_API_KEY configured for SAM Creative Space" });
-
-  // Sanitize the wildcard path so it can only address muapi's own API surface — no
-  // "..", scheme, host, credentials or backslashes that could redirect the request
-  // elsewhere (SSRF). Only plain path segments are allowed.
-  const targetPath = String((req.params as unknown as Record<string, string | undefined>)["0"] ?? "");
-  if (!/^[a-zA-Z0-9._~/-]*$/.test(targetPath) || targetPath.includes("..")) {
-    return res.status(400).json({ error: "Invalid creative path" });
-  }
-  const targetUrl = `https://api.muapi.ai/api/v1/${targetPath}`;
-
-  try {
-    const headers: Record<string, string> = { "x-api-key": apiKey };
-    if (req.headers["content-type"]) headers["content-type"] = req.headers["content-type"] as string;
-
-    const query = new URLSearchParams(req.query as Record<string, string>).toString();
-    const finalUrl = query ? `${targetUrl}?${query}` : targetUrl;
-
-    const body = ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body);
-
-    const r = await fetch(finalUrl, { method: req.method, headers, body });
-    const text = await r.text();
-    res.status(r.status);
-    try { res.json(JSON.parse(text)); } catch { res.send(text); }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
 
 // ── HUD DATA ENDPOINTS ───────────────────────────────────────
 app.get("/api/projects", (_req, res) => res.json(PROJECTS));

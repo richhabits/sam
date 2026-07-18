@@ -27,7 +27,7 @@ const src = routeFiles.map((f) => readFileSync(join(here, f), "utf8")).join("\n"
 
 type Route = { method: string; path: string; body: string };
 const routes: Route[] = (() => {
-  const hits = [...src.matchAll(/app\.(get|post|delete|put|patch)\("([^"]+)"/g)];
+  const hits = [...src.matchAll(/app\.(get|post|delete|put|patch|all)\("([^"]+)"/g)];
   return hits.map((m, i) => ({
     method: m[1].toUpperCase(),
     path: m[2],

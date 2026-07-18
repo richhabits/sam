@@ -66,13 +66,13 @@ server/index.ts   1770
 ```
 
 `tools.ts` is defensible — it is a registry of ~181 tools, and a list is allowed to be long.
-`index.ts` (131 routes) and `App.tsx` are the ones worth splitting, and the natural seams are
+`index.ts` (132 routes) and `App.tsx` are the ones worth splitting, and the natural seams are
 already visible: `index.ts` groups cleanly by domain (admin, memory, arena, media, remote), and
 `App.tsx` mixes onboarding, chat, and panes.
 
-**Started, deliberately one slice.** Three modules so far — `routes.memory.ts` (4 routes),
-`routes.workflows.ts` (5) and `routes.voice.ts` (1). **`index.ts` 1770 → 1669**, and 131 routes
-before = 121 + 10 after. Small on purpose: the value of this first cut is the *pattern
+**Started, deliberately one slice.** All four cheap sections are out — `routes.memory.ts` (4 routes),
+`routes.workflows.ts` (5), `routes.voice.ts` (1), `routes.creative.ts` (1). **`index.ts`
+1770 → 1638**, and every route is accounted for. Small on purpose: the value of this first cut is the *pattern
 and the map*, not the line count.
 
 **The pattern:** a `registerXRoutes(app)` function, not an Express `Router`. A Router with a
@@ -87,7 +87,7 @@ byte-identical, so an extraction can never silently move an endpoint.
 | Memory dashboard | 60 | 9 | **1** | ✅ done → `routes.memory.ts` |
 | Workflows | 36 | 5 | 1 | ✅ done → `routes.workflows.ts` |
 | ElevenLabs voice | 42 | 1 | 1 | ✅ done → `routes.voice.ts` |
-| Creative Space proxy | 34 | 1 | 1 | ✅ next — same pattern |
+| Creative Space proxy | 34 | 1 | 1 | ✅ done → `routes.creative.ts` |
 | Rollback | 74 | 8 | 6 | ⚠️ some threading |
 | People / faces | 115 | 15 | 8 | ⚠️ some threading |
 | Generated-image cache | 149 | 13 | 8 | ⚠️ some threading |
@@ -98,6 +98,13 @@ byte-identical, so an extraction can never silently move an endpoint.
 `index.ts`, so the moment 4 routes moved out it silently stopped covering them — a test shrinking
 its own scope with every extraction while still reporting green. It now scans `index.ts` plus
 every `routes.*.ts`, and asserts an extracted route is among them.
+
+**And a second hole in the same test, found by extracting Creative Space:** its route matcher read
+`app.(get|post|delete|put|patch)` — so **`app.all` was invisible**, and the one route using it was
+the muapi *proxy*: a wildcard path, an outbound credential, and hand-rolled SSRF sanitisation. The
+single route in the repo most worth contract-checking was the one route the contract test could not
+see, and it read green the whole time. Matcher widened to include `all`; verified by breaking the
+proxy's error envelope and watching the test go red (it stayed green before the widening).
 
 **One caveat learned the hard way:** the coupling table counts `index.ts`-*local* identifiers,
 which is the right measure for "can this move", but an extracted section also needs its
