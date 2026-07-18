@@ -8,10 +8,31 @@
 $ErrorActionPreference = "Stop"
 $repo = "richhabits/sam"
 
+# ── Windows reality checks, before anything else ─────────────────────────────
+# Windows PowerShell 5.1 (still the default on a stock Windows 10/11 box) negotiates TLS 1.0/1.1
+# by default. GitHub refuses those, so EVERY download below fails with a misleading
+# "underlying connection was closed" error. This one line is the single most common reason a
+# PowerShell installer fails on an otherwise healthy machine.
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
+
+# PS 5.1 writes the console in the OEM codepage, so the glyphs below arrive as mojibake (Ô£ô).
+# Ask for UTF-8; if the host refuses, fall back to ASCII marks rather than print rubbish.
+$script:MARK_STEP = ">"; $script:MARK_OK = "OK"; $script:MARK_BAD = "X"
+try {
+  [Console]::OutputEncoding = [Text.Encoding]::UTF8
+  $script:MARK_STEP = [char]0x25B8; $script:MARK_OK = [char]0x2713; $script:MARK_BAD = [char]0x2717
+} catch {}
+
+if ($PSVersionTable.PSVersion.Major -lt 5) {
+  Write-Host "SAM needs Windows PowerShell 5.1 or newer (you have $($PSVersionTable.PSVersion))." -ForegroundColor Red
+  Write-Host "  fix: update Windows, or install PowerShell 7 from https://aka.ms/powershell"
+  exit 1
+}
+
 function Say  ($m) { Write-Host $m }
-function Step ($m) { Write-Host "▸ $m" -ForegroundColor DarkYellow }
-function Ok   ($m) { Write-Host "✓ $m" -ForegroundColor Green }
-function Die  ($m, $fix) { Write-Host "`n✗ $m" -ForegroundColor Red; if ($fix) { Write-Host "  fix: $fix" -ForegroundColor DarkGray }; exit 1 }
+function Step ($m) { Write-Host "$script:MARK_STEP $m" -ForegroundColor DarkYellow }
+function Ok   ($m) { Write-Host "$script:MARK_OK $m" -ForegroundColor Green }
+function Die  ($m, $fix) { Write-Host "`n$script:MARK_BAD $m" -ForegroundColor Red; if ($fix) { Write-Host "  fix: $fix" -ForegroundColor DarkGray }; exit 1 }
 
 Write-Host "`nInstalling SAM " -NoNewline; Write-Host "— your private, free AI. Nothing to configure.`n" -ForegroundColor DarkGray
 

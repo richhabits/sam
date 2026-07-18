@@ -793,7 +793,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .icon-btn.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* ── Brand wordmark ── */
-.wordmark { font-size: 22px; font-weight: 900; letter-spacing: -.03em; color: var(--text); line-height: 1; }
+.wordmark { font-family: var(--display, var(--sans)); font-size: 26px; font-weight: 900;
+  letter-spacing: -.045em; color: var(--text); line-height: 1; }
 .wm-dot { color: var(--accent); }
 :root[data-skin="jarvis"] .wordmark { text-shadow: 0 0 16px rgba(41,198,246,.6); }
 .tag b { color: var(--accent-text); font-weight: 700; letter-spacing: .01em; }
