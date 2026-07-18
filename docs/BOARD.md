@@ -47,6 +47,17 @@ zhipu — so nearly half of SAM's brains were invisible to anyone setting up. Al
 grouped by lane, with GLM's free-tier note (`ZHIPU_MODEL=glm-4-flash`). Verified: 0 providers
 now undocumented.
 
+**Settings/admin key entry audited and fixed.** GLM/zhipu was already both offered in Settings
+*and* saveable — so the key goes in via **Admin → API keys & providers → Zhipu GLM-5.2**, no
+`.env` editing (it writes `ZHIPU_API_KEYS` and hot-loads the pool, no restart). The audit found
+three real defects around it: **(1)** `hermes` was offered in the UI and pooled in `keys.ts` but
+absent from `PROVIDER_ENV`, so saving a Nous key returned `400 unknown provider`; **(2)** the UI
+**ignored the response** — a 400 still flashed "Saved ✓", so you'd believe a key was stored that
+never was; **(3)** `baidu`, `tencent`, `volcengine` were wired brains with no UI entry at all.
+All fixed: hermes mapped, failures now render "✗ not saved — nothing was written", the three
+invisible providers added, and `leonardo` routed to `/api/admin/config` (it's a single config
+key, not a rotating pool, so it was 400ing too). Verified: 0 providers unsaveable, 0 invisible.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,
