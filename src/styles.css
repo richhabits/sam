@@ -1599,3 +1599,48 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pop-opt .ic { color: var(--muted); opacity: .85; }
 .pop-opt.on .ic { color: var(--accent-text, var(--accent)); opacity: 1; }
 .pop-title { padding-top: 16px; }
+
+/* ============================================================================
+   SETTINGS — a settings panel, not a menu.
+   The cheap tells were: no icons, and the word "Off" where a real settings app
+   has a switch. Both fixed here.
+   ========================================================================== */
+
+/* Pick-one-of-four is a segmented control, not four list rows with a tick —
+   same shape a native app uses, and it reclaims three rows of height. */
+.seg { display: flex; gap: 3px; padding: 3px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 11px; }
+.seg-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 4px; appearance: none; border: 0; border-radius: 8px; background: none;
+  color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+  transition: background .12s ease, color .12s ease; }
+.seg-btn .ic { opacity: .7; }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.07); }
+.seg-btn.on .ic { color: var(--accent-text, var(--accent)); opacity: 1; }
+
+/* A real switch. Reads as state at a glance and as an affordance — "Off" in grey text does
+   neither, which is what made the panel feel like a dropdown menu. */
+.sw { flex: none; width: 34px; height: 20px; border-radius: 999px; background: var(--border-strong);
+  position: relative; transition: background .16s ease; }
+.sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.28); transition: transform .16s ease; }
+.sw.on { background: var(--accent); }
+.sw.on i { transform: translateX(14px); }
+@media (prefers-reduced-motion: reduce) { .sw, .sw i { transition: none; } }
+
+/* With icons + switches the row no longer needs the tick pseudo-element crowding the edge. */
+.pop-group .pop-opt.on::after { content: none; }
+.pop-group .pop-opt { padding-right: 12px; gap: 11px; }
+.pop-opt.on { background: none; }
+.pop-opt.on .pop-opt-name { color: var(--text); }
+
+/* Settings tabs — same shape as the Control Centre's, so the two panels feel like one app. */
+.pop-tabs { display: flex; gap: 2px; margin: 2px 0 12px; padding: 3px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+.pop-tabs button { flex: 1; padding: 6px 3px; appearance: none; border: 0; border-radius: 7px;
+  background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background .12s ease, color .12s ease; }
+.pop-tabs button:hover { color: var(--text); }
+.pop-tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.pop-tabs + .pop-title { padding-top: 2px; }
