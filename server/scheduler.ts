@@ -24,12 +24,14 @@ export interface Schedule {
 }
 
 function load(): Schedule[] {
-  try { if (existsSync(FILE)) return JSON.parse(readFileSync(FILE, "utf8")); } catch {}
+  try { if (existsSync(FILE)) return JSON.parse(readFileSync(FILE, "utf8")); } catch { /* no state file yet, or corrupt — start from the default */ }
   return [];
 }
 
 function save(schedules: Schedule[]) {
-  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(schedules, null, 2)); } catch {}
+  // Silent failure here loses the user's schedules on the next restart with no trace.
+  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(schedules, null, 2)); }
+  catch (e: any) { console.error("[SAM] scheduler: FAILED to save schedules —", e?.message || e); }
 }
 
 export function listSchedules(): Schedule[] { return load(); }

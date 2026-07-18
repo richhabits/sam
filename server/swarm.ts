@@ -50,7 +50,7 @@ let CACHE: Swarm[] | null = null;
 
 export function loadSwarms(): Swarm[] {
   if (CACHE) return CACHE;
-  try { if (existsSync(FILE)) CACHE = JSON.parse(readFileSync(FILE, "utf8")); } catch {}
+  try { if (existsSync(FILE)) CACHE = JSON.parse(readFileSync(FILE, "utf8")); } catch { /* no state file yet, or corrupt — start from the default */ }
   if (!CACHE) CACHE = [];
   return CACHE;
 }
@@ -63,7 +63,10 @@ function saveSwarms(swarms: Swarm[]) {
     toSave = [...active, ...finished.slice(0, Math.max(0, 50 - active.length))];
   }
   CACHE = toSave;   // keep the in-memory store authoritative
-  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(toSave, null, 2)); } catch {}
+  // CACHE above stays authoritative in memory, so a failed write costs persistence across a
+  // restart, not correctness now. Still worth seeing in the log.
+  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(toSave, null, 2)); }
+  catch (e: any) { console.error("[SAM] swarm: FAILED to persist swarm state —", e?.message || e); }
 }
 
 function getSwarm(id: string): Swarm | undefined {

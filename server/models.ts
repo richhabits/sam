@@ -95,7 +95,7 @@ export async function warmBrain(): Promise<string | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: target, prompt: "", keep_alive: "30m" }),
       signal: AbortSignal.timeout(30000),
-    }).catch(() => {});
+    }).catch(() => {/* best-effort — nothing downstream depends on this succeeding */});
     return target;
   } catch { return null; }
 }
@@ -509,11 +509,11 @@ async function streamOpenAICompat(base: string, model: string, system: string, p
     for (const line of lines) {
       const t = line.trim(); if (!t.startsWith("data:")) continue;
       const data = t.slice(5).trim(); if (data === "[DONE]") continue;
-      try { const d = JSON.parse(data)?.choices?.[0]?.delta?.content; if (d) { full += d; onChunk(d); } } catch {}
+      try { const d = JSON.parse(data)?.choices?.[0]?.delta?.content; if (d) { full += d; onChunk(d); } } catch { /* malformed SSE chunk — skip it, the stream continues */ }
     }
     // A degenerate repetition loop (weak brains "hello hello hello…") → cut it off now instead
     // of streaming to the token cap. The final text is collapsed so history stays clean.
-    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch {} break; }
+    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch { /* cancelling an already-finished reader is not an error */ } break; }
   }
   return collapseRepetition(full);
 }
@@ -533,9 +533,9 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
     const lines = buf.split("\n"); buf = lines.pop() || "";
     for (const line of lines) {
       const t = line.trim(); if (!t.startsWith("data:")) continue;
-      try { const parts = JSON.parse(t.slice(5).trim())?.candidates?.[0]?.content?.parts; const d = parts?.map((p: any) => p.text).join("") || ""; if (d) { full += d; onChunk(d); } } catch {}
+      try { const parts = JSON.parse(t.slice(5).trim())?.candidates?.[0]?.content?.parts; const d = parts?.map((p: any) => p.text).join("") || ""; if (d) { full += d; onChunk(d); } } catch { /* malformed SSE chunk — skip it, the stream continues */ }
     }
-    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch {} break; }
+    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch { /* cancelling an already-finished reader is not an error */ } break; }
   }
   return collapseRepetition(full);
 }

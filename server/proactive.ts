@@ -58,12 +58,12 @@ export function desktopNotify(title: string, msg: string) {
   const e = (s: string) => s.replace(/["'<>&\\]/g, "").replace(/\n/g, " ");
   const t = e(title.slice(0, 80));
   if (process.platform === "darwin") {
-    execFile("osascript", ["-e", `display notification "${e(clean)}" with title "${t}"`], () => {});
+    execFile("osascript", ["-e", `display notification "${e(clean)}" with title "${t}"`], () => {/* fire-and-forget: a notification that fails must not affect the caller */});
   } else if (process.platform === "win32") {
     const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${t}</text><text id="2">${e(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
-    execFile("powershell", ["-command", ps], () => {});
+    execFile("powershell", ["-command", ps], () => {/* fire-and-forget: notification failure is not the caller's problem */});
   } else {
-    execFile("notify-send", [t, e(clean)], () => {});
+    execFile("notify-send", [t, e(clean)], () => {/* fire-and-forget: notification failure is not the caller's problem */});
   }
 }
 

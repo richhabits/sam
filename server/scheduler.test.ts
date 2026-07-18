@@ -21,7 +21,7 @@ describe("Scheduler Subsystem", () => {
     if (process.env.VAULT_DIR) {
       try {
         rmSync(process.env.VAULT_DIR, { recursive: true, force: true });
-      } catch {}
+      } catch { /* best-effort test cleanup — the tmp dir may already be gone */ }
     }
     process.env.VAULT_DIR = originalEnv;
   });

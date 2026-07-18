@@ -19,7 +19,7 @@ const tools = [...read("server/tools.ts").matchAll(/\bname:\s*"([a-z0-9_]+)"/g)]
 const brains = (read("server/models.ts").match(/id:\s*"[a-z0-9_]+",\s*tier:\s*"free"/g) || []).length;
 const agents = (read("server/agents.ts").match(/\{\s*id:\s*"[a-z0-9_]+",\s*name:/g) || []).length;
 let _skills = 0;
-try { _skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch {}
+try { _skills = readdirSync(join(ROOT, "skills")).filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md"))).length; } catch { /* skills dir may be absent in a bare checkout — count as zero */ }
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -84,5 +84,5 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, dev
 await page.goto("file://" + tmp);
 await page.screenshot({ path: join(ROOT, "docs", "og.png") });
 await browser.close();
-try { const { unlinkSync } = await import("node:fs"); unlinkSync(tmp); } catch {}
+try { const { unlinkSync } = await import("node:fs"); unlinkSync(tmp); } catch { /* temp file already gone — that is the desired end state */ }
 console.log(`  og.png regenerated · ${tools} tools · ${agents} agents · ${brains}+ brains (1200×630 @2x)`);

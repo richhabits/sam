@@ -90,7 +90,7 @@ async function main() {
 
   // Handle onboarding if it appears.
   const nameInput = page.locator('input[placeholder="Your name"]');
-  if (await nameInput.count()) { await nameInput.fill("Alex"); await page.getByText("Let's go").click().catch(() => {}); await page.waitForTimeout(1200); }
+  if (await nameInput.count()) { await nameInput.fill("Alex"); await page.getByText("Let's go").click().catch(() => {/* optional onboarding step — the recording continues if it is not shown */}); await page.waitForTimeout(1200); }
 
   for (const line of SCRIPT) {
     const box = page.locator("textarea, input[type=text]").last();
