@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { getPreferences, forgetPreference, resetPreferences, setConsent } from "./lib/api";
+import Icon from "./Icon";
 import { useEscape } from "./lib/useOverlay";
 
-// 🧠 "What SAM has learned about you" — the privacy counterpart to the consent pane. Everything here is
+// "What SAM has learned about you" — the privacy counterpart to the consent pane. Everything here is
 // stored ONLY on this device and is never sent to any AI provider or gateway. You can delete any item or
 // reset everything. Learning is off unless you turn it on.
+//
+// The on-device promise is the whole point of the pane, so it's a chip with a lock glyph rather than a
+// sentence trailing off the end of the subtitle — a state should read as one word.
 
 type Pref = { key: string; value: string; confidence: number; count: number; updatedAt: string };
 
@@ -29,15 +33,15 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
       <aside className="drawer learned" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">🧠 What SAM has learned about you</div>
-            <div className="drawer-sub"><span className="learned-lock">🔒 On-device only</span> — nothing here is ever sent to an AI provider or gateway. Delete anything, any time.</div>
+            <div className="drawer-title"><Icon name="brain" size={19} /> What SAM has learned</div>
+            <div className="drawer-sub"><span className="learned-lock"><Icon name="lock" size={12} /> On-device</span> Never sent anywhere. Delete anything, any time.</div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" size={16} /></button>
         </div>
 
         <div className="learned-toggle-row">
-          <button type="button" className={"au-behavior" + (learning ? " on" : "")} onClick={toggleLearning}>
-            <span className={"au-switch" + (learning ? " on" : "")} aria-hidden><span className="au-knob" /></span>
+          <button type="button" className={"au-behavior" + (learning ? " on" : "")} onClick={toggleLearning} aria-pressed={learning}>
+            <span className={"sw" + (learning ? " on" : "")} aria-hidden="true"><i /></span>
             <span className="au-b-text">
               <span className="au-b-label">Let SAM learn my preferences</span>
               <span className="au-b-detail">Notice durable patterns (wording, preferred brains, formats) and adapt — 100% locally.</span>
@@ -62,7 +66,7 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
                 <span className="learned-conf" title={`seen ${p.count}×`}>
                   <span className="learned-conf-bar" style={{ width: `${Math.round(p.confidence * 100)}%` }} />
                 </span>
-                <button type="button" className="learned-forget" onClick={() => forget(p.key)} title="Forget this">✕</button>
+                <button type="button" className="learned-forget" onClick={() => forget(p.key)} title="Forget this" aria-label={`Forget ${p.key}`}><Icon name="close" size={14} /></button>
               </div>
             </div>
           ))}
