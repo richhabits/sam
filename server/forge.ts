@@ -23,8 +23,24 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runModel } from "./models.ts";
-import { TOOLS, type Tool } from "./tools.ts";
+import type { Tool } from "./tools.ts";   // TYPE-ONLY: erased at compile, so it creates no cycle
 import { markDangerous, unmarkDangerous } from "./authz.ts";
+
+// ── The live tool registry, INJECTED ────────────────────────────────────────
+// forge.ts and tools.ts used to import each other: forge needed TOOLS (to register forged tools
+// at runtime), tools needed forgeTool/listForged/forgedStats. ESM tolerates that, but it makes
+// initialisation order load-bearing — tools.ts is mid-evaluation when it reaches into a module
+// that is itself waiting on TOOLS — and it breaks confusingly the moment either file is
+// reorganised. tools.ts now binds the registry once at load, so the dependency points one way.
+//
+// Deliberately loud if unbound: a silent no-op here would mean forged tools quietly never
+// register, which looks exactly like "the user has no forged tools".
+let REGISTRY: Tool[] | null = null;
+export function bindToolRegistry(tools: Tool[]): void { REGISTRY = tools; }
+function registry(): Tool[] {
+  if (!REGISTRY) throw new Error("forge: tool registry not bound — call bindToolRegistry(TOOLS) at startup");
+  return REGISTRY;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");
@@ -218,7 +234,7 @@ export async function forgeTool(need: string): Promise<DraftResult> {
   const code = String(spec?.code || "");
   const caps: Capability[] = Array.isArray(spec?.caps) ? spec.caps.filter((c: any): c is Capability => ALL_CAPS.includes(c)) : [];
   if (!NAME_RE.test(name)) return { ok: false, reason: "Bad tool name (need snake_case, 3-40 chars)." };
-  if (TOOLS.some((t) => t.name === name)) return { ok: false, reason: `A tool named "${name}" already exists.` };
+  if (registry().some((t) => t.name === name)) return { ok: false, reason: `A tool named "${name}" already exists.` };
   if (!/=>|function/.test(code)) return { ok: false, reason: "The draft wasn't a function." };
 
   const scan = scanCode(code, caps);
@@ -243,6 +259,7 @@ export async function forgeTool(need: string): Promise<DraftResult> {
 export interface ForgedRuntimeTool extends Tool { forged?: true }
 export function syncForgedRegistry(): number {
   // Drop previously-registered forged tools + clear their dynamic-dangerous marks, then re-add enabled.
+  const TOOLS = registry();
   for (let i = TOOLS.length - 1; i >= 0; i--) {
     const t = TOOLS[i] as ForgedRuntimeTool;
     if (t.forged) { unmarkDangerous(t.name); TOOLS.splice(i, 1); }

@@ -115,10 +115,21 @@ load-bearing and undocumented: `tools.ts` is mid-evaluation when it reaches into
 is itself waiting on `TOOLS`. It works today; it breaks confusingly if either file is
 reorganised.
 
-**Fix shape** (not attempted here — `tools.ts` is 2513 lines and shared with another agent, and
-a structural change to it at the end of a long session is how collisions happen): invert the
-dependency so `forge`/`selftest` receive the tool list rather than importing it — the same
-injection pattern `webintel-extract` already uses for its LLM.
+**FIXED — both cycles gone, `server/imports.cycle.test.ts` (3 tests) stops them returning.**
+Inverted rather than papered over, and differently for each because their needs differ:
+  · **`selftest`** only read `TOOLS.map(t => t.name)`, so it now **receives** the list:
+    `runSelftest(tools)`. Its own CLI entry uses a *dynamic* import — resolved at call time, when
+    `tools.ts` is fully evaluated — so the convenience of running it standalone didn't restore
+    the cycle.
+  · **`forge` mutates the registry** (it splices and pushes forged tools at runtime), so a
+    parameter would have rippled through 7 call sites including `index.ts` and the tests.
+    Instead `tools.ts` calls `bindToolRegistry(TOOLS)` immediately after the array exists, and
+    forge **throws** if anything reaches it unbound — a silent no-op would mean forged tools
+    quietly never register, which looks exactly like "the user has no forged tools".
+
+The guard excludes `import type` deliberately: it is erased at compile time and cannot create a
+runtime cycle, which is why `metrics ⇄ models` was never one. Verified by reintroducing the
+`selftest` import and watching two assertions go red.
 
 ## What is genuinely healthy
 
