@@ -43,7 +43,8 @@ import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.
 import { TOOLS, benchmarkBrains } from "./tools.ts";
 import { quotes as marketQuotes } from "./markets.ts";
 import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colosseum.ts";
-import { remember, recallWith, memoryStats, pinnedModel, listByKind, listAll, forget, clearUser } from "./memory.ts";
+import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./memory.ts";
+import { registerMemoryRoutes } from "./routes.memory.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -744,37 +745,8 @@ app.get("/api/quotes", async (req, res) => {
   catch (e: any) { res.status(500).json({ quotes: [], error: String(e?.message || e) }); }
 });
 
-app.get("/api/memory", (req, res) => {
-  const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
-  const items = listAll(name);
-  const groups: Record<string, { id: string; text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
-  for (const it of items) { groups[it.kind] ||= []; groups[it.kind].push({ id: it.id, text: it.text, ts: it.ts }); }
-  res.json({ groups, count: items.length, private: true, note: "All local — nothing left your device." });
-});
-app.post("/api/memory/forget", (req, res) => {
-  const id = String(req.body?.id || "");
-  res.json({ ok: id ? forget(id) : false });
-});
-// Export this user's memory as a downloadable Markdown file — 100% local, nothing leaves the device.
-app.get("/api/memory/export", (req, res) => {
-  const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
-  const items = listAll(name);
-  const groups: Record<string, { text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
-  for (const it of items) { groups[it.kind] ||= []; groups[it.kind].push({ text: it.text, ts: it.ts }); }
-  const section = (title: string, rows: { text: string; ts: number }[]) =>
-    `## ${title}\n\n` + (rows.length ? rows.map((r) => `- ${r.text}  _(${new Date(r.ts).toISOString().slice(0, 10)})_`).join("\n") : "_(none)_") + "\n";
-  const markdown = `# What SAM remembers about you\n\n_${items.length} memories · exported ${new Date().toISOString().slice(0, 10)} · all local_\n\n`
-    + section("Facts", groups.fact) + "\n" + section("Plans", groups.plan) + "\n"
-    + section("Decisions", groups.decision) + "\n" + section("Open loops", groups.task);
-  res.json({ markdown });
-});
-// Wipe this user's memory (scoped delete). Returns how many were cleared.
-app.post("/api/memory/clear", (req, res) => {
-  const name = (String(req.body?.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
-  const cleared = clearUser(name);
-  res.json({ ok: true, cleared });
-});
-
+// Memory dashboard routes live in routes.memory.ts — self-contained (no index.ts-local state).
+registerMemoryRoutes(app);
 // Persona presets for the switcher — same brain + shared memory, tone only.
 app.get("/api/personas", (_req, res) => res.json({ personas: PERSONAS }));
 
