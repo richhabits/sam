@@ -86,8 +86,8 @@ function howAnswered(provider?: string): string {
 const COMMANDS: [string, string][] = [
   ["/team", "🤝 Assemble the crew — big jobs, run in parallel"],
   ["/ninjas", "🥷 Deploy the problem squad — find & deal with it"],
-  ["/turbo", "⚡ Fastest — one quick call, no tools"],
-  ["/private", "🔒 100% on your computer (local only)"],
+  ["/turbo", "⚡ Fastest"],
+  ["/private", "🔒 On your computer (local only)"],
   ["/best", "✨ Best quality"],
   ["/auto", "⚡ Free & capable (default)"],
   ["/tools", "🧰 Everything SAM can do"],
@@ -781,7 +781,7 @@ export default function App() {
   function handleSlash(v: string): boolean {
     const cmd = v.toLowerCase();
     if (cmd === "/new" || cmd === "/clear") { newChat(); return true; }
-    if (cmd === "/private") { setQuality("private"); sysNote("Switched to Private — everything runs 100% on your computer."); return true; }
+    if (cmd === "/private") { setQuality("private"); sysNote("Switched to Private — everything runs On your computer."); return true; }
     if (cmd === "/best") { setQuality("best"); sysNote("Switched to Best quality."); return true; }
     if (cmd === "/fast" || cmd === "/auto") { setQuality("auto"); sysNote("Switched to Automatic (free & capable)."); return true; }
     if (cmd === "/turbo") { setQuality("turbo"); sysNote("⚡ Turbo — one fast call on the quickest free brain (no tools). Great for quick chat & drafting."); return true; }
@@ -1140,22 +1140,22 @@ export default function App() {
               {(["turbo", "auto", "private", "best"] as Quality[]).map((q) => (
                 <button type="button" key={q} className={`pop-opt ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)}>
                   <span className="pop-opt-name">{q === "turbo" ? "Turbo" : q === "auto" ? "Automatic" : q === "private" ? "Private" : "Best"}</span>
-                  <span className="pop-opt-sub">{q === "turbo" ? "Fastest — one quick call, no tools" : q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
+                  <span className="pop-opt-sub">{q === "turbo" ? "Fastest" : q === "auto" ? "Recommended" : q === "private" ? "On your computer" : "Highest quality"}</span>
                 </button>
               ))}
             </div>
             <div className="pop-title">Audio &amp; camera</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">Stop all audio &amp; camera</span><span className="pop-opt-sub">Instantly kills mic, voice, wake word &amp; Guardian</span></button>
-              <button type="button" className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">Mic — dictate{listening ? " · listening" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off — click to talk, or use the mic in the message box"}</span></button>
+              <button type="button" className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">Stop audio &amp; camera</span><span className="pop-opt-sub">Stops everything</span></button>
+              <button type="button" className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">Mic — dictate{listening ? " · listening" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off"}</span></button>
               <button type="button" className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">SAM talks back</span><span className="pop-opt-sub">{speakReplies ? "On — reads replies aloud" : "Off"}</span></button>
-              <button type="button" className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">Wake word</span><span className="pop-opt-sub">{wakeOn ? "On — listens for a whistle or clap" : "Off — nothing listens unless you tap the mic"}</span></button>
-              <button type="button" className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">Guardian camera</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off — camera is not active"}</span></button>
+              <button type="button" className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">Wake word</span><span className="pop-opt-sub">{wakeOn ? "On — listens for a whistle or clap" : "Off"}</span></button>
+              <button type="button" className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">Guardian camera</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off"}</span></button>
             </div>
             <div className="pop-title">Preferences</div>
             <div className="pop-group">
               <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
-              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Off — asks before anything risky"}</span></button>
+              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Asks first"}</span></button>
               <button type="button" className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses every safety prompt. Deletes go to a bin; catastrophic commands still blocked."}</span></button>
             </div>
             <div className="pop-title">Skin</div>
@@ -1169,29 +1169,29 @@ export default function App() {
             </div>
             <div className="pop-title">Keys &amp; brains</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">9 live</span></button>
             </div>
             <div className="pop-title">Devices</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">Scan a QR — same Wi-Fi, signed in</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">QR code</span></button>
             </div>
             <div className="pop-title">Your data</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">Proactivity — all off until you allow it, with a full log</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">Your usage, on-device — 0 data left the machine</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">All off</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">0 data sent</span></button>
             </div>
             <div className="pop-title">Do more</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Saved multi-step sequences — dangerous steps pause to ask</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Grounded research from your own sources</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Pauses on risk</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Your sources</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
             </div>
             <div className="pop-title">Help</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Auto-check the common problems + get the exact fix</span></button>
-              <button type="button" className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
-              <button type="button" className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Self-check</span></button>
+              <button type="button" className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download</span></button>
+              <button type="button" className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Permission</span></button>
             </div>
             <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
