@@ -127,7 +127,7 @@ export default function ChatList({
           {folders.length > 0 && (
             <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()}
               onChange={(e) => onMoveToFolder(c.id, e.target.value)} title="Move to folder" aria-label="Move to folder">
-              <option value=""><Icon name="folder" size={13} /></option>
+              <option value="">No folder</option>
               {folders.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           )}
