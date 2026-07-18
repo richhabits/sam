@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S.A.M. — Smart Artificial Mind · by HECTIC</title>
+<title>S.A.M. — Smart Artificial Mind</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. No subscription — runs free on rotating cloud tiers, or 100% offline on Ollama.">
 <meta property="og:title" content="S.A.M. — a free, private team of AI agents on your machine">
-<meta property="og:description" content="It doesn't just answer, it handles it. Free, local, yours — by HECTIC.">
+<meta property="og:description" content="It doesn't just answer, it handles it. Free, local, yours — .">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://richhabits.github.io/sam/">
 <meta property="og:image" content="https://richhabits.github.io/sam/og.png">
@@ -108,7 +108,7 @@
     -webkit-font-smoothing:antialiased; letter-spacing:-.011em;
     min-height:100vh; overflow-x:hidden;
   }
-  .shell{max-width:1080px; margin:0 auto; padding:0 32px}
+  .shell{max-width:1200px; margin:0 auto; padding:0 40px}
   @media(max-width:640px){.shell{padding:0 22px}}
   a{color:inherit; text-decoration:none}
   .mono{font-family:var(--mono); letter-spacing:0}
@@ -124,14 +124,18 @@
   .ghlink:hover{color:var(--paper); border-color:var(--ember); background:var(--ember-soft)}
 
   /* ── hero ── */
-  .hero{padding:76px 0 44px; display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center}
+    /* Headline spans the full shell; the lede and the terminal share the row beneath it. Big type
+     in a narrow column reads cramped rather than confident — this is the "speak louder" fix. */
+  .hero-top{padding:52px 0 0}
+  .hero-top h1{margin:0}
+  .hero{padding:28px 0 44px; display:grid; grid-template-columns:1fr .9fr; gap:64px; align-items:start}
   @media(max-width:860px){.hero{grid-template-columns:1fr; gap:38px; padding:44px 0 24px}}
   .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--ember); display:inline-flex; align-items:center; gap:9px; margin-bottom:26px}
   .eyebrow .pulse{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 0 rgba(95,208,138,.5); animation:pulse 2.4s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,208,138,.45)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
-  h1{font-size:clamp(40px,6vw,66px); line-height:1.03; font-weight:800; letter-spacing:-.035em; margin:0 0 22px; text-wrap:balance}
+  h1{font-size:clamp(42px,6.4vw,76px); line-height:0.98; font-weight:900; letter-spacing:-.045em; margin:0 0 24px; text-wrap:balance}
   h1 .em{color:var(--ember)}
-  .lede{font-size:clamp(17px,2.3vw,20px); color:var(--ash); max-width:35ch; margin:0 0 32px; line-height:1.55}
+  .lede{font-size:clamp(17px,2.3vw,21px); color:var(--ash); max-width:46ch; margin:0 0 32px; line-height:1.5}
   .lede b{color:var(--paper); font-weight:600}
 
   .cta-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
@@ -191,7 +195,7 @@
   .stat .l{font-size:12.5px; color:var(--ash); margin-top:6px; letter-spacing:.01em}
 
   /* ── sections ── */
-  section{padding:92px 0}
+  section{padding:68px 0}
   .kicker{font-family:var(--mono); font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ember); margin-bottom:16px}
   h2{font-size:clamp(28px,4vw,42px); font-weight:800; letter-spacing:-.03em; margin:0 0 16px; text-wrap:balance}
   .section-lede{color:var(--ash); font-size:17.5px; max-width:56ch; margin:0 0 44px; line-height:1.55}
@@ -259,16 +263,18 @@
           <rect x="40" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/><rect x="144" y="86" width="8" height="24" rx="4" fill="#FDF6EF"/>
         </svg>
         <span class="logo">S<span class="dot">.</span>A<span class="dot">.</span>M</span>
-        <small>Smart Artificial Mind · by HECTIC</small>
+        <small>Smart Artificial Mind</small>
       </div>
       <a class="ghlink" href="https://github.com/richhabits/sam" target="_blank" rel="noopener">★ github.com/richhabits/sam</a>
     </div>
 
     <!-- HERO -->
+    <div class="hero-top">
+      <span class="eyebrow"><span class="pulse"></span>Free · Private · Mac · Windows · Linux</span>
+      <h1>Your own AI. It doesn't just answer — <span class="em">it handles it.</span></h1>
+    </div>
     <div class="hero">
       <div>
-        <span class="eyebrow"><span class="pulse"></span>Free · Private · Mac · Windows · Linux</span>
-        <h1>Your own AI.<br>It doesn't just answer — <span class="em">it handles it.</span></h1>
         <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code — for <b>£0 a month.</b></p>
         <div class="oneliner">
           <div class="ol-tabs">
