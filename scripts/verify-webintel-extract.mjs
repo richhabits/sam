@@ -21,7 +21,7 @@ ok("parses prefixed prose", parseJsonLoose('Sure! Here you go: {"a":2} hope that
 ok("returns null on garbage", parseJsonLoose("no json here") === null);
 
 // 3) coercion: strings→number/bool, missing flagged
-const { value, issues } = coerceToSchema({ title: "Acme", founded: "1999", isPublic: "yes", products: "widgets" }, schema);
+const { value } = coerceToSchema({ title: "Acme", founded: "1999", isPublic: "yes", products: "widgets" }, schema);
 ok("coerces '1999'->1999", value.founded === 1999);
 ok("coerces 'yes'->true", value.isPublic === true);
 ok("coerces scalar->string[]", Array.isArray(value.products) && value.products[0] === "widgets");
