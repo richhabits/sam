@@ -16,6 +16,7 @@ type Prov = { id: string; label: string; note: string; url: string; starter?: bo
 export default function Admin({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
   const [cfg, setCfg] = useState<any>(null);
+  const [cfgErr, setCfgErr] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [eleven, setEleven] = useState("");
   const [voice, setVoice] = useState("");
@@ -47,7 +48,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       // hydrate the non-secret email fields (password is never returned — placeholder shows if set)
       if (c.email) setEmail({ smtpHost: c.email.smtpHost || "", smtpPort: c.email.smtpPort || "", smtpUser: c.email.smtpUser || "", smtpPass: "", smtpFrom: c.email.smtpFrom || "", ownerEmail: c.email.ownerEmail || "" });
       if (c.apple) setApple({ appleId: c.apple.appleId || "", appleTeam: c.apple.appleTeam || "", applePass: "" });
-    }).catch(() => {});
+      setCfgErr("");
+      // The provider list now comes from the server (one registry, no copy in src/). That means a
+      // failed fetch would render an EMPTY settings panel — indistinguishable from "SAM has no
+      // providers". Swallowing the error here is what made that silent, so it is surfaced below.
+    }).catch(() => setCfgErr("Couldn't load settings from SAM. Is it running on this machine?"));
     getAllowed().then((a) => setAllowed(a.allowed || [])).catch(() => {});
     getPhoneLink().then((p) => { setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); else setPhoneQR(""); }).catch(() => {});
     pushEnabled().then(setPushOn).catch(() => {});
@@ -142,6 +147,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           );
+          if (cfgErr) return <div className="admin-note" style={{ color: "#e06c6c" }}>✗ {cfgErr} <button type="button" className="admin-more" onClick={refresh}>Retry</button></div>;
+          if (!cfg) return <div className="admin-note">Loading providers…</div>;
           const starters = PROVIDERS.filter((p) => p.starter);
           const moreFree = PROVIDERS.filter((p) => !p.starter && !p.premium);
           const premium = PROVIDERS.filter((p) => p.premium);

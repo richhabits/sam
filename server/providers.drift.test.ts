@@ -54,6 +54,17 @@ describe("the registry is the single source", () => {
     expect(Object.keys(PROVIDER_ENV).length).toBeGreaterThanOrEqual(POOLED.length);
   });
 
+  it("no file in src/ keeps its own provider list", () => {
+    // Admin.tsx and KeyWizard.tsx both used to. KeyWizard's was the sixth copy and held the only
+    // key-format regexes; those now live in the registry as `keyPattern`. A signup URL or key
+    // pattern reappearing in src/ means a copy is back and will drift.
+    const wizard = read("src/KeyWizard.tsx");
+    for (const [name, src] of [["Admin.tsx", admin], ["KeyWizard.tsx", wizard]] as const) {
+      expect(src, `${name} hardcodes provider signup URLs`).not.toMatch(/url:\s*"https:\/\/(console|aistudio|openrouter|platform)\./);
+      expect(src, `${name} hardcodes a key-format regex`).not.toMatch(/rx:\s*\//);
+    }
+  });
+
   it("Settings has no hardcoded provider list of its own", () => {
     // src/ never imports server/; the UI renders what /api/admin/config sends. A literal list
     // reappearing here is the fifth copy coming back.

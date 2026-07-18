@@ -93,6 +93,21 @@ only one list. Adding a provider is now one line: it is pooled, saveable and vis
     normally now — the earlier config-style workaround is gone), and `fal` was a special case in
     `PROVIDER_ENV`; both are ordinary registry entries. **0 special cases left.** 416 tests green.
 
+**Signup + Settings audited.** Two real defects, both mine from the registry refactor an hour
+earlier — which is the useful part: the refactor was sound, the *edges* were not.
+  - 🐛 **Settings rendered an EMPTY panel on a failed load.** Moving the provider list to the
+    server means `cfg === null` shows nothing, and `refresh()` swallowed the error with
+    `.catch(() => {})` — so a dead server looked identical to "SAM has no providers". Now:
+    "Loading providers…" while pending, and an explicit error + **Retry** on failure.
+  - 🧩 **`KeyWizard.tsx` was the SIXTH provider list** — four providers with the only copies of
+    the key-format regexes. Those moved into the registry as `keyPattern`, and the wizard now
+    derives from `/api/admin/config` like Settings. **`src/` now contains zero provider data.**
+  - The drift test grew a guard: a signup URL or key regex reappearing anywhere in `src/` fails
+    CI. Verified by re-adding one and watching it go red. **8 tests.**
+  - Also caught: `loadErr` captured but never rendered — the same "state set, nothing shown"
+    mistake as `saveError` earlier today, in the file I was fixing *because of* that mistake.
+    Both render now. 416 tests, typecheck, lint and build all green.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,

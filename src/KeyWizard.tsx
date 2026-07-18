@@ -4,12 +4,11 @@ import { useEscape } from "./lib/useOverlay";
 // ⚡ Power up SAM — 60-second free-key wizard. Each provider: deep-link to its key page, paste field,
 // live validation (a real test call), green tick when pooled. Progress meter gamifies the pool.
 // SAM already works free out of the box — this is a pure upgrade, never a gate.
-const PROVIDERS = [
-  { id: "groq",       label: "Groq",          note: "fastest · ~30-sec signup", url: "https://console.groq.com/keys",        rx: /^gsk_[A-Za-z0-9]{20,}$/ },
-  { id: "gemini",     label: "Google Gemini", note: "adds photos & vision",     url: "https://aistudio.google.com/apikey",   rx: /^AIza[A-Za-z0-9_-]{30,}$/ },
-  { id: "openrouter", label: "OpenRouter",    note: "300+ models, one key",     url: "https://openrouter.ai/keys",           rx: /^sk-or-[A-Za-z0-9-]{20,}$/ },
-  { id: "mistral",    label: "Mistral",       note: "strong, generous free",    url: "https://console.mistral.ai/api-keys",  rx: /^[A-Za-z0-9]{32}$/ },
-];
+// Providers come from the server registry (/api/admin/config), same as Settings. This file used
+// to keep its own four-provider list WITH the key-format regexes — the sixth copy, and the only
+// place those patterns lived. They now sit in server/providers.registry.ts as `keyPattern`, so
+// the wizard and Settings can never disagree about what a provider is called or where to get it.
+type WizProv = { id: string; label: string; note: string; url: string; keyPattern?: string };
 type St = "idle" | "checking" | "ok" | "bad";
 
 export default function KeyWizard({ onClose }: { onClose: () => void }) {
@@ -17,6 +16,13 @@ export default function KeyWizard({ onClose }: { onClose: () => void }) {
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Record<string, St>>({});
   const [clip, setClip] = useState<{ id: string; key: string } | null>(null);
+  const [PROVIDERS, setProviders] = useState<WizProv[]>([]);
+  const [loadErr, setLoadErr] = useState("");
+  useEffect(() => {
+    fetch("/api/admin/config").then((r) => r.json())
+      .then((c) => setProviders(((c?.providers || []) as WizProv[]).filter((p) => p.keyPattern)))
+      .catch(() => setLoadErr("Couldn't load the provider list — check SAM is running."));
+  }, []);
   const online = Object.values(status).filter((s) => s === "ok").length;
 
   async function validate(id: string, key: string) {
@@ -33,16 +39,18 @@ export default function KeyWizard({ onClose }: { onClose: () => void }) {
   }
 
   // Clipboard watcher — if a key-shaped string is copied, offer to slot it into the right provider.
+  // Depends on PROVIDERS now that the list is fetched rather than hardcoded: before it arrives
+  // there is nothing to match against, so the effect must re-run once it does.
   useEffect(() => {
     const iv = setInterval(async () => {
       try {
         const t = (await navigator.clipboard.readText()).trim();
-        const hit = PROVIDERS.find((p) => p.rx.test(t) && status[p.id] !== "ok" && keys[p.id] !== t);
-        if (hit) setClip({ id: hit.id, key: t }); else if (clip && !PROVIDERS.find((p) => p.rx.test(t))) setClip(null);
+        const hit = PROVIDERS.find((p) => p.keyPattern && new RegExp(p.keyPattern).test(t) && status[p.id] !== "ok" && keys[p.id] !== t);
+        if (hit) setClip({ id: hit.id, key: t }); else if (clip && !PROVIDERS.find((p) => p.keyPattern && new RegExp(p.keyPattern).test(t))) setClip(null);
       } catch { /* clipboard blocked — fine */ }
     }, 1800);
     return () => clearInterval(iv);
-  }, [status, keys, clip]);
+  }, [status, keys, clip, PROVIDERS]);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
@@ -54,6 +62,7 @@ export default function KeyWizard({ onClose }: { onClose: () => void }) {
           <div>
             <div className="drawer-title">⚡ Power up SAM</div>
             <div className="drawer-sub">{online} of {PROVIDERS.length} free brains online — each takes ~30 seconds, all free. (SAM already works right now.)</div>
+            {loadErr && <div className="drawer-sub" style={{ color: "#e06c6c" }}>✗ {loadErr}</div>}
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
