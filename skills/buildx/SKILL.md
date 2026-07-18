@@ -1,7 +1,7 @@
 ---
 name: Build Your Own X
 tier: free
-triggers: build your own, build my own, from scratch, write my own, recreate, under the hood, how does it actually work, learn by building, byox
+triggers: build your own, build my own, build a toy, write my own, implement my own, my own version of, from scratch, under the hood, how does it actually work, learn by building, byox, roll my own
 ---
 
 # Build Your Own X skill
@@ -20,7 +20,7 @@ Game · Git · Memory Allocator · Network Stack · Neural Network · OS · Phys
 Processor · Programming Language · Regex Engine · Search Engine · Shell · Template
 Engine · Text Editor · Visual Recognition · Voxel Engine · Web Browser · Web Server
 
-Fetch the catalog README live with `read_webpage` to pick the actual tutorial —
+Fetch the catalog README live with `open_url` to pick the actual tutorial —
 don't recite links from memory; the list moves.
 
 ## Step 1 — Frame the build
