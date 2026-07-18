@@ -81,7 +81,7 @@ import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import * as notebook from "./notebook.ts";
 import { signingStatus, generateAndroidKeystore } from "./signing.ts";
-import { operatingDoctrine, personaVoice, PERSONAS } from "./persona.ts";
+import { operatingDoctrine, personaVoice, personaVoiceCompact, PERSONAS } from "./persona.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
 import {
@@ -385,7 +385,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
   if (lean) {
     return [
       `You are SAM — ${name}'s personal AI assistant. Confident, warm, sharp, a little flair — never robotic. Call them ${name} now and then.`,
-      personaVoice(user?.persona, name),   // same brain, chosen tone — even quick replies feel like the right voice
+      personaVoiceCompact(user?.persona, name),   // same brain, chosen tone — even quick replies feel like the right voice (compact: the lean prompt must stay lean)
       `Keep it tight and correct. Never bluff; if you're unsure, say so.`,
       user?.language && !/^en|english/i.test(user.language) ? `Always reply to ${name} in ${user.language}.` : ``,
       `Today & current time: ${nowText()}`,
@@ -439,7 +439,7 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
     // Recency wins: a final, hard reminder of the chosen voice — small free models weight the
     // last instruction most, so this makes the persona actually land (only when non-default).
-    user?.persona && user.persona !== "sam" ? `\n${personaVoice(user.persona, name)}\nStay in this voice for your reply.` : ``,
+    user?.persona && user.persona !== "sam" ? `\n${personaVoiceCompact(user.persona, name)}\nStay in this voice for your reply.` : ``,
   ].filter(Boolean).join("\n");
 }
 
