@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -32,6 +33,9 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
     return () => clearInterval(iv);
   }, []);
 
+  // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
+  // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
+  const [tab, setTab] = useState<"overview" | "brains" | "auto" | "people" | "activity">("overview");
   const [showAllLanes, setShowAllLanes] = useState(false);
   const providers = s?.models?.providers || [];
   const freeLive = providers.filter((p: any) => p.tier === "free" && p.keys > 0);
@@ -53,30 +57,47 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
             <div className="drawer-title">SAM · Control Centre</div>
             <div className="drawer-sub">Everything SAM is running, at a glance.</div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
 
         {!s ? <div className="dash-empty">Connecting to SAM…</div> : (
           <>
+            <div className="dash-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={tab === "overview"} className={tab === "overview" ? "on" : ""} onClick={() => setTab("overview")}>Overview</button>
+              <button type="button" role="tab" aria-selected={tab === "brains"} className={tab === "brains" ? "on" : ""} onClick={() => setTab("brains")}>Brains</button>
+              <button type="button" role="tab" aria-selected={tab === "auto"} className={tab === "auto" ? "on" : ""} onClick={() => setTab("auto")}>Automations</button>
+              <button type="button" role="tab" aria-selected={tab === "people"} className={tab === "people" ? "on" : ""} onClick={() => setTab("people")}>People</button>
+              <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "on" : ""} onClick={() => setTab("activity")}>Activity</button>
+            </div>
+            {tab === "overview" && (<>
             {/* headline stats */}
             <div className="dash-grid">
-              <div className="dash-stat"><span className="dash-num">{freeLive.length}</span><span className="dash-lbl">free brains live</span></div>
-              <div className="dash-stat"><span className="dash-num">{s.tools}</span><span className="dash-lbl">tools</span></div>
-              <div className="dash-stat"><span className="dash-num">{s.skills}</span><span className="dash-lbl">skills</span></div>
-              <div className="dash-stat"><span className="dash-num">{s.memory?.count ?? 0}</span><span className="dash-lbl">things remembered</span></div>
-              <div className="dash-stat"><span className="dash-num">{s.projects}</span><span className="dash-lbl">brands</span></div>
-              <div className="dash-stat"><span className="dash-num">{s.voice?.elevenlabs ? "ON" : "free"}</span><span className="dash-lbl">voice</span></div>
+              <div className="dash-stat"><Icon name="brain" className="dash-ic" /><span className="dash-num">{freeLive.length}</span><span className="dash-lbl">free brains live</span></div>
+              <div className="dash-stat"><Icon name="settings" className="dash-ic" /><span className="dash-num">{s.tools}</span><span className="dash-lbl">tools</span></div>
+              <div className="dash-stat"><Icon name="sparkle" className="dash-ic" /><span className="dash-num">{s.skills}</span><span className="dash-lbl">skills</span></div>
+              <div className="dash-stat"><Icon name="book" className="dash-ic" /><span className="dash-num">{s.memory?.count ?? 0}</span><span className="dash-lbl">things remembered</span></div>
+              <div className="dash-stat"><Icon name="briefcase" className="dash-ic" /><span className="dash-num">{s.projects}</span><span className="dash-lbl">brands</span></div>
+              <div className="dash-stat"><Icon name="voice" className="dash-ic" /><span className="dash-num">{s.voice?.elevenlabs ? "ON" : "free"}</span><span className="dash-lbl">voice</span></div>
             </div>
 
+            {/* security watchdog */}
+            <div className="dash-sec"><Icon name="shield" /> Security</div>
+            <div className={`dash-security ${sec && !sec.clear ? "flagged" : "clear"}`}>
+              <span className="dash-shield">{sec && !sec.clear ? "⚠️" : "🛡️"}</span>
+              <span>{sec ? sec.headline : "Checking…"}</span>
+            </div>
+
+            </>)}
+            {tab === "brains" && (<>
             {/* brains */}
             <div className="dash-sec">
-              AI brains ({freeLive.length}/{freeTotal} free lanes ready)
+              <Icon name="brain" /> AI brains ({freeLive.length}/{freeTotal} free lanes ready)
               {/* This list shows a key count per provider, which reads as editable — it is not, and
                   a dead end here sends people hunting through menus for the panel that IS. One
                   link, no new clutter. */}
               {onAddKeys && (
                 <button type="button" className="dash-sec-link" onClick={() => { onClose(); onAddKeys(); }}>
-                  ＋ add keys
+                  Add keys
                 </button>
               )}
             </div>
@@ -104,15 +125,10 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               )}
             </div>
 
-            {/* security watchdog */}
-            <div className="dash-sec">🛡️ Security</div>
-            <div className={`dash-security ${sec && !sec.clear ? "flagged" : "clear"}`}>
-              <span className="dash-shield">{sec && !sec.clear ? "⚠️" : "🛡️"}</span>
-              <span>{sec ? sec.headline : "Checking…"}</span>
-            </div>
-
+            </>)}
+            {tab === "auto" && (<>
             {/* swarm monitor */}
-            <div className="dash-sec">🐝 Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>
+            <div className="dash-sec"><Icon name="team" /> Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>
             {swarms.length === 0 ? <div className="dash-empty">No swarms yet — use /swarm &lt;goal&gt; to launch one.</div> : (
               <div className="dash-lanes">
                 {swarms.slice(-6).reverse().map((sw) => (
@@ -144,7 +160,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
             )}
 
             {/* schedules monitor */}
-            <div className="dash-sec">⏰ Scheduled Tasks ({schedules.filter(s => s.enabled).length} active)</div>
+            <div className="dash-sec"><Icon name="clock" /> Scheduled tasks ({schedules.filter(s => s.enabled).length} active)</div>
             {schedules.length === 0 ? <div className="dash-empty">No scheduled tasks. Use /schedule to add one.</div> : (
               <div className="dash-lanes">
                 {schedules.map((s) => (
@@ -166,8 +182,10 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               </div>
             )}
 
+            </>)}
+            {tab === "people" && (<>
             {/* people SAM knows by sight */}
-            <div className="dash-sec">👥 People SAM knows ({people.length})</div>
+            <div className="dash-sec"><Icon name="people" /> People SAM knows ({people.length})</div>
             {people.length === 0
               ? <div className="dash-empty">No one yet — show SAM someone via 👁️ Look and say "remember this is …".</div>
               : <div className="dash-lanes">{people.map((p, i) => (
@@ -179,6 +197,8 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                   </div>
                 ))}</div>}
 
+            </>)}
+            {tab === "activity" && (<>
             {/* activity */}
             <div className="dash-sec">Recent activity</div>
             {log.length === 0 ? <div className="dash-empty">Nothing yet — ask SAM something.</div> : (
@@ -189,6 +209,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                 ))}
               </ul>
             )}
+            </>)}
 
             <div className="admin-foot">Running {s.defaultTier}-first on {s.platform}. Vault: {s.vault?.count ?? 0} notes. Everything local &amp; private.</div>
           </>

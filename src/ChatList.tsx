@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { Fragment, useMemo, useState } from "react";
 import { cleanTitle, groupByRecency, matchesQuery, snippetFor } from "./lib/chatTitle";
 
@@ -109,7 +110,7 @@ export default function ChatList({
         />
       ) : (
         <button type="button" className="side-open" onClick={() => onOpen(c.id)} title={displayTitle(c)}>
-          {c.pinned && <span className="side-pin-dot" aria-hidden="true">📌</span>}
+          {c.pinned && <span className="side-pin-dot" aria-hidden="true"><Icon name="pin" size={13} /></span>}
           <span className="side-open-t">{displayTitle(c)}</span>
           {q.trim() && (() => {
             const s = snippetFor(q, c.messages.map((m) => m.text));
@@ -120,13 +121,13 @@ export default function ChatList({
       {editing !== c.id && (
         <span className="side-acts">
           <button type="button" className={`side-act ${c.pinned ? "on" : ""}`} onClick={() => onTogglePin(c.id)}
-            title={c.pinned ? "Unpin" : "Pin to top"} aria-label={c.pinned ? "Unpin chat" : "Pin chat"}>📌</button>
+            title={c.pinned ? "Unpin" : "Pin to top"} aria-label={c.pinned ? "Unpin chat" : "Pin chat"}><Icon name="pin" size={13} /></button>
           <button type="button" className="side-act" onClick={() => startRename(c)}
             title="Rename" aria-label="Rename chat">✎</button>
           {folders.length > 0 && (
             <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()}
               onChange={(e) => onMoveToFolder(c.id, e.target.value)} title="Move to folder" aria-label="Move to folder">
-              <option value="">📁</option>
+              <option value=""><Icon name="folder" size={13} /></option>
               {folders.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           )}
@@ -144,7 +145,7 @@ export default function ChatList({
       {/* The search box earns its space only once there are enough chats to lose one in. */}
       {convos.length > 4 && (
         <div className="side-search">
-          <span className="side-search-ic" aria-hidden="true">🔍</span>
+          <span className="side-search-ic" aria-hidden="true"><Icon name="search" size={13} /></span>
           <input value={q} onChange={(e) => setQ(e.target.value)}
             placeholder="Search chats…" aria-label="Search chats" />
           {q && <button type="button" className="side-search-x" onClick={() => setQ("")} aria-label="Clear search">✕</button>}

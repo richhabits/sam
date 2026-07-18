@@ -1556,3 +1556,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit;
   font-size: 13px; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
 .upd-go:disabled { opacity: .6; cursor: default; }
+
+/* ============================================================================
+   ICONS + DASHBOARD TABS
+   Emoji were doing icon duty: full-colour clip-art that shifts between platforms,
+   ignores the theme and can't take the accent. These are stroke glyphs on
+   currentColor, so they inherit colour, opacity and all nine themes for free.
+   ========================================================================== */
+.ic { flex: none; vertical-align: -0.18em; }
+.icon-btn .ic, .ctx-act .ic, .pop-opt .ic { opacity: .8; }
+.icon-btn:hover .ic, .ctx-act:hover .ic { opacity: 1; }
+.ctx-act { display: flex; align-items: center; gap: 9px; }
+.icon-btn { display: inline-flex; align-items: center; gap: 7px; }
+
+/* The control centre was one long scroll — stats, 42 lanes, security, swarms, schedules,
+   people and the log in a single column. Tabs keep each view about a screen tall. */
+.dash-tabs { display: flex; gap: 2px; margin: 0 0 16px; padding: 3px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 11px; }
+.dash-tabs button { flex: 1; padding: 7px 4px; appearance: none; border: 0; border-radius: 8px;
+  background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: background .12s ease, color .12s ease; }
+.dash-tabs button:hover { color: var(--text); }
+.dash-tabs button.on { background: var(--surface); color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+/* Stat tiles: icon above the number, so six tiles read as six different things at a glance
+   rather than as six identical boxes of digits. */
+.dash-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.dash-ic { color: var(--muted); opacity: .7; margin-bottom: 2px; }
+.dash-sec { display: flex; align-items: center; gap: 8px; }
