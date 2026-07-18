@@ -29,21 +29,21 @@ const toolNames = [...toolsSrc.matchAll(/\bname:\s*"([a-z0-9_]+)"/g)].map((m) =>
 // Every real tool lands in the FIRST category whose pattern matches (else "Utilities").
 // Add a tool to tools.ts and it shows up here automatically, in the right group.
 const CATS = [
-  ["🔍", "Web &amp; research", /(search|google|web|browse|surf|url|wiki|news|hacker|define|dictionary|translate|research|scrape|fetch|socials)/],
-  ["📄", "Files, docs &amp; vault", /(file|folder|zip|unzip|pdf|docx|\bdoc|read|write|append|move|rename|ingest|dedupe|organize|list_dir|vault|backup)/],
-  ["📧", "Messaging &amp; email", /(mail|email|imessage|message|text|slack|discord|telegram|notify)/],
-  ["📞", "Calls", /(call|facetime|phone|ring)/],
-  ["🐙", "Code &amp; GitHub", /(git|github|repo|commit|\bpr\b|branch|issue|npm|command|script|terminal|exec|diff|selftest)/],
-  ["📅", "Calendar, tasks &amp; projects", /(calendar|schedule|remind|nudge|timer|todo|linear|notion|trello|event|reminder|project)/],
-  ["👁️", "Vision &amp; screen", /(screenshot|camera|vision|ocr|\blook|photo|guardian|wallpaper)/],
-  ["🎵", "Music &amp; media", /(music|play|song|spotify|volume|media|pause|track|speak|voice)/],
-  ["🖱️", "Control your computer", /(caffeinate|lock|battery|system|wifi|network|eject|trash|brightness|clipboard|disk|type|press|click|\bkey|mouse|frontmost|dark_mode|dnd|my_apps|open_app|shortcut|self_restart|\bkill|manage)/],
-  ["🧠", "Memory &amp; people", /(person|people|remember|memor|note|recall|forget|contact|who_i_know)/],
-  ["🤝", "Agents &amp; swarm", /(team|ninja|swarm|agent|capacity)/],
-  ["🛡️", "Security", /(security|watchdog|guard)/],
-  ["💰", "Money &amp; business", /(crypto|stock|currency|price|money|convert|stripe|shopify|invoice)/],
-  ["📍", "Location &amp; weather", /(weather|direction|map|location|forecast)/],
-  ["🔧", "Utilities", /.*/],   // catch-all — always last
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-search\"/></svg>", "Web &amp; research", /(search|google|web|browse|surf|url|wiki|news|hacker|define|dictionary|translate|research|scrape|fetch|socials)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-doc\"/></svg>", "Files, docs &amp; vault", /(file|folder|zip|unzip|pdf|docx|\bdoc|read|write|append|move|rename|ingest|dedupe|organize|list_dir|vault|backup)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-mail\"/></svg>", "Messaging &amp; email", /(mail|email|imessage|message|text|slack|discord|telegram|notify)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-phone\"/></svg>", "Calls", /(call|facetime|phone|ring)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-branch\"/></svg>", "Code &amp; GitHub", /(git|github|repo|commit|\bpr\b|branch|issue|npm|command|script|terminal|exec|diff|selftest)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-calendar\"/></svg>", "Calendar, tasks &amp; projects", /(calendar|schedule|remind|nudge|timer|todo|linear|notion|trello|event|reminder|project)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-eye\"/></svg>", "Vision &amp; screen", /(screenshot|camera|vision|ocr|\blook|photo|guardian|wallpaper)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-music\"/></svg>", "Music &amp; media", /(music|play|song|spotify|volume|media|pause|track|speak|voice)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-cursor\"/></svg>", "Control your computer", /(caffeinate|lock|battery|system|wifi|network|eject|trash|brightness|clipboard|disk|type|press|click|\bkey|mouse|frontmost|dark_mode|dnd|my_apps|open_app|shortcut|self_restart|\bkill|manage)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-brain\"/></svg>", "Memory &amp; people", /(person|people|remember|memor|note|recall|forget|contact|who_i_know)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-team\"/></svg>", "Agents &amp; swarm", /(team|ninja|swarm|agent|capacity)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-shield\"/></svg>", "Security", /(security|watchdog|guard)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-markets\"/></svg>", "Money &amp; business", /(crypto|stock|currency|price|money|convert|stripe|shopify|invoice)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-location\"/></svg>", "Location &amp; weather", /(weather|direction|map|location|forecast)/],
+  ["<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-settings\"/></svg>", "Utilities", /.*/],   // catch-all — always last
 ];
 const groups = CATS.map(() => []);
 for (const n of toolNames.slice().sort()) {
