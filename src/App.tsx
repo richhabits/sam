@@ -16,6 +16,7 @@ const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
 import Icon from "./Icon";
+import PersonaPicker from "./PersonaPicker";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
@@ -1096,11 +1097,15 @@ export default function App() {
             <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="home" /> Personal</button>
           </div>
           {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
-          <label className="persona-pick" title="Who SAM sounds like — same memory, different voice">
-            <select value={persona} onChange={(e) => { setPersona(e.target.value); const p = PERSONA_OPTS.find((x) => x.id === e.target.value); sysNote(`${p?.emoji || "🧠"} SAM is now your ${p?.label || "SAM"} — same memory, ${p?.blurb || "your voice"}.`); }}>
-              {PERSONA_OPTS.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>)}
-            </select>
-          </label>
+          <PersonaPicker
+            value={persona}
+            options={PERSONA_OPTS}
+            onPick={(id) => {
+              setPersona(id);
+              const p = PERSONA_OPTS.find((x) => x.id === id);
+              sysNote(`${p?.emoji ?? ""} SAM is now your ${p?.label ?? "SAM"} — same memory, ${p?.blurb ?? ""}.`);
+            }}
+          />
           {mode === "business" && (
             <label className="biz">
               <span className="biz-label">Brand</span>
