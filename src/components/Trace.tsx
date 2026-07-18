@@ -25,10 +25,11 @@ const STEP_ICONS: [RegExp, IconName][] = [
   [/music|play|song|track/i, "music"], [/download/i, "download"],
   [/open|browser|url|website/i, "globe"], [/command|terminal|running/i, "terminal"],
   [/click|type|mouse|keyboard/i, "cursor"],
+  [/photo|camera|vision|looked at|image/i, "eye"],
 ];
 function stepIcon(a: string): IconName {
   for (const [re, ic] of STEP_ICONS) if (re.test(a)) return ic;
-  return "settings";
+  return "sparkle";   // simplest glyph in the set — legible at 13px, unlike the 8-spoke gear
 }
 
 // Uber-style live progress tracker: mini icons + a connecting line, the current
@@ -43,7 +44,7 @@ export function ProgressTracker({ steps, answering }: { steps: string[]; answeri
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: render-only progress tracker; steps append in order
           <div key={i} className={`tstep ${isLast ? "active" : "done"}`}>
-            <span className="tdot"><Icon name={it.icon} size={13} className="tico" /></span>
+            <span className="tdot"><Icon name={it.icon} size={15} className="tico" /></span>
             <span className="tlabel">{traceLine(it.label)}</span>
           </div>
         );
@@ -59,7 +60,7 @@ export function TraceStrip({ steps }: { steps: string[] }) {
       {steps.map((t, j) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: render-only completed journey; steps are in order
         <div key={j} className="tstep done">
-          <span className="tdot"><Icon name={stepIcon(t)} size={13} className="tico" /></span>
+          <span className="tdot"><Icon name={stepIcon(t)} size={15} className="tico" /></span>
           <span className="tlabel">{traceLine(t.replace(/^✓\s*/, ""))}</span>
         </div>
       ))}
