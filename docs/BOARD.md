@@ -39,6 +39,14 @@ constitution is `FLIP_IT.md`, its CLI is `run.py`, and the verify crib's
 (both mine from today). Dead reference left standing: `docs/strips/AIRLLM_STRIP.md` →
 `docs/LOCAL-MODELS.md`, never written.
 
+**GLM 5.2 was already implemented** — `ZHIPU_MODEL=glm-5.2`, endpoint `open.bigmodel.cn`, and
+already **#2 in both the `deep` and `code` lanes** (after Hermes), so with a key it handles hard
+reasoning and coding before the others are tried. Nothing to build. **What was actually broken
+was discoverability: 19 of 43 wired providers were missing from `.env.example`** — including
+zhipu — so nearly half of SAM's brains were invisible to anyone setting up. All 19 documented,
+grouped by lane, with GLM's free-tier note (`ZHIPU_MODEL=glm-4-flash`). Verified: 0 providers
+now undocumented.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,
