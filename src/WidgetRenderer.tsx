@@ -11,6 +11,7 @@ function ChartWidget({ data }: { data: any }) {
       <div className="wc-title">{data.title}</div>
       <div className="wc-bars">
         {data.series.map((s: any, i: number) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
           <div key={i} className="wc-bar-wrap">
             <div className="wc-bar-val">{s.value}</div>
             <div className="wc-bar" style={{ height: `${(s.value / max) * 100}%` }} />
@@ -28,10 +29,12 @@ function KanbanWidget({ data }: { data: any }) {
       <div className="wk-title">{data.title}</div>
       <div className="wk-board">
         {data.columns.map((col: any, i: number) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
           <div key={i} className="wk-col">
             <div className="wk-col-head">{col.name} <span className="wk-count">{col.tasks.length}</span></div>
             <div className="wk-tasks">
               {col.tasks.map((t: string, j: number) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
                 <div key={j} className="wk-task">{t}</div>
               ))}
             </div>
@@ -83,6 +86,7 @@ const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: 
         out.push(
           <div key={`w${i}`} className="widget-followup">
             {w.questions.map((q: string, j: number) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
               <button type="button" key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
             ))}
           </div>

@@ -14,6 +14,7 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
 
   const load = () => getPreferences().then((d) => { setPrefs(d?.preferences || []); setLearning(!!d?.learning); }).catch(() => {});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
 
   const forget = async (key: string) => { await forgetPreference(key); load(); };

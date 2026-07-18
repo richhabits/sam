@@ -96,6 +96,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     getMcpPresets().then((r) => setMcp(r.presets || [])).catch(() => {});
     getSigningStatus().then(setSigning).catch(() => {});
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount; refresh is stable
   useEffect(() => { refresh(); }, []);
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
   const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 1600); };

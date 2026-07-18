@@ -173,6 +173,7 @@ export default function StudioView() {
         {media.length > 1 && (
           <div className="stu-carousel">
             {media.map((src, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: render-only media strip; order is stable
               <button type="button" key={i} className={`stu-thumb ${i === 0 ? "on" : ""}`} onClick={() => setMedia((m) => [src, ...m.filter((x) => x !== src)])}>
                 {isVideo(src) ? <video src={src} muted /> : <img src={src} alt="" />}
               </button>

@@ -54,7 +54,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     pcRef.current?.close();
     // Closing the RTCPeerConnection does NOT stop the mic track — kill it explicitly
     // so the browser's recording indicator turns off.
-    try { micStreamRef.current?.getTracks().forEach((t) => t.stop()); } catch {}
+    try { micStreamRef.current?.getTracks().forEach((t) => { t.stop(); }); } catch {}
     micStreamRef.current = null;
   }
 
@@ -161,6 +161,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     fallbackSpeak(wakeGreeting(name), () => active.current && fallbackListen());
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only: init WebRTC on mount, teardown on unmount
   useEffect(() => {
     active.current = true;
     initWebRTC();
@@ -176,6 +177,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
       <div className={`vm-orb ${state}`} ref={mouthRef}>
         <div className="vm-mouth">
           {[0.5, 0.78, 1, 0.78, 0.5].map((m, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static waveform array literal, never reordered
             <span key={i} className="vm-bar" style={{ ["--m" as any]: m }} />
           ))}
         </div>

@@ -223,6 +223,7 @@ export default function App() {
     getQuotes(list.join(",")).then((r) => setQuotes(r.quotes || [])).catch(() => {}).finally(() => setQuotesLoading(false));
   };
   useEffect(() => { localStorage.setItem("sam.watchlist", JSON.stringify(watchlist)); }, [watchlist]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh markets quotes on open; triggered by marketsOpen
   useEffect(() => { if (marketsOpen) loadQuotes(); }, [marketsOpen]);   // refresh on open
   const addTicker = () => {
     const t = tickerInput.trim().toUpperCase();
@@ -293,6 +294,7 @@ export default function App() {
   const [rosterOpen, setRosterOpen] = useState(false);
   const [roster, setRoster] = useState<{ id: string; name: string; emoji: string; modeledOn: string; brief: string }[]>([]);
   const [rosterSearch, setRosterSearch] = useState("");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger set; the excluded value is read, not a dependency
   useEffect(() => { if (rosterOpen && !roster.length) getRoster().then((d) => setRoster(d.crew || d || [])).catch(() => {}); }, [rosterOpen]);
   useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
@@ -359,6 +361,7 @@ export default function App() {
   const recRef = useRef<any>(null);
   const sendRef = useRef<(text?: string) => void>(() => {});   // always the latest send() — memoized rows call through this
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only bootstrap: initial fetches + polling interval setup/teardown
   useEffect(() => {
     getProjects().then(setProjects).catch(() => {});
     getStatus().then(setStatus).catch(() => setStatus(null));
@@ -391,10 +394,13 @@ export default function App() {
     pollSwarms();
     return () => { clearInterval(iv); clearInterval(pv); swarmStop = true; clearTimeout(swarmTimer); };
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: auto-scroll on new content; atBottom is read, not a trigger
   useEffect(() => { if (atBottom) msgEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, pending]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resize the textarea when input changes
   useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }, [input]);
 
   // keep the active conversation in sync + persist everything
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync the active conversation on messages change; activeId is read, not a trigger
   useEffect(() => {
     setConvos((cs) => cs.map((c) => (c.id === activeId ? { ...c, messages, title: titleOf(messages), at: Date.now() } : c)));
   }, [messages]);
@@ -406,6 +412,7 @@ export default function App() {
   }, [convos, activeId, brand, quality]);
 
   // keyboard shortcuts
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-bind global shortcuts on the listed state; stable callbacks intentionally excluded
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -431,6 +438,7 @@ export default function App() {
   useEffect(() => { if (palette) setTimeout(() => paletteRef.current?.focus(), 30); }, [palette]);
   // Matching message indices for ⌘F find-in-chat.
   const findMatches = findQ.trim() ? messages.map((m, i) => (m.text || "").toLowerCase().includes(findQ.toLowerCase()) ? i : -1).filter((i) => i >= 0) : [];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: find-scroll triggered by findIdx/findQ/findOpen; findMatches is recomputed each render
   useEffect(() => { if (findOpen && findMatches.length) { const el = document.getElementById(`msg-${findMatches[Math.min(findIdx, findMatches.length - 1)]}`); el?.scrollIntoView({ behavior: "smooth", block: "center" }); } }, [findIdx, findQ, findOpen]);
 
   useEffect(() => {
@@ -445,9 +453,11 @@ export default function App() {
   useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
   useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
   useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch {} }, [profile, mode, persona]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load learned memory when the drawer opens; triggered by memoryOpen
   useEffect(() => { if (memoryOpen) { loadMemory(); setMemQuery(""); } }, [memoryOpen]);   // load the real learned memory when the drawer opens
 
   // Hands-free wake: whistle or double-clap opens Voice Mode.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: wake-listener lifecycle keyed to wakeOn; stable callbacks intentionally excluded
   useEffect(() => {
     if (!wakeOn) { try { localStorage.setItem("sam.wake", "0"); } catch {}; return; }
     let stop: (() => void) | null = null;
@@ -531,7 +541,7 @@ export default function App() {
   // doesn't recognise (notification + message + speaks it).
   function stopGuardian() {
     if (guardIv.current) { clearInterval(guardIv.current); guardIv.current = null; }
-    guardStream.current?.getTracks().forEach((t) => t.stop());
+    guardStream.current?.getTracks().forEach((t) => { t.stop(); });
     guardStream.current = null; guardPrev.current = null; setGuardian(false);
   }
   async function toggleGuardian() {
@@ -591,10 +601,10 @@ export default function App() {
       canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
       canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
       const data = canvas.toDataURL("image/jpeg", quality);
-      stream.getTracks().forEach((t) => t.stop());
+      stream.getTracks().forEach((t) => { t.stop(); });
       return data;
     } catch {
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((t) => { t.stop(); });
       sysNote("I couldn't open the camera — allow camera access in your browser and try again.");
       return null;
     }
@@ -635,7 +645,7 @@ export default function App() {
           const codes = await det.detect(video).catch(() => []);
           if (codes?.length) {
             const val = codes[0].rawValue as string;
-            stream.getTracks().forEach((x) => x.stop());
+            stream.getTracks().forEach((x) => { x.stop(); });
             setMessages((m) => [...m, { role: "user", text: "🔳 (scanned a code)", at: now() }]);
             const isUrl = /^https?:\/\//i.test(val);
             setMessages((m) => [...m, { role: "sam", text: `🔳 Scanned: ${isUrl ? `[${val}](${val})` : "`" + val + "`"}${isUrl ? " — want me to open or summarise it?" : ""}`, how: "camera", at: now() }]);
@@ -643,16 +653,16 @@ export default function App() {
           }
           await new Promise((r) => setTimeout(r, 180));
         }
-        stream.getTracks().forEach((x) => x.stop());
+        stream.getTracks().forEach((x) => { x.stop(); });
         sysNote("No code spotted — hold it steady in frame and try again.");
         return;
       }
       // Fallback: capture a frame and let vision read it
       const c = document.createElement("canvas"); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480;
       c.getContext("2d")!.drawImage(video, 0, 0, c.width, c.height);
-      const data = c.toDataURL("image/jpeg", 0.85); stream.getTracks().forEach((x) => x.stop());
+      const data = c.toDataURL("image/jpeg", 0.85); stream.getTracks().forEach((x) => { x.stop(); });
       askWithFrameData("🔳 (scanning a code)", "Read the QR code or barcode in this image and tell me exactly what it contains (URL, text, etc.).", data);
-    } catch { stream?.getTracks().forEach((x) => x.stop()); sysNote("Couldn't open the camera to scan."); }
+    } catch { stream?.getTracks().forEach((x) => { x.stop(); }); sysNote("Couldn't open the camera to scan."); }
   }
 
   // helper: ask with a frame we already captured
@@ -664,7 +674,7 @@ export default function App() {
   }
 
   // ⏱️ Timelapse watch — snaps every N sec and only pings you when the scene meaningfully changes.
-  function stopTimelapse() { if (tlIv.current) { clearInterval(tlIv.current); tlIv.current = null; } tlStream.current?.getTracks().forEach((t) => t.stop()); tlStream.current = null; setTimelapse(false); }
+  function stopTimelapse() { if (tlIv.current) { clearInterval(tlIv.current); tlIv.current = null; } tlStream.current?.getTracks().forEach((t) => { t.stop(); }); tlStream.current = null; setTimelapse(false); }
   async function toggleTimelapse() {
     if (timelapse) { stopTimelapse(); sysNote("⏱️ Timelapse watch off."); return; }
     try {
@@ -732,9 +742,9 @@ export default function App() {
         } catch {} finally { busy = false; }
       }, 2500);
       findIv.current = iv;
-    } catch { stream?.getTracks().forEach((t) => t.stop()); findStream.current = null; sysNote("Couldn't open the camera to search."); }
+    } catch { stream?.getTracks().forEach((t) => { t.stop(); }); findStream.current = null; sysNote("Couldn't open the camera to search."); }
   }
-  function stopFind() { if (findIv.current) { clearInterval(findIv.current); findIv.current = null; } findStream.current?.getTracks().forEach((t) => t.stop()); findStream.current = null; }
+  function stopFind() { if (findIv.current) { clearInterval(findIv.current); findIv.current = null; } findStream.current?.getTracks().forEach((t) => { t.stop(); }); findStream.current = null; }
 
   // 📸 Take a photo → saved to the vault (local only).
   async function snapPhoto() {
@@ -1217,6 +1227,7 @@ export default function App() {
             <div className="pb-head"><span className="pb-title">📌 Pinned</span></div>
             <div className="pb-list">
               {messages.map((m, i) => m.pinned ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: render-only pinned view; order is stable
                 <div key={i} className="pb-item">
                   <div className="pb-text md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }} />
                   <button type="button" className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: false } : msg))}>Unpin</button>
@@ -1271,6 +1282,7 @@ export default function App() {
         ) : (
           <div className="thread">
             {messages.map((m, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: find navigation references message indices — index is the identity here
               <div key={i} id={`msg-${i}`} className={`msg-anchor ${findMatches.includes(i) ? (i === findMatches[Math.min(findIdx, findMatches.length - 1)] ? "find-current" : "find-match") : ""}`}>
               <MemoizedMessageRow
                 m={m}
@@ -1366,6 +1378,7 @@ export default function App() {
         {attachments.length > 0 && (
           <div className="attach-row">
             {attachments.map((a, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: append-only attachment list; order is stable
               <div key={i} className="attach">
                 {a.kind === "image" ? <img src={a.data} alt={a.name} /> : <span className="attach-file">📄</span>}
                 <span className="attach-name">{a.name}</span>
@@ -1415,7 +1428,7 @@ export default function App() {
           )}
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => dt.items.add(f)); onFiles(dt.files); } }}
+            onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => { dt.items.add(f); }); onFiles(dt.files); } }}
             placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
           <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
           <button type="button" className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>

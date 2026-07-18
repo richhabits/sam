@@ -2,11 +2,12 @@
 
 // Turn a step label into text with any URL rendered as a compact source link.
 function traceLine(t: string) {
-  return t.split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
-    /^https?:\/\//.test(p)
-      ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="src-link">{p.replace(/^https?:\/\/(www\.)?/, "").slice(0, 44)}</a>
-      : <span key={i}>{p}</span>
-  );
+  return t.split(/(https?:\/\/[^\s]+)/g).map((p, i) => {
+    // biome-ignore lint/suspicious/noArrayIndexKey: text tokens split by URL regex; positional identity is correct
+    if (/^https?:\/\//.test(p)) return <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="src-link">{p.replace(/^https?:\/\/(www\.)?/, "").slice(0, 44)}</a>;
+    // biome-ignore lint/suspicious/noArrayIndexKey: text tokens split by URL regex; positional identity is correct
+    return <span key={i}>{p}</span>;
+  });
 }
 
 // A mini icon for each step SAM takes — so you can watch the A→X journey.
@@ -39,6 +40,7 @@ export function ProgressTracker({ steps, answering }: { steps: string[]; answeri
       {items.map((it, i) => {
         const isLast = i === items.length - 1;
         return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: render-only progress tracker; steps append in order
           <div key={i} className={`tstep ${isLast ? "active" : "done"}`}>
             <span className="tdot"><span className="tico">{it.icon}</span></span>
             <span className="tlabel">{traceLine(it.label)}</span>
@@ -54,6 +56,7 @@ export function TraceStrip({ steps }: { steps: string[] }) {
   return (
     <div className="tracker">
       {steps.map((t, j) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: render-only completed journey; steps are in order
         <div key={j} className="tstep done">
           <span className="tdot"><span className="tico">{stepIcon(t)}</span></span>
           <span className="tlabel">{traceLine(t.replace(/^✓\s*/, ""))}</span>
