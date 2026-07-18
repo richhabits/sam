@@ -1,8 +1,8 @@
 # BOARD — SAM living state
 
 *Read at boot, update at session end (CLAUDE.md doctrine #9). Newest truth wins; keep it
-honest and short. Last updated: 2026-07-18 00:38 BST, by the Cowork session (master-prompt
-landed + reconciled + both watchdog halves wired).*
+honest and short. Last updated: 2026-07-18 02:13 BST, by the Cowork session (master-prompt
+landed + reconciled + watchdog wired + full audit & zero-warning sweep).*
 
 ## Loops (the machine running itself)
 
@@ -40,6 +40,7 @@ landed + reconciled + both watchdog halves wired).*
 
 ## Recently done (receipts)
 
+- 07-18: **Full audit + zero-warning sweep.** Whole-repo biome lint 315 → **0** across 4 commits (`8610ed3` buttons, `c6b9007` a11y-interactions, `e83a584` src hooks/keys/iterables, `a314f35` server). Real fixes where genuine (185 `type=button`; braced void `forEach`s; `parseInt(…,10)`; regex `while`→`for`; un-nested comma-operator cache in world.ts), documented `biome-ignore` where intentional (modal backdrops w/ Esc, mount-once effects, index-is-identity lists). Verified each batch: typecheck + 285 tests + build green; FLIP IT 28 tests green; `npm audit` 0 vulns. Also: pruned stale `origin/fix/telemetry-loopback` (already merged), confirmed GitHub branches = just `main`. Open threads for Romeo: external PR #20 (`--version`; SAM has no CLI `bin`, may not fit), rolling draft release v2.1.3 (Release Drafter — publish or leave).
 - 07-18: Two-sided nightly watchdog wired. **Cloud** (`trig_01NSKNi9Kzhgq3itShZyyDd5`, cron `0 7 * * *` = 08:00 London): reads GitHub Actions on `richhabits/sam` main, pings only on red, silent on green — a smoke alarm, never a builder. **Mac** (`scripts/daily_benchmark.sh`, pushed `d3f3d39`): fires a macOS notification when SAM is down at benchmark time or the arena writes no champion line; best-effort osascript, guarded so it can't break the loop; verified loop still loads (`runs=0`, program /bin/bash). Cloud watches GitHub; Mac watches Mac.
 - 07-18: Master-prompt landed on the Mac — `CLAUDE.md` (doctrine, auto-loads every session) + `docs/BOARD.md` (this file) created on `main` @ `8ab6f4f`. Reconciled BOARD against verified reality: FLIP IT lives at `~/flip-it` (sibling repo), both loops have verified entrypoints, `mom_12_1` already wired.
 - 07-17: Colosseum routing order fixed (3 real bugs: spread-load rotated the champion; unranked leapfrogged tested losers; 1-brain benchmark corrupted ranking). 16 tests, merged `8ab6f4f`, CI green.
