@@ -1362,3 +1362,66 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* Save confirmation in the keys panel — needs to persist long enough to be seen. */
 .admin-ok { color: #4ec98a; margin-top: 6px; font-weight: 600; }
+
+/* ============================================================================
+   Sidebar chat list (src/ChatList.tsx) — search, recency groups, pin/rename.
+   Appended block; overrides the base .side-* rules above where they conflict.
+   ========================================================================== */
+
+/* Search — only rendered once there are >4 chats, so it costs nothing early on. */
+.side-search { display: flex; align-items: center; gap: 6px; margin: 0 12px 8px;
+  padding: 6px 9px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 9px; }
+.side-search:focus-within { border-color: var(--accent); box-shadow: var(--ring); }
+.side-search-ic { font-size: 11px; opacity: .55; flex: none; }
+.side-search input { flex: 1; min-width: 0; background: none; border: 0; outline: none;
+  color: var(--text); font: inherit; font-size: 12.5px; }
+.side-search input::placeholder { color: var(--muted); }
+.side-search-x { flex: none; background: none; border: 0; padding: 0 2px; cursor: pointer;
+  color: var(--muted); font-size: 11px; line-height: 1; }
+.side-search-x:hover { color: var(--text); }
+
+/* Recency headers (Today / Yesterday / Previous 7 days / Earlier / Pinned). */
+.side-group { padding: 12px 10px 4px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  pointer-events: none; }
+.side-list > .side-group:first-child { padding-top: 4px; }
+
+/* Rows: two lines max so a long title degrades gracefully instead of hard-truncating. */
+.side-list li { align-items: stretch; }
+.side-open { display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  white-space: normal; text-overflow: clip; line-height: 1.35; }
+.side-open-t { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.side-pin-dot { font-size: 9px; opacity: .75; margin-right: 4px; }
+/* Matched text from inside the conversation, shown only while searching. */
+.side-snip { font-size: 11px; color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.side-list li.active .side-snip { color: var(--accent-text); opacity: .8; }
+
+/* Row actions: hidden until hover/focus so the resting list stays clean, but they are
+   real buttons with tooltips + aria-labels — not a hidden double-click gesture. */
+.side-acts { display: flex; align-items: center; gap: 1px; flex: none;
+  opacity: 0; transition: opacity .12s ease; }
+.side-list li:hover .side-acts,
+.side-list li:focus-within .side-acts,
+.side-list li.active .side-acts { opacity: 1; }
+.side-act { background: none; border: 0; cursor: pointer; color: var(--muted);
+  font-size: 10.5px; line-height: 1; padding: 5px 4px; border-radius: 6px; }
+.side-act:hover { background: var(--border); color: var(--text); }
+.side-act.del:hover { background: rgba(239,68,68,.12); color: #EF4444; }
+/* A pinned chat keeps its pin visible even when the row is not hovered. */
+.side-list li.pinned .side-acts { opacity: 1; }
+.side-list li.pinned .side-act:not(.on) { opacity: 0; }
+.side-list li.pinned:hover .side-act { opacity: 1; }
+.side-act.on { opacity: 1; color: var(--accent-text); }
+
+/* Inline rename — replaces the row's label in place; Enter commits, Esc cancels. */
+.side-rename { flex: 1; min-width: 0; margin: 4px 6px; padding: 5px 7px;
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 7px;
+  color: var(--text); font: inherit; font-size: 13px; outline: none; }
+
+/* Rename affordance for the selected folder chip, beside the existing delete. */
+.side-folder.edit-folder { color: var(--muted); border-color: transparent; }
+.side-folder.edit-folder:hover { background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent-text); }
