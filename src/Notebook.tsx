@@ -65,6 +65,8 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer notebook-drawer" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="notebook">
         <div className="nb-head">

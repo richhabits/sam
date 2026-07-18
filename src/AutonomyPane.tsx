@@ -34,7 +34,10 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
   const when = (iso: string) => { try { return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer autonomy" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
