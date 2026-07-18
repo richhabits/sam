@@ -15,6 +15,7 @@ import { ProgressTracker, TraceStrip } from "./components/Trace";
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
+import Icon from "./Icon";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
@@ -148,9 +149,9 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
       {m.role === "sam" && m.text && (
         <div className="msg-actions">
           <button type="button" className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
-          <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "📌 Pin"}</button>
-          <button type="button" className="mini" onClick={() => onQuote(m.text)}>↩ Reply</button>
-          <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "⏹ Stop" : "🔊 Listen"}</button>
+          <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "Pin"}</button>
+          <button type="button" className="mini" onClick={() => onQuote(m.text)}>Reply</button>
+          <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "Stop" : "Listen"}</button>
           {isLast && <button type="button" className="mini" onClick={onRegenerate}>Regenerate</button>}
           {m.how && <span className="how">answered {m.how}</span>}
         </div>
@@ -1084,12 +1085,12 @@ export default function App() {
         <div className="bar-right">
           {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
           {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
-          <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
-          <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation">🎨 Studio</button>
+          <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" /> Voice</button>
+          <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" /> Studio</button>
           
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
-            <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
-            <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}>🏠 Personal</button>
+            <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}><Icon name="briefcase" /> Business</button>
+            <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="home" /> Personal</button>
           </div>
           {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
           <label className="persona-pick" title="Who SAM sounds like — same memory, different voice">
@@ -1121,11 +1122,11 @@ export default function App() {
                 // brain (GLM, Kimi) hit a dead end here and had no way through to the real list.
                 onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
                 title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
-                🔑 {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
+                <Icon name="key" /> {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
               </button>
             );
           })()}
-          <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
+          <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
           <UpdateButton />
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
@@ -1247,7 +1248,7 @@ export default function App() {
         <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
           onOpen={openConvo} onDelete={deleteConvo} onRename={renameConvo} onTogglePin={togglePin}
           onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
-        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
+        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}><Icon name="download" /> Import your history</button>
       </aside>
       <div className="center">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
@@ -1276,7 +1277,7 @@ export default function App() {
         )}
         {started && messages.some((m) => m.pinned) && (
           <div className="pinned-bar">
-            <div className="pb-head"><span className="pb-title">📌 Pinned</span></div>
+            <div className="pb-head"><span className="pb-title"><Icon name="pin" /> Pinned</span></div>
             <div className="pb-list">
               {messages.map((m, i) => m.pinned ? (
                 // biome-ignore lint/suspicious/noArrayIndexKey: render-only pinned view; order is stable
@@ -1329,7 +1330,7 @@ export default function App() {
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
-            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <button type="button" className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button> · <button type="button" className="linkish" onClick={() => setImportOpen(true)}>📥 Import your history</button></div>
+            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <button type="button" className="linkish" onClick={() => setRosterOpen(true)}><Icon name="people" /> Meet the team</button> · <button type="button" className="linkish" onClick={() => setImportOpen(true)}><Icon name="download" /> Import your history</button></div>
           </div>
         ) : (
           <div className="thread">
@@ -1502,14 +1503,14 @@ export default function App() {
         <div className="ctx-title">Context</div>
         <div className="ctx-brand">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</div>
         <div className="ctx-label">Quick actions</div>
-        <button type="button" className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>🤝 Assemble the Team</button>
-        <button type="button" className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>🥷 Deploy the Ninjas</button>
-        <button type="button" className="ctx-act" onClick={openStudio}>🎨 Open Studio</button>
-        <button type="button" className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
-        <button type="button" className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
-        <button type="button" className="ctx-act" onClick={() => setMarketsOpen(true)}>📈 Markets</button>
-        <button type="button" className="ctx-act" onClick={() => setColosseumOpen(true)}>⚔️ Colosseum</button>
-        <button type="button" className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
+        <button type="button" className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}><Icon name="team" /> Assemble the Team</button>
+        <button type="button" className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}><Icon name="ninja" /> Deploy the Ninjas</button>
+        <button type="button" className="ctx-act" onClick={openStudio}><Icon name="studio" /> Open Studio</button>
+        <button type="button" className="ctx-act" onClick={lookThroughCamera}><Icon name="eye" /> Look (camera)</button>
+        <button type="button" className="ctx-act" onClick={() => setRosterOpen(true)}><Icon name="people" /> Meet the team</button>
+        <button type="button" className="ctx-act" onClick={() => setMarketsOpen(true)}><Icon name="markets" /> Markets</button>
+        <button type="button" className="ctx-act" onClick={() => setColosseumOpen(true)}><Icon name="trophy" /> Colosseum</button>
+        <button type="button" className="ctx-act" onClick={() => setDashOpen(true)}><Icon name="chart" /> Dashboard</button>
         <div className="ctx-label">Live status</div>
         <div className="ctx-live">
           <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
@@ -1619,7 +1620,7 @@ export default function App() {
               <button type="button" className="icon-btn" onClick={() => { newChat(); setHistoryOpen(false); }} title="New chat">＋</button>
             </div>
             {convos.length > 4 && (
-              <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="🔍 Search chats…" />
+              <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="Search chats…" />
             )}
             {/* Same titling + content search as the desktop sidebar — this drawer is the
                 only chat list on narrow screens, where `.side` is hidden. */}
@@ -1669,7 +1670,7 @@ export default function App() {
               const match = (items: { id: string; text: string; ts: number }[]) => q ? items.filter((it) => it.text.toLowerCase().includes(q)) : items;
               const anyMatch = KINDS.some(([kind]) => match(mem?.groups?.[kind] || []).length);
               return <>
-                <input className="mem-search" value={memQuery} onChange={(e) => setMemQuery(e.target.value)} placeholder="🔍 Search your memory…" />
+                <input className="mem-search" value={memQuery} onChange={(e) => setMemQuery(e.target.value)} placeholder="Search your memory…" />
                 {!anyMatch && q ? <div className="drawer-empty">No memories match “{memQuery}”.</div> : <div className="mem-groups">
                 {KINDS.map(([kind, label]) => {
                   const items = match(mem?.groups?.[kind] || []);
@@ -1705,7 +1706,7 @@ export default function App() {
               </div>
               <button type="button" className="icon-btn" onClick={() => setRosterOpen(false)} aria-label="Close">✕</button>
             </div>
-            <input className="roster-search" value={rosterSearch} onChange={(e) => setRosterSearch(e.target.value)} placeholder="🔍 Search the roster — name, discipline, skill…" autoFocus />
+            <input className="roster-search" value={rosterSearch} onChange={(e) => setRosterSearch(e.target.value)} placeholder="Search the roster — name, discipline, skill…" autoFocus />
             <div className="roster-grid">
               {roster.filter((a) => { const q = rosterSearch.trim().toLowerCase(); return !q || `${a.name} ${a.modeledOn} ${a.brief}`.toLowerCase().includes(q); }).map((a) => (
                 <div key={a.id} className="roster-card">
@@ -1730,7 +1731,7 @@ export default function App() {
           <div className="import-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="roster-head">
               <div>
-                <div className="roster-title">📥 Import your history</div>
+                <div className="roster-title"><Icon name="download" /> Import your history</div>
                 <div className="roster-sub">Drop a ChatGPT / Claude / Gemini export — SAM learns the durable facts about you, privately, on your machine.</div>
               </div>
               <button type="button" className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close">✕</button>
