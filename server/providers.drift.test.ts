@@ -20,7 +20,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
 const models = read("server/models.ts");
 const admin = read("src/Admin.tsx");
-const index = read("server/index.ts");
+// The admin routes moved to routes.admin.ts (audit #2). This test asserted on index.ts alone, so
+// the extraction turned its assertions into "route not found" — the THIRD time a source-scanning
+// test silently lost its subject to a refactor. Read both, and assert the route is found at all
+// so a future move fails loudly here instead of quietly passing over an empty string.
+const index = read("server/index.ts") + read("server/routes.admin.ts");
 const keys = read("server/keys.ts");
 const envExample = read(".env.example");
 

@@ -23,17 +23,28 @@ import { describe, it, expect } from "vitest";
 // shrinking its own scope with every extraction while still reporting green.
 const here = dirname(fileURLToPath(import.meta.url));
 const routeFiles = ["index.ts", ...readdirSync(here).filter((f) => /^routes\..*\.ts$/.test(f) && !f.includes(".test."))];
-const src = routeFiles.map((f) => readFileSync(join(here, f), "utf8")).join("\n");
+const sources = routeFiles.map((f) => ({ file: f, text: readFileSync(join(here, f), "utf8") }));
+const src = sources.map((s) => s.text).join("\n");
 
-type Route = { method: string; path: string; body: string };
-const routes: Route[] = (() => {
-  const hits = [...src.matchAll(/app\.(get|post|delete|put|patch|all)\("([^"]+)"/g)];
+type Route = { method: string; path: string; body: string; file: string };
+// Parsed PER FILE, never across the concatenation. Slicing the joined text made each file's last
+// route absorb the head of the next file — 5 routes did. That misfires in both directions: it
+// flagged the catch-all GET * as "privileged" because routes.admin.ts's `import { setElonMode }`
+// bled into its body, and — the dangerous direction — a route could have absorbed a NEIGHBOURING
+// file's `isLoopback(req)` and passed the gate check without being gated at all.
+const routes: Route[] = sources.flatMap(({ file, text }) => {
+  const hits = [...text.matchAll(/app\.(get|post|delete|put|patch|all)\("([^"]+)"/g)];
   return hits.map((m, i) => ({
+    file,
     method: m[1].toUpperCase(),
     path: m[2],
-    body: src.slice(m.index!, i + 1 < hits.length ? hits[i + 1].index! : src.length),
+    // Import lines are stripped: PRIVILEGED matches substrings, so `import { setElonMode }`
+    // reads as the privileged call `setElon...`. Only the handler body should be searched.
+    body: text
+      .slice(m.index!, i + 1 < hits.length ? hits[i + 1].index! : text.length)
+      .replace(/^\s*import .*$/gm, ""),
   }));
-})();
+});
 
 /** Writes that change credentials, or what SAM is allowed to do without asking. */
 const PRIVILEGED = ["writeEnv(", "setAllow", "regenerateToken", "setAutopilot", "setElon", "revokeToken", "issueToken"];
@@ -61,7 +72,7 @@ describe("route contract", () => {
     const ungated = routes
       .filter((r) => PRIVILEGED.some((k) => r.body.includes(k)))
       .filter((r) => !r.body.includes("isLoopback(req)"))
-      .map((r) => `${r.method} ${r.path}`);
+      .map((r) => `${r.method} ${r.path} (${r.file})`);
     expect(ungated, `privileged but not loopback-only: ${ungated.join(", ")}`).toEqual([]);
   });
 
