@@ -28,11 +28,11 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">🧠 What SAM has learned about you</div>
             <div className="drawer-sub"><span className="learned-lock">🔒 On-device only</span> — nothing here is ever sent to an AI provider or gateway. Delete anything, any time.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="learned-toggle-row">
-          <button className={"au-behavior" + (learning ? " on" : "")} onClick={toggleLearning}>
+          <button type="button" className={"au-behavior" + (learning ? " on" : "")} onClick={toggleLearning}>
             <span className={"au-switch" + (learning ? " on" : "")} aria-hidden><span className="au-knob" /></span>
             <span className="au-b-text">
               <span className="au-b-label">Let SAM learn my preferences</span>
@@ -43,7 +43,7 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
 
         <div className="au-section-row">
           <span className="au-section-label">{prefs.length} thing{prefs.length === 1 ? "" : "s"} learned</span>
-          {prefs.length > 0 && <button className="au-pause" onClick={resetAll}>Reset everything</button>}
+          {prefs.length > 0 && <button type="button" className="au-pause" onClick={resetAll}>Reset everything</button>}
         </div>
 
         <div className="learned-list">
@@ -58,7 +58,7 @@ export default function LearnedPane({ onClose }: { onClose: () => void }) {
                 <span className="learned-conf" title={`seen ${p.count}×`}>
                   <span className="learned-conf-bar" style={{ width: `${Math.round(p.confidence * 100)}%` }} />
                 </span>
-                <button className="learned-forget" onClick={() => forget(p.key)} title="Forget this">✕</button>
+                <button type="button" className="learned-forget" onClick={() => forget(p.key)} title="Forget this">✕</button>
               </div>
             </div>
           ))}

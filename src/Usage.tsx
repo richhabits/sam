@@ -41,7 +41,7 @@ export default function Usage({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">📊 Live usage</div>
             <div className="drawer-sub">{freeWithKeys} free provider{freeWithKeys === 1 ? "" : "s"} connected · {totalUses} calls this session · SAM spreads work so your free quotas last.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {active.length === 0 && (

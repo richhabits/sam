@@ -41,17 +41,17 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">🕹️ What can SAM do on its own?</div>
             <div className="drawer-sub">Everything's off until you allow it. Enabling a behavior lets SAM speak up — it never lets SAM run anything dangerous unattended.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="au-section-row">
           <span className="au-section-label">Autonomous behaviors</span>
-          {anyOn && <button className="au-pause" onClick={pauseAll}>⏸ Pause all</button>}
+          {anyOn && <button type="button" className="au-pause" onClick={pauseAll}>⏸ Pause all</button>}
         </div>
 
         <div className="au-behaviors">
           {behaviors.map((b) => (
-            <button key={b.id} className={"au-behavior" + (b.enabled ? " on" : "")} onClick={() => toggle(b)}>
+            <button type="button" key={b.id} className={"au-behavior" + (b.enabled ? " on" : "")} onClick={() => toggle(b)}>
               <span className={"au-switch" + (b.enabled ? " on" : "")} aria-hidden><span className="au-knob" /></span>
               <span className="au-b-text">
                 <span className="au-b-label">{b.label} {b.dangerousCapable && <span className="au-danger-tag" title="Can propose a dangerous action — which still pauses for your OK">gated</span>}</span>
@@ -77,7 +77,7 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
 
         <div className="au-section-row">
           <span className="au-section-label">Autonomy log</span>
-          {log.length > 0 && <button className="au-pause" onClick={clearLog}>Clear</button>}
+          {log.length > 0 && <button type="button" className="au-pause" onClick={clearLog}>Clear</button>}
         </div>
         <div className="au-log">
           {log.length === 0 && <div className="drawer-empty">Nothing yet. When SAM acts or suggests on its own, it's recorded here — and nothing is ever uploaded.</div>}

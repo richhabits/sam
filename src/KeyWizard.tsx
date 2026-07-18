@@ -52,15 +52,15 @@ export default function KeyWizard({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">⚡ Power up SAM</div>
             <div className="drawer-sub">{online} of {PROVIDERS.length} free brains online — each takes ~30 seconds, all free. (SAM already works right now.)</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="wiz-meter"><span style={{ width: `${(online / PROVIDERS.length) * 100}%` }} /></div>
 
         {clip && (
           <div className="wiz-clip">📋 Spotted a <b>{PROVIDERS.find((p) => p.id === clip.id)?.label}</b> key on your clipboard —{" "}
-            <button className="wiz-add" onClick={() => { validate(clip.id, clip.key); setClip(null); }}>add it</button>
-            <button className="wiz-x" onClick={() => setClip(null)}>dismiss</button>
+            <button type="button" className="wiz-add" onClick={() => { validate(clip.id, clip.key); setClip(null); }}>add it</button>
+            <button type="button" className="wiz-x" onClick={() => setClip(null)}>dismiss</button>
           </div>
         )}
 

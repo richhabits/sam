@@ -25,7 +25,7 @@ export default function DoctorPane({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">🩺 Is SAM working?</div>
             <div className="drawer-sub">{loading ? "Checking the usual suspects…" : (r?.summary || "")}</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {r && (
@@ -43,7 +43,7 @@ export default function DoctorPane({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <button className="dr-rerun" onClick={run} disabled={loading}>{loading ? "Checking…" : "↻ Re-run checks"}</button>
+        <button type="button" className="dr-rerun" onClick={run} disabled={loading}>{loading ? "Checking…" : "↻ Re-run checks"}</button>
         <a className="dr-more" href="https://github.com/richhabits/sam/blob/main/docs/TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer">Full troubleshooting guide →</a>
       </aside>
     </div>

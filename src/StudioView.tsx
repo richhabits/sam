@@ -111,14 +111,14 @@ export default function StudioView() {
         <div className="stu-brand">🎨 SAM <b>Studio</b></div>
 
         <div className="stu-seg">
-          <button className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>🖼 Image</button>
-          <button className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>🎬 Video</button>
+          <button type="button" className={mode === "image" ? "on" : ""} onClick={() => setMode("image")}>🖼 Image</button>
+          <button type="button" className={mode === "video" ? "on" : ""} onClick={() => setMode("video")}>🎬 Video</button>
         </div>
 
         <div className="stu-label">Style</div>
         <div className="stu-styles">
           {STYLES.map((s, _i) => (
-            <button key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
+            <button type="button" key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
               style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.label}>
               <span className="stu-style-label">{s.label}</span>
             </button>
@@ -129,7 +129,7 @@ export default function StudioView() {
           <div className="stu-label">🎥 Camera motion</div>
           <div className="stu-motions">
             {MOTIONS.map((m) => (
-              <button key={m.id || "static"} className={`stu-chip ${motion === m.id ? "on" : ""}`} onClick={() => setMotion(m.id)}>{m.label}</button>
+              <button type="button" key={m.id || "static"} className={`stu-chip ${motion === m.id ? "on" : ""}`} onClick={() => setMotion(m.id)}>{m.label}</button>
             ))}
           </div>
         </>)}
@@ -137,12 +137,12 @@ export default function StudioView() {
         <div className="stu-row2">
           <div style={{ flex: 1 }}>
             <div className="stu-label">Ratio</div>
-            <div className="stu-motions">{RATIOS.map((r) => <button key={r.id} className={`stu-chip ${ratio === r.id ? "on" : ""}`} onClick={() => setRatio(r.id)}>{r.label}</button>)}</div>
+            <div className="stu-motions">{RATIOS.map((r) => <button type="button" key={r.id} className={`stu-chip ${ratio === r.id ? "on" : ""}`} onClick={() => setRatio(r.id)}>{r.label}</button>)}</div>
           </div>
           {mode === "image" && (
             <div>
               <div className="stu-label">Count</div>
-              <div className="stu-motions">{[1, 2, 4].map((n) => <button key={n} className={`stu-chip ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>{n}</button>)}</div>
+              <div className="stu-motions">{[1, 2, 4].map((n) => <button type="button" key={n} className={`stu-chip ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>{n}</button>)}</div>
             </div>
           )}
         </div>
@@ -151,11 +151,11 @@ export default function StudioView() {
         <textarea className="stu-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
           placeholder={`Describe your ${mode}…  (⌘↵ to generate)`}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }} autoFocus />
-        <button className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing}>{enhancing ? "✨ Enhancing…" : "✨ Enhance my prompt"}</button>
+        <button type="button" className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing}>{enhancing ? "✨ Enhancing…" : "✨ Enhance my prompt"}</button>
 
         {error && <div className="stu-error">{error}</div>}
 
-        <button className="stu-generate" onClick={generate} disabled={busy || !prompt.trim()}>
+        <button type="button" className="stu-generate" onClick={generate} disabled={busy || !prompt.trim()}>
           {busy ? (mode === "video" ? "🎬 Filming… (~1-2 min)" : "🎨 Generating…") : `Generate ${mode === "video" ? "video" : count > 1 ? count + " images" : "image"}`}
         </button>
       </aside>
@@ -173,7 +173,7 @@ export default function StudioView() {
         {media.length > 1 && (
           <div className="stu-carousel">
             {media.map((src, i) => (
-              <button key={i} className={`stu-thumb ${i === 0 ? "on" : ""}`} onClick={() => setMedia((m) => [src, ...m.filter((x) => x !== src)])}>
+              <button type="button" key={i} className={`stu-thumb ${i === 0 ? "on" : ""}`} onClick={() => setMedia((m) => [src, ...m.filter((x) => x !== src)])}>
                 {isVideo(src) ? <video src={src} muted /> : <img src={src} alt="" />}
               </button>
             ))}
