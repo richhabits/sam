@@ -68,6 +68,21 @@ ULA/link-local, and hostnames that *resolve* to any of those. **Documented limit
 so DNS rebinding is not closed** — that needs the checked IP pinned into the connection. Verified
 end-to-end: four internal targets blocked, Wikipedia still 200/772KB.
 
+**ScrapeGraphAI strip → `webintel-research.ts` (already landed above). Its receipt was broken.**
+The strip claimed "4/4 live-verified"; the verify script imported `./webintel-research.mjs`, a file
+never landed, so it threw `ERR_MODULE_NOT_FOUND` and **had never run on this disk**. **Third
+occurrence** — the other two webintel verify scripts had the identical bug, fixed in `7542fd4`
+whose message reads *"a verification script that cannot execute is worse than none: it reports
+success by existing."* Fixed and actually run: **4/4 genuinely pass**, so the claim was true in
+substance but not reproducible from what was committed. Rule for the next one: import
+`../server/<module>.ts` and run it before quoting a number.
+
+**Quality finding from that run, worth someone's time:** `webintel`'s `htmlToText` leaves **1997
+chars of nav/language-list boilerplate** before the article body. At `maxChars: 3000` that is
+**two-thirds of the LLM's budget spent on Wikipedia's language list**. Not a crash — silently worse
+extraction on every page, worse the smaller the budget. Boilerplate stripping is a cheap, direct
+quality win for every webintel consumer; not done here because it changes shared-module behaviour.
+
 **Cowork drop landed + reviewed** — `webintel-research.ts` (+3 tests), `skills/security/SKILL.md`
 (CC BY, attributed; routes stalking/abuse to specialist help), ownership audit and strip filed into
 `docs/`. Its claims were **verified, not restated**: 0 npm deps added today, the named modules
