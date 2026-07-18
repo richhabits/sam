@@ -1,7 +1,7 @@
 ---
 name: Code Audit
 tier: free
-triggers: review my code, audit code, code review, review this, find bugs, security audit, vulnerability, is this code safe, review my pr, check this code, code smell, refactor review
+triggers: review my code, audit code, code review, review this, find bugs, security audit, vulnerability, is this code safe, review my pr, check this code, code smell, refactor review, audit this, security issues, security review, vulnerabilities, look for bugs, is this safe, review the code
 ---
 
 # Code Audit skill
