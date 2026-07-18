@@ -1445,3 +1445,44 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .side-folder.edit-folder { color: var(--muted); border-color: transparent; }
 .side-folder.edit-folder:hover { background: var(--accent-soft); border-color: var(--accent);
   color: var(--accent-text); }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   SAM STUDIO — result actions, progress, gallery metadata.   [appended block — nothing above
+   this line is touched]
+
+   Why these exist: a generation can take 90s and the old UI's only signal was a button that
+   said "Generating…", which is indistinguishable from a hang — hence .stu-running/.stu-elapsed/
+   .stu-spin and the .stu-skel placeholders that show how many of a batch are still in flight.
+   The single .stu-dl download button above became .stu-actions, because a result you can only
+   download is a result you can't re-run or tweak.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── in-flight state: replaces the Generate button while a generation runs ── */
+.stu-running { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.stu-runline { display: flex; align-items: center; gap: 9px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px 15px; font: 700 14px var(--sans); color: var(--text); }
+.stu-elapsed { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.stu-spin { width: 15px; height: 15px; flex: none; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 28%, transparent); border-top-color: var(--accent); animation: stu-spin .8s linear infinite; }
+@keyframes stu-spin { to { transform: rotate(360deg); } }
+.stu-stop { background: transparent; border: 1px solid var(--border-strong); border-radius: 12px; padding: 9px; font: 600 13px var(--sans); color: var(--muted); cursor: pointer; }
+.stu-stop:hover { color: var(--text); border-color: var(--text); }
+
+/* ── result actions: floating pill over the stage ── */
+.stu-actions { position: absolute; top: 14px; right: 14px; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.stu-act { display: flex; align-items: center; gap: 5px; background: transparent; border: 0; border-radius: 999px; padding: 7px 12px; font: 600 12.5px var(--sans); color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.stu-act:hover { background: var(--accent-soft); color: var(--accent-text); }
+.stu-act:disabled { opacity: .4; cursor: default; background: transparent; }
+.stu-act-del:hover { background: var(--c-err-bg); color: var(--c-err); }
+
+/* ── what made this result: style/ratio/motion tags + the prompt ── */
+.stu-meta { display: flex; align-items: center; gap: 7px; flex: none; min-width: 0; font-size: 12.5px; color: var(--muted); }
+.stu-meta-tag { flex: none; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; font-weight: 700; font-size: 11.5px; }
+.stu-meta-prompt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* ── placeholder tiles for results still in flight (same box as .stu-thumb) ── */
+.stu-skel { flex: none; width: 84px; height: 84px; border-radius: 12px; border: 2px solid transparent; background: linear-gradient(100deg, var(--surface) 30%, color-mix(in srgb, var(--accent) 14%, var(--surface)) 50%, var(--surface) 70%) 0 0 / 300% 100%; animation: stu-shimmer 1.3s linear infinite; }
+@keyframes stu-shimmer { to { background-position: -150% 0; } }
+
+/* ── transient confirmation ("Image copied") ── */
+.stu-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); border-radius: 999px; padding: 9px 18px; font: 700 13px var(--sans); box-shadow: 0 8px 28px rgba(0,0,0,.28); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) { .stu-spin, .stu-skel { animation: none; } }
