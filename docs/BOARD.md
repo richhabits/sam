@@ -13,6 +13,44 @@ Gate 1; registry/clock mom_12_1 aligned; cage reviewed + 7 defects fixed; 99 tes
 
 ## Now (in flight)
 
+### 🌙 SESSION END — 2026-07-18 (terminal). Read this first tomorrow.
+
+**Both repos clean, green, backed up.** SAM `main` = origin, **409 tests**, typecheck + build
+green, biome clean, `npm audit` 0 vulns. FLIP IT `30ba8a5`, **112 tests**, mirrored to
+`/Volumes/ROMEO HQ/flip-it.git` — and that mirror was `git fsck`'d clean and **restore-tested**
+(cloned to scratch, suite ran green) after the drive was physically disconnected mid-session.
+
+**The one calendar item: Mon 2026-07-20 22:00** — `com.flipit.dailystep` fires and, if the
+vendor has the bar, writes the **first lived forward day**, freezing the ledger's anchor, then
+commits and mirrors it unattended. Clock is **day 0/60**. Read it with
+`cd ~/flip-it && python3 scripts/clock.py` — never from `state/`.
+
+**In force since today: A-002** — the 2σ band is *monitoring* during a run, a verdict only at
+the horizon. A mid-run breach prints and notifies but does NOT end the run. Never restore the
+early kill without a new amendment.
+
+**Full repo audit (this session).** 361 tracked files. Clean: no secrets in tree **or history**,
+`.gitignore` covers `.env`/`vault`/`logs`, no junk or stale files, no untracked strays, all 11
+TODOs are intentional generator scaffolding. **One real finding:** `CLAUDE.md` — the doctrine
+that auto-loads every session — mapped `flipit/` as an in-repo folder with `flipit/FLIPIT.md`
+and `run_forward.py`. **None of it exists**: FLIP IT is a sibling repo at `~/flip-it`, its
+constitution is `FLIP_IT.md`, its CLI is `run.py`, and the verify crib's
+`python -m pytest flipit/tests -q` could only ever fail. Fixed. Also fixed two lint findings
+(both mine from today). Dead reference left standing: `docs/strips/AIRLLM_STRIP.md` →
+`docs/LOCAL-MODELS.md`, never written.
+
+**Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
+model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
+key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,
+promote — all five Romeo-only.
+
+**Rules paid for today, now in code rather than prose:** `scripts/board-guard.sh` (blocked 5 of
+11 board clobbers; the written rule failed 3 times first) · stage **explicit paths**, never
+`git add -A`, in repos two sessions write to · verify a claimed regression with `git show`
+before re-applying from a stale copy · **drops should write a `BOARD_LINE.md`, not a whole
+board** — that fix is still unadopted and would end the clobbers entirely.
+
+
 
 **Strip records moved to `docs/strips/`** — 13 repos assessed, 5 landed something, the rest declined with reasons. That folder is the record; this list is only for what is actually in flight.
 
