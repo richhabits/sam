@@ -355,7 +355,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
     if (!call && /["']?tool["']?\s*:/.test(finalText)) {
       const fix = await streamModel(tier, sys, prompt +
         `\n\nYour last reply looked like a tool call but wasn't valid JSON:\n${finalText.slice(0, 300)}\n\n` +
-        `Re-emit ONLY the JSON object {"tool":"<name>","input":{...}} and nothing else.`, () => {});
+        `Re-emit ONLY the JSON object {"tool":"<name>","input":{...}} and nothing else.`, () => {/* no streaming for the repair pass — only the final text matters */});
       call = parseToolCall(fix.text);
     }
 

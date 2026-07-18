@@ -46,11 +46,14 @@ function adoptLegacy(ns: string) {
   if (!ns) return;
   if (!_owner) {                       // first-ever named user becomes the owner (persisted)
     _owner = ns;
-    try { mkdirSync(dirname(OWNER_FILE), { recursive: true }); writeFileSync(OWNER_FILE, JSON.stringify({ owner: ns })); } catch {}
+    // If this write fails the owner isn't persisted, so the NEXT named user becomes owner on
+    // the following boot — a quiet identity change. Log it rather than swallow.
+    try { mkdirSync(dirname(OWNER_FILE), { recursive: true }); writeFileSync(OWNER_FILE, JSON.stringify({ owner: ns })); }
+    catch (e: any) { console.error("[SAM] memory: FAILED to persist owner —", e?.message || e); }
   }
   if (_adopted || ns !== _owner) return;   // only the owner adopts legacy memories
   _adopted = true;
-  try { const r = db.prepare(`UPDATE memories SET user = ? WHERE user = '' OR user IS NULL`).run(ns); if (r.changes) _vecCache.clear(); } catch {}
+  try { const r = db.prepare(`UPDATE memories SET user = ? WHERE user = '' OR user IS NULL`).run(ns); if (r.changes) _vecCache.clear(); } catch { /* legacy adoption is opportunistic — skip if the table shape differs */ }
 }
 
 // ── MIGRATION (memory.json -> SQLite) ──

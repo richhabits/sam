@@ -146,7 +146,7 @@ export function sandboxRun(code: string, input: any, caps: Capability[] = [], na
       env: { ELECTRON_RUN_AS_NODE: "1" }, stdio: ["pipe", "pipe", "ignore"],
     });
     let out = ""; let settled = false;
-    const done = (fn: () => void) => { if (settled) return; settled = true; clearTimeout(timer); try { child.kill("SIGKILL"); } catch {} fn(); };
+    const done = (fn: () => void) => { if (settled) return; settled = true; clearTimeout(timer); try { child.kill("SIGKILL"); } catch { /* the child may already be gone — that is the desired end state */ } fn(); };
     const timer = setTimeout(() => done(() => reject(new Error("sandbox timeout"))), CALL_TIMEOUT_MS + 2000);
     child.stdout.on("data", (d) => { out += d; if (out.length > 2_000_000) done(() => reject(new Error("sandbox output too large"))); });
     child.on("error", (e: any) => done(() => reject(new Error(String(e?.message || e)))));
@@ -155,7 +155,7 @@ export function sandboxRun(code: string, input: any, caps: Capability[] = [], na
       if (r?.ok) resolve(String(r.out ?? ""));
       else reject(new Error(r?.err || "sandbox produced no output"));
     }));
-    child.stdin.on("error", () => {});   // child may exit before we finish writing
+    child.stdin.on("error", () => {/* child may exit before we finish writing — nothing to do */});   // child may exit before we finish writing
     child.stdin.write(payload); child.stdin.end();
   });
 }

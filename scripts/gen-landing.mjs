@@ -18,7 +18,7 @@ const read = (p) => { try { return readFileSync(join(ROOT, p), "utf8"); } catch 
 //    the build + CI do). No independent counting here, so the site can never disagree with the
 //    README/repo. Falls back to a safe read only if stats.json is somehow missing. ──
 let STATS = { tools: 0, brains: 0, agents: 0, skills: 0 };
-try { STATS = JSON.parse(read("docs/stats.json")); } catch {}
+try { STATS = JSON.parse(read("docs/stats.json")); } catch { /* stats file is optional — the landing page renders without the numbers */ }
 const tools = STATS.tools, brains = STATS.brains, agents = STATS.agents, skills = STATS.skills;
 
 // The tool NAMES (for the categorised grid below) still come from source — that's the list, not a count.

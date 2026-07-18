@@ -43,7 +43,8 @@
         "noAssignInExpressions": "warn",
         "noConfusingVoidType": "off",
         "noArrayIndexKey": "warn",
-        "useIterableCallbackReturn": "warn"
+        "useIterableCallbackReturn": "warn",
+        "noEmptyBlockStatements": "error"
       },
       "complexity": {
         "noForEach": "off",
@@ -64,19 +65,5 @@
         "noDelete": "off"
       }
     }
-  },
-  "overrides": [
-    {
-      "includes": [
-        "src/**"
-      ],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noEmptyBlockStatements": "error"
-          }
-        }
-      }
-    }
-  ]
+  }
 }

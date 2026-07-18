@@ -39,8 +39,8 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.VAULT_DIR;
-  try { rmSync(vault, { recursive: true, force: true }); } catch {}
-  try { rmSync(docsDir, { recursive: true, force: true }); } catch {}
+  try { rmSync(vault, { recursive: true, force: true }); } catch { /* best-effort test cleanup — the tmp dir may already be gone */ }
+  try { rmSync(docsDir, { recursive: true, force: true }); } catch { /* best-effort test cleanup — the tmp dir may already be gone */ }
 });
 
 describe("chunkText", () => {

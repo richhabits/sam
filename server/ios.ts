@@ -54,7 +54,7 @@ async function transcribeAudio(path: string): Promise<string> {
     const out = `/tmp/${basename(path, extname(path))}.txt`;
     const { stdout } = await sh(`which whisper 2>/dev/null && whisper ${shq(path)} --model tiny --output_format txt --output_dir /tmp 2>/dev/null && cat ${shq(out)}`, { timeout: 60000 });
     if (stdout.trim()) return stdout.trim();
-  } catch {}
+  } catch { /* best-effort — nothing downstream depends on this succeeding */ }
   // Fallback: can't transcribe, just note that a voice memo was dropped.
   return `[Voice memo dropped: ${basename(path)} — install whisper for auto-transcription: pip install openai-whisper]`;
 }
@@ -81,7 +81,7 @@ async function processFile(filename: string): Promise<DropResult | null> {
   if (!content) return null;
 
   // Clean up the drop file after processing.
-  try { unlinkSync(path); } catch {}
+  try { unlinkSync(path); } catch { /* file already gone — that is the desired end state */ }
 
   return { file: filename, content, kind, at: new Date().toISOString() };
 }
@@ -106,7 +106,7 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
   onDrop = handler;
 
   // Ensure the folder exists.
-  try { mkdirSync(DROP, { recursive: true }); } catch {}
+  try { mkdirSync(DROP, { recursive: true }); } catch { /* drop folder may be on an unmounted volume — feature degrades, app continues */ }
 
   // Process anything already sitting there.
   void scanExisting().then((results) => {

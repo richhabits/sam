@@ -89,8 +89,8 @@ import {
 
 // RESILIENCE: a single unhandled async error must never take SAM down. Log it and stay up —
 // an always-on personal assistant that dies on one bad request/response is worse than useless.
-process.on("unhandledRejection", (reason) => { try { console.error("[SAM] unhandledRejection:", reason instanceof Error ? reason.message : reason); } catch {} });
-process.on("uncaughtException", (err) => { try { console.error("[SAM] uncaughtException:", err?.message || err); } catch {} });
+process.on("unhandledRejection", (reason) => { try { console.error("[SAM] unhandledRejection:", reason instanceof Error ? reason.message : reason); } catch { /* logging must never itself throw */ } });
+process.on("uncaughtException", (err) => { try { console.error("[SAM] uncaughtException:", err?.message || err); } catch { /* logging must never itself throw */ } });
 
 const app = express();
 // SECURITY: only allow same-origin + localhost (dev HUD on :5273). This stops a
@@ -228,20 +228,20 @@ console.log(`  vault mounted   · ${vaultStats().path}\n`);
 import { loadMcpTools } from "./mcp.ts";
 void loadMcpTools()
   .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
-  .catch(() => {})
+  .catch(() => {/* best-effort — nothing downstream depends on this succeeding */})
   .then(() => { const n = syncForgedRegistry(); if (n) console.log(`  forged tools    · ${n} enabled (SAM-built)\n`); })   // hot-load user-enabled forged tools
   .then(() => buildIndexes(SKILLS))
   .then(() => routingReady() && console.log("  routing ready   · semantic tool + skill selection\n"))
-  .catch(() => {});   // never let boot indexing reject unhandled
+  .catch(() => {/* best-effort — nothing downstream depends on this succeeding */});   // never let boot indexing reject unhandled
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
-if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {});
+if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {/* warm-up is best-effort and must never delay boot */});
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
 // On startup, grab the user's whole operation (apps/repos + brands + socials) so SAM
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
-if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {});
+if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
 // Vault encryption — auto-unlock from the OS keychain if the user enabled it; else it stays locked
 // until they unlock in Settings (remote tokens + other sealed secrets are unreadable while locked).
@@ -298,7 +298,7 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
       // Queue the result for the app to show + send a notification.
       desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
     }
-  } catch {}
+  } catch { /* best-effort — nothing downstream depends on this succeeding */ }
 });
 
 // Scheduler — Recurring background tasks
@@ -839,7 +839,7 @@ const ENV_PATH = process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.en
 
 function writeEnv(key: string, value: string) {
   let txt = "";
-  try { txt = readFileSync(ENV_PATH, "utf8"); } catch {}
+  try { txt = readFileSync(ENV_PATH, "utf8"); } catch { /* no .env yet — start from empty, it gets created on first write */ }
   value = value.replace(/[\r\n]/g, " ");   // one value = one line — no .env line injection
   const line = `${key}=${value}`;
   const re = new RegExp(`^${key}=.*$`, "m");
@@ -1410,7 +1410,7 @@ async function cacheStudioMedia(ref: string): Promise<string | null> {
     mkdirSync(GEN_DIR, { recursive: true });
     writeFileSync(join(GEN_DIR, name), buf);
     // keep the 60 most-recent generations, prune the rest so the vault never balloons
-    try { readdirSync(GEN_DIR).map((f) => ({ f, t: statSync(join(GEN_DIR, f)).mtimeMs })).sort((a, b) => b.t - a.t).slice(60).forEach(({ f }) => { try { unlinkSync(join(GEN_DIR, f)); } catch {} }); } catch {}
+    try { readdirSync(GEN_DIR).map((f) => ({ f, t: statSync(join(GEN_DIR, f)).mtimeMs })).sort((a, b) => b.t - a.t).slice(60).forEach(({ f }) => { try { unlinkSync(join(GEN_DIR, f)); } catch { /* file already gone — that is the desired end state */ } }); } catch { /* generated-media dir may not exist yet — nothing to prune */ }
     return name;
   } catch (e: any) { console.error("[studio] cacheStudioMedia failed:", e?.message || e); return null; }
 }
@@ -1432,7 +1432,7 @@ app.post("/api/studio/image", async (req, res) => {
     const purl = `https://image.pollinations.ai/prompt/${encodeURIComponent(String(prompt).slice(0, 900))}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
     const name = await cacheStudioMedia(purl);
     if (name) return res.json({ url: `/api/studio/media/${name}` });
-  } catch {}
+  } catch { /* best-effort — nothing downstream depends on this succeeding */ }
   // Fall back to the keyed matrix (Cloudflare/HF/NVIDIA/… → http URL or data URI) and cache that too.
   const t = TOOLS.find((x) => x.name === "generate_image");
   if (t) {
@@ -1476,7 +1476,7 @@ async function genPreview(id: string): Promise<Buffer | null> {
     const u = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=220&height=150&nologo=true&seed=${id.length + 3}`;
     const r = await fetch(u, { signal: AbortSignal.timeout(45000) });
     if (r.ok) { const buf = Buffer.from(await r.arrayBuffer()); mkdirSync(PREVIEW_DIR, { recursive: true }); writeFileSync(join(PREVIEW_DIR, `${id}.jpg`), buf); return buf; }
-  } catch {}
+  } catch { /* best-effort — nothing downstream depends on this succeeding */ }
   return null;
 }
 app.get("/api/studio/preview/:style", async (req, res) => {
@@ -1488,7 +1488,7 @@ app.get("/api/studio/preview/:style", async (req, res) => {
   res.status(503).end();
 });
 // Pre-warm the 12 previews in the background at boot (once) so the Studio is snappy.
-setTimeout(async () => { for (const id of Object.keys(STUDIO_PREVIEWS)) { if (!existsSync(join(PREVIEW_DIR, `${id}.jpg`))) await genPreview(id).catch(() => {}); } }, 4000);
+setTimeout(async () => { for (const id of Object.keys(STUDIO_PREVIEWS)) { if (!existsSync(join(PREVIEW_DIR, `${id}.jpg`))) await genPreview(id).catch(() => {/* best-effort — nothing downstream depends on this succeeding */}); } }, 4000);
 
 app.post("/api/studio/enhance", async (req, res) => {
   const p = String(req.body?.prompt || "").trim();

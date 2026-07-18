@@ -35,10 +35,25 @@ classified, and **seven were hiding user-visible failures**, now surfaced —
     "couldn't reach it" were indistinguishable.
 
 The other 72 are genuinely best-effort and now say *why* in one line (notifications denied,
-idempotent teardown, corrupt localStorage, background poll retries next tick). **`biome.json`
-enables `noEmptyBlockStatements` as an error scoped to `src/**`**, so a new bare catch fails
-lint — verified by adding one. **`server/` still has 49 bare vs 82 documented** and is the
-remaining half of this finding.
+idempotent teardown, corrupt localStorage, background poll retries next tick). **`biome.json` enables `noEmptyBlockStatements` as an
+error REPO-WIDE**, so a new bare catch fails lint — verified by adding one in `src/` and again in
+`server/`.
+
+**`server/` swept too — finding #1 is closed. 0 bare catches repo-wide, 171 documented.**
+Server's dangerous class was different: not lying UI, but **silent write failures**, where the
+caller believes state was persisted.
+  · **`authz.ts` — standing authorizations.** A failed write meant the in-memory grant/revoke
+    diverged from disk, so on the next boot a **revoked authorization could come back**. Now
+    logged loudly (not thrown — doctrine #8 keeps the loops alive).
+  · **`scheduler.ts`** lost the user's schedules on restart with no trace · **`memory.ts`** let
+    the *next* named user silently become owner · **`swarm.ts`** lost state (in-memory stays
+    authoritative, so cost is persistence, not correctness).
+
+The other ~40 are genuinely best-effort and now say why: provider fallback chains (pexels →
+pixabay → …), malformed SSE chunks skipped so the stream continues, idempotent teardown,
+absent-config-file defaults. Also swept `electron/` and `scripts/` (17) and documented 9 empty
+*callbacks* the rule correctly flagged but which were never swallows — so the rule holds
+repo-wide with **zero exceptions**.
 
 ## 2. Three files hold 37% of the code
 

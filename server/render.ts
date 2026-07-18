@@ -41,16 +41,16 @@ const VIRTUAL_CLOCK = `(() => {
   let vt = 0, rafId = 0; const raf = new Map();
   const _Date = Date;
   Date.now = () => EPOCH + vt;
-  try { performance.now = () => vt; } catch (e) {}
+  try { performance.now = () => vt; } catch (e) { /* virtual-time shim is best-effort in this renderer */ }
   window.requestAnimationFrame = (cb) => { const id = ++rafId; raf.set(id, cb); return id; };
   window.cancelAnimationFrame = (id) => raf.delete(id);
   // step the world to absolute time t (ms): flush one rAF tick, pin declarative animations
   window.__samSeek = (t) => {
     vt = t;
     const cbs = Array.from(raf.values()); raf.clear();
-    for (const cb of cbs) { try { cb(vt); } catch (e) {} }
+    for (const cb of cbs) { try { cb(vt); } catch (e) { /* one bad frame callback must not stop the render loop */ } }
     if (document.getAnimations) for (const a of document.getAnimations()) {
-      try { a.pause(); a.currentTime = t; } catch (e) {}
+      try { a.pause(); a.currentTime = t; } catch (e) { /* media element may be detached — nothing to pause */ }
     }
   };
 })();`;
@@ -106,7 +106,7 @@ export async function renderVideo(opts: RenderOpts): Promise<RenderResult> {
     // first capture varies run-to-run (a real pixel-level non-determinism). Then wait for fonts.
     await page.addStyleTag({ content:
       "*,*::before,*::after{animation-play-state:paused!important;-webkit-animation-play-state:paused!important}" });
-    await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
+    await page.evaluate(() => (document as any).fonts?.ready).catch(() => {/* font readiness is an optimisation, not a requirement */});
 
     for (let i = 0; i < frames; i++) {
       const t = (i * 1000) / fps;
@@ -119,7 +119,7 @@ export async function renderVideo(opts: RenderOpts): Promise<RenderResult> {
     await encode(ff, work, out, fps);
     return { path: out, frames, fps, width, height, durationMs: opts.durationMs };
   } finally {
-    await browser?.close().catch(() => {});
+    await browser?.close().catch(() => {/* teardown is idempotent — already closed is success */});
     // keep the mp4, drop the frames
     if (!opts.out) { /* out lives in work; leave it */ }
     else rmSync(work, { recursive: true, force: true });

@@ -56,4 +56,4 @@ if (process.argv.includes("--upload")) {
 }
 
 // Restore better-sqlite3 for plain Node after electron-builder's ABI rebuild.
-try { run("npm rebuild better-sqlite3 --silent"); } catch {}
+try { run("npm rebuild better-sqlite3 --silent"); } catch { /* native rebuild is best-effort; the build continues and fails loudly if the module is unusable */ }

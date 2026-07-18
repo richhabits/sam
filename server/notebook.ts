@@ -118,7 +118,7 @@ export async function retrieve(notebookId: string, question: string, k = 8): Pro
   const rows = db().prepare(`SELECT text, source, title, vec FROM nb_chunks WHERE notebook = ?`).all(notebookId) as { text: string; source: string; title: string; vec: string }[];
   const scored: Passage[] = [];
   for (const row of rows) {
-    try { scored.push({ text: row.text, source: row.source, title: row.title, score: cosine(e.vec, JSON.parse(row.vec)) }); } catch {}
+    try { scored.push({ text: row.text, source: row.source, title: row.title, score: cosine(e.vec, JSON.parse(row.vec)) }); } catch { /* one unparsable embedding row — skip it, keep ranking the rest */ }
   }
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, k);
