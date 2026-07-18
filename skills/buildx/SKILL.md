@@ -23,6 +23,12 @@ Engine · Text Editor · Visual Recognition · Voxel Engine · Web Browser · We
 Fetch the catalog README live with `open_url` to pick the actual tutorial —
 don't recite links from memory; the list moves.
 
+For **AI/ML builds** specifically (your own tokenizer, transformer, RAG, diffusion model,
+ReAct agent), also consult [rohitg00/ai-engineering-from-scratch](https://github.com/rohitg00/ai-engineering-from-scratch)
+— a 20-phase from-scratch curriculum. Same rule: read it live, pick the shortest lesson that
+produces a running artifact. (Heads-up: its bundled `outputs/skills` and `prompts` folders are
+empty — it's a syllabus to learn from, not a package to install.)
+
 ## Step 1 — Frame the build
 
 1. Ask two things max: **which X**, and **which language do they want to grow in**.
