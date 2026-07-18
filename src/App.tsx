@@ -1820,7 +1820,7 @@ export default function App() {
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} />}
-        {dashOpen && <Dashboard onClose={() => setDashOpen(false)} />}
+        {dashOpen && <Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} />}
         {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}
         {learnedOpen && <LearnedPane onClose={() => setLearnedOpen(false)} />}
         {workflowsOpen && <WorkflowsPane onClose={() => setWorkflowsOpen(false)} />}
