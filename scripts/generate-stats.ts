@@ -46,19 +46,6 @@ readme = readme
   .replace(/\ba team of \d+ (specialist )?agents?\b/gi, `a team of ${stats.agents} agents`);
 writeFileSync(readmePath, readme);
 
-// The LANDING PAGE was drifting silently: it advertised 173 tools and 25 skills while the real
-// counts were 183 and 29. It shipped stale because this script synced the README and nothing
-// else — the one public page most people actually read was never in the loop. Now it is, and
-// scripts/icon-sprite.test.ts fails if the page and stats.json ever disagree again.
-const pagePath = join(root, "docs/index.html");
-let page = readFileSync(pagePath, "utf8");
-page = page
-  .replace(/(<div class="n">)\d+(<\/div><div class="l">real tools<\/div>)/g, `$1${stats.tools}$2`)
-  .replace(/\b\d+\s+skills\b/g, `${stats.skills} skills`)
-  .replace(/\b\d+ tools · \d+ agents · \d+ skills\b/g,
-           `${stats.tools} tools · ${stats.agents} agents · ${stats.skills} skills`);
-writeFileSync(pagePath, page);
-
 // Emit the canonical repo-description text (applied to GitHub via `gh repo edit --description`).
 const repoDesc = `A free, private, local-first AI assistant that actually does the work — ${stats.tools} tools, a team of ${stats.agents} AI agents, ${stats.brains} rotating free AI brains, ${stats.skills} skills. Not a chatbot, a doer. It doesn't just answer — it handles it.`;
 writeFileSync(join(root, "docs/repo-description.txt"), repoDesc + "\n");
