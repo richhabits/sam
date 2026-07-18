@@ -13,7 +13,58 @@ closed; index.ts split; SSRF filtering tested; **431 tests green**).*
 
 ## Now (in flight)
 
-### 🌙 SESSION END — 2026-07-18 (terminal, UI wave). Read this first.
+### 🌙 SESSION END — 2026-07-18 (terminal, UI wave II). Read this first.
+
+**SAM 497 tests · flip-it 133 · both green, clean, pushed, mirrored.** lint 0 errors ·
+typecheck + build green · npm audit 0 vulns · no untracked strays · agent worktrees removed ·
+both launchd loops loaded at exit 0.
+
+**THE DESIGN PASS — every panel Romeo called "cheap/basic" rebuilt, each measured not guessed.**
+
+| surface | before | after |
+|---|---|---|
+| Settings | one scroll, no icons, the word "Off" | 5 tabs at **1.00 screens each**, icons, real switches, segmented control |
+| Control Centre | ~6 screens | 5 tabs, **1.00 each** |
+| API keys | **4.08 screens** on Brains | tabs + collapsed rows → **1.66** |
+| Studio | ~1.3 screens; **Generate below the fold in video mode** | fixed head + one scroll region + pinned footer, 1.00 by construction |
+| Persona picker | a **dark macOS system menu** in a cream toolbar | in-app menu with each voice's blurb |
+| Chat measure | **102 chars/line** | 58ch cap |
+
+**Icons: `src/Icon.tsx`, 55 glyphs, zero dependency.** Emoji were clip-art that ignores the theme
+and can't take the accent. Stroke **2** — chosen by rendering the set at 1.75/2/2.25 at the 18px it
+ships at, not by picking a number. `brain` was redrawn (it rendered as "( | )") and `book` (a bare
+rectangle). Emoji 426 → 195, and **everything left is SAM talking, not chrome** — emoji in
+conversation is friendly; emoji pretending to be an icon is what looked cheap.
+
+**Three features existed and worked but could not be FOUND** — the keys panel (GLM/Kimi were
+behind a collapsed "more brains" fold), the update button (only rendered when already behind, so
+with `behind:false` there was nothing on screen at all), and phone access (line 280 of the keys
+drawer, under 43 providers). **Building it is not shipping it.** Now: starters promoted, a quiet
+⟳ that pulses with a dot when an update lands, and Settings → *Use SAM on your phone*.
+
+**Handoff prompt (new)** — Import step 1 gives you a prompt to paste into ChatGPT/Claude/Gemini
+so the assistant that already knows you writes a one-page profile, instead of exporting a novel.
+Its sections map to SAM's real surfaces (personas, brands, people, schedules, tools, consent).
+Two safety properties pinned by tests: it refuses credentials, and it tells the other model NOT
+TO GUESS — a model asked for a profile it lacks will invent a plausible one and SAM would store
+fiction as fact.
+
+**⚠️ I MISREPORTED "lint clean" FOR SEVERAL COMMITS.** My check was
+`biome lint | grep Found | tail -1`, which prints the LAST summary line ("Found 1 info") while
+the FIRST said **"Found 1 error"**. A subagent caught it, not me — and it was the **second time
+that day** I read a truncated tail of a multi-line summary and called it green. Fixed, and the
+error was mine. **Read the whole summary, not its tail.**
+
+Subagents also found two real bugs in my own work: `<option><Icon/></option>` in ChatList
+(browsers render only text in `<option>`, so that row was blank) and the Trace fallback glyph —
+`settings`, a circle with 8 spokes, the densest mark in the set, rendering at 13px as a smudge.
+Both fixed; trace glyphs now 15px with a `sparkle` fallback and an `eye` rule for vision steps.
+
+**Claims audited:** the repo's own counter reproduces **183 tools / 78 agents / 40 brains /
+29 skills / 44 providers** exactly. My own greps said 185/93/43 — they were counting nested
+objects. The published numbers are honest; my quick check wasn't.
+
+### 🌙 Earlier the same day (UI wave I).
 
 **Clean, green, pushed.** 486 tests (was 409 at session start) · typecheck + build green ·
 `npm run lint` 0 errors · `npm audit` 0 vulns · 0 TODOs · 0 dead doc links · no untracked strays ·
