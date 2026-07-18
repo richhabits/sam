@@ -5,7 +5,9 @@
 # for tomorrow — a benchmark against a different vault/pool wouldn't steer the real routing.
 set -uo pipefail
 PORT="${SAM_PORT:-8787}"
-cd /Users/romeovalentine/sam || exit 1
+# Repo root, derived from this script's own location — portable for anyone who clones SAM,
+# and still correct when launchd runs it by absolute path.
+cd "$(cd "$(dirname "$0")/.." && pwd)" || exit 1
 mkdir -p logs
 STAMP="$(date '+%Y-%m-%d %H:%M:%S %Z')"
 

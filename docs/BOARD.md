@@ -8,12 +8,12 @@ landed + reconciled + watchdog wired + full audit & zero-warning sweep).*
 
 | Loop | When | Proof it ran | State |
 |---|---|---|---|
-| Colosseum nightly benchmark (`com.sam.dailybenchmark`) | 04:00 daily | `~/sam/logs/daily_benchmark.log` new line + `vault/arena-ranking.json` fresh | Installed, entrypoint `~/sam/scripts/daily_benchmark.sh` verified. **First real firing: 2026-07-18 04:00** (still ~4h out at last update). `runs=0` is correct until then |
+| Colosseum nightly benchmark (`com.sam.dailybenchmark`) | 04:00 daily | `~/sam/logs/daily_benchmark.log` new line + `vault/arena-ranking.json` fresh | ✅ **First nightly landed 2026-07-18 04:00:05** — champion groq:llama-3.3-70b-versatile (1115), 18 matches. Entrypoint now path-portable (was hardcoded to Romeo's home). Mac guard correctly stayed silent (it landed a champion) |
 | FLIP IT forward step (`com.flipit.dailystep`) | daily | `~/flip-it/logs/daily_step.log` new block + `~/flip-it/state/forward_mom_12_1.json` grows | **Live.** Separate repo at `~/flip-it` (NOT `~/sam/flipit`), entrypoint `~/flip-it/scripts/daily_step.sh` verified. Fired cleanly 07-17 (11:08, 22:00). `mom_12_1` **wired** (state file present, target_vol 0.1, cutoff 2025-05-06). 0 forward days yet — armed, waiting for first post-cutoff trading bar |
 
 ## Now (in flight)
 
-- **Colosseum**: fixed + merged on `8ab6f4f` (champion pinned first · tested > untested · ≥2-brain guard), 16 unit tests, CI green. **Waiting on first clean nightly (07-18 04:00)** for the live proof yesterday's drained quotas blocked. Until quotas reset: no live brain hammering (Doctrine #3). Ranking on disk correct: groq 1115 / cerebras 963 / hermes 961 / nvidia 960 (matches last champion log line).
+- **Colosseum**: fixed + merged on `8ab6f4f` (champion pinned first · tested > untested · ≥2-brain guard), 16 unit tests, CI green. ✅ **Proven live** — the 04:00 nightly ran clean (champion groq 1115, 18 matches). The self-improving loop works end-to-end; leave it running.
 - **FLIP IT paper-forward** @10% vol under Amendment A-001: extended Gate 2 = 60 forward days + 20 closed trades + in-band + beats-costs. Loop is live and `mom_12_1` is wired; clock is months, not days — that's by design. Nothing owed here until the forward gate is met.
 
 ## Next (top unblocked, in order)
@@ -39,6 +39,8 @@ landed + reconciled + watchdog wired + full audit & zero-warning sweep).*
 *(none — the nightly proves itself; FLIP IT sign-off only becomes due if/when the forward gate is met)*
 
 ## Recently done (receipts)
+
+- 07-18: **Dead/old/universal sweep** — repo is clean. Fixed the one real universality bug: `scripts/daily_benchmark.sh` hardcoded `/Users/romeovalentine/sam` → now derived from the script's own location (portable for anyone who clones, still correct under launchd; loop re-verified). No dead modules (only false-positive was the vitest setup file), no stale/.bak files, no hardcoded version strings, TODOs are intentional scaffolding placeholders. All platform-specific code (osascript/notifications) is properly mac/win/linux-guarded.
 
 - 07-18: **v2.1.4 "Brakes" SHIPPED** (Latest, signed+notarized, all assets + auto-update manifests, real SHA-256 in notes). Two fixes for the runaway/loop bug Romeo hit: (1) **stop-word** — "stop"/"shut up"/"stop listening" instantly halts SAM (typed or spoken), never sent to the brain, interrupts mid-stream (`src/lib/stopIntent.ts`, 77 tests); (2) **repetition guard** — cuts off degenerate model loops at the stream source + collapses the tail (`server/repetition.ts`, 17 tests). 379 tests green. Deliberately skipped frequency_penalty (unverifiable across ~40 providers, some 400 on it).
 - 07-18: **v2.1.3 "Colosseum" SHIPPED** (Latest, signed+notarized) — the backlog wave merged-but-unreleased since v2.1.2 (Colosseum Elo routing, Markets, memory panel, render_video + 5 file tools, Bestie/Mentor personas, capability-scoped skills, settings redesign) + tonight's zero-warning hardening. Real SHA-256 in notes.
