@@ -15,6 +15,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recordModelCall, estTokens } from "./metrics.ts";
 import { loadRanking, rankingStale } from "./colosseum.ts";
+import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -510,8 +511,11 @@ async function streamOpenAICompat(base: string, model: string, system: string, p
       const data = t.slice(5).trim(); if (data === "[DONE]") continue;
       try { const d = JSON.parse(data)?.choices?.[0]?.delta?.content; if (d) { full += d; onChunk(d); } } catch {}
     }
+    // A degenerate repetition loop (weak brains "hello hello hello…") → cut it off now instead
+    // of streaming to the token cap. The final text is collapsed so history stays clean.
+    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch {} break; }
   }
-  return full;
+  return collapseRepetition(full);
 }
 
 async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
@@ -531,8 +535,9 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
       const t = line.trim(); if (!t.startsWith("data:")) continue;
       try { const parts = JSON.parse(t.slice(5).trim())?.candidates?.[0]?.content?.parts; const d = parts?.map((p: any) => p.text).join("") || ""; if (d) { full += d; onChunk(d); } } catch {}
     }
+    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch {} break; }
   }
-  return full;
+  return collapseRepetition(full);
 }
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,
