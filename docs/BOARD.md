@@ -108,6 +108,29 @@ earlier — which is the useful part: the refactor was sound, the *edges* were n
     mistake as `saveError` earlier today, in the file I was fixing *because of* that mistake.
     Both render now. 416 tests, typecheck, lint and build all green.
 
+**Deep design audit — `docs/DESIGN-AUDIT.md`** (measured with scripts, re-runnable). Structure is
+sound: consistent error envelopes (81/83 use `{error}`), no import tangle, the `src/`↔`server/`
+boundary held through the registry refactor, security model coherent. **Four findings, in order:**
+  1. **Silent error handling is the dominant pattern — 129 bare catches vs 85 documented (60%).**
+     Worst: `App.tsx` 43 · `tools.ts` 14 · `index.ts` 13 · `Admin.tsx` 10. This is not abstract:
+     it caused today's empty-Settings bug, where `.catch(() => {})` made an unreachable server
+     look identical to "no providers". **A deliberate swallow and an accidental one are
+     byte-identical**, so review cannot tell them apart. Fix is mechanical — biome's
+     `noEmptyBlockStatements` forces a one-line reason — but 129 sites is a decision, not a
+     late-session sweep. `src/` first (~60 sites, the user-visible ones) is an afternoon.
+  2. **Three files hold 37% of the code** (`tools.ts` 2513 · `App.tsx` 1840 · `index.ts` 1770).
+     `tools.ts` is a registry and allowed to be long; the other two have visible seams. Not
+     urgent — flagged because the trend is one-way, nothing has ever been split out.
+  3. **12 of 24 sizeable modules have no direct test**, including `index.ts` (all 131 routes) and
+     `src/lib/api.ts` (the whole client API surface) — *exactly where today's three Settings
+     defects landed*. A thin route-contract test (status + envelope shape per route) would have
+     caught two of them.
+  4. **Two real circular imports**: `forge⇄tools` and `selftest⇄tools` (both import `TOOLS`, a
+     value, while `tools` imports back). Survivable in ESM but makes init order load-bearing.
+     `metrics⇄models` is a false alarm — type-only, erased at compile. Fix shape: inject the
+     tool list instead of importing it. **Not attempted** — `tools.ts` is 2513 lines and shared,
+     and restructuring it at the end of a long session is how collisions happen.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,
