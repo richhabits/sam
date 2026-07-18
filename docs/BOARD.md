@@ -58,6 +58,25 @@ All fixed: hermes mapped, failures now render "✗ not saved — nothing was wri
 invisible providers added, and `leonardo` routed to `/api/admin/config` (it's a single config
 key, not a rotating pool, so it was 400ing too). Verified: 0 providers unsaveable, 0 invisible.
 
+**API audit — 131 endpoints, keys layer, Settings.** Clean where it counts: `GET /api/keys`
+returns **counts only, zero key material** (verified against the live payload); remote access is
+off unless `SAM_REMOTE=1` + a ≥16-char token, checked with `timingSafeEqual` and per-IP backoff.
+**Two real fixes:**
+  - 🔒 **`/api/admin/keys` and `/api/admin/config` were the only privileged writes NOT
+    loopback-gated** — while standing authorizations, autopilot, Elon Mode and remote-token ops
+    all say "this computer only". And `CONFIG_ENV` can write the **Slack bot token, Discord
+    webhook, Notion/Linear keys and Cloudflare token** — so a remote token-holder could redirect
+    SAM's outbound integrations at their own endpoints. Both now loopback-only. *Trade-off: you
+    can no longer add keys from a phone over remote — same rule as every other privileged write.*
+  - 🧩 **Root cause of every provider bug today: provider identity lives in FIVE files**
+    (`models.ts` lanes · `keys.ts` pools · `index.ts` PROVIDER_ENV · `Admin.tsx` UI ·
+    `.env.example`). That drift produced all of it — 19 undocumented, `hermes` offered but
+    unsaveable (400), 3 invisible, `leonardo` miswired. **`server/providers.drift.test.ts` (6
+    tests) now fails CI when the lists disagree** — verified by reverting the hermes fix and
+    watching it go red. **The deeper fix is one registry the others derive from**; that is a
+    refactor across shared files and is the next real piece of work here, not a late-session
+    change. 415 tests green.
+
 **Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key — the
 model ID `kimi-k2.7-code` is **unverified in both directions** · ② for the cage to go live:
 key, `verify-fractional` in practice (earns the sell-encoding receipt), deposit, sign-off,
