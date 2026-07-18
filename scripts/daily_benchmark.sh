@@ -25,8 +25,19 @@ if ! curl -sf -o /dev/null --max-time 5 "http://localhost:${PORT}/api/status"; t
   exit 0
 fi
 
-# A small, diverse prompt set → a more stable ranking than a single question.
-BODY='{"prompts":["Explain why the sky is blue in two sentences a 10-year-old would understand.","What is 17 * 23? Show the steps briefly.","Rewrite this to be warmer: your order is late."]}'
+# Prompt count is the POWER knob, and it is set by arithmetic, not taste.
+#   4 competitors (maxBrains) -> C(4,2)=6 pairs; games per brain = 3 pairs x P prompts.
+#   At P=3 that was 9 games each — enough to rank, far too few to PROVE anything: the
+#   significance gate (colosseum-significance.ts) needs ~23 games/brain to separate a strong
+#   80%-vs-50% leader at the Bonferroni-adjusted threshold, so a real champion would almost
+#   never be crowned and routing would sit frozen on the incumbent.
+#   At P=8: 8 x 6 = 48 matches, 24 games per brain — the gate can now actually fire.
+# COST (doctrine #3 — quotas are production infrastructure): each match is 2 answers + 1 judge
+# call, so this is ~144 model calls per night, up from ~54. That is the price of a champion
+# that means something. If free tiers strain, cut P back to 5-6 and accept that only a
+# blowout separates — do NOT loosen the gate instead; a cheap benchmark that crowns on noise
+# is worse than no benchmark.
+BODY='{"prompts":["Explain why the sky is blue in two sentences a 10-year-old would understand.","What is 17 * 23? Show the steps briefly.","Rewrite this to be warmer: your order is late.","Summarise the difference between a list and a tuple in one sentence.","A user says the app is slow. Ask the single best diagnostic question.","Write a one-line git command to undo the last commit but keep the changes.","Turn this into a polite decline: I do not want to attend the meeting.","Name one risk of averaging down on a losing trade, in one sentence."]}'
 OUT="$(curl -s --max-time 360 -X POST -H 'Content-Type: application/json' -d "${BODY}" "http://localhost:${PORT}/api/arena")"
 
 TOP="$(printf '%s' "${OUT}" | python3 -c 'import sys, json
