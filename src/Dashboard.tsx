@@ -9,7 +9,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   anthropic: "Claude", openai: "OpenAI",
 };
 
-export default function Dashboard({ onClose }: { onClose: () => void }) {
+export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void; onAddKeys?: () => void }) {
   const [s, setS] = useState<any>(null);
   const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [sec, setSec] = useState<any>(null);
@@ -63,15 +63,31 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
             </div>
 
             {/* brains */}
-            <div className="dash-sec">AI brains ({freeLive.length}/{freeTotal} free lanes ready)</div>
+            <div className="dash-sec">
+              AI brains ({freeLive.length}/{freeTotal} free lanes ready)
+              {/* This list shows a key count per provider, which reads as editable — it is not, and
+                  a dead end here sends people hunting through menus for the panel that IS. One
+                  link, no new clutter. */}
+              {onAddKeys && (
+                <button type="button" className="dash-sec-link" onClick={() => { onClose(); onAddKeys(); }}>
+                  ＋ add keys
+                </button>
+              )}
+            </div>
             <div className="dash-lanes">
               {providers.map((p: any) => (
-                <div key={p.id} className={`dash-lane ${p.keys > 0 ? "on" : ""}`}>
+                <button
+                  type="button"
+                  key={p.id}
+                  className={`dash-lane ${p.keys > 0 ? "on" : ""}`}
+                  title={onAddKeys ? `Add or edit a ${PROVIDER_LABEL[p.id] || p.id} key` : undefined}
+                  onClick={onAddKeys ? () => { onClose(); onAddKeys(); } : undefined}
+                >
                   <span className={`dash-dot ${p.keys > 0 ? "live" : ""}`} />
                   <span className="dash-lane-name">{PROVIDER_LABEL[p.id] || p.id}</span>
                   <span className="dash-lane-tier">{p.tier}</span>
                   <span className="dash-lane-keys">{p.keys > 0 ? `${p.keys} key${p.keys > 1 ? "s" : ""}` : "—"}</span>
-                </div>
+                </button>
               ))}
             </div>
 
