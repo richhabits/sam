@@ -29,7 +29,9 @@ describe("isPrivateAddress", () => {
       "fc00::1",
       "fd12:3456::1",
       "fe80::1",
-      "::ffff:127.0.0.1", // IPv4-mapped loopback
+      "::ffff:127.0.0.1", // IPv4-mapped loopback, dotted
+      "::ffff:7f00:1", // the SAME address in hex — the spelling a blocklist forgets
+      "::ffff:c0a8:101", // 192.168.1.1 in hex
       "::ffff:192.168.1.1",
     ]) {
       expect(isPrivateAddress(ip), ip).toBe(true);
