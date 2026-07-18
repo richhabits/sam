@@ -23,7 +23,7 @@ if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
 
 import express from "express";
 import cors from "cors";
-import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
+import { setPool, poolSize, keyStatus } from "./keys.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
@@ -45,6 +45,8 @@ import { quotes as marketQuotes } from "./markets.ts";
 import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colosseum.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./memory.ts";
 import { registerMemoryRoutes } from "./routes.memory.ts";
+import { registerWorkflowsRoutes } from "./routes.workflows.ts";
+import { registerVoiceRoutes } from "./routes.voice.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -56,11 +58,9 @@ import { startProactive, takePending, listNudges, desktopNotify } from "./proact
 import { consentState, setEnabled as setConsent, disableAll as consentDisableAll } from "./consent.ts";
 import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
 import { evaluateTriggers } from "./triggers.ts";
-import { listWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, runWorkflow, recordRun, dangerousStepsIn, type Workflow } from "./workflows.ts";
-import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
 import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
 import { isEnabled as consentEnabled } from "./consent.ts";
-import { recordTask, recordWorkflowRun, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
+import { recordTask, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
 import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload } from "./telemetry.ts";
 import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
 import { runDoctor } from "./doctor.ts";
@@ -953,47 +953,8 @@ app.post("/api/admin/elon-mode", (req, res) => {
   res.json({ ok: true, elonMode: isElonMode() });
 });
 
-// ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──
-// TTS — rotating free-first lanes, works OUT OF THE BOX with zero keys:
-//   1. ElevenLabs (premium voice — only if you added a key; bills per char, so capped)
-//   2. Groq TTS (free tier, if a Groq key is set)
-//   3. Pollinations openai-audio (FREE, NO key — the out-of-the-box voice)
-// Client falls back to the browser's built-in voice if all lanes miss.
-app.post("/api/speak", async (req, res) => {
-  const text = String(req.body?.text || "").slice(0, 800); // cap chars (premium bills per char)
-  if (!text.trim()) return res.status(400).json({ error: "no text" });
-  const sendAudio = (buf: ArrayBuffer, type = "audio/mpeg") => { res.setHeader("Content-Type", type); res.send(Buffer.from(buf)); };
-  // LANE 1 · ElevenLabs (premium)
-  const EL_KEY = process.env.ELEVENLABS_API_KEY || "";           // read live (Admin can update it)
-  if (EL_KEY) {
-    try {
-      const EL_VOICE = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
-      const EL_MODEL = process.env.ELEVENLABS_MODEL || "eleven_turbo_v2_5";
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}?output_format=mp3_44100_128`, {
-        method: "POST", headers: { "xi-api-key": EL_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ text, model_id: EL_MODEL, voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35 } }),
-      });
-      if (r.ok) return sendAudio(await r.arrayBuffer());
-    } catch { /* fall through */ }
-  }
-  // LANE 2 · Groq TTS (free tier)
-  const gk = getKey("groq");
-  if (gk) {
-    try {
-      const r = await fetch("https://api.groq.com/openai/v1/audio/speech", {
-        method: "POST", headers: { Authorization: `Bearer ${gk}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "playai-tts", voice: "Fritz-PlayAI", input: text, response_format: "mp3" }),
-      });
-      if (r.ok) return sendAudio(await r.arrayBuffer());
-    } catch { /* fall through */ }
-  }
-  // LANE 3 · Pollinations (FREE, no key — out-of-the-box voice)
-  try {
-    const r = await fetch(`https://text.pollinations.ai/${encodeURIComponent(text)}?model=openai-audio&voice=nova`, { signal: AbortSignal.timeout(30000) });
-    if (r.ok && (r.headers.get("content-type") || "").includes("audio")) return sendAudio(await r.arrayBuffer(), r.headers.get("content-type") || "audio/mpeg");
-  } catch { /* nothing left */ }
-  res.status(503).json({ error: "no tts lane available" });
-});
+// Voice/TTS routes live in routes.voice.ts — self-contained (no index.ts-local state).
+registerVoiceRoutes(app);
 
 // ── SAM Creative Space (Proxy to Muapi) ──────────────────────
 app.all("/api/creative/*", async (req, res) => {
@@ -1097,41 +1058,8 @@ app.get("/api/suggestions", (_req, res) => {
   res.json({ cards: evaluateTriggers({ now: new Date().toISOString(), dueReminders }) });
 });
 
-// ── Workflows (v1.8) — named, saved, repeatable multi-step sequences. ──
-app.get("/api/workflows", (_req, res) => res.json({ workflows: listWorkflows().map((w) => ({ ...w, dangerousSteps: dangerousStepsIn(w).map((s) => s.id) })) }));
-app.post("/api/workflows", (req, res) => {
-  const wf = req.body as Workflow;
-  const r = saveWorkflow({ ...wf, runs: wf.runs || [], armed: !!wf.armed, createdAt: wf.createdAt || new Date().toISOString(), version: wf.version || 1 });
-  return r.ok ? res.json({ ok: true }) : res.status(400).json({ error: r.reason });
-});
-app.delete("/api/workflows/:id", (req, res) => res.json({ ok: deleteWorkflow(req.params.id) }));
-app.post("/api/workflows/install-starters", (_req, res) => {
-  const now = new Date().toISOString();
-  let n = 0;
-  for (const t of STARTER_WORKFLOWS) { if (!getWorkflow(t.id)) { saveWorkflow({ ...t, armed: false, createdAt: now, runs: [] }); n++; } }
-  res.json({ installed: n, workflows: listWorkflows().length });
-});
-// Run a workflow. The engine PAUSES at any dangerous step (never runs it). The executor here auto-runs
-// only SAFE tools; a confirm-tier step defers with a note so it's run with the user present. Brain steps
-// use the free/local tier so a run stays on the cost-cutting cascade.
-app.post("/api/workflows/:id/run", async (req, res) => {
-  const wf = getWorkflow(req.params.id);
-  if (!wf) return res.status(404).json({ error: "no such workflow" });
-  const { toolByName } = await import("./tools.ts");
-  const run = await runWorkflow(wf, {
-    now: new Date().toISOString(),
-    execTool: async (tool, input) => {
-      const t = toolByName(tool);
-      if (!t) return `(no such tool: ${tool})`;
-      if (!t.safe) return `(“${tool}” needs your approval — run it with SAM open)`;   // confirm-tier defers; dangerous already paused
-      try { return await t.run(input); } catch (e: any) { return `(error: ${e?.message || e})`; }
-    },
-    execBrain: async (prompt) => (await runModel((process.env.DEFAULT_TIER as Tier) || "free", "You are SAM, running a saved workflow step. Do this step and hand back a tight result.", prompt)).text,
-  });
-  recordRun(wf.id, run);
-  recordWorkflowRun(new Date().toISOString());   // local count only
-  res.json({ run });
-});
+// Workflow routes live in routes.workflows.ts — self-contained (no index.ts-local state).
+registerWorkflowsRoutes(app);
 
 // ── Measurement (v2.0) — "Your SAM" stats (local) + opt-in anonymous telemetry ──
 // Analytics is 100% on-device. The dashboard also reports how many preferences SAM has learned and the
