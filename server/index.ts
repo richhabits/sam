@@ -935,6 +935,10 @@ app.get("/api/gateway/quota", async (_req, res) => {
 
 // Save keys for a provider (rolling pool — send an array or comma/newline text).
 app.post("/api/admin/keys", (req, res) => {
+  // Loopback-only, like standing authorizations / autopilot / remote tokens. Writing keys is a
+  // CREDENTIAL change: it decides which accounts SAM spends and who it talks to. Every other
+  // privileged write here is already "this computer only"; these two were the exception.
+  if (!isLoopback(req)) return res.status(403).json({ error: "API keys can only be changed on this computer, not remotely." });
   const { provider, keys } = req.body as { provider: string; keys: string | string[] };
   const envVar = PROVIDER_ENV[provider];
   if (!envVar) return res.status(400).json({ error: "unknown provider" });
@@ -946,6 +950,10 @@ app.post("/api/admin/keys", (req, res) => {
 
 // Save a config value (elevenlabs key, voice, default tier, music service…).
 app.post("/api/admin/config", (req, res) => {
+  // Same reasoning, and sharper: CONFIG_ENV can write the Slack bot token, Discord webhook,
+  // Notion/Linear keys and Cloudflare token — so a remote token-holder could REDIRECT SAM's
+  // outbound integrations at their own endpoints. That is a local-only decision.
+  if (!isLoopback(req)) return res.status(403).json({ error: "Integration keys can only be changed on this computer, not remotely." });
   const { key, value } = req.body as { key: string; value: string };
   const envVar = CONFIG_ENV[key];
   if (!envVar) return res.status(400).json({ error: "unknown config key" });
