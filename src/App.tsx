@@ -26,7 +26,7 @@ interface Profile { name: string; about?: string; language?: string }
 // Multiple people can share one SAM — each profile has its OWN memory (server namespaces
 // by name). Saved locally so you switch instantly without re-onboarding.
 function loadProfiles(): Profile[] { try { return JSON.parse(localStorage.getItem("sam.profiles") || "[]"); } catch { return []; } }
-function saveProfiles(list: Profile[]) { try { localStorage.setItem("sam.profiles", JSON.stringify(list.slice(0, 12))); } catch {} }
+function saveProfiles(list: Profile[]) { try { localStorage.setItem("sam.profiles", JSON.stringify(list.slice(0, 12))); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }
 const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
 const TIPS = [
@@ -123,7 +123,7 @@ function loadState(): { convos: Convo[]; activeId: string; brand: string; qualit
   try {
     const s = JSON.parse(localStorage.getItem(LS) || "{}");
     if (s.convos?.length) return { brand: "", quality: "auto", ...s };
-  } catch {}
+  } catch { /* best-effort — nothing user-visible depends on this succeeding */ }
   const id = uid();
   return { convos: [{ id, title: "New chat", messages: [], at: Date.now() }], activeId: id, brand: "", quality: "auto" };
 }
@@ -175,7 +175,7 @@ export default function App() {
   const [folders, setFolders] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("sam.folders") || "[]"); } catch { return []; } });
   const [folderFilter, setFolderFilter] = useState("");
   const [dragChat, setDragChat] = useState("");   // id of the chat being dragged into a folder
-  useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch {} }, [folders]);
+  useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [folders]);
   function addFolder() { const n = window.prompt("New folder name")?.trim(); if (n && !folders.includes(n)) setFolders((f) => [...f, n]); }
   function moveToFolder(id: string, folder: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, folder: folder || undefined } : c))); }
   function renameFolder(old: string) {
@@ -221,7 +221,8 @@ export default function App() {
   const loadQuotes = (list = watchlist) => {
     if (!list.length) { setQuotes([]); return; }
     setQuotesLoading(true);
-    getQuotes(list.join(",")).then((r) => setQuotes(r.quotes || [])).catch(() => {}).finally(() => setQuotesLoading(false));
+    // Distinguish "no quotes" from "couldn't reach them" — an empty panel used to mean both.
+    getQuotes(list.join(",")).then((r) => setQuotes(r.quotes || [])).catch(() => showToast("Couldn't load quotes just now.")).finally(() => setQuotesLoading(false));
   };
   useEffect(() => { localStorage.setItem("sam.watchlist", JSON.stringify(watchlist)); }, [watchlist]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh markets quotes on open; triggered by marketsOpen
@@ -239,10 +240,12 @@ export default function App() {
   const [arenaStatus, setArenaStatus] = useState<{ current?: any; stale?: boolean; ageDays?: number } | null>(null);
   const runBenchmark = () => {
     setArenaLoading(true); setArena(null);
-    runArena().then((r) => { setArena(r); getArena().then(setArenaStatus).catch(() => {}); }).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
+    runArena().then((r) => { setArena(r); getArena().then(setArenaStatus).catch(() => {/* background refresh — the next poll retries; a toast here would nag */}); }).catch(() => setArena({ error: "Benchmark failed — try again." })).finally(() => setArenaLoading(false));
   };
   useEffect(() => { if (colosseumOpen) getArena().then(setArenaStatus).catch(() => setArenaStatus(null)); }, [colosseumOpen]);
-  const resetRanking = () => { clearArena().then(() => { setArenaStatus({ current: null }); setArena(null); }).catch(() => {}); };
+  // Only clear the panel if the server actually cleared the ranking — otherwise routing is still
+  // steered by a champion the UI claims is gone.
+  const resetRanking = () => { clearArena().then(() => { setArenaStatus({ current: null }); setArena(null); }).catch(() => showToast("Couldn't reset the ranking — SAM is still using the current champion.")); };
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
@@ -295,9 +298,10 @@ export default function App() {
   const [rosterOpen, setRosterOpen] = useState(false);
   const [roster, setRoster] = useState<{ id: string; name: string; emoji: string; modeledOn: string; brief: string }[]>([]);
   const [rosterSearch, setRosterSearch] = useState("");
+  // An empty crew list and an unreachable server looked identical here.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger set; the excluded value is read, not a dependency
-  useEffect(() => { if (rosterOpen && !roster.length) getRoster().then((d) => setRoster(d.crew || d || [])).catch(() => {}); }, [rosterOpen]);
-  useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch {} }, [fontSize]);
+  useEffect(() => { if (rosterOpen && !roster.length) getRoster().then((d) => setRoster(d.crew || d || [])).catch(() => showToast("Couldn't load the crew list.")); }, [rosterOpen]);
+  useEffect(() => { try { if (fontSize === "normal") document.documentElement.removeAttribute("data-fontsize"); else document.documentElement.setAttribute("data-fontsize", fontSize); localStorage.setItem("sam.fontsize", fontSize); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [fontSize]);
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [team, setTeam] = useState<{ crew: any[]; done: Record<string, string>; active: Record<string, boolean> } | null>(null);
@@ -310,14 +314,17 @@ export default function App() {
   const findStream = useRef<MediaStream | null>(null);
   const findIv = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autopilot, setAutopilot] = useState(false);
-  useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {}); }, []);
+  useEffect(() => { getAutopilot().then((a) => setAutopilot(!!a.on)).catch(() => {/* background refresh — the next poll retries; a toast here would nag */}); }, []);
   const [elon, setElon] = useState(false);
   function toggleElon() {
     if (!elon) {
       const ok = window.confirm("⚡ ELON MODE — SAM will act on its own with NO ask-first prompts.\n\n• Deletes go to a 30-day trash bin (recoverable)\n• BUT sent emails/messages/posts/payments are NOT recoverable\n• Catastrophic commands are still blocked\n\nTurn it on?");
       if (!ok) return;
     }
-    const n = !elon; setElon(n); setElonMode(n).catch(() => {});
+    const n = !elon; setElon(n);
+    // Revert on failure: an optimistic toggle that keeps the new position after the server
+    // write failed shows a state SAM is not actually in.
+    setElonMode(n).catch(() => { setElon(!n); showToast("Couldn't change Elon Mode — SAM didn't save it."); });
     sysNote(n ? "⚡ Elon Mode ON — SAM's off the leash. Deletes are recoverable; outward actions aren't." : "⚡ Elon Mode off — back to ask-first.");
   }
   function openStudio() {
@@ -360,14 +367,14 @@ export default function App() {
   const chatRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recRef = useRef<any>(null);
-  const sendRef = useRef<(text?: string) => void>(() => {});   // always the latest send() — memoized rows call through this
+  const sendRef = useRef<(text?: string) => void>(() => { /* placeholder until the first render assigns the real send() */ });   // always the latest send() — memoized rows call through this
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only bootstrap: initial fetches + polling interval setup/teardown
   useEffect(() => {
-    getProjects().then(setProjects).catch(() => {});
+    getProjects().then(setProjects).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
     getStatus().then(setStatus).catch(() => setStatus(null));
-    getTools().then(setTools).catch(() => {});
-    checkUpdate().then((u) => u.behind && setUpdate(u)).catch(() => {});
+    getTools().then(setTools).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
+    checkUpdate().then((u) => u.behind && setUpdate(u)).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
     refreshLog();
     inputRef.current?.focus();
     // SAM reaching out first — morning brief / due nudges appear as messages.
@@ -375,10 +382,10 @@ export default function App() {
       if (p.items?.length) {
         setMessages((m) => [...m, ...p.items.map((it) => ({ role: "sam" as const, text: it.text, how: it.type === "brief" ? "morning brief" : "nudge", at: now() }))]);
         if ("Notification" in window && Notification.permission === "granted") {
-          try { new Notification("SAM", { body: p.items[0].text }); } catch {}
+          try { new Notification("SAM", { body: p.items[0].text }); } catch { /* notifications may be denied or unavailable — never block on a nicety */ }
         }
       }
-    }).catch(() => {});
+    }).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
     showProactive();
     // keep the connection dot honest + check for proactive messages (light: every 3 min)
     const iv = setInterval(() => getStatus().then(setStatus).catch(() => setStatus(null)), 12000);
@@ -389,7 +396,7 @@ export default function App() {
     const pollSwarms = async () => {
       if (swarmStop) return;
       let active = false;
-      try { const sw = await getSwarms(); setSwarms(sw); active = sw.some((s: Swarm) => s.status === "planning" || s.status === "running" || s.status === "paused"); } catch {}
+      try { const sw = await getSwarms(); setSwarms(sw); active = sw.some((s: Swarm) => s.status === "planning" || s.status === "running" || s.status === "paused"); } catch { /* background poll — the next tick retries */ }
       if (!swarmStop) swarmTimer = setTimeout(pollSwarms, active ? 5000 : 30000);
     };
     pollSwarms();
@@ -408,7 +415,7 @@ export default function App() {
   // Debounced persist — coalesce rapid changes into one stringify+write (was a
   // multi-ms synchronous JSON.stringify of up to 50 convos on every completed turn).
   useEffect(() => {
-    const t = setTimeout(() => { try { localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, 50), activeId, brand, quality })); } catch {} }, 400);
+    const t = setTimeout(() => { try { localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, 50), activeId, brand, quality })); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, 400);
     return () => clearTimeout(t);
   }, [convos, activeId, brand, quality]);
 
@@ -450,22 +457,22 @@ export default function App() {
 
   // Dark skins carry their own dark ground — so they must also drive the [data-theme=dark] rules
   // (syntax colors, badges), not just the manual Dark toggle.
-  useEffect(() => { try { const darkSkin = ["jarvis","ember","stealth","midnight","nord","dracula","aurora"].includes(skin); document.documentElement.setAttribute("data-theme", (dark || darkSkin) ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch {} }, [dark, skin]);
-  useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch {} }, [skin]);
-  useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch {} }, [speakReplies]);
-  useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch {} }, [profile, mode, persona]);
+  useEffect(() => { try { const darkSkin = ["jarvis","ember","stealth","midnight","nord","dracula","aurora"].includes(skin); document.documentElement.setAttribute("data-theme", (dark || darkSkin) ? "dark" : "light"); localStorage.setItem("sam.dark", dark ? "1" : "0"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [dark, skin]);
+  useEffect(() => { try { if (skin === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.setAttribute("data-skin", skin); localStorage.setItem("sam.skin", skin); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [skin]);
+  useEffect(() => { try { localStorage.setItem("sam.speak", speakReplies ? "1" : "0"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [speakReplies]);
+  useEffect(() => { setUser({ ...profile, mode, persona }); try { localStorage.setItem("sam.profile", JSON.stringify(profile)); localStorage.setItem("sam.mode", mode); localStorage.setItem("sam.persona", persona); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [profile, mode, persona]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: load learned memory when the drawer opens; triggered by memoryOpen
   useEffect(() => { if (memoryOpen) { loadMemory(); setMemQuery(""); } }, [memoryOpen]);   // load the real learned memory when the drawer opens
 
   // Hands-free wake: whistle or double-clap opens Voice Mode.
   // biome-ignore lint/correctness/useExhaustiveDependencies: wake-listener lifecycle keyed to wakeOn; stable callbacks intentionally excluded
   useEffect(() => {
-    if (!wakeOn) { try { localStorage.setItem("sam.wake", "0"); } catch {}; return; }
+    if (!wakeOn) { try { localStorage.setItem("sam.wake", "0"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ }; return; }
     let stop: (() => void) | null = null;
     startWakeListener(() => setVoiceMode(true)).then((s) => (stop = s)).catch(() => {
       setWakeOn(false); showToast("🎤 Couldn't access the mic — turned wake off");
     });
-    try { localStorage.setItem("sam.wake", "1"); } catch {}
+    try { localStorage.setItem("sam.wake", "1"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ }
     return () => { stop?.(); };
   }, [wakeOn]);
 
@@ -475,7 +482,9 @@ export default function App() {
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
     setProfile(p); setUser({ ...p, mode, persona }); upsertProfile(p);
     // Optional free Groq key — if pasted, save it silently (SAM still works fine without it).
-    if (onboardKey.trim()) fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "groq", keys: onboardKey.trim() }) }).catch(() => {});
+    // A key pasted during onboarding that silently fails to save is the worst version of this
+    // bug: the user believes SAM is set up and it is not. Say so, and keep them moving.
+    if (onboardKey.trim()) fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "groq", keys: onboardKey.trim() }) }).catch(() => showToast("Couldn't save that key — add it later in Settings."));
     // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
     // no config. So instead of shoving the keys panel in a brand-new user's face, we greet them and
     // drop them straight into a working chat. Keys are an OPTIONAL speed/ability boost (the 🔑 button
@@ -488,14 +497,14 @@ export default function App() {
     }]);
   }
 
-  const refreshLog = () => getLog().then(setLog).catch(() => {});
+  const refreshLog = () => getLog().then(setLog).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
 
   // Voice input — cross-platform, browser-native (no install, free).
   function toggleVoice() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { showToast("🎤 Voice input needs Chrome or Edge"); return; }
     // Toggle OFF — you're always in control: one click stops it.
-    if (listening) { try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {} setListening(false); showToast("🎤 Mic off"); return; }
+    if (listening) { try { recRef.current?.stop(); recRef.current?.abort?.(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ } setListening(false); showToast("🎤 Mic off"); return; }
     const rec = new SR(); recRef.current = rec;
     rec.lang = navigator.language || "en-GB"; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
     rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((v) => (v ? v + " " : "") + t); inputRef.current?.focus(); };
@@ -515,9 +524,9 @@ export default function App() {
   function speakText(text: string) { ttsSpeak(text); }
   // One button to kill EVERYTHING audio/visual — you're always in control.
   function stopAllAV() {
-    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {}
+    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ }
     setListening(false);
-    try { stopSpeaking(); } catch {}
+    try { stopSpeaking(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ }
     setPlaying(null);
     setSpeakReplies(false);
     if (wakeOn) setWakeOn(false);
@@ -550,7 +559,7 @@ export default function App() {
     try {
       guardStream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       setGuardian(true);
-      try { if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission(); } catch {}
+      try { if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission(); } catch { /* notifications may be denied or unavailable — never block on a nicety */ }
       sysNote("🛡️ Guardian is watching. It only looks when something moves — I'll flag anyone I don't recognise. (Uses free vision; keep this tab open.)");
       const video = document.createElement("video"); video.srcObject = guardStream.current; video.muted = true; await video.play();
       const small = document.createElement("canvas"); small.width = 32; small.height = 24;
@@ -579,12 +588,12 @@ export default function App() {
           if (/^alert/i.test(txt)) {
             setMessages((m) => [...m, { role: "sam", text: "🛡️ " + txt, how: "guardian", at: now() }]);
             setStranger(txt.replace(/^alert[:,\s]*/i, "").slice(0, 200));   // offer "remember them" banner
-            try { if ("Notification" in window && Notification.permission === "granted") new Notification("🛡️ SAM Guardian", { body: txt.slice(0, 140) }); } catch {}
+            try { if ("Notification" in window && Notification.permission === "granted") new Notification("🛡️ SAM Guardian", { body: txt.slice(0, 140) }); } catch { /* notifications may be denied or unavailable — never block on a nicety */ }
             if (speakReplies) speakText(txt);
           } else if (txt && !/^clear/i.test(txt)) {
             setMessages((m) => [...m, { role: "sam", text: txt, how: "guardian", at: now() }]);
           }
-        } catch {} finally { busy = false; }
+        } catch { /* background loop: swallowing keeps it alive; the next tick retries */ } finally { busy = false; }
       };
       guardIv.current = setInterval(tick, 4000);   // sample every 4s; vision only fires on motion
     } catch { sysNote("Couldn't start Guardian — allow camera access and try again."); }
@@ -694,10 +703,10 @@ export default function App() {
           if (/^change/i.test(txt)) {
             const msg = "⏱️ " + txt.replace(/^change:\s*/i, "");
             setMessages((m) => [...m, { role: "sam", text: msg, how: "timelapse", at: now() }]);
-            try { if ("Notification" in window && Notification.permission === "granted") new Notification("⏱️ SAM Timelapse", { body: msg.slice(0, 140) }); } catch {}
+            try { if ("Notification" in window && Notification.permission === "granted") new Notification("⏱️ SAM Timelapse", { body: msg.slice(0, 140) }); } catch { /* notifications may be denied or unavailable — never block on a nicety */ }
             if (speakReplies) speakText(msg);
           }
-        } catch {} finally { busy = false; }
+        } catch { /* background loop: swallowing keeps it alive; the next tick retries */ } finally { busy = false; }
       }, 30000);   // every 30s
     } catch { sysNote("Couldn't start Timelapse — allow camera access."); }
   }
@@ -740,7 +749,7 @@ export default function App() {
           const txt = (r.text || "").trim();
           if (/^found/i.test(txt)) { found = true; clearInterval(iv); stopFind(); const msg = "🔎 " + txt.replace(/^found:\s*/i, "Found it — "); setMessages((m) => [...m, { role: "sam", text: msg, how: "camera", at: now() }]); speakText(msg); }
           else if (/^warm/i.test(txt)) { showToast("🔥 " + txt.replace(/^warm:\s*/i, "").slice(0, 60)); }
-        } catch {} finally { busy = false; }
+        } catch { /* background loop: swallowing keeps it alive; the next tick retries */ } finally { busy = false; }
       }, 2500);
       findIv.current = iv;
     } catch { stream?.getTracks().forEach((t) => { t.stop(); }); findStream.current = null; sysNote("Couldn't open the camera to search."); }
@@ -809,7 +818,7 @@ export default function App() {
     try {
       await startSwarm(value, brand || undefined, QUALITY_TIER[quality] as any);
       sysNote("The Swarm has been dispatched. They will run in the background and pause if they need your approval. Keep an eye on the Swarm panel above.");
-      getSwarms().then(setSwarms).catch(() => {});
+      getSwarms().then(setSwarms).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
     } catch { sysNote("Couldn't start the swarm just now."); }
     inputRef.current?.focus();
   }
@@ -946,12 +955,12 @@ export default function App() {
   // The escape hatch when a reply runs away or loops. Unlike stopAllAV it does NOT flip your
   // persistent voice/wake preferences off — it just halts what's happening right now.
   function haltNow() {
-    try { abortRef.current?.abort(); } catch {}
+    try { abortRef.current?.abort(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ }
     abortRef.current = null;
     setLive(null); setLoading(false); setPending(null);
-    try { stopSpeaking(); } catch {}
+    try { stopSpeaking(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ }
     setPlaying(null);
-    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {}
+    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch { /* teardown is idempotent — already stopped is a success, not an error */ }
     setListening(false);
     if (voiceMode) setVoiceMode(false);
   }
@@ -986,7 +995,7 @@ export default function App() {
   }
 
   async function copyMsg(text: string, i: number) {
-    try { await navigator.clipboard.writeText(text); setCopied(i); setTimeout(() => setCopied((c) => (c === i ? null : c)), 1500); } catch {}
+    try { await navigator.clipboard.writeText(text); setCopied(i); setTimeout(() => setCopied((c) => (c === i ? null : c)), 1500); } catch { /* clipboard needs permission/focus — the copy button just doesn't confirm */ }
   }
   function exportChat() {
     const md = messages.map((m) => `**${m.role === "sam" ? "SAM" : "You"}**${m.at ? ` (${m.at})` : ""}:\n\n${m.text}`).join("\n\n---\n\n");
@@ -1128,7 +1137,7 @@ export default function App() {
             <div className="pop-title">Preferences</div>
             <div className="pop-group">
               <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
-              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Off — asks before anything risky"}</span></button>
+              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Off — asks before anything risky"}</span></button>
               <button type="button" className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses every safety prompt. Deletes go to a bin; catastrophic commands still blocked."}</span></button>
             </div>
             <div className="pop-title">Skin</div>
@@ -1229,7 +1238,7 @@ export default function App() {
         const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
         if (!btn) return;
         const code = btn.parentElement?.querySelector("code")?.textContent || "";
-        navigator.clipboard.writeText(code).then(() => { btn.textContent = "Copied ✓"; setTimeout(() => { if (btn) btn.textContent = "Copy"; }, 1400); }).catch(() => {});
+        navigator.clipboard.writeText(code).then(() => { btn.textContent = "Copied ✓"; setTimeout(() => { if (btn) btn.textContent = "Copy"; }, 1400); }).catch(() => {/* clipboard needs permission/focus — the button just doesn't confirm */});
       }}>
         {findOpen && (
           // biome-ignore lint/a11y/noStaticElementInteractions: onClick only stops propagation to the chat's delegated copy handler
@@ -1634,7 +1643,8 @@ export default function App() {
             </div>
             {(() => {
               const KINDS: [string, string][] = [["fact", "🧠 Facts"], ["plan", "🗺️ Plans"], ["decision", "✅ Decisions"], ["task", "📌 Open loops"]];
-              const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => {});
+              // A delete that fails must not look like it worked — the row would silently return.
+              const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => showToast("Couldn't forget that — it's still stored."));
               if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.</div>;
               const q = memQuery.trim().toLowerCase();
               const match = (items: { id: string; text: string; ts: number }[]) => q ? items.filter((it) => it.text.toLowerCase().includes(q)) : items;
@@ -1752,7 +1762,7 @@ export default function App() {
           { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "🔍", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
           { icon: "⬇️", label: "Export this chat (download)", run: () => { exportChat(); showToast("⬇️ Chat downloaded"); } },
-          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).then(() => showToast("📋 Chat copied")).catch(() => {}); } },
+          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).then(() => showToast("📋 Chat copied")).catch(() => {/* clipboard needs permission/focus — the button just doesn't confirm */}); } },
           { icon: "🔒", label: "Private mode — local only", run: () => setQuality("private") },
           { icon: "⚡", label: "Auto — free brains", run: () => setQuality("auto") },
           { icon: "✨", label: "Best quality", run: () => setQuality("best") },

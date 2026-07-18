@@ -49,12 +49,12 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   }, []);
 
   function stopAll() {
-    try { recRef.current?.stop(); } catch {}
+    try { recRef.current?.stop(); } catch { /* teardown is idempotent — already stopped is success, not an error */ }
     stopSpeaking();
     pcRef.current?.close();
     // Closing the RTCPeerConnection does NOT stop the mic track — kill it explicitly
     // so the browser's recording indicator turns off.
-    try { micStreamRef.current?.getTracks().forEach((t) => { t.stop(); }); } catch {}
+    try { micStreamRef.current?.getTracks().forEach((t) => { t.stop(); }); } catch { /* best-effort — nothing user-visible depends on this succeeding */ }
     micStreamRef.current = null;
   }
 

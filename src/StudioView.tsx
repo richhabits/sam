@@ -77,7 +77,7 @@ export default function StudioView() {
   async function enhance() {
     if (!prompt.trim() || enhancing) return;
     setEnhancing(true);
-    try { const r = await fetch("/api/studio/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt.trim() }) }).then((x) => x.json()); if (r.prompt) setPrompt(r.prompt); } catch {}
+    try { const r = await fetch("/api/studio/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt.trim() }) }).then((x) => x.json()); if (r.prompt) setPrompt(r.prompt); } catch { /* best-effort — nothing user-visible depends on this succeeding */ }
     setEnhancing(false);
   }
 

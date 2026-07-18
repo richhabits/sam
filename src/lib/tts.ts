@@ -41,15 +41,15 @@ function startTicker() {
 }
 
 export function stopSpeaking() {
-  try { speechSynthesis.cancel(); } catch {}
+  try { speechSynthesis.cancel(); } catch { /* speech API absent or blocked — voice is optional */ }
   if (current) {
     // Detach handlers FIRST: setting src="" fires the element's 'error' event, and a
     // live onerror would re-speak the text we're trying to stop (zombie audio).
     current.onended = null; current.onerror = null;
-    try { current.pause(); current.src = ""; } catch {}
+    try { current.pause(); current.src = ""; } catch { /* best-effort — nothing user-visible depends on this succeeding */ }
     current = null;
   }
-  if (currentUrl) { try { URL.revokeObjectURL(currentUrl); } catch {}; currentUrl = null; }
+  if (currentUrl) { try { URL.revokeObjectURL(currentUrl); } catch { /* best-effort — nothing user-visible depends on this succeeding */ }; currentUrl = null; }
   _speaking = false;
 }
 
@@ -80,7 +80,7 @@ export async function speak(text: string, onDone?: () => void) {
       const url = URL.createObjectURL(await r.blob());
       const audio = new Audio(url);
       current = audio; currentUrl = url;
-      const revoke = () => { if (currentUrl === url) { try { URL.revokeObjectURL(url); } catch {}; currentUrl = null; } };
+      const revoke = () => { if (currentUrl === url) { try { URL.revokeObjectURL(url); } catch { /* best-effort — nothing user-visible depends on this succeeding */ }; currentUrl = null; } };
       audio.onended = () => { current = null; revoke(); _speaking = false; onDone?.(); };
       audio.onerror = () => { current = null; revoke(); browserSpeak(t, onDone); };
       await audio.play();

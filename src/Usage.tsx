@@ -16,7 +16,7 @@ export default function Usage({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
 
   useEffect(() => {
-    const load = () => getStatus().then((s) => { setPools(s?.models?.pools || []); setProvs(s?.models?.providers || []); }).catch(() => {});
+    const load = () => getStatus().then((s) => { setPools(s?.models?.pools || []); setProvs(s?.models?.providers || []); }).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
     load();
     const a = setInterval(load, 6000);          // refresh data
     const b = setInterval(() => tick((n) => n + 1), 1000);  // live countdown

@@ -20,12 +20,12 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const load = () => {
-      getStatus().then(setS).catch(() => {});
-      getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
-      getSecurity().then((d) => setSec(d.status)).catch(() => {});
-      getSwarms().then(setSwarms).catch(() => {});
-      getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {});
-      getSchedules().then(setSchedules).catch(() => {});
+      getStatus().then(setS).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+      getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+      getSecurity().then((d) => setSec(d.status)).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+      getSwarms().then(setSwarms).catch(() => {/* background poll — the next tick retries */});
+      getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+      getSchedules().then(setSchedules).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
     };
     load();
     const iv = setInterval(load, 5000);
