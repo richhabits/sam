@@ -747,7 +747,7 @@ app.get("/api/memory", (req, res) => {
   const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
   const items = listAll(name);
   const groups: Record<string, { id: string; text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
-  for (const it of items) (groups[it.kind] ||= []).push({ id: it.id, text: it.text, ts: it.ts });
+  for (const it of items) { groups[it.kind] ||= []; groups[it.kind].push({ id: it.id, text: it.text, ts: it.ts }); }
   res.json({ groups, count: items.length, private: true, note: "All local — nothing left your device." });
 });
 app.post("/api/memory/forget", (req, res) => {
@@ -759,7 +759,7 @@ app.get("/api/memory/export", (req, res) => {
   const name = (String(req.query.user || "").trim() || process.env.SAM_USER_NAME || "").trim() || undefined;
   const items = listAll(name);
   const groups: Record<string, { text: string; ts: number }[]> = { fact: [], plan: [], decision: [], task: [] };
-  for (const it of items) (groups[it.kind] ||= []).push({ text: it.text, ts: it.ts });
+  for (const it of items) { groups[it.kind] ||= []; groups[it.kind].push({ text: it.text, ts: it.ts }); }
   const section = (title: string, rows: { text: string; ts: number }[]) =>
     `## ${title}\n\n` + (rows.length ? rows.map((r) => `- ${r.text}  _(${new Date(r.ts).toISOString().slice(0, 10)})_`).join("\n") : "_(none)_") + "\n";
   const markdown = `# What SAM remembers about you\n\n_${items.length} memories · exported ${new Date().toISOString().slice(0, 10)} · all local_\n\n`

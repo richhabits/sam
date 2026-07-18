@@ -99,7 +99,7 @@ export function parseCron(cron: string): ParsedSchedule | null {
   // "every 30m" / "every 2h"
   const everyMatch = c.match(/^every\s+(\d+)\s*(m|min|h|hr|hours?)$/);
   if (everyMatch) {
-    const val = parseInt(everyMatch[1]);
+    const val = parseInt(everyMatch[1], 10);
     if (val <= 0) return null;   // "every 0m" would fire every tick — reject as invalid
     const unit = everyMatch[2].startsWith("h") ? 3600_000 : 60_000;
     const ms = val * unit;
@@ -109,8 +109,8 @@ export function parseCron(cron: string): ParsedSchedule | null {
   // "daily 09:00" / "daily 14:30"
   const dailyMatch = c.match(/^daily\s+(\d{1,2}):(\d{2})$/);
   if (dailyMatch) {
-    const hour = parseInt(dailyMatch[1]);
-    const minute = parseInt(dailyMatch[2]);
+    const hour = parseInt(dailyMatch[1], 10);
+    const minute = parseInt(dailyMatch[2], 10);
     return {
       intervalMs: 60_000, // check every minute
       shouldRun: (now, last) => {
@@ -125,8 +125,8 @@ export function parseCron(cron: string): ParsedSchedule | null {
   const weeklyMatch = c.match(/^weekly\s+(sun|mon|tue|wed|thu|fri|sat)\s+(\d{1,2}):(\d{2})$/);
   if (weeklyMatch) {
     const day = DAYS[weeklyMatch[1]];
-    const hour = parseInt(weeklyMatch[2]);
-    const minute = parseInt(weeklyMatch[3]);
+    const hour = parseInt(weeklyMatch[2], 10);
+    const minute = parseInt(weeklyMatch[3], 10);
     return {
       intervalMs: 60_000,
       shouldRun: (now, last) => {
