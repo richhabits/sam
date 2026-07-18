@@ -30,6 +30,7 @@ vault/authorized.json
 
 # logs & caches
 *.log
+logs/          # runtime logs + launchd .out/.err — never committed
 .cache/
 coverage/
 .vitest/
