@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Icon from "./Icon";
 import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp, getSigningStatus, genAndroidKeystore } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
@@ -30,6 +31,14 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   const [apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
   const [phone, setPhone] = useState<{ remoteOn: boolean; lan: string | null; url: string | null }>({ remoteOn: false, lan: null, url: null });
   const [phoneQR, setPhoneQR] = useState("");
+  // Same treatment as Settings and the Control Centre: this drawer was 43 providers + media +
+  // voice + apps + integrations + phone + email in ONE scroll. Tabs keep each view to a screen.
+  const [atab, setAtab] = useState<"brains" | "media" | "apps" | "devices" | "safety">("brains");
+  // Provider rows averaged 177px each (label + note + open paste box + save + link), so 11 of
+  // them was 4 screens of scroll before you reached anything else. They're summary rows now and
+  // only the one you're actually adding a key to opens. Same disclosure pattern a settings app
+  // uses for a long list of accounts.
+  const [openRow, setOpenRow] = useState<string>("");
   const [phoneMsg, setPhoneMsg] = useState("");
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
@@ -65,6 +74,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   // dropping the user at the top of a very long drawer and hoping they scroll.
   useEffect(() => {
     if (focus !== "phone") return;
+    setAtab("devices");   // the phone section lives in Devices — select the tab, then scroll
     const t = setTimeout(() => {
       document.getElementById("admin-phone")?.scrollIntoView({ block: "start", behavior: "smooth" });
     }, 60);   // after the drawer paints
@@ -140,13 +150,28 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <div className="drawer-title">API keys &amp; providers</div>
             <div className="drawer-sub">Paste your free keys — SAM rotates through them so you never hit a limit. Add as many as you like (comma or new line). {totalKeys} loaded.</div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
 
+        <div className="pop-tabs adm-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={atab === "brains"} className={atab === "brains" ? "on" : ""} onClick={() => setAtab("brains")}>Brains</button>
+          <button type="button" role="tab" aria-selected={atab === "media"} className={atab === "media" ? "on" : ""} onClick={() => setAtab("media")}>Media</button>
+          <button type="button" role="tab" aria-selected={atab === "apps"} className={atab === "apps" ? "on" : ""} onClick={() => setAtab("apps")}>Apps</button>
+          <button type="button" role="tab" aria-selected={atab === "devices"} className={atab === "devices" ? "on" : ""} onClick={() => setAtab("devices")}>Devices</button>
+          <button type="button" role="tab" aria-selected={atab === "safety"} className={atab === "safety" ? "on" : ""} onClick={() => setAtab("safety")}>Safety</button>
+        </div>
+        {atab === "brains" && (<>
         {(() => {
           const row = (p: Prov) => (
-            <div key={p.id} className="admin-row">
-              <div className="admin-h"><span className="admin-name">{p.label}</span><span className="admin-note">{p.note}</span><span className="admin-count">{count(p.id)} key{count(p.id) === 1 ? "" : "s"}</span></div>
+            <div key={p.id} className={`admin-row${openRow === p.id ? " open" : ""}`}>
+              <button type="button" className="admin-rowhead" onClick={() => setOpenRow((v) => (v === p.id ? "" : p.id))}
+                aria-expanded={openRow === p.id}>
+                <span className="admin-name">{p.label}</span>
+                <span className="admin-keys">{count(p.id) > 0 ? `${count(p.id)} key${count(p.id) > 1 ? "s" : ""}` : "Add"}</span>
+                <span className={`admin-chev${openRow === p.id ? " open" : ""}`} aria-hidden="true">›</span>
+              </button>
+              {openRow === p.id && (<>
+              <div className="admin-h"><span className="admin-note">{p.note}</span><span className="admin-count">{count(p.id)} key{count(p.id) === 1 ? "" : "s"}</span></div>
               <textarea className="admin-input" rows={2} placeholder={`Paste ${p.label} key(s) — comma or new line for many`}
                 value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
               <div className="admin-actions">
@@ -163,6 +188,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                 )}
                 <a className="admin-getkey" href={p.url} target="_blank" rel="noopener noreferrer">{p.premium ? "Get a key ↗" : "Get a FREE key ↗"}</a>
               </div>
+              </>)}
             </div>
           );
           if (cfgErr) return <div className="admin-note" style={{ color: "#e06c6c" }}>✗ {cfgErr} <button type="button" className="admin-more" onClick={refresh}>Retry</button></div>;
@@ -203,8 +229,9 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             </>
           );
         })()}
-
-        <div className="admin-cat">🎨 Media &amp; Voice</div>
+        </>)}
+        {atab === "media" && (<>
+        <div className="admin-cat"><Icon name="studio" /> Media &amp; voice</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">ElevenLabs voice</span><span className="admin-note">premium voice</span><span className="admin-count">{cfg?.elevenlabs ? "on" : "off"}</span></div>
@@ -242,7 +269,9 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           </div>
         </div>
 
-        <div className="admin-cat">🔗 Connect your apps</div>
+        </>)}
+        {atab === "apps" && (<>
+        <div className="admin-cat"><Icon name="folder" /> Connect your apps</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">3rd-Party Integrations</span><span className="admin-note">keys for Notion, Slack, etc.</span></div>
@@ -286,7 +315,48 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         {/* Phone access is a top-level thing people go LOOKING for ("use SAM on my phone"), but it
             lived at the bottom of the keys drawer under 43 providers. Settings now links straight
             here and this anchor scrolls it into view. */}
-        <div className="admin-cat" id="admin-phone">📱 Phone &amp; devices</div>
+        <div className="admin-cat"><Icon name="briefcase" /> Business integrations</div>
+
+        <div className="admin-row">
+          <div className="admin-h"><span className="admin-name">🔌 Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
+          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+            {mcp.map((p) => (
+              <div key={p.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 18 }}>{p.emoji}</span>
+                  <b>{p.label}</b>
+                  {p.official ? <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: "var(--accent-soft, #2a2a2a)", opacity: .8 }}>official</span> : <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, border: "1px solid var(--border)", opacity: .6 }}>community</span>}
+                  {p.connected && <span style={{ fontSize: 11, color: "var(--accent-text)", marginLeft: "auto" }}>✓ connected</span>}
+                </div>
+                <div className="admin-note" style={{ margin: "4px 0 8px" }}>{p.note}{p.docs && <> · <a href={p.docs} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>get key ↗</a></>}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  {p.fields.map((f) => (
+                    <input key={f.env} type="password" placeholder={f.label + (f.placeholder ? ` (${f.placeholder})` : "")} value={mcpKeys[p.id]?.[f.env] || ""}
+                      onChange={(e) => setMcpKeys((m) => ({ ...m, [p.id]: { ...m[p.id], [f.env]: e.target.value } }))}
+                      style={{ flex: "1 1 160px", minWidth: 120, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  ))}
+                  <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
+                    const env = mcpKeys[p.id] || {};
+                    if (p.fields.some((f) => !(env[f.env] || "").trim())) { setMcpMsg((m) => ({ ...m, [p.id]: "Add the key(s) first." })); return; }
+                    setMcpMsg((m) => ({ ...m, [p.id]: "Connecting…" }));
+                    const r = await configureMcp(p.id, env).catch(() => ({ ok: false }));
+                    setMcpMsg((m) => ({ ...m, [p.id]: r.ok ? "✓ Saved — restart SAM to activate." : "Couldn't save." }));
+                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: true } : x)); setMcpKeys((m) => ({ ...m, [p.id]: {} })); }
+                  }}>{p.connected ? "Update" : "Connect"}</button>
+                  {p.connected && <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)" }} onClick={async () => {
+                    const r = await removeMcp(p.id).catch(() => ({ ok: false }));
+                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: false } : x)); setMcpMsg((m) => ({ ...m, [p.id]: "Removed — restart to apply." })); }
+                  }}>Remove</button>}
+                </div>
+                {mcpMsg[p.id] && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{mcpMsg[p.id]}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        </>)}
+        {atab === "devices" && (<>
+        <div className="admin-cat" id="admin-phone"><Icon name="phone" /> Phone &amp; devices</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">📱 Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
@@ -333,46 +403,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           </div>
         </div>
 
-        <div className="admin-cat">🔌 Business integrations</div>
-
-        <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">🔌 Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            {mcp.map((p) => (
-              <div key={p.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 18 }}>{p.emoji}</span>
-                  <b>{p.label}</b>
-                  {p.official ? <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: "var(--accent-soft, #2a2a2a)", opacity: .8 }}>official</span> : <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, border: "1px solid var(--border)", opacity: .6 }}>community</span>}
-                  {p.connected && <span style={{ fontSize: 11, color: "var(--accent-text)", marginLeft: "auto" }}>✓ connected</span>}
-                </div>
-                <div className="admin-note" style={{ margin: "4px 0 8px" }}>{p.note}{p.docs && <> · <a href={p.docs} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>get key ↗</a></>}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {p.fields.map((f) => (
-                    <input key={f.env} type="password" placeholder={f.label + (f.placeholder ? ` (${f.placeholder})` : "")} value={mcpKeys[p.id]?.[f.env] || ""}
-                      onChange={(e) => setMcpKeys((m) => ({ ...m, [p.id]: { ...m[p.id], [f.env]: e.target.value } }))}
-                      style={{ flex: "1 1 160px", minWidth: 120, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
-                  ))}
-                  <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
-                    const env = mcpKeys[p.id] || {};
-                    if (p.fields.some((f) => !(env[f.env] || "").trim())) { setMcpMsg((m) => ({ ...m, [p.id]: "Add the key(s) first." })); return; }
-                    setMcpMsg((m) => ({ ...m, [p.id]: "Connecting…" }));
-                    const r = await configureMcp(p.id, env).catch(() => ({ ok: false }));
-                    setMcpMsg((m) => ({ ...m, [p.id]: r.ok ? "✓ Saved — restart SAM to activate." : "Couldn't save." }));
-                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: true } : x)); setMcpKeys((m) => ({ ...m, [p.id]: {} })); }
-                  }}>{p.connected ? "Update" : "Connect"}</button>
-                  {p.connected && <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)" }} onClick={async () => {
-                    const r = await removeMcp(p.id).catch(() => ({ ok: false }));
-                    if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: false } : x)); setMcpMsg((m) => ({ ...m, [p.id]: "Removed — restart to apply." })); }
-                  }}>Remove</button>}
-                </div>
-                {mcpMsg[p.id] && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{mcpMsg[p.id]}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="admin-cat">🚀 Ship your app</div>
+        <div className="admin-cat"><Icon name="download" /> Ship your app</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">🍎 Sign the Mac app {signing?.mac?.ready ? "· ✓ ready" : ""}</span><span className="admin-note">so it opens with no "unidentified developer" warning</span></div>
@@ -425,7 +456,9 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           </div>
         </div>
 
-        <div className="admin-cat">🛡️ Safety &amp; permissions</div>
+        </>)}
+        {atab === "safety" && (<>
+        <div className="admin-cat"><Icon name="shield" /> Safety &amp; permissions</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">Authorized actions</span><span className="admin-note">SAM does these without asking</span></div>
@@ -436,6 +469,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               ))}</ul>}
         </div>
 
+        </>)}
         <div className="admin-foot">Keys are stored only on this computer (your .env). SAM never shows them back.</div>
       </aside>
     </div>
