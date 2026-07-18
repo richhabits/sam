@@ -1150,22 +1150,30 @@ export default function App() {
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"], ["aurora", "Aurora", "🌌"]].map(([id, label, ic]) => (
-                <button type="button" key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>
+                <button type="button" key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)} aria-label={`Theme: ${label}`} title={`Theme: ${label}`}>
                   <div className={`skin-prev prev-${id}`}></div>
                   <div className="skin-chip-label">{ic} {label}</div>
                 </button>
               ))}
             </div>
-            <div className="pop-title">More</div>
+            <div className="pop-title">Keys &amp; brains</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setWizardOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Power up — add free keys</span><span className="pop-opt-sub">60-second wizard — validate + pool free brains</span></button>
               <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
+            </div>
+            <div className="pop-title">Your data</div>
+            <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
               <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">Proactivity — all off until you allow it, with a full log</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">Your usage, on-device — 0 data left the machine</span></button>
+            </div>
+            <div className="pop-title">Do more</div>
+            <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Saved multi-step sequences — dangerous steps pause to ask</span></button>
               <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Grounded research from your own sources</span></button>
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">Your usage, on-device — 0 data left the machine</span></button>
+            </div>
+            <div className="pop-title">Help</div>
+            <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Auto-check the common problems + get the exact fix</span></button>
               <button type="button" className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
               <button type="button" className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
