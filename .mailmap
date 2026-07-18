@@ -1,3 +1,5 @@
 # Canonicalise commit authorship for `git shortlog`/`git log` without rewriting history.
 # One old commit is authored under a personal display name; map it to the project identity.
+# (The personal-email mapping that was here is gone: history was rewritten on 2026-07-19 so no
+#  commit carries that address any more, and keeping the mapping would have re-published it.)
 HECTIC <richhabits@users.noreply.github.com> Romeo Valentine <101016056+richhabits@users.noreply.github.com>
