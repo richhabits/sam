@@ -1,4 +1,13 @@
-import { buildExtractPrompt, parseJsonLoose, coerceToSchema, extract } from "./webintel-extract.mjs";
+// LIVE verification for webintel-extract — the network-touching complement to the CI tests
+// (server/webintel-extract.test.ts), which are deliberately offline so CI never flakes.
+//
+// Run:  node --experimental-strip-types scripts/verify-webintel-extract.mjs
+//
+// It imports the REAL module from server/. It used to import a "./webintel-extract.mjs" that was never
+// landed, so it threw ERR_MODULE_NOT_FOUND and the "9/9 passed" receipt it advertised had
+// never actually run on this disk. A verification script that cannot execute is worse than
+// none: it reports success by existing.
+import { buildExtractPrompt, parseJsonLoose, coerceToSchema, extract } from "../server/webintel-extract.ts";
 let pass=0, fail=0; const ok=(n,c)=>{(c?pass++:fail++);console.log(`  [${c?"PASS":"FAIL"}] ${n}`);};
 
 // 1) prompt building
@@ -16,6 +25,14 @@ const { value, issues } = coerceToSchema({ title: "Acme", founded: "1999", isPub
 ok("coerces '1999'->1999", value.founded === 1999);
 ok("coerces 'yes'->true", value.isPublic === true);
 ok("coerces scalar->string[]", Array.isArray(value.products) && value.products[0] === "widgets");
+// THE CASE THIS SCRIPT WAS MISSING. It checked "1999"->1999 but never a garbage string, so
+// coerce() returning 0 for "not a number" (Number("") === 0, not NaN) sailed through a receipt
+// claiming 9/9. A fabricated number is worse than an admitted gap; null is the honest answer.
+for (const junk of ["not a number", "unknown", "n/a", ""]) {
+  const g = coerceToSchema({ founded: junk }, schema);
+  ok(`garbage number ${JSON.stringify(junk)} -> null (not 0)`, g.value.founded === null);
+}
+ok("real numbers still parse ('£19.99' -> 19.99)", coerceToSchema({ founded: "£19.99" }, schema).value.founded === 19.99);
 const miss = coerceToSchema({ title: "X" }, schema);
 ok("flags missing fields", miss.issues.some((i) => i.includes("founded") && i.includes("missing")));
 
