@@ -94,8 +94,13 @@ export function routeSkill(message: string, skills: Skill[]): Skill | null {
   const text = message.toLowerCase();
   let best: { skill: Skill; score: number } | null = null;
   for (const s of skills) {
+    // Weight a match by how SPECIFIC the trigger is (word count), not just that it hit.
+    // Counting matches equally let a generic single word outrank a precise phrase: "I want to
+    // build my own git" scored build=2 ("build","git") vs buildx=1 ("build my own"), so the
+    // build-your-own skill never fired on its own flagship request. A three-word phrase is
+    // stronger evidence of intent than one common word, and scoring says so.
     const score = s.triggers.reduce(
-      (acc, t) => (text.includes(t.toLowerCase()) ? acc + 1 : acc),
+      (acc, t) => (text.includes(t.toLowerCase()) ? acc + t.trim().split(/\s+/).length : acc),
       0
     );
     if (score > 0 && (!best || score > best.score)) best = { skill: s, score };
