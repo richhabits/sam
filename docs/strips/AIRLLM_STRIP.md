@@ -39,7 +39,9 @@ RAM/VRAM by streaming layers from disk" is a good fact for SAM to be able to *ex
 user asks "can I run a 70B locally?" — the honest answer is "yes, via layer-streaming like
 AirLLM, but it'll be very slow; for responsive local use, a quantized model in Ollama is the
 better path, and SAM's free cloud brains are bigger and faster still." That's a support/FAQ
-answer, not a feature. If SAM ever adds a `docs/LOCAL-MODELS.md`, this is one paragraph in it.
+answer, not a feature — and it now lives in `docs/LOCAL-MODELS.md` (written 2026-07-18),
+which covers Ollama setup, the privacy guarantee, warm start, and the honest ranking for
+interactive chat: quantized local > free cloud brains > 70B via layer-streaming.
 
 ## FLIP IT
 
