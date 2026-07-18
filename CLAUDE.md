@@ -34,7 +34,7 @@ installable, reliable for real users. "Where it needs to be" =
 3. **Free-tier quotas are production infrastructure.** Budget: ≤5 live brain calls per session for spot-checks. Unit tests are the proof; live calls only confirm wiring. Never loop curls against brains. (One day of hammering killed every brain and the server.)
 4. **Timeout everything.** Long commands get explicit timeouts. If verification can't finish in budget, report what's *proven* vs *confounded* — never extrapolate the missing part.
 5. **One thing at a time.** Finish = typecheck + tests + build + CI green + `docs/BOARD.md` updated. Then the next thing.
-6. **Gate-shopping ban, everywhere.** Never re-run/trim/nudge until a check passes. A red check is information, not an obstacle. (Constitutional in `flipit/FLIPIT.md`; applies to CI, benchmarks, everything.)
+6. **Gate-shopping ban, everywhere.** Never re-run/trim/nudge until a check passes. A red check is information, not an obstacle. (Constitutional in `~/flip-it/FLIP_IT.md`; applies to CI, benchmarks, everything.)
 7. **Blocked >20 min on environment weirdness** (rate limits, flaky externals): write it to BOARD → Blocked with what you tried, move to the next item. No spirals.
 8. **The loops are sacred.** `com.sam.dailybenchmark` (04:00) and the FLIP IT daily step run unattended. After touching anything they depend on: `launchctl print gui/501/com.sam.dailybenchmark | grep -E "state|runs"` and confirm the entrypoints still load. Breaking a loop silently is the worst failure class.
 9. **Session end ritual:** update BOARD (done / state / next), commit (push only if green), report in the Status format. An unlogged session didn't happen.
@@ -52,10 +52,10 @@ Then at most: **Done** (with receipts) · **Found** (surprises) · **Next** (one
 | `server/` | brains, routing (colosseum), tools, gateway — the other agent's zone too |
 | `src/` | HUD/frontend — **Claude only** |
 | `skills/` | drop-in `SKILL.md` capabilities (see `skills/README.md`) |
-| `flipit/` | the £5 trading rig — constitution `flipit/FLIPIT.md`, forward loop `run_forward.py` |
+| `~/flip-it/` | the £5 trading rig — **a SIBLING REPO, not a folder here**. Constitution `FLIP_IT.md`, CLI `run.py`, its own `CLAUDE.md` (Money Doctrine) and `AMENDMENT-00{1,2}.md`. Mirrored to `/Volumes/ROMEO HQ/flip-it.git` |
 | `vault/` | persistent state (e.g. `arena-ranking.json` — source of truth for routing) |
 | `logs/` | `server.log`, `daily_benchmark.log` |
 | `docs/BOARD.md` | **living state — read at boot, update at end, every session** |
 | `docs/ROADMAP-100.md` | the top-100 build checklist (waves) |
 
-Verify crib: `npm run verify` (typecheck+test+build) · `npx vitest run server/<x>.test.ts` · `gh run list --limit 5` · flipit: `python -m pytest flipit/tests -q`
+Verify crib: `npm run verify` (typecheck+test+build) · `npx vitest run server/<x>.test.ts` · `gh run list --limit 5` · flip-it: `cd ~/flip-it && python3 -m pytest tests/ -q` (sibling repo — there is no `flipit/` here)

@@ -70,7 +70,7 @@ function coerce(v: unknown, t: FieldType): unknown {
     // so the old `Number(stripped)` turned "not a number" / "unknown" / "n/a" into a confident
     // zero — a fabricated fact, which in an extractor is worse than an admitted gap. Caught by
     // this module's own test while its "9/9" verify script missed the case.
-    const stripped = String(v).replace(/[^0-9.\-]/g, "");
+    const stripped = String(v).replace(/[^0-9.-]/g, "");
     if (!/\d/.test(stripped)) return null;
     const n = Number(stripped);
     return Number.isNaN(n) ? null : n;
