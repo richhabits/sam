@@ -261,11 +261,35 @@ them differ by half a pixel (`11/11.5`, `12/12.5`, `13/13.5`, `14/14.5`) — dif
 can see but every future edit has to guess between. Same for radii: `5,6,7,8,9,10,11,12` is
 eight values doing one job, and `99` vs `999` are two spellings of "pill".
 
-**This was measured and deliberately NOT fixed in this pass.** Collapsing 118 paddings onto a
-4px scale touches nearly every rule in the file — that is a wholesale reformat, it is
-unreviewable as a diff, `src/styles.css` is shared with other agents right now, and it would
-change spacing the owner has already approved. It is the correct *next* piece of work, done
-deliberately: define `--space-1..6` and `--text-xs..3xl`, then migrate section by section.
+**DONE in a follow-up pass (2026-07-18).** Deferred first — `styles.css` was shared with three
+other agents at the time — then executed once the file was free.
+
+Counted as *atomic values* rather than distinct shorthand declarations, which is the number that
+actually matters for "how many choices does the next edit face":
+
+| | before | after |
+|---|---|---|
+| `padding` values | 29 | **16** |
+| `font-size` values | 24 | **13** |
+| `border-radius` values | 18 | **12** |
+
+Scales: spacing `2,4,6,8,10,12,14,16,18,20,22,24,28,32,40,48` (all even, so every odd value moved
+exactly 1px) · type `11,12,13,14,15,16,18,20,22,24,28,34,44` · radius `4,6,8,10,12,14,16,20,24,28`
+plus `999` for pills.
+
+**The method is the point: snap, don't redesign.** Each value moved to its nearest scale step, so
+183 values changed and *nothing moved more than 2px* — the half-pixel twins (`11/11.5`, `12/12.5`,
+`13/13.5`, `14/14.5`) collapsed, and the eight-value radius run became four. This gets the
+consistency win without touching spacing the owner has already signed off on.
+
+**One guard earned its keep.** A first run snapped `.app-drop-card`'s `padding: 48px 66px` to
+`48px 48px` — an 18px change, far outside "imperceptible". The rule "revert any snap over 2px"
+caught exactly one line, and that was it. Without the check it would have shipped as a silent
+layout change buried in a 139-line diff.
+
+Verified in the running app on both polarities (linen/light and midnight/dark): row heights,
+bubble width and the keys panel all render correctly, and `document.body.scrollWidth` equals the
+viewport — no horizontal overflow introduced.
 
 ---
 
