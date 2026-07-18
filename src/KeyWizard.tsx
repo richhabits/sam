@@ -11,7 +11,7 @@ import { useEscape } from "./lib/useOverlay";
 type WizProv = { id: string; label: string; note: string; url: string; keyPattern?: string };
 type St = "idle" | "checking" | "ok" | "bad";
 
-export default function KeyWizard({ onClose }: { onClose: () => void }) {
+export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => void; onAllProviders?: () => void }) {
   useEscape(onClose);
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Record<string, St>>({});
@@ -98,6 +98,11 @@ export default function KeyWizard({ onClose }: { onClose: () => void }) {
         <div className="wiz-foot">{online > 0
           ? `🎉 ${online} brain${online === 1 ? "" : "s"} online — SAM's getting stronger. SAM rotates across all of them so you never hit a limit.`
           : "Grab any one above — or none. SAM's free out of the box; keys just add speed, photos & voice."}</div>
+        {onAllProviders && (
+          <button type="button" className="wiz-all" onClick={onAllProviders}>
+            ＋ All 43 providers — GLM, Kimi, DeepSeek, Cerebras and the rest ↗
+          </button>
+        )}
       </aside>
     </div>
   );

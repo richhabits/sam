@@ -1346,3 +1346,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dash-sec-link { appearance: none; border: 0; background: none; font: inherit; cursor: pointer;
   color: var(--accent, #8b7bf7); float: right; opacity: .85; }
 .dash-sec-link:hover { opacity: 1; text-decoration: underline; }
+
+/* The wizard shows 4 curated brains of 43. Without a way out it is a dead end for anyone
+   looking for a specific provider — which is exactly how GLM and Kimi went missing. */
+.wiz-all { display: block; width: 100%; margin: 14px 0 4px; padding: 11px 14px; appearance: none;
+  border: 1px dashed var(--line, #2c2c3a); border-radius: 12px; background: none; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--muted, #9a9ab0); text-align: center; }
+.wiz-all:hover { color: var(--text, #eee); border-color: var(--accent, #8b7bf7); }
