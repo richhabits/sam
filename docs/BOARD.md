@@ -13,6 +13,10 @@ Gate 1; registry/clock mom_12_1 aligned; cage reviewed + 7 defects fixed; 99 tes
 
 ## Now (in flight)
 
+- **Four-pack stripped** (`incoming-cowork/FOURPACK_STRIP.md`): 1 build, 3 nexts. **BUILT:** llm-scraper → our own `server/webintel-extract.ts` (page → schema → structured data, on `webintel.fetchClean` + an *injected* LLM — no Playwright, no Vercel-AI dep, runs local via Ollama). webintel increment 2. **NEXTS:** prompt-kit (shadcn UI kit — polish, not capability) · strix (heavy app-pentest agent; an occasional audit, and explicitly **NOT** the prompt-injection red-team gap, which stays Garak/PyRIT) · reviewdog (CI DevEx; ready workflow snippet in the doc). FLIP IT: nothing from any of the four.
+  - 🐛 **Shipped with a real bug, caught by its own CI test — and the fix is the interesting part.** `coerce(v,"number")` did `Number(String(v).replace(/[^0-9.\-]/g,""))`; `Number("")` is **0**, not NaN, so `"not a number"`, `"unknown"`, `"n/a"` all became a confident **0**. In an extractor that is a *fabricated fact*, which is strictly worse than an admitted gap — exactly the failure this repo has been hunting all day, in a new costume. Fixed (require a digit before parsing); verified: `"unknown"→null`, `"n/a"→null`, `"£19.99"→19.99`, `"1999"→1999`, `"-5"→-5`. **409 tests green**, typecheck clean.
+  - ⚠️ **Second broken receipt in a row:** `webintel-extract.verify.mjs` claims 9/9 but **does not run** — it imports `./webintel-extract.mjs`, which was never landed (the module went to `server/*.ts`). Same defect as `webintel.verify.mjs`. And note *what the missing receipt cost*: the verify script tested `"1999"→1999` but never a garbage string, so the zero-fabrication bug sailed through it. **The CI test caught what the receipt claimed to have proven.**
+- ⚠️ **NINTH board clobber**, guard held. Board restored from HEAD, this entry re-applied by hand.
 ### 🌙 SESSION END — 2026-07-18 (terminal). Read this first tomorrow.
 
 **Both repos clean, green, pushed/mirrored.** SAM `5c06581` = origin, **401 tests**, typecheck
