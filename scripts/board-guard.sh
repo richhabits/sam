@@ -33,8 +33,12 @@ if [ "$PCT" -ge "$THRESHOLD" ]; then
   The board has been clobbered three times by exactly this: a session staged a stale copy and
   wrote it back, deleting corrections that were already committed. Almost always the fix is:
 
-      git checkout docs/BOARD.md      # take the live version
+      git checkout HEAD -- docs/BOARD.md    # take the COMMITTED version
       # then re-apply ONLY your new lines onto it
+
+  Note the 'HEAD --'. Plain 'git checkout docs/BOARD.md' restores from the INDEX, and if you
+  already staged the clobbered file that restores the clobber. (This message used to say
+  exactly that, and it wasted a restore.)
 
   If you genuinely mean to rewrite the board:  BOARD_REWRITE=1 git commit ...
   (+${ADDED} added / -${REMOVED} removed)
