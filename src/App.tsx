@@ -1085,7 +1085,7 @@ export default function App() {
           {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
           <button type="button" className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
           <span className="wordmark">SAM<span className="wm-dot">.</span></span>
-          <span className="tag">by <b>HECTIC</b></span>
+          <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
           {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}

@@ -5,12 +5,12 @@
   "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
-  "description": "S.A.M. — Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
+  "description": "S.A.M. \u2014 Smart Artificial Mind. Your private, free, local-first AI assistant that actually does things.",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks || true",
+    "prepare": "node scripts/setup-hooks.mjs",
     "dev": "concurrently -k -n \"SERVER,HUD\" -c \"#E8673A,#C4A882\" \"npm:dev:server\" \"npm:dev:hud\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:hud": "vite",
@@ -126,8 +126,8 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSCameraUsageDescription": "SAM uses the camera when you ask it to look, scan, or recognise people — all processed on your machine.",
-        "NSMicrophoneUsageDescription": "SAM uses the microphone for voice chat and dictation — processed on your machine."
+        "NSCameraUsageDescription": "SAM uses the camera when you ask it to look, scan, or recognise people \u2014 all processed on your machine.",
+        "NSMicrophoneUsageDescription": "SAM uses the microphone for voice chat and dictation \u2014 processed on your machine."
       }
     },
     "win": {
