@@ -15,7 +15,7 @@ import { ProgressTracker, TraceStrip } from "./components/Trace";
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
-import Icon from "./Icon";
+import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import PersonaPicker from "./PersonaPicker";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
@@ -1786,39 +1786,39 @@ export default function App() {
 
       {palette && (() => {
         const acts: { icon: string; label: string; hint?: string; run: () => void }[] = [
-          { icon: "💬", label: "New chat", hint: "⌘K", run: () => newChat() },
-          { icon: "🔄", label: "Regenerate last answer", run: () => regenerate() },
-          { icon: "🤝", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
-          { icon: "👥", label: "Meet the team (browse specialists)", run: () => setRosterOpen(true) },
-          { icon: "📥", label: "Import my ChatGPT/Claude history", run: () => setImportOpen(true) },
-          { icon: "🎨", label: "Open SAM Studio (image/video)", run: () => openStudio() },
-          { icon: "🥷", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
-          { icon: "🎙", label: "Voice mode", run: () => setVoiceMode(true) },
-          { icon: "👁️", label: "Look through the camera", run: () => lookThroughCamera() },
-          { icon: "🛡️", label: guardian ? "Stop Guardian" : "Start Guardian", run: () => toggleGuardian() },
-          { icon: "📊", label: "Open Dashboard", run: () => setDashOpen(true) },
-          { icon: "🧰", label: "What SAM can do", run: () => setToolsOpen(true) },
-          { icon: "🕑", label: "Chat history", run: () => setHistoryOpen(true) },
-          { icon: "🧠", label: "Memory", run: () => setMemoryOpen(true) },
-          { icon: "🔑", label: "API keys & providers", run: () => setAdminOpen(true) },
-          { icon: "📓", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
-          { icon: "📊", label: "Live usage", run: () => setUsageOpen(true) },
-          { icon: "⚡", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
-          { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
-          { icon: "🔍", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
+          { icon: "chat", label: "New chat", hint: "⌘K", run: () => newChat() },
+          { icon: "refresh", label: "Regenerate last answer", run: () => regenerate() },
+          { icon: "team", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
+          { icon: "people", label: "Meet the team (browse specialists)", run: () => setRosterOpen(true) },
+          { icon: "download", label: "Import my ChatGPT/Claude history", run: () => setImportOpen(true) },
+          { icon: "studio", label: "Open SAM Studio (image/video)", run: () => openStudio() },
+          { icon: "ninja", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
+          { icon: "voice", label: "Voice mode", run: () => setVoiceMode(true) },
+          { icon: "eye", label: "Look through the camera", run: () => lookThroughCamera() },
+          { icon: "shield", label: guardian ? "Stop Guardian" : "Start Guardian", run: () => toggleGuardian() },
+          { icon: "chart", label: "Open Dashboard", run: () => setDashOpen(true) },
+          { icon: "grid", label: "What SAM can do", run: () => setToolsOpen(true) },
+          { icon: "clock", label: "Chat history", run: () => setHistoryOpen(true) },
+          { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
+          { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
+          { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
+          { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
+          { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
+          { icon: "settings", label: "Settings", run: () => setSettingsOpen(true) },
+          { icon: "search", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
           { icon: "⬇️", label: "Export this chat (download)", run: () => { exportChat(); showToast("⬇️ Chat downloaded"); } },
-          { icon: "📋", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).then(() => showToast("📋 Chat copied")).catch(() => {/* clipboard needs permission/focus — the button just doesn't confirm */}); } },
-          { icon: "🔒", label: "Private mode — local only", run: () => setQuality("private") },
-          { icon: "⚡", label: "Auto — free brains", run: () => setQuality("auto") },
-          { icon: "✨", label: "Best quality", run: () => setQuality("best") },
+          { icon: "doc", label: "Copy whole chat", run: () => { const md = messages.map((m) => `${m.role === "sam" ? "SAM" : "You"}: ${m.text}`).join("\n\n"); navigator.clipboard.writeText(md).then(() => showToast("📋 Chat copied")).catch(() => {/* clipboard needs permission/focus — the button just doesn't confirm */}); } },
+          { icon: "lock", label: "Private mode — local only", run: () => setQuality("private") },
+          { icon: "sparkle", label: "Auto — free brains", run: () => setQuality("auto") },
+          { icon: "sparkle", label: "Best quality", run: () => setQuality("best") },
           { icon: dark ? "☀️" : "🌙", label: dark ? "Light theme" : "Dark theme", run: () => setDark((v) => !v) },
-          { icon: "🔠", label: "Text size: Large", run: () => setFontSize("large") },
-          { icon: "🔡", label: "Text size: Normal", run: () => setFontSize("normal") },
-          { icon: "🔻", label: "Text size: Compact", run: () => setFontSize("compact") },
-          { icon: "🎨", label: "Skin: Classic", run: () => setSkin("classic") },
-          { icon: "🦾", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
-          { icon: "🔥", label: "Skin: Ember", run: () => setSkin("ember") },
-          { icon: "🥷", label: "Skin: Stealth", run: () => setSkin("stealth") },
+          { icon: "pencil", label: "Text size: Large", run: () => setFontSize("large") },
+          { icon: "pencil", label: "Text size: Normal", run: () => setFontSize("normal") },
+          { icon: "chart", label: "Text size: Compact", run: () => setFontSize("compact") },
+          { icon: "studio", label: "Skin: Classic", run: () => setSkin("classic") },
+          { icon: "sliders", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
+          { icon: "sparkle", label: "Skin: Ember", run: () => setSkin("ember") },
+          { icon: "ninja", label: "Skin: Stealth", run: () => setSkin("stealth") },
           { icon: "🌙", label: "Skin: Midnight", run: () => setSkin("midnight") },
           { icon: "❄️", label: "Skin: Nord", run: () => setSkin("nord") },
           { icon: "🧛", label: "Skin: Dracula", run: () => setSkin("dracula") },
@@ -1847,7 +1847,7 @@ export default function App() {
                   : filtered.map((a, i) => (
                     // biome-ignore lint/a11y/noStaticElementInteractions: command-palette item; keyboard nav handled by the input's arrow/enter keydown
                     <div key={a.label} className={`cmdp-item ${i === pi ? "on" : ""}`} onMouseEnter={() => setPi(i)} onMouseDown={() => go(a)}>
-                      <span className="cmdp-ic">{a.icon}</span>
+                      <span className="cmdp-ic">{ICON_NAMES.has(a.icon) ? <Icon name={a.icon as IconName} size={16} /> : a.icon}</span>
                       <span className="cmdp-label">{a.label}</span>
                       {a.hint && <span className="cmdp-hint">{a.hint}</span>}
                     </div>

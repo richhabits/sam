@@ -1,6 +1,9 @@
 /**
  * SAM's icon set — one file, no dependency.
  *
+ * Stroke weight is 2. At the 15-18px these actually render, 1.75 read thin and tentative;
+ * 2 has presence without going clumsy. Compared side by side at 1.75 / 2 / 2.25 before choosing.
+ *
  * Replaces the emoji that were doing icon duty across the UI. Emoji render as full-colour
  * clip-art that shifts between platforms, ignores the theme, and can't take the accent colour;
  * on a light theme they read as stickers. These are 24×24 stroke glyphs on `currentColor`, so
@@ -45,9 +48,9 @@ const P: Record<IconName, React.ReactNode> = {
   check: <path d="m5 13 4.5 4.5L19 7" />,
   refresh: <><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v4.5h-4.5" /></>,
   phone: <><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></>,
-  brain: <><path d="M9.5 5A3.5 3.5 0 0 0 6 8.5 3 3 0 0 0 5 14a3.2 3.2 0 0 0 3 4.8" /><path d="M14.5 5A3.5 3.5 0 0 1 18 8.5 3 3 0 0 1 19 14a3.2 3.2 0 0 1-3 4.8" /><path d="M12 4.5v15" /></>,
+  brain: <><path d="M12 5.5a4 4 0 0 0-7 2.2A3.3 3.3 0 0 0 5.6 14c.2 2.6 2.4 4.5 6.4 4.5Z" /><path d="M12 5.5a4 4 0 0 1 7 2.2 3.3 3.3 0 0 1 .4 6.3c-.2 2.6-2.4 4.5-6.4 4.5Z" /></>,
   shield: <path d="M12 3.5 5 6.5V12c0 4.4 3 7.6 7 8.5 4-.9 7-4.1 7-8.5V6.5Z" />,
-  book: <><path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v13H7.5A2.5 2.5 0 0 1 5 17.5Z" /><path d="M17 7h2v13" /></>,
+  book: <><path d="M4.5 5.5A2 2 0 0 1 6.5 3.5H19v14.5H6.5a2 2 0 0 0-2 2Z" /><path d="M4.5 5.5v14.5M8 7.5h7.5M8 11h5.5" /></>,
   sparkle: <path d="M12 3.5 13.8 9l5.7 1.8-5.7 1.8L12 20l-1.8-5.4L4.5 12.8 10.2 11Z" />,
   clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
   download: <path d="M12 4v11m0 0 4-4m-4 4-4-4M4.5 19h15" />,
@@ -80,6 +83,9 @@ const P: Record<IconName, React.ReactNode> = {
   pulse: <path d="M3 12h4l2.5-6 4 12L16 12h5" />,
 };
 
+/** Runtime set of every glyph name — lets callers hold an icon name in data and check it. */
+export const ICON_NAMES: ReadonlySet<string> = new Set(Object.keys(P));
+
 export default function Icon({
   name,
   size = 18,
@@ -97,7 +103,7 @@ export default function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.75}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
