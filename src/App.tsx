@@ -1152,7 +1152,7 @@ export default function App() {
             </div>
             {stab === "general" && (<>
             <div className="pop-title">Answer quality</div>
-            <div className="seg" role="group" aria-label="Answer quality">
+            <div className="seg">
               {(["turbo", "auto", "private", "best"] as Quality[]).map((q) => (
                 <button type="button" key={q} className={`seg-btn ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)} title={q === "turbo" ? "Fastest" : q === "auto" ? "Recommended" : q === "private" ? "100% on your computer" : "Highest quality"}>
                   <Icon name={q === "turbo" ? "sparkle" : q === "auto" ? "brain" : q === "private" ? "lock" : "trophy"} size={15} />

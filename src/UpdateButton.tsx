@@ -34,6 +34,9 @@ export default function UpdateButton() {
     }
   };
 
+  // Mount-once poll. Adding `look` to the deps would re-run this on every render and restart
+  // the interval each time — the opposite of what a 30-minute poll wants.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-once interval
   useEffect(() => {
     look();
     const iv = setInterval(look, 1000 * 60 * 30); // half-hourly; the check is a cheap HEAD-vs-origin

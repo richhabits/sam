@@ -160,8 +160,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           <button type="button" role="tab" aria-selected={atab === "devices"} className={atab === "devices" ? "on" : ""} onClick={() => setAtab("devices")}>Devices</button>
           <button type="button" role="tab" aria-selected={atab === "safety"} className={atab === "safety" ? "on" : ""} onClick={() => setAtab("safety")}>Safety</button>
         </div>
-        {atab === "brains" && (<>
-        {(() => {
+        {atab === "brains" && (() => {
           const row = (p: Prov) => (
             <div key={p.id} className={`admin-row${openRow === p.id ? " open" : ""}`}>
               <button type="button" className="admin-rowhead" onClick={() => setOpenRow((v) => (v === p.id ? "" : p.id))}
@@ -229,7 +228,6 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             </>
           );
         })()}
-        </>)}
         {atab === "media" && (<>
         <div className="admin-cat"><Icon name="studio" /> Media &amp; voice</div>
 
