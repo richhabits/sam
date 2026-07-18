@@ -7,6 +7,7 @@ endorse them.** Nothing here is wired, loaded, or reviewed line by line.
 |---|---|
 | `BUILDX_STRIP.md` | Strip doc for [build-your-own-x]. Not read in full by the committing session. |
 | `SAM_AGENT_IDEAS.md` | Strip-map of the 500-AI-Agents catalog → ~12 SKILL.md candidates. Not read in full. |
+| `POSTHOG_STRIP.md` + `colosseum-significance.ts` + `verify_significance.mjs` | Strip doc + a BUILT, verified module (4/4 re-run here). **Unwired** — it changes routing and `server/` is the other agent's zone. See BOARD for the sample-size caveat: the gate needs ≥8 games/brain, the nightly runs 18 matches total. |
 | ~~`skills-buildx-SKILL.md`~~ | **LANDED 2026-07-18** at `skills/buildx/SKILL.md`, tool name corrected, routing fixed, 6 tests. Removed from this inbox. |
 
 Scanned for secrets before committing (no key-shaped strings, no personal paths). That is the
