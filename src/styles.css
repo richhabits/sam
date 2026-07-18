@@ -995,7 +995,6 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 
 /* Voice Mode blocked state — dimmed orb, clearly not listening */
 .vm-orb.blocked { filter: grayscale(0.7) brightness(0.6); opacity: .6; }
-.vm-state:has(+ .vm-text) {}
 
 /* ── 3-column shell: chats sidebar · chat · context ── */
 .shell { flex: 1; display: grid; grid-template-columns: 236px minmax(0,1fr) 232px; min-height: 0; overflow: hidden; }

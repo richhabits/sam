@@ -136,21 +136,21 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
       {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
       {m.text && (m.role === "sam"
         ? (m.text.length > 1600 && !isExpanded
-            ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={onFollowUp} /><button className="show-more" onClick={() => onExpand(i)}>Show more ▾</button></div>
-            : <div><WidgetRenderer text={m.text} onFollowUp={onFollowUp} />{m.text.length > 1600 && <button className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>}</div>)
+            ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={onFollowUp} /><button type="button" className="show-more" onClick={() => onExpand(i)}>Show more ▾</button></div>
+            : <div><WidgetRenderer text={m.text} onFollowUp={onFollowUp} />{m.text.length > 1600 && <button type="button" className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>}</div>)
         : <div className="bubble">{m.text}</div>)}
       {m.role === "sam" && m.text && (
         <div className="msg-actions">
-          <button className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
-          <button className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "📌 Pin"}</button>
-          <button className="mini" onClick={() => onQuote(m.text)}>↩ Reply</button>
-          <button className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "⏹ Stop" : "🔊 Listen"}</button>
-          {isLast && <button className="mini" onClick={onRegenerate}>Regenerate</button>}
+          <button type="button" className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
+          <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "📌 Pin"}</button>
+          <button type="button" className="mini" onClick={() => onQuote(m.text)}>↩ Reply</button>
+          <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "⏹ Stop" : "🔊 Listen"}</button>
+          {isLast && <button type="button" className="mini" onClick={onRegenerate}>Regenerate</button>}
           {m.how && <span className="how">answered {m.how}</span>}
         </div>
       )}
       {m.role === "user" && (
-        <div className="msg-actions"><button className="mini" onClick={() => onEdit(i)}>Edit</button></div>
+        <div className="msg-actions"><button type="button" className="mini" onClick={() => onEdit(i)}>Edit</button></div>
       )}
     </div>
   );
@@ -166,7 +166,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
 export default function App() {
   const init = useMemo(loadState, []);   // read persisted state ONCE, not on every render
   const [projects, setProjects] = useState<{ id: string; name: string; themeColor?: string }[]>([]);
-  const [log, setLog] = useState<{ time: string; msg: string }[]>([]);
+  const [, setLog] = useState<{ time: string; msg: string }[]>([]);
   const [status, setStatus] = useState<any>(null);
   const [tools, setTools] = useState<{ name: string; safe: boolean; description: string }[]>([]);
 
@@ -996,7 +996,7 @@ export default function App() {
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }}
             placeholder="⚡ Optional: paste a free Groq key for speed — or skip, SAM's free already" />
           <div className="onboard-hint">No key? Skip it — SAM works free out of the box. Want it snappy? <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Grab a free Groq key</a> (~30 sec) and paste it above.</div>
-          <button className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
+          <button type="button" className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
           <div className="onboard-note">Then try: <b>"what's the weather and directions to the nearest coffee?"</b> — you'll watch SAM use a real tool. Private &amp; free — runs on your computer.</div>
         </div>
       </div>
@@ -1015,22 +1015,22 @@ export default function App() {
       {dragOver && <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>}
       <header className="bar">
         <div className="brandmark">
-          <button className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
+          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
           <span className="dot-live" title={status ? "Connected" : "Starting…"} />
           {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
-          <button className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
+          <button type="button" className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
           <span className="wordmark">SAM<span className="wm-dot">.</span></span>
           <span className="tag">by <b>HECTIC</b></span>
         </div>
         <div className="bar-right">
-          {deferredPrompt && <button className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
-          {started && <button className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
-          <button className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
-          <button className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation">🎨 Studio</button>
+          {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
+          {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
+          <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud">🎙 Voice</button>
+          <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation">🎨 Studio</button>
           
           <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
-            <button role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
-            <button role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}>🏠 Personal</button>
+            <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}>💼 Business</button>
+            <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}>🏠 Personal</button>
           </div>
           {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
           <label className="persona-pick" title="Who SAM sounds like — same memory, different voice">
@@ -1048,19 +1048,19 @@ export default function App() {
             </label>
           )}
           {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
-            <button className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now">🔇 Stop</button>
+            <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now">🔇 Stop</button>
           )}
           {(() => {
             const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
             return (
-              <button className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setWizardOpen(true)}
+              <button type="button" className={"key-cta" + (n === 0 ? " needs" : "")} onClick={() => setWizardOpen(true)}
                 title="Add your free AI keys — SAM rotates them so you never hit a limit">
                 🔑 {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
               </button>
             );
           })()}
-          <button className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
-          <button className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
+          <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
+          <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
         {settingsOpen && createPortal(<>
           <div className="pop-scrim" onClick={() => setSettingsOpen(false)} />
@@ -1068,7 +1068,7 @@ export default function App() {
             <div className="pop-title">Answer quality</div>
             <div className="pop-group">
               {(["turbo", "auto", "private", "best"] as Quality[]).map((q) => (
-                <button key={q} className={`pop-opt ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)}>
+                <button type="button" key={q} className={`pop-opt ${quality === q ? "on" : ""}`} onClick={() => setQuality(q)}>
                   <span className="pop-opt-name">{q === "turbo" ? "Turbo" : q === "auto" ? "Automatic" : q === "private" ? "Private" : "Best"}</span>
                   <span className="pop-opt-sub">{q === "turbo" ? "Fastest — one quick call, no tools" : q === "auto" ? "Free & capable — recommended" : q === "private" ? "100% on your computer" : "Highest quality"}</span>
                 </button>
@@ -1076,22 +1076,22 @@ export default function App() {
             </div>
             <div className="pop-title">Audio &amp; camera</div>
             <div className="pop-group">
-              <button className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">Stop all audio &amp; camera</span><span className="pop-opt-sub">Instantly kills mic, voice, wake word &amp; Guardian</span></button>
-              <button className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">Mic — dictate{listening ? " · listening" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off — click to talk, or use the mic in the message box"}</span></button>
-              <button className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">SAM talks back</span><span className="pop-opt-sub">{speakReplies ? "On — reads replies aloud" : "Off"}</span></button>
-              <button className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">Wake word</span><span className="pop-opt-sub">{wakeOn ? "On — listens for a whistle or clap" : "Off — nothing listens unless you tap the mic"}</span></button>
-              <button className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">Guardian camera</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off — camera is not active"}</span></button>
+              <button type="button" className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><span className="pop-opt-name">Stop all audio &amp; camera</span><span className="pop-opt-sub">Instantly kills mic, voice, wake word &amp; Guardian</span></button>
+              <button type="button" className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><span className="pop-opt-name">Mic — dictate{listening ? " · listening" : ""}</span><span className="pop-opt-sub">{listening ? "On — click to stop" : "Off — click to talk, or use the mic in the message box"}</span></button>
+              <button type="button" className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><span className="pop-opt-name">SAM talks back</span><span className="pop-opt-sub">{speakReplies ? "On — reads replies aloud" : "Off"}</span></button>
+              <button type="button" className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><span className="pop-opt-name">Wake word</span><span className="pop-opt-sub">{wakeOn ? "On — listens for a whistle or clap" : "Off — nothing listens unless you tap the mic"}</span></button>
+              <button type="button" className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><span className="pop-opt-name">Guardian camera</span><span className="pop-opt-sub">{guardian ? "On — watching for strangers" : "Off — camera is not active"}</span></button>
             </div>
             <div className="pop-title">Preferences</div>
             <div className="pop-group">
-              <button className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
-              <button className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Off — asks before anything risky"}</span></button>
-              <button className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses every safety prompt. Deletes go to a bin; catastrophic commands still blocked."}</span></button>
+              <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><span className="pop-opt-name">Dark mode</span><span className="pop-opt-sub">{dark ? "On" : "Off"}</span></button>
+              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => {}); }}><span className="pop-opt-name">Autopilot</span><span className="pop-opt-sub">{autopilot ? "On — handles routine work without asking (serious stuff still asks)" : "Off — asks before anything risky"}</span></button>
+              <button type="button" className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "Ruthless autopilot — bypasses every safety prompt. Deletes go to a bin; catastrophic commands still blocked."}</span></button>
             </div>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"], ["aurora", "Aurora", "🌌"]].map(([id, label, ic]) => (
-                <button key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>
+                <button type="button" key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)}>
                   <div className={`skin-prev prev-${id}`}></div>
                   <div className="skin-chip-label">{ic} {label}</div>
                 </button>
@@ -1099,23 +1099,23 @@ export default function App() {
             </div>
             <div className="pop-title">More</div>
             <div className="pop-group">
-              <button className="pop-opt" onClick={() => { setWizardOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Power up — add free keys</span><span className="pop-opt-sub">60-second wizard — validate + pool free brains</span></button>
-              <button className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
-              <button className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
-              <button className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">Proactivity — all off until you allow it, with a full log</span></button>
-              <button className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Saved multi-step sequences — dangerous steps pause to ask</span></button>
-              <button className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Grounded research from your own sources</span></button>
-              <button className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
-              <button className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">Your usage, on-device — 0 data left the machine</span></button>
-              <button className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Auto-check the common problems + get the exact fix</span></button>
-              <button className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
-              <button className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setWizardOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Power up — add free keys</span><span className="pop-opt-sub">60-second wizard — validate + pool free brains</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">Proactivity — all off until you allow it, with a full log</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Saved multi-step sequences — dangerous steps pause to ask</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Grounded research from your own sources</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">See where your free providers are being used</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">Your usage, on-device — 0 data left the machine</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Auto-check the common problems + get the exact fix</span></button>
+              <button type="button" className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download as a document</span></button>
+              <button type="button" className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Allow SAM to nudge you</span></button>
             </div>
             <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
-              <button key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
+              <button type="button" key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
             ))}
-            <button className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">＋ Add someone</span><span className="pop-opt-sub">A new person — fresh, private memory</span></button>
+            <button type="button" className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">＋ Add someone</span><span className="pop-opt-sub">A new person — fresh, private memory</span></button>
             {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return n ? <div className="pop-lanes">✓ {n} free {n === 1 ? "brain" : "brains"} ready — SAM rotates so you never hit a limit</div> : null; })()}
             <div className="pop-note">SAM can act for you — reading &amp; searching happen automatically; anything risky asks first.</div>
           </div>
@@ -1126,38 +1126,38 @@ export default function App() {
         <div className="update-bar">
           {updating === "done" ? (
             <><span>✨ Updated — restart SAM to apply the new version.</span>
-              <button className="update-go" onClick={() => location.reload()}>Reload</button></>
+              <button type="button" className="update-go" onClick={() => location.reload()}>Reload</button></>
           ) : update.url ? (
             // Packaged app — no git to pull, so send them to the signed installer download.
             <><span>✨ SAM {update.latest} is available{update.current ? ` (you have ${update.current})` : ""}.</span>
               <a className="update-go" href={update.url} target="_blank" rel="noreferrer" onClick={() => setTimeout(() => setUpdate(null), 500)}>Download</a></>
           ) : (
             <><span>✨ A new version of SAM is available.</span>
-              <button className="update-go" disabled={!!updating} onClick={async () => {
+              <button type="button" className="update-go" disabled={!!updating} onClick={async () => {
                 setUpdating("…"); const r = await runUpdate();
                 setUpdating(r.ok ? "done" : ""); if (!r.ok) sysNote("Update failed: " + (r.error || "unknown"));
               }}>{updating ? "Evolving…" : "Update now"}</button></>
           )}
-          <button className="update-x" onClick={() => setUpdate(null)} aria-label="Dismiss">✕</button>
+          <button type="button" className="update-x" onClick={() => setUpdate(null)} aria-label="Dismiss">✕</button>
         </div>
       )}
 
       <div className="shell">
       <aside className="side">
-        <div className="side-head"><span className="side-title">Chats</span><button className="side-new" onClick={newChat} title="New chat">＋</button></div>
+        <div className="side-head"><span className="side-title">Chats</span><button type="button" className="side-new" onClick={newChat} title="New chat">＋</button></div>
         <div className="side-folders">
-          <button className={`side-folder ${!folderFilter ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter("")}
+          <button type="button" className={`side-folder ${!folderFilter ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter("")}
             onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
             onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) moveToFolder(id, ""); setDragChat(""); }}>All</button>
           {folders.map((f) => (
-            <button key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
+            <button type="button" key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
               onDoubleClick={() => renameFolder(f)} title="Click to filter · double-click to rename"
               onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
               onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}>📁 {f}</button>
           ))}
-          <button className="side-folder add" onClick={addFolder} title="New folder">＋</button>
+          <button type="button" className="side-folder add" onClick={addFolder} title="New folder">＋</button>
           {folderFilter && folders.includes(folderFilter) && (
-            <button className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}>🗑</button>
+            <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}>🗑</button>
           )}
         </div>
         <ul className="side-list">
@@ -1166,19 +1166,19 @@ export default function App() {
               draggable
               onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); e.dataTransfer.effectAllowed = "move"; setDragChat(c.id); }}
               onDragEnd={() => setDragChat("")}>
-              <button className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
+              <button type="button" className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
               {folders.length > 0 && (
                 <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => moveToFolder(c.id, e.target.value)} title="Move to folder">
                   <option value="">📁</option>
                   {folders.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
               )}
-              <button className="side-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
+              <button type="button" className="side-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
             </li>
           ))}
           {convos.filter((c) => !folderFilter || c.folder === folderFilter).length === 0 && <li className="side-empty">{folderFilter ? "No chats in this folder." : "No chats yet — start typing."}</li>}
         </ul>
-        <button className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
+        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
       </aside>
       <div className="center">
       <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
@@ -1197,9 +1197,9 @@ export default function App() {
                 else if (e.key === "Escape") { setFindOpen(false); setFindQ(""); }
               }} />
             <span className="find-count">{findQ.trim() ? (findMatches.length ? `${Math.min(findIdx, findMatches.length - 1) + 1}/${findMatches.length}` : "0") : ""}</span>
-            <button className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x - 1 + findMatches.length) % findMatches.length)} aria-label="Previous">↑</button>
-            <button className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x + 1) % findMatches.length)} aria-label="Next">↓</button>
-            <button className="find-nav" onClick={() => { setFindOpen(false); setFindQ(""); }} aria-label="Close">✕</button>
+            <button type="button" className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x - 1 + findMatches.length) % findMatches.length)} aria-label="Previous">↑</button>
+            <button type="button" className="find-nav" disabled={!findMatches.length} onClick={() => setFindIdx((x) => (x + 1) % findMatches.length)} aria-label="Next">↓</button>
+            <button type="button" className="find-nav" onClick={() => { setFindOpen(false); setFindQ(""); }} aria-label="Close">✕</button>
           </div>
         )}
         {started && messages.some((m) => m.pinned) && (
@@ -1209,7 +1209,7 @@ export default function App() {
               {messages.map((m, i) => m.pinned ? (
                 <div key={i} className="pb-item">
                   <div className="pb-text md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }} />
-                  <button className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: false } : msg))}>Unpin</button>
+                  <button type="button" className="mini" onClick={() => setMessages((ms) => ms.map((msg, idx) => idx === i ? { ...msg, pinned: false } : msg))}>Unpin</button>
                 </div>
               ) : null)}
             </div>
@@ -1232,8 +1232,8 @@ export default function App() {
                             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--c-err)' }}>Requires Approval: {a.pendingTool}</div>
                             <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{a.pendingPreview || a.pendingActivity}</div>
                             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                              <button className="mini" onClick={() => approveSwarmAgent(s.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
-                              <button className="mini" style={{ opacity: 0.7 }} onClick={() => approveSwarmAgent(s.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
+                              <button type="button" className="mini" onClick={() => approveSwarmAgent(s.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
+                              <button type="button" className="mini" style={{ opacity: 0.7 }} onClick={() => approveSwarmAgent(s.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
                             </div>
                           </div>
                         )}
@@ -1252,11 +1252,11 @@ export default function App() {
             <div className="hello-sub">I can answer, draft, search the web, call people, and take action on your computer. Ask me anything, or try one of these:</div>
             <div className="chips">
               {SUGGESTIONS.map((s) => (
-                <button key={s} className="chip" onClick={() => { setInput(s); inputRef.current?.focus(); }}>{s}</button>
+                <button type="button" key={s} className="chip" onClick={() => { setInput(s); inputRef.current?.focus(); }}>{s}</button>
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
-            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <button className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button> · <button className="linkish" onClick={() => setImportOpen(true)}>📥 Import your history</button></div>
+            <div className="welcome-keys">Press <kbd>⌘P</kbd> for commands · <button type="button" className="linkish" onClick={() => setRosterOpen(true)}>👥 Meet the team</button> · <button type="button" className="linkish" onClick={() => setImportOpen(true)}>📥 Import your history</button></div>
           </div>
         ) : (
           <div className="thread">
@@ -1328,9 +1328,9 @@ export default function App() {
                   <div className="confirm-what">{pending.activity}</div>
                   {pending.preview && <pre className="confirm-preview">{pending.preview}</pre>}
                   <div className="confirm-actions">
-                    <button className="btn-approve" onClick={() => decide(true)}>Approve</button>
-                    <button className="btn-allow" onClick={() => decide(true, true)} title="Approve and never ask again for this action">Always allow</button>
-                    <button className="btn-cancel" onClick={() => decide(false)}>Don't</button>
+                    <button type="button" className="btn-approve" onClick={() => decide(true)}>Approve</button>
+                    <button type="button" className="btn-allow" onClick={() => decide(true, true)} title="Approve and never ask again for this action">Always allow</button>
+                    <button type="button" className="btn-cancel" onClick={() => decide(false)}>Don't</button>
                   </div>
                 </div>
               </div>
@@ -1339,8 +1339,8 @@ export default function App() {
           </div>
         )}
         {started && scrollPct > 2 && <div className="read-progress" style={{ width: `${scrollPct}%` }} />}
-        {started && scrollPct > 28 && <button className="scroll-btn top" onClick={() => chatRef.current?.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Scroll to top">↑</button>}
-        {started && !atBottom && <button className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
+        {started && scrollPct > 28 && <button type="button" className="scroll-btn top" onClick={() => chatRef.current?.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Scroll to top">↑</button>}
+        {started && !atBottom && <button type="button" className="scroll-btn" onClick={() => msgEnd.current?.scrollIntoView({ behavior: "smooth" })} aria-label="Scroll to latest">↓</button>}
       </main>
 
       {stranger && (
@@ -1348,8 +1348,8 @@ export default function App() {
           <span className="stranger-txt">🙋 Someone new: <em>{stranger.slice(0, 90)}</em> — want me to remember them?</span>
           <input className="stranger-input" placeholder="Their name" value={strangerName} onChange={(e) => setStrangerName(e.target.value)}
             onKeyDown={async (e) => { if (e.key === "Enter" && strangerName.trim()) { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); } }} />
-          <button className="stranger-save" disabled={!strangerName.trim()} onClick={async () => { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); }}>Remember</button>
-          <button className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
+          <button type="button" className="stranger-save" disabled={!strangerName.trim()} onClick={async () => { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); }}>Remember</button>
+          <button type="button" className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
         </div>
       )}
       <footer className="composer">
@@ -1359,7 +1359,7 @@ export default function App() {
               <div key={i} className="attach">
                 {a.kind === "image" ? <img src={a.data} alt={a.name} /> : <span className="attach-file">📄</span>}
                 <span className="attach-name">{a.name}</span>
-                <button className="attach-x" onClick={() => setAttachments((as) => as.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
+                <button type="button" className="attach-x" onClick={() => setAttachments((as) => as.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
               </div>
             ))}
           </div>
@@ -1367,7 +1367,7 @@ export default function App() {
         {input.startsWith("/") && !input.includes(" ") && COMMANDS.some(([c]) => c.startsWith(input.toLowerCase())) && (
           <div className="cmd-hints">
             {COMMANDS.filter(([c]) => c.startsWith(input.toLowerCase())).map(([c, d]) => (
-              <button key={c} className="cmd-hint" onClick={() => { const takesArg = c === "/team" || c === "/ninjas"; setInput(takesArg ? c + " " : c); inputRef.current?.focus(); if (!takesArg) { setTimeout(() => send(c), 0); } }}>
+              <button type="button" key={c} className="cmd-hint" onClick={() => { const takesArg = c === "/team" || c === "/ninjas"; setInput(takesArg ? c + " " : c); inputRef.current?.focus(); if (!takesArg) { setTimeout(() => send(c), 0); } }}>
                 <span className="ch-cmd">{c}</span><span className="ch-desc">{d}</span>
               </button>
             ))}
@@ -1376,27 +1376,27 @@ export default function App() {
         <div className="composer-inner">
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
           <div className="plus-wrap" onMouseLeave={() => setPlusOpen(false)}>
-            <button className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
+            <button type="button" className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
             {plusOpen && (
               <div className="plus-menu">
-                <button className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
-                <button className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
-                <button className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
-                <button className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon">👁️</span> Look (Vision)</button>
-                <button className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
-                <button className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
-                <button className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
-                <button className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
-                <button className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
-                <button className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon">🔎</span> Find my… (camera)</button>
-                <button className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
-                <button className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
-                <button className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
+                <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
+                <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
+                <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
+                <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon">👁️</span> Look (Vision)</button>
+                <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
+                <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
+                <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
+                <button type="button" className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
+                <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
+                <button type="button" className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon">🔎</span> Find my… (camera)</button>
+                <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
+                <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
+                <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
               </div>
             )}
           </div>
           {quality === "turbo" && (
-            <button className="turbo-pill" title="⚡ Turbo is on — one fast call, no tools. Click to switch back to Automatic."
+            <button type="button" className="turbo-pill" title="⚡ Turbo is on — one fast call, no tools. Click to switch back to Automatic."
               onClick={() => { setQuality("auto"); showToast("Switched to Automatic"); }}
               style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", marginRight: 6, borderRadius: 999, border: "1px solid var(--accent, #E8673A)", background: "transparent", color: "var(--accent, #E8673A)", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>
               ⚡ Turbo
@@ -1406,11 +1406,11 @@ export default function App() {
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => dt.items.add(f)); onFiles(dt.files); } }}
             placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
-          <button className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
-          <button className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>
+          <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
+          <button type="button" className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>
           {loading
-            ? <button className="send stop" onClick={stop} aria-label="Stop">■</button>
-            : <button className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send">↑</button>}
+            ? <button type="button" className="send stop" onClick={stop} aria-label="Stop">■</button>
+            : <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send">↑</button>}
         </div>
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
@@ -1421,26 +1421,26 @@ export default function App() {
         <div className="ctx-title">Context</div>
         <div className="ctx-brand">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</div>
         <div className="ctx-label">Quick actions</div>
-        <button className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>🤝 Assemble the Team</button>
-        <button className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>🥷 Deploy the Ninjas</button>
-        <button className="ctx-act" onClick={openStudio}>🎨 Open Studio</button>
-        <button className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
-        <button className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
-        <button className="ctx-act" onClick={() => setMarketsOpen(true)}>📈 Markets</button>
-        <button className="ctx-act" onClick={() => setColosseumOpen(true)}>⚔️ Colosseum</button>
-        <button className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
+        <button type="button" className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>🤝 Assemble the Team</button>
+        <button type="button" className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>🥷 Deploy the Ninjas</button>
+        <button type="button" className="ctx-act" onClick={openStudio}>🎨 Open Studio</button>
+        <button type="button" className="ctx-act" onClick={lookThroughCamera}>👁️ Look (camera)</button>
+        <button type="button" className="ctx-act" onClick={() => setRosterOpen(true)}>👥 Meet the team</button>
+        <button type="button" className="ctx-act" onClick={() => setMarketsOpen(true)}>📈 Markets</button>
+        <button type="button" className="ctx-act" onClick={() => setColosseumOpen(true)}>⚔️ Colosseum</button>
+        <button type="button" className="ctx-act" onClick={() => setDashOpen(true)}>📊 Dashboard</button>
         <div className="ctx-label">Live status</div>
         <div className="ctx-live">
           <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
           {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic">🧠</span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
           {swarms.filter((s) => s.status === "running" || s.status === "planning" || s.status === "paused").slice(0, 3).map((s) => {
             const done = s.agents.filter((a) => a.status === "done").length;
-            return <button key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
+            return <button type="button" key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
               <span className="ctx-ic">🐝</span><span className="ctx-swarm-goal">{s.goal}</span>
               <span className="ctx-swarm-prog">{s.status === "planning" ? "…" : s.status === "paused" ? "⏸" : `${done}/${s.agents.length}`}</span>
             </button>;
           })}
-          {status?.vault?.count != null && status.vault.count > 0 && <button className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
+          {status?.vault?.count != null && status.vault.count > 0 && <button type="button" className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
           <div className="ctx-row"><span className="ctx-ic">{quality === "private" ? "🔒" : quality === "best" ? "✨" : "⚡"}</span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
           {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
           {elon && <div className="ctx-row danger"><span className="ctx-ic">⚡</span>Elon Mode ON</div>}
@@ -1454,13 +1454,13 @@ export default function App() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">Markets</div><div className="drawer-sub">Live quotes · free · no API key</div></div>
-              <button className="icon-btn" onClick={() => loadQuotes()} title="Refresh" aria-label="Refresh">{quotesLoading ? "…" : "⟳"}</button>
+              <button type="button" className="icon-btn" onClick={() => loadQuotes()} title="Refresh" aria-label="Refresh">{quotesLoading ? "…" : "⟳"}</button>
             </div>
             <div className="mkt-add">
               <input value={tickerInput} onChange={(e) => setTickerInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addTicker(); }}
                 placeholder="Add a ticker — AAPL · BTC-USD · ^GSPC" aria-label="Add ticker" />
-              <button onClick={addTicker} title="Add">＋</button>
+              <button type="button" onClick={addTicker} title="Add">＋</button>
             </div>
             <ul className="mkt-list">
               {quotesLoading && !quotes.length && <li className="mkt-empty">Loading…</li>}
@@ -1476,7 +1476,7 @@ export default function App() {
                       </span>
                     </span>
                   ) : <span className="mkt-err">{q.error || "no data"}</span>}
-                  <button className="mkt-del" onClick={() => removeTicker(q.symbol)} aria-label="Remove">✕</button>
+                  <button type="button" className="mkt-del" onClick={() => removeTicker(q.symbol)} aria-label="Remove">✕</button>
                 </li>
               ))}
             </ul>
@@ -1489,14 +1489,14 @@ export default function App() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">⚔️ Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
-              <button className="admin-save" onClick={runBenchmark} disabled={arenaLoading}>{arenaLoading ? "Fighting…" : "Run benchmark"}</button>
+              <button type="button" className="admin-save" onClick={runBenchmark} disabled={arenaLoading}>{arenaLoading ? "Fighting…" : "Run benchmark"}</button>
             </div>
             {arenaStatus?.current && !arenaLoading && (
               <div className={arenaStatus.stale ? "lb-fresh stale" : "lb-fresh"}>
                 {arenaStatus.stale
                   ? `⚠️ Last ranking is ${Math.round(arenaStatus.ageDays ?? 0)}d old — too stale to trust, so routing is back to its default order. Run a benchmark to refresh.`
                   : `🧭 Steering routing now: ${arenaStatus.current.top} first · ranked ${(arenaStatus.ageDays ?? 0) < 1 ? "today" : `${Math.round(arenaStatus.ageDays ?? 0)}d ago`}.`}
-                <button className="lb-reset" onClick={resetRanking} title="Forget the ranking — free-tier routing goes back to its default order">Reset to default</button>
+                <button type="button" className="lb-reset" onClick={resetRanking} title="Forget the ranking — free-tier routing goes back to its default order">Reset to default</button>
               </div>
             )}
             {arenaLoading && <div className="mkt-empty">Each brain answers, an impartial judge scores every match — this takes about a minute.</div>}
@@ -1526,7 +1526,7 @@ export default function App() {
           <aside className="drawer drawer-l" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">Chats</div><div className="drawer-sub">Your conversations, saved on this computer.</div></div>
-              <button className="icon-btn" onClick={() => { newChat(); setHistoryOpen(false); }} title="New chat">＋</button>
+              <button type="button" className="icon-btn" onClick={() => { newChat(); setHistoryOpen(false); }} title="New chat">＋</button>
             </div>
             {convos.length > 4 && (
               <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="🔍 Search chats…" />
@@ -1534,8 +1534,8 @@ export default function App() {
             <ul className="convo-list">
               {convos.filter((c) => !convoSearch.trim() || (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).map((c) => (
                 <li key={c.id} className={c.id === activeId ? "active" : ""}>
-                  <button className="convo-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
-                  <button className="convo-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
+                  <button type="button" className="convo-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
+                  <button type="button" className="convo-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
                 </li>
               ))}
               {convoSearch.trim() && convos.filter((c) => (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).length === 0 && (
@@ -1553,16 +1553,16 @@ export default function App() {
               <div><div className="drawer-title">What SAM remembers about you</div><div className="drawer-sub">{mem ? `${mem.count} thing${mem.count === 1 ? "" : "s"} learned · all on your computer — nothing left your device` : "Loading…"}</div></div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {/* Export → download a local Markdown file. Wipe → confirm, scoped delete, reload. Both 100% local. */}
-                <button className="icon-btn" title="Download your memory as a Markdown file (stays on your device)" onClick={async () => {
+                <button type="button" className="icon-btn" title="Download your memory as a Markdown file (stays on your device)" onClick={async () => {
                   const { markdown } = await exportMemory();
                   const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
                   const a = document.createElement("a"); a.href = url; a.download = "sam-memory.md"; a.click(); URL.revokeObjectURL(url);
                 }}>⬇︎ Export</button>
-                <button className="icon-btn" title="Forget everything SAM has learned about you" onClick={async () => {
+                <button type="button" className="icon-btn" title="Forget everything SAM has learned about you" onClick={async () => {
                   if (!window.confirm("Forget everything SAM has learned about you? This can't be undone.")) return;
                   await clearMemory(); loadMemory();
                 }}>🗑 Forget everything</button>
-                <button className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
+                <button type="button" className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
               </div>
             </div>
             {(() => {
@@ -1584,7 +1584,7 @@ export default function App() {
                       {items.map((it) => (
                         <li key={it.id} className="mem-item">
                           <span className="d-msg">{it.text}</span>
-                          <button className="mem-del" title="Forget this" onClick={() => del(it.id)}>✕</button>
+                          <button type="button" className="mem-del" title="Forget this" onClick={() => del(it.id)}>✕</button>
                         </li>
                       ))}
                     </ul>
@@ -1605,7 +1605,7 @@ export default function App() {
                 <div className="roster-title">🤝 Meet the team</div>
                 <div className="roster-sub">{roster.length} specialists SAM can call on. Say <b>/team &lt;job&gt;</b> and it assembles the right ones.</div>
               </div>
-              <button className="icon-btn" onClick={() => setRosterOpen(false)} aria-label="Close">✕</button>
+              <button type="button" className="icon-btn" onClick={() => setRosterOpen(false)} aria-label="Close">✕</button>
             </div>
             <input className="roster-search" value={rosterSearch} onChange={(e) => setRosterSearch(e.target.value)} placeholder="🔍 Search the roster — name, discipline, skill…" autoFocus />
             <div className="roster-grid">
@@ -1633,7 +1633,7 @@ export default function App() {
                 <div className="roster-title">📥 Import your history</div>
                 <div className="roster-sub">Drop a ChatGPT / Claude / Gemini export — SAM learns the durable facts about you, privately, on your machine.</div>
               </div>
-              <button className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close">✕</button>
+              <button type="button" className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close">✕</button>
             </div>
             <label className={`import-drop ${importDrag ? "over" : ""}`}
               onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!importDrag) setImportDrag(true); } }}
@@ -1649,7 +1649,7 @@ export default function App() {
               <textarea value={importText} onChange={(e) => { setImportText(e.target.value); setImportFile(""); }} placeholder="Paste a chunk of your history…" />
             </details>
             <div className="import-foot">
-              <button className="import-go" onClick={runImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Reading…" : "Import"}</button>
+              <button type="button" className="import-go" onClick={runImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Reading…" : "Import"}</button>
               <span className="import-note">{importResult || "Runs on your free/local brain — private, no cloud needed."}</span>
             </div>
           </div>
@@ -1749,7 +1749,7 @@ export default function App() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">What SAM can do</div><div className="drawer-sub">Reading &amp; searching happen automatically. 🔒 = SAM asks you first.</div></div>
-              <button className="icon-btn" onClick={() => setToolsOpen(false)} aria-label="Close">✕</button>
+              <button type="button" className="icon-btn" onClick={() => setToolsOpen(false)} aria-label="Close">✕</button>
             </div>
             <ul className="tool-list">
               {tools.map((t) => (<li key={t.name}><span className="t-lock">{t.safe ? "•" : "🔒"}</span><span className="t-desc">{t.description}</span></li>))}

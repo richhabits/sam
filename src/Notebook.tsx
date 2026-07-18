@@ -70,7 +70,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
         <div className="nb-head">
           <span className="nb-title">📓 Notebooks</span>
           <span className="nb-sub">grounded answers from your own sources — no hallucination</span>
-          <button className="nb-x" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="nb-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="nb-body">
@@ -78,12 +78,12 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
           <div className="nb-side">
             <div className="nb-books">
               {books.map((b) => (
-                <button key={b.id} className={`nb-book ${b.id === active ? "on" : ""}`} onClick={() => setActive(b.id)}>
+                <button type="button" key={b.id} className={`nb-book ${b.id === active ? "on" : ""}`} onClick={() => setActive(b.id)}>
                   <span className="nb-book-name">{b.title}</span>
                   <span className="nb-book-meta">{b.sources} src</span>
                 </button>
               ))}
-              <button className="nb-book nb-new" onClick={newBook}>＋ New notebook</button>
+              <button type="button" className="nb-book nb-new" onClick={newBook}>＋ New notebook</button>
             </div>
 
             {active && (
@@ -98,13 +98,13 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                 ))}
                 <div className="nb-add">
                   <div className="nb-add-tabs">
-                    <button className={addMode === "url" ? "on" : ""} onClick={() => setAddMode("url")}>🌐 Link</button>
-                    <button className={addMode === "text" ? "on" : ""} onClick={() => setAddMode("text")}>📝 Text</button>
+                    <button type="button" className={addMode === "url" ? "on" : ""} onClick={() => setAddMode("url")}>🌐 Link</button>
+                    <button type="button" className={addMode === "text" ? "on" : ""} onClick={() => setAddMode("text")}>📝 Text</button>
                   </div>
                   {addMode === "url"
                     ? <input className="nb-add-in" placeholder="Paste a URL…" value={adding} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSource()} />
                     : <textarea className="nb-add-in" placeholder="Paste text / notes…" value={adding} onChange={(e) => setAdding(e.target.value)} rows={3} />}
-                  <button className="nb-add-btn" onClick={addSource} disabled={!adding.trim()}>Add source</button>
+                  <button type="button" className="nb-add-btn" onClick={addSource} disabled={!adding.trim()}>Add source</button>
                 </div>
               </div>
             )}
@@ -119,8 +119,8 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                 <div className="nb-main-bar">
                   <span>{activeBook?.title} · {activeBook?.sources || 0} sources</span>
                   <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                    <button className="nb-audio-btn" onClick={makeAudio} disabled={!!busy}>🎙️ Audio Overview</button>
-                    <button className="nb-del" onClick={async () => { if (window.confirm(`Delete notebook "${activeBook?.title}"?`)) { await deleteNotebook(active); setActive(null); refresh(); } }}>🗑️</button>
+                    <button type="button" className="nb-audio-btn" onClick={makeAudio} disabled={!!busy}>🎙️ Audio Overview</button>
+                    <button type="button" className="nb-del" onClick={async () => { if (window.confirm(`Delete notebook "${activeBook?.title}"?`)) { await deleteNotebook(active); setActive(null); refresh(); } }}>🗑️</button>
                   </div>
                 </div>
 
@@ -128,7 +128,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                   {turns.length === 0 && !audio && <div className="nb-empty" style={{ padding: 24 }}>Ask anything about your sources. Answers are grounded and cited — SAM won't make things up.</div>}
                   {audio && (
                     <div className="nb-audio">
-                      <div className="nb-audio-head">🎙️ Audio Overview <button className="nb-play" onClick={() => speak?.(audio.replace(/^(Alex|Sam):/gm, ""))}>🔊 Play</button></div>
+                      <div className="nb-audio-head">🎙️ Audio Overview <button type="button" className="nb-play" onClick={() => speak?.(audio.replace(/^(Alex|Sam):/gm, ""))}>🔊 Play</button></div>
                       <div className="nb-audio-script" dangerouslySetInnerHTML={{ __html: renderMarkdown(audio) }} />
                     </div>
                   )}
@@ -145,7 +145,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
 
                 <div className="nb-composer">
                   <input placeholder="Ask your sources…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()} />
-                  <button onClick={ask} disabled={!q.trim() || !!busy}>Ask</button>
+                  <button type="button" onClick={ask} disabled={!q.trim() || !!busy}>Ask</button>
                 </div>
               </>
             )}

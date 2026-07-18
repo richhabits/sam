@@ -152,7 +152,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">API keys &amp; providers</div>
             <div className="drawer-sub">Paste your free keys — SAM rotates through them so you never hit a limit. Add as many as you like (comma or new line). {totalKeys} loaded.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {(() => {
@@ -162,7 +162,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               <textarea className="admin-input" rows={2} placeholder={`Paste ${p.label} key(s) — comma or new line for many`}
                 value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
               <div className="admin-actions">
-                <button className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
+                <button type="button" className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
                 <a className="admin-getkey" href={p.url} target="_blank" rel="noopener noreferrer">{p.premium ? "Get a key ↗" : "Get a FREE key ↗"}</a>
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               </div>
               <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
               {starters.map(row)}
-              <button className="admin-more" onClick={() => setShowMore((v) => !v)}>
+              <button type="button" className="admin-more" onClick={() => setShowMore((v) => !v)}>
                 {showMore ? "▾ Hide extra free brains" : `▸ ＋ ${moreFree.length} more FREE brains — stack them for more free capacity`}
               </button>
               {showMore && moreFree.map(row)}
@@ -210,14 +210,14 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           <div className="admin-h"><span className="admin-name">ElevenLabs voice</span><span className="admin-note">premium voice</span><span className="admin-count">{cfg?.elevenlabs ? "on" : "off"}</span></div>
           <input className="admin-input" placeholder="ElevenLabs API key" value={eleven} onChange={(e) => setEleven(e.target.value)} />
           <input className="admin-input" placeholder="Voice ID (default: Rachel)" value={voice} onChange={(e) => setVoice(e.target.value)} />
-          <button className="admin-save" onClick={saveEleven}>{saved === "elevenlabs" ? "Saved ✓" : "Save voice"}</button>
+          <button type="button" className="admin-save" onClick={saveEleven}>{saved === "elevenlabs" ? "Saved ✓" : "Save voice"}</button>
         </div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">Music service</span><span className="admin-note">where “play” opens tracks</span></div>
           <div className="admin-seg">
             {["apple", "spotify", "youtube"].map((s) => (
-              <button key={s} className={cfg?.musicService === s ? "on" : ""} onClick={() => setService(s)}>{s}</button>
+              <button type="button" key={s} className={cfg?.musicService === s ? "on" : ""} onClick={() => setService(s)}>{s}</button>
             ))}
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <div className="admin-note" style={{ marginBottom: 4 }}>☁️ <b>Cloudflare FLUX</b> — the big free image lane (~100k/day). <a className="admin-getkey" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">get token ↗</a></div>
             <input className="admin-input" style={{ margin: 0 }} placeholder={`Cloudflare Account ID ${cfg?.media?.cloudflareAccount ? "(saved)" : ""}`} value={mediaKeys.cloudflareAccount} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareAccount: e.target.value }))} />
             <input className="admin-input" style={{ margin: 0 }} type="password" placeholder="Cloudflare API Token (Workers AI)" value={mediaKeys.cloudflareToken} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareToken: e.target.value }))} />
-            <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+            <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
               for (const [id, v] of Object.entries(mediaKeys)) if (v.trim()) await saveConfig(id, v.trim());
               setMediaKeys({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "", cloudflareAccount: "", cloudflareToken: "" }); flash("media"); refresh();
             }}>{saved === "media" ? "Saved ✓" : "Save media keys"}</button>
@@ -253,7 +253,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <input className="admin-input" placeholder={`X (Twitter) Bearer Token ${cfg?.twitter ? "(Saved)" : ""}`} value={integrations.twitter} onChange={(e) => setIntegrations(i => ({...i, twitter: e.target.value}))} />
             <input className="admin-input" placeholder={`Linear API Key ${cfg?.linear ? "(Saved)" : ""}`} value={integrations.linear} onChange={(e) => setIntegrations(i => ({...i, linear: e.target.value}))} />
             <input className="admin-input" placeholder="Linear Team ID" value={integrations.linearTeam} onChange={(e) => setIntegrations(i => ({...i, linearTeam: e.target.value}))} />
-            <button className="admin-save" onClick={saveIntegrations} style={{width:"auto", alignSelf:"flex-start"}}>{saved === "integrations" ? "Saved ✓" : "Save Integrations"}</button>
+            <button type="button" className="admin-save" onClick={saveIntegrations} style={{width:"auto", alignSelf:"flex-start"}}>{saved === "integrations" ? "Saved ✓" : "Save Integrations"}</button>
           </div>
         </div>
 
@@ -275,8 +275,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             <input className="admin-input" placeholder='From (e.g. SAM <sam@you.com>) — optional' value={email.smtpFrom} onChange={(e) => setEmail(v => ({ ...v, smtpFrom: e.target.value }))} />
             <input className="admin-input" placeholder="Send my brief to (your inbox)" value={email.ownerEmail} onChange={(e) => setEmail(v => ({ ...v, ownerEmail: e.target.value }))} />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className="admin-save" onClick={saveEmail} style={{ width: "auto" }}>{saved === "email" ? "Saved ✓" : "Save email"}</button>
-              <button className="admin-save" onClick={sendTest} style={{ width: "auto", opacity: cfg?.email?.configured ? 1 : 0.5 }} disabled={!cfg?.email?.configured}>Send test</button>
+              <button type="button" className="admin-save" onClick={saveEmail} style={{ width: "auto" }}>{saved === "email" ? "Saved ✓" : "Save email"}</button>
+              <button type="button" className="admin-save" onClick={sendTest} style={{ width: "auto", opacity: cfg?.email?.configured ? 1 : 0.5 }} disabled={!cfg?.email?.configured}>Send test</button>
               {emailTest && <span className="admin-note" style={{ marginLeft: 4 }}>{emailTest}</span>}
             </div>
             <div className="admin-foot">Most providers (Gmail, iCloud, Yahoo, Fastmail) need an <b>App password</b> — not your normal login — created in your account's security settings. Outlook uses your normal password (or an app password if 2FA is on). Port 465 = TLS, 587 = STARTTLS. Any SMTP host works.</div>
@@ -295,12 +295,12 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
                 <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
+                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
                     if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
                     const r = await regeneratePhone().catch(() => ({ ok: false }));
                     if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
                   }}>🔁 New token</button>
-                  <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
+                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
                     if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
                     const r = await disablePhone().catch(() => ({ ok: false }));
                     if (r.ok) { setPhone({ remoteOn: false, lan: phone.lan, url: null }); setPhoneQR(""); setPhoneMsg("🔴 Phone access off — restart SAM to fully close the LAN."); }
@@ -313,7 +313,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           ) : (
             <div style={{ marginTop: 12 }}>
               <div className="admin-note" style={{ marginBottom: 10, lineHeight: 1.5 }}>Turn on phone access — SAM opens to your Wi-Fi with a private token, and you scan a QR to connect. {phoneMsg && <b style={{ color: "var(--accent-text)" }}>{phoneMsg}</b>}</div>
-              <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+              <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
                 setPhoneMsg("Turning on…");
                 const r = await enablePhone().catch(() => ({ ok: false }));
                 setPhoneMsg(r.ok ? "✓ Enabled — restart SAM (quit & reopen), then come back here for the QR." : "Couldn't enable — try again.");
@@ -322,7 +322,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           )}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <div className="admin-note" style={{ marginBottom: 8, lineHeight: 1.5 }}>🔔 <b>Alerts on this device</b> — get SAM's morning brief, reminders &amp; task results as push notifications, even when SAM's closed. {pushOn ? <b style={{ color: "var(--accent-text)" }}>· On for this device ✓</b> : ""} {pushMsg && <b style={{ color: "var(--accent-text)" }}>{pushMsg}</b>}</div>
-            {!pushOn && <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+            {!pushOn && <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
               setPushMsg("…"); const r = await enablePush();
               setPushMsg(r === "ok" ? "" : r === "denied" ? "You blocked notifications — allow them in your browser/phone settings." : r === "unsupported" ? "This device doesn't support push (on iPhone: install SAM via Share → Add to Home Screen first)." : "Couldn't enable — try again.");
               if (r === "ok") setPushOn(true);
@@ -350,7 +350,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                       onChange={(e) => setMcpKeys((m) => ({ ...m, [p.id]: { ...m[p.id], [f.env]: e.target.value } }))}
                       style={{ flex: "1 1 160px", minWidth: 120, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
                   ))}
-                  <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+                  <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
                     const env = mcpKeys[p.id] || {};
                     if (p.fields.some((f) => !(env[f.env] || "").trim())) { setMcpMsg((m) => ({ ...m, [p.id]: "Add the key(s) first." })); return; }
                     setMcpMsg((m) => ({ ...m, [p.id]: "Connecting…" }));
@@ -358,7 +358,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                     setMcpMsg((m) => ({ ...m, [p.id]: r.ok ? "✓ Saved — restart SAM to activate." : "Couldn't save." }));
                     if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: true } : x)); setMcpKeys((m) => ({ ...m, [p.id]: {} })); }
                   }}>{p.connected ? "Update" : "Connect"}</button>
-                  {p.connected && <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)" }} onClick={async () => {
+                  {p.connected && <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)" }} onClick={async () => {
                     const r = await removeMcp(p.id).catch(() => ({ ok: false }));
                     if (r.ok) { setMcp((list) => list.map((x) => x.id === p.id ? { ...x, connected: false } : x)); setMcpMsg((m) => ({ ...m, [p.id]: "Removed — restart to apply." })); }
                   }}>Remove</button>}
@@ -394,13 +394,13 @@ export default function Admin({ onClose }: { onClose: () => void }) {
               <input className="admin-input" type="password" style={{ flex: 1 }} placeholder={cfg?.apple?.applePassSet ? "App password (saved — blank keeps it)" : "App-specific password"} value={apple.applePass} onChange={(e) => setApple(v => ({ ...v, applePass: e.target.value }))} />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="admin-save" style={{ width: "auto" }} onClick={async () => {
+              <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
                 if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
                 if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
                 if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
                 setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh(); getSigningStatus().then(setSigning).catch(() => {});
               }}>{saved === "apple" ? "Saved ✓" : "Save"}</button>
-              <button className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {})}>↻ Re-check</button>
+              <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {})}>↻ Re-check</button>
             </div>
           </div>
         </div>
@@ -412,7 +412,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             For a <b>Play Store</b> build later you'll need a signing keystore — SAM can make one for you, locally, no account:
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="admin-save" style={{ width: "auto" }} disabled={signing?.android?.hasKeystore} onClick={async () => {
+            <button type="button" className="admin-save" style={{ width: "auto" }} disabled={signing?.android?.hasKeystore} onClick={async () => {
               setSigningMsg("Generating keystore…");
               const r = await genAndroidKeystore().catch(() => ({ ok: false, error: "failed" }));
               setSigningMsg(r.ok ? `✅ Keystore created (vault/signing/). Password saved — keep it safe.` : `⚠️ ${r.error || "couldn't create"}`);
@@ -429,7 +429,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           {allowed.length === 0
             ? <div className="admin-foot">None yet. When SAM asks approval, tap <b>Always allow</b> to authorise that action for good.</div>
             : <ul className="allow-list">{allowed.map((t) => (
-                <li key={t}><span>{t.replace(/_/g, " ")}</span><button onClick={async () => { await setAllow(t, false); refresh(); }}>Revoke</button></li>
+                <li key={t}><span>{t.replace(/_/g, " ")}</span><button type="button" onClick={async () => { await setAllow(t, false); refresh(); }}>Revoke</button></li>
               ))}</ul>}
         </div>
 

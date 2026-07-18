@@ -83,7 +83,7 @@ const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: 
         out.push(
           <div key={`w${i}`} className="widget-followup">
             {w.questions.map((q: string, j: number) => (
-              <button key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
+              <button type="button" key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
             ))}
           </div>
         );

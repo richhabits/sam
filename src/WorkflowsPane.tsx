@@ -30,13 +30,13 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">🔗 Workflows</div>
             <div className="drawer-sub">Saved multi-step sequences. A run pauses at any dangerous step for your OK — nothing risky runs on its own.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {flows.length === 0 && (
           <div className="wf-empty">
             <div className="drawer-empty">No workflows yet. Install the 6 starters to see what SAM can chain — inbox triage, weekly review, research digest, and more.</div>
-            <button className="wf-install" onClick={install} disabled={busy === "install"}>{busy === "install" ? "Installing…" : "✨ Install 6 starter workflows"}</button>
+            <button type="button" className="wf-install" onClick={install} disabled={busy === "install"}>{busy === "install" ? "Installing…" : "✨ Install 6 starter workflows"}</button>
           </div>
         )}
 
@@ -48,8 +48,8 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
                 <div className="wf-card-head">
                   <div className="wf-name">{w.name}{w.dangerousSteps?.length > 0 && <span className="au-danger-tag" title="Has a dangerous step — the run pauses there for your OK">pauses to ask</span>}</div>
                   <div className="wf-actions">
-                    <button className="wf-run" onClick={() => run(w.id)} disabled={busy === w.id}>{busy === w.id ? "Running…" : "▶ Run"}</button>
-                    <button className="wf-del" onClick={() => del(w.id)} title="Delete">🗑</button>
+                    <button type="button" className="wf-run" onClick={() => run(w.id)} disabled={busy === w.id}>{busy === w.id ? "Running…" : "▶ Run"}</button>
+                    <button type="button" className="wf-del" onClick={() => del(w.id)} title="Delete">🗑</button>
                   </div>
                 </div>
                 <div className="wf-desc">{w.description}</div>

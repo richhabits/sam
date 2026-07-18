@@ -172,7 +172,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
 
   return (
     <div className="vm-wrap">
-      <button className="vm-close" onClick={onClose} aria-label="Close voice mode">✕</button>
+      <button type="button" className="vm-close" onClick={onClose} aria-label="Close voice mode">✕</button>
       <div className={`vm-orb ${state}`} ref={mouthRef}>
         <div className="vm-mouth">
           {[0.5, 0.78, 1, 0.78, 0.5].map((m, i) => (
@@ -186,7 +186,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
         ? <div className="vm-hint">🎤 Your mic is blocked. Click the 🔒/camera icon in the address bar → <b>Always allow</b> the microphone → reopen Voice. You can always type in the chat instead.</div>
         : state === "unsupported"
         ? <div className="vm-hint">Voice conversation works in Chrome. You can still type in the chat.</div>
-        : <button className="vm-end" onClick={onClose}>End voice</button>}
+        : <button type="button" className="vm-end" onClick={onClose}>End voice</button>}
     </div>
   );
 }

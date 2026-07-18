@@ -44,7 +44,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">SAM · Control Centre</div>
             <div className="drawer-sub">Everything SAM is running, at a glance.</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {!s ? <div className="dash-empty">Connecting to SAM…</div> : (
@@ -97,8 +97,8 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
                             <div style={{ marginTop: 4 }}>
                               <div style={{ fontSize: 11, color: "var(--c-err)", fontWeight: 500 }}>⏸ {a.pendingTool}</div>
                               <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                                <button className="mini" onClick={() => approveSwarmAgent(sw.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
-                                <button className="mini" style={{ opacity: 0.6 }} onClick={() => approveSwarmAgent(sw.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
+                                <button type="button" className="mini" onClick={() => approveSwarmAgent(sw.id, a.id, true).then(() => getSwarms().then(setSwarms))}>Approve</button>
+                                <button type="button" className="mini" style={{ opacity: 0.6 }} onClick={() => approveSwarmAgent(sw.id, a.id, false).then(() => getSwarms().then(setSwarms))}>Reject</button>
                               </div>
                             </div>
                           )}
@@ -124,8 +124,8 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, opacity: 0.7 }}>
                       <span>Ran {s.runCount} times {s.lastRun && `(last: ${new Date(s.lastRun).toLocaleTimeString()})`}</span>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button className="mini" onClick={() => toggleSchedule(s.id).then(() => getSchedules().then(setSchedules))}>{s.enabled ? "Pause" : "Resume"}</button>
-                        <button className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }} onClick={() => removeSchedule(s.id).then(() => getSchedules().then(setSchedules))}>Delete</button>
+                        <button type="button" className="mini" onClick={() => toggleSchedule(s.id).then(() => getSchedules().then(setSchedules))}>{s.enabled ? "Pause" : "Resume"}</button>
+                        <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }} onClick={() => removeSchedule(s.id).then(() => getSchedules().then(setSchedules))}>Delete</button>
                       </div>
                     </div>
                     {s.lastResult && <div style={{ fontSize: 12, marginTop: 2, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>{s.lastResult}</div>}
