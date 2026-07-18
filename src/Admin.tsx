@@ -13,7 +13,7 @@ type McpPreset = { id: string; label: string; emoji: string; note: string; offic
 // Settings cannot offer a provider the server can't save, ever again.
 type Prov = { id: string; label: string; note: string; url: string; starter?: boolean; premium?: boolean; noKey?: boolean; configStyle?: boolean; keys?: number };
 
-export default function Admin({ onClose }: { onClose: () => void }) {
+export default function Admin({ onClose, focus }: { onClose: () => void; focus?: "phone" }) {
   useEscape(onClose);
   const [cfg, setCfg] = useState<any>(null);
   const [cfgErr, setCfgErr] = useState("");
@@ -61,6 +61,15 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount; refresh is stable
   useEffect(() => { refresh(); }, []);
+  // When opened via Settings -> "Use SAM on your phone", jump to that section instead of
+  // dropping the user at the top of a very long drawer and hoping they scroll.
+  useEffect(() => {
+    if (focus !== "phone") return;
+    const t = setTimeout(() => {
+      document.getElementById("admin-phone")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 60);   // after the drawer paints
+    return () => clearTimeout(t);
+  }, [focus]);
   const PROVIDERS: Prov[] = (cfg?.providers as Prov[]) || [];
   const count = (id: string) => PROVIDERS.find((p) => p.id === id)?.keys ?? 0;
   // 1600ms was too quick to notice: the user saved a Kimi key, the confirmation came and went, and
@@ -274,7 +283,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="admin-cat">📱 Phone &amp; devices</div>
+        {/* Phone access is a top-level thing people go LOOKING for ("use SAM on my phone"), but it
+            lived at the bottom of the keys drawer under 43 providers. Settings now links straight
+            here and this anchor scrolls it into view. */}
+        <div className="admin-cat" id="admin-phone">📱 Phone &amp; devices</div>
 
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name">📱 Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>

@@ -279,6 +279,7 @@ export default function App() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [adminFocus, setAdminFocus] = useState<"phone" | undefined>(undefined);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [autonomyOpen, setAutonomyOpen] = useState(false);
@@ -1169,6 +1170,10 @@ export default function App() {
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">Add your free rolling keys</span></button>
             </div>
+            <div className="pop-title">Devices</div>
+            <div className="pop-group">
+              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">Scan a QR — same Wi-Fi, signed in</span></button>
+            </div>
             <div className="pop-title">Your data</div>
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device only — inspect, delete, reset</span></button>
@@ -1830,7 +1835,7 @@ export default function App() {
 
       <Suspense fallback={null}>
         {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
-        {adminOpen && <Admin onClose={() => setAdminOpen(false)} />}
+        {adminOpen && <Admin onClose={() => { setAdminOpen(false); setAdminFocus(undefined); }} focus={adminFocus} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} onAllProviders={() => { setWizardOpen(false); setAdminOpen(true); }} />}
