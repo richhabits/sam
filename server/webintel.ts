@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { checkOutboundUrl } from "./url-guard.ts";
 
 const UA = "Mozilla/5.0 (compatible; SAM-webintel/0.1; local-first)";
 
@@ -48,6 +49,13 @@ export function htmlToText(html: string): { title: string; text: string; links: 
 
 /** Fetch a URL and return cleaned, readable content. Times out; never throws. */
 export async function fetchClean(url: string, opts: { timeoutMs?: number } = {}): Promise<CleanPage> {
+  // Refuse loopback/LAN/link-local targets BEFORE opening a socket. SAM runs inside the user's
+  // network, so a URL supplied by a prompt — or planted in a page SAM already read — could
+  // otherwise reach the router, a NAS, or SAM's own API on localhost. See url-guard.ts.
+  const verdict = await checkOutboundUrl(url);
+  if (!verdict.ok) {
+    return { url, status: 0, error: `blocked: ${verdict.reason}`, title: "", text: "", links: [], bytes: 0, ok: false };
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 15000);
   try {
