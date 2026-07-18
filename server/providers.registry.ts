@@ -35,15 +35,18 @@ export interface ProviderSpec {
   noKey?: boolean;            // works with no key at all
   note: string;               // one-line "what it is good at", shown under the label
   url: string;                // where to get a key
+  keyPattern?: string;        // regex source: lets the setup wizard recognise a pasted/copied key.
+                              // Lives here so the wizard stops keeping its own provider list —
+                              // it was the sixth copy, and the only one with these patterns.
 }
 
 export const PROVIDER_REGISTRY: ProviderSpec[] = [
-  { id: "groq", label: "Groq", tier: "free", envPlural: "GROQ_API_KEYS", envSingular: "GROQ_API_KEY", starter: true, note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys" },
+  { id: "groq", label: "Groq", tier: "free", envPlural: "GROQ_API_KEYS", envSingular: "GROQ_API_KEY", starter: true, note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys", keyPattern: "^gsk_[A-Za-z0-9]{20,}$" },
   { id: "cerebras", label: "Cerebras", tier: "free", envPlural: "CEREBRAS_API_KEYS", envSingular: "CEREBRAS_API_KEY", starter: true, note: "⚡ fast chat — blazing 70B, first pick", url: "https://cloud.cerebras.ai" },
-  { id: "gemini", label: "Google Gemini", tier: "free", envPlural: "GEMINI_API_KEYS", envSingular: "GEMINI_API_KEY", starter: true, note: "👁 photos & vision — reads images; solid all-rounder", url: "https://aistudio.google.com/apikey" },
-  { id: "openrouter", label: "OpenRouter", tier: "free", envPlural: "OPENROUTER_API_KEYS", envSingular: "OPENROUTER_API_KEY", starter: true, note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys" },
+  { id: "gemini", label: "Google Gemini", tier: "free", envPlural: "GEMINI_API_KEYS", envSingular: "GEMINI_API_KEY", starter: true, note: "👁 photos & vision — reads images; solid all-rounder", url: "https://aistudio.google.com/apikey", keyPattern: "^AIza[A-Za-z0-9_-]{30,}$" },
+  { id: "openrouter", label: "OpenRouter", tier: "free", envPlural: "OPENROUTER_API_KEYS", envSingular: "OPENROUTER_API_KEY", starter: true, note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys", keyPattern: "^sk-or-[A-Za-z0-9-]{20,}$" },
   { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com" },
-  { id: "mistral", label: "Mistral", tier: "free", envPlural: "MISTRAL_API_KEYS", envSingular: "MISTRAL_API_KEY", starter: true, note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys" },
+  { id: "mistral", label: "Mistral", tier: "free", envPlural: "MISTRAL_API_KEYS", envSingular: "MISTRAL_API_KEY", starter: true, note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys", keyPattern: "^[A-Za-z0-9]{32}$" },
   { id: "github", label: "GitHub Models", tier: "free", envPlural: "GITHUB_API_KEYS", envSingular: "GITHUB_TOKEN", starter: true, note: "💬 general chat — free with a GitHub token", url: "https://github.com/settings/tokens" },
   { id: "together", label: "Together AI", tier: "free", envPlural: "TOGETHER_API_KEYS", envSingular: "TOGETHER_API_KEY", note: "🧠 reasoning + 🎨 FREE images (FLUX)", url: "https://api.together.xyz/settings/api-keys" },
   { id: "deepseek", label: "DeepSeek", tier: "free", envPlural: "DEEPSEEK_API_KEYS", envSingular: "DEEPSEEK_API_KEY", note: "🧠 deep reasoning + 💻 code — the heavy thinker", url: "https://platform.deepseek.com/api_keys" },
@@ -98,8 +101,8 @@ export const CONFIG_STYLE: Record<string, string> = Object.fromEntries(
 
 /** What the Settings UI needs — no env var names leave the server. */
 export function uiCatalogue() {
-  return PROVIDER_REGISTRY.map(({ id, label, tier, note, url, starter, premium, noKey, configKey }) => ({
+  return PROVIDER_REGISTRY.map(({ id, label, tier, note, url, starter, premium, noKey, configKey, keyPattern }) => ({
     id, label, tier, note, url, starter: !!starter, premium: !!premium, noKey: !!noKey,
-    configStyle: !!configKey,
+    configStyle: !!configKey, keyPattern,
   }));
 }
