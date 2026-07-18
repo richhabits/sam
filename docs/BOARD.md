@@ -13,6 +13,37 @@ Gate 1; registry/clock mom_12_1 aligned; cage reviewed + 7 defects fixed; 99 tes
 
 ## Now (in flight)
 
+### 🌙 SESSION END — 2026-07-18 (terminal). Read this first tomorrow.
+
+**Both repos clean, green, pushed/mirrored.** SAM `5c06581` = origin, **401 tests**, typecheck
+clean. FLIP IT `d88e077` = ROMEO HQ mirror, **109 tests**, tree clean. Both loops loaded, last
+exit 0.
+
+**The one thing on the calendar: Mon 2026-07-20 22:00** — `com.flipit.dailystep` fires and, if
+the vendor has the bar, writes the **first lived forward day**, freezing the ledger's anchor,
+then commits and mirrors it unattended. Clock is **day 0/60**. Read it with
+`python3 scripts/clock.py` — never from `state/`. If Monday's log shows `0 forward days yet`,
+that's the vendor lagging US close, not a fault; Tuesday picks it up.
+
+**In force since today: A-002.** The 2σ band is *monitoring* during a run and a verdict only at
+the horizon. A mid-run breach prints and notifies but does NOT end the run. Never restore the
+early kill without a new amendment (`CLAUDE.md` rule 8b, `FLIP_IT.md` §3, `AMENDMENT-002.md`).
+
+**Needs Romeo (nothing blocking):** ① one call on the `moonshot` lane with a real key to settle
+the unverified model ID · ② for the cage to go live: generate a key, run
+`T212_MODE=practice python t212.py verify-fractional` (earns the sell-encoding receipt),
+deposit, sign off, promote — all five are Romeo-only.
+
+**Working rules that were paid for today, in code not prose:** `board-guard.sh` (blocked 4 of 7
+board clobbers; the prose rule failed 3 times first) · stage **explicit paths**, never
+`git add -A`, in repos two sessions write to (I broke this twice, once inside the commit that
+documented it) · verify a claimed regression with `git show` before re-applying from a stale copy.
+
+**Housekeeping for next session:** this "Now" list has grown to ~10 strip entries and needs a
+prune — completed strips belong in Recently done. That is a deliberate rewrite, so:
+`BOARD_REWRITE=1 git commit`.
+
+
 - **Colosseum**: fixed + merged on `8ab6f4f` (champion pinned first · tested > untested · ≥2-brain guard), 16 unit tests, CI green. ✅ **Proven live** — the 04:00 nightly ran clean (champion groq 1115, 18 matches). The self-improving loop works end-to-end; leave it running.
 - **FLIP IT paper-forward** @10% vol under Amendment A-001: extended Gate 2 = 60 forward days + 20 closed trades + in-band + beats-costs. Loop is live and `mom_12_1` is wired; clock is months, not days — that's by design. Nothing owed here until the forward gate is met.
 - **mom_12_1_protected — REJECTED at Gate 1 (2026-07-18).** Run in-tree on the real 30-name panel, both variants at `top_n=3` so the breaker was the only difference. **It failed worse than unprotected on every dimension, including the one it exists to improve:** max DD **43.8% vs 40.0%**, Sharpe 0.52 vs 0.71, WF folds 50% vs 88%, return +323% vs +800%. Mechanism is whipsaw — it goes flat after a 12% fall from the 20d high (near the bottom, in a momentum book) and sits in cash through the first 5 days of the rebound, the days that repair drawdown fastest. **It sells the bottom, on a schedule.** Stays unregistered/out of FORWARD_BASES; `A-002` draft marked MOOT (must not be logged); no tuning — a re-run with different thresholds is a *different* strategy at Gate 1 with its own record. Receipt: `incoming-cowork/GATE1_RESULT_mom_12_1_protected.md`. **This is the case for "a tweak is a new strategy": the breaker is obviously prudent by intuition and actively harmful in fact, and only running it revealed that.**
