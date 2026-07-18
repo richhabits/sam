@@ -106,6 +106,26 @@ single route in the repo most worth contract-checking was the one route the cont
 see, and it read green the whole time. Matcher widened to include `all`; verified by breaking the
 proxy's error envelope and watching the test go red (it stayed green before the widening).
 
+**Then the proxy's actual SSRF filtering got tested too — `routes.creative.ssrf.test.ts` (5).** The
+guard is now a pure exported `isSafeCreativePath()` that the route calls, because a test
+re-declaring the regex would only prove a copy matches itself. The assertions are on the outbound
+**host** (`https` + `api.muapi.ai` + no credentials), not on the boolean — an intent-level property
+that survives a rewrite of the guard, and one that swept every code point 0x00–0x2ff.
+
+That property immediately earned itself: **my first draft asserted `//evil.com/x` was rejected. It
+isn't** — it is only slashes and letters, so it passes the charset. It is harmless for a reason
+worth writing down, because the reason is fragile:
+
+```
+concatenated:  "https://api.muapi.ai/api/v1/" + "//evil.com/x"   -> api.muapi.ai  ✅
+resolved:      new URL("//evil.com/x", ".../api/v1/")            -> evil.com      ❌
+```
+
+**The route's safety rests on a property of string concatenation.** Tidying it into the more
+idiomatic `new URL(path, base)` would hand an attacker the muapi key while making the code look
+*better*. Both branches are now pinned, including the counterfactual, so that refactor fails loudly
+instead of silently. Verified by neutering the guard to `return true` — two assertions go red.
+
 **One caveat learned the hard way:** the coupling table counts `index.ts`-*local* identifiers,
 which is the right measure for "can this move", but an extracted section also needs its
 **imports** to travel. `routes.workflows.ts` needed seven names the table never showed
