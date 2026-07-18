@@ -20,6 +20,7 @@ export default function YourSam({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
 
   const load = () => getAnalytics().then(setS).catch(() => {});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
 
   const toggleTelemetry = async () => { await setTelemetry(!s?.telemetry.enabled); load(); };

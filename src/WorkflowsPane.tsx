@@ -16,6 +16,7 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
 
   const load = () => getWorkflows().then((d) => setFlows(d?.workflows || [])).catch(() => {});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
 
   const install = async () => { setBusy("install"); await installStarterWorkflows(); await load(); setBusy(""); };

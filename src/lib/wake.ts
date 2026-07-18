@@ -53,6 +53,6 @@ export async function startWakeListener(onActivate: () => void): Promise<() => v
   return () => {
     cancelAnimationFrame(raf);
     try { src.disconnect(); ctx.close(); } catch {}
-    stream.getTracks().forEach((tr) => tr.stop());
+    stream.getTracks().forEach((tr) => { tr.stop(); });
   };
 }

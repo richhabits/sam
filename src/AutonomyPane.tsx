@@ -24,6 +24,7 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
     getSuggestions().then((d) => setCards(d?.cards || [])).catch(() => {});
     getAutonomyLog().then((d) => setLog(d?.entries || [])).catch(() => {});
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: poll on mount; load is stable, cleaned up on unmount
   useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, []);
 
   const toggle = async (b: Behavior) => { await setConsent(b.id, !b.enabled); load(); };
@@ -85,6 +86,7 @@ export default function AutonomyPane({ onClose }: { onClose: () => void }) {
         <div className="au-log">
           {log.length === 0 && <div className="drawer-empty">Nothing yet. When SAM acts or suggests on its own, it's recorded here — and nothing is ever uploaded.</div>}
           {log.map((e, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: append-only autonomy log; order is stable
             <div key={i} className={"au-log-row " + e.kind}>
               <span className="au-log-icon">{KIND_ICON[e.kind] || "•"}</span>
               <span className="au-log-summary">{e.summary}{e.tool && <span className="au-log-tool"> · {e.tool}</span>}</span>

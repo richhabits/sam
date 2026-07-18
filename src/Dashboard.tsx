@@ -142,6 +142,7 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
             {people.length === 0
               ? <div className="dash-empty">No one yet — show SAM someone via 👁️ Look and say "remember this is …".</div>
               : <div className="dash-lanes">{people.map((p, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: render-only lane list; order is stable
                   <div key={i} className="dash-lane on">
                     <span className="tm-emoji">🙂</span>
                     <span className="dash-lane-name">{p.name}{p.relation ? ` · ${p.relation}` : ""}</span>
@@ -153,7 +154,10 @@ export default function Dashboard({ onClose }: { onClose: () => void }) {
             <div className="dash-sec">Recent activity</div>
             {log.length === 0 ? <div className="dash-empty">Nothing yet — ask SAM something.</div> : (
               <ul className="dash-log">
-                {log.map((e, i) => <li key={i}><span className="dash-time">{e.time}</span> {e.msg}</li>)}
+                {log.map((e, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: append-only activity log; order is stable
+                  <li key={i}><span className="dash-time">{e.time}</span> {e.msg}</li>
+                ))}
               </ul>
             )}
 

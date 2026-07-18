@@ -25,8 +25,10 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
 
   const activeBook = books.find((b) => b.id === active);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh once on mount
   useEffect(() => { refresh(); }, []);
   useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => {}); setTurns([]); setAudio(""); }, [active]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to newest on turns change
   useEffect(() => { chatRef.current?.scrollTo(0, chatRef.current.scrollHeight); }, [turns]);
 
   function refresh() { listNotebooks().then((r) => { setBooks(r.notebooks || []); if (!active && r.notebooks?.[0]) setActive(r.notebooks[0].id); }).catch(() => {}); }
@@ -93,6 +95,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                 <div className="nb-side-label">Sources</div>
                 {sources.length === 0 && <div className="nb-empty">No sources yet — add a link or paste text below.</div>}
                 {sources.map((s, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: render-only source list; order is stable
                   <div key={i} className="nb-source" title={s.source}>
                     <span className="nb-source-ic">{/^https?:/.test(s.source) ? "🌐" : "📄"}</span>
                     <span className="nb-source-t">{s.title}</span>
@@ -135,6 +138,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                     </div>
                   )}
                   {turns.map((t, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: render-only turn list; order is stable
                     <div key={i} className="nb-turn">
                       <div className="nb-q">{t.q}</div>
                       <div className="nb-a">
