@@ -13,9 +13,8 @@ const src = readFileSync(join(root, "server/tools.ts"), "utf8");
 // Slice each tool's block: from `{ name: "X"` to the next `{ name: "` (or EOF).
 const blocks = new Map<string, string>();
 const re = /\{\s*name:\s*"([a-z0-9_]+)"/g;
-let m: RegExpExecArray | null;
 const marks: { name: string; idx: number }[] = [];
-while ((m = re.exec(src))) marks.push({ name: m[1], idx: m.index });
+for (let m = re.exec(src); m; m = re.exec(src)) marks.push({ name: m[1], idx: m.index });
 for (let i = 0; i < marks.length; i++) blocks.set(marks[i].name, src.slice(marks[i].idx, marks[i + 1]?.idx ?? src.length));
 
 const MAC_GATE = /!IS_MAC|OS\s*!==\s*"mac"|notSupported\(|needs macOS|only (works on|on) macOS/;

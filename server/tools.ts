@@ -247,8 +247,7 @@ async function webSearch(q: string): Promise<string> {
   const html = await r.text();
   const out: string[] = [];
   const re = /<a[^>]*class="result__a"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && out.length < 6) {
+  for (let m = re.exec(html); m && out.length < 6; m = re.exec(html)) {
     const strip = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
     out.push(`• ${strip(m[1])} — ${strip(m[2])}`);
   }
@@ -2093,7 +2092,7 @@ export const TOOLS: Tool[] = [
       const s = vaultStats();
       const log = recentLog(5);
       const lines = [`📁 Vault: ${s.path}`, `  • Daily notes: ${s.dailyNotes}`, `  • Project notes: ${s.projectNotes}`];
-      if (log.length) { lines.push("", "Recent log entries:"); log.forEach((l) => lines.push(`  ${l.time}  ${l.msg}`)); }
+      if (log.length) { lines.push("", "Recent log entries:"); log.forEach((l) => { lines.push(`  ${l.time}  ${l.msg}`); }); }
       return lines.join("\n");
     } },
   { name: "read_today_log", safe: true, description: "Read today's conversation log from the vault.", params: "(none)",

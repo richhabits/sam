@@ -42,12 +42,14 @@ let _socialsCache: Record<string, any> | null = null;
 let _socialsMtime = -1;
 export function loadSocials(): Record<string, any> {
   try {
-    if (!existsSync(SOCIALS_PATH)) return (_socialsCache = {}, _socialsMtime = -1, _socialsCache);
+    if (!existsSync(SOCIALS_PATH)) { _socialsCache = {}; _socialsMtime = -1; return _socialsCache; }
     const mtime = statSync(SOCIALS_PATH).mtimeMs;
     if (_socialsCache && mtime === _socialsMtime) return _socialsCache;
     _socialsMtime = mtime;
-    return (_socialsCache = JSON.parse(readFileSync(SOCIALS_PATH, "utf8")));
-  } catch { return (_socialsCache = _socialsCache || {}); }
+    const parsed = JSON.parse(readFileSync(SOCIALS_PATH, "utf8"));
+    _socialsCache = parsed;
+    return parsed;
+  } catch { const c = _socialsCache || {}; _socialsCache = c; return c; }
 }
 export function saveSocials(data: Record<string, any>) {
   try {
