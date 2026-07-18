@@ -94,7 +94,7 @@ export function registerStudioRoutes(app: Express) {
     catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
   });
   // Style-card preview thumbnails — generated ONCE via Pollinations, cached to the vault, served
-  // locally (instant after first boot). Same-origin so no CSP/SW issues, and only 12 ever generated.
+  // locally (instant after first boot). Same-origin so no CSP/SW issues, and one per style, generated once.
   const STUDIO_PREVIEWS: Record<string, string> = {
     cinematic: "cinematic portrait, dramatic rim lighting, film grain, moody",
     photoreal: "photorealistic landscape, golden hour, ultra detailed, 8k",
@@ -108,7 +108,14 @@ export function registerStudioRoutes(app: Express) {
     pixel: "16-bit pixel art fantasy village, retro game scene",
     comic: "comic book superhero, bold ink, halftone, dynamic action",
     fantasy: "epic fantasy castle, dragons, magic, dramatic sky, concept art",
+    lineart: "minimal line art of a face, single continuous stroke, elegant",
+    vapor: "vaporwave sunset, palm trees, pink and teal grid, retro chrome",
+    clay: "claymation fox character, stop-motion, plasticine, soft light",
+    blueprint: "blueprint schematic of a rocket, white lines on blue, annotated",
   };
+  // Every id in src/StudioView.tsx's STYLES must have an entry above, or that style card renders
+  // blank (the route 404s and the CSS background-image resolves to nothing). These four were
+  // missing. server/studio.previews.test.ts holds the parity so it cannot silently drift again.
   const PREVIEW_DIR = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault"), "studio-previews");
   async function genPreview(id: string): Promise<Buffer | null> {
     const prompt = STUDIO_PREVIEWS[id]; if (!prompt) return null;
@@ -127,7 +134,7 @@ export function registerStudioRoutes(app: Express) {
     if (buf) return res.type("jpeg").send(buf);
     res.status(503).end();
   });
-  // Pre-warm the 12 previews in the background at boot (once) so the Studio is snappy.
+  // Pre-warm the previews in the background at boot (once) so the Studio is snappy.
   setTimeout(async () => { for (const id of Object.keys(STUDIO_PREVIEWS)) { if (!existsSync(join(PREVIEW_DIR, `${id}.jpg`))) await genPreview(id).catch(() => {/* best-effort — nothing downstream depends on this succeeding */}); } }, 4000);
 
   app.post("/api/studio/enhance", async (req, res) => {
