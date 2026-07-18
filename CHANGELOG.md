@@ -2,6 +2,23 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.1.4] - 2026-07-18 — "Brakes"
+
+SAM gets brakes. Say **"stop"** and it stops — and it can no longer run away into a
+repetition loop. Both halves of the "hello hello hello…" problem, fixed. 379 tests.
+
+### Fixed
+- **Say the word and SAM stops.** Typing or saying **"stop", "shut up", "be quiet", "stop
+  listening", "you're not listening"** (and the like) now **instantly halts** SAM — aborts the
+  reply mid-stream, stops the voice, drops the mic, leaves Voice Mode — and is **never sent to
+  the brain** (forwarding it was what let a runaway reply keep feeding itself). Works while a
+  reply is still streaming. Conservative by design: a real request that merely contains the
+  word ("how do I stop a container", "don't stop believing") is untouched.
+- **No more runaway loops.** A provider-agnostic guard now watches the model stream; if a weak
+  free brain or a small local model falls into a repetition loop ("hello hello hello…"), SAM
+  **cuts it off at the source** and collapses the runaway tail so your history stays clean —
+  instead of streaming garbage to the token limit. Works for every brain, offline included.
+
 ## [2.1.3] - 2026-07-18 — "Colosseum"
 
 SAM starts tuning itself. Its free brains now fight head-to-head and the winner steers routing —
