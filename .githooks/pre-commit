@@ -1,0 +1,4 @@
+#!/bin/bash
+# Repo hooks live here (core.hooksPath=.githooks) so they are VERSIONED — every clone and
+# every session gets them, unlike .git/hooks which is local-only and silently ignored here.
+exec "$(git rev-parse --show-toplevel)/scripts/board-guard.sh"
