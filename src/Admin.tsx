@@ -63,7 +63,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   useEffect(() => { refresh(); }, []);
   const PROVIDERS: Prov[] = (cfg?.providers as Prov[]) || [];
   const count = (id: string) => PROVIDERS.find((p) => p.id === id)?.keys ?? 0;
-  const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 1600); };
+  // 1600ms was too quick to notice: the user saved a Kimi key, the confirmation came and went, and
+  // he reasonably concluded nothing had happened — the key WAS stored. A save that succeeds
+  // silently is indistinguishable from one that failed, which is the same class of bug as the
+  // 400-that-said-"Saved" this panel had before. 5s, plus a persistent line below the row.
+  const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 5000); };
 
   async function saveProvider(id: string) {
     const value = (drafts[id] || "").trim();
@@ -138,6 +142,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
               <div className="admin-actions">
                 <button type="button" className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
+                {saved === p.id && !saveError && (
+                  <div className="admin-note admin-ok">
+                    ✓ saved — SAM is using {p.label} now. No restart needed.
+                  </div>
+                )}
                 {saveError?.id === p.id && (
                   <div className="admin-note" style={{ color: "#e06c6c", marginTop: 4 }}>
                     ✗ not saved — {saveError.msg}. Nothing was written; the key is still missing.
