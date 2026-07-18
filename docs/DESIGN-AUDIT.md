@@ -88,10 +88,10 @@ byte-identical, so an extraction can never silently move an endpoint.
 | Workflows | 36 | 5 | 1 | ✅ done → `routes.workflows.ts` |
 | ElevenLabs voice | 42 | 1 | 1 | ✅ done → `routes.voice.ts` |
 | Creative Space proxy | 34 | 1 | 1 | ✅ done → `routes.creative.ts` |
-| Rollback | 74 | 8 | 6 | ⚠️ some threading |
-| People / faces | 115 | 15 | 8 | ⚠️ some threading |
-| Generated-image cache | 149 | 13 | 8 | ⚠️ some threading |
-| ADMIN keys & config | 169 | 8 | 8 | ⚠️ shares `writeEnv`, `PROVIDER_ENV`, `CONFIG_ENV` |
+| ADMIN keys & config | 169 | 8 | ~~8~~ **2** | ✅ done → `routes.admin.ts` |
+| Generated-image cache / Studio | 153 | 12 | 2 | ✅ done → `routes.studio.ts` |
+| People / faces | 114 | 15 | ~~8~~ **1** | ✅ done → `routes.people.ts` |
+| Rollback + bench/ios/update/status | 74 | 8 | 4 | ❌ **not a section** — see below |
 | MAIN COMMAND LOOP | 118 | 1 | **11** | ❌ deeply coupled — leave it |
 
 **Also fixed here, and it is the interesting part:** `routes.contract.test.ts` read *only*
@@ -131,6 +131,26 @@ which is the right measure for "can this move", but an extracted section also ne
 **imports** to travel. `routes.workflows.ts` needed seven names the table never showed
 (`getWorkflow`, `dangerousStepsIn`, `recordRun`, `recordWorkflowRun`, `Tier`, `Workflow`,
 `runModel`). Typecheck catches every one immediately, so this costs a minute — but budget for it.
+
+**The split is finished: `index.ts` 1770 → 1210 (−32%), 7 route modules, 132 routes preserved
+exactly at every step.** Two sections were extracted only after the things they *shared* moved
+first — `isLoopback` (used 32×, the gate on every privileged write) into `http-guards.ts`, and
+`writeEnv`/`ENV_PATH` (5 callers) into `env-file.ts`. `PORT` was **injected**
+(`registerPeopleRoutes(app, PORT)`) rather than promoted to a shared module, so index.ts stays
+the single place the port is decided.
+
+**The coupling table was wrong in both directions, and that is the lesson.** It said ADMIN shared
+8 identifiers; the real number was 2. It said People shared 8; really 1. Yet it *under*-counted
+imports on workflows. It measures one thing (index-local declarations) and was read as if it
+measured difficulty. **Use it to pick a candidate, never to estimate the work.**
+
+**Where it stopped, deliberately.** What is left around the old ROLLBACK marker is not a section —
+it is rollback + bench + ios + update-check + update + status + keys + capacity, needing
+`BENCH_MODE`, `SKILLS`, `User` and `git` threaded through it. Extracting that buys line count and
+costs cohesion, which is the opposite of the point. Also noted and *not* touched:
+`app.post("/api/schedules/:id/toggle")` is stranded at the end of the notebooks block, away from
+the other schedules routes. Moving a route during an extraction is how registration-order bugs get
+introduced — separate change or none.
 
 **`App.tsx` (1840) and `tools.ts` (2513) untouched.** `tools.ts` is a 181-entry registry and long
 by nature — splitting it buys little. `App.tsx` shares state across onboarding/chat/panes, so it
