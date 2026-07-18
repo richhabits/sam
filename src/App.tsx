@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
+import { isStopCommand } from "./lib/stopIntent";
 import WidgetRenderer from "./WidgetRenderer";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
 // Heavy panels are lazy-loaded — they only download when you actually open them,
@@ -853,6 +854,17 @@ export default function App() {
   async function send(text?: string) {
     const value = (text ?? input).trim();
     const atts = attachments;
+    // "Make it stop" — a stop/interrupt utterance ("stop", "shut up", "you're not listening")
+    // halts SAM immediately and is NEVER forwarded to the brain (sending it would just add
+    // another turn to a runaway/looping reply). Must run BEFORE the `loading` gate so it can
+    // interrupt a reply that's already streaming.
+    if (value && !atts.length && isStopCommand(value)) {
+      const wasBusy = loading || listening || voiceMode || speakReplies || playing != null;
+      haltNow();
+      setInput("");
+      if (wasBusy) sysNote("Okay — stopped. 🤫");
+      return;
+    }
     if ((!value && !atts.length) || loading) return;
     if (value.startsWith("/") && !atts.length && handleSlash(value)) { setInput(""); return; }
     // Natural persona switch — "be my coach", "SAM be my gran", "switch to PA", "act like my dad".
@@ -915,6 +927,7 @@ export default function App() {
 
   // Used by hands-free Voice Mode — runs a turn and returns SAM's reply to speak.
   async function voiceAsk(q: string): Promise<string> {
+    if (isStopCommand(q)) { haltNow(); return ""; }   // spoken "stop"/"shut up" halts now — never sent to the brain
     if (loading) return "One sec — I'm still finishing the last one.";   // same gate as typed send() — don't interleave turns
     setLoading(true);
     setMessages((m) => [...m, { role: "user", text: q, at: now() }]);
@@ -929,6 +942,19 @@ export default function App() {
   }
 
   function stop() { abortRef.current?.abort(); setLive(null); setLoading(false); }
+  // Instant "make it stop" — abort the reply, stop talking, drop the mic, leave Voice Mode.
+  // The escape hatch when a reply runs away or loops. Unlike stopAllAV it does NOT flip your
+  // persistent voice/wake preferences off — it just halts what's happening right now.
+  function haltNow() {
+    try { abortRef.current?.abort(); } catch {}
+    abortRef.current = null;
+    setLive(null); setLoading(false); setPending(null);
+    try { stopSpeaking(); } catch {}
+    setPlaying(null);
+    try { recRef.current?.stop(); recRef.current?.abort?.(); } catch {}
+    setListening(false);
+    if (voiceMode) setVoiceMode(false);
+  }
   function editResend(i: number) { const m = messages[i]; if (!m) return; setInput(m.text); setMessages((ms) => ms.slice(0, i)); inputRef.current?.focus(); }
 
   async function decide(approved: boolean, always = false) {
