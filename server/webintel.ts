@@ -32,7 +32,22 @@ export function htmlToText(html: string): { title: string; text: string; links: 
   let h = html;
   const title = (h.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").replace(/\s+/g, " ").trim();
   h = h.replace(/<!--[\s\S]*?-->/g, " ")
-       .replace(/<(script|style|noscript|svg|head|nav|footer|form|aside)[^>]*>[\s\S]*?<\/\1>/gi, " ");
+       // `header` was missing from this list (only `head` was here), which is why site chrome
+       // survived: on Wikipedia the top bar and language list are in <header>, not <nav>.
+       .replace(/<(script|style|noscript|svg|head|header|nav|footer|form|aside|dialog|template)[^>]*>[\s\S]*?<\/\1>/gi, " ");
+
+  // Prefer the main-content region when the page declares one. Stripping boilerplate tag-by-tag
+  // is a losing game — every site invents new wrappers — whereas <main>/<article> is the author
+  // TELLING us where the content is. Falls back to the whole document when absent, so plain pages
+  // (example.com has neither) are unaffected.
+  //
+  // Measured on the page that exposed this: 62,295 clean chars with 1,997 of nav/language-list
+  // boilerplate BEFORE the article began, so at maxChars 3000 two-thirds of an LLM's budget was
+  // spent before any content arrived.
+  const region = h.match(/<main[^>]*>([\s\S]*)<\/main>/i) || h.match(/<article[^>]*>([\s\S]*)<\/article>/i);
+  // Guard against a <main> that is a near-empty shell (JS-rendered pages): only adopt the region
+  // if it actually holds the bulk of the text, otherwise keep the full document.
+  if (region && region[1].length > h.length * 0.15) h = region[1];
   const links: CleanLink[] = [];
   for (const m of h.matchAll(/<a[^>]+href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();

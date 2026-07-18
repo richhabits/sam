@@ -80,6 +80,17 @@ import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, s
 import { championWithConfidence } from "./colosseum-significance.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
+import { checkOutboundUrl } from "./url-guard.ts";
+import { fetchClean } from "./webintel.ts";
+import { extract } from "./webintel-extract.ts";
+import { extractMany } from "./webintel-research.ts";
+
+// SAM's own brain, shaped for the webintel extractors. They take an injected LLM precisely so
+// they own no model plumbing — this is the one place that plumbing lives.
+// "free" because field-extraction from supplied text is a cheap job: spending a premium lane on
+// it would burn paid quota for no gain (Doctrine #3 — quotas are production infrastructure).
+const samLlm = async (system: string, prompt: string): Promise<string> =>
+  (await runModel("free", system, prompt))?.text || "";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 
@@ -204,36 +215,16 @@ const webSignal = () => AbortSignal.timeout(WEB_TIMEOUT);
 function tfetch(url: any, opts: any = {}): Promise<Response> {
   return fetch(url, { ...opts, signal: opts.signal || AbortSignal.timeout(WEB_TIMEOUT) });
 }
-export function isPrivateIp(ip: string): boolean {
-  const h = ip.toLowerCase();
-  if (h === "::" || h === "::1") return true;                        // unspecified / v6 loopback
-  if (/^f[cd]|^fe80:/.test(h)) return true;                          // v6 ULA / link-local
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1) — unwrap to the v4 and re-check,
-  // otherwise a mapped loopback slips past the guard and web_fetch hits localhost.
-  const mapped = h.match(/^::ffff:(.+)$/i);
-  if (mapped) {
-    const hex = mapped[1].match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-    const v4 = hex
-      ? `${(parseInt(hex[1], 16) >> 8) & 255}.${parseInt(hex[1], 16) & 255}.${(parseInt(hex[2], 16) >> 8) & 255}.${parseInt(hex[2], 16) & 255}`
-      : mapped[1];
-    return isPrivateIp(v4);
-  }
-  const m = ip.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
-  if (!m) return false;
-  const [a, b] = [Number(m[1]), Number(m[2])];
-  return a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
-}
+// SSRF guard — ONE implementation, in server/url-guard.ts, unit-tested there (url-guard.test.ts).
+// This file used to carry its own isPrivateIp/assertPublicUrl pair. Two guards means one is quietly
+// the weaker, and this one was: it missed CGNAT (100.64/10), multicast and non-http(s) schemes, and
+// it failed OPEN when the DNS lookup itself errored. Re-exported under the old name because
+// sam.test.ts covers it there — so that test now exercises the surviving implementation.
+export { isPrivateAddress as isPrivateIp } from "./url-guard.ts";
+
 async function assertPublicUrl(url: string): Promise<void> {
-  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
-  if (/^(localhost|.*\.local|.*\.internal|.*\.lan)$/i.test(host)) throw new Error(`blocked: ${host} is an internal address`);
-  if (isPrivateIp(host)) throw new Error(`blocked: ${host} is a private address`);
-  try {
-    const { lookup } = await import("node:dns/promises");
-    const addrs = await lookup(host, { all: true });
-    if (addrs.some((a) => isPrivateIp(a.address))) throw new Error(`blocked: ${host} resolves to a private address`);
-  } catch (e: any) {
-    if (String(e?.message).startsWith("blocked")) throw e;           // DNS failure itself → let fetch report it
-  }
+  const v = await checkOutboundUrl(url);
+  if (!v.ok) throw new Error(`blocked: ${v.reason}`);
 }
 
 // Prefers Jina (clean, reliable) when a key is set; falls back to a
@@ -261,15 +252,13 @@ async function webFetch(url: string): Promise<string> {
   if (hasJina()) {
     try { return clip(await jinaRead(url), 5000); } catch { /* fall back */ }
   }
-  const r = await tfetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh)" }, signal: webSignal() });
-  const html = await r.text();
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ").trim();
-  return clip(text);
+  // Our own reader (webintel) rather than the inline strip below it replaced. That one deleted
+  // tags and nothing else, so site chrome — nav bars, language lists, cookie banners — arrived as
+  // "content": measured 1997 chars of it before the article began on a Wikipedia page. webintel
+  // prefers <main>/<article> and drops header/nav/footer, and it caches, so a re-read is free.
+  const page = await fetchClean(url, { timeoutMs: WEB_TIMEOUT });
+  if (!page.ok || !page.text) return `Couldn't read ${url}${page.error ? ` — ${page.error}` : ""}`;
+  return clip(page.text);
 }
 
 // ── TERMINAL ─────────────────────────────────────────────────
@@ -1068,6 +1057,26 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Searching the web for “${i.query ?? i}”`, run: (i) => webSearch(i.query ?? i) },
   { name: "web_fetch", safe: true, description: "Open a URL and read its text. input: a url string.", params: "url",
     activity: (i) => `Reading ${i.url ?? i}`, run: (i) => webFetch(i.url ?? i) },
+  { name: "web_extract", safe: true,
+    description: "Pull STRUCTURED data out of a web page. input: {url, schema} where schema names the fields you want, e.g. {name:'string', price:'string'}. Use this instead of web_fetch when you need specific fields rather than the whole page.",
+    params: "{url, schema}",
+    activity: (i) => `Extracting ${Object.keys(i?.schema ?? {}).join(", ") || "data"} from ${i?.url}`,
+    run: async (i) => {
+      const r = await extract(String(i?.url ?? ""), i?.schema ?? { title: "string" }, samLlm, { maxChars: 6000 });
+      return r.ok ? JSON.stringify(r.data, null, 2) : `Couldn't extract from ${i?.url}${r.error ? ` — ${r.error}` : ""}`;
+    } },
+  { name: "web_research", safe: true,
+    description: "Pull the SAME fields from MANY pages at once and return a table. input: {urls:[…], schema}. Use for comparisons — prices across shops, specs across products.",
+    params: "{urls:[string], schema}",
+    activity: (i) => `Researching ${(i?.urls ?? []).length} pages`,
+    run: async (i) => {
+      const urls = Array.isArray(i?.urls) ? i.urls.map(String) : [];
+      if (!urls.length) return "web_research needs a urls array.";
+      const r = await extractMany(urls.slice(0, 10), i?.schema ?? { title: "string" }, samLlm, { maxChars: 6000, concurrency: 3 });
+      const lines = [JSON.stringify(r.table, null, 2)];
+      if (r.failed.length) lines.push(`\ncouldn't read: ${r.failed.join(", ")}`);
+      return lines.join("\n");
+    } },
   { name: "market_quote", safe: true, description: "Get LIVE market quotes for one or more tickers — stocks (AAPL), ETFs (VUSA.L), indices (^GSPC), FX (GBPUSD=X), crypto (BTC-USD). Free, no API key. input: {symbols} — a comma-separated string or an array.", params: "{symbols}",
     activity: (i) => `Checking quotes: ${Array.isArray(i?.symbols) ? i.symbols.join(", ") : (i?.symbols ?? i)}`,
     run: async (i) => { const raw = i?.symbols ?? i; const syms = Array.isArray(raw) ? raw.map(String) : String(raw || "").split(","); return formatQuotes(await marketQuotes(syms)); } },

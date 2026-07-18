@@ -34,8 +34,15 @@ export function isPrivateAddress(ip: string): boolean {
   if (s === "::1" || s === "::" || s === "0:0:0:0:0:0:0:1") return true;
   if (/^f[cd][0-9a-f]{2}:/.test(s)) return true; // fc00::/7 unique-local
   if (/^fe[89ab][0-9a-f]:/.test(s)) return true; // fe80::/10 link-local
-  const mapped = s.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/); // IPv4-mapped
+  const mapped = s.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/); // IPv4-mapped, dotted
   if (mapped) return isPrivateAddress(mapped[1]);
+  // IPv4-mapped in HEX form: ::ffff:7f00:1 is 127.0.0.1 wearing a different hat. Node can hand
+  // back either spelling, so missing this one would leave a loopback bypass wide open.
+  const hex = s.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const [hi, lo] = [Number.parseInt(hex[1], 16), Number.parseInt(hex[2], 16)];
+    return isPrivateAddress(`${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`);
+  }
   return false;
 }
 

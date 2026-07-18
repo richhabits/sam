@@ -77,11 +77,27 @@ success by existing."* Fixed and actually run: **4/4 genuinely pass**, so the cl
 substance but not reproducible from what was committed. Rule for the next one: import
 `../server/<module>.ts` and run it before quoting a number.
 
-**Quality finding from that run, worth someone's time:** `webintel`'s `htmlToText` leaves **1997
-chars of nav/language-list boilerplate** before the article body. At `maxChars: 3000` that is
-**two-thirds of the LLM's budget spent on Wikipedia's language list**. Not a crash — silently worse
-extraction on every page, worse the smaller the budget. Boilerplate stripping is a cheap, direct
-quality win for every webintel consumer; not done here because it changes shared-module behaviour.
+**FIXED + WIRED (Romeo: "all tools need to be created by sam simple").** The webintel stack is no
+longer inert — **`web_extract`** (page → named fields) and **`web_research`** (same fields across
+many pages → a table) are live tools, and **`web_fetch` now reads through webintel** instead of its
+own tag-stripper. 181 → 183 tools. SAM's brain is injected at the one place that plumbing belongs
+(`samLlm`, `free` tier — extraction from supplied text is cheap work and must not burn paid quota).
+
+**Boilerplate fixed, measured:** `<header>` was missing from the strip list (only `head` was there),
+which is why site chrome survived; and the extractor now prefers `<main>`/`<article>` when a page
+declares one — the author telling us where the content is beats guessing wrapper classes forever.
+Wikipedia preamble **1997 → 788 chars** (what remains is genuine article hatnotes), `example.com`
+unchanged, nodejs.org content starts at char 6. Guarded by 5 tests, each verified by reverting the
+fix — including one pinning that a near-empty `<main>` shell is NOT adopted, since JS-rendered
+pages ship those and adopting one would turn a readable page into an empty string.
+
+**⚠️ I DUPLICATED AN EXISTING GUARD — now consolidated.** `tools.ts` already had
+`assertPublicUrl`/`isPrivateIp`, and I wrote `url-guard.ts` without grepping for one first: the
+exact single-source-of-truth failure I spent this session fixing elsewhere. They are now ONE
+implementation. `url-guard` was the strict superset (CGNAT, multicast, scheme whitelist, fail-closed
+DNS) but the old one had **hex IPv4-mapped IPv6** (`::ffff:7f00:1` = 127.0.0.1) which mine lacked —
+added before consolidating, or the merge would have been a regression. `isPrivateIp` is re-exported
+so `sam.test.ts` now covers the surviving implementation.
 
 **Cowork drop landed + reviewed** — `webintel-research.ts` (+3 tests), `skills/security/SKILL.md`
 (CC BY, attributed; routes stalking/abuse to specialist help), ownership audit and strip filed into
