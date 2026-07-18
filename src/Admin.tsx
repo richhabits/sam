@@ -6,58 +6,12 @@ import { useEscape } from "./lib/useOverlay";
 
 type McpPreset = { id: string; label: string; emoji: string; note: string; official: boolean; fields: { env: string; label: string; placeholder?: string }[]; docs?: string; connected: boolean };
 
-// Every publicly-available provider SAM can rotate across. `starter` = the easy, generous,
-// grab-in-2-minutes ones shown first; the rest live under "More free brains". More keys
-// across more providers = more free capacity (SAM hops when one's rate-limited).
-type Prov = { id: string; label: string; note: string; url: string; starter?: boolean; premium?: boolean };
-const PROVIDERS: Prov[] = [
-  // ── Starter (do these first — fast, generous, easy) ──
-  { id: "groq", label: "Groq", note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys", starter: true },
-  { id: "cerebras", label: "Cerebras", note: "⚡ fast chat — blazing 70B, first pick", url: "https://cloud.cerebras.ai", starter: true },
-  { id: "gemini", label: "Google Gemini", note: "👁 photos & vision — reads images; solid all-rounder", url: "https://aistudio.google.com/apikey", starter: true },
-  { id: "openrouter", label: "OpenRouter", note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys", starter: true },
-  { id: "nvidia", label: "NVIDIA", note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com", starter: true },
-  { id: "mistral", label: "Mistral", note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys", starter: true },
-  { id: "github", label: "GitHub Models", note: "💬 general chat — free with a GitHub token", url: "https://github.com/settings/tokens", starter: true },
-  // ── More free brains (all public — stack as many as you like) ──
-  { id: "together", label: "Together AI", note: "🧠 reasoning + 🎨 FREE images (FLUX)", url: "https://api.together.xyz/settings/api-keys" },
-  { id: "deepseek", label: "DeepSeek", note: "🧠 deep reasoning + 💻 code — the heavy thinker", url: "https://platform.deepseek.com/api_keys" },
-  { id: "sambanova", label: "SambaNova", note: "⚡ fast chat — very quick 70B", url: "https://cloud.sambanova.ai" },
-  { id: "fireworks", label: "Fireworks", note: "💻 code + fast models", url: "https://fireworks.ai/account/api-keys" },
-  { id: "cohere", label: "Cohere", note: "✍️ writing & search-style answers", url: "https://dashboard.cohere.com/api-keys" },
-  { id: "hyperbolic", label: "Hyperbolic", note: "💬 general chat — open models", url: "https://app.hyperbolic.xyz/settings" },
-  { id: "novita", label: "Novita", note: "🎬 VIDEO generation + chat (free credits)", url: "https://novita.ai/settings/key-management" },
-  { id: "nebius", label: "Nebius", note: "💬 general chat — open models", url: "https://studio.nebius.com" },
-  { id: "xai", label: "xAI (Grok)", note: "💬 general chat (Grok)", url: "https://console.x.ai" },
-  { id: "huggingface", label: "HuggingFace", note: "🌐 many open models, one token", url: "https://huggingface.co/settings/tokens" },
-  { id: "ai21", label: "AI21", note: "✍️ writing (Jamba)", url: "https://studio.ai21.com/account/api-key" },
-  { id: "upstage", label: "Upstage", note: "💬 light quick chat (Solar)", url: "https://console.upstage.ai/api-keys" },
-  { id: "perplexity", label: "Perplexity", note: "🔍 web-aware answers", url: "https://www.perplexity.ai/settings/api" },
-  { id: "siliconflow", label: "SiliconFlow", note: "🎨 images + 🎬 video + chat (free tier)", url: "https://cloud.siliconflow.cn/account/ak" },
-  { id: "alibaba", label: "Qwen (Alibaba)", note: "🧠 reasoning (Qwen) — strong thinker", url: "https://bailian.console.alibabacloud.com" },
-  { id: "moonshot", label: "Moonshot (Kimi)", note: "📚 long documents (Kimi) — huge context", url: "https://platform.moonshot.ai/console/api-keys" },
-  { id: "zhipu", label: "Zhipu GLM-5.2", note: "🧠💻 NEW flagship — 1M context, top coder (20M free tokens)", url: "https://open.bigmodel.cn" },
-  { id: "hermes", label: "Hermes (Nous)", note: "🪽 open, un-nerfed — elite agentic tool-use & reasoning", url: "https://portal.nousresearch.com" },
-  { id: "minimax", label: "MiniMax", note: "💬 general chat", url: "https://platform.minimaxi.com" },
-  { id: "volcengine", label: "Doubao (Volcengine)", note: "💬 general chat — ByteDance", url: "https://console.volcengine.com/ark" },
-  { id: "baidu", label: "ERNIE (Baidu)", note: "💬 general chat — 128k context", url: "https://console.bce.baidu.com/qianfan" },
-  { id: "tencent", label: "Hunyuan (Tencent)", note: "💬 general chat — free lite tier", url: "https://console.cloud.tencent.com/lkeap" },
-  { id: "stepfun", label: "StepFun", note: "💬 general chat", url: "https://platform.stepfun.com" },
-  { id: "deepinfra", label: "DeepInfra", note: "🌐 many open models — good backup", url: "https://deepinfra.com/dash/api_keys" },
-  { id: "scaleway", label: "Scaleway", note: "💬 general chat — EU-hosted", url: "https://console.scaleway.com" },
-  { id: "chutes", label: "Chutes", note: "🌐 many models — decentralised", url: "https://chutes.ai" },
-  { id: "friendli", label: "Friendli", note: "💬 general chat — fast serving", url: "https://suite.friendli.ai" },
-  { id: "codestral", label: "Codestral (Mistral)", note: "💻 CODE specialist (Mistral) — free", url: "https://console.mistral.ai/codestral" },
-  { id: "inference", label: "Inference.net", note: "💬 general chat — cheap & quick", url: "https://inference.net" },
-  { id: "vercel", label: "Vercel AI Gateway", note: "🌐 100s of models · $5 free EVERY month", url: "https://vercel.com/ai-gateway" },
-  { id: "ovh", label: "OVHcloud AI", note: "💬 general chat — EU-hosted free tier", url: "https://endpoints.ai.cloud.ovh.net" },
-  { id: "gmi", label: "GMI Cloud", note: "🧠 DeepSeek/Llama/Qwen hosting", url: "https://console.gmicloud.ai" },
-  { id: "leonardo", label: "Leonardo.Ai", note: "🎨 images + img2video — $5 free credit", url: "https://app.leonardo.ai/settings" },
-  { id: "fal", label: "fal (HappyHorse)", note: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)", url: "https://fal.ai/dashboard/keys" },
-  // ── Premium (paid — only used if you pick "Best", never on free) ──
-  { id: "anthropic", label: "Anthropic (Claude)", note: "👑 premium (paid) — best quality, only on 'Best'", url: "https://console.anthropic.com/settings/keys", premium: true },
-  { id: "openai", label: "OpenAI", note: "👑 premium (paid) — only on 'Best'", url: "https://platform.openai.com/api-keys", premium: true },
-];
+// Providers come from the SERVER (/api/admin/config -> providers[]), which derives them from
+// server/providers.registry.ts. This file used to keep its own hardcoded copy — the fifth of
+// five lists — and it drifted: `hermes` was offered here but unsaveable, and baidu / tencent /
+// volcengine were wired brains this list never mentioned. Rendering what the server sends means
+// Settings cannot offer a provider the server can't save, ever again.
+type Prov = { id: string; label: string; note: string; url: string; starter?: boolean; premium?: boolean; noKey?: boolean; configStyle?: boolean; keys?: number };
 
 export default function Admin({ onClose }: { onClose: () => void }) {
   useEscape(onClose);
@@ -102,19 +56,17 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount; refresh is stable
   useEffect(() => { refresh(); }, []);
-  const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
+  const PROVIDERS: Prov[] = (cfg?.providers as Prov[]) || [];
+  const count = (id: string) => PROVIDERS.find((p) => p.id === id)?.keys ?? 0;
   const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 1600); };
-
-  // A few entries in PROVIDERS are single-key CONFIG values, not rotating key pools — they save
-  // through /api/admin/config. Posting them to /api/admin/keys returns "unknown provider".
-  const CONFIG_STYLE: Record<string, string> = { leonardo: "leonardo" };
 
   async function saveProvider(id: string) {
     const value = (drafts[id] || "").trim();
     if (!value) return;
     // The response used to be ignored, so a 400 still flashed "saved" and the user believed a
     // key was stored that never was. Check it, and say so when it fails.
-    const r = CONFIG_STYLE[id] ? await saveConfig(CONFIG_STYLE[id], value) : await saveKeys(id, value);
+    const spec = PROVIDERS.find((p) => p.id === id);
+    const r = spec?.configStyle ? await saveConfig(id, value) : await saveKeys(id, value);
     if (r?.error) { setSaveError({ id, msg: String(r.error) }); return; }
     setSaveError(null);
     setDrafts((d) => ({ ...d, [id]: "" }));

@@ -24,6 +24,7 @@ if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
 import express from "express";
 import cors from "cors";
 import { setPool, poolSize, keyStatus, getKey } from "./keys.ts";
+import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
 import { runModel, type Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
@@ -813,28 +814,9 @@ app.post("/api/allow", (req, res) => {
 
 // ── ADMIN · manage API keys & config from inside the app ─────
 // Providers → their .env variable. Rolling pools accept many keys (comma list).
-const PROVIDER_ENV: Record<string, string> = {
-  // Core
-  nvidia: "NVIDIA_API_KEYS", cerebras: "CEREBRAS_API_KEYS", mistral: "MISTRAL_API_KEYS",
-  github: "GITHUB_API_KEYS", gemini: "GEMINI_API_KEYS", groq: "GROQ_API_KEYS",
-  openrouter: "OPENROUTER_API_KEYS", anthropic: "ANTHROPIC_API_KEYS", openai: "OPENAI_API_KEYS",
-  // Invincible expansion
-  together: "TOGETHER_API_KEYS", sambanova: "SAMBANOVA_API_KEYS", deepseek: "DEEPSEEK_API_KEYS",
-  fireworks: "FIREWORKS_API_KEYS", xai: "XAI_API_KEYS", huggingface: "HUGGINGFACE_API_KEYS",
-  hyperbolic: "HYPERBOLIC_API_KEYS", novita: "NOVITA_API_KEYS", siliconflow: "SILICONFLOW_API_KEYS",
-  ai21: "AI21_API_KEYS", upstage: "UPSTAGE_API_KEYS",
-  nebius: "NEBIUS_API_KEYS", cohere: "COHERE_API_KEYS", perplexity: "PERPLEXITY_API_KEYS",
-  // Infinite Compute — Asian Heavyweights
-  alibaba: "ALIBABA_API_KEYS", volcengine: "VOLCENGINE_API_KEYS", zhipu: "ZHIPU_API_KEYS",
-  hermes: "HERMES_API_KEYS",   // offered in Settings + pooled in keys.ts; without this line saving a Nous key 400s
-  moonshot: "MOONSHOT_API_KEYS", minimax: "MINIMAX_API_KEYS", stepfun: "STEPFUN_API_KEYS",
-  baidu: "BAIDU_API_KEYS", tencent: "TENCENT_API_KEYS",
-  // Bonus free/free-credit providers
-  deepinfra: "DEEPINFRA_API_KEYS", scaleway: "SCALEWAY_API_KEYS",
-  chutes: "CHUTES_API_KEYS", friendli: "FRIENDLI_API_KEYS", codestral: "CODESTRAL_API_KEYS",
-  inference: "INFERENCE_API_KEYS", gmi: "GMI_API_KEYS", vercel: "VERCEL_API_KEYS", ovh: "OVH_API_KEYS",
-  fal: "FAL_API_KEYS",
-};
+// Derived from PROVIDER_REGISTRY, in full — no special cases left. What Settings offers is
+// exactly what this endpoint can save, because both read the same array.
+const PROVIDER_ENV: Record<string, string> = REGISTRY_ENV;
 const CONFIG_ENV: Record<string, string> = {
   cloudflareAccount: "CLOUDFLARE_ACCOUNT_ID", cloudflareToken: "CLOUDFLARE_API_TOKEN", leonardo: "LEONARDO_API_KEY",
   pexels: "PEXELS_API_KEY", pixabay: "PIXABAY_API_KEY", giphy: "GIPHY_API_KEY", tmdb: "TMDB_API_KEY", omdb: "OMDB_API_KEY",
@@ -870,7 +852,9 @@ function writeEnv(key: string, value: string) {
 app.get("/api/admin/config", (_req, res) => {
   const pools = keyStatus();
   res.json({
-    providers: Object.keys(PROVIDER_ENV).map((p) => ({ id: p, keys: poolSize(p) })),
+    // Full descriptors, not just ids: the Settings UI renders from THIS, so there is no second
+    // provider list in src/ to drift. Env var names never leave the server.
+    providers: uiCatalogue().map((p) => ({ ...p, keys: poolSize(p.id) })),
     elevenlabs: !!process.env.ELEVENLABS_API_KEY,
     elevenVoice: process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM",
     defaultTier: process.env.DEFAULT_TIER || "free",
