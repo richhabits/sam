@@ -39,6 +39,9 @@ const PROVIDERS: Prov[] = [
   { id: "zhipu", label: "Zhipu GLM-5.2", note: "🧠💻 NEW flagship — 1M context, top coder (20M free tokens)", url: "https://open.bigmodel.cn" },
   { id: "hermes", label: "Hermes (Nous)", note: "🪽 open, un-nerfed — elite agentic tool-use & reasoning", url: "https://portal.nousresearch.com" },
   { id: "minimax", label: "MiniMax", note: "💬 general chat", url: "https://platform.minimaxi.com" },
+  { id: "volcengine", label: "Doubao (Volcengine)", note: "💬 general chat — ByteDance", url: "https://console.volcengine.com/ark" },
+  { id: "baidu", label: "ERNIE (Baidu)", note: "💬 general chat — 128k context", url: "https://console.bce.baidu.com/qianfan" },
+  { id: "tencent", label: "Hunyuan (Tencent)", note: "💬 general chat — free lite tier", url: "https://console.cloud.tencent.com/lkeap" },
   { id: "stepfun", label: "StepFun", note: "💬 general chat", url: "https://platform.stepfun.com" },
   { id: "deepinfra", label: "DeepInfra", note: "🌐 many open models — good backup", url: "https://deepinfra.com/dash/api_keys" },
   { id: "scaleway", label: "Scaleway", note: "💬 general chat — EU-hosted", url: "https://console.scaleway.com" },
@@ -63,6 +66,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [eleven, setEleven] = useState("");
   const [voice, setVoice] = useState("");
   const [saved, setSaved] = useState("");
+  const [saveError, setSaveError] = useState<{ id: string; msg: string } | null>(null);
   const [allowed, setAllowed] = useState<string[]>([]);
   const [showMore, setShowMore] = useState(false);
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
@@ -101,8 +105,18 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const count = (id: string) => cfg?.providers?.find((p: any) => p.id === id)?.keys ?? 0;
   const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 1600); };
 
+  // A few entries in PROVIDERS are single-key CONFIG values, not rotating key pools — they save
+  // through /api/admin/config. Posting them to /api/admin/keys returns "unknown provider".
+  const CONFIG_STYLE: Record<string, string> = { leonardo: "leonardo" };
+
   async function saveProvider(id: string) {
-    await saveKeys(id, drafts[id] || "");
+    const value = (drafts[id] || "").trim();
+    if (!value) return;
+    // The response used to be ignored, so a 400 still flashed "saved" and the user believed a
+    // key was stored that never was. Check it, and say so when it fails.
+    const r = CONFIG_STYLE[id] ? await saveConfig(CONFIG_STYLE[id], value) : await saveKeys(id, value);
+    if (r?.error) { setSaveError({ id, msg: String(r.error) }); return; }
+    setSaveError(null);
     setDrafts((d) => ({ ...d, [id]: "" }));
     flash(id); refresh();
   }
@@ -167,6 +181,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
                 value={drafts[p.id] || ""} onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))} />
               <div className="admin-actions">
                 <button type="button" className="admin-save" onClick={() => saveProvider(p.id)}>{saved === p.id ? "Saved ✓" : "Save keys"}</button>
+                {saveError?.id === p.id && (
+                  <div className="admin-note" style={{ color: "#e06c6c", marginTop: 4 }}>
+                    ✗ not saved — {saveError.msg}. Nothing was written; the key is still missing.
+                  </div>
+                )}
                 <a className="admin-getkey" href={p.url} target="_blank" rel="noopener noreferrer">{p.premium ? "Get a key ↗" : "Get a FREE key ↗"}</a>
               </div>
             </div>

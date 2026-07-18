@@ -826,6 +826,7 @@ const PROVIDER_ENV: Record<string, string> = {
   nebius: "NEBIUS_API_KEYS", cohere: "COHERE_API_KEYS", perplexity: "PERPLEXITY_API_KEYS",
   // Infinite Compute — Asian Heavyweights
   alibaba: "ALIBABA_API_KEYS", volcengine: "VOLCENGINE_API_KEYS", zhipu: "ZHIPU_API_KEYS",
+  hermes: "HERMES_API_KEYS",   // offered in Settings + pooled in keys.ts; without this line saving a Nous key 400s
   moonshot: "MOONSHOT_API_KEYS", minimax: "MINIMAX_API_KEYS", stepfun: "STEPFUN_API_KEYS",
   baidu: "BAIDU_API_KEYS", tencent: "TENCENT_API_KEYS",
   // Bonus free/free-credit providers
