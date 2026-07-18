@@ -2,6 +2,42 @@
 
 All notable changes to SAM. Newest first.
 
+## [2.1.3] - 2026-07-18 — "Colosseum"
+
+SAM starts tuning itself. Its free brains now fight head-to-head and the winner steers routing —
+so the fastest, most capable brain answers first, automatically, and keeps re-earning the spot every
+night. Plus a wave of new surfaces (Markets, a "what SAM remembers" panel), six new tools, two new
+voices, and a repo-wide correctness/quality hardening. Still free, local and private. 285 tests.
+
+### Self-improving routing — the Colosseum
+- **Elo brain benchmark (`model_arena`):** SAM pits its rotating free brains against each other in
+  head-to-head matches, judged impartially on helpfulness, correctness & clarity, and ranks them by Elo.
+- **Winner steers routing:** the champion answers first on the free tier — so SAM gets faster/better on
+  its own. A **staleness guard** ignores a ranking that stopped refreshing (falls back to default order),
+  a **reset** control forgets the ranking on demand, and a **nightly auto-benchmark** keeps it fresh.
+- **Colosseum panel:** run the benchmark and read the live leaderboard from the UI.
+
+### New surfaces
+- **Markets panel** — a live, **keyless** watchlist (add tickers, live quotes) on a new `market_quote` tool.
+- **"What SAM remembers about you"** — the memory panel: search it, **export** it to Markdown, **wipe** it,
+  and a clickable "Remembers N things about you" status row. Noise facts are rejected so it stays clean.
+- **Mobile:** the Context panel (quick actions + status) is now reachable on mobile via a slide-in drawer.
+- **Settings redesign:** Apple-grade grouped-inset cards, consistent rows, checkmark selection.
+
+### New tools & voices
+- **`render_video`** — turn HTML into an MP4 (hyperframes port).
+- **`find_files`, `recent_files`, `find_duplicates`, `folder_digest`, `disk_space`** — local file utilities.
+- **Personas:** two new voices — **Bestie** and **Mentor** (same memory, different tone).
+- **Capability-scoped skills:** a `SKILL.md` can declare a `tools:` allowlist that's enforced at runtime.
+- **RAM-aware onboarding:** SAM recommends an Ollama model that fits your machine.
+- **CLI:** `--version` / `version` prints the version and exits without starting the server.
+
+### Quality & correctness hardening
+- **Zero lint warnings repo-wide** (was 315): buttons typed, void-returning `forEach`s braced, intentional
+  React patterns documented, and behavior-preserving server rewrites (`parseInt` radix, regex loops).
+- **Mac-side nightly guard:** the daily benchmark now fires a local notification if it fails to land, so a
+  broken nightly can't go unnoticed. Operating doctrine (`CLAUDE.md`) + living state (`docs/BOARD.md`) added.
+
 ## [2.1.2] - 2026-07-16 — "Audited"
 
 A deep pre-launch security + correctness audit (four independent passes over the whole codebase),
