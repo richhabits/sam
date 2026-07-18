@@ -317,7 +317,7 @@ button { font-family: inherit; cursor: pointer; }
 .drawer-empty { font-size: 15px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
 .drawer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .drawer-list li { display: flex; gap: 10px; font-size: 14px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
-.d-time { color: var(--accent-text); font-weight: 600; flex: none; }
+
 .d-msg { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 
 /* "What SAM remembers about you" — grouped learned memory, each item deletable */
@@ -956,7 +956,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .stu-hero { max-width: 100%; max-height: 100%; border-radius: 12px; object-fit: contain; }
 .stu-hint { color: var(--muted); font-size: 15px; text-align: center; padding: 20px; max-width: 420px; line-height: 1.6; }
 .stu-hint b { color: var(--accent-text); }
-.stu-dl { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: color-mix(in srgb, var(--surface) 85%, transparent); border: 1px solid var(--border); color: var(--text); font-size: 16px; text-decoration: none; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
 .stu-carousel { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; flex: none; }
 .stu-thumb { flex: none; width: 84px; height: 84px; border-radius: 12px; overflow: hidden; border: 2px solid transparent; background: var(--surface); padding: 0; cursor: pointer; }
 .stu-thumb.on { border-color: var(--accent); }
@@ -1029,8 +1029,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .side-list li.active { background: var(--accent-soft); }
 .side-open { flex: 1; text-align: left; background: none; border: 0; color: var(--text); font-size: 13px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .side-list li.active .side-open { color: var(--accent-text); font-weight: 600; }
-.side-del { background: none; border: 0; color: var(--muted); font-size: 12px; padding: 6px 8px; opacity: 0; cursor: pointer; }
-.side-list li:hover .side-del { opacity: 1; }
+
 .side-empty { color: var(--muted); font-size: 13px; padding: 12px 10px; }
 .side-foot { margin: 8px; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 13px; text-align: left; cursor: pointer; }
 .side-foot:hover { border-color: var(--accent); color: var(--accent-text); }

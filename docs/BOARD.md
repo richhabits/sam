@@ -13,6 +13,51 @@ closed; index.ts split; SSRF filtering tested; **431 tests green**).*
 
 ## Now (in flight)
 
+### 🌙 SESSION END — 2026-07-18 (terminal, UI wave). Read this first.
+
+**Clean, green, pushed.** 486 tests (was 409 at session start) · typecheck + build green ·
+`npm run lint` 0 errors · `npm audit` 0 vulns · 0 TODOs · 0 dead doc links · no untracked strays ·
+both launchd loops loaded at exit 0 · **9 free brains live** (GLM-5.2 + Kimi added by Romeo today).
+
+**Four agents ran in isolated worktrees, merged one at a time with verification between.** Each
+found a SILENT failure — something broken that produced no error anywhere:
+  · **Design** — the send arrow was **invisible on light themes** (1.49:1 white-on-grey). And
+    `--line`/`--panel`/`--mono` were **phantom tokens** declared by no theme, so `var(--line,#2c2c3a)`
+    painted near-black borders on paper-white linen — *including in three rules I had written that
+    same day*.
+  · **Studio** — four style cards were **dead**. They 404'd, and because previews are CSS
+    `background-image`, a 404 renders as a blank rectangle with nothing logged.
+  · **Chats** — the desktop sidebar had **no search at all**; it existed only in the mobile drawer
+    and matched titles, never content.
+  · **Personas** — the voice block sat in the **last-instruction slot** with nothing scoping it to
+    tone. No demonstrated exploit, but an unguarded surface; now every persona states that
+    judgement, safety rules, tool permissions and confirmations are identical in every voice.
+
+**Personas verified live** (4 calls, budget 5) — genuinely distinct, each hitting its spec. Ran on
+`ollama:llama3.2:3b`, which *strengthens* it: a 3B rendered them apart. It went local because my
+harness imported `models.ts` without dotenv, so `hasCloudKeys()` saw 0 — **not a routing bug**, the
+server sees all 9.
+
+**Design, two passes.** Readability (measured in the live DOM): chars/line **102 → 58ch cap**, rows
+36→40px, gaps 7→10px, labels 10.5→11.5px. Then the scale collapse the audit had deferred: padding
+**29→16**, font-size **24→13**, radius **18→12** distinct values — *snapped, not redesigned*, so 183
+values moved and **nothing moved more than 2px**.
+
+**Dead code swept.** 552 CSS classes checked: 4 genuinely dead rules removed (`.d-time`, `.side-del`
++ its orphaned hover rule, `.stu-dl`). **9 `prev-*` classes were NOT dead** — built dynamically as
+`` `prev-${id}` `` for the theme swatches; a grep-only sweep would have deleted the theme previews.
+18 exports have no external reference — **listed, deliberately not deleted**: several are intended
+API surface, unexporting saves no shipped bytes (tree-shaking), and the risk beats the benefit.
+
+**THE RECURRING LESSON, now five instances deep: a check that cannot fail is indistinguishable from
+one that passed.** Today: the contract test's cross-file bleed (could produce false PASSES) · `app.all`
+invisible to its route matcher · a verify script that had never executed while advertising "4/4" ·
+`.bubble.md` losing silently on CSS specificity · two of my own selectors (`.ctx-actions`, `.ctx-btn`)
+matching nothing at all. **Every fix this session was verified by reverting it and watching it go red.**
+Three times, checking stopped me "fixing" a non-problem (jammed emoji = screenshot artifact; 25 icons
+at line-height 1.0 = correct; `GITHUB_TOKEN` = the registry's own envSingular).
+
+
 ### 🌙 SESSION END — 2026-07-18 (terminal). Read this first tomorrow.
 
 **Both repos clean, green, backed up.** SAM `main` = origin `a98d155`, **431 tests**, typecheck
