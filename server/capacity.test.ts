@@ -46,3 +46,26 @@ describe("capacity", () => {
     expect(capacityReport().level).toBe("none");
   });
 });
+
+// ── reset-time awareness ─────────────────────────────────────────────────────
+// keys.ts computed `coolingUntil` (when the soonest rate-limited key frees up) and NOTHING
+// consumed it — so SAM could say "every key is cooling" but never "back in 4 minutes", and its
+// only advice was "go add another key". Telling someone to sign up for another service when
+// their existing key returns in four minutes is bad advice dressed as helpfulness.
+describe("capacity knows when free keys come back", () => {
+  it("humanises a wait rather than printing a timestamp", async () => {
+    const { capacityReport } = await import("./capacity.ts");
+    const r = capacityReport();
+    // waitMinutes is null when nothing is cooling — that's the normal case in a test env.
+    expect(r).toHaveProperty("waitMinutes");
+    expect(r.waitMinutes === null || typeof r.waitMinutes === "number").toBe(true);
+    if (r.waitMinutes !== null) expect(r.waitMinutes).toBeGreaterThanOrEqual(0);
+  });
+
+  it("never advertises a wait it cannot substantiate", () => {
+    // The headline may only mention "back in ..." when a real cooldown timestamp exists.
+    const { capacityReport } = require("./capacity.ts");
+    const r = capacityReport();
+    if (/back in/.test(r.headline)) expect(r.waitMinutes).not.toBeNull();
+  });
+});

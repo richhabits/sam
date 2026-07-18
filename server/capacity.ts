@@ -28,7 +28,18 @@ export interface CapacityReport {
   healthy: number;      // free keys usable right now (not cooling)
   cooling: number;      // free keys rate-limited/cooling
   nextToAdd: { id: string; label: string; url: string; note: string } | null;
+  /** Minutes until the first rate-limited key frees up (0 = nothing cooling, null = unknown). */
+  waitMinutes: number | null;
   headline: string;
+}
+
+/** "in 4 min" / "in about an hour" — a wait you can act on, not a raw timestamp. */
+function humanWait(mins: number | null): string {
+  if (mins === null || mins <= 0) return "";
+  if (mins < 2) return "in under a minute";
+  if (mins < 60) return `in ~${Math.round(mins)} min`;
+  const h = mins / 60;
+  return h < 2 ? "in about an hour" : `in ~${Math.round(h)} hours`;
 }
 
 // Compute capacity purely from the live key-pool health (keys.ts). No network.
@@ -41,6 +52,14 @@ export function capacityReport(): CapacityReport {
   const cooling = free.reduce((a, s) => a + s.cooling, 0);
   const nextToAdd = FREE_PROVIDERS.find((p) => !(byId.get(p.id)?.total)) || null;
 
+  // keys.ts already knows when the soonest rate-limited key frees up — it was computed and then
+  // consumed by nothing, so SAM could say "everything is cooling" but never "back in 4 minutes".
+  // Waiting is often the right answer and it costs nothing; without this the only advice we
+  // could give was "add another key", which pushes people to sign up for something they may not
+  // need. Two real options beat one.
+  const coolingUntils = free.map((s) => (s as { coolingUntil?: number }).coolingUntil || 0).filter((t) => t > Date.now());
+  const waitMinutes = coolingUntils.length ? (Math.min(...coolingUntils) - Date.now()) / 60000 : null;
+
   let level: CapacityLevel;
   if (configured === 0) level = "none";
   else if (healthy === 0) level = "low";                       // everything's cooling / rate-limited
@@ -49,11 +68,11 @@ export function capacityReport(): CapacityReport {
 
   const headline =
     level === "none" ? "No free AI key yet — SAM is running local-only (needs Ollama, else it can't think)."
-    : level === "low" ? "Free capacity is maxed out right now — every key is rate-limited/cooling."
+    : level === "low" ? `Free capacity is maxed out right now — every key is rate-limited${humanWait(waitMinutes) ? `, back ${humanWait(waitMinutes)}` : ""}.`
     : level === "ok"  ? "Free capacity is thin — one provider is carrying the load."
     : "Free capacity looks healthy.";
 
-  return { level, configured, freeKeys, healthy, cooling, nextToAdd, headline };
+  return { level, configured, freeKeys, healthy, cooling, nextToAdd, waitMinutes, headline };
 }
 
 // A short, actionable nudge — ONLY when adding a key would actually help (low/none).
@@ -62,8 +81,14 @@ export function capacityNudge(): string | null {
   const r = capacityReport();
   if (r.level === "ample" || r.level === "ok") return null;
   const add = r.nextToAdd;
-  const tip = add
+  // If everything is merely COOLING, waiting is a real option and costs nothing — lead with it.
+  // Telling someone to go and sign up for another service when their key frees up in four
+  // minutes is bad advice dressed as helpfulness.
+  const waiting = r.waitMinutes !== null && r.waitMinutes > 0 && r.freeKeys > 0;
+  const tip = waiting
+    ? ` Wait it out, or add another free key in Settings → API keys${add ? ` (${add.label} is a good next one)` : ""}.`
+    : add
     ? ` Grab a free ${add.label} key (${add.note}) — ${add.url} — and paste it in Settings → API keys (60s).`
     : " Add another free key in Settings → API keys, or start Ollama for unlimited local.";
-  return `⚡ ${r.headline}${tip}`;
+  return `${r.headline}${tip}`;
 }
