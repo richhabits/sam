@@ -28,9 +28,9 @@ vault/memory.json
 vault/memory.db*
 vault/authorized.json
 
-# logs & caches
+# logs & caches (runtime + launchd .out/.err — never committed)
 *.log
-logs/          # runtime logs + launchd .out/.err — never committed
+logs/
 .cache/
 coverage/
 .vitest/
