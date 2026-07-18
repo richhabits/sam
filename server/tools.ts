@@ -77,6 +77,7 @@ import { loadSkills } from "./skills.ts";
 import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
 import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, saveRanking, type ArenaResult } from "./colosseum.ts";
+import { championWithConfidence } from "./colosseum-significance.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
@@ -1044,8 +1045,20 @@ export async function benchmarkBrains(
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
   const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
   const result = await runArena(competitors, prompts, answer, judge);
-  saveRanking(result, new Date().toISOString());   // persist → the free-tier cascade now prefers the winner
-  return result;
+  // Only re-crown on real evidence. The arena used to persist leaderboard[0] by raw Elo, so a
+  // gap well inside the noise could flip the champion night to night and churn routing for
+  // nothing. championWithConfidence runs a one-sided two-proportion z-test of the leader
+  // against the runner-up, Bonferroni-adjusted for having picked the max of N brains; when it
+  // isn't significant we keep the incumbent ranking (routing is unchanged, which is the safe
+  // default). See server/colosseum-significance.ts.
+  const verdict = championWithConfidence(result.leaderboard);
+  if (verdict.significant) {
+    saveRanking(result, new Date().toISOString());   // persist → the free-tier cascade prefers the winner
+    console.log(`arena: re-crowned — ${verdict.reason}`);
+  } else {
+    console.log(`arena: champion unchanged — ${verdict.reason}`);
+  }
+  return result;   // shape unchanged — the verdict is logged, not bolted onto the public contract
 }
 
 // ── REGISTRY ─────────────────────────────────────────────────
