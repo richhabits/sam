@@ -65,9 +65,15 @@ surface (`src/lib/api.ts`) and the route layer (`index.ts`) have no direct tests
 precisely where today's defects landed: a 400 the UI ignored, a loopback gate that was missing, a
 save handler that reported success on failure. All three were found by *reading*, not by a test.
 
-**Recommendation:** a thin route-contract test for `index.ts` (status codes + error envelope
-shape per route) would have caught two of today's three Settings bugs. Higher value than more
-unit tests on already-tested modules.
+**Done — `server/routes.contract.test.ts` (6 assertions).** Static over the source, because
+`index.ts` calls `app.listen()` at module scope with no export, so importing it in a test would
+boot a real server. It pins: no duplicate registrations · **every privileged write is
+loopback-gated** (the 10 routes that call `writeEnv`/`setAllow`/token ops) · every error response
+uses one of the two documented envelopes · everything lives under `/api` · no GET mutates
+privileged state. Each assertion was verified by reintroducing its bug — removing the
+`/api/admin/keys` gate, registering a duplicate route, and returning `{message}` instead of
+`{error}` each turn it red. **If `app` is ever exported, replace this with supertest and drive
+the real handlers — strictly better.**
 
 ## 4. Two real circular imports (and one false alarm)
 
@@ -89,8 +95,11 @@ injection pattern `webintel-extract` already uses for its LLM.
 
 ## What is genuinely healthy
 
-- **Error envelopes are consistent**: 81 of 83 error responses use `{ error }`; only two
-  outliers use `{ kind }`. Success uses `{ ok: true }` in 29 places. That is unusually tidy.
+- **Error envelopes are consistent — fully, on a closer look.** 81 of 83 use `{ error }`; the
+  rest use `{ kind: "final", text }`, which is not an outlier but the **chat protocol** envelope,
+  so a mid-stream failure renders as a friendly message instead of a raw error. (`/api/quotes`
+  looked like a third case and isn't — it returns `{ quotes: [], error }`, and my first regex
+  only read the leading key.) **Zero violations.** Now enforced by `routes.contract.test.ts`.
 - **No import tangle**: the most-imported modules (`models` 11, `tools` 6, `keys` 6, `authz` 6)
   are the ones you would expect to be shared. No hub-and-spoke mess.
 - **`src/` never imports `server/`** — the boundary held even through today's registry refactor,
