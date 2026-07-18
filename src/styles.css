@@ -1519,3 +1519,40 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Small-label floor. These are uppercase tracked labels, so 11.5px reads as
    deliberate where 10.5px read as squeezed. */
 .side-group, .ctx-label, .side-title, .dash-sec { font-size: 11px; }
+
+/* ============================================================================
+   UPDATE CONTROL — always present, silent when there's nothing to do.
+   Replaces the appear-only-when-behind bar: a control you cannot see is one you
+   cannot trust, and there was previously no way to check on demand at all.
+   ========================================================================== */
+.upd-wrap { position: relative; display: inline-flex; }
+.upd-btn { position: relative; }
+.upd-glyph { display: inline-block; font-size: 15px; line-height: 1; opacity: .75; }
+.upd-btn:hover .upd-glyph { opacity: 1; }
+.upd-btn.spin .upd-glyph { animation: upd-spin .9s linear infinite; }
+@keyframes upd-spin { to { transform: rotate(360deg); } }
+
+/* Available: the glyph takes the accent and a slow breath — noticeable on a glance across the
+   room, not a strobe you want to dismiss. Reduced-motion users get the colour and dot only. */
+.upd-btn.behind .upd-glyph { opacity: 1; color: var(--accent); }
+.upd-btn.behind { animation: upd-breathe 2.4s ease-in-out infinite; }
+@keyframes upd-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+}
+.upd-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 999px;
+  background: var(--accent); border: 2px solid var(--surface); }
+@media (prefers-reduced-motion: reduce) {
+  .upd-btn.behind, .upd-btn.spin .upd-glyph { animation: none; }
+}
+
+.upd-scrim { position: fixed; inset: 0; z-index: 40; }
+.upd-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 41; width: 250px;
+  padding: 14px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); text-align: left; }
+.upd-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.upd-sub { margin-top: 2px; font-size: 12px; color: var(--muted); }
+.upd-go { display: block; width: 100%; margin-top: 12px; padding: 8px 12px; border: 0;
+  border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit;
+  font-size: 13px; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
+.upd-go:disabled { opacity: .6; cursor: default; }

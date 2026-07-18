@@ -14,6 +14,7 @@ import { ProgressTracker, TraceStrip } from "./components/Trace";
 // so the initial app is slimmer and paints faster.
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
+import UpdateButton from "./UpdateButton";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
@@ -1124,6 +1125,7 @@ export default function App() {
             );
           })()}
           <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre">📊 Dashboard</button>
+          <UpdateButton />
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
         {settingsOpen && createPortal(<>
