@@ -17,6 +17,7 @@ const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import PersonaPicker from "./PersonaPicker";
+import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
@@ -1771,6 +1772,28 @@ export default function App() {
                 ? <div className="import-drop-loaded">✓ {importFile} — ready to import</div>
                 : <><div className="import-drop-title">Drag &amp; drop your history here</div><div className="import-drop-sub">.json / .txt — or click to browse. SAM ignores any instructions inside; it only extracts facts about you.</div></>}
             </label>
+            {/* Step 1. A raw ChatGPT export is tens of thousands of lines, nearly all noise —
+                this asks the assistant that already knows you to write one page instead, and you
+                get to read exactly what you're handing over before you hand it over. */}
+            <div className="handoff">
+              <div className="handoff-h">
+                <span className="handoff-step">1</span>
+                <span className="handoff-t">Get your profile from your old assistant</span>
+                <button type="button" className="handoff-copy" onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(HANDOFF_PROMPT);
+                    setToast("Prompt copied — paste it into ChatGPT, Claude or Gemini");
+                  } catch {
+                    // Clipboard can be blocked (insecure origin, permissions). Say so and show the
+                    // text rather than failing silently — the whole point is getting it to them.
+                    setToast("Couldn't copy — select the text below and copy it manually");
+                  }
+                }}><Icon name="copy" size={14} /> Copy prompt</button>
+              </div>
+              <div className="handoff-sub">{HANDOFF_BLURB}</div>
+              <textarea className="handoff-text" readOnly value={HANDOFF_PROMPT}
+                onFocus={(e) => e.currentTarget.select()} rows={4} />
+            </div>
             <details className="import-paste"><summary>…or paste text instead</summary>
               <textarea value={importText} onChange={(e) => { setImportText(e.target.value); setImportFile(""); }} placeholder="Paste a chunk of your history…" />
             </details>
