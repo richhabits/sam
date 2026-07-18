@@ -32,9 +32,15 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
     return () => clearInterval(iv);
   }, []);
 
+  const [showAllLanes, setShowAllLanes] = useState(false);
   const providers = s?.models?.providers || [];
   const freeLive = providers.filter((p: any) => p.tier === "free" && p.keys > 0);
   const freeTotal = providers.filter((p: any) => p.tier === "free").length;
+  // A control centre should show what IS running. Listing all 42 lanes meant ~35 rows reading "—",
+  // so the panel was mostly a list of things the user does NOT have — the opposite of "at a glance".
+  const liveLanes = providers.filter((p: any) => p.keys > 0);
+  const dormantLanes = providers.filter((p: any) => !(p.keys > 0));
+  const shownLanes = showAllLanes ? [...liveLanes, ...dormantLanes] : liveLanes;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
@@ -75,7 +81,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               )}
             </div>
             <div className="dash-lanes">
-              {providers.map((p: any) => (
+              {shownLanes.map((p: any) => (
                 <button
                   type="button"
                   key={p.id}
@@ -89,6 +95,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                   <span className="dash-lane-keys">{p.keys > 0 ? `${p.keys} key${p.keys > 1 ? "s" : ""}` : "—"}</span>
                 </button>
               ))}
+              {dormantLanes.length > 0 && (
+                <button type="button" className="dash-lane-more" onClick={() => setShowAllLanes((v) => !v)}>
+                  {showAllLanes
+                    ? "▾ hide the lanes with no key"
+                    : `▸ ＋ ${dormantLanes.length} more lanes available — add a key to switch one on`}
+                </button>
+              )}
             </div>
 
             {/* security watchdog */}

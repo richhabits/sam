@@ -1353,3 +1353,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   border: 1px dashed var(--line, #2c2c3a); border-radius: 12px; background: none; cursor: pointer;
   font: inherit; font-size: 13px; color: var(--muted, #9a9ab0); text-align: center; }
 .wiz-all:hover { color: var(--text, #eee); border-color: var(--accent, #8b7bf7); }
+
+/* The lanes list defaults to what's actually live; the rest fold away behind this. */
+.dash-lane-more { display: block; width: 100%; margin-top: 8px; padding: 9px 12px; appearance: none;
+  border: 1px dashed var(--line, #2c2c3a); border-radius: 10px; background: none; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--muted, #9a9ab0); text-align: left; }
+.dash-lane-more:hover { color: var(--text, #eee); border-color: var(--accent, #8b7bf7); }
