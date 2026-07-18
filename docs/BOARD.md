@@ -18,6 +18,24 @@ closed; index.ts split; SSRF filtering tested; **431 tests green**).*
 **Both repos clean, green, backed up.** SAM `main` = origin `a98d155`, **431 tests**, typecheck
 + build green, biome clean, `npm audit` 0 vulns.
 
+**PERSONAS VERIFIED LIVE (2026-07-18)** — the one claim the persona work could not back. Same
+question ("I've been putting off the same task for three weeks") to gran/dad/coach/pa through the
+real prompt assembly. They came back genuinely distinct, each hitting its spec: **Gran** "Oh love,
+now then", slows you down, asks after *you*, closes "Sound fair?" · **Dad** clipped, hard thing
+first, ends "are you going to do this or sit here talking about it?" · **Coach** "name your excuse",
+shrinks it to one rep in the next 10 minutes · **PA** "Done —", "On it — next steps", pure
+execution. 4 live calls, inside the ≤5 doctrine budget.
+
+**It ran on `ollama:llama3.2:3b`, which makes the result STRONGER** — a 3B local model rendered
+them apart, so a strong cloud brain certainly will. Reason it went local: my test harness imported
+`models.ts` directly without loading dotenv, so `hasCloudKeys()` saw 0 keys and correctly fell back.
+**Not a routing bug** — the live server sees all 9 keys (verified via `/api/admin/config`). Worth
+knowing for any future standalone harness: import the module, and you get NO `.env`.
+
+**One defect to watch:** Gran's reply contained "them needs a break" — the `notices: Them, before
+the task` axis leaking into prose as a literal word. Almost certainly 3B weakness rather than a
+prompt bug, but re-check on a strong brain before assuming so.
+
 **⚠️ BOARD COLLISION ×2, 2026-07-18:** the Cowork session overwrote this file on disk with an
 older copy — **twice**, the second time mid-session while I was mid-edit. The first was caught by
 `git status`; the second by **`.githooks/pre-commit` board-guard**, which refused a commit deleting
