@@ -217,7 +217,16 @@ const ALIBABA_MODEL = process.env.ALIBABA_MODEL || "qwen-plus";
 const VOLCENGINE_MODEL = process.env.VOLCENGINE_MODEL || "doubao-1.5-pro-32k";
 const ZHIPU_MODEL = process.env.ZHIPU_MODEL || "glm-5.2";   // Zhipu flagship — 1M context, MIT (20M free tokens on signup; set glm-4-flash for the free-forever tier)
 const HERMES_MODEL = process.env.HERMES_MODEL || "Hermes-4-405B";   // Nous Hermes flagship — open weights, superb agentic/tool-use reasoning (free tier via Nous portal)
-const MOONSHOT_MODEL = process.env.MOONSHOT_MODEL || "kimi-k2.7-code";   // ⚠️ UNVERIFIED (2026-07-18). Changed from "moonshot-v1-8k" on a claim — that it sunsets 2026-08-31 and is closed to new signups — which NOBODY has confirmed against the live API; nor has this replacement ID been called. Both names are guesses until someone runs `moonshot` with a real key. Low risk (the cascade skips a provider that errors, so a wrong ID costs a lane, not a regression), but do not treat this line as verified. Override with MOONSHOT_MODEL=... if you know the right ID.
+const MOONSHOT_MODEL = process.env.MOONSHOT_MODEL || "kimi-k2.7-code";
+// VERIFIED 2026-07-19 against a real key: GET /v1/models on api.moonshot.ai lists exactly
+// ["kimi-k2.6", "kimi-k2.7-code"], so the id is right.
+//
+// The BASE URL was the actual bug. We called api.moonshot.cn, and a key issued on the global
+// platform (platform.kimi.ai) gets 401 there — the two platforms are separate accounts, not
+// mirrors. Every Kimi call was failing auth and the cascade skipped the brain silently, which
+// looks identical to "no key". Default is the global endpoint now; MOONSHOT_BASE_URL overrides
+// it for anyone on the mainland-China platform.
+const MOONSHOT_BASE = process.env.MOONSHOT_BASE_URL || "https://api.moonshot.ai/v1";
 const MINIMAX_MODEL = process.env.MINIMAX_MODEL || "abab6.5s-chat";
 const STEPFUN_MODEL = process.env.STEPFUN_MODEL || "step-1-8k";
 const BAIDU_MODEL = process.env.BAIDU_MODEL || "ernie-speed-128k";
@@ -274,7 +283,7 @@ const PROVIDERS: Provider[] = [
     if (orouter) return callOpenAICompat("https://openrouter.ai/api/v1", process.env.HERMES_OR_MODEL || "nousresearch/hermes-4-405b", s, p, orouter);
     return callOllama(s, p, process.env.HERMES_LOCAL_MODEL || "hermes3");   // free + private fallback
   } },
-  { id: "moonshot", tier: "free", label: `moonshot:${MOONSHOT_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.moonshot.cn/v1", MOONSHOT_MODEL, s, p, k) },
+  { id: "moonshot", tier: "free", label: `moonshot:${MOONSHOT_MODEL}`, run: (s, p, k) => callOpenAICompat(MOONSHOT_BASE, MOONSHOT_MODEL, s, p, k) },
   { id: "minimax", tier: "free", label: `minimax:${MINIMAX_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.minimax.chat/v1", MINIMAX_MODEL, s, p, k) },
   { id: "stepfun", tier: "free", label: `stepfun:${STEPFUN_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.stepfun.com/v1", STEPFUN_MODEL, s, p, k) },
   { id: "baidu", tier: "free", label: `baidu:${BAIDU_MODEL}`, run: (s, p, k) => callOpenAICompat("https://qianfan.baidubce.com/v2", BAIDU_MODEL, s, p, k) },
