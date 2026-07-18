@@ -7,6 +7,8 @@ import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
 import { isStopCommand } from "./lib/stopIntent";
 import WidgetRenderer from "./WidgetRenderer";
+import ChatList, { displayTitle } from "./ChatList";
+import { matchesQuery } from "./lib/chatTitle";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
 // Heavy panels are lazy-loaded — they only download when you actually open them,
 // so the initial app is slimmer and paints faster.
@@ -48,7 +50,9 @@ function greeting(name: string) {
 function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
 interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean }
-interface Convo { id: string; title: string; messages: Msg[]; at: number; folder?: string }
+// `title` is auto-derived from the first message on every turn; `name` is a user-set
+// override that survives it. `pinned` floats a chat to the top of the sidebar.
+interface Convo { id: string; title: string; messages: Msg[]; at: number; folder?: string; name?: string; pinned?: boolean }
 
 const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -178,6 +182,9 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem("sam.folders", JSON.stringify(folders)); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, [folders]);
   function addFolder() { const n = window.prompt("New folder name")?.trim(); if (n && !folders.includes(n)) setFolders((f) => [...f, n]); }
   function moveToFolder(id: string, folder: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, folder: folder || undefined } : c))); }
+  // An empty name clears the override and hands the title back to auto-derivation.
+  function renameConvo(id: string, name: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, name: name.trim() || undefined } : c))); }
+  function togglePin(id: string) { setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))); }
   function renameFolder(old: string) {
     const n = window.prompt("Rename folder", old)?.trim();
     if (!n || n === old || folders.includes(n)) return;
@@ -1218,33 +1225,21 @@ export default function App() {
             onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) moveToFolder(id, ""); setDragChat(""); }}>All</button>
           {folders.map((f) => (
             <button type="button" key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
-              onDoubleClick={() => renameFolder(f)} title="Click to filter · double-click to rename"
+              onDoubleClick={() => renameFolder(f)} title={`Filter by ${f}`}
               onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
               onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}>📁 {f}</button>
           ))}
           <button type="button" className="side-folder add" onClick={addFolder} title="New folder">＋</button>
-          {folderFilter && folders.includes(folderFilter) && (
+          {/* Rename/delete only appear for the SELECTED folder — discoverable without adding
+              two buttons per chip, and replaces the undiscoverable double-click-to-rename. */}
+          {folderFilter && folders.includes(folderFilter) && (<>
+            <button type="button" className="side-folder edit-folder" onClick={() => renameFolder(folderFilter)} title={`Rename folder "${folderFilter}"`}>✎</button>
             <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}>🗑</button>
-          )}
+          </>)}
         </div>
-        <ul className="side-list">
-          {convos.filter((c) => !folderFilter || c.folder === folderFilter).map((c) => (
-            <li key={c.id} className={`${c.id === activeId ? "active" : ""} ${dragChat === c.id ? "dragging" : ""}`}
-              draggable
-              onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); e.dataTransfer.effectAllowed = "move"; setDragChat(c.id); }}
-              onDragEnd={() => setDragChat("")}>
-              <button type="button" className="side-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
-              {folders.length > 0 && (
-                <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => moveToFolder(c.id, e.target.value)} title="Move to folder">
-                  <option value="">📁</option>
-                  {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              )}
-              <button type="button" className="side-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
-            </li>
-          ))}
-          {convos.filter((c) => !folderFilter || c.folder === folderFilter).length === 0 && <li className="side-empty">{folderFilter ? "No chats in this folder." : "No chats yet — start typing."}</li>}
-        </ul>
+        <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
+          onOpen={openConvo} onDelete={deleteConvo} onRename={renameConvo} onTogglePin={togglePin}
+          onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
         <button type="button" className="side-foot" onClick={() => setImportOpen(true)}>📥 Import your history</button>
       </aside>
       <div className="center">
@@ -1619,14 +1614,16 @@ export default function App() {
             {convos.length > 4 && (
               <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="🔍 Search chats…" />
             )}
+            {/* Same titling + content search as the desktop sidebar — this drawer is the
+                only chat list on narrow screens, where `.side` is hidden. */}
             <ul className="convo-list">
-              {convos.filter((c) => !convoSearch.trim() || (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).map((c) => (
+              {convos.filter((c) => matchesQuery(convoSearch, displayTitle(c), c.messages.map((m) => m.text))).map((c) => (
                 <li key={c.id} className={c.id === activeId ? "active" : ""}>
-                  <button type="button" className="convo-open" onClick={() => openConvo(c.id)}>{c.title || "New chat"}</button>
+                  <button type="button" className="convo-open" onClick={() => openConvo(c.id)}>{displayTitle(c)}</button>
                   <button type="button" className="convo-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
                 </li>
               ))}
-              {convoSearch.trim() && convos.filter((c) => (c.title || "").toLowerCase().includes(convoSearch.trim().toLowerCase())).length === 0 && (
+              {convoSearch.trim() && convos.filter((c) => matchesQuery(convoSearch, displayTitle(c), c.messages.map((m) => m.text))).length === 0 && (
                 <li className="convo-empty">No chats match “{convoSearch}”.</li>
               )}
             </ul>
