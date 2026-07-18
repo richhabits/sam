@@ -70,8 +70,37 @@ server/index.ts   1770
 already visible: `index.ts` groups cleanly by domain (admin, memory, arena, media, remote), and
 `App.tsx` mixes onboarding, chat, and panes.
 
-**Not urgent.** Size alone isn't a defect; these files are navigable and consistently
-commented. Flagging it because the trend is one-way — nothing has ever been split out.
+**Started, deliberately one slice.** `server/routes.memory.ts` extracts the 4 memory-dashboard
+routes; `index.ts` is 1770 → 1738. Small on purpose: the value of this first cut is the *pattern
+and the map*, not the line count.
+
+**The pattern:** a `registerXRoutes(app)` function, not an Express `Router`. A Router with a
+mount point would have changed the route paths; passing `app` keeps paths and registration order
+byte-identical, so an extraction can never silently move an endpoint.
+
+**The map — measured coupling, so the next slice is chosen rather than guessed.** "shared" =
+`index.ts`-local identifiers a section closes over; those must be threaded before it can move.
+
+| section | lines | routes | shared | cheap to extract? |
+|---|---|---|---|---|
+| Memory dashboard | 60 | 9 | **1** | ✅ done |
+| Workflows | 36 | 5 | 1 | ✅ yes |
+| ElevenLabs voice | 42 | 1 | 1 | ✅ yes |
+| Creative Space proxy | 34 | 1 | 1 | ✅ yes |
+| Rollback | 74 | 8 | 6 | ⚠️ some threading |
+| People / faces | 115 | 15 | 8 | ⚠️ some threading |
+| Generated-image cache | 149 | 13 | 8 | ⚠️ some threading |
+| ADMIN keys & config | 169 | 8 | 8 | ⚠️ shares `writeEnv`, `PROVIDER_ENV`, `CONFIG_ENV` |
+| MAIN COMMAND LOOP | 118 | 1 | **11** | ❌ deeply coupled — leave it |
+
+**Also fixed here, and it is the interesting part:** `routes.contract.test.ts` read *only*
+`index.ts`, so the moment 4 routes moved out it silently stopped covering them — a test shrinking
+its own scope with every extraction while still reporting green. It now scans `index.ts` plus
+every `routes.*.ts`, and asserts an extracted route is among them.
+
+**`App.tsx` (1840) and `tools.ts` (2513) untouched.** `tools.ts` is a 181-entry registry and long
+by nature — splitting it buys little. `App.tsx` shares state across onboarding/chat/panes, so it
+needs prop or context threading, which is a different and riskier job than moving routes.
 
 ## 3. Twelve of 24 sizeable modules have no direct test
 

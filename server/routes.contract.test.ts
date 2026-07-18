@@ -13,12 +13,17 @@
  * If someone later exports `app` from index.ts, replace this with supertest and drive the real
  * handlers — strictly better. Until then this holds the line at zero cost.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "index.ts"), "utf8");
+// Scans index.ts AND every routes.*.ts module. index.ts is being split by domain (audit #2), and
+// a contract test that only read index.ts would silently stop covering each route as it moved —
+// shrinking its own scope with every extraction while still reporting green.
+const here = dirname(fileURLToPath(import.meta.url));
+const routeFiles = ["index.ts", ...readdirSync(here).filter((f) => /^routes\..*\.ts$/.test(f) && !f.includes(".test."))];
+const src = routeFiles.map((f) => readFileSync(join(here, f), "utf8")).join("\n");
 
 type Route = { method: string; path: string; body: string };
 const routes: Route[] = (() => {
@@ -35,7 +40,9 @@ const PRIVILEGED = ["writeEnv(", "setAllow", "regenerateToken", "setAutopilot", 
 
 describe("route contract", () => {
   it("finds the routes (guard: this test is worthless if the parse breaks)", () => {
+    expect(routeFiles.length).toBeGreaterThan(1);          // index.ts + at least one extracted module
     expect(routes.length).toBeGreaterThan(100);
+    expect(routes.some((r) => r.path === "/api/memory")).toBe(true);   // an EXTRACTED route
     expect(routes.some((r) => r.path === "/api/admin/keys")).toBe(true);
   });
 
