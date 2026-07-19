@@ -11,6 +11,7 @@
 
 import { existsSync, mkdirSync } from "node:fs";
 import { count } from "./pulse.ts";
+import { distill } from "./reader.ts";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, dirname, extname, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -76,7 +77,11 @@ const EMBED_BATCH = 32;
 // would keep serving vectors made by the OLD chunking/model — a silent stale HIT, the one
 // unacceptable outcome. A change here BUSTS the whole index and forces a re-embed. Bump the
 // leading version when chunkText's logic changes in a way that alters output for the same params.
-const CHUNK_FP = `v1:${MAX_CHARS_PER_FILE}:${CHUNK_CHARS}:${MIN_CHUNK_CHARS}`;
+// Read at call time (not a const): the Reader state affects the extracted text, so flipping
+// SAM_READER changes the derivation and must bust the index just like a chunk-param change.
+function chunkFp(): string {
+  return `v1:${MAX_CHARS_PER_FILE}:${CHUNK_CHARS}:${MIN_CHUNK_CHARS}:${process.env.SAM_READER === "1" ? "reader" : "plain"}`;
+}
 
 // Never descend into these — system junk, caches, other apps' guts.
 const SKIP_DIRS = new Set([
@@ -97,6 +102,15 @@ export async function extractText(path: string, ext: string): Promise<string> {
   }
   let text = await readFile(path, "utf8");
   if (ext === ".html" || ext === ".htm") {
+    // Opt-in: the Reader distils HTML to clean markdown (structure kept, boilerplate pruned) so the
+    // index stores the article, not the page chrome. Falls back LOUDLY to the plain strip when the
+    // Reader finds too little (a JS-rendered page) — never a silent empty result. The Reader state is
+    // part of the index fingerprint (chunkFp), so toggling SAM_READER re-extracts every HTML file.
+    if (process.env.SAM_READER === "1") {
+      const d = distill(text);
+      if (d) return d.markdown;
+      console.warn(`  📄 reader: too little distilled from ${path} — using the plain strip`);
+    }
     text = text.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
   }
@@ -175,11 +189,12 @@ export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<In
   const storedModel = getMeta("model");
   const storedChunk = getMeta("chunkfp");
   const modelChanged = !!storedModel && !!wantModel && storedModel !== wantModel;
-  const chunkChanged = !!storedChunk && storedChunk !== CHUNK_FP;
+  const wantChunk = chunkFp();
+  const chunkChanged = !!storedChunk && storedChunk !== wantChunk;
   if (modelChanged || chunkChanged) {
     d.exec("DELETE FROM docs; DELETE FROM doc_files;");
     invalidateDocCache();
-    report.busted = modelChanged ? `embedder changed (${storedModel} → ${wantModel}) — re-embedding all` : `chunking changed (${storedChunk} → ${CHUNK_FP}) — re-embedding all`;
+    report.busted = modelChanged ? `embedder changed (${storedModel} → ${wantModel}) — re-embedding all` : `chunking changed (${storedChunk} → ${wantChunk}) — re-embedding all`;
   }
 
   let embedModel: string | null = null;   // set by the first successful batch; pinned thereafter
@@ -238,7 +253,7 @@ export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<In
   // Persist the derivation fingerprint for next run's bust check. Use the model actually embedded
   // with (authoritative) when we did work, else the intended/stored one.
   setMeta.run("model", embedModel || wantModel || storedModel);
-  setMeta.run("chunkfp", CHUNK_FP);
+  setMeta.run("chunkfp", wantChunk);
 
   // The Pulse — index cache effectiveness (hit = skipped unchanged, miss = (re)embedded).
   if (report.unchanged) count("index.cache.hit", report.unchanged);

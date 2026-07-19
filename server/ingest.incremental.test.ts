@@ -35,6 +35,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   delete process.env.VAULT_DIR;
+  delete process.env.SAM_READER;
   for (const p of [vault, docs]) { try { rmSync(p, { recursive: true, force: true }); } catch { /* best-effort */ } }
 });
 
@@ -91,5 +92,20 @@ describe("incremental doc index — fingerprint busting", () => {
     const r = await ingestFolder(docs);
     expect(r.evicted).toBe(1);
     expect(docsStats().files).toBe(1); // only keep.md remains
+  });
+});
+
+describe("incremental doc index — the Reader is a derivation input", () => {
+  it("BUST-ALL: toggling SAM_READER re-extracts every HTML file (plain text ≠ markdown)", async () => {
+    const prose = "Genuine article prose that carries the real meaning of the page and clears the threshold. ".repeat(6);
+    writeFileSync(join(docs, "page.html"), `<html><head><title>T</title></head><body><article><h2>Findings</h2><p>${prose}</p></article></body></html>`);
+    delete process.env.SAM_READER;
+    const first = await ingestFolder(docs);        // Reader OFF → plain strip
+    expect(first.ingested).toBe(1);
+    process.env.SAM_READER = "1";
+    const second = await ingestFolder(docs);       // Reader ON → derivation changed → bust + re-extract
+    expect(second.busted).toMatch(/chunking changed/);
+    expect(second.ingested).toBe(1);
+    expect(second.unchanged).toBe(0);              // NOT skipped despite unchanged mtime+size
   });
 });
