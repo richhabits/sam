@@ -563,6 +563,13 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 // falls back to a normal call and emits the whole answer as one chunk.
 async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
+    // Opt-in: route the stream through the Relay (Breaker + boundary + key pool + failure capture),
+    // capped at ONE key — a stream that already emitted tokens can't be retried without double-
+    // emitting. system/prompt/onChunk are bound in `run`, so the Relay just manages the outcome.
+    if (process.env.SAM_RELAY === "1") {
+      const r = await relayBrain({ id, boundary: "cloud", run: (_s, _p, key) => run(key) }, system, prompt, { allowCloud: true }, { maxKeys: 1 });
+      return r && "text" in r ? { text: r.text, provider: label, tier: "free" } : null;
+    }
     if (!poolSize(id)) return null;
     const key = getKey(id); if (!key) return null;
     try { const text = await run(key); if (text) { reportSuccess(id, key); return { text, provider: label, tier: "free" }; } }

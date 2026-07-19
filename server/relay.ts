@@ -64,7 +64,13 @@ export type RelayOutcome =
   | { blocked: string }   // the boundary refused this — explicit, never silent
   | null;                 // nothing came back (breaker open, no key, or the brain failed)
 
-export interface RelayOpts { now?: number; retryDelayMs?: number }
+export interface RelayOpts {
+  now?: number;
+  retryDelayMs?: number;
+  /** Cap how many pooled keys to try. Streaming passes 1: a stream that already emitted tokens
+   *  can't be retried on another key without double-emitting, so it gets exactly one attempt. */
+  maxKeys?: number;
+}
 
 /**
  * Route one brain call through the policy chain. Behaviour matches the previous per-call-site logic
@@ -94,10 +100,12 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
     return null;
   }
 
-  const attempts = Math.max(1, poolSize(b.id));
+  const attempts = Math.min(opts.maxKeys ?? Number.POSITIVE_INFINITY, Math.max(1, poolSize(b.id)));
+  let ran = false;   // did we actually reach a brain? no key available ≠ a failure to trip the Breaker on.
   for (let i = 0; i < attempts; i++) {
     const key = getKey(b.id);
     if (!key) break;
+    ran = true;
     try {
       const text = await b.run(system, prompt, key);
       if (text) { reportSuccess(b.id, key); onSuccess(b.id); return { text }; }
@@ -109,6 +117,6 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
       if (status && status !== 429 && status < 500) break;
     }
   }
-  onFailure(b.id, now);
+  if (ran) onFailure(b.id, now);   // only a real attempt counts toward the Breaker
   return null;
 }

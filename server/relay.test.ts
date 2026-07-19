@@ -92,4 +92,22 @@ describe("keyed brains — pool + retry + stop-hammering", () => {
     expect(r).toEqual({ text: "answer" });
     expect(breakerStatus("prov3")).toBe("closed");
   });
+
+  it("a brain with NO key doesn't trip the Breaker — no attempt is not a failure", async () => {
+    setPool("empty", []); // no keys configured
+    const run = vi.fn(async () => "x");
+    for (let i = 0; i < 5; i++) await relayBrain(brain({ id: "empty", boundary: "cloud", run }), "s", "p", { allowCloud: true });
+    expect(run).not.toHaveBeenCalled();
+    expect(breakerStatus("empty")).toBe("closed"); // never opened despite 5 calls — nothing was attempted
+  });
+});
+
+describe("streaming — maxKeys:1 so a stream is never retried mid-emit", () => {
+  it("tries exactly ONE key even with a multi-key pool (a retry would double-emit tokens)", async () => {
+    setPool("streamer", ["k1", "k2", "k3"]);
+    const run = vi.fn(async () => { const e = new Error("mid-stream drop") as Error & { status: number }; e.status = 500; throw e; });
+    const r = await relayBrain(brain({ id: "streamer", boundary: "cloud", run }), "s", "p", { allowCloud: true }, { maxKeys: 1 });
+    expect(r).toBeNull();
+    expect(run).toHaveBeenCalledTimes(1); // NOT 3 — a partially-emitted stream must not re-run on another key
+  });
 });
