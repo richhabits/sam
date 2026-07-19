@@ -22,4 +22,5 @@ paths = [
   '''(^|/)server/mcp-presets\.ts$''',  # UI placeholder strings like "sk_live_…"
   '''(^|/)server/crashlog\.test\.ts$''',  # redaction test — contains FAKE key-shaped fixtures by design (proves scrubbing works)
   '''(^|/)server/issues\.test\.ts$''',    # the Black Box redaction test — FAKE key-shaped fixtures by design (proves redact() scrubs)
+  '''(^|/)server/warden\.test\.ts$''',    # the Warden security gate — FAKE key-shaped fixtures by design (adversarial redaction/SSRF inputs)
 ]
