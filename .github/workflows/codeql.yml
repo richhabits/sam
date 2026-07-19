@@ -3,9 +3,24 @@ name: CodeQL
 # job; on a private repo, running it per-push burns Actions minutes fast. Weekly is
 # plenty for a solo repo; trigger a scan any time from the Actions tab.
 on:
+  # Scan when code actually changes, not only once a week. Weekly-only meant a fix sat
+  # "open" in the Security tab for up to 7 days after it shipped, and a vulnerability
+  # introduced in a PR was merged before anything looked at it. Actions minutes are free
+  # on public repos, so this costs nothing. paths-ignore keeps docs/markdown edits from
+  # burning a 3-minute analysis for no reason.
+  push:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
+  pull_request:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * 1"   # catches newly-published CVEs in code that hasn't changed
   workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   analyze:
     runs-on: ubuntu-latest
