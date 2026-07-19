@@ -1276,11 +1276,17 @@ export const TOOLS: Tool[] = [
   { name: "password_generate", safe: true, description: "Generate a cryptographically secure random password. input: {length?}.", params: "{length?}",
     activity: () => `Generating a secure password`,
     run: async (i) => {
-      const len = Number(i?.length) || 16;
+      const len = Math.max(1, Math.min(256, Number(i?.length) || 16));
       const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
-      const bytes = randomBytes(len);
+      // `byte % chars.length` skews toward the first (256 mod 92) characters — small, but this is a
+      // password tool, so use rejection sampling: discard bytes in the biased tail and draw more.
+      const max = 256 - (256 % chars.length);   // largest multiple of the alphabet ≤ 256
       let pass = "";
-      for (let j = 0; j < len; j++) pass += chars[bytes[j] % chars.length];
+      while (pass.length < len) {
+        for (const b of randomBytes((len - pass.length) * 2)) {
+          if (b < max) { pass += chars[b % chars.length]; if (pass.length === len) break; }
+        }
+      }
       return `Generated password (length ${len}): ${pass}`;
     } },
   { name: "wifi_info", safe: true, description: "Get current Wi-Fi network name and details.", params: "(none)",
