@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Tier } from "./models.ts";
+import { recordInfluence } from "./knack.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const FILE = join(VAULT_DIR, "preferences.json");
@@ -57,14 +58,22 @@ export function resetPreferences(): void { write([]); }
 
 // ── DERIVED LOCAL DECISIONS (never transmitted) ──
 // A learned brain-tier preference, only trusted once it's stable (confidence ≥ 0.6). Returns a local
-// routing choice — no profile data goes anywhere.
+// routing choice — no profile data goes anywhere. When a learned value actually changes the choice,
+// the Knack records the influence (attributable, never silent) — a no-op unless SAM_KNACK is on.
 export function preferredTier(fallback: Tier): Tier {
   const p = getPreference("preferred-tier");
-  if (p && p.confidence >= 0.6 && ["local", "free", "premium"].includes(p.value)) return p.value as Tier;
+  if (p && p.confidence >= 0.6 && ["local", "free", "premium"].includes(p.value)) {
+    recordInfluence("preferred-tier", p.value, p.confidence);
+    return p.value as Tier;
+  }
   return fallback;
 }
 // Pre-fill a field from what you usually pick. Local UI convenience; always overridable.
 export function smartDefault(field: string, fallback = ""): string {
   const p = getPreference(`default:${field}`);
-  return p && p.confidence >= 0.6 ? p.value : fallback;
+  if (p && p.confidence >= 0.6) {
+    recordInfluence(`default:${field}`, p.value, p.confidence);
+    return p.value;
+  }
+  return fallback;
 }
