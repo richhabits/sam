@@ -4,7 +4,7 @@
 //  approval resumes, decline is respected.
 // ─────────────────────────────────────────────────────────────
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock the model so we script exactly what "SAM" replies each step.
 const replies: string[] = [];
@@ -13,6 +13,7 @@ vi.mock("./models.ts", () => ({
 }));
 
 import { runAgent, resumeAgent, parseToolCall } from "./agent.ts";
+import { _reset as resetIssues, listIssues } from "./issues.ts";
 
 beforeEach(() => { replies.length = 0; });
 
@@ -119,5 +120,35 @@ describe("capability scope (SKILL.md tools: allowlist)", () => {
     const r = await runAgent("SYS", "run echo", ...withAllow(["get_datetime"]));
     expect(r.kind).toBe("final");                       // NOT pending — never surfaced for approval
     expect(r.trace.length).toBe(0);
+  });
+});
+
+describe("the Parser — invalid tool calls are rejected loudly, never executed on a guess", () => {
+  beforeEach(() => { process.env.SAM_PARSER = "1"; resetIssues(); });
+  afterEach(() => { delete process.env.SAM_PARSER; resetIssues(); });
+
+  it("an invalid write_file (missing required content) never runs — and is recorded to the Black Box", async () => {
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md"}}');   // invalid: no `content`
+    replies.push("Alright, I'll leave it for now.");                        // model gives up → final
+    const r = await runAgent("SYS", "save my notes", "local");
+    expect(r.kind).toBe("final");                                            // it did NOT pause to run write_file
+    expect(r.trace.length).toBe(0);                                         // nothing executed
+    expect(listIssues().some((i) => /invalid tool call: write_file/.test(i.message))).toBe(true);
+  });
+
+  it("self-repair round-trips: the diagnostic feeds back and a corrected call reaches the approval gate", async () => {
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md","content":42}}'); // invalid: content wrong type
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md","content":"fixed"}}'); // corrected
+    const r = await runAgent("SYS", "save my notes", "local");
+    expect(r.kind).toBe("pending");                                          // the CORRECTED call reached approval
+    expect(r.kind === "pending" && r.tool).toBe("write_file");
+    expect(replies.length).toBe(0);                                         // both model turns consumed (retry happened)
+  });
+
+  it("with the Parser OFF, the same invalid call is NOT gated (flag-scoped behaviour)", async () => {
+    delete process.env.SAM_PARSER;
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md"}}');   // invalid, but ungated
+    const r = await runAgent("SYS", "save my notes", "local");
+    expect(r.kind).toBe("pending");                                         // reaches approval un-validated (old behaviour)
   });
 });

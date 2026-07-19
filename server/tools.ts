@@ -95,6 +95,7 @@ const samLlm = async (system: string, prompt: string): Promise<string> =>
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
+import type { ArgSchema } from "./parser.ts";
 
 // Locate the user's Obsidian vault: explicit OBSIDIAN_VAULT, else the usual spots (a real
 // Obsidian vault always contains a `.obsidian` config folder — that's how we recognise one).
@@ -169,6 +170,7 @@ export interface Tool {
   safe: boolean;                 // true = auto-run, false = ask the user first
   description: string;           // shown to the model
   params: string;               // human/model hint for the input shape
+  args?: ArgSchema;             // machine schema — the Parser validates calls against it (single source of truth)
   activity: (input: any) => string;   // plain-language "what SAM is doing"
   preview?: (input: any) => string;   // what the confirm card shows (risky only)
   run: (input: any) => Promise<string>;
@@ -1899,6 +1901,7 @@ export const TOOLS: Tool[] = [
   { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "write_file", safe: false, description: "Write/overwrite a file. input: {path, content}.", params: "{path, content}",
+    args: { path: { type: "string", required: true, desc: "file path (supports ~)" }, content: { type: "string", required: true, desc: "the full new file contents" } },
     activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },
   { name: "open_app", safe: false, description: "Open a Mac application. input: app name.", params: "app name",
     activity: (i) => `Opening ${i.app ?? i}`, preview: (i) => `Open app: ${i.app ?? i}`, run: (i) => openApp(i.app ?? i) },

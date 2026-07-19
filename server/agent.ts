@@ -13,6 +13,8 @@ import { runModel, streamModel, type Tier } from "./models.ts";
 import { compressToolOutput } from "./compress.ts";
 import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 import { mayAutoRun } from "./authz.ts";
+import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
+import { capture } from "./issues.ts";
 
 const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token limits
 
@@ -238,6 +240,19 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
       // capability scope: this skill didn't declare this tool — deny and nudge, never run.
       prompt += `\n\n[SAM tried tool "${call.tool}" — not permitted for this skill. Allowed: ${allow!.join(", ") || "none"}]`;
       continue;
+    }
+
+    // THE PARSER (SAM_PARSER): validate the arguments against the tool's schema BEFORE it runs. An
+    // invalid call is REJECTED loudly with a diagnostic the brain can self-correct from — never
+    // executed on a guess. Recorded to the Black Box by name only (never the argument values).
+    if (process.env.SAM_PARSER === "1") {
+      const v = validateArgs(tool.args, call.input);
+      if (!v.ok) {
+        capture(new Error(`invalid tool call: ${tool.name}`), { parser: "reject", tool: tool.name, args: problemArgs(v.problems) });
+        prompt += `\n\n${diagnostic(tool.name, v.problems)}`;
+        continue;
+      }
+      call = { tool: call.tool, input: v.value };   // use the validated arguments
     }
 
     if (!tool.safe && !mayAutoRun(tool.name, swarm)) {
