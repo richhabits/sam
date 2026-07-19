@@ -202,7 +202,11 @@ function denied(cmd: string): string | null {
 }
 
 const clip = (s: string, n = 6000) => (s.length > n ? s.slice(0, n) + `\n…[trimmed, ${s.length} chars total]` : s);
-const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+// Escape a value for embedding inside a DOUBLE-QUOTED string in AppleScript (and similar).
+// Order is load-bearing: backslash FIRST, then quote. Escaping only the quote lets a trailing
+// backslash in user input escape the CLOSING quote and break out of the literal — that is the
+// AppleScript-injection class CodeQL flags, and nine tool sites got it wrong before routing here.
+export const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
 // ── INTERNET ─────────────────────────────────────────────────
 // Outbound requests get a hard timeout (free providers stall) and web_fetch —
@@ -1340,7 +1344,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       if (!IS_MAC) return "Wallpaper control only works on macOS.";
       try {
-        await osa(`tell application "System Events" to set picture of every desktop to "${i.image_path.replace(/"/g, "")}"`);
+        await osa(`tell application "System Events" to set picture of every desktop to "${esc(i.image_path)}"`);
         return "Wallpaper updated successfully.";
       } catch (e: any) { return `Failed to set wallpaper: ${e.message}`; }
     } },
@@ -1557,7 +1561,7 @@ export const TOOLS: Tool[] = [
       try {
         if (IS_MAC) {
           const content = `<h1>${i.title}</h1><p>${i.body.replace(/\n/g, "<br>")}</p>`;
-          await osa(`tell application "Notes" to make new note with properties {body:"${content.replace(/"/g, "\\\"")}"}`);
+          await osa(`tell application "Notes" to make new note with properties {body:"${esc(content)}"}`);
           return "Note created successfully.";
         } else {
           const notesDir = resolve(homedir(), "SAM_Notes");
@@ -1573,7 +1577,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         if (IS_MAC) {
-          const script = `tell application "Notes"\nset matchNotes to notes whose name contains "${i.query.replace(/"/g, "")}" or body contains "${i.query.replace(/"/g, "")}"\nset out to ""\nrepeat with n in matchNotes\nset out to out & "Title: " & name of n & "\\n" & body of n & "\\n\\n"\nend repeat\nreturn out\nend tell`;
+          const script = `tell application "Notes"\nset matchNotes to notes whose name contains "${esc(i.query)}" or body contains "${esc(i.query)}"\nset out to ""\nrepeat with n in matchNotes\nset out to out & "Title: " & name of n & "\\n" & body of n & "\\n\\n"\nend repeat\nreturn out\nend tell`;
           const result = await osa(script);
           return result.trim() || "No matching notes found.";
         } else {
@@ -1596,7 +1600,7 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         if (IS_MAC) {
-          const script = `tell application "Mail"\nset theMessage to make new outgoing message with properties {subject:"${i.subject.replace(/"/g, "\\\"")}", content:"${i.body.replace(/"/g, "\\\"")}", visible:false}\ntell theMessage\nmake new to recipient at end of to recipients with properties {address:"${i.to_email.replace(/"/g, "\\\"")}"}\nsend\nend tell\nend tell`;
+          const script = `tell application "Mail"\nset theMessage to make new outgoing message with properties {subject:"${esc(i.subject)}", content:"${esc(i.body)}", visible:false}\ntell theMessage\nmake new to recipient at end of to recipients with properties {address:"${esc(i.to_email)}"}\nsend\nend tell\nend tell`;
           await osa(script);
           return `Email sent successfully to ${i.to_email}.`;
         } else {
@@ -1619,10 +1623,10 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         if (IS_MAC) {
-          const lastStr = i.last_name ? `last name:"${i.last_name.replace(/"/g, "\\\"")}", ` : "";
-          let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${i.first_name.replace(/"/g, "\\\"")}", ${lastStr}}\n`;
-          if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${i.phone.replace(/"/g, "\\\"")}"}\n`;
-          if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${i.email.replace(/"/g, "\\\"")}"}\n`;
+          const lastStr = i.last_name ? `last name:"${esc(i.last_name)}", ` : "";
+          let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${esc(i.first_name)}", ${lastStr}}\n`;
+          if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${esc(i.phone)}"}\n`;
+          if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${esc(i.email)}"}\n`;
           script += `save\nend tell`;
           await osa(script);
           return "Contact added successfully.";
