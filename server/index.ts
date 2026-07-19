@@ -49,6 +49,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { isLoopback } from "./http-guards.ts";
 import { checkControlToken, controlTokenEnforced } from "./control-token.ts";
+import { issuesSummary } from "./issues.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -1184,6 +1185,7 @@ app.get("/api/status", (_req, res) =>
     models: providersStatus(),
     capacity: capacityReport(),
     vault: vaultStats(),
+    issues: issuesSummary(),   // local error capture (Sentry-discipline) — strictly on-device
   })
 );
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
