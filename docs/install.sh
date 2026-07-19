@@ -55,8 +55,10 @@ TAG="$(printf '%s' "$REL" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([
 # choose the right asset
 if [ "$PLATFORM" = "mac" ]; then
   if [ "$ARCH" = "arm64" ]; then PAT="arm64\\.dmg"; else PAT="[0-9]\\.dmg"; fi   # x64 dmg has no -arm64
+elif [ "${SAM_PKG:-}" = "deb" ]; then
+  PAT="\\.deb"           # opt-in: a real dpkg package, but installing it needs root
 else
-  PAT="\\.AppImage"
+  PAT="\\.AppImage"      # default: no root needed, runs on every distro
 fi
 ASSET_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+"' | sed -E 's/.*"(https[^"]+)".*/\1/' | grep -E "$PAT" | head -1 || true)"
 SUMS_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+SHA256SUMS[^"]*"' | sed -E 's/.*"(https[^"]+)".*/\1/' | head -1 || true)"
@@ -104,11 +106,27 @@ if [ "$PLATFORM" = "mac" ]; then
   ok "Installed SAM.app"
   if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; open -a "/Applications/SAM.app" || true; fi
 else
-  DEST="${HOME}/.local/bin"; mkdir -p "$DEST"
-  step "Installing to ${DEST}…"
-  install -m 755 "$TMP/$FILE" "$DEST/SAM.AppImage" || die "Couldn't write to ${DEST}." "Check permissions on your home directory."
-  ok "Installed to ${DEST}/SAM.AppImage"
-  if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; ( "$DEST/SAM.AppImage" >/dev/null 2>&1 & ) || say "  ${DIM}Start it any time: ${DEST}/SAM.AppImage${RESET}"; fi
+  case "$FILE" in
+    *.deb)
+      command -v dpkg >/dev/null 2>&1 || die "SAM_PKG=deb needs dpkg." "You're not on a Debian-based distro — unset SAM_PKG for the AppImage."
+      step "Installing the package (sudo)…"
+      sudo dpkg -i "$TMP/$FILE" || sudo apt-get -y -f install || die "dpkg install failed." "Unset SAM_PKG to use the AppImage instead — it needs no root."
+      ok "Installed SAM (dpkg)"
+      if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; ( sam >/dev/null 2>&1 & ) || say "  ${DIM}Start it any time: sam${RESET}"; fi
+      ;;
+    *)
+      DEST="${HOME}/.local/bin"; mkdir -p "$DEST"
+      step "Installing to ${DEST}…"
+      install -m 755 "$TMP/$FILE" "$DEST/SAM.AppImage" || die "Couldn't write to ${DEST}." "Check permissions on your home directory."
+      ok "Installed to ${DEST}/SAM.AppImage"
+      if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; ( "$DEST/SAM.AppImage" >/dev/null 2>&1 & ) || say "  ${DIM}Start it any time: ${DEST}/SAM.AppImage${RESET}"; fi
+      # Debian/Ubuntu get a real package too. Not automatic: dpkg needs root, and a piped
+      # installer that silently asks for your sudo password is exactly what you shouldn't run.
+      if command -v dpkg >/dev/null 2>&1; then
+        say "  ${DIM}Prefer a system package? SAM_PKG=deb reinstalls as a .deb (needs sudo).${RESET}"
+      fi
+      ;;
+  esac
 fi
 
 # ── local brain (Ollama) — optional: makes SAM 100% private + offline, no keys ever ──
