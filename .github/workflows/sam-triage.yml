@@ -1,0 +1,53 @@
+name: SAM Triage
+
+# SAM reads a new issue on its OWN free brain (Groq) and posts a short triage comment.
+# Free: Actions minutes are free on public repos and Groq's tier is free. Advisory only —
+# it writes one comment, never changes code. See scripts/sam-triage.mjs for the safety rules.
+on:
+  issues:
+    types: [opened, labeled]
+
+# One triage per issue at a time; a new event supersedes an in-flight run.
+concurrency:
+  group: sam-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    # Fire when the issue is opened BY the owner/a member (so a stranger can't open 1000 issues and
+    # drain the free quota), OR when anyone applies the `sam-triage` label (an explicit maintainer ask).
+    if: >
+      (github.event.action == 'opened' &&
+        (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'sam-triage')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write        # post the triage comment — nothing else
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Triage on SAM's free brain
+        id: triage
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          node scripts/sam-triage.mjs > triage.md
+          echo "--- triage output ---"; cat triage.md
+
+      - name: Post the comment (unless the script asked to skip)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if head -c 5 triage.md | grep -q '^SKIP'; then
+            echo "Skipping comment: $(cat triage.md)"
+            exit 0
+          fi
+          gh issue comment "${{ github.event.issue.number }}" -R "${{ github.repository }}" -F triage.md
