@@ -19,18 +19,18 @@ describe("the boundary — no silent local→cloud crossing", () => {
   it("refuses a cloud brain when the request must stay local — and never calls run()", async () => {
     const run = vi.fn(async () => "leaked to cloud");
     const r = await relayBrain(brain({ id: "groq", boundary: "cloud", noKey: true, run }), "s", "p", { allowCloud: false });
-    expect(r).toEqual({ blocked: expect.stringMatching(/refused to cross to cloud/) });
+    expect(r).toEqual({ ok: false, error: { kind: "blocked", brain: "groq", detail: expect.stringMatching(/refused to cross to cloud/) } });
     expect(run).not.toHaveBeenCalled(); // the invariant: the call never happened
   });
 
   it("allows a cloud brain when crossing is permitted", async () => {
     const r = await relayBrain(brain({ id: "groq", boundary: "cloud", noKey: true }), "s", "p", { allowCloud: true });
-    expect(r).toEqual({ text: "ok" });
+    expect(r).toEqual({ ok: true, value: "ok" });
   });
 
   it("a local brain always runs — the boundary only gates the cloud direction", async () => {
     const r = await relayBrain(brain({ id: "ollama", boundary: "local", noKey: true }), "s", "p", { allowCloud: false });
-    expect(r).toEqual({ text: "ok" });
+    expect(r).toEqual({ ok: true, value: "ok" });
   });
 });
 
@@ -43,7 +43,7 @@ describe("the Breaker — fail fast, then recover", () => {
     expect(breakerStatus("flaky")).toBe("open");
     const callsBefore = run.mock.calls.length;
     const r = await relayBrain(failing(run), "s", "p", { allowCloud: true }, { retryDelayMs: 0 });
-    expect(r).toBeNull();
+    expect(r).toEqual({ ok: false, error: { kind: "breaker-open", brain: "flaky" } });
     expect(run.mock.calls.length).toBe(callsBefore); // failed fast — run was NOT called
   });
 
@@ -56,7 +56,7 @@ describe("the Breaker — fail fast, then recover", () => {
     expect(breakerStatus("flaky", later)).toBe("half-open");
     expect(canAttempt("flaky", later)).toBe(true); // the probe is allowed
     const r = await relayBrain(brain({ id: "flaky", boundary: "cloud", noKey: true, run: async () => "back" }), "s", "p", { allowCloud: true }, { now: later });
-    expect(r).toEqual({ text: "back" });
+    expect(r).toEqual({ ok: true, value: "back" });
     expect(breakerStatus("flaky", later)).toBe("closed"); // success closed it
   });
 
@@ -75,7 +75,7 @@ describe("keyed brains — pool + retry + stop-hammering", () => {
     setPool("prov", ["k1", "k2", "k3"]);
     const run = vi.fn(async () => { const e = new Error("bad request") as Error & { status: number }; e.status = 400; throw e; });
     const r = await relayBrain(brain({ id: "prov", boundary: "cloud", run }), "s", "p", { allowCloud: true });
-    expect(r).toBeNull();
+    expect(r).toEqual({ ok: false, error: { kind: "failed", brain: "prov" } });
     expect(run).toHaveBeenCalledTimes(1); // 400 = bad key/request → don't burn the other keys
   });
 
@@ -89,7 +89,7 @@ describe("keyed brains — pool + retry + stop-hammering", () => {
   it("a success returns the text and keeps the brain closed", async () => {
     setPool("prov3", ["k1"]);
     const r = await relayBrain(brain({ id: "prov3", boundary: "cloud", run: async () => "answer" }), "s", "p", { allowCloud: true });
-    expect(r).toEqual({ text: "answer" });
+    expect(r).toEqual({ ok: true, value: "answer" });
     expect(breakerStatus("prov3")).toBe("closed");
   });
 
@@ -107,7 +107,7 @@ describe("streaming — maxKeys:1 so a stream is never retried mid-emit", () => 
     setPool("streamer", ["k1", "k2", "k3"]);
     const run = vi.fn(async () => { const e = new Error("mid-stream drop") as Error & { status: number }; e.status = 500; throw e; });
     const r = await relayBrain(brain({ id: "streamer", boundary: "cloud", run }), "s", "p", { allowCloud: true }, { maxKeys: 1 });
-    expect(r).toBeNull();
+    expect(r).toEqual({ ok: false, error: { kind: "failed", brain: "streamer" } });
     expect(run).toHaveBeenCalledTimes(1); // NOT 3 — a partially-emitted stream must not re-run on another key
   });
 });

@@ -70,14 +70,13 @@ describe("the Warden · #6 local→cloud boundary — a private request never si
   const local: Brain = { id: "warden-local", boundary: "local", noKey: true, run: async () => "ok" };
   it("refuses a cloud brain LOUDLY when cloud isn't allowed — never falls through", async () => {
     const out = await relayBrain(cloud, "sys", "hi", { allowCloud: false });
-    expect(out).not.toBeNull();
-    expect(out && "blocked" in out).toBe(true);
-    expect(out && "text" in out).toBe(false); // it did NOT run the cloud brain
+    expect(out.ok).toBe(false);                           // not a success — it did NOT run the cloud brain
+    expect(!out.ok && out.error.kind).toBe("blocked");   // refused by the boundary, explicitly
   });
   it("does not block a local brain (the boundary only refuses CROSSING to cloud)", async () => {
     const out = await relayBrain(local, "sys", "hi", { allowCloud: false });
-    expect(out !== null && "blocked" in out).toBe(false); // not refused by the boundary
-    expect(out !== null && "text" in out && out.text).toBe("ok"); // it ran locally
+    expect(out.ok).toBe(true);                            // ran locally, not refused
+    expect(out.ok && out.value).toBe("ok");
   });
 });
 

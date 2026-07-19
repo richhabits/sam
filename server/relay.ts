@@ -14,6 +14,7 @@
 import { getKey, poolSize, reportFailure, reportSuccess } from "./keys.ts";
 import { capture } from "./issues.ts";
 import { count } from "./pulse.ts";
+import { assertNever, err, ok, type Outcome } from "./outcome.ts";
 
 // ── The Breaker ──────────────────────────────────────────────
 const BREAKER_TRIP = 3;             // consecutive brain-level failures before it opens
@@ -34,9 +35,16 @@ export function breakerStatus(id: string, now = Date.now()): BreakerStatus {
   if (!b || b.openUntil === 0) return "closed";
   return now < b.openUntil ? "open" : "half-open";
 }
-/** May we attempt this brain? False only while the Breaker is fully open. */
+/** May we attempt this brain? False only while the Breaker is fully open. Exhaustive over the state
+ *  machine — a new BreakerStatus variant left unhandled here fails to COMPILE (no silent default). */
 export function canAttempt(id: string, now = Date.now()): boolean {
-  return breakerStatus(id, now) !== "open";
+  const s = breakerStatus(id, now);
+  switch (s) {
+    case "closed":
+    case "half-open": return true;   // healthy, or cooldown elapsed → allow one probe
+    case "open": return false;       // fail fast — don't pay the timeout again
+    default: return assertNever(s, "BreakerStatus");
+  }
 }
 function onSuccess(id: string): void { const b = breakerFor(id); b.fails = 0; b.openUntil = 0; }
 function onFailure(id: string, now = Date.now()): void {
@@ -64,10 +72,16 @@ export interface Brain {
   run: (system: string, prompt: string, key: string) => Promise<string>;
 }
 
-export type RelayOutcome =
-  | { text: string }
-  | { blocked: string }   // the boundary refused this — explicit, never silent
-  | null;                 // nothing came back (breaker open, no key, or the brain failed)
+// Why a brain call produced no text — each a distinct, typed reason rather than one silent `null`.
+// A new failure mode is a new variant every caller's `match` must handle.
+export type RelayError =
+  | { kind: "blocked"; brain: string; detail: string }   // the boundary refused this — never silent
+  | { kind: "breaker-open"; brain: string }              // the Breaker is open — skipped, fail fast
+  | { kind: "no-key"; brain: string }                    // no pooled key was available to try
+  | { kind: "failed"; brain: string };                   // a real attempt ran and did not return text
+
+/** Success carries the text; failure carries a typed RelayError. Replaces the old {text}|{blocked}|null. */
+export type RelayOutcome = Outcome<string, RelayError>;
 
 export interface RelayOpts {
   now?: number;
@@ -86,23 +100,23 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
   const now = opts.now ?? Date.now();
   // THE BOUNDARY — a local/private request may not cross to cloud. Refuse loudly, never silently.
   if (b.boundary === "cloud" && !policy.allowCloud) {
-    return { blocked: `local request refused to cross to cloud brain "${b.id}"` };
+    return err({ kind: "blocked", brain: b.id, detail: `local request refused to cross to cloud brain "${b.id}"` });
   }
   // THE BREAKER — skip a brain that keeps failing rather than pay its timeout again.
-  if (!canAttempt(b.id, now)) return null;
+  if (!canAttempt(b.id, now)) return err({ kind: "breaker-open", brain: b.id });
 
   if (b.noKey) {
     for (let i = 0; i < 2; i++) {
       try {
         const text = await b.run(system, prompt, "");
-        if (text) { onSuccess(b.id); return { text }; }
+        if (text) { onSuccess(b.id); return ok(text); }
       } catch (e) {
         capture(e, { brain: b.id, boundary: b.boundary });
       }
       if (i === 0) await new Promise((r) => setTimeout(r, opts.retryDelayMs ?? 800));
     }
     onFailure(b.id, now);
-    return null;
+    return err({ kind: "failed", brain: b.id });
   }
 
   const attempts = Math.min(opts.maxKeys ?? Number.POSITIVE_INFINITY, Math.max(1, poolSize(b.id)));
@@ -113,7 +127,7 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
     ran = true;
     try {
       const text = await b.run(system, prompt, key);
-      if (text) { reportSuccess(b.id, key); onSuccess(b.id); return { text }; }
+      if (text) { reportSuccess(b.id, key); onSuccess(b.id); return ok(text); }
     } catch (e) {
       const status = (e as { status?: number })?.status;
       reportFailure(b.id, key, status);
@@ -122,6 +136,6 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
       if (status && status !== 429 && status < 500) break;
     }
   }
-  if (ran) onFailure(b.id, now);   // only a real attempt counts toward the Breaker
-  return null;
+  if (ran) { onFailure(b.id, now); return err({ kind: "failed", brain: b.id }); }
+  return err({ kind: "no-key", brain: b.id });   // never reached a brain — not a Breaker failure
 }

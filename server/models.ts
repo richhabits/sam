@@ -336,7 +336,7 @@ async function tryProvider(prov: Provider, system: string, prompt: string): Prom
       { id: prov.id, boundary: prov.tier === "local" ? "local" : "cloud", noKey: prov.noKey, run: prov.run },
       system, prompt, { allowCloud: true },   // the cascade already decided cloud is permitted here
     );
-    return r && "text" in r ? r.text : null;
+    return r.ok ? r.value : null;   // any RelayError (blocked/breaker/no-key/failed) → cascade to the next provider
   }
   if (prov.noKey) {   // no-key provider (Pollinations) — retry a couple of times; transient hiccups are common
     for (let i = 0; i < 2; i++) {
@@ -577,7 +577,7 @@ async function streamModelInner(tier: Tier, system: string, prompt: string, onCh
     // default now the Relay is proven; SAM_RELAY=0 is the kill-switch back to the plain path.
     if (process.env.SAM_RELAY !== "0") {
       const r = await relayBrain({ id, boundary: "cloud", run: (_s, _p, key) => run(key) }, system, prompt, { allowCloud: true }, { maxKeys: 1 });
-      return r && "text" in r ? { text: r.text, provider: label, tier: "free" } : null;
+      return r.ok ? { text: r.value, provider: label, tier: "free" } : null;
     }
     if (!poolSize(id)) return null;
     const key = getKey(id); if (!key) return null;
