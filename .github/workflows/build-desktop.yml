@@ -69,7 +69,7 @@ jobs:
           - os: windows-latest     # Windows
             platform: win
             arch: x64
-          - os: ubuntu-latest      # Linux (AppImage)
+          - os: ubuntu-latest      # Linux (AppImage + .deb — both are electron-builder targets)
             platform: linux
             arch: x64
     runs-on: ${{ matrix.os }}
@@ -213,7 +213,7 @@ jobs:
             echo "checksums already in notes — skipping"; exit 0
           fi
           mkdir dl && cd dl
-          gh release download "$TAG" -R "$REPO" -p '*.dmg' -p '*.exe' -p '*.AppImage'
+          gh release download "$TAG" -R "$REPO" -p '*.dmg' -p '*.exe' -p '*.AppImage' -p '*.deb'
           # SHA256SUMS.txt — uploaded as a release asset so install.sh / install.ps1 can verify downloads.
           sha256sum * > SHA256SUMS.txt
           gh release upload "$TAG" -R "$REPO" SHA256SUMS.txt --clobber
