@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { checkOutboundUrl } from "./url-guard.ts";
+import { distill } from "./reader.ts";
 
 const UA = "Mozilla/5.0 (compatible; SAM-webintel/0.1; local-first)";
 
@@ -76,7 +77,20 @@ export async function fetchClean(url: string, opts: { timeoutMs?: number } = {})
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html,*/*" }, signal: ctrl.signal, redirect: "follow" });
     const ct = res.headers.get("content-type") || "";
     const body = await res.text();
-    const parsed = ct.includes("html") ? htmlToText(body) : { title: url, text: body, links: [] as CleanLink[] };
+    let parsed: { title: string; text: string; links: CleanLink[] };
+    if (ct.includes("html")) {
+      // Opt-in: the Reader turns HTML into clean markdown (structure kept, boilerplate pruned). If it
+      // finds too little — a JS-rendered page — it returns null and we fall back LOUDLY to the plain
+      // cleaner, never a silent empty result.
+      const distilled = process.env.SAM_READER === "1" ? distill(body) : null;
+      if (distilled) parsed = { title: distilled.title, text: distilled.markdown, links: distilled.links };
+      else {
+        if (process.env.SAM_READER === "1") console.warn(`  📄 reader: too little content distilled from ${url} — using the plain cleaner`);
+        parsed = htmlToText(body);
+      }
+    } else {
+      parsed = { title: url, text: body, links: [] as CleanLink[] };
+    }
     return { url, status: res.status, contentType: ct, ...parsed, bytes: body.length, ok: res.ok };
   } catch (e) {
     return { url, status: 0, error: String((e as Error)?.message || e), title: "", text: "", links: [], bytes: 0, ok: false };
