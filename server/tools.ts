@@ -1290,7 +1290,7 @@ export const TOOLS: Tool[] = [
     activity: () => `Reading the clipboard`, run: clipboardGet },
   { name: "get_datetime", safe: true, description: "Get the current date and time.", params: "(none)",
     activity: () => `Checking the time`, run: async () => nowText() },
-  { name: "set_timer", safe: true, description: "Set a short local timer (minutes). SAM will notify the OS when time is up. input: {minutes, reason?}.", params: "{minutes, reason?}",
+  { name: "set_timer", safe: true, description: "Set a short local timer (minutes). SAM will notify the OS when time is up. input: {minutes, reason?}.", params: "{minutes, reason?}", args: { minutes: { type: "number", required: true }, reason: { type: "string" } },
     activity: (i) => `Setting a timer for ${i.minutes}m`, 
     run: async (i) => {
       const min = Number(i.minutes);
@@ -1300,7 +1300,7 @@ export const TOOLS: Tool[] = [
       }, min * 60000);
       return `Timer set for ${min} minute(s). I will notify you when it's done.`;
     } },
-  { name: "world_clock", safe: true, description: "Get the current time in a specific timezone (e.g. 'America/New_York', 'Asia/Tokyo'). input: {timezone}.", params: "{timezone}",
+  { name: "world_clock", safe: true, description: "Get the current time in a specific timezone (e.g. 'America/New_York', 'Asia/Tokyo'). input: {timezone}.", params: "{timezone}", args: { timezone: { type: "string", required: true, desc: "IANA tz, e.g. America/New_York" } },
     activity: (i) => `Checking time in ${i.timezone}`,
     run: async (i) => {
       try {
@@ -1397,7 +1397,7 @@ export const TOOLS: Tool[] = [
         return await res.text();
       } catch (e: any) { return `Failed to shorten URL: ${e.message}`; }
     } },
-  { name: "currency_convert", safe: true, description: "Convert an amount between standard global currencies (e.g., USD to EUR). input: {amount, from_currency, to_currency}.", params: "{amount, from, to}",
+  { name: "currency_convert", safe: true, description: "Convert an amount between standard global currencies (e.g., USD to EUR). input: {amount, from_currency, to_currency}.", params: "{amount, from, to}", args: { amount: { type: "number", required: true }, from: { type: "string", required: true }, to: { type: "string", required: true } },
     activity: (i) => `Converting ${i.amount} ${i.from} to ${i.to}`,
     run: async (i) => {
       try {
@@ -1462,7 +1462,7 @@ export const TOOLS: Tool[] = [
         return stdout.trim().slice(0, 2000) + (stdout.length > 2000 ? "\n...(truncated)" : "");
       } catch (e: any) { return `WHOIS failed: ${e.message}`; }
     } },
-  { name: "unit_convert", safe: true, description: "Convert standard measurement units (C/F, kg/lb, mi/km, m/ft). input: {amount, from, to}.", params: "{amount, from, to}",
+  { name: "unit_convert", safe: true, description: "Convert standard measurement units (C/F, kg/lb, mi/km, m/ft). input: {amount, from, to}.", params: "{amount, from, to}", args: { amount: { type: "number", required: true }, from: { type: "string", required: true }, to: { type: "string", required: true } },
     activity: (i) => `Converting ${i.amount} ${i.from} to ${i.to}`,
     run: async (i) => {
       const v = Number(i.amount);
@@ -1500,7 +1500,7 @@ export const TOOLS: Tool[] = [
         return "Invalid format. Provide HEX (#RRGGBB) or RGB (R,G,B).";
       }
     } },
-  { name: "translate", safe: true, description: "Translate text using the free Google Translate API. input: {text, target_lang_code} (e.g. 'es', 'fr', 'ja').", params: "{text, target_lang_code}",
+  { name: "translate", safe: true, description: "Translate text using the free Google Translate API. input: {text, target_lang_code} (e.g. 'es', 'fr', 'ja').", params: "{text, target_lang_code}", args: { text: { type: "string", required: true }, target_lang_code: { type: "string", desc: "e.g. es, fr, ja (default en)" } },
     activity: (i) => `Translating to ${i.target_lang_code}`,
     run: async (i) => {
       try {
@@ -1582,7 +1582,7 @@ export const TOOLS: Tool[] = [
         return out.trim() || "No duplicates found.";
       } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
-  { name: "add_calendar_event", safe: false, description: "Create a scheduled event in Calendar. input: {title, start_date, end_date} (Dates parseable like '12/25/2026 14:00').", params: "{title, start_date, end_date}",
+  { name: "add_calendar_event", safe: false, description: "Create a scheduled event in Calendar. input: {title, start_date, end_date} (Dates parseable like '12/25/2026 14:00').", params: "{title, start_date, end_date}", args: { title: { type: "string", required: true }, start_date: { type: "string", required: true }, end_date: { type: "string", required: true } },
     activity: (i) => `Scheduling ${i.title} on Calendar`, preview: (i) => `Add to Calendar:\n${i.title}\nFrom: ${i.start_date}\nTo: ${i.end_date}`,
     run: async (i) => {
       try {
@@ -1595,7 +1595,7 @@ export const TOOLS: Tool[] = [
       } catch (err: any) { return `Failed to create event: ${err.message}`; }
     } },
 
-  { name: "create_note", safe: true, description: "Create a new note. input: {title, body}.", params: "{title, body}",
+  { name: "create_note", safe: true, description: "Create a new note. input: {title, body}.", params: "{title, body}", args: { title: { type: "string", required: true }, body: { type: "string", required: true } },
     activity: (i) => `Creating Note: ${i.title}`,
     run: async (i) => {
       try {
@@ -1708,7 +1708,7 @@ export const TOOLS: Tool[] = [
   // ── FREE UTILITY BATCH — no API keys, local OS or free web ──
   { name: "battery_status", safe: true, description: "Check the battery level and charging state.", params: "(none)",
     activity: () => `Checking battery`, run: getBattery },   // cross-platform (Mac/Win/Linux)
-  { name: "toggle_dnd", safe: false, description: "Toggle Mac Do Not Disturb / Focus on or off. input: {on: boolean}.", params: "{on: boolean}",
+  { name: "toggle_dnd", safe: false, description: "Toggle Mac Do Not Disturb / Focus on or off. input: {on: boolean}.", params: "{on: boolean}", args: { on: { type: "boolean", required: true } },
     activity: (i) => `Turning Do Not Disturb ${i.on ? "on" : "off"}`,
     run: async (i) => {
       if (!IS_MAC) return "Do Not Disturb toggle only supported on macOS.";

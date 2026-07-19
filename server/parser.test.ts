@@ -112,3 +112,21 @@ describe("the web_research schema (real registry) — per-tool input", () => {
     expect(validateArgs(wr.args, { schema: {} }).ok).toBe(false);   // urls required
   });
 });
+
+describe("more object-input tools now carry accurate schemas (real registry)", () => {
+  const argsOf = (n: string) => TOOLS.find((t) => t.name === n)!.args;
+  it("translate requires text; currency/unit require amount:number + from + to", () => {
+    expect(validateArgs(argsOf("translate"), { text: "hi", target_lang_code: "es" }).ok).toBe(true);
+    expect(validateArgs(argsOf("translate"), { target_lang_code: "es" }).ok).toBe(false);      // missing text
+    expect(validateArgs(argsOf("currency_convert"), { amount: 100, from: "USD", to: "EUR" }).ok).toBe(true);
+    expect(validateArgs(argsOf("currency_convert"), { amount: "100", from: "USD", to: "EUR" }).ok).toBe(false); // number, not string
+    expect(validateArgs(argsOf("unit_convert"), { amount: 5, from: "kg", to: "lb" }).ok).toBe(true);
+  });
+  it("toggle_dnd needs a boolean; add_calendar_event needs title+start+end; extras are rejected", () => {
+    expect(validateArgs(argsOf("toggle_dnd"), { on: true }).ok).toBe(true);
+    expect(validateArgs(argsOf("toggle_dnd"), { on: "yes" }).ok).toBe(false);
+    expect(validateArgs(argsOf("add_calendar_event"), { title: "x", start_date: "a", end_date: "b" }).ok).toBe(true);
+    expect(validateArgs(argsOf("add_calendar_event"), { title: "x", start_date: "a" }).ok).toBe(false);
+    expect(validateArgs(argsOf("create_note"), { title: "n", body: "b", nonsense: 1 }).ok).toBe(false); // additionalProperties:false
+  });
+});
