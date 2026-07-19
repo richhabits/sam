@@ -84,6 +84,7 @@ import { checkOutboundUrl } from "./url-guard.ts";
 import { fetchClean } from "./webintel.ts";
 import { extract } from "./webintel-extract.ts";
 import { extractMany } from "./webintel-research.ts";
+import { crawl, mapSite } from "./webintel-crawl.ts";
 
 // SAM's own brain, shaped for the webintel extractors. They take an injected LLM precisely so
 // they own no model plumbing — this is the one place that plumbing lives.
@@ -1064,6 +1065,27 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       const r = await extract(String(i?.url ?? ""), i?.schema ?? { title: "string" }, samLlm, { maxChars: 6000 });
       return r.ok ? JSON.stringify(r.data, null, 2) : `Couldn't extract from ${i?.url}${r.error ? ` — ${r.error}` : ""}`;
+    } },
+  { name: "web_crawl", safe: true,
+    description: "Read a whole SITE, not one page — follows same-domain links and returns the text of each. input: {url, maxPages?, maxDepth?}. Use when the answer is spread across several pages of one site (docs, a help centre, a small site).",
+    params: "{url, maxPages?, maxDepth?}",
+    activity: (i) => `Crawling ${i?.url}`,
+    run: async (i) => {
+      const r = await crawl(String(i?.url ?? ""), {
+        maxPages: Math.min(Number(i?.maxPages) || 8, 20),   // capped: a crawl is the one tool that
+        maxDepth: Math.min(Number(i?.maxDepth) || 2, 3),    // can quietly become hundreds of fetches
+      });
+      if (!r.pages.length) return `Couldn't read anything from ${i?.url} (blocked by robots.txt, unreachable, or not HTML).`;
+      const body = r.pages.map((p) => `## ${p.title || p.url}\n${p.url}\n${p.text.slice(0, 1500)}`).join("\n\n");
+      return `${r.pages.length} pages crawled (${r.discovered.length} links seen)\n\n${body}`;
+    } },
+  { name: "site_map", safe: true,
+    description: "List the pages of a site without reading them. input: a url string. Cheap way to see what's there before crawling.",
+    params: "{url}",
+    activity: (i) => `Mapping ${i?.url ?? i}`,
+    run: async (i) => {
+      const r = await mapSite(String(i?.url ?? i ?? ""));
+      return r.ok ? `${r.urls.length} same-domain pages:\n${r.urls.slice(0, 60).join("\n")}` : `Couldn't map ${i?.url ?? i}.`;
     } },
   { name: "web_research", safe: true,
     description: "Pull the SAME fields from MANY pages at once and return a table. input: {urls:[…], schema}. Use for comparisons — prices across shops, specs across products.",
