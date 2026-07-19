@@ -91,7 +91,7 @@ describe("the registry is the single source", () => {
     const SAMPLES: Record<string, string> = {
       groq: `gsk_${"a".repeat(24)}`, gemini: `AIza${"b".repeat(35)}`, openrouter: `sk-or-${"c".repeat(24)}`,
       mistral: "d".repeat(32), cerebras: `csk-${"e".repeat(24)}`, nvidia: `nvapi-${"f".repeat(24)}`,
-      huggingface: `hf_${"g".repeat(24)}`,
+      github: `ghp_${"g".repeat(36)}`, zhipu: `${"h".repeat(28)}.${"i".repeat(14)}`,
     };
     const patterned = PROVIDER_REGISTRY.filter((p) => p.keyPattern);
     // guard: if a new patterned provider is added without a sample here, this fails loudly.

@@ -8,7 +8,7 @@ import { useEscape } from "./lib/useOverlay";
 // to keep its own four-provider list WITH the key-format regexes — the sixth copy, and the only
 // place those patterns lived. They now sit in server/providers.registry.ts as `keyPattern`, so
 // the wizard and Settings can never disagree about what a provider is called or where to get it.
-type WizProv = { id: string; label: string; note: string; url: string; keyPattern?: string };
+type WizProv = { id: string; label: string; note: string; url: string; keyPattern?: string; starter?: boolean };
 type St = "idle" | "checking" | "ok" | "bad";
 
 export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => void; onAllProviders?: () => void }) {
@@ -19,8 +19,12 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
   const [PROVIDERS, setProviders] = useState<WizProv[]>([]);
   const [loadErr, setLoadErr] = useState("");
   useEffect(() => {
+    // Show the curated "starter" set — the handful that between them cover every job (fast chat,
+    // vision, reasoning, writing, code). That's all you need to run SAM nicely; the rest are for
+    // rotation headroom and live behind the "all providers" link. (This used to filter on keyPattern,
+    // which accidentally hid starters without one — GitHub Models, Zhipu — and showed non-starters.)
     fetch("/api/admin/config").then((r) => r.json())
-      .then((c) => setProviders(((c?.providers || []) as WizProv[]).filter((p) => p.keyPattern)))
+      .then((c) => setProviders(((c?.providers || []) as WizProv[]).filter((p) => p.starter)))
       .catch(() => setLoadErr("Couldn't load the provider list — check SAM is running."));
   }, []);
   const online = Object.values(status).filter((s) => s === "ok").length;
