@@ -47,11 +47,12 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { isLoopback } from "./http-guards.ts";
+import { isLoopback, isTrustedLocal } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { issuesSummary } from "./issues.ts";
-import { pulseSummary } from "./pulse.ts";
+import { issuesSummary, listIssues } from "./issues.ts";
+import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
 import { startKeeper } from "./keeper.ts";
+import { renderConsole } from "./console-view.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -1177,6 +1178,15 @@ app.post("/api/update", async (_req, res) => {
     res.json({ ok: false, error: friendly });
   }
 });
+// The Console — a self-contained local status page (the Pulse + the Black Box). Loopback + the
+// Handshake (when enforced): the metrics are on-device diagnostics, never exposed to the network.
+app.get("/api/console", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Console is loopback + Handshake only" }); return; }
+  const samples = samplesOf("brain.latency_ms", { tier: "free" });
+  const s = samples.length ? samples : samplesOf("brain.latency_ms", { tier: "local" });
+  res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString()));
+});
+
 app.get("/api/status", (_req, res) =>
   res.json({
     skills: SKILLS.length,

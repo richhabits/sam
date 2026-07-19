@@ -100,5 +100,12 @@ export function pulseSummary(): { series: number; brainCalls: number; brainFailu
   };
 }
 
+/** Recent raw observations for a histogram (the bounded ring) — for sparklines. Empty if not a
+ *  histogram or unseen. */
+export function samplesOf(name: string, labels?: Labels): number[] {
+  const s = series.get(keyOf(name, labels));
+  return s && s.kind === "histogram" ? [...s.samples] : [];
+}
+
 /** Test/maintenance helper — clear the registry. */
 export function _reset(): void { series.clear(); }
