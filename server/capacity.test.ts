@@ -64,7 +64,6 @@ describe("capacity knows when free keys come back", () => {
 
   it("never advertises a wait it cannot substantiate", () => {
     // The headline may only mention "back in ..." when a real cooldown timestamp exists.
-    const { capacityReport } = require("./capacity.ts");
     const r = capacityReport();
     if (/back in/.test(r.headline)) expect(r.waitMinutes).not.toBeNull();
   });
