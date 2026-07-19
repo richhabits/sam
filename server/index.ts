@@ -73,7 +73,7 @@ import { evaluateTriggers } from "./triggers.ts";
 import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
 import { isEnabled as consentEnabled } from "./consent.ts";
 import { recordTask, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
-import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload } from "./telemetry.ts";
+import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload, postTelemetry } from "./telemetry.ts";
 import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
 import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
@@ -1325,6 +1325,10 @@ if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE 
 const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
+  // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
+  // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
+  void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())
+    .then((r) => { if (r === "sent" || r === "failed") console.log(`  telemetry heartbeat · ${r}`); });
   if (REMOTE) {
     const nets = os.networkInterfaces();
     const lan = Object.values(nets).flat().find((n) => n && n.family === "IPv4" && !n.internal)?.address;

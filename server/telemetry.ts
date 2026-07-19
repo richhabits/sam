@@ -83,3 +83,31 @@ export function isSendable(payload: Record<string, unknown>): boolean {
   }
   return true;
 }
+
+// The reasons a send didn't happen are first-class, never a silent swallow (Doctrine: no silent failures).
+export type SendResult = "sent" | "off" | "no-endpoint" | "blocked" | "failed";
+
+// The ONE place data may leave the device. It sends ONLY when BOTH gates are open:
+//   1. the user opted in            → buildPayload returns non-null
+//   2. the maker set an endpoint     → TELEMETRY_ENDPOINT is configured (unset ⇒ "no-endpoint", the
+//      default, so a shipped-but-undeployed build phones home NOTHING).
+// isSendable is a third, defence-in-depth gate: a drifted shape is refused rather than sent. The endpoint
+// is MAKER config (an env var we set at build/deploy), never user- or content-supplied — so this is not
+// an SSRF surface. Returns a typed reason; the caller logs it, never assumes success.
+export async function postTelemetry(
+  a: Analytics, version: string, os: string, now: string,
+  endpoint: string | undefined = process.env.TELEMETRY_ENDPOINT,
+): Promise<SendResult> {
+  if (!endpoint) return "no-endpoint";                 // no URL ⇒ inert; nothing ever leaves
+  const payload = buildPayload(a, version, os, now);
+  if (!payload) return "off";                           // telemetry disabled ⇒ null ⇒ nothing to send
+  if (!isSendable(payload)) return "blocked";           // shape drifted ⇒ refuse (never send a stray key)
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return res.ok ? "sent" : "failed";
+  } catch { return "failed"; }
+}

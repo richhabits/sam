@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
 import { rmSync } from "node:fs";
 
 const SCRATCH = "/tmp/sam-telemetry-test";
@@ -72,5 +72,62 @@ describe("PRIVACY INVARIANT — content can NEVER be in a telemetry payload", ()
   it("isSendable REFUSES a payload with any non-whitelisted key (drift tripwire)", () => {
     expect(T.isSendable({ schema: "x", anonId: "y", stray: "leak" } as any)).toBe(false);
     expect(T.isSendable({ schema: "x", features: { tasks: 1, secretPath: "/x" } } as any)).toBe(false);
+  });
+});
+
+describe("postTelemetry — the send-path: BOTH gates must be open, and only the whitelist rides the wire", () => {
+  const ENDPOINT = "https://telemetry.example/sam";
+  let calls: { url: string; body: string }[];
+  beforeEach(() => {
+    calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: any) => { calls.push({ url, body: init?.body }); return { ok: true } as Response; }));
+  });
+  afterEach(() => { vi.unstubAllGlobals(); delete process.env.TELEMETRY_ENDPOINT; });
+
+  it("NO endpoint configured ⇒ 'no-endpoint' and fetch is NEVER called (undeployed build is inert)", async () => {
+    T.setTelemetry(true, NOW);                                  // even opted-in…
+    expect(await T.postTelemetry(analytics(), "2.0.0", "darwin", NOW, undefined)).toBe("no-endpoint");
+    expect(calls.length).toBe(0);                               // …nothing left the device
+  });
+
+  it("opted OUT + endpoint set ⇒ 'off' and fetch is NEVER called", async () => {
+    T.setTelemetry(false, NOW);
+    expect(await T.postTelemetry(analytics(), "2.0.0", "darwin", NOW, ENDPOINT)).toBe("off");
+    expect(calls.length).toBe(0);
+  });
+
+  it("BOTH gates open ⇒ 'sent', and the wire body is EXACTLY the whitelisted payload — even from poisoned analytics", async () => {
+    T.setTelemetry(true, NOW);
+    const poisoned = analytics({
+      toolUses: { "read_file:/Users/alex/taxes-2026.pdf": 3, "send_email:boss@acme.com": 1 } as any,
+      ...( { userPrompt: "my bank password is hunter2", lastMessage: "SECRET_CONTENT_XYZ" } as any ),
+    });
+    expect(await T.postTelemetry(poisoned, "2.0.0", "darwin", NOW, ENDPOINT)).toBe("sent");
+    expect(calls.length).toBe(1);
+    expect(calls[0].url).toBe(ENDPOINT);
+    const wire = calls[0].body;
+    for (const secret of ["taxes-2026", "alex", "boss@acme.com", "hunter2", "SECRET_CONTENT_XYZ", "/Users/"]) {
+      expect(wire).not.toContain(secret);                       // content can NEVER ride out, even over the wire
+    }
+    expect(Object.keys(JSON.parse(wire)).sort()).toEqual([...T.ALLOWED_FIELDS].sort());
+  });
+
+  it("reads the endpoint from TELEMETRY_ENDPOINT env when no arg is passed (how the boot heartbeat calls it)", async () => {
+    T.setTelemetry(true, NOW);
+    process.env.TELEMETRY_ENDPOINT = ENDPOINT;
+    expect(await T.postTelemetry(analytics(), "2.0.0", "darwin", NOW)).toBe("sent");
+    expect(calls[0].url).toBe(ENDPOINT);
+  });
+
+  it("a non-2xx response ⇒ 'failed' (surfaced, not swallowed)", async () => {
+    T.setTelemetry(true, NOW);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false } as Response)));
+    expect(await T.postTelemetry(analytics(), "2.0.0", "darwin", NOW, ENDPOINT)).toBe("failed");
+  });
+
+  it("a network throw ⇒ 'failed', never an unhandled rejection", async () => {
+    T.setTelemetry(true, NOW);
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    expect(await T.postTelemetry(analytics(), "2.0.0", "darwin", NOW, ENDPOINT)).toBe("failed");
   });
 });

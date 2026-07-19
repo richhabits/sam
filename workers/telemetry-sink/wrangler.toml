@@ -1,0 +1,11 @@
+# SAM telemetry sink — deploy config. Committed but not deployed; see README.md.
+name = "sam-telemetry-sink"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# The aggregate store. Create the namespace, then paste its id below, before deploying with storage:
+#   wrangler kv namespace create SAM_TELEMETRY
+# Until an id is set the binding is inert and the worker accepts-and-drops (still validates the whitelist).
+# [[kv_namespaces]]
+# binding = "SAM_TELEMETRY"
+# id = "PASTE_NAMESPACE_ID_HERE"
