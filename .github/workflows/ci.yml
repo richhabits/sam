@@ -30,6 +30,11 @@ jobs:
       # Lint gate — Biome. Fails the build on ERROR-level rules only (warnings are advisory and
       # don't block). Keeps the codebase born-clean without churning the intentional dense style.
       - run: npm run lint
+      # The Warden — SAM's security-regression gate. Runs FIRST and by name so a guardrail regression
+      # (SSRF/Handshake/Safe-at-rest/redaction/local→cloud/CORS/Host/denylist/pending) fails the build
+      # unmistakably, not buried in the full suite. Deterministic, defensive — SAM tested against SAM.
+      - name: The Warden — security gate
+        run: npx vitest run server/warden.test.ts
       - run: npm test
       # Type-check — `vite build` uses esbuild which strips types WITHOUT checking them,
       # so type errors slip through the build. This catches them.

@@ -47,7 +47,7 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { isLoopback, isTrustedLocal } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isTrustedLocal, originAllowed } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { issuesSummary, listIssues } from "./issues.ts";
 import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
@@ -113,7 +113,7 @@ const app = express();
 // Any blocked origin gets logged so SAM can call it out.
 app.use(cors({
   origin: (o, cb) => {
-    const ok = !o || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+    const ok = originAllowed(o);
     if (!ok) logSecurity("alert", "blocked-origin", `Blocked an API request from an unexpected website`, o);
     cb(null, ok);
   },
@@ -125,11 +125,6 @@ app.use(express.json({ limit: "30mb" })); // room for photo/file attachments
 // only tell is the Host header, which is still the ATTACKER'S DOMAIN. Legit requests always carry a
 // localhost/LAN-IP Host. So: allow loopback + private-LAN IP hosts (covers phone access), reject any
 // domain-name Host outright. This closes the classic local-server takeover from a malicious webpage.
-function hostAllowed(hostHeader: string): boolean {
-  const h = (hostHeader || "").split(":")[0].replace(/^\[|\]$/g, "").toLowerCase();
-  if (h === "localhost" || h === "::1") return true;
-  return /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h);
-}
 app.use((req, res, next) => {
   if (!hostAllowed(req.headers.host || "")) {
     logSecurity("alert", "blocked-host", `Blocked a request with an unexpected Host header (possible DNS-rebinding)`, req.headers.host || "");
