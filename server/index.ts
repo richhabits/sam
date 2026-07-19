@@ -79,6 +79,7 @@ import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { recover as recoverPreviewCommit } from "./preview-commit.ts";
+import { buildSummary, crossIn, crossOut, thresholdEnabled } from "./threshold.ts";
 import { isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
@@ -267,6 +268,23 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+// The Threshold — CROSS IN: restore the last session's context so SAM resumes knowing what it was
+// doing. Opt-in (SAM_THRESHOLD=1). The matching CROSS OUT (persist a summary) is registered on the
+// stop signals below. Both no-ops unless enabled → boot/stop are exactly as today by default.
+if (!BENCH_MODE && thresholdEnabled()) {
+  const prev = crossIn();
+  if (prev) console.log(`  threshold       · ↩ resumed from ${prev.at}${prev.openThreads.length ? ` · open: ${prev.openThreads.join("; ")}` : ""}\n`);
+  let crossedOut = false;
+  const onStop = (sig: string) => {
+    if (crossedOut) return;               // guard: fire the persist exactly once
+    crossedOut = true;
+    const r = crossOut(buildSummary(`session ended (${sig})`));
+    if (!r.ok) console.error(`  ⚠️ threshold CROSS OUT failed (${r.error.detail}) — context for this session was NOT saved.`); // LOUD, never silent
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => onStop("SIGTERM"));
+  process.once("SIGINT", () => onStop("SIGINT"));
+}
 // The Safe — encrypted secret store. Behind SAM_SAFE (default off). If it's set up, unlock on launch
 // (keychain mode is seamless) and bridge the sealed secrets back into process.env so every existing
 // reader works unchanged. A failed unlock is LOUD and does NOT fall back to plaintext — the migration
