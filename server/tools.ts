@@ -1096,6 +1096,7 @@ export const TOOLS: Tool[] = [
   { name: "web_extract", safe: true,
     description: "Pull STRUCTURED data out of a web page. input: {url, schema} where schema names the fields you want, e.g. {name:'string', price:'string'}. Use this instead of web_fetch when you need specific fields rather than the whole page.",
     params: "{url, schema}",
+    args: { url: { type: "string", required: true, desc: "the page URL" }, schema: { type: "object", desc: "field name → type, e.g. {name:'string', price:'string'}" } },
     activity: (i) => `Extracting ${Object.keys(i?.schema ?? {}).join(", ") || "data"} from ${i?.url}`,
     run: async (i) => {
       const r = await extract(String(i?.url ?? ""), i?.schema ?? { title: "string" }, samLlm, { maxChars: 6000 });
@@ -1104,6 +1105,7 @@ export const TOOLS: Tool[] = [
   { name: "web_crawl", safe: true,
     description: "Read a whole SITE, not one page — follows same-domain links and returns the text of each. input: {url, maxPages?, maxDepth?}. Use when the answer is spread across several pages of one site (docs, a help centre, a small site).",
     params: "{url, maxPages?, maxDepth?}",
+    args: { url: { type: "string", required: true, desc: "the site's starting URL" }, maxPages: { type: "number", desc: "cap on pages (≤20)" }, maxDepth: { type: "number", desc: "link depth (≤3)" } },
     activity: (i) => `Crawling ${i?.url}`,
     run: async (i) => {
       const r = await crawl(String(i?.url ?? ""), {
@@ -1125,6 +1127,7 @@ export const TOOLS: Tool[] = [
   { name: "web_research", safe: true,
     description: "Pull the SAME fields from MANY pages at once and return a table. input: {urls:[…], schema}. Use for comparisons — prices across shops, specs across products.",
     params: "{urls:[string], schema}",
+    args: { urls: { type: "array", items: "string", required: true, desc: "the page URLs to compare" }, schema: { type: "object", desc: "field name → type" } },
     activity: (i) => `Researching ${(i?.urls ?? []).length} pages`,
     run: async (i) => {
       const urls = Array.isArray(i?.urls) ? i.urls.map(String) : [];

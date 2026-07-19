@@ -62,3 +62,29 @@ describe("unwrapRespond — the constrained final-answer form", () => {
     expect(unwrapRespond('{"respond":42}')).toBeNull();   // wrong type → not a valid final answer
   });
 });
+
+describe("argObjectSchema — richer per-tool constraints", () => {
+  it("constrains array element type via items, and carries desc as description", () => {
+    const s = argObjectSchema({ urls: { type: "array", items: "string", required: true, desc: "the URLs" }, schema: { type: "object" } }) as any;
+    expect(s.properties.urls).toEqual({ type: "array", items: { type: "string" }, description: "the URLs" });
+    expect(s.properties.schema).toEqual({ type: "object" });
+    expect(s.required).toEqual(["urls"]);
+    expect(s.additionalProperties).toBe(false);
+  });
+});
+
+describe("replySchema — the oneOf constrains INPUT per tool (not just the name)", () => {
+  it("web_research's branch requires urls:[string] + schema, and forbids inventing args", () => {
+    const schema = replySchema(TOOLS) as { oneOf: any[] };
+    const branch = schema.oneOf.find((b) => b.properties?.tool?.enum?.[0] === "web_research");
+    expect(branch).toBeTruthy();
+    expect(branch.properties.input.properties.urls).toMatchObject({ type: "array", items: { type: "string" } });
+    expect(branch.properties.input.required).toContain("urls");
+    expect(branch.properties.input.additionalProperties).toBe(false);   // per-tool input is constrained, not any-object
+  });
+  it("an UNSCHEMA'd tool's branch leaves input as a permissive object (name-only)", () => {
+    const schema = replySchema(TOOLS) as { oneOf: any[] };
+    const search = schema.oneOf.find((b) => b.properties?.tool?.enum?.[0] === "web_search"); // bare-string tool, no args schema
+    expect(search.properties.input).toEqual({ type: "object" });
+  });
+});

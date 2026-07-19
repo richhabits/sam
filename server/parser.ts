@@ -18,6 +18,7 @@ export interface ArgSpec {
   type: ArgType;
   required?: boolean;
   enum?: (string | number)[];   // if set, the value must be one of these
+  items?: ArgType;              // for type:"array" — the element type each item must match
   desc?: string;                // human/model hint (not validated)
 }
 /** A tool's argument schema: the SINGLE source of truth the Parser validates against (and, later,
@@ -67,6 +68,10 @@ export function validateArgs(schema: ArgSchema | undefined, input: unknown): Val
     const v = obj[name];
     if (!typeMatches(spec.type, v)) problems.push({ arg: name, expected: spec.type, got: typeName(v) });
     else if (spec.enum && !spec.enum.includes(v as string | number)) problems.push({ arg: name, expected: `one of [${spec.enum.join(", ")}]`, got: JSON.stringify(v) });
+    else if (spec.type === "array" && spec.items) {
+      const bad = (v as unknown[]).findIndex((el) => !typeMatches(spec.items!, el));
+      if (bad >= 0) problems.push({ arg: `${name}[${bad}]`, expected: spec.items, got: typeName((v as unknown[])[bad]) });
+    }
   }
   // Unknown arguments the schema doesn't declare → hallucinated; reject rather than silently drop.
   for (const k of Object.keys(obj)) if (!(k in schema)) problems.push({ arg: k, expected: "not a valid argument for this tool", got: "unexpected" });

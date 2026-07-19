@@ -91,3 +91,24 @@ describe("the Preview → Commit gate — write_file's real schema rejects a bad
     expect(validateArgs(writeFile.args, { path: "~/notes.md", content: "hello" }).ok).toBe(true);
   });
 });
+
+describe("validateArgs — array item typing", () => {
+  const s: ArgSchema = { urls: { type: "array", items: "string", required: true } };
+  it("accepts an array whose elements all match the item type", () => {
+    expect(validateArgs(s, { urls: ["a", "b", "c"] }).ok).toBe(true);
+  });
+  it("rejects a wrong-typed element, pointing at the index", () => {
+    const v = validateArgs(s, { urls: ["a", 42, "c"] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.error).toContainEqual({ arg: "urls[1]", expected: "string", got: "number" });
+  });
+});
+
+describe("the web_research schema (real registry) — per-tool input", () => {
+  const wr = TOOLS.find((t) => t.name === "web_research")!;
+  it("accepts {urls:[string], schema} and rejects a non-string url or a missing urls", () => {
+    expect(validateArgs(wr.args, { urls: ["https://a", "https://b"], schema: { title: "string" } }).ok).toBe(true);
+    expect(validateArgs(wr.args, { urls: [123] }).ok).toBe(false);
+    expect(validateArgs(wr.args, { schema: {} }).ok).toBe(false);   // urls required
+  });
+});

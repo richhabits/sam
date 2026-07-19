@@ -27,6 +27,8 @@ export function argObjectSchema(args: ArgSchema | undefined): JsonSchema {
   for (const [name, spec] of Object.entries(args)) {
     const p: JsonSchema = { type: spec.type };
     if (spec.enum) p.enum = spec.enum;
+    if (spec.type === "array" && spec.items) p.items = { type: spec.items };   // constrain each element's type
+    if (spec.desc) p.description = spec.desc;                                    // a hint the model sees under the constraint
     properties[name] = p;
     if (spec.required) required.push(name);
   }
