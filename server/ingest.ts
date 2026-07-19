@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, mkdirSync } from "node:fs";
+import { count } from "./pulse.ts";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, dirname, extname, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -238,6 +239,11 @@ export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<In
   // with (authoritative) when we did work, else the intended/stored one.
   setMeta.run("model", embedModel || wantModel || storedModel);
   setMeta.run("chunkfp", CHUNK_FP);
+
+  // The Pulse — index cache effectiveness (hit = skipped unchanged, miss = (re)embedded).
+  if (report.unchanged) count("index.cache.hit", report.unchanged);
+  if (report.ingested) count("index.cache.miss", report.ingested);
+  if (report.evicted) count("index.cache.evict", report.evicted);
 
   if (report.ingested || report.evicted || report.busted) invalidateDocCache();   // index changed → rebuild on next search
   if (report.remaining) report.note = `${report.note ? report.note + " " : ""}Hit the ${maxFiles}-file cap — run again to continue (already-done files are skipped).`;

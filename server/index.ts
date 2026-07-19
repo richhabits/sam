@@ -50,6 +50,7 @@ import { writeEnv } from "./env-file.ts";
 import { isLoopback } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { issuesSummary } from "./issues.ts";
+import { pulseSummary } from "./pulse.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -1186,6 +1187,7 @@ app.get("/api/status", (_req, res) =>
     capacity: capacityReport(),
     vault: vaultStats(),
     issues: issuesSummary(),   // local error capture (the black box) — strictly on-device
+    pulse: pulseSummary(),     // runtime metrics — strictly on-device
   })
 );
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));

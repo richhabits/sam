@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────
 import { getKey, poolSize, reportFailure, reportSuccess } from "./keys.ts";
 import { capture } from "./issues.ts";
+import { count } from "./pulse.ts";
 
 // ── The Breaker ──────────────────────────────────────────────
 const BREAKER_TRIP = 3;             // consecutive brain-level failures before it opens
@@ -41,7 +42,11 @@ function onSuccess(id: string): void { const b = breakerFor(id); b.fails = 0; b.
 function onFailure(id: string, now = Date.now()): void {
   const b = breakerFor(id);
   b.fails++;
-  if (b.fails >= BREAKER_TRIP) b.openUntil = now + BREAKER_COOLDOWN_MS;
+  count("brain.failures", 1, { brain: id });
+  if (b.fails >= BREAKER_TRIP) {
+    if (b.fails === BREAKER_TRIP) count("breaker.open", 1, { brain: id }); // count the trip, not every failure while open
+    b.openUntil = now + BREAKER_COOLDOWN_MS;
+  }
 }
 /** Test/maintenance helper — reset all Breakers. */
 export function _resetBreakers(): void { breakers.clear(); }

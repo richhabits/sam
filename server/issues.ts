@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────
 import { createHash } from "node:crypto";
 import { arch, platform, totalmem } from "node:os";
+import { count } from "./pulse.ts";
 
 export type TrailEntry = { at: string; kind: "tool" | "model" | "file" | "state" | "note"; msg: string; data?: Record<string, unknown> };
 export interface Issue {
@@ -104,6 +105,7 @@ function fingerprintOf(name: string, message: string): string {
  */
 export function capture(err: unknown, context?: Record<string, unknown>): Issue | null {
   try {
+    count("issues.captured");
     const e = err instanceof Error ? err : new Error(safeString(err));
     const fp = fingerprintOf(e.name || "Error", e.message || "");
     const now = new Date().toISOString();

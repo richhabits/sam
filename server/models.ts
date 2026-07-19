@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { relayBrain } from "./relay.ts";
+import { count, observe } from "./pulse.ts";
 import { recordModelCall, estTokens } from "./metrics.ts";
 import { loadRanking, rankingStale } from "./colosseum.ts";
 import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
@@ -501,12 +502,14 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
 export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean }): Promise<ModelResult> {
   const t0 = Date.now();
   const r = BENCH_MOCK ? await mockRun(tier) : await runModelInner(tier, system, prompt, laneHint);
-  recordModelCall({
-    tier: r.tier, provider: r.provider,
-    promptTokens: estTokens(system) + estTokens(prompt),
-    outputTokens: estTokens(r.text),
-    ms: Date.now() - t0, reason: meta?.reason, escalated: meta?.escalated,
-  });
+  const ms = Date.now() - t0;
+  const promptTokens = estTokens(system) + estTokens(prompt);
+  const outputTokens = estTokens(r.text);
+  recordModelCall({ tier: r.tier, provider: r.provider, promptTokens, outputTokens, ms, reason: meta?.reason, escalated: meta?.escalated });
+  // The Pulse — self-observability, strictly local.
+  count("brain.calls", 1, { tier: r.tier });
+  observe("brain.latency_ms", ms, { tier: r.tier });
+  count("brain.tokens", promptTokens + outputTokens, { tier: r.tier });
   return r;
 }
 
