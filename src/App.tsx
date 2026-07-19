@@ -153,7 +153,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
         // than leaving the user staring at an apology — this is the moment they're most likely to bounce.
         <div className="nobrain-cta">
           <Icon name="sparkle" />
-          <span>All free brains are busy right now. Add your own free key and SAM stops waiting in line.</span>
+          <span>All free brains are busy or none is set up yet. Add your own free key and SAM stops waiting in line.</span>
           <button type="button" className="nobrain-btn" onClick={onPowerUp}>Power up — add a free key</button>
         </div>
       )}
