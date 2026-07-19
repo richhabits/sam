@@ -2,11 +2,11 @@
 //  S.A.M. · THE FORGE  (v1.4 Phase 5 + v1.5 tier-2 capabilities)
 //
 //  When SAM lacks a tool, it can DRAFT one behind a hard safety pipeline:
-//    draft → STATIC SCAN → SANDBOX TEST (node:vm, nothing ambient, timeout)
+//    draft → STATIC SCAN → CELL RUN (node:vm, nothing ambient, timeout)
 //    → show the user the code + declared capabilities → USER ENABLES → live.
 //
 //  CAPABILITIES (v1.5): a forged tool may declare capabilities up front —
-//  `net`, `fs:read`, `fs:write`. The sandbox injects ONLY the declared
+//  `net`, `fs:read`, `fs:write`. The cell injects ONLY the declared
 //  capability as a `sam.*` shim; nothing ambient is reachable (no bare fetch,
 //  require, process, fs). Capability ⇒ tier:
 //    • pure (no caps) or fs:read  → CONFIRM
@@ -15,7 +15,7 @@
 //
 //  HARD RULES: a forged tool can never mark itself safe, never self-approve/
 //  self-enable (the user does, after seeing the code + caps), and its run()
-//  executes ONLY in the sandbox. The forge tool itself is CONFIRM-tier.
+//  executes ONLY in the cell. The forge tool itself is CONFIRM-tier.
 // ─────────────────────────────────────────────────────────────
 
 import { spawn } from "node:child_process";
@@ -45,8 +45,8 @@ function registry(): Tool[] {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");
 const FORGE_DIR = join(VAULT_DIR, "forged");
-const FORGE_FS = join(VAULT_DIR, "forge-fs");      // per-tool sandbox for fs:read / fs:write
-const SANDBOX_TIMEOUT_MS = 500;                     // sync compile bound
+const FORGE_FS = join(VAULT_DIR, "forge-fs");      // per-tool cell for fs:read / fs:write
+const CELL_TIMEOUT_MS = 500;                     // sync compile bound
 const CALL_TIMEOUT_MS = 12_000;                     // async wall-clock bound (net/fs tools)
 const NAME_RE = /^[a-z][a-z0-9_]{2,39}$/;
 const NET_MAX_BYTES = 256 * 1024;
@@ -99,8 +99,8 @@ export function scanCode(code: string, caps: Capability[] = []): { ok: boolean; 
   return { ok: violations.length === 0, violations };
 }
 
-// ── SANDBOX DIR — per-tool fs jail for fs:read / fs:write (no traversal, no wider disk). ──
-function toolSandboxDir(name: string): string {
+// ── CELL DIR — per-tool fs jail for fs:read / fs:write (no traversal, no wider disk). ──
+function toolCellDir(name: string): string {
   const dir = join(FORGE_FS, name.replace(/[^a-z0-9_]/gi, "_"));
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return dir;
@@ -137,11 +137,11 @@ process.stdin.on("end", async () => {
     if (caps.includes("fs:read")) sam.readFile = async (f) => { try { return readFileSync(join(dir, safeName(f)), "utf8"); } catch { return ""; } };
     if (caps.includes("fs:write")) sam.writeFile = async (f, c) => { if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, safeName(f)), String(c == null ? "" : c).slice(0, NET_MAX)); return "ok"; };
     const ctx = vm.createContext({}, { codeGeneration: { strings: false, wasm: false } });
-    const fn = vm.runInContext("(function(){ return (" + code + "); }).call(Object.create(null))", ctx, { timeout: ${SANDBOX_TIMEOUT_MS} });
+    const fn = vm.runInContext("(function(){ return (" + code + "); }).call(Object.create(null))", ctx, { timeout: ${CELL_TIMEOUT_MS} });
     if (typeof fn !== "function") throw new Error("not a function");
     const out = await Promise.race([
       Promise.resolve(fn(input, sam)),
-      new Promise((_r, rej) => setTimeout(() => rej(new Error("sandbox timeout")), ${CALL_TIMEOUT_MS})),
+      new Promise((_r, rej) => setTimeout(() => rej(new Error("the cell timed out")), ${CALL_TIMEOUT_MS})),
     ]);
     res = { ok: true, out: String(out == null ? "" : out) };
   } catch (e) { res = { ok: false, err: String((e && e.message) || e) }; }
@@ -151,9 +151,9 @@ process.stdin.on("end", async () => {
 `;
 
 // Run forged `code` in the codegen-disabled child. Resolves the tool's string output; REJECTS if the
-// tool threw or the sandbox failed (callers wrap this — a failure never crashes the agent loop).
-export function sandboxRun(code: string, input: any, caps: Capability[] = [], name = "forged"): Promise<string> {
-  const dir = caps.includes("fs:read") || caps.includes("fs:write") ? toolSandboxDir(name) : "";
+// tool threw or the cell failed (callers wrap this — a failure never crashes the agent loop).
+export function cellRun(code: string, input: any, caps: Capability[] = [], name = "forged"): Promise<string> {
+  const dir = caps.includes("fs:read") || caps.includes("fs:write") ? toolCellDir(name) : "";
   const payload = JSON.stringify({ code, input, caps, dir });
   return new Promise<string>((resolve, reject) => {
     // ELECTRON_RUN_AS_NODE makes process.execPath run as node inside the packaged Electron app;
@@ -163,13 +163,13 @@ export function sandboxRun(code: string, input: any, caps: Capability[] = [], na
     });
     let out = ""; let settled = false;
     const done = (fn: () => void) => { if (settled) return; settled = true; clearTimeout(timer); try { child.kill("SIGKILL"); } catch { /* the child may already be gone — that is the desired end state */ } fn(); };
-    const timer = setTimeout(() => done(() => reject(new Error("sandbox timeout"))), CALL_TIMEOUT_MS + 2000);
-    child.stdout.on("data", (d) => { out += d; if (out.length > 2_000_000) done(() => reject(new Error("sandbox output too large"))); });
+    const timer = setTimeout(() => done(() => reject(new Error("the cell timed out"))), CALL_TIMEOUT_MS + 2000);
+    child.stdout.on("data", (d) => { out += d; if (out.length > 2_000_000) done(() => reject(new Error("the cell output too large"))); });
     child.on("error", (e: any) => done(() => reject(new Error(String(e?.message || e)))));
     child.on("close", () => done(() => {
       let r: any; try { r = JSON.parse(out); } catch { r = null; }
       if (r?.ok) resolve(String(r.out ?? ""));
-      else reject(new Error(r?.err || "sandbox produced no output"));
+      else reject(new Error(r?.err || "the cell produced no output"));
     }));
     child.stdin.on("error", () => {/* child may exit before we finish writing — nothing to do */});   // child may exit before we finish writing
     child.stdin.write(payload); child.stdin.end();
@@ -181,7 +181,7 @@ export async function testForged(code: string, tests: { input: any }[], caps: Ca
   try {
     // Only run pure/fs tools during the test (a `net` draft isn't hit for real at forge time).
     if (caps.includes("net")) return { ok: true, samples: [{ input: "(skipped)", output: "net tool — not executed at forge time" }] };
-    for (const t of (tests.length ? tests : [{ input: "" }])) samples.push({ input: t.input, output: await sandboxRun(code, t.input, caps, name) });
+    for (const t of (tests.length ? tests : [{ input: "" }])) samples.push({ input: t.input, output: await cellRun(code, t.input, caps, name) });
     return { ok: true, samples };
   } catch (e: any) { return { ok: false, error: String(e?.message || e), samples }; }
 }
@@ -249,7 +249,7 @@ export async function forgeTool(need: string): Promise<DraftResult> {
 
   const tests = Array.isArray(spec?.tests) ? spec.tests.slice(0, 5) : [];
   const test = await testForged(code, tests, caps, name);
-  if (!test.ok) return { ok: false, reason: `The draft failed its sandbox test: ${test.error}` };
+  if (!test.ok) return { ok: false, reason: `The draft failed its cell run: ${test.error}` };
 
   const tool: ForgedTool = {
     name, code, caps,
@@ -284,7 +284,7 @@ export function syncForgedRegistry(): number {
       params: t.params,
       activity: () => `Running your forged tool ${t.name}`,
       preview: () => `Run the SAM-forged tool "${t.name}"${capLabel} — ${t.explanation}`,
-      run: async (input: any) => { try { return await sandboxRun(t.code, input, t.caps, t.name); } catch (e: any) { return `forged tool errored: ${e?.message || e}`; } },
+      run: async (input: any) => { try { return await cellRun(t.code, input, t.caps, t.name); } catch (e: any) { return `forged tool errored: ${e?.message || e}`; } },
     };
     TOOLS.push(rt); n++;
   }

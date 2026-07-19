@@ -2,7 +2,7 @@
 // so could not be extracted. It is the gate on every privileged write in SAM — key material,
 // config, tokens, vault passphrase — so it belongs in one place with its own tests rather than
 // buried in a 1600-line file.
-import { checkControlToken, controlTokenEnforced } from "./control-token.ts";
+import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 
 /**
  * True only for a request that arrived from this machine.
@@ -27,6 +27,6 @@ export function isLoopback(req: { socket: { remoteAddress?: string | null } }): 
 // See control-token.ts for the rationale.
 export function isTrustedLocal(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
   if (!isLoopback(req)) return false;
-  if (controlTokenEnforced()) return checkControlToken(req);
+  if (handshakeEnforced()) return checkPasskey(req);
   return true;
 }

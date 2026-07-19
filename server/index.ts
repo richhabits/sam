@@ -48,7 +48,7 @@ import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { isLoopback } from "./http-guards.ts";
-import { checkControlToken, controlTokenEnforced } from "./control-token.ts";
+import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { issuesSummary } from "./issues.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
@@ -132,17 +132,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// SECURITY · control-channel token — loopback position is not authorization. OPT-IN via SAM_REQUIRE_CONTROL_TOKEN:
+// SECURITY · the Handshake — loopback position is not authorization. OPT-IN via SAM_REQUIRE_CONTROL_TOKEN:
 // off by default so nothing changes. When on, loopback position alone is NOT enough — mutating /api
 // calls must carry the per-launch secret the legit frontend holds (a random local process can't).
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
 app.use((req, res, next) => {
-  if (!controlTokenEnforced()) return next();
+  if (!handshakeEnforced()) return next();
   const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
   if (!mutating || !req.path.startsWith("/api/") || process.env.SAM_REMOTE === "1") return next();
-  if (checkControlToken(req)) return next();
-  logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without the control token — refused despite loopback`, req.socket.remoteAddress || "");
-  return res.status(403).json({ error: "control token required" });
+  if (checkPasskey(req)) return next();
+  logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without the passkey — refused despite loopback`, req.socket.remoteAddress || "");
+  return res.status(403).json({ error: "passkey required" });
 });
 
 // SECURITY headers (defense-in-depth for the served browser/phone HUD — Electron loads file://

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { checkControlToken, controlToken, controlTokenEnforced, presentedToken } from "./control-token.ts";
+import { checkPasskey, passkey, handshakeEnforced, presentedPasskey } from "./handshake.ts";
 import { isTrustedLocal } from "./http-guards.ts";
 
 // The control-token guarantee: with enforcement ON, loopback position is NOT enough — a privileged
@@ -21,32 +21,32 @@ const reqWith = (token?: string, ip = LOOPBACK) => ({
   headers: token === undefined ? {} : { "x-sam-token": token },
 });
 
-describe("control token — checkControlToken", () => {
+describe("passkey — checkPasskey", () => {
   it("accepts the exact token, rejects wrong/absent, constant-length-safe", () => {
-    expect(checkControlToken(reqWith("a".repeat(64)))).toBe(true);
-    expect(checkControlToken(reqWith("b".repeat(64)))).toBe(false); // right length, wrong bytes
-    expect(checkControlToken(reqWith("short"))).toBe(false); // wrong length → no throw, just false
-    expect(checkControlToken(reqWith())).toBe(false); // no header at all
+    expect(checkPasskey(reqWith("a".repeat(64)))).toBe(true);
+    expect(checkPasskey(reqWith("b".repeat(64)))).toBe(false); // right length, wrong bytes
+    expect(checkPasskey(reqWith("short"))).toBe(false); // wrong length → no throw, just false
+    expect(checkPasskey(reqWith())).toBe(false); // no header at all
   });
 
   it("reads the header from string or array form", () => {
-    expect(presentedToken({ headers: { "x-sam-token": "x" } })).toBe("x");
-    expect(presentedToken({ headers: { "x-sam-token": ["x", "y"] } })).toBe("x");
-    expect(presentedToken({ headers: {} })).toBe("");
+    expect(presentedPasskey({ headers: { "x-sam-token": "x" } })).toBe("x");
+    expect(presentedPasskey({ headers: { "x-sam-token": ["x", "y"] } })).toBe("x");
+    expect(presentedPasskey({ headers: {} })).toBe("");
   });
 
-  it("controlToken() is stable within a launch and 64 hex chars by default", () => {
+  it("passkey() is stable within a launch and 64 hex chars by default", () => {
     delete process.env.SAM_CONTROL_TOKEN;
-    const t1 = controlToken();
+    const t1 = passkey();
     expect(t1).toMatch(/^[0-9a-f]{64}$/);
-    expect(controlToken()).toBe(t1); // same value on re-read
+    expect(passkey()).toBe(t1); // same value on re-read
   });
 });
 
-describe("control token — isTrustedLocal enforcement", () => {
+describe("passkey — isTrustedLocal enforcement", () => {
   it("ENFORCEMENT OFF (default): loopback alone is trusted, token or not", () => {
     delete process.env.SAM_REQUIRE_CONTROL_TOKEN;
-    expect(controlTokenEnforced()).toBe(false);
+    expect(handshakeEnforced()).toBe(false);
     expect(isTrustedLocal(reqWith())).toBe(true); // unchanged legacy behavior
   });
 

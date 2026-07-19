@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { _reset, breadcrumb, capture, issuesSummary, listIssues, redact } from "./issues.ts";
+import { _reset, trail, capture, issuesSummary, listIssues, redact } from "./issues.ts";
 
 // The black box (local error capture), strictly local. Proves: capture records a structured issue,
 // recurring faults GROUP by fingerprint (count/first/last), secrets are REDACTED before storage,
@@ -10,15 +10,15 @@ beforeEach(() => _reset());
 afterEach(() => _reset());
 
 describe("capture + grouping", () => {
-  it("records a caught error with host context + breadcrumbs", () => {
-    breadcrumb("tool", "web_fetch", { url: "https://example.com" });
+  it("records a caught error with host context + trail", () => {
+    trail("tool", "web_fetch", { url: "https://example.com" });
     const issue = capture(new Error("boom while fetching"));
     expect(issue).not.toBeNull();
     expect(issue!.message).toBe("boom while fetching");
     expect(issue!.count).toBe(1);
     expect(issue!.context.version).toBeDefined();
     expect(issue!.context.os).toMatch(/darwin|linux|win/i);
-    expect(issue!.breadcrumbs.at(-1)?.msg).toBe("web_fetch");
+    expect(issue!.trail.at(-1)?.msg).toBe("web_fetch");
   });
 
   it("groups the SAME fault: count rises, first stays, last advances — not a new issue", () => {
@@ -52,13 +52,13 @@ describe("redaction — a local issue log must not become a secrets log", () => 
     expect(redact("hi there")).toBe("hi there"); // ordinary text untouched
   });
 
-  it("redacts breadcrumb data by sensitive KEY name and by value shape", () => {
-    breadcrumb("tool", "save_key", { provider: "groq", apiKey: "gsk_abcdefghijklmnop0123", note: "AIzaSyA1234567890abcdefghij1234567890xy" });
+  it("redacts trail data by sensitive KEY name and by value shape", () => {
+    trail("tool", "save_key", { provider: "groq", apiKey: "gsk_abcdefghijklmnop0123", note: "AIzaSyA1234567890abcdefghij1234567890xy" });
     const issue = capture(new Error("save failed"));
-    const crumb = issue!.breadcrumbs.at(-1)!;
-    expect(crumb.data!.apiKey).toBe("[redacted]"); // sensitive key name → wholesale
-    expect(String(crumb.data!.note)).toBe("[redacted]"); // secret-shaped value → scrubbed
-    expect(crumb.data!.provider).toBe("groq"); // ordinary value kept
+    const entry = issue!.trail.at(-1)!;
+    expect(entry.data!.apiKey).toBe("[redacted]"); // sensitive key name → wholesale
+    expect(String(entry.data!.note)).toBe("[redacted]"); // secret-shaped value → scrubbed
+    expect(entry.data!.provider).toBe("groq"); // ordinary value kept
   });
 
   it("truncates very long strings so file contents can't bloat the log", () => {
@@ -86,10 +86,10 @@ describe("robustness", () => {
     expect(s.clear).toBe(false);
   });
 
-  it("breadcrumb ring stays bounded (no unbounded growth)", () => {
-    for (let i = 0; i < 200; i++) breadcrumb("note", `step ${i}`);
+  it("trail ring stays bounded (no unbounded growth)", () => {
+    for (let i = 0; i < 200; i++) trail("note", `step ${i}`);
     const issue = capture(new Error("after a flood"));
-    expect(issue!.breadcrumbs.length).toBeLessThanOrEqual(40);
-    expect(issue!.breadcrumbs.at(-1)?.msg).toBe("step 199"); // newest kept
+    expect(issue!.trail.length).toBeLessThanOrEqual(40);
+    expect(issue!.trail.at(-1)?.msg).toBe("step 199"); // newest kept
   });
 });

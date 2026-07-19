@@ -1,15 +1,15 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · ISSUES  — strictly-local error capture + breadcrumbs.
+//  S.A.M. · ISSUES  — strictly-local error capture + trail.
 //
 //  SAM's black box. No network EVER — nothing is transmitted. SAM's recurring
 //  failure mode is SILENT failures — swallowed catches, no-op "successes". This gives them a place
-//  to land: a caught error records a structured ISSUE (message + stack + recent breadcrumbs + host
+//  to land: a caught error records a structured ISSUE (message + stack + recent trail + host
 //  context), grouped by fingerprint so a recurring fault reads "seen N times", surfaced in doctor.
 //
 //  Three non-negotiables:
 //   • STRICTLY LOCAL. Nothing is transmitted — there is no transport. Honors telemetry-off by
 //     construction (a local log the user reads in their own app is not telemetry).
-//   • REDACTED. Breadcrumbs carry tool args / file paths / model output, which can hold API keys.
+//   • REDACTED. Trail carry tool args / file paths / model output, which can hold API keys.
 //     Everything is scrubbed before storage — a local issue log must never become a secrets log.
 //   • NEVER SWALLOWS ITS OWN ERRORS. An observability layer that fails silently is the worst irony;
 //     if capture() itself throws, it falls back to console.error, never to nothing.
@@ -17,7 +17,7 @@
 import { createHash } from "node:crypto";
 import { arch, platform, totalmem } from "node:os";
 
-export type Crumb = { at: string; kind: "tool" | "model" | "file" | "state" | "note"; msg: string; data?: Record<string, unknown> };
+export type TrailEntry = { at: string; kind: "tool" | "model" | "file" | "state" | "note"; msg: string; data?: Record<string, unknown> };
 export interface Issue {
   fingerprint: string;
   message: string;
@@ -26,14 +26,14 @@ export interface Issue {
   firstAt: string;
   lastAt: string;
   context: Record<string, unknown>;
-  breadcrumbs: Crumb[];
+  trail: TrailEntry[];
 }
 
 const MAX_CRUMBS = 40;    // bounded ring — recent activity only
 const MAX_ISSUES = 100;   // distinct fault groups kept; oldest-seen evicted past this
 const MAX_STR = 200;      // truncate any single stored string (file contents etc.)
 
-const crumbs: Crumb[] = [];
+const trailBuf: TrailEntry[] = [];
 const issues = new Map<string, Issue>();
 
 // ── redaction ──
@@ -69,15 +69,15 @@ function redactData(data?: Record<string, unknown>): Record<string, unknown> | u
   return out;
 }
 
-// ── breadcrumbs ──
-/** Record a recent-activity crumb. Bounded ring; data is redacted before storage. */
-export function breadcrumb(kind: Crumb["kind"], msg: string, data?: Record<string, unknown>): void {
+// ── trail ──
+/** Record a recent-activity entry. Bounded ring; data is redacted before storage. */
+export function trail(kind: TrailEntry["kind"], msg: string, data?: Record<string, unknown>): void {
   try {
-    crumbs.push({ at: new Date().toISOString(), kind, msg: redact(msg), data: redactData(data) });
-    while (crumbs.length > MAX_CRUMBS) crumbs.shift();
+    trailBuf.push({ at: new Date().toISOString(), kind, msg: redact(msg), data: redactData(data) });
+    while (trailBuf.length > MAX_CRUMBS) trailBuf.shift();
   } catch (e) {
     // Never let observability break the thing it observes — but never vanish either.
-    console.error("issues.breadcrumb failed:", e);
+    console.error("issues.trail failed:", e);
   }
 }
 
@@ -111,7 +111,7 @@ export function capture(err: unknown, context?: Record<string, unknown>): Issue 
     if (existing) {
       existing.count++;
       existing.lastAt = now;
-      existing.breadcrumbs = crumbs.slice(-MAX_CRUMBS); // freshest trail for the latest occurrence
+      existing.trail = trailBuf.slice(-MAX_CRUMBS); // freshest trail for the latest occurrence
       return existing;
     }
     const issue: Issue = {
@@ -122,7 +122,7 @@ export function capture(err: unknown, context?: Record<string, unknown>): Issue 
       firstAt: now,
       lastAt: now,
       context: { ...hostContext(), ...(redactData(context) ?? {}) },
-      breadcrumbs: crumbs.slice(-MAX_CRUMBS),
+      trail: trailBuf.slice(-MAX_CRUMBS),
     };
     issues.set(fp, issue);
     // Bounded: evict the least-recently-seen group past the cap.
@@ -154,5 +154,5 @@ export function issuesSummary(): { total: number; distinct: number; clear: boole
   };
 }
 
-/** Test/maintenance helper — clears breadcrumbs + issues. */
-export function _reset(): void { crumbs.length = 0; issues.clear(); }
+/** Test/maintenance helper — clears trail + issues. */
+export function _reset(): void { trailBuf.length = 0; issues.clear(); }

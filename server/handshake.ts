@@ -17,27 +17,27 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 // The per-launch secret. Set once by preboot (Electron) so the renderer's preload reads the SAME
 // value; a standalone server mints its own (valid secret, just not shared with any frontend — fine,
 // because enforcement is opt-in). Read from process.env so main + preload + server all agree.
-export function controlToken(): string {
+export function passkey(): string {
   if (!process.env.SAM_CONTROL_TOKEN) process.env.SAM_CONTROL_TOKEN = randomBytes(32).toString("hex");
   return process.env.SAM_CONTROL_TOKEN;
 }
 
 /** Enforcement is opt-in: off = the existing loopback gate is unchanged; on = the token is required. */
-export function controlTokenEnforced(): boolean {
+export function handshakeEnforced(): boolean {
   return process.env.SAM_REQUIRE_CONTROL_TOKEN === "1";
 }
 
 interface HasHeaders { headers: Record<string, string | string[] | undefined> }
 
-export function presentedToken(req: HasHeaders): string {
+export function presentedPasskey(req: HasHeaders): string {
   const h = req.headers["x-sam-token"];
   return typeof h === "string" ? h : Array.isArray(h) ? h[0] ?? "" : "";
 }
 
 /** Constant-time check that the request carries the current per-launch token. */
-export function checkControlToken(req: HasHeaders): boolean {
-  const want = controlToken();
-  const got = presentedToken(req);
+export function checkPasskey(req: HasHeaders): boolean {
+  const want = passkey();
+  const got = presentedPasskey(req);
   // Length guard first: timingSafeEqual throws on unequal lengths, and comparing lengths leaks only
   // the (fixed, public) token length, never its bytes.
   if (got.length !== want.length) return false;
