@@ -10,6 +10,7 @@
 //  brain to self-correct. Tools with no schema get name-only validation upstream; the Parser is a
 //  no-op for them, so adoption is incremental.
 // ─────────────────────────────────────────────────────────────
+import { err, ok, type Outcome } from "./outcome.ts";
 
 export type ArgType = "string" | "number" | "boolean" | "array" | "object";
 
@@ -24,7 +25,9 @@ export interface ArgSpec {
 export type ArgSchema = Record<string, ArgSpec>;
 
 export interface Problem { arg: string; expected: string; got: string }
-export type Validation = { ok: true; value: unknown } | { ok: false; problems: Problem[] };
+// The Parser was already Outcome-shaped; unify it onto the canonical type. Success carries the
+// validated arguments; failure carries the list of problems the diagnostic is built from.
+export type Validation = Outcome<unknown, Problem[]>;
 
 function typeName(v: unknown): string {
   if (v === null) return "null";
@@ -48,10 +51,10 @@ function typeMatches(t: ArgType, v: unknown): boolean {
 export function validateArgs(schema: ArgSchema | undefined, input: unknown): Validation {
   // No schema → pass the input through UNCHANGED. Unschema'd tools handle their own input shapes
   // (e.g. read_file accepts a bare string OR {path}); normalising here would destroy that input.
-  if (!schema) return { ok: true, value: input };
+  if (!schema) return ok(input);
   // The input itself must be a plain object.
   if (input != null && (typeof input !== "object" || Array.isArray(input))) {
-    return { ok: false, problems: [{ arg: "(input)", expected: "an object", got: typeName(input) }] };
+    return err([{ arg: "(input)", expected: "an object", got: typeName(input) }]);
   }
   const obj = (input ?? {}) as Record<string, unknown>;
   const problems: Problem[] = [];
@@ -67,7 +70,7 @@ export function validateArgs(schema: ArgSchema | undefined, input: unknown): Val
   }
   // Unknown arguments the schema doesn't declare → hallucinated; reject rather than silently drop.
   for (const k of Object.keys(obj)) if (!(k in schema)) problems.push({ arg: k, expected: "not a valid argument for this tool", got: "unexpected" });
-  return problems.length ? { ok: false, problems } : { ok: true, value: obj };
+  return problems.length ? err(problems) : ok(obj);
 }
 
 /** The argument NAMES only — safe to record/echo (never the values, which may be secret). */

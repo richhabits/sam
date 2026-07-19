@@ -35,27 +35,27 @@ describe("validateArgs — rejects (never executes on a guess)", () => {
   it("missing required arg", () => {
     const v = validateArgs(schema, { count: 3 });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.problems).toContainEqual({ arg: "path", expected: "required string", got: "missing" });
+    if (!v.ok) expect(v.error).toContainEqual({ arg: "path", expected: "required string", got: "missing" });
   });
   it("wrong type — no silent coercion", () => {
     const v = validateArgs(schema, { path: 123 });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.problems).toContainEqual({ arg: "path", expected: "string", got: "number" });
+    if (!v.ok) expect(v.error).toContainEqual({ arg: "path", expected: "string", got: "number" });
   });
   it("value outside the enum", () => {
     const v = validateArgs(schema, { path: "x", mode: "reckless" });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.problems[0]).toMatchObject({ arg: "mode", expected: "one of [fast, safe]" });
+    if (!v.ok) expect(v.error[0]).toMatchObject({ arg: "mode", expected: "one of [fast, safe]" });
   });
   it("unknown/hallucinated argument", () => {
     const v = validateArgs(schema, { path: "x", nonsense: true });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(problemArgs(v.problems)).toContain("nonsense");
+    if (!v.ok) expect(problemArgs(v.error)).toContain("nonsense");
   });
   it("input that isn't an object at all", () => {
     const v = validateArgs(schema, ["not", "an", "object"]);
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.problems[0]).toMatchObject({ arg: "(input)", expected: "an object", got: "array" });
+    if (!v.ok) expect(v.error[0]).toMatchObject({ arg: "(input)", expected: "an object", got: "array" });
   });
 });
 
@@ -64,7 +64,7 @@ describe("diagnostic — precise, self-correction-oriented, value-free", () => {
     const v = validateArgs(schema, { count: "three" });
     expect(v.ok).toBe(false);
     if (!v.ok) {
-      const d = diagnostic("write_file", v.problems);
+      const d = diagnostic("write_file", v.error);
       expect(d).toContain("write_file");
       expect(d).toContain("path: expected required string, got missing");
       expect(d).toContain("count: expected number, got string");
@@ -73,7 +73,7 @@ describe("diagnostic — precise, self-correction-oriented, value-free", () => {
   });
   it("problemArgs exposes names only — never a value (nothing to leak)", () => {
     const v = validateArgs(schema, { path: "SECRET-VALUE", nonsense: "SECRET-VALUE" });
-    if (!v.ok) expect(problemArgs(v.problems)).toEqual(["nonsense"]);
+    if (!v.ok) expect(problemArgs(v.error)).toEqual(["nonsense"]);
   });
 });
 
@@ -85,7 +85,7 @@ describe("the Preview → Commit gate — write_file's real schema rejects a bad
   it("a call missing content is rejected — it never reaches commit()", () => {
     const v = validateArgs(writeFile.args, { path: "~/notes.md" });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(problemArgs(v.problems)).toContain("content");
+    if (!v.ok) expect(problemArgs(v.error)).toContain("content");
   });
   it("a well-formed write_file call validates", () => {
     expect(validateArgs(writeFile.args, { path: "~/notes.md", content: "hello" }).ok).toBe(true);

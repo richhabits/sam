@@ -255,8 +255,8 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     if (process.env.SAM_PARSER !== "0") {
       const v = validateArgs(tool.args, call.input);
       if (!v.ok) {
-        capture(new Error(`invalid tool call: ${tool.name}`), { parser: "reject", tool: tool.name, args: problemArgs(v.problems) });
-        prompt += `\n\n${diagnostic(tool.name, v.problems)}`;
+        capture(new Error(`invalid tool call: ${tool.name}`), { parser: "reject", tool: tool.name, args: problemArgs(v.error) });
+        prompt += `\n\n${diagnostic(tool.name, v.error)}`;
         continue;
       }
       call = { tool: call.tool, input: v.value };   // use the validated arguments
