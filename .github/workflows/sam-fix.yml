@@ -44,7 +44,11 @@ jobs:
 
       - name: Open a draft PR, or comment why not
         env:
+          # PAT for push + PR create (so a real pull_request CI run fires and counts toward the gate).
           GH_TOKEN: ${{ secrets.SAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+          # Built-in token for the issue comments — it has issues:write, so the PAT needs only
+          # Contents + Pull requests, nothing more.
+          COMMENT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           N: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
@@ -66,7 +70,7 @@ jobs:
             gh pr create --draft -R "$REPO" --base main --head "$BRANCH" \
               --title "SAM fix: ${SUMMARY} (closes #${N})" \
               --body "SAM attempted this on its own free brain and \`npm run verify\` passed (typecheck + tests + build). **Draft — please review before merging.** Closes #${N}."
-            gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain and the full test suite passed — opened a **draft PR** for review. Mark it ready and, once CI is green, merge. If it's off, just close it."
+            GH_TOKEN="$COMMENT_TOKEN" gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain and the full test suite passed — opened a **draft PR** for review. Mark it ready and, once CI is green, merge. If it's off, just close it."
           elif [ "$STATUS" = "fail" ]; then
             REASON=$(jq -r .reason fix-result.json)
             TAIL=$(jq -r '.verifyTail // ""' fix-result.json)
@@ -80,9 +84,9 @@ jobs:
           ${TAIL}
           \`\`\`
           </details>"; fi
-            gh issue comment "$N" -R "$REPO" --body "$BODY"
+            GH_TOKEN="$COMMENT_TOKEN" gh issue comment "$N" -R "$REPO" --body "$BODY"
           else
             REASON=$(jq -r '.reason // "skipped"' fix-result.json)
             echo "Skipping: $REASON"
-            gh issue comment "$N" -R "$REPO" --body "🤖 I looked at this on my free brain but didn't attempt a fix: ${REASON}"
+            GH_TOKEN="$COMMENT_TOKEN" gh issue comment "$N" -R "$REPO" --body "🤖 I looked at this on my free brain but didn't attempt a fix: ${REASON}"
           fi
