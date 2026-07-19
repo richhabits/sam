@@ -53,7 +53,7 @@ function greeting(name: string) {
 }
 function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
-interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean }
+interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean; noBrain?: boolean }
 // `title` is auto-derived from the first message on every turn; `name` is a user-set
 // override that survives it. `pinned` floats a chat to the top of the sidebar.
 interface Convo { id: string; title: string; messages: Msg[]; at: number; folder?: string; name?: string; pinned?: boolean }
@@ -137,7 +137,7 @@ function loadState(): { convos: Convo[]; activeId: string; brand: string; qualit
 }
 const MemoizedMessageRow = memo(function MemoizedMessageRow({
   m, i, isExpanded, isCopied, isPinned, isPlaying, isLast,
-  onFollowUp, onExpand, onCopy, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit
+  onFollowUp, onExpand, onCopy, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit, onPowerUp
 }: any) {
   return (
     <div className={`row ${m.role}`}>
@@ -148,6 +148,15 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
             ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={onFollowUp} /><button type="button" className="show-more" onClick={() => onExpand(i)}>Show more ▾</button></div>
             : <div><WidgetRenderer text={m.text} onFollowUp={onFollowUp} />{m.text.length > 1600 && <button type="button" className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>}</div>)
         : <div className="bubble">{m.text}</div>)}
+      {m.noBrain && (
+        // Every free brain was busy or none is set up. Turn the dead-end into a one-tap fix rather
+        // than leaving the user staring at an apology — this is the moment they're most likely to bounce.
+        <div className="nobrain-cta">
+          <Icon name="sparkle" />
+          <span>All free brains are busy right now. Add your own free key and SAM stops waiting in line.</span>
+          <button type="button" className="nobrain-btn" onClick={onPowerUp}>Power up — add a free key</button>
+        </div>
+      )}
       {m.role === "sam" && m.text && (
         <div className="msg-actions">
           <button type="button" className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
@@ -556,7 +565,7 @@ export default function App() {
 
   function handleResult(r: AgentResult) {
     if (r.kind === "pending") { setPending(r); return; }
-    setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now() }]);
+    setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now(), noBrain: r.provider === "none" }]);
     if (speakReplies && r.text) speakText(r.text);
     refreshLog();
   }
@@ -926,7 +935,7 @@ export default function App() {
       else if (e.type === "pending") { produced = true; setLive(null); setPending({ ...e, message: value, projectId: brand || "", tier: QUALITY_TIER[quality] } as AgentResult); }
       else if (e.type === "done") {
         produced = true; setLive(null);
-        setMessages((m) => [...m, { role: "sam", text: e.text || "", trace: e.trace, how: howAnswered(e.provider), at: now() }]);
+        setMessages((m) => [...m, { role: "sam", text: e.text || "", trace: e.trace, how: howAnswered(e.provider), at: now(), noBrain: e.provider === "none" }]);
         if (speakReplies && e.text) speakText(e.text);
         refreshLog();
       }
@@ -958,7 +967,7 @@ export default function App() {
     try {
       const r = await command(q, brand || undefined, QUALITY_TIER[quality]);
       if (r.kind === "pending") { setPending(r); return "I need your OK for that one — I've put it on the screen for you."; }
-      setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now() }]);
+      setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now(), noBrain: r.provider === "none" }]);
       refreshLog();
       return r.text || "";
     } catch { return "I couldn't reach my brain just then."; }
@@ -1382,6 +1391,7 @@ export default function App() {
                 }}
                 onRegenerate={regenerate}
                 onEdit={(idx: number) => editResend(idx)}
+                onPowerUp={() => setWizardOpen(true)}
               />
               </div>
             ))}

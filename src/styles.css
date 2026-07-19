@@ -197,6 +197,24 @@ button { font-family: inherit; cursor: pointer; }
 .msg-actions { display: flex; align-items: center; gap: 12px; }
 .mini { background: none; border: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 2px 0; cursor: pointer; }
 .mini:hover { color: var(--accent-text); }
+
+/* Shown when every free brain was busy / none is set up — turns a dead-end into a one-tap fix. */
+.nobrain-cta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding: 12px 14px;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: calc(var(--radius) - 8px);
+  font-size: 14px; color: var(--text);
+}
+.nobrain-cta svg { color: var(--accent); flex-shrink: 0; }
+.nobrain-cta span { flex: 1; min-width: 180px; }
+.nobrain-btn {
+  appearance: none; cursor: pointer; white-space: nowrap;
+  background: var(--accent); color: var(--on-accent);
+  border: 1px solid var(--accent); border-radius: 999px;
+  padding: 7px 16px; font-size: 13px; font-weight: 700;
+}
+.nobrain-btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
 .at { color: var(--muted); font-weight: 400; }
 
 /* extended markdown */
