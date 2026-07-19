@@ -1131,7 +1131,13 @@ app.post("/api/safe/unlock", (req, res) => {
   if (!safeGate(req, res)) return;
   const pass = (req.body as { passphrase?: string })?.passphrase;
   const r = safeUnlock(pass ? String(pass) : undefined);
-  res.json(r.ok ? { ok: true, mode: r.value, loaded: safeLoadEnv() } : { ok: false, error: r.error.kind });
+  if (!r.ok) return res.json({ ok: false, error: r.error.kind });
+  // Same as the boot path: bridge tool creds, then rebuild the key pools from the now-unlocked Safe —
+  // a passphrase-mode Safe unlocked HERE (not at boot) must still repopulate the pools, or a migrated
+  // user would have no cloud brains until restart.
+  const loaded = safeLoadEnv();
+  const pooled = reloadPools();
+  res.json({ ok: true, mode: r.value, loaded, pooled });
 });
 app.post("/api/safe/migrate", (req, res) => {
   if (!safeGate(req, res)) return;
