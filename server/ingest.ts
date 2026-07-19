@@ -9,7 +9,7 @@
 //  source file cited — same free embedding lanes as memory.
 // ─────────────────────────────────────────────────────────────
 
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, dirname, extname, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -55,6 +55,7 @@ function db(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS docs_path ON docs(path);
     CREATE INDEX IF NOT EXISTS docs_model ON docs(model);
+    CREATE TABLE IF NOT EXISTS doc_meta ( k TEXT PRIMARY KEY, v TEXT NOT NULL );
   `);
   return _db;
 }
@@ -68,6 +69,13 @@ const MAX_CHARS_PER_FILE = 60_000;         // clip monster files
 const CHUNK_CHARS = 1200;
 const MIN_CHUNK_CHARS = 60;
 const EMBED_BATCH = 32;
+
+// Index-level fingerprint of the DERIVATION inputs that aren't the file content: the chunking
+// params (and, at runtime, the embedder model). If either changes, the mtime+size per-file skip
+// would keep serving vectors made by the OLD chunking/model — a silent stale HIT, the one
+// unacceptable outcome. A change here BUSTS the whole index and forces a re-embed. Bump the
+// leading version when chunkText's logic changes in a way that alters output for the same params.
+const CHUNK_FP = `v1:${MAX_CHARS_PER_FILE}:${CHUNK_CHARS}:${MIN_CHUNK_CHARS}`;
 
 // Never descend into these — system junk, caches, other apps' guts.
 const SKIP_DIRS = new Set([
@@ -139,18 +147,39 @@ async function* walk(dir: string, depth = 0): AsyncGenerator<{ path: string; siz
 // ── INGEST ───────────────────────────────────────────────────
 export interface IngestReport {
   root: string; scanned: number; ingested: number; unchanged: number;
-  failed: number; chunks: number; remaining: number; note?: string;
+  failed: number; chunks: number; remaining: number; evicted: number; busted?: string; note?: string;
 }
 
 export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<IngestReport> {
   const root = resolve((rootPath || "").replace(/^~(?=$|\/)/, homedir()));
   const d = db();
-  const report: IngestReport = { root, scanned: 0, ingested: 0, unchanged: 0, failed: 0, chunks: 0, remaining: 0 };
+  const report: IngestReport = { root, scanned: 0, ingested: 0, unchanged: 0, failed: 0, chunks: 0, remaining: 0, evicted: 0 };
 
   const known = d.prepare("SELECT mtime, size FROM doc_files WHERE path = ?");
   const delChunks = d.prepare("DELETE FROM docs WHERE path = ?");
+  const delFile = d.prepare("DELETE FROM doc_files WHERE path = ?");
   const putFile = d.prepare("INSERT OR REPLACE INTO doc_files (path, mtime, size, chunks, ts) VALUES (?, ?, ?, ?, ?)");
   const putChunk = d.prepare("INSERT INTO docs (id, path, idx, text, vec, model, ts) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const getMeta = (k: string) => (d.prepare("SELECT v FROM doc_meta WHERE k = ?").get(k) as { v: string } | undefined)?.v || "";
+  const setMeta = d.prepare("INSERT OR REPLACE INTO doc_meta (k, v) VALUES (?, ?)");
+
+  // ── BUST on a derivation-input change ──
+  // The per-file skip below trusts mtime+size for CONTENT. But the embedder model and chunk params
+  // are index-wide inputs: if they changed since last run, every "unchanged" file would keep stale
+  // vectors. Detect that up front (before the skip) and wipe the index so it all re-embeds. The
+  // model is the vault's pinned embedder — switching it is the real-world trigger. A wrong HIT is
+  // unacceptable, so when unsure we bust: a false bust just recomputes (safe); a missed one serves
+  // stale results (the failure we refuse).
+  const wantModel = pinnedModel() || "";
+  const storedModel = getMeta("model");
+  const storedChunk = getMeta("chunkfp");
+  const modelChanged = !!storedModel && !!wantModel && storedModel !== wantModel;
+  const chunkChanged = !!storedChunk && storedChunk !== CHUNK_FP;
+  if (modelChanged || chunkChanged) {
+    d.exec("DELETE FROM docs; DELETE FROM doc_files;");
+    invalidateDocCache();
+    report.busted = modelChanged ? `embedder changed (${storedModel} → ${wantModel}) — re-embedding all` : `chunking changed (${storedChunk} → ${CHUNK_FP}) — re-embedding all`;
+  }
 
   let embedModel: string | null = null;   // set by the first successful batch; pinned thereafter
 
@@ -193,7 +222,24 @@ export async function ingestFolder(rootPath: string, maxFiles = 300): Promise<In
     }
   }
 
-  if (report.ingested) invalidateDocCache();   // new/changed chunks → rebuild the in-memory index on next search
+  // ── EVICT deletes ──
+  // A file removed from disk must leave the index — otherwise its chunks answer searches forever
+  // (a stale hit of a different kind). Only evict files UNDER this root that no longer exist: a file
+  // beyond the maxFiles cap, or under a different indexed root, is absent from this walk but must NOT
+  // be dropped. existsSync is the source of truth, so the cap can't cause a wrong eviction.
+  for (const row of d.prepare("SELECT path FROM doc_files").all() as { path: string }[]) {
+    if (row.path.startsWith(root) && !existsSync(row.path)) {
+      d.transaction(() => { delChunks.run(row.path); delFile.run(row.path); })();
+      report.evicted++;
+    }
+  }
+
+  // Persist the derivation fingerprint for next run's bust check. Use the model actually embedded
+  // with (authoritative) when we did work, else the intended/stored one.
+  setMeta.run("model", embedModel || wantModel || storedModel);
+  setMeta.run("chunkfp", CHUNK_FP);
+
+  if (report.ingested || report.evicted || report.busted) invalidateDocCache();   // index changed → rebuild on next search
   if (report.remaining) report.note = `${report.note ? report.note + " " : ""}Hit the ${maxFiles}-file cap — run again to continue (already-done files are skipped).`;
   return report;
 }
