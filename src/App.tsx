@@ -26,6 +26,7 @@ const AutonomyPane = lazy(() => import("./AutonomyPane"));
 const LearnedPane = lazy(() => import("./LearnedPane"));
 const WorkflowsPane = lazy(() => import("./WorkflowsPane"));
 const YourSam = lazy(() => import("./YourSam"));
+const SafePane = lazy(() => import("./SafePane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
 
 interface Profile { name: string; about?: string; language?: string }
@@ -301,6 +302,7 @@ export default function App() {
   const [learnedOpen, setLearnedOpen] = useState(false);
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
   const [yourSamOpen, setYourSamOpen] = useState(false);
+  const [safeOpen, setSafeOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
@@ -1842,6 +1844,7 @@ export default function App() {
           { icon: "clock", label: "Chat history", run: () => setHistoryOpen(true) },
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
+          { icon: "lock", label: "The Safe (encrypted secrets)", run: () => setSafeOpen(true) },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
@@ -1911,6 +1914,7 @@ export default function App() {
         {learnedOpen && <LearnedPane onClose={() => setLearnedOpen(false)} />}
         {workflowsOpen && <WorkflowsPane onClose={() => setWorkflowsOpen(false)} />}
         {yourSamOpen && <YourSam onClose={() => setYourSamOpen(false)} />}
+        {safeOpen && <SafePane onClose={() => setSafeOpen(false)} />}
         {doctorOpen && <DoctorPane onClose={() => setDoctorOpen(false)} />}
       </Suspense>
 

@@ -219,6 +219,15 @@ export const installStarterWorkflows = () => post("/api/workflows/install-starte
 export const runWorkflowApi = (id: string) => post(`/api/workflows/${id}/run`);
 export const deleteWorkflowApi = (id: string) => fetch(`/api/workflows/${id}`, { method: "DELETE" }).then((r) => r.json());
 
+// ── the Safe — encrypted secret store (all routes loopback + Handshake gated; token attached by the
+//    fetch shim). Responses never contain a secret VALUE — names, counts, and typed error kinds only. ──
+export const getSafeStatus = () => fetch("/api/safe/status").then((r) => r.json());
+export const getSafeMigratePreview = () => fetch("/api/safe/migrate/preview").then((r) => r.json());
+export const safeSetup = (passphrase: string | undefined, useKeychain: boolean) => post("/api/safe/setup", { passphrase: passphrase || undefined, useKeychain });
+export const safeUnlock = (passphrase?: string) => post("/api/safe/unlock", { passphrase: passphrase || undefined });
+export const safeMigrate = () => post("/api/safe/migrate");
+export const safeLock = () => post("/api/safe/lock");
+
 // ── v2.0 — measurement (local analytics + opt-in telemetry) ──
 export const getAnalytics = () => fetch("/api/analytics").then((r) => r.json());
 export const resetAnalytics = () => post("/api/analytics/reset");
