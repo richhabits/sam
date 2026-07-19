@@ -13,6 +13,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { relayBrain } from "./relay.ts";
 import { recordModelCall, estTokens } from "./metrics.ts";
 import { loadRanking, rankingStale } from "./colosseum.ts";
 import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
@@ -324,6 +325,15 @@ const PROVIDERS: Provider[] = [
 
 // Try one provider, rotating through its key pool on failure.
 async function tryProvider(prov: Provider, system: string, prompt: string): Promise<string | null> {
+  // Opt-in: route through the Relay (one policy chain — Breaker, key pool, boundary, failure
+  // capture). Off by default so the path below is unchanged until the Relay is proven live.
+  if (process.env.SAM_RELAY === "1") {
+    const r = await relayBrain(
+      { id: prov.id, boundary: prov.tier === "local" ? "local" : "cloud", noKey: prov.noKey, run: prov.run },
+      system, prompt, { allowCloud: true },   // the cascade already decided cloud is permitted here
+    );
+    return r && "text" in r ? r.text : null;
+  }
   if (prov.noKey) {   // no-key provider (Pollinations) — retry a couple of times; transient hiccups are common
     for (let i = 0; i < 2; i++) {
       try { const text = await prov.run(system, prompt, ""); if (text) return text; } catch { /* retry, then fall through */ }
