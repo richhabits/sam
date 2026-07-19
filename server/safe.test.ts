@@ -156,11 +156,12 @@ describe("the Safe — secretNames (the migration candidate list)", () => {
     expect(n).not.toContain("SAM_REQUIRE_CONTROL_TOKEN"); // config, not a secret
     expect(n).not.toContain("SAM_REMOTE_TOKEN");          // already sealed by the vault-encryption path
   });
-  it("migratableNames only lists names actually present in the env (names, never values)", () => {
-    delete process.env.GROQ_API_KEYS;
-    expect(migratableNames()).not.toContain("GROQ_API_KEYS");
-    process.env.GROQ_API_KEYS = "sk-live-whatever";
-    expect(migratableNames()).toContain("GROQ_API_KEYS");
+  it("migratableNames reflects the .env FILE (plaintext at rest), not process.env (memory)", () => {
+    writeFileSync(envFile, "FOO=keep\n");                 // no secret in the file
+    process.env.GROQ_API_KEYS = "sk-live-in-memory-only"; // but present in memory
+    expect(migratableNames()).not.toContain("GROQ_API_KEYS");   // memory doesn't count — only at-rest
+    writeFileSync(envFile, "FOO=keep\nGROQ_API_KEYS=sk-live-at-rest\n");
+    expect(migratableNames()).toContain("GROQ_API_KEYS");       // now it's plaintext in the file
     delete process.env.GROQ_API_KEYS;
   });
 });

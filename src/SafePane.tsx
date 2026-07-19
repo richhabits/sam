@@ -37,10 +37,17 @@ export default function SafePane({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [confirmMigrate, setConfirmMigrate] = useState(false);
 
-  const load = () => getSafeStatus().then(setSt).catch(() => setErr("Couldn't reach the Safe."));
+  // Reload BOTH status and the migration preview — the preview must refresh after a migrate (the .env
+  // was stripped), so it can't hang off setup/unlocked alone (those don't change on migrate).
+  const load = async () => {
+    const s = await getSafeStatus().catch(() => null);
+    if (!s) { setErr("Couldn't reach the Safe."); return; }
+    setSt(s);
+    if (s.setup && s.unlocked) setPreview(await getSafeMigratePreview().catch(() => null));
+    else setPreview(null);
+  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (st?.setup && st.unlocked) getSafeMigratePreview().then(setPreview).catch(() => {/* optional */}); }, [st?.setup, st?.unlocked]);
 
   const run = async (fn: () => Promise<any>, ok?: (r: any) => void) => {
     setBusy(true); setErr(""); setNote("");

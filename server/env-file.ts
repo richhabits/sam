@@ -16,6 +16,20 @@ function envPathNow(): string {
   return process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
 }
 
+/** Of `keys`, which appear as a non-empty `KEY=value` line in the .env FILE right now. This reflects
+ *  what is plaintext AT REST — NOT process.env (which keeps a value in memory after the file is
+ *  stripped). The Safe's migration preview uses this so it correctly empties once .env is cleaned. */
+export function envKeysPresent(keys: string[]): string[] {
+  let txt = "";
+  try { txt = readFileSync(envPathNow(), "utf8"); } catch { return []; }
+  const present = new Set<string>();
+  for (const line of txt.split("\n")) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m && m[2].trim() !== "") present.add(m[1]);
+  }
+  return keys.filter((k) => present.has(k));
+}
+
 /**
  * Remove one or more KEY=… lines from the .env entirely (used by the Safe's migration, which strips
  * plaintext secrets from .env once they're sealed and verified). File-only — leaves process.env

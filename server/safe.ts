@@ -23,7 +23,7 @@ import { randomBytes, scryptSync } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decrypt, encrypt } from "./crypto-vault.ts";
-import { removeEnvKeys } from "./env-file.ts";
+import { envKeysPresent, removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
 import { err, ok, type Outcome } from "./outcome.ts";
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
@@ -236,10 +236,11 @@ export function secretNames(): string[] {
   return [...new Set([...provider, ...TOOL_CRED_NAMES])];
 }
 
-/** Of secretNames(), which are actually present (non-empty) in the environment right now — the real
- *  migration candidates. Names + count ONLY; the caller must never expose the values. */
+/** Of secretNames(), which are still PLAINTEXT AT REST in the .env file — the real migration
+ *  candidates. Reads the .env FILE, not process.env, so once a secret is migrated (sealed + stripped
+ *  from .env) it correctly drops off, even though its value lingers in memory. Names only, never values. */
 export function migratableNames(): string[] {
-  return secretNames().filter((n) => (process.env[n] ?? "") !== "");
+  return envKeysPresent(secretNames());
 }
 
 // ── migration + the compatibility bridge ──
