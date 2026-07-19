@@ -80,6 +80,7 @@ import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { recover as recoverPreviewCommit } from "./preview-commit.ts";
 import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
+import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
@@ -1213,7 +1214,7 @@ app.get("/api/console", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Console is loopback + Handshake only" }); return; }
   const samples = samplesOf("brain.latency_ms", { tier: "free" });
   const s = samples.length ? samples : samplesOf("brain.latency_ms", { tier: "local" });
-  res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString()));
+  res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString(), { enabled: knackEnabled(), recent: recentInfluences() }));
 });
 
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is

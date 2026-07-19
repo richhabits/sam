@@ -60,3 +60,14 @@ describe("renderScope", () => {
     expect(html).not.toMatch(/innerHTML\s*=\s*[^"]*a\.label/);
   });
 });
+
+describe("scopeData — the Knack fields", () => {
+  it("includes the enabled flag, applied count, and recent influences", () => {
+    count("knack.applied", 2);
+    const d = scopeData();
+    expect(d).toHaveProperty("knackEnabled");
+    expect(d).toHaveProperty("knack");
+    expect(d.knackApplied).toBe(2);
+    expect(Array.isArray(d.knack)).toBe(true);
+  });
+});

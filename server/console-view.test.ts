@@ -58,3 +58,24 @@ describe("renderConsole", () => {
     expect(html).toContain("nothing leaves this machine");
   });
 });
+
+describe("the Knack panel", () => {
+  it("renders each learned influence attributably (pattern → value + confidence)", () => {
+    const html = renderConsole([], [], [], "2026-07-19T12:00:00.000Z", {
+      enabled: true,
+      recent: [{ pattern: "preferred-tier", value: "local", confidence: 0.8, at: "2026-07-19T12:00:00.000Z" }],
+    });
+    expect(html).toContain("The Knack — learned influence");
+    expect(html).toContain("preferred-tier → local");
+    expect(html).toContain("0.80");
+  });
+  it("shows the OFF state explicitly (radical transparency) — default arg too", () => {
+    expect(renderConsole([], [], [], "t", { enabled: false, recent: [] })).toContain("The Knack is off");
+    expect(renderConsole([], [], [], "t")).toContain("The Knack is off");   // defaulted param, back-compatible
+  });
+  it("escapes a hostile pattern/value (no injection)", () => {
+    const html = renderConsole([], [], [], "t", { enabled: true, recent: [{ pattern: "<script>x", value: "y", confidence: 1, at: "2026-07-19T12:00:00.000Z" }] });
+    expect(html).not.toContain("<script>x");
+    expect(html).toContain("&lt;script&gt;x");
+  });
+});

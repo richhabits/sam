@@ -8,6 +8,7 @@
 //  because "live" is exactly the case that needs it; it still fetches only same-origin, loopback data.
 // ─────────────────────────────────────────────────────────────
 import { issuesSummary } from "./issues.ts";
+import { knackEnabled, recentInfluences, type Influence } from "./knack.ts";
 import { recentActivity, snapshot, type Activity } from "./pulse.ts";
 
 export interface ScopeData {
@@ -16,6 +17,7 @@ export interface ScopeData {
   tokens: number; costUsd: number; hitRate: number | null;
   p50: number; p95: number; heals: number; issues: number; rssMb: number;
   activity: Activity[];
+  knackEnabled: boolean; knackApplied: number; knack: Influence[];
 }
 
 /** Compact live snapshot from the Pulse. Cheap — a few reductions over the registry. */
@@ -39,6 +41,9 @@ export function scopeData(): ScopeData {
     issues: issuesSummary().distinct,
     rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
     activity: recentActivity(12),
+    knackEnabled: knackEnabled(),
+    knackApplied: sum("knack.applied"),
+    knack: recentInfluences().slice(-8).reverse(),   // newest first
   };
 }
 
@@ -72,8 +77,10 @@ h1{font-size:18px;margin:0 0 2px}.sub{color:var(--muted);font-size:13px;margin-b
   <div class="tile"><div class="v" id="heals">–</div><div class="l">Heals</div></div>
   <div class="tile"><div class="v" id="rss">–</div><div class="l">Memory</div></div>
   <div class="tile" id="issT"><div class="v" id="issues">–</div><div class="l">Issues</div></div>
+  <div class="tile"><div class="v" id="knack">–</div><div class="l">Knack applied</div></div>
 </div>
 <div class="card"><h2>Live activity</h2><div class="feed" id="feed"></div></div>
+<div class="card" style="margin-top:16px"><h2>The Knack — learned influence</h2><div class="feed" id="kfeed"></div></div>
 <script>
 const H = {};
 const t = (window.samDesktop && window.samDesktop.controlToken) || "";
@@ -86,6 +93,7 @@ async function poll() {
   set("lat", d.p50 + " / " + d.p95 + " ms"); set("tokens", fmt(d.tokens));
   set("cost", "$" + d.costUsd.toFixed(4)); set("heals", fmt(d.heals));
   set("rss", d.rssMb + " MB"); set("issues", fmt(d.issues));
+  set("knack", d.knackEnabled ? fmt(d.knackApplied) : "off");
   document.getElementById("failT").className = "tile" + (d.failures ? " warn" : "");
   document.getElementById("issT").className = "tile" + (d.issues ? " warn" : "");
   const feed = document.getElementById("feed"); feed.innerHTML = "";
@@ -95,6 +103,16 @@ async function poll() {
     const l = document.createElement("span"); l.textContent = a.label;               // textContent → no injection
     const tm = document.createElement("span"); tm.className = "t"; tm.textContent = new Date(a.at).toLocaleTimeString();
     row.append(k, l, tm); feed.appendChild(row);
+  }
+  const kf = document.getElementById("kfeed"); kf.innerHTML = "";
+  if (!d.knackEnabled) { const r = document.createElement("div"); r.textContent = "The Knack is off — nothing learned is influencing decisions."; kf.appendChild(r); }
+  else if (!d.knack.length) { const r = document.createElement("div"); r.textContent = "On — no learned pattern has changed a decision yet."; kf.appendChild(r); }
+  else for (const k of d.knack) {
+    const row = document.createElement("div");
+    const kk = document.createElement("span"); kk.className = "k"; kk.textContent = k.confidence.toFixed(2);
+    const l = document.createElement("span"); l.textContent = k.pattern + " → " + k.value;   // textContent → no injection
+    const tm = document.createElement("span"); tm.className = "t"; tm.textContent = new Date(k.at).toLocaleTimeString();
+    row.append(kk, l, tm); kf.appendChild(row);
   }
 }
 poll(); setInterval(poll, 1500);
