@@ -60,6 +60,48 @@ export function replySchema(tools: Tool[]): JsonSchema {
   };
 }
 
+/**
+ * A STREAMING extractor for the value of a constrained {"respond":"..."} answer. Feed it chunks in
+ * order; it returns the newly-DECODED characters of the respond string as they arrive — so a
+ * grammar-constrained answer streams as prose instead of raw JSON. Handles JSON escapes
+ * (\" \\ \n \t \r \b \f \/ and \uXXXX), returns "" while still seeking the value or waiting for a
+ * split escape, and stops at the closing unescaped quote. A tool call ({"tool":…}) never matches the
+ * respond pattern, so it just returns "" throughout (tool calls aren't shown to the user).
+ */
+export function respondStreamer(): (chunk: string) => string {
+  let raw = "";
+  let start = -1;   // index in `raw` of the first char of the respond value (after the opening quote)
+  let at = 0;       // raw chars already consumed from `start`
+  let done = false;
+  const ESC: Record<string, string> = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", '"': '"', "\\": "\\", "/": "/" };
+  return (chunk: string): string => {
+    raw += chunk;
+    if (done) return "";
+    if (start < 0) {
+      const m = raw.match(/"respond"\s*:\s*"/);
+      if (!m) return "";
+      start = m.index! + m[0].length;
+    }
+    let out = "";
+    let i = start + at;
+    while (i < raw.length) {
+      const c = raw[i];
+      if (c === "\\") {
+        if (i + 1 >= raw.length) break;                 // escaped char hasn't arrived yet — wait
+        const e = raw[i + 1];
+        if (e === "u") {
+          if (i + 6 > raw.length) break;                // need the 4 hex digits
+          out += String.fromCharCode(Number.parseInt(raw.slice(i + 2, i + 6), 16));
+          i += 6;
+        } else { out += ESC[e] ?? e; i += 2; }
+      } else if (c === '"') { done = true; break; }     // closing unescaped quote → end of the answer
+      else { out += c; i += 1; }
+    }
+    at = i - start;
+    return out;
+  };
+}
+
 /** Unwrap a constrained final answer: {"respond":"..."} → its text. Returns null if `text` isn't that
  *  shape (so the caller keeps the raw text). Tolerant parse — the model may pad with whitespace. */
 export function unwrapRespond(text: string): string | null {

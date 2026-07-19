@@ -183,6 +183,29 @@ describe("the Parser on the STREAMING path (runAgentStream) — parity with the 
   });
 });
 
+describe("the Grammar on the STREAMING path (SAM_GRAMMAR_STREAM) — {respond} decoded as prose", () => {
+  beforeEach(() => { process.env.SAM_GRAMMAR_STREAM = "1"; });
+  afterEach(() => { delete process.env.SAM_GRAMMAR_STREAM; });
+  const collect = async (msg: string) => { const ev: { type: string; [k: string]: any }[] = []; await runAgentStream("SYS", msg, "local", undefined, (e) => ev.push(e as any)); return ev; };
+
+  it("streams a {respond} answer decoded as prose — never the raw JSON", async () => {
+    replies.push('{"respond":"The time is noon."}');
+    const ev = await collect("what time is it?");
+    const streamed = ev.filter((e) => e.type === "token").map((e) => e.t).join("");
+    expect(streamed).toBe("The time is noon.");
+    expect(streamed).not.toContain('"respond"');                          // no raw JSON leaked to the user
+    expect(ev.find((e) => e.type === "done")?.text).toBe("The time is noon.");
+  });
+
+  it("a constrained tool call streams nothing, runs, then the answer streams after", async () => {
+    replies.push('{"tool":"get_datetime","input":{}}');                    // streams nothing (parsed + run)
+    replies.push('{"respond":"Done — it is noon."}');
+    const ev = await collect("what time is it?");
+    expect(ev.some((e) => e.type === "tool")).toBe(true);                  // the tool ran
+    expect(ev.filter((e) => e.type === "token").map((e) => e.t).join("")).toBe("Done — it is noon.");
+  });
+});
+
 describe("the Grammar — a constrained local turn is a tool call or a {respond} final answer", () => {
   beforeEach(() => { process.env.SAM_GRAMMAR = "1"; });
   afterEach(() => { delete process.env.SAM_GRAMMAR; });

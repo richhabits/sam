@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { argObjectSchema, replySchema, unwrapRespond, type JsonSchema } from "./grammar.ts";
+import { argObjectSchema, replySchema, respondStreamer, unwrapRespond, type JsonSchema } from "./grammar.ts";
 import { TOOLS } from "./tools.ts";
 import { validateArgs } from "./parser.ts";
 
@@ -86,5 +86,28 @@ describe("replySchema — the oneOf constrains INPUT per tool (not just the name
     const schema = replySchema(TOOLS) as { oneOf: any[] };
     const search = schema.oneOf.find((b) => b.properties?.tool?.enum?.[0] === "web_search"); // bare-string tool, no args schema
     expect(search.properties.input).toEqual({ type: "object" });
+  });
+});
+
+describe("respondStreamer — decode a constrained {respond} answer as it streams", () => {
+  const drain = (chunks: string[]) => { const rs = respondStreamer(); return chunks.map((c) => rs(c)).join(""); };
+  it("decodes a whole answer", () => {
+    expect(drain(['{"respond":"hello world"}'])).toBe("hello world");
+  });
+  it("works across arbitrary chunk boundaries + whitespace", () => {
+    expect(drain(['{"resp', 'ond"', ' : ', '"he', 'llo"}'])).toBe("hello");
+  });
+  it("decodes JSON escapes and \\uXXXX", () => {
+    expect(drain(['{"respond":"a\\nb \\"q\\" \\\\ \\u00e9"}'])).toBe('a\nb "q" \\ é');
+  });
+  it("handles an escape split across chunks (simple + unicode)", () => {
+    expect(drain(['{"respond":"a\\', 'nb"}'])).toBe("a\nb");
+    expect(drain(['{"respond":"x\\u00', 'e9y"}'])).toBe("xéy");
+  });
+  it("emits nothing for a tool call (never matches respond)", () => {
+    expect(drain(['{"tool":"web_search","input":{"query":"x"}}'])).toBe("");
+  });
+  it("stops at the closing quote (ignores trailing json)", () => {
+    expect(drain(['{"respond":"done"}trailing-garbage'])).toBe("done");
   });
 });

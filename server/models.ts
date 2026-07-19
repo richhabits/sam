@@ -576,7 +576,37 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,
 // falls back to a normal call and emits the whole answer as one chunk.
-async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
+// LOCAL streaming (Ollama, NDJSON) — the token-by-token path for the Grammar on streaming. Passes
+// `format` so the model is grammar-constrained; the caller decodes the {"respond":…} value as it streams.
+async function callOllamaStream(system: string, prompt: string, model: string, format: unknown, onChunk: (t: string) => void): Promise<string> {
+  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: "POST",
+    signal: AbortSignal.timeout(60000),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, stream: true, messages: [{ role: "system", content: system }, { role: "user", content: prompt }], ...(format ? { format } : {}) }),
+  });
+  if (!res.ok || !res.body) { const e = new Error(`ollama ${res.status}`) as Error & { status?: number }; e.status = res.status; throw e; }
+  const reader = res.body.getReader(); const dec = new TextDecoder();
+  let buf = "", full = "";
+  const take = (line: string) => { const t = line.trim(); if (!t) return; try { const d = JSON.parse(t)?.message?.content; if (d) { full += d; onChunk(d); } } catch { /* skip a malformed NDJSON line */ } };
+  for (;;) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n"); buf = lines.pop() || "";
+    for (const line of lines) take(line);
+  }
+  take(buf);
+  return full;
+}
+
+async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, format?: unknown): Promise<ModelResult> {
+  // THE GRAMMAR on streaming: a constrained turn streams straight from the local Ollama with the schema.
+  // Cloud brains don't take the Ollama `format`, so this is LOCAL-only (like the non-streaming grammar).
+  // An older Ollama that rejects the schema falls through to the normal path (unconstrained) — no dead brain.
+  if (format) {
+    try { const text = await callOllamaStream(system, prompt, OLLAMA_MODEL, format, onChunk); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; }
+    catch { /* fall through to the normal streaming path */ }
+  }
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
     // Route the stream through the Relay (Breaker + boundary + key pool + failure capture), capped
     // at ONE key — a stream that already emitted tokens can't be retried without double-emitting.
@@ -606,7 +636,7 @@ async function streamModelInner(tier: Tier, system: string, prompt: string, onCh
 
 // Public streaming entry — records ttft + total latency for the badge + benchmark.
 // Bench-mock: emit the deterministic answer in two chunks with a modelled TTFT.
-export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean }): Promise<ModelResult> {
+export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean; format?: unknown }): Promise<ModelResult> {
   const t0 = Date.now();
   let ttft = 0;
   const wrap = (t: string) => { if (!ttft) ttft = Date.now() - t0; onChunk(t); };
@@ -620,7 +650,7 @@ export async function streamModel(tier: Tier, system: string, prompt: string, on
     wrap(txt.slice(mid));
     r = { text: txt, provider: `mock:${tier}`, tier };
   } else {
-    r = await streamModelInner(tier, system, prompt, wrap, laneHint);
+    r = await streamModelInner(tier, system, prompt, wrap, laneHint, meta?.format);
   }
   recordModelCall({
     tier: r.tier, provider: r.provider,
