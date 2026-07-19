@@ -1,10 +1,10 @@
 name: Release Drafter
-# Runs only on push to the default branch — where release-drafter's config lives and where it drafts
-# the next release. (It intentionally does NOT run on PRs: the config must exist on the default branch,
-# so a PR that introduces it would always fail the lookup — a false red. No autolabeler here.)
+# Manual-only: it no longer drafts on every push to main (that kept re-creating a v2.x.x draft
+# release nobody asked for). Run it by hand from the Actions tab when you're actually cutting a
+# release and want the notes assembled. (Still never on PRs: the config must live on the default
+# branch, so a PR introducing it would fail the lookup — a false red.)
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
