@@ -1,5 +1,15 @@
 // SAM · KEY VAULT (rotation + pooling)
 import { POOLED } from "./providers.registry.ts";
+import * as safe from "./safe.ts";
+
+// Point of use: read a secret from the SAFE first (when it's set up + UNLOCKED), else process.env.
+// Guarded so it never throws — a locked Safe returns undefined here and we fall back, so pool-building
+// at import time (before the Safe unlocks) is safe. After the Safe unlocks, reloadPools() re-reads and
+// the pools pick up the sealed keys — WITHOUT the plaintext ever needing to sit in process.env.
+function secretVal(name: string): string | undefined {
+  if (safe.isSetup() && safe.isUnlocked()) { const v = safe.get(name); if (v !== undefined && v !== "") return v; }
+  return process.env[name] || undefined;
+}
 
 interface KeyState { key: string; uses: number; failures: number; cooldownUntil: number; }
 
@@ -49,8 +59,8 @@ class KeyPool {
 
 function readPool(provider: string, plural: string, singular: string): KeyPool {
   const raw: string[] = [];
-  if (process.env[plural]) raw.push(...process.env[plural]!.split(","));
-  if (process.env[singular]) raw.push(process.env[singular]!);
+  const p = secretVal(plural); if (p) raw.push(...p.split(","));
+  const s = secretVal(singular); if (s) raw.push(s);
   return new KeyPool(provider, raw);
 }
 
@@ -60,6 +70,15 @@ const POOLS: Record<string, KeyPool> = {
   // registry header for the four bugs that caused). Adding a provider there pools it here.
   ...Object.fromEntries(POOLED.map((p) => [p.id, readPool(p.id, p.envPlural!, p.envSingular!)])),
 };
+
+// Rebuild every provider pool from the current sources — called AFTER the Safe unlocks at boot, so
+// pools sealed in the Safe (and stripped from .env) are picked up. Without this, pools built at import
+// time (before unlock) would be empty after a migration. Returns the total keys pooled.
+export function reloadPools(): number {
+  let total = 0;
+  for (const p of POOLED) { const pool = readPool(p.id, p.envPlural!, p.envSingular!); POOLS[p.id] = pool; total += pool.size; }
+  return total;
+}
 
 // Replace a provider's pool at runtime (used by the in-app Admin panel).
 export function setPool(provider: string, rawKeys: string[]) {

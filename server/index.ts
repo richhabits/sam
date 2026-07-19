@@ -23,7 +23,7 @@ if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
 
 import express from "express";
 import cors from "cors";
-import { setPool, poolSize, keyStatus } from "./keys.ts";
+import { setPool, poolSize, keyStatus, reloadPools } from "./keys.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
 import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
@@ -291,8 +291,11 @@ if (!BENCH_MODE && thresholdEnabled()) {
 // already removed the plaintext, so secrets are simply unavailable until the user unlocks in Settings.
 if (!BENCH_MODE && process.env.SAM_SAFE === "1" && safeIsSetup()) {
   const u = safeUnlock();
-  if (u.ok) console.log(`  the Safe        · 🔓 unlocked (${u.value}) · ${safeLoadEnv()} secret(s) loaded\n`);
-  else console.error(`  ⚠️ the Safe is LOCKED (${u.error.kind}) — secrets are unavailable (no plaintext fallback). Unlock in Settings.`);
+  if (u.ok) {
+    const n = safeLoadEnv();       // bridge the non-key secrets (tool creds) into process.env
+    const pooled = reloadPools();  // provider keys are read from the Safe at point of use — rebuild the pools now they're unlocked
+    console.log(`  the Safe        · 🔓 unlocked (${u.value}) · ${n} secret(s) loaded · ${pooled} key(s) pooled\n`);
+  } else console.error(`  ⚠️ the Safe is LOCKED (${u.error.kind}) — secrets are unavailable (no plaintext fallback). Unlock in Settings.`);
 }
 // Preview → Commit crash recovery: if a journalled write was interrupted, roll its applied steps
 // back to before-state so a batch never survives half-applied across a restart. A no-op when no

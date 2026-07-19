@@ -276,13 +276,20 @@ export function migrateFromEnv(candidateNames: string[]): Outcome<{ migrated: st
   return ok({ migrated, skipped });
 }
 
-/** Bridge sealed secrets back into process.env (in memory) on unlock, so every existing reader keeps
- *  working while point-of-use callers are moved onto get() slice by slice. Only fills names not
- *  already present. Returns how many it loaded. */
+// Provider key env vars (each provider's singular + pooled). keys.ts reads these from the Safe at
+// POINT OF USE (secretVal → reloadPools), so they must NOT be bridged into process.env — that's the
+// slice-3 narrowing: the biggest secret class never re-enters the environment.
+const PROVIDER_KEY_NAMES = new Set(PROVIDER_REGISTRY.flatMap((p) => [p.envSingular, p.envPlural].filter((n): n is string => !!n)));
+
+/** Bridge sealed NON-KEY secrets (tool credentials) back into process.env on unlock, so their scattered
+ *  process.env readers keep working. Provider keys are DELIBERATELY skipped — keys.ts reads them from
+ *  the Safe directly (point of use), so they stay out of the environment. Only fills names not already
+ *  present. Returns how many it loaded. */
 export function loadIntoProcessEnv(): number {
   if (!isSetup() || !dataKey) return 0;
   let n = 0;
   for (const [k, v] of Object.entries(readStore())) {
+    if (PROVIDER_KEY_NAMES.has(k)) continue;                    // read from the Safe at point of use, not the env
     if (process.env[k] === undefined) { process.env[k] = v; n++; }
   }
   return n;
