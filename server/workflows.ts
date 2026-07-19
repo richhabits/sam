@@ -44,7 +44,16 @@ export interface Workflow {
 }
 
 const NAME_RE = /^[\w][\w -]{1,59}$/;
-function fileFor(id: string) { return join(DIR, `${id}.json`); }
+// An id becomes a FILENAME, so it is untrusted input to the filesystem. It arrives straight from
+// req.params.id (routes.workflows.ts), and unvalidated `join(DIR, id + ".json")` lets
+// "../../something" escape the vault entirely — CodeQL flagged this as path-expression injection
+// and it was right. NAME_RE guards the workflow's display NAME, which is a different field.
+const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+export function isValidWorkflowId(id: string): boolean { return ID_RE.test(id || ""); }
+function fileFor(id: string) {
+  if (!ID_RE.test(id || "")) throw new Error("invalid workflow id");
+  return join(DIR, `${id}.json`);
+}
 function ensure() { if (!existsSync(DIR)) mkdirSync(DIR, { recursive: true }); }
 
 // ── which steps are dangerous (for the review UI + the runtime gate) ──
@@ -64,12 +73,13 @@ export function listWorkflows(): Workflow[] {
 }
 export function getWorkflow(id: string): Workflow | null { try { return JSON.parse(readFileSync(fileFor(id), "utf8")); } catch { return null; } }
 export function saveWorkflow(wf: Workflow): { ok: boolean; reason?: string } {
+  if (!ID_RE.test(wf.id || "")) return { ok: false, reason: "Bad workflow id." };
   if (!NAME_RE.test(wf.name || "")) return { ok: false, reason: "Bad workflow name." };
   if (!Array.isArray(wf.steps) || !wf.steps.length) return { ok: false, reason: "A workflow needs at least one step." };
   ensure(); writeFileSync(fileFor(wf.id), JSON.stringify(wf, null, 2));
   return { ok: true };
 }
-export function deleteWorkflow(id: string): boolean { const f = fileFor(id); if (!existsSync(f)) return false; unlinkSync(f); return true; }
+export function deleteWorkflow(id: string): boolean { if (!ID_RE.test(id || "")) return false; const f = fileFor(id); if (!existsSync(f)) return false; unlinkSync(f); return true; }
 
 // ── the run engine ──
 // Executes steps in order. A SAFE tool step runs via execTool; a brain step via execBrain. The FIRST
