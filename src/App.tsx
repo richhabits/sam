@@ -163,7 +163,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
           <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "Pin"}</button>
           <button type="button" className="mini" onClick={() => onQuote(m.text)}>Reply</button>
           <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "Stop" : "Listen"}</button>
-          {isLast && <button type="button" className="mini" onClick={onRegenerate}>Regenerate</button>}
+          {isLast && <button type="button" className="mini" title="Get a fresh answer to this" onClick={onRegenerate}>Regenerate</button>}
           {m.how && <span className="how">answered {m.how}</span>}
         </div>
       )}
