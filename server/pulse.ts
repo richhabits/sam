@@ -107,5 +107,22 @@ export function samplesOf(name: string, labels?: Labels): number[] {
   return s && s.kind === "histogram" ? [...s.samples] : [];
 }
 
-/** Test/maintenance helper — clear the registry. */
-export function _reset(): void { series.clear(); }
+// ── live activity ring — "what SAM is doing right now" for the Scope ──
+export interface Activity { at: number; kind: string; label: string }
+const ACTIVITY_MAX = 60;
+const activity: Activity[] = [];
+
+/** Note a live activity (a brain call, a heal, a tool run) for the Scope's real-time feed. Bounded. */
+export function mark(kind: string, label: string): void {
+  if (!ON()) return;
+  activity.push({ at: Date.now(), kind, label });
+  while (activity.length > ACTIVITY_MAX) activity.shift();
+}
+
+/** The most recent activity, newest first. */
+export function recentActivity(n = 20): Activity[] {
+  return activity.slice(-n).reverse();
+}
+
+/** Test/maintenance helper — clear the registry + activity. */
+export function _reset(): void { series.clear(); activity.length = 0; }

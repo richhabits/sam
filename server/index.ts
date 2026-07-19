@@ -53,6 +53,7 @@ import { issuesSummary, listIssues } from "./issues.ts";
 import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
 import { startKeeper } from "./keeper.ts";
 import { renderConsole } from "./console-view.ts";
+import { renderScope, scopeData } from "./scope-view.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -1185,6 +1186,17 @@ app.get("/api/console", (req, res) => {
   const samples = samplesOf("brain.latency_ms", { tier: "free" });
   const s = samples.length ? samples : samplesOf("brain.latency_ms", { tier: "local" });
   res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString()));
+});
+
+// The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is
+// the page itself. Both loopback + the Handshake (when enforced) — live diagnostics, never off-box.
+app.get("/api/scope", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Scope is loopback + Handshake only" }); return; }
+  res.json(scopeData());
+});
+app.get("/api/scope/view", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Scope is loopback + Handshake only" }); return; }
+  res.type("html").send(renderScope());
 });
 
 app.get("/api/status", (_req, res) =>

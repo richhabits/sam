@@ -14,8 +14,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { relayBrain } from "./relay.ts";
-import { count, observe } from "./pulse.ts";
-import { recordModelCall, estTokens } from "./metrics.ts";
+import { count, observe, mark } from "./pulse.ts";
+import { recordModelCall, estTokens, costUSD } from "./metrics.ts";
 import { loadRanking, rankingStale } from "./colosseum.ts";
 import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
 
@@ -510,6 +510,8 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
   count("brain.calls", 1, { tier: r.tier });
   observe("brain.latency_ms", ms, { tier: r.tier });
   count("brain.tokens", promptTokens + outputTokens, { tier: r.tier });
+  count("brain.cost_micro", Math.round(costUSD({ tier: r.tier, promptTokens, outputTokens }) * 1e6)); // micro-USD, integer
+  mark("brain", `${r.tier} · ${r.provider}`);
   return r;
 }
 

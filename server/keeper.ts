@@ -14,7 +14,7 @@ import { statfsSync } from "node:fs";
 import { join } from "node:path";
 import { capture } from "./issues.ts";
 import { sweepStaleLatches, staleLatches } from "./latch.ts";
-import { count } from "./pulse.ts";
+import { count, mark } from "./pulse.ts";
 
 export interface GuardResult { ok: boolean; detail?: string }
 export interface Guard {
@@ -62,6 +62,7 @@ export async function tick(guards: Guard[]): Promise<TickReport> {
       if (h.ok) {
         r.healed.push(g.name);
         count("keeper.heal", 1, { guard: g.name, result: "ok" });
+        mark("heal", g.name);
         capture(new Error(`healed: ${g.name}${h.detail ? ` — ${h.detail}` : ""}`), { keeper: g.name, action: "healed" });
       } else {
         r.failed.push(g.name);
