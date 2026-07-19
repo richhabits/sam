@@ -21,6 +21,7 @@ jobs:
       contents: write         # push the fix branch
       pull-requests: write     # open the draft PR
       issues: write            # comment the outcome
+      actions: write           # dispatch the real CI on the branch so its required checks report
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
@@ -60,7 +61,12 @@ jobs:
             gh pr create --draft -R "$REPO" --base main --head "$BRANCH" \
               --title "SAM fix: ${SUMMARY} (closes #${N})" \
               --body "SAM attempted this on its own free brain and \`npm run verify\` passed (typecheck + tests + build). **Draft — please review before merging.** Closes #${N}."
-            gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain and the full test suite passed — opened a **draft PR** for you to review. If it's off, just close it."
+            # The bot's own push can't trigger CI (anti-recursion), so dispatch the required checks on
+            # the branch — real test + cross-platform + gitleaks now run and report on the PR, so it
+            # merges on green with a normal click instead of an admin override.
+            gh workflow run ci.yml -R "$REPO" --ref "$BRANCH" || echo "note: could not dispatch ci.yml"
+            gh workflow run secret-scan.yml -R "$REPO" --ref "$BRANCH" || echo "note: could not dispatch secret-scan.yml"
+            gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain, the full test suite passed, and I kicked off CI on the branch. Opened a **draft PR** — once the checks go green, mark it ready and merge. If it's off, just close it."
           elif [ "$STATUS" = "fail" ]; then
             REASON=$(jq -r .reason fix-result.json)
             TAIL=$(jq -r '.verifyTail // ""' fix-result.json)
