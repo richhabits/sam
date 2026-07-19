@@ -17,16 +17,17 @@ describe("validateArgs — accepts a conforming call", () => {
   it("passes required + optional + enum when all correct", () => {
     const v = validateArgs(schema, { path: "~/a.txt", count: 3, mode: "safe" });
     expect(v.ok).toBe(true);
-    if (v.ok) expect(v.value.path).toBe("~/a.txt");
+    if (v.ok) expect((v.value as { path: string }).path).toBe("~/a.txt");
   });
   it("passes with only the required field present", () => {
     expect(validateArgs(schema, { path: "~/a.txt" }).ok).toBe(true);
   });
-  it("no schema → always ok (incremental adoption); non-object input normalises to {}", () => {
+  it("no schema → always ok (incremental adoption); input passes through UNCHANGED", () => {
     expect(validateArgs(undefined, { anything: 1 }).ok).toBe(true);
-    const v = validateArgs(undefined, "bare string");
+    // A bare-string input must survive untouched — read_file etc. accept `i.path ?? i`.
+    const v = validateArgs(undefined, "bare string path");
     expect(v.ok).toBe(true);
-    if (v.ok) expect(v.value).toEqual({});
+    if (v.ok) expect(v.value).toBe("bare string path");
   });
 });
 

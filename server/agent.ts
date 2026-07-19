@@ -247,10 +247,12 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
       continue;
     }
 
-    // THE PARSER (SAM_PARSER): validate the arguments against the tool's schema BEFORE it runs. An
-    // invalid call is REJECTED loudly with a diagnostic the brain can self-correct from — never
-    // executed on a guess. Recorded to the Black Box by name only (never the argument values).
-    if (process.env.SAM_PARSER === "1") {
+    // THE PARSER: validate the arguments against the tool's schema BEFORE it runs. An invalid call
+    // is REJECTED loudly with a diagnostic the brain can self-correct from — never executed on a
+    // guess. Recorded to the Black Box by name only (never the argument values). On by default now
+    // it's proven; SAM_PARSER=0 is the kill-switch. Only tools that declare an `args` schema are
+    // strictly validated (write_file today) — unschema'd tools pass through unchanged.
+    if (process.env.SAM_PARSER !== "0") {
       const v = validateArgs(tool.args, call.input);
       if (!v.ok) {
         capture(new Error(`invalid tool call: ${tool.name}`), { parser: "reject", tool: tool.name, args: problemArgs(v.problems) });

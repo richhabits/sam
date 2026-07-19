@@ -24,7 +24,7 @@ export interface ArgSpec {
 export type ArgSchema = Record<string, ArgSpec>;
 
 export interface Problem { arg: string; expected: string; got: string }
-export type Validation = { ok: true; value: Record<string, unknown> } | { ok: false; problems: Problem[] };
+export type Validation = { ok: true; value: unknown } | { ok: false; problems: Problem[] };
 
 function typeName(v: unknown): string {
   if (v === null) return "null";
@@ -46,7 +46,9 @@ function typeMatches(t: ArgType, v: unknown): boolean {
  * quiet fix, so the brain learns the real shape. Returns the validated object or the list of problems.
  */
 export function validateArgs(schema: ArgSchema | undefined, input: unknown): Validation {
-  if (!schema) return { ok: true, value: (input && typeof input === "object" && !Array.isArray(input)) ? (input as Record<string, unknown>) : {} };
+  // No schema → pass the input through UNCHANGED. Unschema'd tools handle their own input shapes
+  // (e.g. read_file accepts a bare string OR {path}); normalising here would destroy that input.
+  if (!schema) return { ok: true, value: input };
   // The input itself must be a plain object.
   if (input != null && (typeof input !== "object" || Array.isArray(input))) {
     return { ok: false, problems: [{ arg: "(input)", expected: "an object", got: typeName(input) }] };

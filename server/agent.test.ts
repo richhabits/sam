@@ -145,8 +145,8 @@ describe("the Parser — invalid tool calls are rejected loudly, never executed 
     expect(replies.length).toBe(0);                                         // both model turns consumed (retry happened)
   });
 
-  it("with the Parser OFF, the same invalid call is NOT gated (flag-scoped behaviour)", async () => {
-    delete process.env.SAM_PARSER;
+  it("with the Parser OFF (SAM_PARSER=0 kill-switch), the same invalid call is NOT gated", async () => {
+    process.env.SAM_PARSER = "0";
     replies.push('{"tool":"write_file","input":{"path":"~/notes.md"}}');   // invalid, but ungated
     const r = await runAgent("SYS", "save my notes", "local");
     expect(r.kind).toBe("pending");                                         // reaches approval un-validated (old behaviour)
