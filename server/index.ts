@@ -269,8 +269,8 @@ initContext();
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
 // The Threshold — CROSS IN: restore the last session's context so SAM resumes knowing what it was
-// doing. Opt-in (SAM_THRESHOLD=1). The matching CROSS OUT (persist a summary) is registered on the
-// stop signals below. Both no-ops unless enabled → boot/stop are exactly as today by default.
+// doing. On by default (SAM_THRESHOLD=0 to disable). The matching CROSS OUT (persist a summary) is
+// registered on the stop signals below. CROSS IN only reads+logs; CROSS OUT is fail-loud + bounded.
 if (!BENCH_MODE && thresholdEnabled()) {
   const prev = crossIn();
   if (prev) console.log(`  threshold       · ↩ resumed from ${prev.at}${prev.openThreads.length ? ` · open: ${prev.openThreads.join("; ")}` : ""}\n`);

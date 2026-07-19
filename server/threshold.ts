@@ -32,8 +32,9 @@ export interface SessionSummary {
 }
 export type ThresholdError = { kind: "persist-failed"; detail: string };
 
-/** Enabled? Opt-in (SAM_THRESHOLD=1), default off — the boot/stop hooks are inert unless on. */
-export function thresholdEnabled(): boolean { return process.env.SAM_THRESHOLD === "1"; }
+/** On by default now the round-trip is proven; SAM_THRESHOLD=0 is the kill-switch (boot/stop hooks
+ *  go inert). Both hooks are safe: CROSS IN only reads+logs; CROSS OUT is fail-loud and bounded. */
+export function thresholdEnabled(): boolean { return process.env.SAM_THRESHOLD !== "0"; }
 
 /** Assemble a session summary from the live signals — open threads + the recent Trail. Everything is
  *  run through redact() before it can be persisted. `at` is injected so this stays pure + testable. */
