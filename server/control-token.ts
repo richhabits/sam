@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · CONTROL-CHANNEL TOKEN  — loopback position is NOT authorization.
 //
-//  The Salt CVE-2020-11651 lesson (pattern only, no Salt code): a control channel that trusts
-//  callers by network position gets unauthenticated RCE. SAM already blocks the REMOTE vectors
+//  Reachable is not authorized: a control channel that trusts callers by network position alone
+//  can be driven by any local process. SAM already blocks the REMOTE vectors
 //  (CORS origin allowlist + Host-header anti-DNS-rebinding), but a LOCAL non-browser process
 //  (another app, a supply-chained dependency) still passes `isLoopback` and — since CORS binds
 //  only browsers — can drive the privileged file/shell API. It knows no secret it must present.

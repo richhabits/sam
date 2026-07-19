@@ -1,14 +1,14 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · WEBINTEL RESEARCH — multi-page structured extraction + search-and-aggregate.
 //
-//  The distinct idea from ScrapeGraphAI (SmartScraperMultiGraph + SearchGraph), rebuilt as ours
-//  on `webintel-extract`. NOT vendored — no LangChain, no Playwright, no LlamaIndex: fetch is
-//  webintel's, the LLM is injected (SAM's brain), and SEARCH is injected too. Keyless web search
+//  Multi-page structured extraction and search-and-aggregate, all our own code, built on
+//  `webintel-extract`: no Playwright — fetch is webintel's, the LLM is injected (SAM's brain), and
+//  SEARCH is injected too. Keyless web search
 //  is genuinely flaky, so we DON'T pretend to own it — SAM wires the search backend it prefers
 //  (Brave/DuckDuckGo/its cascade); what we own is the aggregation across pages.
 //
-//  (Single-page extract — ScrapeGraphAI's SmartScraperGraph / llm-scraper — is already ours in
-//  webintel-extract.ts. This is webintel increment 3: many pages, and search→scrape→aggregate.)
+//  (Single-page extract lives in webintel-extract.ts. This is webintel increment 3: many pages,
+//  and search→scrape→aggregate.)
 //
 //  Verified (webintel-research.verify.mjs, 4/4): extractMany over two real Wikipedia pages →
 //  one table row per page with source URLs; a dead URL captured in `failed[]`, not fatal;

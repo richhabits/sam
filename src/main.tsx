@@ -11,7 +11,7 @@ import "./styles.css";
 // /api in dev). This one shim covers every fetch in the app — no per-call-site base.
 // One fetch shim covers every server call. It does two jobs:
 //  1. On file:// (packaged Electron) rewrite root-relative "/api/…" to the local server's origin.
-//  2. Attach the per-launch control token (Salt-audit) to /api requests when we have one — the
+//  2. Attach the per-launch control token (the Handshake) to /api requests when we have one — the
 //     legit renderer gets it via preload/contextBridge. Enforcement is opt-in server-side; when it's
 //     on, this header is what lets the real frontend through while a random local process is refused.
 {

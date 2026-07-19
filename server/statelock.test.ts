@@ -11,7 +11,7 @@ import {
   withLockSync,
 } from "./statelock.ts";
 
-// The anti-clobber guarantee: of N racers on one resource, exactly ONE wins and the rest fail
+// The latch's guarantee: of N racers on one resource, exactly ONE wins and the rest fail
 // LOUDLY — never a silent overwrite. Stale locks (dead pid / age) are detectable but only an
 // EXPLICIT takeover reclaims them; a fresh live lock is never stolen. Uses unique resource names
 // per test so the module's real vault/.locks dir stays uncontended and tests don't cross-talk.

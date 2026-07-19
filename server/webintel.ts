@@ -1,9 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · WEBINTEL — our own local web reader + cache.
 //
-//  Clean-room, MIT, zero external services. "Strip and implement": the good idea from
-//  wigolo (local-first web intelligence, no keys/cloud/bill) rebuilt as ours — NOT vendored
-//  (wigolo is AGPL; this shares no code with it). Increment 1 owns fetch → clean → extract →
+//  Clean-room, MIT, zero external services. SAM's own local web reader —
+//  local-first web intelligence, no keys/cloud/bill, all our own code. Increment 1 owns fetch → clean → extract →
 //  cache, which removes SAM's dependency on the jina.ai reader service for reading a page.
 //
 //  Verified LIVE (webintel.verify.mjs, 9/9): fetches a real Wikipedia page, extracts title +

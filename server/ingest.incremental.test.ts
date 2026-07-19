@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Gradle-style incremental correctness. The doc index skips files by mtime+size — fast, but that
+// Incremental-index correctness. The doc index skips files by mtime+size — fast, but that
 // misses index-wide DERIVATION inputs (embedder model, chunk params). This proves the fingerprint
 // busting: content change re-indexes ONE file, unchanged HITS, a model change busts ALL, a deleted
 // file is evicted. CORRECTNESS-FIRST: a wrong hit (stale vectors served silently) is the failure we

@@ -132,7 +132,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// SECURITY · control-channel token (Salt CVE-2020-11651 lesson). OPT-IN via SAM_REQUIRE_CONTROL_TOKEN:
+// SECURITY · control-channel token — loopback position is not authorization. OPT-IN via SAM_REQUIRE_CONTROL_TOKEN:
 // off by default so nothing changes. When on, loopback position alone is NOT enough — mutating /api
 // calls must carry the per-launch secret the legit frontend holds (a random local process can't).
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
@@ -1185,7 +1185,7 @@ app.get("/api/status", (_req, res) =>
     models: providersStatus(),
     capacity: capacityReport(),
     vault: vaultStats(),
-    issues: issuesSummary(),   // local error capture (Sentry-discipline) — strictly on-device
+    issues: issuesSummary(),   // local error capture (the black box) — strictly on-device
   })
 );
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));

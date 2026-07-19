@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { _reset, breadcrumb, capture, issuesSummary, listIssues, redact } from "./issues.ts";
 
-// The Sentry-discipline layer, strictly local. Proves: capture records a structured issue,
+// The black box (local error capture), strictly local. Proves: capture records a structured issue,
 // recurring faults GROUP by fingerprint (count/first/last), secrets are REDACTED before storage,
 // the store is bounded, and — the one that matters most — capture NEVER throws and never swallows
 // its own errors silently.

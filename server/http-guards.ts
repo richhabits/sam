@@ -24,7 +24,7 @@ export function isLoopback(req: { socket: { remoteAddress?: string | null } }): 
 // Loopback position is NOT authorization on its own — a local non-browser process passes isLoopback
 // too (CORS only binds browsers). When control-token enforcement is on, a privileged caller must ALSO
 // present the per-launch secret the legit frontend holds. Off (default): loopback alone, unchanged.
-// See control-token.ts for the Salt CVE-2020-11651 rationale.
+// See control-token.ts for the rationale.
 export function isTrustedLocal(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
   if (!isLoopback(req)) return false;
   if (controlTokenEnforced()) return checkControlToken(req);

@@ -1,10 +1,9 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · WEBINTEL CRAWL — whole-site crawl + map, on our own fetchClean.
 //
-//  The common core of Firecrawl (crawl/map), Crawl4AI (deep-crawl BFS), and Crawlee (queue),
-//  rebuilt as ours: NO Playwright, NO framework, ~90 lines. Same-domain BFS with depth/page
-//  limits, a polite inter-request delay, and **robots.txt respected** (we're a good citizen).
-//  (Firecrawl is AGPL — couldn't vendor anyway; this shares no code, just the idea.)
+//  Whole-site crawl + map, all our own code: NO Playwright, NO framework, ~90 lines. Same-domain
+//  BFS with depth/page limits, a polite inter-request delay, and **robots.txt respected** (we're a
+//  good citizen).
 //
 //  Verified (webintel-crawl.verify.mjs, 6/6) LIVE: mapped 60 same-domain URLs off one page;
 //  crawled 3 real Wikipedia pages (Web scraping → Data scraping → Scraper site), BFS queue
@@ -73,7 +72,7 @@ export async function crawl(startUrl: string, opts: CrawlOpts = {}): Promise<Cra
 }
 
 export interface MapResult { start: string; ok: boolean; urls: string[] }
-/** Firecrawl "map": discover the same-domain URLs reachable from a page (no full crawl). */
+/** Map a site: discover the same-domain URLs reachable from a page (no full crawl). */
 export async function mapSite(startUrl: string, opts: { timeoutMs?: number; sameDomainOnly?: boolean } = {}): Promise<MapResult> {
   const page = await fetchClean(startUrl, { timeoutMs: opts.timeoutMs });
   if (!page.ok) return { start: startUrl, ok: false, urls: [] };

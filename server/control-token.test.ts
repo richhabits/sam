@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { checkControlToken, controlToken, controlTokenEnforced, presentedToken } from "./control-token.ts";
 import { isTrustedLocal } from "./http-guards.ts";
 
-// The Salt-audit guarantee: with enforcement ON, loopback position is NOT enough — a privileged
+// The control-token guarantee: with enforcement ON, loopback position is NOT enough — a privileged
 // caller must present the per-launch token. A local process that doesn't know it is refused even
 // from 127.0.0.1. Enforcement is opt-in, so we toggle the env flag per test and restore it.
 

@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · WEBINTEL EXTRACT — structured data from a page via a schema + SAM's own brain.
 //
-//  The llm-scraper (mishushakov, MIT) capability, rebuilt as ours — NOT vendored. No Playwright,
+//  Schema-driven page extraction, all our own code. No Playwright,
 //  no Vercel AI SDK: built on webintel.fetchClean + an INJECTED llm fn, so it uses SAM's existing
 //  model calling (runs local via Ollama, key-free) and is unit-testable with a mock.
 //  Pipeline: page → clean text → schema prompt → llm → robust JSON parse → type-coerce/validate.

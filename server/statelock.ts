@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · STATE LOCK  — advisory mutual-exclusion for shared mutable artifacts.
 //
-//  The Terraform state-lock discipline, TS-native (pattern only — no Terraform code). SAM's
+//  A single-writer latch for SAM's shared mutable files. SAM's
 //  shared files (.env, the vault JSON stores, the board) are all read-modify-write with NO
 //  mutual exclusion: two sessions writing the same file → last one wins, silently, and a
 //  `.replace()` that matched nothing still writes an unchanged file. This closes that class.

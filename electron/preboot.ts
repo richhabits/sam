@@ -10,7 +10,7 @@ import os from "node:os";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// Per-launch control-channel secret (the Salt-audit token). Minted HERE — before the server module
+// Per-launch control-channel secret (the Handshake). Minted HERE — before the server module
 // and before any renderer/preload loads — so server, main, and preload all read ONE value from
 // process.env. The renderer receives it via preload/contextBridge; a random local process cannot
 // read the renderer's context, which is the whole point. Enforcement stays opt-in (see control-token.ts).

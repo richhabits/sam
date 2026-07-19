@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · ISSUES  — strictly-local error capture + breadcrumbs.
 //
-//  The Sentry DISCIPLINE (pattern only, no Sentry code, no DSN, no network EVER). SAM's recurring
+//  SAM's black box. No network EVER — nothing is transmitted. SAM's recurring
 //  failure mode is SILENT failures — swallowed catches, no-op "successes". This gives them a place
 //  to land: a caught error records a structured ISSUE (message + stack + recent breadcrumbs + host
 //  context), grouped by fingerprint so a recurring fault reads "seen N times", surfaced in doctor.
