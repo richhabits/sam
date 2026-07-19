@@ -111,9 +111,9 @@ export function defaultGuards(): Guard[] {
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 
-/** Start the single timer loop. Opt-in (SAM_KEEPER=1), default off. Backs off rather than overlap. */
+/** Start the single timer loop. On by default; SAM_KEEPER=0 is the kill-switch. Backs off rather than overlap. */
 export function startKeeper(guards: Guard[] = defaultGuards(), intervalMs = 60_000): boolean {
-  if (process.env.SAM_KEEPER !== "1" || timer) return false;
+  if (process.env.SAM_KEEPER === "0" || timer) return false;
   timer = setInterval(async () => {
     if (running) return;   // a slow tick must not stack — back off
     running = true;

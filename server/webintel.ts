@@ -79,13 +79,13 @@ export async function fetchClean(url: string, opts: { timeoutMs?: number } = {})
     const body = await res.text();
     let parsed: { title: string; text: string; links: CleanLink[] };
     if (ct.includes("html")) {
-      // Opt-in: the Reader turns HTML into clean markdown (structure kept, boilerplate pruned). If it
-      // finds too little — a JS-rendered page — it returns null and we fall back LOUDLY to the plain
-      // cleaner, never a silent empty result.
-      const distilled = process.env.SAM_READER === "1" ? distill(body) : null;
+      // The Reader turns HTML into clean markdown (structure kept, boilerplate pruned). If it finds
+      // too little — a JS-rendered page — it returns null and we fall back LOUDLY to the plain
+      // cleaner, never a silent empty result. On by default; SAM_READER=0 is the kill-switch.
+      const distilled = process.env.SAM_READER !== "0" ? distill(body) : null;
       if (distilled) parsed = { title: distilled.title, text: distilled.markdown, links: distilled.links };
       else {
-        if (process.env.SAM_READER === "1") console.warn(`  📄 reader: too little content distilled from ${url} — using the plain cleaner`);
+        if (process.env.SAM_READER !== "0") console.warn(`  📄 reader: too little content distilled from ${url} — using the plain cleaner`);
         parsed = htmlToText(body);
       }
     } else {

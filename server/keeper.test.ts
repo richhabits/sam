@@ -63,11 +63,12 @@ describe("tick — drift, heal, record", () => {
   });
 });
 
-describe("the loop — opt-in only", () => {
-  it("does not start unless SAM_KEEPER=1", () => {
-    expect(startKeeper([], 10)).toBe(false);   // flag off → no loop
-    process.env.SAM_KEEPER = "1";
-    expect(startKeeper([], 10)).toBe(true);    // flag on → starts
+describe("the loop — on by default, kill-switch off", () => {
+  it("starts by default and SAM_KEEPER=0 disables it", () => {
+    process.env.SAM_KEEPER = "0";
+    expect(startKeeper([], 10)).toBe(false);   // kill-switch → no loop
+    delete process.env.SAM_KEEPER;
+    expect(startKeeper([], 10)).toBe(true);    // default on → starts
     expect(startKeeper([], 10)).toBe(false);   // idempotent — already running
     stopKeeper();
   });

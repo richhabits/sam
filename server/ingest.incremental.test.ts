@@ -99,11 +99,11 @@ describe("incremental doc index — the Reader is a derivation input", () => {
   it("BUST-ALL: toggling SAM_READER re-extracts every HTML file (plain text ≠ markdown)", async () => {
     const prose = "Genuine article prose that carries the real meaning of the page and clears the threshold. ".repeat(6);
     writeFileSync(join(docs, "page.html"), `<html><head><title>T</title></head><body><article><h2>Findings</h2><p>${prose}</p></article></body></html>`);
-    delete process.env.SAM_READER;
-    const first = await ingestFolder(docs);        // Reader OFF → plain strip
+    process.env.SAM_READER = "0";
+    const first = await ingestFolder(docs);        // Reader OFF (kill-switch) → plain strip
     expect(first.ingested).toBe(1);
-    process.env.SAM_READER = "1";
-    const second = await ingestFolder(docs);       // Reader ON → derivation changed → bust + re-extract
+    delete process.env.SAM_READER;
+    const second = await ingestFolder(docs);       // Reader ON (default) → derivation changed → bust + re-extract
     expect(second.busted).toMatch(/chunking changed/);
     expect(second.ingested).toBe(1);
     expect(second.unchanged).toBe(0);              // NOT skipped despite unchanged mtime+size

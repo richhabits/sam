@@ -326,9 +326,9 @@ const PROVIDERS: Provider[] = [
 
 // Try one provider, rotating through its key pool on failure.
 async function tryProvider(prov: Provider, system: string, prompt: string): Promise<string | null> {
-  // Opt-in: route through the Relay (one policy chain — Breaker, key pool, boundary, failure
-  // capture). Off by default so the path below is unchanged until the Relay is proven live.
-  if (process.env.SAM_RELAY === "1") {
+  // Route through the Relay (one policy chain — Breaker, key pool, boundary, failure capture).
+  // On by default now the Relay is proven; SAM_RELAY=0 is the kill-switch back to the plain path.
+  if (process.env.SAM_RELAY !== "0") {
     const r = await relayBrain(
       { id: prov.id, boundary: prov.tier === "local" ? "local" : "cloud", noKey: prov.noKey, run: prov.run },
       system, prompt, { allowCloud: true },   // the cascade already decided cloud is permitted here
@@ -568,10 +568,11 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 // falls back to a normal call and emits the whole answer as one chunk.
 async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane): Promise<ModelResult> {
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
-    // Opt-in: route the stream through the Relay (Breaker + boundary + key pool + failure capture),
-    // capped at ONE key — a stream that already emitted tokens can't be retried without double-
-    // emitting. system/prompt/onChunk are bound in `run`, so the Relay just manages the outcome.
-    if (process.env.SAM_RELAY === "1") {
+    // Route the stream through the Relay (Breaker + boundary + key pool + failure capture), capped
+    // at ONE key — a stream that already emitted tokens can't be retried without double-emitting.
+    // system/prompt/onChunk are bound in `run`, so the Relay just manages the outcome. On by
+    // default now the Relay is proven; SAM_RELAY=0 is the kill-switch back to the plain path.
+    if (process.env.SAM_RELAY !== "0") {
       const r = await relayBrain({ id, boundary: "cloud", run: (_s, _p, key) => run(key) }, system, prompt, { allowCloud: true }, { maxKeys: 1 });
       return r && "text" in r ? { text: r.text, provider: label, tier: "free" } : null;
     }

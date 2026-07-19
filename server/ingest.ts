@@ -80,7 +80,7 @@ const EMBED_BATCH = 32;
 // Read at call time (not a const): the Reader state affects the extracted text, so flipping
 // SAM_READER changes the derivation and must bust the index just like a chunk-param change.
 function chunkFp(): string {
-  return `v1:${MAX_CHARS_PER_FILE}:${CHUNK_CHARS}:${MIN_CHUNK_CHARS}:${process.env.SAM_READER === "1" ? "reader" : "plain"}`;
+  return `v1:${MAX_CHARS_PER_FILE}:${CHUNK_CHARS}:${MIN_CHUNK_CHARS}:${process.env.SAM_READER !== "0" ? "reader" : "plain"}`;
 }
 
 // Never descend into these — system junk, caches, other apps' guts.
@@ -102,11 +102,12 @@ export async function extractText(path: string, ext: string): Promise<string> {
   }
   let text = await readFile(path, "utf8");
   if (ext === ".html" || ext === ".htm") {
-    // Opt-in: the Reader distils HTML to clean markdown (structure kept, boilerplate pruned) so the
-    // index stores the article, not the page chrome. Falls back LOUDLY to the plain strip when the
-    // Reader finds too little (a JS-rendered page) — never a silent empty result. The Reader state is
-    // part of the index fingerprint (chunkFp), so toggling SAM_READER re-extracts every HTML file.
-    if (process.env.SAM_READER === "1") {
+    // The Reader distils HTML to clean markdown (structure kept, boilerplate pruned) so the index
+    // stores the article, not the page chrome. Falls back LOUDLY to the plain strip when the Reader
+    // finds too little (a JS-rendered page) — never a silent empty result. The Reader state is part
+    // of the index fingerprint (chunkFp), so toggling SAM_READER re-extracts every HTML file. On by
+    // default now the Reader is proven; SAM_READER=0 is the kill-switch back to the plain strip.
+    if (process.env.SAM_READER !== "0") {
       const d = distill(text);
       if (d) return d.markdown;
       console.warn(`  📄 reader: too little distilled from ${path} — using the plain strip`);
