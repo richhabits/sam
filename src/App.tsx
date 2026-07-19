@@ -356,6 +356,12 @@ export default function App() {
     if (sd?.openStudio) sd.openStudio();                              // dedicated Electron window
     else window.open(location.pathname + "?app=studio", "_blank");   // browser tab fallback
   }
+  // Open a server-served local view (the Console / the Scope). On file:// (packaged Electron) the
+  // page lives on the local server's origin, not the app bundle, so point at it explicitly.
+  function openLocalView(path: string) {
+    const base = typeof location !== "undefined" && location.protocol === "file:" ? "http://localhost:8787" : "";
+    window.open(base + path, "_blank");
+  }
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
@@ -1830,6 +1836,8 @@ export default function App() {
           { icon: "eye", label: "Look through the camera", run: () => lookThroughCamera() },
           { icon: "shield", label: guardian ? "Stop Guardian" : "Start Guardian", run: () => toggleGuardian() },
           { icon: "chart", label: "Open Dashboard", run: () => setDashOpen(true) },
+          { icon: "pulse", label: "Open the Scope (live activity)", run: () => openLocalView("/api/scope/view") },
+          { icon: "sliders", label: "Open the Console (status)", run: () => openLocalView("/api/console") },
           { icon: "grid", label: "What SAM can do", run: () => setToolsOpen(true) },
           { icon: "clock", label: "Chat history", run: () => setHistoryOpen(true) },
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
