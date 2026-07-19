@@ -49,9 +49,9 @@ describe("buildx skill", () => {
   });
 
   it("keeps the finance lock — money never gets the toy treatment", () => {
-    // The safety-relevant line: trading/finance builds route to the the sibling project constitution and
-    // its gates, not to a weekend tutorial. No side door to money via "just learning".
-    expect(buildx!.body).toMatch(/the sibling project/);
+    // The safety-relevant line: trading/finance builds route to a strict finance-safety constitution
+    // and its gates, not to a weekend tutorial. No side door to money via "just learning".
+    expect(buildx!.body).toMatch(/finance-safety/);
     expect(buildx!.body.toLowerCase()).toMatch(/trading|finance/);
   });
 

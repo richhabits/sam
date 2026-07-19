@@ -63,7 +63,7 @@ Finished = the toy runs end-to-end + a README the user writes in their own words
 - Never substitute a library for the thing being built ("just use SQLite" defeats a
   build-your-own-database). Dependencies allowed only for scaffolding around the core.
 - Match the user's level — milestones shrink, never the honesty of the proofs.
-- Trading/finance builds are the exception: those route to the the sibling project constitution and
+- Trading/finance builds are the exception: those route to a strict finance-safety constitution and
   its gates, not to a weekend tutorial. Money doesn't get the toy treatment.
 
 ## Output

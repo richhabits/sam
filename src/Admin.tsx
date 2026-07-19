@@ -82,8 +82,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   }, [focus]);
   const PROVIDERS: Prov[] = (cfg?.providers as Prov[]) || [];
   const count = (id: string) => PROVIDERS.find((p) => p.id === id)?.keys ?? 0;
-  // 1600ms was too quick to notice: the user saved a Kimi key, the confirmation came and went, and
-  // he reasonably concluded nothing had happened — the key WAS stored. A save that succeeds
+  // 1600ms was too quick to notice: a user saved a Kimi key, the confirmation came and went, and
+  // they reasonably concluded nothing had happened — the key WAS stored. A save that succeeds
   // silently is indistinguishable from one that failed, which is the same class of bug as the
   // 400-that-said-"Saved" this panel had before. 5s, plus a persistent line below the row.
   const flash = (id: string) => { setSaved(id); setTimeout(() => setSaved(""), 5000); };

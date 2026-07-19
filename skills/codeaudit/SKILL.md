@@ -22,7 +22,7 @@ issues found in these dimensions", which is smaller and true).
 ## Step 1 — Scope before you read (know the blast radius)
 
 For a change to existing code, first ask: what does this touch? If a `blastradius`-style tool is
-available (the sibling project ships one for Python), use it — a change to a symbol with many dependents and
+available (one exists for Python), use it — a change to a symbol with many dependents and
 no tests is higher-risk than a leaf function. State the blast radius; it sets the review's depth.
 
 ## Step 2 — Audit across five dimensions (always all five, in order)
@@ -54,7 +54,7 @@ Order findings most-severe first. If a dimension is clean, say so in one line; d
 
 - **Verify before flagging.** If you can trace the failing input→output, say it. If you're
   unsure, mark it "possible" — don't inflate confidence (no fake receipts).
-- **Trading/finance code is the exception** — route strategy/backtest code to the the sibling project
+- **Trading/finance code is the exception** — route strategy/backtest code to a strict finance-safety
   constitution and its gates (null test, walk-forward, gate-shopping ban), not a generic review.
 - **You are a supplement, not a gate.** End every audit with the honest caveat: an AI review is
   not 100% reliable and does not replace human review or the test suite. Offer to write a failing

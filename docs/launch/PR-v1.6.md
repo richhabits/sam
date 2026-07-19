@@ -44,7 +44,7 @@ object. Three regression tests cover the direct, obfuscated, and capability-shim
 
 ## 🧹 Personal-data scrub
 
-- Working tree cleared of personal references (`git grep -i user` = 0 hits).
+- Working tree cleared of personal references (verified 0 hits).
 - **Fixed a real contradiction:** README License said *"Proprietary — All rights reserved"* while the
   LICENSE + badge say MIT → corrected to MIT.
 - `.mailmap` remaps the one commit authored under a personal name → the project identity (no history

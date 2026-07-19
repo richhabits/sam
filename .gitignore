@@ -104,3 +104,9 @@ bench/*.out.json
 
 # agent worktrees (transient, live inside the repo)
 .claude/worktrees/
+
+# Internal ops/research notes — kept local, never public
+CLAUDE.md
+docs/BOARD.md
+docs/OWNERSHIP_AUDIT.md
+docs/strips/
