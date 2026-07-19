@@ -285,11 +285,12 @@ if (!BENCH_MODE && thresholdEnabled()) {
   process.once("SIGTERM", () => onStop("SIGTERM"));
   process.once("SIGINT", () => onStop("SIGINT"));
 }
-// The Safe — encrypted secret store. Behind SAM_SAFE (default off). If it's set up, unlock on launch
-// (keychain mode is seamless) and bridge the sealed secrets back into process.env so every existing
-// reader works unchanged. A failed unlock is LOUD and does NOT fall back to plaintext — the migration
-// already removed the plaintext, so secrets are simply unavailable until the user unlocks in Settings.
-if (!BENCH_MODE && process.env.SAM_SAFE === "1" && safeIsSetup()) {
+// The Safe — encrypted secret store. The real gate is `safeIsSetup()`: this is a NO-OP for anyone who
+// hasn't set the Safe up (everyone by default). If it IS set up, unlock on launch (keychain mode is
+// seamless) and bridge the sealed secrets back + reload the key pools, so a user who set up the Safe
+// via the UI just works on the next boot. SAM_SAFE=0 is the kill-switch. A failed unlock is LOUD and
+// does NOT fall back to plaintext — the migration removed it, so secrets stay unavailable until unlocked.
+if (!BENCH_MODE && safeIsSetup() && process.env.SAM_SAFE !== "0") {
   const u = safeUnlock();
   if (u.ok) {
     const n = safeLoadEnv();       // bridge the non-key secrets (tool creds) into process.env
