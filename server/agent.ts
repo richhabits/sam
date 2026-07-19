@@ -14,6 +14,7 @@ import { compressToolOutput } from "./compress.ts";
 import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 import { mayAutoRun } from "./authz.ts";
 import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
+import { replySchema, unwrapRespond } from "./grammar.ts";
 import { capture } from "./issues.ts";
 
 const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token limits
@@ -203,7 +204,11 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
   for (let step = 0; step < MAX_STEPS; step++) {
     // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
     // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
-    let res = await runModel(tier, system, prompt + CONTINUE, "deep");
+    // THE GRAMMAR (SAM_GRAMMAR): on the LOCAL brain, constrain output to the tool-call schema so a
+    // malformed/hallucinated call can't be sampled. Local-only — cloud brains vary; the Parser guards
+    // them. A constrained final answer comes back as {"respond":"..."} and is unwrapped below.
+    const grammarOn = process.env.SAM_GRAMMAR === "1" && tier === "local";
+    let res = await runModel(tier, system, prompt + CONTINUE, "deep", grammarOn ? { format: replySchema(TOOLS) } : undefined);
 
     // PARALLEL BATCH (Phase 6): the model asked for several INDEPENDENT read-only lookups at once.
     // Run them concurrently (only when all are safe/auto) — N lookups take the time of the slowest.
@@ -227,7 +232,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
       if (repaired) { call = repaired; res = fix; }
     }
 
-    if (!call) return { kind: "final", text: res.text, trace, provider: res.provider };
+    if (!call) return { kind: "final", text: grammarOn ? (unwrapRespond(res.text) ?? res.text) : res.text, trace, provider: res.provider };
 
     const tool = toolByName(call.tool);
     if (!tool) {

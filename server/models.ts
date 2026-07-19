@@ -63,7 +63,7 @@ async function callGateway(system: string, prompt: string): Promise<string> {
 }
 
 // ── LOCAL · Ollama (free, on your machine) ───────────────────
-async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL): Promise<string> {
+async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL, format?: unknown): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,6 +74,9 @@ async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL):
         { role: "system", content: system },
         { role: "user", content: prompt },
       ],
+      // THE GRAMMAR: when a schema is supplied, Ollama constrains every sampled token to it, so a
+      // malformed / hallucinated tool call cannot be produced. Omitted → unconstrained, unchanged.
+      ...(format ? { format } : {}),
     }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status}`);
@@ -438,11 +441,11 @@ export async function ollamaReady(): Promise<boolean> {
 // Any cloud provider with a real key pooled? (noKey lanes like Pollinations don't count as "has keys")
 function hasCloudKeys(): boolean { return PROVIDERS.some((p) => p.tier === "free" && !p.noKey && poolSize(p.id) > 0); }
 
-async function runModelInner(tier: Tier, system: string, prompt: string, laneHint?: Lane): Promise<ModelResult> {
+async function runModelInner(tier: Tier, system: string, prompt: string, laneHint?: Lane, format?: unknown): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
   if (tier === "local") {
     try {
-      const text = await callOllama(system, prompt);
+      const text = await callOllama(system, prompt, OLLAMA_MODEL, format);   // the Grammar constrains local output when a schema is passed
       if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" };
     } catch { /* handled just below */ }
     // PRIVACY GUARANTEE: Private/local mode must NEVER send data to a cloud provider.
@@ -499,9 +502,9 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
 
 // Public entry — times the call and records it (tier, tokens, latency) for the router
 // badge + benchmark. In bench-mock mode it returns a deterministic answer with no network.
-export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean }): Promise<ModelResult> {
+export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean; format?: unknown }): Promise<ModelResult> {
   const t0 = Date.now();
-  const r = BENCH_MOCK ? await mockRun(tier) : await runModelInner(tier, system, prompt, laneHint);
+  const r = BENCH_MOCK ? await mockRun(tier) : await runModelInner(tier, system, prompt, laneHint, meta?.format);
   const ms = Date.now() - t0;
   const promptTokens = estTokens(system) + estTokens(prompt);
   const outputTokens = estTokens(r.text);

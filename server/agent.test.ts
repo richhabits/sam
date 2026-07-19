@@ -152,3 +152,24 @@ describe("the Parser — invalid tool calls are rejected loudly, never executed 
     expect(r.kind).toBe("pending");                                         // reaches approval un-validated (old behaviour)
   });
 });
+
+describe("the Grammar — a constrained local turn is a tool call or a {respond} final answer", () => {
+  beforeEach(() => { process.env.SAM_GRAMMAR = "1"; });
+  afterEach(() => { delete process.env.SAM_GRAMMAR; });
+
+  it("unwraps a {respond} envelope into the plain final answer (never shows raw JSON)", async () => {
+    replies.push('{"respond":"The time is noon, the user."}');
+    const r = await runAgent("SYS", "what time is it?", "local");
+    expect(r.kind).toBe("final");
+    expect(r.text).toBe("The time is noon, the user.");     // unwrapped, not the raw JSON
+  });
+
+  it("still runs a constrained tool call, then unwraps the final answer", async () => {
+    replies.push('{"tool":"get_datetime","input":{}}');     // constrained tool call
+    replies.push('{"respond":"Done — it is noon."}');       // constrained final answer
+    const r = await runAgent("SYS", "what time is it?", "local");
+    expect(r.trace.length).toBe(1);                         // the tool ran
+    expect(r.kind).toBe("final");
+    expect(r.text).toBe("Done — it is noon.");
+  });
+});
