@@ -319,8 +319,9 @@ async function writeFileTool(input: { path: string; content: string }): Promise<
     const abs = safePath(input.path);
     // SAM_PREVIEW_COMMIT: route the write through Preview → Commit — journalled + convergent, so a
     // crash mid-write is recoverable (recover() at boot) and re-writing identical content is a no-op.
-    // It also creates parent dirs, which the plain write below does not. Default off; = "1" to enable.
-    if (process.env.SAM_PREVIEW_COMMIT === "1") {
+    // It also creates parent dirs, which the plain write below does not. On by default now it's proven
+    // live; SAM_PREVIEW_COMMIT=0 is the kill-switch back to the plain overwrite.
+    if (process.env.SAM_PREVIEW_COMMIT !== "0") {
       const plan = previewChanges([{ kind: "write", path: abs, after: input.content }]);
       const c = plan.changes[0];
       if (c.action === "unchanged") return `${input.path} already holds that exact content — nothing written`;
@@ -338,7 +339,7 @@ async function writeFileTool(input: { path: string; content: string }): Promise<
 // and the line delta — so the user approves against a diff, not a blind byte count. Must never throw
 // (it renders the approval card); any resolve/read failure falls back to the plain description.
 function writeFileCard(i: { path: string; content: string }): string {
-  if (process.env.SAM_PREVIEW_COMMIT !== "1") return `Write to ${i.path} (${(i.content || "").length} chars)`;
+  if (process.env.SAM_PREVIEW_COMMIT === "0") return `Write to ${i.path} (${(i.content || "").length} chars)`;
   try {
     const c = previewChanges([{ kind: "write", path: safePath(i.path), after: i.content ?? "" }]).changes[0];
     const verb = c.action === "create" ? "Create" : c.action === "unchanged" ? "No change to" : "Modify";

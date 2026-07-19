@@ -59,7 +59,8 @@ describe("write_file — Preview → Commit ON", () => {
   });
 });
 
-describe("write_file — Preview → Commit OFF (default)", () => {
+describe("write_file — Preview → Commit OFF (SAM_PREVIEW_COMMIT=0 kill-switch)", () => {
+  beforeEach(() => { process.env.SAM_PREVIEW_COMMIT = "0"; });
   it("uses the plain overwrite path and the byte-count card", async () => {
     const input = { path: p("plain.txt"), content: "12345" };
     expect(tool.preview!(input)).toBe(`Write to ${p("plain.txt")} (5 chars)`);
