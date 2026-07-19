@@ -21,10 +21,15 @@ jobs:
       contents: write         # push the fix branch
       pull-requests: write     # open the draft PR
       issues: write            # comment the outcome
-      actions: write           # dispatch the real CI on the branch so its required checks report
     steps:
+      # Push/open the PR as SAM_BOT_PAT when it's set, so the branch push fires a REAL pull_request
+      # CI run that branch protection actually counts — then the PR merges on green with a normal
+      # click. Falls back to GITHUB_TOKEN if no PAT: still opens the PR, but its checks won't count
+      # toward the gate (a GITHUB_TOKEN push can't trigger CI), so that one needs an admin merge.
       - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SAM_BOT_PAT || secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -39,7 +44,7 @@ jobs:
 
       - name: Open a draft PR, or comment why not
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SAM_BOT_PAT || secrets.GITHUB_TOKEN }}
           N: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
@@ -61,12 +66,7 @@ jobs:
             gh pr create --draft -R "$REPO" --base main --head "$BRANCH" \
               --title "SAM fix: ${SUMMARY} (closes #${N})" \
               --body "SAM attempted this on its own free brain and \`npm run verify\` passed (typecheck + tests + build). **Draft — please review before merging.** Closes #${N}."
-            # The bot's own push can't trigger CI (anti-recursion), so dispatch the required checks on
-            # the branch — real test + cross-platform + gitleaks now run and report on the PR, so it
-            # merges on green with a normal click instead of an admin override.
-            gh workflow run ci.yml -R "$REPO" --ref "$BRANCH" || echo "note: could not dispatch ci.yml"
-            gh workflow run secret-scan.yml -R "$REPO" --ref "$BRANCH" || echo "note: could not dispatch secret-scan.yml"
-            gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain, the full test suite passed, and I kicked off CI on the branch. Opened a **draft PR** — once the checks go green, mark it ready and merge. If it's off, just close it."
+            gh issue comment "$N" -R "$REPO" --body "🤖 I took a shot at this on my free brain and the full test suite passed — opened a **draft PR** for review. Mark it ready and, once CI is green, merge. If it's off, just close it."
           elif [ "$STATUS" = "fail" ]; then
             REASON=$(jq -r .reason fix-result.json)
             TAIL=$(jq -r '.verifyTail // ""' fix-result.json)
