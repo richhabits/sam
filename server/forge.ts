@@ -188,7 +188,13 @@ export async function testForged(code: string, tests: { input: any }[], caps: Ca
 
 // ── STORAGE ──────────────────────────────────────────────────
 function ensureDir() { if (!existsSync(FORGE_DIR)) mkdirSync(FORGE_DIR, { recursive: true }); }
-function fileFor(name: string) { return join(FORGE_DIR, `${name}.json`); }
+// A forged tool's name becomes a filename, so it must be validated BEFORE it reaches join() —
+// otherwise `../../etc/passwd` escapes FORGE_DIR. NAME_RE already gates saves; this makes the
+// path helper itself fail closed so reads and deletes can't be tricked into leaving the vault.
+function fileFor(name: string) {
+  if (!NAME_RE.test(name)) throw new Error(`invalid forged-tool name: ${name}`);
+  return join(FORGE_DIR, `${name}.json`);
+}
 
 export function listForged(): ForgedTool[] {
   ensureDir();
@@ -207,6 +213,7 @@ export function setForgedEnabled(name: string, enabled: boolean): boolean {
   return true;
 }
 export function deleteForged(name: string): boolean {
+  if (!NAME_RE.test(name)) return false;   // bad name → nothing to delete, never touch the FS
   const f = fileFor(name);
   if (!existsSync(f)) return false;
   unlinkSync(f); syncForgedRegistry();

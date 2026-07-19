@@ -186,8 +186,13 @@ app.use((_req, res, next) => {
     if (q) {
       res.setHeader("Set-Cookie", `sam_token=${encodeURIComponent(q)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
       // Strip the token from the URL (it lingers in history/address bar otherwise) — redirect the
-      // page navigation to the clean path; the cookie now carries auth.
-      if (req.method === "GET" && !req.path.startsWith("/api/")) { res.redirect(302, req.path || "/"); return; }
+      // page navigation to the clean path; the cookie now carries auth. Force a same-origin target:
+      // req.path can be "//evil.com/x", which as a Location is protocol-relative and redirects
+      // off-site, so collapse any leading slashes to one and only ever bounce to a local path.
+      if (req.method === "GET" && !req.path.startsWith("/api/")) {
+        const safe = "/" + (req.path || "/").replace(/^\/+/, "");
+        res.redirect(302, safe); return;
+      }
     }
     next();
   });

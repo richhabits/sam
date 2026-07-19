@@ -82,8 +82,14 @@ export function logExchange(opts: {
   graphCache = null; // invalidate graph on new write
 }
 
+// projectId arrives from the chat request body and becomes a filename, so an unchecked
+// "../../.." would read any .md on disk. Ids are slugs; anything else means "no such note".
+const PROJECT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+export function isValidProjectId(id: string): boolean { return PROJECT_ID_RE.test(id || ""); }
+
 // Read a project note (used to give SAM deep context on demand)
 export function readProjectNote(projectId: string): string {
+  if (!isValidProjectId(projectId)) return "";
   const file = join(PROJECTS_DIR, `${projectId}.md`);
   return existsSync(file) ? readFileSync(file, "utf8") : "";
 }

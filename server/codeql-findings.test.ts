@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { deleteForged } from "./forge.ts";
 import { addUrl } from "./notebook.ts";
 import { esc } from "./tools.ts";
+import { isValidProjectId, readProjectNote } from "./vault.ts";
 import { deleteWorkflow, getWorkflow, isValidWorkflowId, saveWorkflow } from "./workflows.ts";
 
 // Regression tests for the two CodeQL findings that were REAL, so they can't quietly come back.
@@ -60,6 +62,27 @@ describe("workflow ids — CodeQL #93/#94/#95, path-expression injection", () =>
     for (const id of ["daily-brief", "inbox_triage", "a", "Weekly-Report-2026"]) {
       expect(isValidWorkflowId(id), id).toBe(true);
     }
+  });
+});
+
+describe("path injection in forge + vault — CodeQL js/path-injection", () => {
+  // Same shape as the workflow bug: a name/id from an HTTP request becomes a filename.
+  // deleteForged is reachable at DELETE /api/forged/:name; readProjectNote via the chat body.
+  const TRAVERSALS = ["../../etc/passwd", "..%2f..%2f.env", "foo/../../bar", "/etc/passwd", "..\\..\\x"];
+
+  it("deleteForged refuses a traversal name instead of unlinking outside the vault", () => {
+    for (const name of TRAVERSALS) expect(deleteForged(name), name).toBe(false);
+  });
+
+  it("readProjectNote returns nothing for a traversal id rather than reading arbitrary .md", () => {
+    for (const id of TRAVERSALS) {
+      expect(isValidProjectId(id), id).toBe(false);
+      expect(readProjectNote(id), id).toBe("");
+    }
+  });
+
+  it("still accepts the ids real projects and tools use", () => {
+    for (const id of ["hectic-bullz", "project_2026", "a"]) expect(isValidProjectId(id), id).toBe(true);
   });
 });
 
