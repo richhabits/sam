@@ -145,6 +145,10 @@ export function listIssues(): Issue[] {
   return [...issues.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 }
 
+/** The recent-activity trail, newest last. Entries were redacted at push time, so this can't leak a
+ *  secret even though it's a raw read — handy for the status surface and for redaction tests. */
+export function recentTrail(): TrailEntry[] { return [...trailBuf]; }
+
 /** Compact summary for the doctor/status surface. */
 export function issuesSummary(): { total: number; distinct: number; clear: boolean; top: { message: string; count: number; lastAt: string }[] } {
   const all = listIssues();

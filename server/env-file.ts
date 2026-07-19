@@ -10,6 +10,32 @@ import { withLatchSync } from "./latch.ts";
 export const ENV_PATH =
   process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
 
+// Same resolution, but read at CALL time. The Safe's migration sets DOTENV_CONFIG_PATH after this
+// module loads (and tests point it at a scratch file), so the strip below must resolve fresh.
+function envPathNow(): string {
+  return process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
+}
+
+/**
+ * Remove one or more KEY=… lines from the .env entirely (used by the Safe's migration, which strips
+ * plaintext secrets from .env once they're sealed and verified). File-only — leaves process.env
+ * alone, so a caller that has already re-sourced the secret elsewhere is unaffected. Under the same
+ * `env` Latch as writeEnv so a concurrent writer can't lose the update.
+ */
+export function removeEnvKeys(keys: string[]): void {
+  if (!keys.length) return;
+  const drop = new Set(keys);
+  withLatchSync("env", () => {
+    let txt = "";
+    try { txt = readFileSync(envPathNow(), "utf8"); } catch { return; }   // no .env → nothing to strip
+    const kept = txt.split("\n").filter((line) => {
+      const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=/);
+      return !(m && drop.has(m[1]));
+    });
+    writeFileSync(envPathNow(), kept.join("\n").replace(/\n*$/, "\n"));
+  });
+}
+
 /**
  * Upsert one KEY=value line in the .env, and apply it live to process.env.
  *
