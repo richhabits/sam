@@ -79,7 +79,7 @@ import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
 import { recover as recoverPreviewCommit } from "./preview-commit.ts";
-import { buildSummary, crossIn, crossOut, thresholdEnabled } from "./threshold.ts";
+import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
@@ -274,12 +274,11 @@ if (!BENCH_MODE) resumeOrphanedSwarms();
 if (!BENCH_MODE && thresholdEnabled()) {
   const prev = crossIn();
   if (prev) console.log(`  threshold       · ↩ resumed from ${prev.at}${prev.openThreads.length ? ` · open: ${prev.openThreads.join("; ")}` : ""}\n`);
-  let crossedOut = false;
+  // Terminal/kill stops. The Electron GUI-quit path calls the SAME crossOutOnce (electron/main.ts),
+  // and the once-guard means whichever fires first persists — never both.
   const onStop = (sig: string) => {
-    if (crossedOut) return;               // guard: fire the persist exactly once
-    crossedOut = true;
-    const r = crossOut(buildSummary(`session ended (${sig})`));
-    if (!r.ok) console.error(`  ⚠️ threshold CROSS OUT failed (${r.error.detail}) — context for this session was NOT saved.`); // LOUD, never silent
+    const r = crossOutOnce(`session ended (${sig})`);
+    if (r && !r.ok) console.error(`  ⚠️ threshold CROSS OUT failed (${r.error.detail}) — context for this session was NOT saved.`); // LOUD, never silent
     process.exit(0);
   };
   process.once("SIGTERM", () => onStop("SIGTERM"));

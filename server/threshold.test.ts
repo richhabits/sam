@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { _reset as resetIssues, listIssues } from "./issues.ts";
-import { buildSummary, crossIn, crossOut, sessions, type SessionSummary } from "./threshold.ts";
+import { _resetGuard, buildSummary, crossIn, crossOut, crossOutOnce, sessions, type SessionSummary } from "./threshold.ts";
 
 // The Threshold carries context across sessions, LOCALLY. Round-trip: cross out → cross in restores
 // it. Storage is bounded. Secrets are redacted before persisting. And the cardinal test: a persist
@@ -15,12 +15,15 @@ const summary = (over: Partial<SessionSummary> = {}): SessionSummary =>
 
 beforeEach(() => {
   resetIssues();
+  _resetGuard();
   dir = join(tmpdir(), `sam-threshold-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   process.env.VAULT_DIR = dir;
 });
 afterEach(() => {
   delete process.env.VAULT_DIR;
+  delete process.env.SAM_THRESHOLD;
+  _resetGuard();
   try { rmSync(dir, { recursive: true, force: true }); } catch { /* best-effort */ }
 });
 
@@ -52,6 +55,24 @@ describe("the Threshold — buildSummary redacts secrets", () => {
     expect(s.note).toContain("[redacted]");
     crossOut(s);
     expect(readFileSync(join(dir, "threshold", "sessions.jsonl"), "utf8")).not.toContain("sk-abcdef0123456789abcdef");
+  });
+});
+
+describe("the Threshold — crossOutOnce dedupes across stop paths", () => {
+  beforeEach(() => { process.env.SAM_THRESHOLD = "1"; });
+
+  it("persists exactly once no matter how many stop paths fire (SIGTERM + GUI quit)", () => {
+    const first = crossOutOnce("session ended (SIGTERM)");
+    const second = crossOutOnce("app quit");              // a second stop path in the same process
+    expect(first?.ok).toBe(true);
+    expect(second).toBeNull();                            // already crossed out → no-op, no double entry
+    expect(sessions().length).toBe(1);
+  });
+
+  it("self-gates on the flag — disabled is a no-op even if called", () => {
+    process.env.SAM_THRESHOLD = "0";
+    expect(crossOutOnce("app quit")).toBeNull();
+    expect(sessions()).toEqual([]);
   });
 });
 

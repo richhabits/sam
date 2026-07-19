@@ -71,6 +71,20 @@ export function crossOut(summary: SessionSummary): Outcome<{ persisted: string; 
   }
 }
 
+// A process crosses out ONCE — whichever stop path fires first (a terminal SIGTERM/SIGINT, or the
+// Electron GUI quit) persists the session; the others no-op. Prevents a double-persist when more than
+// one stop path exists in the same process (server + Electron main share it).
+let crossedOut = false;
+/** Persist this session at most once. Self-gates on the flag and the once-guard, so every stop path
+ *  can call it unconditionally. Returns the Outcome, or null if it was disabled or already done. */
+export function crossOutOnce(note = "session ended"): Outcome<{ persisted: string; kept: number }, ThresholdError> | null {
+  if (!thresholdEnabled() || crossedOut) return null;
+  crossedOut = true;
+  return crossOut(buildSummary(note));
+}
+/** Test seam — clear the once-guard between cases. */
+export function _resetGuard(): void { crossedOut = false; }
+
 /** CROSS IN — the last session's summary, so SAM resumes with context. Null if there's none. */
 export function crossIn(): SessionSummary | null {
   const all = readSessions();

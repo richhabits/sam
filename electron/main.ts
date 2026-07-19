@@ -6,6 +6,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, d
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
+import { crossOutOnce } from "../server/threshold.ts";   // same module the server booted → shares the once-guard
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8787;
@@ -275,6 +276,11 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  // The Threshold — GUI quit doesn't send SIGTERM, so persist the session summary HERE too. Shares
+  // the server's once-guard (crossOutOnce), so a terminal stop and a GUI quit never both persist.
+  // Self-gates on SAM_THRESHOLD; a failed persist is logged LOUDLY (never a silent context loss).
+  const r = crossOutOnce("app quit");
+  if (r && !r.ok) console.error(`[SAM] threshold CROSS OUT failed (${r.error.detail}) — this session's context was NOT saved.`);
 });
 
 app.on("window-all-closed", () => {
