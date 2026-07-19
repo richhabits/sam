@@ -42,10 +42,10 @@ export interface ProviderSpec {
 
 export const PROVIDER_REGISTRY: ProviderSpec[] = [
   { id: "groq", label: "Groq", tier: "free", envPlural: "GROQ_API_KEYS", envSingular: "GROQ_API_KEY", starter: true, note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys", keyPattern: "^gsk_[A-Za-z0-9]{20,}$" },
-  { id: "cerebras", label: "Cerebras", tier: "free", envPlural: "CEREBRAS_API_KEYS", envSingular: "CEREBRAS_API_KEY", starter: true, note: "⚡ fast chat — blazing 70B, first pick", url: "https://cloud.cerebras.ai" },
+  { id: "cerebras", label: "Cerebras", tier: "free", envPlural: "CEREBRAS_API_KEYS", envSingular: "CEREBRAS_API_KEY", starter: true, note: "⚡ fast chat — blazing 70B, first pick", url: "https://cloud.cerebras.ai", keyPattern: "^csk-[A-Za-z0-9]{20,}$" },
   { id: "gemini", label: "Google Gemini", tier: "free", envPlural: "GEMINI_API_KEYS", envSingular: "GEMINI_API_KEY", starter: true, note: "👁 photos & vision — reads images; solid all-rounder", url: "https://aistudio.google.com/apikey", keyPattern: "^AIza[A-Za-z0-9_-]{30,}$" },
   { id: "openrouter", label: "OpenRouter", tier: "free", envPlural: "OPENROUTER_API_KEYS", envSingular: "OPENROUTER_API_KEY", starter: true, note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys", keyPattern: "^sk-or-[A-Za-z0-9-]{20,}$" },
-  { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com" },
+  { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com", keyPattern: "^nvapi-[A-Za-z0-9_-]{20,}$" },
   { id: "mistral", label: "Mistral", tier: "free", envPlural: "MISTRAL_API_KEYS", envSingular: "MISTRAL_API_KEY", starter: true, note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys", keyPattern: "^[A-Za-z0-9]{32}$" },
   { id: "github", label: "GitHub Models", tier: "free", envPlural: "GITHUB_API_KEYS", envSingular: "GITHUB_TOKEN", starter: true, note: "💬 general chat — free with a GitHub token", url: "https://github.com/settings/tokens" },
   { id: "together", label: "Together AI", tier: "free", envPlural: "TOGETHER_API_KEYS", envSingular: "TOGETHER_API_KEY", note: "🧠 reasoning + 🎨 FREE images (FLUX)", url: "https://api.together.xyz/settings/api-keys" },
@@ -57,7 +57,7 @@ export const PROVIDER_REGISTRY: ProviderSpec[] = [
   { id: "novita", label: "Novita", tier: "free", envPlural: "NOVITA_API_KEYS", envSingular: "NOVITA_API_KEY", note: "🎬 VIDEO generation + chat (free credits)", url: "https://novita.ai/settings/key-management" },
   { id: "nebius", label: "Nebius", tier: "free", envPlural: "NEBIUS_API_KEYS", envSingular: "NEBIUS_API_KEY", note: "💬 general chat — open models", url: "https://studio.nebius.com" },
   { id: "xai", label: "xAI (Grok)", tier: "free", envPlural: "XAI_API_KEYS", envSingular: "XAI_API_KEY", note: "💬 general chat (Grok)", url: "https://console.x.ai" },
-  { id: "huggingface", label: "HuggingFace", tier: "free", envPlural: "HUGGINGFACE_API_KEYS", envSingular: "HUGGINGFACE_API_KEY", note: "🌐 many open models, one token", url: "https://huggingface.co/settings/tokens" },
+  { id: "huggingface", label: "HuggingFace", tier: "free", envPlural: "HUGGINGFACE_API_KEYS", envSingular: "HUGGINGFACE_API_KEY", note: "🌐 many open models, one token", url: "https://huggingface.co/settings/tokens", keyPattern: "^hf_[A-Za-z0-9]{20,}$" },
   { id: "ai21", label: "AI21", tier: "free", envPlural: "AI21_API_KEYS", envSingular: "AI21_API_KEY", note: "✍️ writing (Jamba)", url: "https://studio.ai21.com/account/api-key" },
   { id: "upstage", label: "Upstage", tier: "free", envPlural: "UPSTAGE_API_KEYS", envSingular: "UPSTAGE_API_KEY", note: "💬 light quick chat (Solar)", url: "https://console.upstage.ai/api-keys" },
   { id: "perplexity", label: "Perplexity", tier: "free", envPlural: "PERPLEXITY_API_KEYS", envSingular: "PERPLEXITY_API_KEY", note: "🔍 web-aware answers", url: "https://www.perplexity.ai/settings/api" },

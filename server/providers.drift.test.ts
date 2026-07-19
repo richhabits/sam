@@ -84,6 +84,24 @@ describe("the registry is the single source", () => {
     const missing = POOLED.filter((p) => !envExample.includes(p.envPlural!) && !envExample.includes(p.envSingular!));
     expect(missing.map((p) => p.id), "undocumented — invisible to anyone setting up").toEqual([]);
   });
+
+  it("keyPattern regexes don't overlap — the wizard auto-detects by first match, so two patterns", () => {
+    // matching one pasted key would silently file it under the wrong provider. A representative key
+    // for each patterned provider must match that provider and ONLY that provider.
+    const SAMPLES: Record<string, string> = {
+      groq: `gsk_${"a".repeat(24)}`, gemini: `AIza${"b".repeat(35)}`, openrouter: `sk-or-${"c".repeat(24)}`,
+      mistral: "d".repeat(32), cerebras: `csk-${"e".repeat(24)}`, nvidia: `nvapi-${"f".repeat(24)}`,
+      huggingface: `hf_${"g".repeat(24)}`,
+    };
+    const patterned = PROVIDER_REGISTRY.filter((p) => p.keyPattern);
+    // guard: if a new patterned provider is added without a sample here, this fails loudly.
+    expect(patterned.map((p) => p.id).sort(), "add a sample key for every patterned provider")
+      .toEqual(Object.keys(SAMPLES).sort());
+    for (const [id, key] of Object.entries(SAMPLES)) {
+      const hits = patterned.filter((p) => new RegExp(p.keyPattern!).test(key)).map((p) => p.id);
+      expect(hits, `${id}'s key format matches more than one provider`).toEqual([id]);
+    }
+  });
 });
 
 describe("credential writes stay local-only", () => {
