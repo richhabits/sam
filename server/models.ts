@@ -447,7 +447,14 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
     try {
       const text = await callOllama(system, prompt, OLLAMA_MODEL, format);   // the Grammar constrains local output when a schema is passed
       if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" };
-    } catch { /* handled just below */ }
+    } catch {
+      // A schema `format` an older Ollama rejects must NOT take the local brain down. Retry
+      // UNCONSTRAINED — the Grammar degrades gracefully to the Parser's after-the-fact validation,
+      // rather than a working local model looking "unavailable". No silent local→cloud crossing.
+      if (format) {
+        try { const t = await callOllama(system, prompt); if (t) return { text: t, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; } catch { /* truly down → fall through */ }
+      }
+    }
     // PRIVACY GUARANTEE: Private/local mode must NEVER send data to a cloud provider.
     // If the local model isn't up, say so honestly — do not silently go off-machine.
     return {
