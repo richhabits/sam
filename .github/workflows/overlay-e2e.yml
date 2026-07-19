@@ -13,7 +13,14 @@ name: Overlay E2E
 # workflow_dispatch only, never pull_request. Also enable repo Settings → Actions → Fork PR workflows
 # → "Require approval for all outside collaborators" as a second layer. See docs/PIPELINE.md.
 on:
-  push: { branches: [main, "release/**"] }
+  # Skip when only prose changed — spins up real Electron on a macOS runner — the most expensive job here.
+  push:
+    branches: [main, "release/**"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".mailmap"
+      - "LICENSE"
   workflow_dispatch:
 concurrency:
   group: overlay-e2e-${{ github.ref }}

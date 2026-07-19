@@ -1,6 +1,13 @@
 name: CI
 on:
-  push: { branches: [main] }
+  # Skip when only prose changed — typecheck/tests/build cannot be affected by a docs-only change.
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".mailmap"
+      - "LICENSE"
   pull_request: { branches: [main] }
 # Auto-cancel superseded runs on the same branch/PR — no wasted minutes on stale pushes.
 concurrency:

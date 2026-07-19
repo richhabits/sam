@@ -3,3 +3,6 @@
 # (The personal-email mapping that was here is gone: history was rewritten on 2026-07-19 so no
 #  commit carries that address any more, and keeping the mapping would have re-published it.)
 HECTIC <richhabits@users.noreply.github.com> HECTIC <101016056+richhabits@users.noreply.github.com>
+# 12 early commits carry a placeholder author from a misconfigured session. The address is
+# fake so nothing leaks — this is presentation only, and not worth a second history rewrite.
+HECTIC <richhabits@users.noreply.github.com> Claude Code <your-email@example.com>
