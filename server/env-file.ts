@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { withLockSync } from "./statelock.ts";
 
 // Writing to the user's .env — pulled out of index.ts because the admin routes and five other
 // call sites both need it, which is exactly what kept the admin section from being extractable.
@@ -20,16 +21,21 @@ export const ENV_PATH =
  *    ever passes a user-supplied key, escape it first — see `env-file.test.ts`.
  */
 export function writeEnv(key: string, value: string) {
-  let txt = "";
-  try {
-    txt = readFileSync(ENV_PATH, "utf8");
-  } catch {
-    /* no .env yet — start from empty, it gets created on write */
-  }
-  value = value.replace(/[\r\n]/g, " "); // one value = one line — no .env line injection
-  const line = `${key}=${value}`;
-  const re = new RegExp(`^${key}=.*$`, "m");
-  txt = re.test(txt) ? txt.replace(re, line) : txt.replace(/\n?$/, "\n") + line + "\n";
-  writeFileSync(ENV_PATH, txt);
-  process.env[key] = value; // apply live
+  // Under a state lock: .env is a shared artifact — the server, a CLI, and a second session can all
+  // call this. The read-modify-write below is otherwise a lost-update race (two savers → one key
+  // silently dropped). withLockSync makes a concurrent writer fail loudly instead. See statelock.ts.
+  withLockSync("env", () => {
+    let txt = "";
+    try {
+      txt = readFileSync(ENV_PATH, "utf8");
+    } catch {
+      /* no .env yet — start from empty, it gets created on write */
+    }
+    value = value.replace(/[\r\n]/g, " "); // one value = one line — no .env line injection
+    const line = `${key}=${value}`;
+    const re = new RegExp(`^${key}=.*$`, "m");
+    txt = re.test(txt) ? txt.replace(re, line) : txt.replace(/\n?$/, "\n") + line + "\n";
+    writeFileSync(ENV_PATH, txt);
+    process.env[key] = value; // apply live
+  });
 }
