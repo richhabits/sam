@@ -57,6 +57,10 @@ vault/daily/*
 
 # bulletproof: no vault data ships
 vault/**/*.json
+vault/**/*.enc
+vault/**/*.jsonl
+vault/**/*.dpapi
+vault/threshold/
 vault/**/*.md
 vault/**/*.jpg
 vault/**/*.jpeg
