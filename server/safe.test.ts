@@ -28,6 +28,7 @@ afterEach(() => {
   delete process.env.VAULT_DIR;
   delete process.env.DOTENV_CONFIG_PATH;
   delete process.env.GROQ_API_KEYS;
+  delete process.env.DISCORD_WEBHOOK;
   try { rmSync(dir, { recursive: true, force: true }); } catch { /* best-effort */ }
 });
 
@@ -99,12 +100,15 @@ describe("the Safe — migration removes plaintext", () => {
     if (!r.ok) expect(r.error.kind).toBe("locked");
   });
 
-  it("bridges sealed secrets back into process.env so existing readers keep working", () => {
+  it("bridges sealed TOOL-CRED secrets back into process.env (provider keys are read from the Safe, not bridged)", () => {
     setup({ passphrase: PASS, useKeychain: false });
-    put("GROQ_API_KEYS", SECRET);
-    delete process.env.GROQ_API_KEYS;             // simulate a fresh process: .env stripped, not yet in env
-    expect(loadIntoProcessEnv()).toBe(1);
-    expect(process.env.GROQ_API_KEYS).toBe(SECRET);
+    put("DISCORD_WEBHOOK", SECRET);               // a tool cred → bridged for its scattered process.env readers
+    put("GROQ_API_KEYS", "k1,k2");                // a provider key → NOT bridged (keys.ts reads it from the Safe)
+    delete process.env.DISCORD_WEBHOOK;
+    delete process.env.GROQ_API_KEYS;
+    expect(loadIntoProcessEnv()).toBe(1);         // only the tool cred
+    expect(process.env.DISCORD_WEBHOOK).toBe(SECRET);
+    expect(process.env.GROQ_API_KEYS).toBeUndefined();
   });
 });
 
