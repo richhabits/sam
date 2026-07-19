@@ -15,7 +15,7 @@
 //  reliable on local disks; some network filesystems weaken it.
 // ─────────────────────────────────────────────────────────────
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -121,6 +121,30 @@ export function latchStatus(resource: string): (LatchInfo & { stale: boolean }) 
   if (!existsSync(path)) return null;
   const held = readLatch(path);
   return held ? { ...held, stale: isStale(held) } : null;
+}
+
+/** Resource names of lock files left by a crashed process (dead pid) or past the age threshold.
+ *  Read-only — a live, fresh latch is never listed. */
+export function staleLatches(now = Date.now()): string[] {
+  const stale: string[] = [];
+  let files: string[];
+  try { files = readdirSync(LATCH_DIR); } catch { return stale; }
+  for (const f of files) {
+    if (!f.endsWith(".lock")) continue;
+    const held = readLatch(join(LATCH_DIR, f));
+    if (!held || isStale(held, now)) stale.push(f.replace(/\.lock$/, ""));
+  }
+  return stale;
+}
+
+/** Remove the stale latches — a corpse sweep, safe to run unattended (the Keeper does), unlike
+ *  taking over a lock that might still be live. Returns the resource names cleared. */
+export function sweepStaleLatches(now = Date.now()): string[] {
+  const cleared: string[] = [];
+  for (const name of staleLatches(now)) {
+    try { unlinkSync(join(LATCH_DIR, `${name}.lock`)); cleared.push(name); } catch { /* already gone — fine */ }
+  }
+  return cleared;
 }
 
 /** Acquire → run → release (always). The ergonomic wrapper every mutating write should use. */

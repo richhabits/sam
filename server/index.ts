@@ -51,6 +51,7 @@ import { isLoopback } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { issuesSummary } from "./issues.ts";
 import { pulseSummary } from "./pulse.ts";
+import { startKeeper } from "./keeper.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerPeopleRoutes } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -267,6 +268,9 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+// The Keeper — opt-in (SAM_KEEPER=1). One level-triggered pass on a timer that re-checks reality and
+// corrects safe drift (stale latches, low disk surfaced), recording each to the Black Box + the Pulse.
+if (!BENCH_MODE && startKeeper()) console.log("  keeper armed    · watching for drift\n");
 // Vault encryption — auto-unlock from the OS keychain if the user enabled it; else it stays locked
 // until they unlock in Settings (remote tokens + other sealed secrets are unreadable while locked).
 if (!BENCH_MODE && isEncryptionEnabled()) {

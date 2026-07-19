@@ -98,3 +98,19 @@ describe("latch — withLatchSync wrapper", () => {
     expect(latchStatus(r)).toBeNull(); // released even though fn threw
   });
 });
+
+describe("stale-latch sweep (the Keeper's corpse cleanup)", () => {
+  it("sweeps a dead-pid latch but never a live one", async () => {
+    const { staleLatches, sweepStaleLatches } = await import("./latch.ts");
+    const live = claim(`sweep-live-${process.pid}-${n++}`); held.push(live);
+    const corpse = claim(`sweep-dead-${process.pid}-${n++}`); held.push(corpse);
+    // make the corpse's owner a dead pid
+    writeFileSync(corpse.path, JSON.stringify({ ...corpse.info, pid: 2_147_483_646 }));
+    const stale = staleLatches();
+    expect(stale).toContain(corpse.resource);
+    expect(stale).not.toContain(live.resource);
+    const cleared = sweepStaleLatches();
+    expect(cleared).toContain(corpse.resource);
+    expect(latchStatus(live.resource)).not.toBeNull(); // live latch untouched
+  });
+});
