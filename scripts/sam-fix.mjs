@@ -49,14 +49,57 @@ const all = [...(existsSync("src") ? walk("src") : []), ...(existsSync("server")
 const scored = all.map((f) => {
   const hay = (f + "\n" + (() => { try { return readFileSync(f, "utf8"); } catch { return ""; } })()).toLowerCase();
   return { f, score: keywords.reduce((n, k) => n + (hay.includes(k) ? 1 : 0), 0) };
-}).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 4);
+}).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
 
 if (!scored.length) done({ status: "skip", reason: "Couldn't find a code area matching the issue — needs a human." });
 
-const context = scored.map(({ f }) => {
-  const body = readFileSync(f, "utf8").slice(0, 9000);
-  return `FILE: ${f}\n\`\`\`\n${body}\n\`\`\``;
-}).join("\n\n");
+// Send the RELEVANT REGION of each file, not its first N chars: these files run to thousands of
+// lines, and the code an issue is about is usually nowhere near the top. Pick the densest window of
+// keyword hits so the model actually sees the block it must edit — and keep the TOTAL small, because
+// the free tier caps request size (a fat prompt 413s). The `find` it returns still matches the whole
+// file, so applying the edit is unaffected.
+// Distinctive CODE identifiers the issue quotes — hyphenated (nobrain-cta) or camelCase (noBrain).
+// These are far better locators than prose words: an issue that names `.nobrain-cta` is pointing
+// straight at the block. Prose words like "card"/"also"/"free" are noise and pull the window away.
+const anchors = [...new Set(((process.env.ISSUE_TITLE || "") + " " + (process.env.ISSUE_BODY || ""))
+  .match(/[a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)+|[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]+/g) || [])]
+  .map((a) => a.toLowerCase()).filter((a) => a.length >= 5);
+
+function relevantRegion(src, cap) {
+  if (src.length <= cap) return src;
+  const lines = src.split("\n");
+  const low = lines.map((l) => l.toLowerCase());
+  const WIN = 110;
+  // Prefer to CENTRE the window on the rarest anchor present in this file (fewest, but >0, lines).
+  let center = -1, rarest = Infinity;
+  for (const a of anchors) {
+    const hits = low.map((l, i) => (l.includes(a) ? i : -1)).filter((i) => i >= 0);
+    if (hits.length && hits.length < rarest) { rarest = hits.length; center = hits[0]; }
+  }
+  let best;
+  if (center >= 0) {
+    best = Math.max(0, center - Math.floor(WIN / 3));   // anchor sits ~1/3 in, so its block has room below
+  } else {
+    // No code anchor matched — fall back to rarity-weighted keyword density.
+    const weight = Object.fromEntries(keywords.map((k) => { const f = low.reduce((n, l) => n + (l.includes(k) ? 1 : 0), 0); return [k, f ? 1 / f : 0]; }));
+    const pre = [0];
+    for (const l of low) pre.push(pre[pre.length - 1] + keywords.reduce((s, k) => s + (l.includes(k) ? weight[k] : 0), 0));
+    best = 0; let bestSum = -1;
+    for (let i = 0; i + 1 < lines.length; i++) { const sum = pre[Math.min(i + WIN, lines.length)] - pre[i]; if (sum > bestSum) { bestSum = sum; best = i; } }
+  }
+  return "// …(relevant excerpt)…\n" + lines.slice(best, Math.min(best + WIN, lines.length)).join("\n").slice(0, cap);
+}
+
+const BUDGET = 11000;   // ~2.7k tokens of code context — comfortably under the free-tier request cap
+let used = 0;
+const context = [];
+for (const { f } of scored) {
+  const region = relevantRegion(readFileSync(f, "utf8"), 5000);
+  if (used + region.length > BUDGET && context.length) break;
+  used += region.length;
+  context.push(`FILE: ${f}\n\`\`\`\n${region}\n\`\`\``);
+}
+const contextStr = context.join("\n\n");
 
 // ── 2. ask the model for minimal edits, or a decline ──
 const system = [
@@ -68,7 +111,7 @@ const system = [
   "Rules: make the SMALLEST change that works. Each `find` must be copied EXACTLY from the file and be unique in it.",
   "Only edit the files shown. Match the surrounding code style. If unsure or it needs new files/deps, return skip.",
 ].join("\n");
-const user = `Issue #${NUMBER}: ${TITLE}\n\n${BODY}\n\n---\n${context}`;
+const user = `Issue #${NUMBER}: ${TITLE}\n\n${BODY}\n\n---\n${contextStr}`;
 
 let data;
 try {
