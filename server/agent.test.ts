@@ -206,6 +206,36 @@ describe("the Grammar on the STREAMING path (SAM_GRAMMAR_STREAM) — {respond} d
   });
 });
 
+describe("the Grammar STREAM is default-ON, with a prose fallback when the brain ignores the constraint", () => {
+  // No SAM_GRAMMAR_STREAM in the env — proves the flag defaults on (=0 is the kill-switch).
+  const collect = async (msg: string) => { const ev: { type: string; [k: string]: any }[] = []; await runAgentStream("SYS", msg, "local", undefined, (e) => ev.push(e as any)); return ev; };
+
+  it("a {respond} answer is decoded even with the flag unset (default on)", async () => {
+    replies.push('{"respond":"Paris."}');
+    const ev = await collect("capital of France?");
+    expect(ev.filter((e) => e.type === "token").map((e) => e.t).join("")).toBe("Paris.");
+    expect(ev.find((e) => e.type === "done")?.text).toBe("Paris.");
+  });
+
+  it("a brain that IGNORES the constraint (streams prose, not JSON) still streams token-by-token", async () => {
+    replies.push("The capital of France is Paris.");                       // not JSON — constraint not honored
+    const ev = await collect("capital of France?");
+    const streamed = ev.filter((e) => e.type === "token").map((e) => e.t).join("");
+    expect(streamed).toBe("The capital of France is Paris.");              // prose still reached the user live
+    expect(ev.find((e) => e.type === "done")?.text).toBe("The capital of France is Paris.");
+  });
+
+  it("the =0 kill-switch turns it fully off", async () => {
+    process.env.SAM_GRAMMAR_STREAM = "0";
+    replies.push('{"respond":"Paris."}');                                  // off → not decoded; JSON detected as tool-mode
+    const ev = await collect("capital of France?");
+    // With the streamer off and a {"…"} reply, the tool-mode buffer holds the JSON back (no raw leak),
+    // and since it's not a valid tool call it's released whole at the end — never decoded to "Paris.".
+    expect(ev.filter((e) => e.type === "token").map((e) => e.t).join("")).toContain('"respond"');
+    delete process.env.SAM_GRAMMAR_STREAM;
+  });
+});
+
 describe("the Grammar — a constrained local turn is a tool call or a {respond} final answer", () => {
   beforeEach(() => { process.env.SAM_GRAMMAR = "1"; });
   afterEach(() => { delete process.env.SAM_GRAMMAR; });

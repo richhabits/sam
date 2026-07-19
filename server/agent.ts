@@ -346,18 +346,26 @@ export async function runAgentStream(system: string, message: string, tier: Tier
 
   for (let step = 0; step < MAX_STEPS; step++) {
     let full = "", mode: null | "answer" | "tool" = null, emitted = 0;
-    // THE GRAMMAR on streaming (SAM_GRAMMAR_STREAM, default off, local only): the local model is
-    // constrained to the tool-call schema, and a {"respond":"…"} answer is decoded and streamed as prose
-    // by the respondStreamer (so the constraint is invisible). Tool calls stream nothing (parsed below).
-    const grammarStream = process.env.SAM_GRAMMAR_STREAM === "1" && tier === "local";
-    const rs = grammarStream ? respondStreamer() : null;
+    // THE GRAMMAR on streaming (SAM_GRAMMAR_STREAM, default ON, =0 kill-switch, local only): the local
+    // model is constrained to the tool-call schema, and a {"respond":"…"} answer is decoded and streamed
+    // as prose by the respondStreamer (so the constraint is invisible). Tool calls stream nothing (parsed
+    // below). If the brain IGNORES the constraint (an Ollama build without `format`, or a non-constrainable
+    // model), it streams prose instead of JSON — `honored` catches that on the first non-ws char and we
+    // fall back to the normal prose path, so a default-on flag never silently freezes the stream.
+    const grammarStream = process.env.SAM_GRAMMAR_STREAM !== "0" && tier === "local";
+    let rs = grammarStream ? respondStreamer() : null;
+    let honored: boolean | null = grammarStream ? null : false;
     // Never stream past the start of a JSON tool-call object. Small free models often write a line of
     // preamble and THEN a {"tool":…} call; without this guard the raw JSON leaked into the visible
     // answer. We hold everything from the first `{"` and only release it later if it wasn't a real call.
     const braceCut = (s: string) => { const m = s.search(/\{\s*"/); return m >= 0 ? m : s.length; };
     const res = await streamModel(tier, sys, prompt + CONTINUE, (chunk) => {   // deep lane below (Hermes-led planning)
       full += chunk;
-      if (rs) { const out = rs(chunk); if (out) emit({ type: "token", t: out }); return; }   // decode {respond} live
+      if (rs) {
+        if (honored === null) { const s = full.replace(/^[\s`]+/, ""); if (s) honored = s[0] === "{"; }  // did the brain obey?
+        if (honored !== false) { const out = rs(chunk); if (out) emit({ type: "token", t: out }); return; }  // decode {respond} live
+        rs = null;   // constraint ignored → this chunk and the rest go through the prose path below
+      }
       if (mode === null) {
         const s = full.replace(/^[\s`]+/, "");
         if (s.length > 0) mode = s[0] === "{" ? "tool" : "answer";
@@ -419,9 +427,10 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       continue;
     }
 
-    // Final answer. Under the streaming Grammar the respondStreamer already emitted the decoded answer,
-    // so just close with the unwrapped text — never release the raw {"respond":…} JSON.
-    if (grammarStream) { emit({ type: "done", text: unwrapRespond(finalText) ?? finalText, provider: res.provider, trace }); return; }
+    // Final answer. When the brain HONORED the constraint the respondStreamer already emitted the decoded
+    // answer, so just close with the unwrapped text — never release the raw {"respond":…} JSON. If the
+    // constraint was ignored (honored === false), the prose already streamed and we fall to the path below.
+    if (grammarStream && honored) { emit({ type: "done", text: unwrapRespond(finalText) ?? finalText, provider: res.provider, trace }); return; }
     // Release anything held back — either a full tool-mode buffer that turned out to be prose, or an
     // answer-mode `{"…` tail that wasn't actually a valid tool call.
     if (mode !== "answer") emit({ type: "token", t: finalText });
