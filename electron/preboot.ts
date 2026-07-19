@@ -13,8 +13,14 @@ import { fileURLToPath } from "node:url";
 // Per-launch control-channel secret (the Handshake). Minted HERE — before the server module
 // and before any renderer/preload loads — so server, main, and preload all read ONE value from
 // process.env. The renderer receives it via preload/contextBridge; a random local process cannot
-// read the renderer's context, which is the whole point. Enforcement stays opt-in (see control-token.ts).
+// read the renderer's context, which is the whole point.
 if (!process.env.SAM_CONTROL_TOKEN) process.env.SAM_CONTROL_TOKEN = randomBytes(32).toString("hex");
+// ENFORCE the Handshake — but only in Electron, which is the one context where the token pipeline is
+// wired end-to-end: preboot mints it, preload hands it to every window's renderer, and the fetch shim
+// (plus the main-process overlay call) attaches it to every mutating /api request. Dev, a plain
+// browser, and a standalone server never run this file, so they stay loopback-only and unbroken.
+// Set SAM_REQUIRE_CONTROL_TOKEN=0 to override if a wiring gap ever surfaces.
+if (!process.env.SAM_REQUIRE_CONTROL_TOKEN) process.env.SAM_REQUIRE_CONTROL_TOKEN = "1";
 
 // The bundler emits ESM, but bundled CommonJS deps may reference the CJS globals __filename/__dirname,
 // which don't exist in ESM scope. Define them on globalThis so those undeclared references resolve.

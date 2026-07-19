@@ -170,8 +170,12 @@ async function runOverlayAction(payload: { action: string; selection: string; fr
   const message = buildPrompt(payload.action as OverlayAction, payload.selection || "", payload.freeform || "");
   if (!message.trim()) return { text: "" };
   try {
+    // This POST runs in the MAIN process, not a renderer, so the main.tsx fetch shim never sees it —
+    // attach the Handshake passkey by hand from process.env (the same value preboot minted), or an
+    // enforced server would refuse the overlay's action as an untrusted local caller.
     const r = await fetch(`http://localhost:${PORT}/api/command`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-SAM-Token": process.env.SAM_CONTROL_TOKEN || "" },
       body: JSON.stringify({ message }),
     });
     const d: any = await r.json();
