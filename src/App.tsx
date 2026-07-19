@@ -154,7 +154,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
         <div className="nobrain-cta">
           <Icon name="sparkle" />
           <span>All free brains are busy or none is set up yet. Add your own free key and SAM stops waiting in line.</span>
-          <button type="button" className="nobrain-btn" onClick={onPowerUp}>Power up — add a free key</button>
+          <button type="button" className="nobrain-btn" title="Open the free key wizard" onClick={onPowerUp}>Power up — add a free key</button>
         </div>
       )}
       {m.role === "sam" && m.text && (
