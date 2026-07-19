@@ -2,6 +2,7 @@
 // so could not be extracted. It is the gate on every privileged write in SAM — key material,
 // config, tokens, vault passphrase — so it belongs in one place with its own tests rather than
 // buried in a 1600-line file.
+import { checkControlToken, controlTokenEnforced } from "./control-token.ts";
 
 /**
  * True only for a request that arrived from this machine.
@@ -18,4 +19,14 @@
 export function isLoopback(req: { socket: { remoteAddress?: string | null } }): boolean {
   const ip = req.socket.remoteAddress || "";
   return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+}
+
+// Loopback position is NOT authorization on its own — a local non-browser process passes isLoopback
+// too (CORS only binds browsers). When control-token enforcement is on, a privileged caller must ALSO
+// present the per-launch secret the legit frontend holds. Off (default): loopback alone, unchanged.
+// See control-token.ts for the Salt CVE-2020-11651 rationale.
+export function isTrustedLocal(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
+  if (!isLoopback(req)) return false;
+  if (controlTokenEnforced()) return checkControlToken(req);
+  return true;
 }

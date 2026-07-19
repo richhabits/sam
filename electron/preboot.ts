@@ -4,10 +4,17 @@
 // can follow it — a static import lets the electron build's `external` (better-sqlite3) apply, so the
 // native module loads from node_modules (asar.unpacked) instead of being bundled and losing its .node.
 import { app } from "electron";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// Per-launch control-channel secret (the Salt-audit token). Minted HERE — before the server module
+// and before any renderer/preload loads — so server, main, and preload all read ONE value from
+// process.env. The renderer receives it via preload/contextBridge; a random local process cannot
+// read the renderer's context, which is the whole point. Enforcement stays opt-in (see control-token.ts).
+if (!process.env.SAM_CONTROL_TOKEN) process.env.SAM_CONTROL_TOKEN = randomBytes(32).toString("hex");
 
 // The bundler emits ESM, but bundled CommonJS deps may reference the CJS globals __filename/__dirname,
 // which don't exist in ESM scope. Define them on globalThis so those undeclared references resolve.

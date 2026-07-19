@@ -9,11 +9,28 @@ import "./styles.css";
 // requests at the local SAM server. In the browser and dev/single-process the page
 // is served over http(s), so same-origin relative URLs already work (Vite proxies
 // /api in dev). This one shim covers every fetch in the app — no per-call-site base.
-if (typeof location !== "undefined" && location.protocol === "file:") {
+// One fetch shim covers every server call. It does two jobs:
+//  1. On file:// (packaged Electron) rewrite root-relative "/api/…" to the local server's origin.
+//  2. Attach the per-launch control token (Salt-audit) to /api requests when we have one — the
+//     legit renderer gets it via preload/contextBridge. Enforcement is opt-in server-side; when it's
+//     on, this header is what lets the real frontend through while a random local process is refused.
+{
+  const onFile = typeof location !== "undefined" && location.protocol === "file:";
   const BASE = "http://localhost:8787";
-  const orig = window.fetch.bind(window);
-  window.fetch = (input: any, init?: any) =>
-    orig(typeof input === "string" && input.startsWith("/") && !input.startsWith("//") ? BASE + input : input, init);
+  const token = (globalThis as unknown as { samDesktop?: { controlToken?: string } }).samDesktop?.controlToken || "";
+  if (onFile || token) {
+    const orig = window.fetch.bind(window);
+    window.fetch = (input: any, init?: any) => {
+      const isApi = typeof input === "string" && (input.startsWith("/api/") || input.includes("/api/"));
+      const target = onFile && typeof input === "string" && input.startsWith("/") && !input.startsWith("//") ? BASE + input : input;
+      if (token && isApi) {
+        const headers = new Headers(init?.headers || undefined);
+        headers.set("X-SAM-Token", token);
+        return orig(target, { ...init, headers });
+      }
+      return orig(target, init);
+    };
+  }
 }
 
 // Register the service worker (push + offline shell). Only over http(s), not file:// (Electron).
