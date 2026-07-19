@@ -9,6 +9,10 @@ on:
       - ".mailmap"
       - "LICENSE"
   pull_request: { branches: [main] }
+  # Lets the SAM Fix bot run the required checks on its own branch. A GITHUB_TOKEN push can't
+  # trigger push/pull_request (anti-recursion), but workflow_dispatch is the documented exception,
+  # so the bot dispatches this to get real CI (test + cross-platform) reporting on its PR.
+  workflow_dispatch:
 # Auto-cancel superseded runs on the same branch/PR — no wasted minutes on stale pushes.
 concurrency:
   group: ci-${{ github.ref }}
