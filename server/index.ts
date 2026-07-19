@@ -78,6 +78,7 @@ import { billingStatus, checkout as billingCheckout, type Plan } from "./billing
 import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
 import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
+import { recover as recoverPreviewCommit } from "./preview-commit.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
@@ -270,6 +271,10 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+// Preview → Commit crash recovery: if a journalled write was interrupted, roll its applied steps
+// back to before-state so a batch never survives half-applied across a restart. A no-op when no
+// journal is present (the default), so it's safe to run unconditionally.
+if (!BENCH_MODE) { const { rolledBack } = recoverPreviewCommit(); if (rolledBack.length) console.log(`  recovered       · rolled back ${rolledBack.length} interrupted write(s)\n`); }
 // The Keeper — on by default (SAM_KEEPER=0 to disable). One level-triggered pass on a timer that
 // re-checks reality and corrects safe drift (stale latches, low disk surfaced), recording each to
 // the Black Box + the Pulse.

@@ -94,6 +94,7 @@ const samLlm = async (system: string, prompt: string): Promise<string> =>
   (await runModel("free", system, prompt))?.text || "";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
+import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
 
 // Locate the user's Obsidian vault: explicit OBSIDIAN_VAULT, else the usual spots (a real
 // Obsidian vault always contains a `.obsidian` config folder — that's how we recognise one).
@@ -312,8 +313,35 @@ async function readFileTool(path: string): Promise<string> {
   }
 }
 async function writeFileTool(input: { path: string; content: string }): Promise<string> {
-  try { await writeFile(safePath(input.path), input.content, "utf8"); return `Wrote ${input.content.length} chars to ${input.path}`; }
+  try {
+    const abs = safePath(input.path);
+    // SAM_PREVIEW_COMMIT: route the write through Preview → Commit — journalled + convergent, so a
+    // crash mid-write is recoverable (recover() at boot) and re-writing identical content is a no-op.
+    // It also creates parent dirs, which the plain write below does not. Default off; = "1" to enable.
+    if (process.env.SAM_PREVIEW_COMMIT === "1") {
+      const plan = previewChanges([{ kind: "write", path: abs, after: input.content }]);
+      const c = plan.changes[0];
+      if (c.action === "unchanged") return `${input.path} already holds that exact content — nothing written`;
+      const r = commitChanges(plan);
+      // NO SILENT FAILURE: a commit that rolled back must say so, never report a phantom success.
+      if (!r.ok) return `Could not write ${input.path}: ${r.error || "commit failed and was rolled back"}`;
+      return `Wrote ${input.content.length} chars to ${input.path} (${c.action}, +${c.addedLines}/-${c.removedLines} lines, journalled)`;
+    }
+    await writeFile(abs, input.content, "utf8");
+    return `Wrote ${input.content.length} chars to ${input.path}`;
+  }
   catch (e: any) { return `Could not write ${input.path}: ${e?.message}`; }
+}
+// The confirm card for write_file. With Preview → Commit on, show the REAL change — create vs modify
+// and the line delta — so the user approves against a diff, not a blind byte count. Must never throw
+// (it renders the approval card); any resolve/read failure falls back to the plain description.
+function writeFileCard(i: { path: string; content: string }): string {
+  if (process.env.SAM_PREVIEW_COMMIT !== "1") return `Write to ${i.path} (${(i.content || "").length} chars)`;
+  try {
+    const c = previewChanges([{ kind: "write", path: safePath(i.path), after: i.content ?? "" }]).changes[0];
+    const verb = c.action === "create" ? "Create" : c.action === "unchanged" ? "No change to" : "Modify";
+    return `${verb} ${i.path} · +${c.addedLines}/-${c.removedLines} lines`;
+  } catch { return `Write to ${i.path} (${(i.content || "").length} chars)`; }
 }
 async function listDir(path: string): Promise<string> {
   try {
@@ -1871,7 +1899,7 @@ export const TOOLS: Tool[] = [
   { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "write_file", safe: false, description: "Write/overwrite a file. input: {path, content}.", params: "{path, content}",
-    activity: (i) => `Saving ${i.path}`, preview: (i) => `Write to ${i.path} (${(i.content||"").length} chars)`, run: (i) => writeFileTool(i) },
+    activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },
   { name: "open_app", safe: false, description: "Open a Mac application. input: app name.", params: "app name",
     activity: (i) => `Opening ${i.app ?? i}`, preview: (i) => `Open app: ${i.app ?? i}`, run: (i) => openApp(i.app ?? i) },
   { name: "type_text", safe: false, description: "Type text via the keyboard into the focused app. input: text.", params: "text",
