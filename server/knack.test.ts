@@ -15,8 +15,10 @@ beforeEach(() => { resetIssues(); resetPulse(); _reset(); delete process.env.SAM
 afterEach(() => { delete process.env.SAM_KNACK; });
 const metric = (name: string) => snapshot().find((m) => m.name === name);
 
-describe("the Knack — default OFF is a silent no-op (baseline preserved)", () => {
-  it("records nothing when SAM_KNACK is unset", () => {
+describe("the Knack — the SAM_KNACK=0 kill-switch is a silent no-op", () => {
+  it("on by default (unset), and records nothing when disabled", () => {
+    expect(knackEnabled()).toBe(true);         // default ON now
+    process.env.SAM_KNACK = "0";               // kill-switch
     expect(knackEnabled()).toBe(false);
     recordInfluence("preferred-tier", "local", 0.8);
     expect(recentInfluences()).toEqual([]);

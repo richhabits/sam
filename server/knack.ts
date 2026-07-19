@@ -21,8 +21,10 @@ export interface Influence { pattern: string; value: string; confidence: number;
 const MAX = 100;                 // bounded ring — the log never grows unbounded
 const applied: Influence[] = [];
 
-/** Observability is opt-in. Off (default) = today's behaviour exactly (learned influence, unlogged). */
-export function knackEnabled(): boolean { return process.env.SAM_KNACK === "1"; }
+/** On by default (SAM_KNACK=0 is the kill-switch). This gates only OBSERVABILITY — learned influence
+ *  already happens either way (preferredTier/smartDefault); default-on makes it visible, changing no
+ *  decision. For a no-silent-failures app, learned influence being observable by default is the point. */
+export function knackEnabled(): boolean { return process.env.SAM_KNACK !== "0"; }
 
 /**
  * Record that a learned pattern influenced a decision. Attributable, local, bounded. A no-op unless
