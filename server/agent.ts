@@ -387,6 +387,20 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       const tool = toolByName(call.tool);
       if (!tool) { prompt += `\n\n[SAM tried tool "${call.tool}" — no such tool.]`; continue; }
       if (outOfScope(call.tool, allow)) { prompt += `\n\n[SAM tried tool "${call.tool}" — not permitted for this skill.]`; continue; }
+      // THE PARSER (parity with loop()): validate the args before running. An invalid call is rejected
+      // LOUDLY — diagnostic fed back for self-repair, recorded to the Black Box by name only — never run
+      // on a guess. (The Grammar is deliberately NOT applied to streaming: constraining output to JSON
+      // would stop the token-by-token prose stream — the mode-detection + repair pass above are the
+      // streaming path's defence against malformed calls instead.)
+      if (process.env.SAM_PARSER !== "0") {
+        const v = validateArgs(tool.args, call.input);
+        if (!v.ok) {
+          capture(new Error(`invalid tool call: ${tool.name}`), { parser: "reject", tool: tool.name, args: problemArgs(v.error) });
+          prompt += `\n\n${diagnostic(tool.name, v.error)}`;
+          continue;
+        }
+        call = { tool: call.tool, input: v.value };
+      }
       if (!tool.safe && !mayAutoRun(tool.name)) {
         emit({ type: "pending", tool: tool.name, input: call.input, preview: tool.preview?.(call.input) || tool.description, activity: tool.activity(call.input), transcript: prompt, trace, provider: res.provider });
         return;

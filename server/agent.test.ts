@@ -10,9 +10,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const replies: string[] = [];
 vi.mock("./models.ts", () => ({
   runModel: vi.fn(async () => ({ text: replies.shift() ?? "done", provider: "test", tier: "local" })),
+  streamModel: vi.fn(async (_t: string, _s: string, _p: string, onChunk?: (c: string) => void) => {
+    const text = replies.shift() ?? "done"; onChunk?.(text); return { text, provider: "test", tier: "local" };
+  }),
 }));
 
-import { runAgent, resumeAgent, parseToolCall } from "./agent.ts";
+import { runAgent, runAgentStream, resumeAgent, parseToolCall } from "./agent.ts";
 import { _reset as resetIssues, listIssues } from "./issues.ts";
 
 beforeEach(() => { replies.length = 0; });
@@ -150,6 +153,33 @@ describe("the Parser — invalid tool calls are rejected loudly, never executed 
     replies.push('{"tool":"write_file","input":{"path":"~/notes.md"}}');   // invalid, but ungated
     const r = await runAgent("SYS", "save my notes", "local");
     expect(r.kind).toBe("pending");                                         // reaches approval un-validated (old behaviour)
+  });
+});
+
+describe("the Parser on the STREAMING path (runAgentStream) — parity with the loop", () => {
+  beforeEach(() => { process.env.SAM_PARSER = "1"; resetIssues(); });
+  afterEach(() => { delete process.env.SAM_PARSER; resetIssues(); });
+  const collect = async (msg: string) => {
+    const events: { type: string; [k: string]: any }[] = [];
+    await runAgentStream("SYS", msg, "local", undefined, (e) => events.push(e as any));
+    return events;
+  };
+
+  it("an invalid write_file is rejected — never emitted as a tool run or a pending approval", async () => {
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md"}}');   // invalid: missing content
+    replies.push("Alright, leaving it.");                                   // final answer
+    const events = await collect("save my notes");
+    expect(events.some((e) => e.type === "pending")).toBe(false);           // never surfaced to approve/run
+    expect(events.some((e) => e.type === "tool")).toBe(false);
+    expect(events.some((e) => e.type === "done")).toBe(true);
+    expect(listIssues().some((i) => /invalid tool call: write_file/.test(i.message))).toBe(true);
+  });
+
+  it("a VALID risky call still reaches the pending approval (not blocked by the Parser)", async () => {
+    replies.push('{"tool":"write_file","input":{"path":"~/notes.md","content":"hi"}}');
+    const events = await collect("save my notes");
+    const pending = events.find((e) => e.type === "pending");
+    expect(pending?.tool).toBe("write_file");
   });
 });
 
