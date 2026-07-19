@@ -42,7 +42,7 @@ describe("the Safe — seal / read / lock", () => {
     expect(isUnlocked()).toBe(false);
     expect(() => get("GROQ_API_KEYS")).toThrow(/locked/);   // fail LOUD — no plaintext fallback
 
-    expect(unlock(PASS)).toBe(true);
+    expect(unlock(PASS).ok).toBe(true);
     expect(get("GROQ_API_KEYS")).toBe(SECRET);
   });
 
@@ -50,9 +50,11 @@ describe("the Safe — seal / read / lock", () => {
     setup({ passphrase: PASS });
     put("GROQ_API_KEYS", SECRET);
     lock();
-    expect(unlock("wrong passphrase")).toBe(false);
+    const u = unlock("wrong passphrase");
+    expect(u.ok).toBe(false);
+    if (!u.ok) expect(u.error.kind).toBe("bad-passphrase");   // typed reason, not a bare false
     expect(isUnlocked()).toBe(false);
-    expect(() => get("GROQ_API_KEYS")).toThrow(/locked/);
+    expect(() => get("GROQ_API_KEYS")).toThrow(/locked/);      // a locked READ stays a loud throw
   });
 
   it("get() on a Safe that isn't set up returns undefined (caller falls back to process.env)", () => {
@@ -68,8 +70,11 @@ describe("the Safe — migration removes plaintext", () => {
     setup({ passphrase: PASS });
 
     const r = migrateFromEnv(["GROQ_API_KEYS", "NOT_SET_KEY"]);
-    expect(r.migrated).toEqual(["GROQ_API_KEYS"]);
-    expect(r.skipped).toEqual(["NOT_SET_KEY"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.migrated).toEqual(["GROQ_API_KEYS"]);
+      expect(r.value.skipped).toEqual(["NOT_SET_KEY"]);
+    }
 
     // NO plaintext secret left in .env — but the unrelated lines survive.
     const env = readFileSync(envFile, "utf8");
@@ -84,6 +89,14 @@ describe("the Safe — migration removes plaintext", () => {
 
     // The secret is retrievable through the broker.
     expect(get("GROQ_API_KEYS")).toBe(SECRET);
+  });
+
+  it("migrating while LOCKED returns a typed error (not a throw), .env untouched", () => {
+    setup({ passphrase: PASS });
+    lock();
+    const r = migrateFromEnv(["GROQ_API_KEYS"]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.kind).toBe("locked");
   });
 
   it("bridges sealed secrets back into process.env so existing readers keep working", () => {

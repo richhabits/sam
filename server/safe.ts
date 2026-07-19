@@ -25,6 +25,20 @@ import { fileURLToPath } from "node:url";
 import { decrypt, encrypt } from "./crypto-vault.ts";
 import { removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
+import { err, ok, type Outcome } from "./outcome.ts";
+
+// Why a Safe operation failed — a typed reason RETURNED (not a bare boolean or a lost string). A
+// `locked` READ is the one exception that stays a throw (see get/readStore): a security fail-loud is
+// stronger as an unignorable throw than as a returnable error.
+export type SafeError =
+  | { kind: "already-setup" }
+  | { kind: "weak-passphrase" }
+  | { kind: "keychain-unavailable" }
+  | { kind: "not-setup" }
+  | { kind: "missing-passphrase" }
+  | { kind: "bad-passphrase" }
+  | { kind: "locked" }
+  | { kind: "verify-failed"; secret: string };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KEYCHAIN_SERVICE = "sam-safe-key";
@@ -105,51 +119,53 @@ function writeStore(map: Record<string, string>): void {
 export function isSetup(): boolean { return existsSync(configPath()); }
 export function isUnlocked(): boolean { return !!dataKey; }
 
-export interface SetupResult { ok: boolean; mode?: "keychain" | "passphrase"; reason?: string; warning?: string }
+export interface SetupOk { mode: "keychain" | "passphrase"; warning?: string }
 
 /** First-time setup: mint a random data key, park it (keychain by default; passphrase-wrapped if a
  *  passphrase is given or the keychain is unavailable), and create an empty sealed store. */
-export function setup(opts: { passphrase?: string; useKeychain?: boolean } = {}): SetupResult {
-  if (isSetup()) return { ok: false, reason: "The Safe is already set up." };
+export function setup(opts: { passphrase?: string; useKeychain?: boolean } = {}): Outcome<SetupOk, SafeError> {
+  if (isSetup()) return err({ kind: "already-setup" });
   const key = randomBytes(32);
   const wantPassphrase = !!opts.passphrase || opts.useKeychain === false;
   if (wantPassphrase) {
-    if (!opts.passphrase || opts.passphrase.length < 8) return { ok: false, reason: "Passphrase must be at least 8 characters." };
+    if (!opts.passphrase || opts.passphrase.length < 8) return err({ kind: "weak-passphrase" });
     const salt = randomBytes(16);
     saveConfig({ mode: "passphrase", wrapped: encrypt(key.toString("hex"), scryptKey(opts.passphrase, salt)), salt: salt.toString("base64url"), createdAt: Date.now() });
     dataKey = key;
     writeStore({});
-    return { ok: true, mode: "passphrase", warning: "There is NO recovery — forget the passphrase and the Safe is permanently unreadable." };
+    return ok({ mode: "passphrase", warning: "There is NO recovery — forget the passphrase and the Safe is permanently unreadable." });
   }
-  if (!keychainStore(key.toString("hex"))) return { ok: false, reason: "OS keychain is unavailable — set a passphrase instead (useKeychain:false + passphrase)." };
+  if (!keychainStore(key.toString("hex"))) return err({ kind: "keychain-unavailable" });
   saveConfig({ mode: "keychain", createdAt: Date.now() });
   dataKey = key;
   writeStore({});
-  return { ok: true, mode: "keychain" };
+  return ok({ mode: "keychain" });
 }
 
 /** Unlock on launch. Keychain mode is seamless (no argument); passphrase mode needs the passphrase.
- *  Returns false on failure — the caller must treat that as LOCKED, never as "run without secrets". */
-export function unlock(passphrase?: string): boolean {
+ *  The value is the mode used; an err means LOCKED — the caller must NEVER treat it as "run without
+ *  secrets". Each failure reason is typed (not-setup / keychain-unavailable / missing/bad passphrase). */
+export function unlock(passphrase?: string): Outcome<"keychain" | "passphrase", SafeError> {
   const c = loadConfig();
-  if (!c) return false;
+  if (!c) return err({ kind: "not-setup" });
   if (c.mode === "keychain") {
     const hex = keychainRetrieve();
-    if (!hex) return false;
+    if (!hex) return err({ kind: "keychain-unavailable" });
     const k = Buffer.from(hex, "hex");
-    if (k.length !== 32) return false;
+    if (k.length !== 32) return err({ kind: "keychain-unavailable" });
     dataKey = k;
-    return true;
+    return ok("keychain");
   }
   // passphrase mode
-  if (!passphrase || !c.salt || !c.wrapped) return false;
+  if (!passphrase) return err({ kind: "missing-passphrase" });
+  if (!c.salt || !c.wrapped) return err({ kind: "not-setup" });   // config without a wrapped key → unusable
   try {
     const hex = decrypt(c.wrapped, scryptKey(passphrase, Buffer.from(c.salt, "base64url"))); // throws on wrong passphrase (GCM auth)
     const k = Buffer.from(hex, "hex");
-    if (k.length !== 32) return false;
+    if (k.length !== 32) return err({ kind: "bad-passphrase" });
     dataKey = k;
-    return true;
-  } catch { return false; }
+    return ok("passphrase");
+  } catch { return err({ kind: "bad-passphrase" }); }
 }
 
 export function lock(): void { dataKey = null; }
@@ -188,8 +204,8 @@ export function status(): { setup: boolean; unlocked: boolean; mode: "keychain" 
  *  sealed store, and only THEN strip the plaintext lines from .env. If verification fails for any
  *  secret, throw and leave .env intact — a migration that leaves plaintext behind (or loses a
  *  secret) must surface, never partially "succeed". */
-export function migrateFromEnv(candidateNames: string[]): { migrated: string[]; skipped: string[] } {
-  if (!dataKey) throw new Error("the Safe is locked — cannot migrate");
+export function migrateFromEnv(candidateNames: string[]): Outcome<{ migrated: string[]; skipped: string[] }, SafeError> {
+  if (!dataKey) return err({ kind: "locked" });
   const map = readStore();
   const migrated: string[] = [];
   const skipped: string[] = [];
@@ -201,16 +217,18 @@ export function migrateFromEnv(candidateNames: string[]): { migrated: string[]; 
     want[name] = val;
     migrated.push(name);
   }
-  if (!migrated.length) return { migrated, skipped };
+  if (!migrated.length) return ok({ migrated, skipped });
   writeStore(map);
-  // VERIFY against a fresh decrypt of what actually landed on disk — before we strip anything.
+  // VERIFY against a fresh decrypt of what actually landed on disk — before we strip anything. A
+  // failure is RETURNED (not thrown) with the offending secret, and .env is left intact — a
+  // migration that leaves plaintext behind (or loses a secret) must surface, never partially succeed.
   const check = readStore();
   for (const name of migrated) {
-    if (check[name] !== want[name]) throw new Error(`Safe migration verify FAILED for ${name} — .env left intact`);
+    if (check[name] !== want[name]) return err({ kind: "verify-failed", secret: name });
   }
   removeEnvKeys(migrated);   // plaintext gone from disk only now that it's sealed + verified
   trail("state", `Safe migrated ${migrated.length} secret(s)`, { count: migrated.length });
-  return { migrated, skipped };
+  return ok({ migrated, skipped });
 }
 
 /** Bridge sealed secrets back into process.env (in memory) on unlock, so every existing reader keeps

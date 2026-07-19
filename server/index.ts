@@ -272,8 +272,9 @@ if (!BENCH_MODE) resumeOrphanedSwarms();
 // reader works unchanged. A failed unlock is LOUD and does NOT fall back to plaintext — the migration
 // already removed the plaintext, so secrets are simply unavailable until the user unlocks in Settings.
 if (!BENCH_MODE && process.env.SAM_SAFE === "1" && safeIsSetup()) {
-  if (safeUnlock()) console.log(`  the Safe        · 🔓 unlocked · ${safeLoadEnv()} secret(s) loaded\n`);
-  else console.error("  ⚠️ the Safe is LOCKED and could not auto-unlock — secrets are unavailable (no plaintext fallback). Unlock in Settings.");
+  const u = safeUnlock();
+  if (u.ok) console.log(`  the Safe        · 🔓 unlocked (${u.value}) · ${safeLoadEnv()} secret(s) loaded\n`);
+  else console.error(`  ⚠️ the Safe is LOCKED (${u.error.kind}) — secrets are unavailable (no plaintext fallback). Unlock in Settings.`);
 }
 // Preview → Commit crash recovery: if a journalled write was interrupted, roll its applied steps
 // back to before-state so a batch never survives half-applied across a restart. A no-op when no
