@@ -148,19 +148,19 @@ describe("the Warden · #4 the Safe — no plaintext secret at rest; a locked re
   it("after migration no plaintext value remains on disk (.env or the sealed store)", () => {
     writeFileSync(join(dir, ".env"), `KEEP=ok\nGROQ_API_KEYS=${VALUE}\n`);
     process.env.GROQ_API_KEYS = VALUE;
-    expect(safe.setup({ passphrase: PASS }).ok).toBe(true);
+    expect(safe.setup({ passphrase: PASS, useKeychain: false }).ok).toBe(true);
     safe.migrateFromEnv(["GROQ_API_KEYS"]);
     expect(readFileSync(join(dir, ".env"), "utf8")).not.toContain(VALUE);
     expect(readFileSync(join(dir, "safe.enc"), "utf8")).not.toContain(VALUE);
   });
   it("a locked read THROWS — the Safe never falls back to plaintext", () => {
-    safe.setup({ passphrase: PASS });
+    safe.setup({ passphrase: PASS, useKeychain: false });
     safe.put("GROQ_API_KEYS", VALUE);
     safe.lock();
     expect(() => safe.get("GROQ_API_KEYS")).toThrow(/locked/);
   });
   it("no secret VALUE reaches the Trail on read — only the name", () => {
-    safe.setup({ passphrase: PASS });
+    safe.setup({ passphrase: PASS, useKeychain: false });
     safe.put("GROQ_API_KEYS", VALUE);
     resetIssues();
     safe.get("GROQ_API_KEYS");

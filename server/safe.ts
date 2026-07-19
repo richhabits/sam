@@ -26,6 +26,7 @@ import { decrypt, encrypt } from "./crypto-vault.ts";
 import { removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
 import { err, ok, type Outcome } from "./outcome.ts";
+import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 // Why a Safe operation failed — a typed reason RETURNED (not a bare boolean or a lost string). A
 // `locked` READ is the one exception that stays a throw (see get/readStore): a security fail-loud is
@@ -47,7 +48,10 @@ const safeDir = () => process.env.VAULT_DIR || join(HERE, "..", "vault");
 const storePath = () => join(safeDir(), "safe.enc");     // the sealed name→value map
 const configPath = () => join(safeDir(), "safe.json");   // mode + (passphrase) wrapped data key — NEVER the plaintext key
 
-interface SafeConfig { mode: "keychain" | "passphrase"; wrapped?: string; salt?: string; createdAt: number }
+// `keychain` = the data key is parked in the OS keychain (seamless unlock). `wrapped`+`salt` = the
+// key is ALSO recoverable via a passphrase (the backup path). A Safe has at least one of the two;
+// keychain + passphrase-backup is the recommended setup — seamless boot AND survivable keychain loss.
+interface SafeConfig { keychain: boolean; wrapped?: string; salt?: string; createdAt: number }
 
 let dataKey: Buffer | null = null;   // the unlocked data key, in memory only
 
@@ -119,53 +123,69 @@ function writeStore(map: Record<string, string>): void {
 export function isSetup(): boolean { return existsSync(configPath()); }
 export function isUnlocked(): boolean { return !!dataKey; }
 
-export interface SetupOk { mode: "keychain" | "passphrase"; warning?: string }
+export type SafeMode = "keychain" | "passphrase" | "keychain+passphrase";
+export interface SetupOk { mode: SafeMode; warning?: string }
 
-/** First-time setup: mint a random data key, park it (keychain by default; passphrase-wrapped if a
- *  passphrase is given or the keychain is unavailable), and create an empty sealed store. */
+/**
+ * First-time setup: mint a random data key and park it under one or both unlock methods —
+ *  • keychain (default on): seamless boot-unlock;
+ *  • passphrase (if given): wraps the key so it's recoverable even if the keychain is lost.
+ * The RECOMMENDED setup is both: seamless AND survivable. Requires at least one method to exist,
+ * else the Safe could never be unlocked. Creates the empty sealed store.
+ */
 export function setup(opts: { passphrase?: string; useKeychain?: boolean } = {}): Outcome<SetupOk, SafeError> {
   if (isSetup()) return err({ kind: "already-setup" });
+  const hasPass = !!opts.passphrase;
+  if (hasPass && opts.passphrase!.length < 8) return err({ kind: "weak-passphrase" });
+
   const key = randomBytes(32);
-  const wantPassphrase = !!opts.passphrase || opts.useKeychain === false;
-  if (wantPassphrase) {
-    if (!opts.passphrase || opts.passphrase.length < 8) return err({ kind: "weak-passphrase" });
+  const keychain = opts.useKeychain !== false && keychainStore(key.toString("hex"));
+  const config: SafeConfig = { keychain, createdAt: Date.now() };
+  if (hasPass) {
     const salt = randomBytes(16);
-    saveConfig({ mode: "passphrase", wrapped: encrypt(key.toString("hex"), scryptKey(opts.passphrase, salt)), salt: salt.toString("base64url"), createdAt: Date.now() });
-    dataKey = key;
-    writeStore({});
-    return ok({ mode: "passphrase", warning: "There is NO recovery — forget the passphrase and the Safe is permanently unreadable." });
+    config.wrapped = encrypt(key.toString("hex"), scryptKey(opts.passphrase!, salt));
+    config.salt = salt.toString("base64url");
   }
-  if (!keychainStore(key.toString("hex"))) return err({ kind: "keychain-unavailable" });
-  saveConfig({ mode: "keychain", createdAt: Date.now() });
+  // A Safe with NO unlock method could never be opened again — refuse rather than trap the secrets.
+  if (!keychain && !hasPass) return err({ kind: "keychain-unavailable" });
+
+  saveConfig(config);
   dataKey = key;
   writeStore({});
-  return ok({ mode: "keychain" });
+  const mode: SafeMode = keychain && hasPass ? "keychain+passphrase" : keychain ? "keychain" : "passphrase";
+  return ok({
+    mode,
+    warning: hasPass && !keychain ? "There is NO recovery — forget the passphrase and the Safe is permanently unreadable."
+      : !hasPass ? "Keychain-only: if you lose access to this keychain there is NO recovery. Add a passphrase backup."
+        : undefined,
+  });
 }
 
-/** Unlock on launch. Keychain mode is seamless (no argument); passphrase mode needs the passphrase.
- *  The value is the mode used; an err means LOCKED — the caller must NEVER treat it as "run without
- *  secrets". Each failure reason is typed (not-setup / keychain-unavailable / missing/bad passphrase). */
+/** Unlock. Tries the KEYCHAIN first (seamless), then the PASSPHRASE backup. The value is the method
+ *  used; an err means LOCKED — the caller must NEVER treat it as "run without secrets". Each failure
+ *  reason is typed (not-setup / keychain-unavailable / missing/bad passphrase). */
 export function unlock(passphrase?: string): Outcome<"keychain" | "passphrase", SafeError> {
   const c = loadConfig();
   if (!c) return err({ kind: "not-setup" });
-  if (c.mode === "keychain") {
+  // 1) keychain (seamless) — if this Safe uses it and it's reachable.
+  if (c.keychain) {
     const hex = keychainRetrieve();
-    if (!hex) return err({ kind: "keychain-unavailable" });
-    const k = Buffer.from(hex, "hex");
-    if (k.length !== 32) return err({ kind: "keychain-unavailable" });
-    dataKey = k;
-    return ok("keychain");
+    if (hex) { const k = Buffer.from(hex, "hex"); if (k.length === 32) { dataKey = k; return ok("keychain"); } }
+    // keychain configured but unreachable → fall through to the passphrase backup if there is one.
   }
-  // passphrase mode
-  if (!passphrase) return err({ kind: "missing-passphrase" });
-  if (!c.salt || !c.wrapped) return err({ kind: "not-setup" });   // config without a wrapped key → unusable
-  try {
-    const hex = decrypt(c.wrapped, scryptKey(passphrase, Buffer.from(c.salt, "base64url"))); // throws on wrong passphrase (GCM auth)
-    const k = Buffer.from(hex, "hex");
-    if (k.length !== 32) return err({ kind: "bad-passphrase" });
-    dataKey = k;
-    return ok("passphrase");
-  } catch { return err({ kind: "bad-passphrase" }); }
+  // 2) passphrase backup (recovery, or passphrase-only mode).
+  if (c.wrapped && c.salt) {
+    if (!passphrase) return err({ kind: "missing-passphrase" });
+    try {
+      const hex = decrypt(c.wrapped, scryptKey(passphrase, Buffer.from(c.salt, "base64url"))); // throws on wrong passphrase (GCM auth)
+      const k = Buffer.from(hex, "hex");
+      if (k.length !== 32) return err({ kind: "bad-passphrase" });
+      dataKey = k;
+      return ok("passphrase");
+    } catch { return err({ kind: "bad-passphrase" }); }
+  }
+  // keychain-only, but the keychain is unreachable and there's no passphrase backup.
+  return err({ kind: "keychain-unavailable" });
 }
 
 export function lock(): void { dataKey = null; }
@@ -193,9 +213,33 @@ export function put(name: string, value: string): void {
 
 export function has(name: string): boolean { return isSetup() && !!dataKey && name in readStore(); }
 export function names(): string[] { return isSetup() && dataKey ? Object.keys(readStore()).sort() : []; }
-export function status(): { setup: boolean; unlocked: boolean; mode: "keychain" | "passphrase" | null; count: number | null } {
+export function status(): { setup: boolean; unlocked: boolean; mode: SafeMode | null; count: number | null } {
   const c = loadConfig();
-  return { setup: !!c, unlocked: !!dataKey, mode: c?.mode ?? null, count: c && dataKey ? Object.keys(readStore()).length : null };
+  const mode: SafeMode | null = !c ? null
+    : c.keychain && c.wrapped ? "keychain+passphrase" : c.keychain ? "keychain" : "passphrase";
+  return { setup: !!c, unlocked: !!dataKey, mode, count: c && dataKey ? Object.keys(readStore()).length : null };
+}
+
+// ── which secrets migrate — the single source of truth, never a hand-maintained list ──
+// Non-provider tool credentials that also live plaintext in .env. NOT SAM_CONTROL_TOKEN (ephemeral,
+// never at rest), NOT SAM_REQUIRE_CONTROL_TOKEN (config), NOT SAM_REMOTE_TOKEN (already sealed by the
+// vault-encryption path — don't double-manage).
+const TOOL_CRED_NAMES = [
+  "GITHUB_PERSONAL_ACCESS_TOKEN", "GITHUB_TOKEN", "SAM_BOT_PAT", "DISCORD_WEBHOOK",
+  "CLOUDFLARE_API_TOKEN", "AIRTABLE_API_KEY", "BUFFER_ACCESS_TOKEN", "APPLE_APP_SPECIFIC_PASSWORD",
+];
+
+/** Every secret NAME the Safe migrates: each provider's singular + pooled env var (from the registry)
+ *  plus the tool-cred allowlist. Names only — this never touches a value. */
+export function secretNames(): string[] {
+  const provider = PROVIDER_REGISTRY.flatMap((p) => [p.envSingular, p.envPlural].filter((n): n is string => !!n));
+  return [...new Set([...provider, ...TOOL_CRED_NAMES])];
+}
+
+/** Of secretNames(), which are actually present (non-empty) in the environment right now — the real
+ *  migration candidates. Names + count ONLY; the caller must never expose the values. */
+export function migratableNames(): string[] {
+  return secretNames().filter((n) => (process.env[n] ?? "") !== "");
 }
 
 // ── migration + the compatibility bridge ──

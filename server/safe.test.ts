@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { _reset as resetIssues, recentTrail } from "./issues.ts";
-import { get, isSetup, isUnlocked, lock, loadIntoProcessEnv, migrateFromEnv, names, put, setup, unlock, _reset } from "./safe.ts";
+import { get, isSetup, isUnlocked, lock, loadIntoProcessEnv, migratableNames, migrateFromEnv, names, put, secretNames, setup, status, unlock, _reset } from "./safe.ts";
 
 // The Safe: secrets sealed at rest, readable only through get(); a locked read throws (never
 // plaintext); migration imports from .env, verifies, then strips the plaintext; and no secret VALUE
@@ -33,7 +33,7 @@ afterEach(() => {
 
 describe("the Safe — seal / read / lock", () => {
   it("round-trips a secret; a LOCKED read throws instead of returning plaintext", () => {
-    expect(setup({ passphrase: PASS }).ok).toBe(true);
+    expect(setup({ passphrase: PASS, useKeychain: false }).ok).toBe(true);
     put("GROQ_API_KEYS", SECRET);
     expect(get("GROQ_API_KEYS")).toBe(SECRET);
     expect(names()).toContain("GROQ_API_KEYS");
@@ -47,7 +47,7 @@ describe("the Safe — seal / read / lock", () => {
   });
 
   it("a wrong passphrase does NOT unlock, and reads still throw", () => {
-    setup({ passphrase: PASS });
+    setup({ passphrase: PASS, useKeychain: false });
     put("GROQ_API_KEYS", SECRET);
     lock();
     const u = unlock("wrong passphrase");
@@ -67,7 +67,7 @@ describe("the Safe — migration removes plaintext", () => {
   it("imports from .env, verifies, strips the plaintext, and the sealed store is ciphertext", () => {
     writeFileSync(envFile, `FOO=keep-me\nGROQ_API_KEYS=${SECRET}\nBAR=also-keep\n`);
     process.env.GROQ_API_KEYS = SECRET;   // dotenv would have loaded this live
-    setup({ passphrase: PASS });
+    setup({ passphrase: PASS, useKeychain: false });
 
     const r = migrateFromEnv(["GROQ_API_KEYS", "NOT_SET_KEY"]);
     expect(r.ok).toBe(true);
@@ -92,7 +92,7 @@ describe("the Safe — migration removes plaintext", () => {
   });
 
   it("migrating while LOCKED returns a typed error (not a throw), .env untouched", () => {
-    setup({ passphrase: PASS });
+    setup({ passphrase: PASS, useKeychain: false });
     lock();
     const r = migrateFromEnv(["GROQ_API_KEYS"]);
     expect(r.ok).toBe(false);
@@ -100,7 +100,7 @@ describe("the Safe — migration removes plaintext", () => {
   });
 
   it("bridges sealed secrets back into process.env so existing readers keep working", () => {
-    setup({ passphrase: PASS });
+    setup({ passphrase: PASS, useKeychain: false });
     put("GROQ_API_KEYS", SECRET);
     delete process.env.GROQ_API_KEYS;             // simulate a fresh process: .env stripped, not yet in env
     expect(loadIntoProcessEnv()).toBe(1);
@@ -110,7 +110,7 @@ describe("the Safe — migration removes plaintext", () => {
 
 describe("the Safe — no secret value ever reaches a log/Trail", () => {
   it("records the access by NAME only; the value never appears in the Trail", () => {
-    setup({ passphrase: PASS });
+    setup({ passphrase: PASS, useKeychain: false });
     put("GROQ_API_KEYS", SECRET);
     resetIssues();                                 // clear the store-time entry; test the read path
     get("GROQ_API_KEYS");
@@ -124,7 +124,43 @@ describe("the Safe — no secret value ever reaches a log/Trail", () => {
 describe("the Safe — setup guards", () => {
   it("rejects a short passphrase and a double setup", () => {
     expect(setup({ passphrase: "short" }).ok).toBe(false);
-    expect(setup({ passphrase: PASS }).ok).toBe(true);
-    expect(setup({ passphrase: PASS }).ok).toBe(false);  // already set up
+    expect(setup({ passphrase: PASS, useKeychain: false }).ok).toBe(true);
+    expect(setup({ passphrase: PASS, useKeychain: false }).ok).toBe(false);  // already set up
+  });
+  it("refuses a Safe with NO unlock method (no keychain + no passphrase) — never traps the secrets", () => {
+    const r = setup({ useKeychain: false });   // no passphrase either
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.kind).toBe("keychain-unavailable");
+    expect(isSetup()).toBe(false);
+  });
+  it("passphrase-only reports mode 'passphrase' in status", () => {
+    setup({ passphrase: PASS, useKeychain: false });
+    expect(status().mode).toBe("passphrase");
+    expect(status().setup).toBe(true);
+    expect(status().unlocked).toBe(true);
+  });
+});
+
+describe("the Safe — secretNames (the migration candidate list)", () => {
+  it("includes every provider's singular + pooled env var and the tool-cred allowlist", () => {
+    const n = secretNames();
+    expect(n).toContain("GROQ_API_KEY");
+    expect(n).toContain("GROQ_API_KEYS");
+    expect(n).toContain("GITHUB_PERSONAL_ACCESS_TOKEN");
+    expect(n).toContain("DISCORD_WEBHOOK");
+    expect(new Set(n).size).toBe(n.length);   // de-duplicated
+  });
+  it("EXCLUDES ephemeral / config / already-sealed vars (never migrated)", () => {
+    const n = secretNames();
+    expect(n).not.toContain("SAM_CONTROL_TOKEN");         // ephemeral, never at rest
+    expect(n).not.toContain("SAM_REQUIRE_CONTROL_TOKEN"); // config, not a secret
+    expect(n).not.toContain("SAM_REMOTE_TOKEN");          // already sealed by the vault-encryption path
+  });
+  it("migratableNames only lists names actually present in the env (names, never values)", () => {
+    delete process.env.GROQ_API_KEYS;
+    expect(migratableNames()).not.toContain("GROQ_API_KEYS");
+    process.env.GROQ_API_KEYS = "sk-live-whatever";
+    expect(migratableNames()).toContain("GROQ_API_KEYS");
+    delete process.env.GROQ_API_KEYS;
   });
 });

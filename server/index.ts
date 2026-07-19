@@ -81,7 +81,7 @@ import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./sw
 import { recover as recoverPreviewCommit } from "./preview-commit.ts";
 import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { knackEnabled, recentInfluences } from "./knack.ts";
-import { isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, unlock as safeUnlock } from "./safe.ts";
+import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
@@ -1099,6 +1099,46 @@ app.post("/api/encryption/unlock", (req, res) => {
 app.post("/api/encryption/lock", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   lockVault(); res.json({ ok: true, ...encryptionStatus() });
+});
+
+// ── THE SAFE — encrypted secret store (setup / unlock / migrate / lock / status). isTrustedLocal:
+// loopback + the Handshake (crown jewels — stricter than encryption's loopback-only). NO secret VALUE
+// ever appears in a response — names + counts only. Errors surface the typed reason, never a value.
+const safeGate = (req: express.Request, res: express.Response): boolean => {
+  if (isTrustedLocal(req)) return true;
+  res.status(403).json({ error: "the Safe is loopback + Handshake only" });
+  return false;
+};
+app.get("/api/safe/status", (req, res) => {
+  if (!safeGate(req, res)) return;
+  res.json(safeStatus());
+});
+app.get("/api/safe/migrate/preview", (req, res) => {
+  if (!safeGate(req, res)) return;
+  const names = migratableNames();                      // present-in-env secret NAMES only — never values
+  res.json({ names, count: names.length, total: secretNames().length });
+});
+app.post("/api/safe/setup", (req, res) => {
+  if (!safeGate(req, res)) return;
+  const { passphrase, useKeychain } = (req.body ?? {}) as { passphrase?: string; useKeychain?: boolean };
+  const r = safeSetup({ passphrase: passphrase ? String(passphrase) : undefined, useKeychain: useKeychain !== false });
+  res.json(r.ok ? { ok: true, ...r.value } : { ok: false, error: r.error.kind });
+});
+app.post("/api/safe/unlock", (req, res) => {
+  if (!safeGate(req, res)) return;
+  const pass = (req.body as { passphrase?: string })?.passphrase;
+  const r = safeUnlock(pass ? String(pass) : undefined);
+  res.json(r.ok ? { ok: true, mode: r.value, loaded: safeLoadEnv() } : { ok: false, error: r.error.kind });
+});
+app.post("/api/safe/migrate", (req, res) => {
+  if (!safeGate(req, res)) return;
+  const r = safeMigrate(secretNames());
+  if (r.ok) return res.json({ ok: true, ...r.value });
+  res.json({ ok: false, error: r.error.kind, ...(r.error.kind === "verify-failed" ? { secret: r.error.secret } : {}) });
+});
+app.post("/api/safe/lock", (req, res) => {
+  if (!safeGate(req, res)) return;
+  safeLock(); res.json({ ok: true });
 });
 
 // ── CRASH SAFETY NET (v1.5) — local-only; the bundle is redacted + copied by the USER, never uploaded. ──
