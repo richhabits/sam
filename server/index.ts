@@ -36,6 +36,7 @@ import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens,
 import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
 import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
 import { previousRelease } from "./rollback.ts";
+import { isNewerVer, sourceUpdateStatus } from "./update-status.ts";
 import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
@@ -969,6 +970,10 @@ app.get("/api/voice/token", async (_req, res) => {
 });
 // ── Self-update: SAM keeps every user's copy in sync with the repo ──
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// The human-readable version SAM reports in the update popover. Packaged app: injected by Electron.
+// Source install: read from package.json once at boot — NOT the git SHA, which is meaningless to a user.
+const SAM_VERSION = process.env.SAM_APP_VERSION
+  || (() => { try { return JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")).version || ""; } catch { return ""; } })();
 async function git(cmd: string, timeout = 8000): Promise<string> {
   const { promisify } = await import("node:util");
   const { exec } = await import("node:child_process");
@@ -1306,7 +1311,6 @@ app.get("/api/ios/status", (_req, res) => {
   res.json({ folder: dropFolderPath(), enabled: true });
 });
 
-const isNewerVer = (a: string, b: string) => { const pa = a.split(".").map(Number), pb = b.split(".").map(Number); for (let i = 0; i < 3; i++) { const x = pa[i] || 0, y = pb[i] || 0; if (x !== y) return x > y; } return false; };
 app.get("/api/update-check", async (_req, res) => {
   // Packaged app (version injected by Electron): compare against the latest GitHub RELEASE, since
   // there's no git to diff. Returns a download URL so the banner can offer a one-click download.
@@ -1322,12 +1326,13 @@ app.get("/api/update-check", async (_req, res) => {
     } catch { /* offline — no drama */ }
     return res.json({ behind: false, current: appVer });
   }
-  // Source install: git-based check (git pull updates it).
+  // Source install: git-based check (git pull updates it). We show the real version number
+  // ("SAM 2.2.0") — never a bare git SHA, which tells the user nothing about what they're running.
   try {
     const local = await git("rev-parse HEAD");
     const remote = (await git("ls-remote origin HEAD")).split(/\s+/)[0] || "";
-    res.json({ behind: !!remote && remote !== local, current: local.slice(0, 7), latest: remote.slice(0, 7) });
-  } catch { res.json({ behind: false }); }   // no git/remote → silently no updates
+    res.json(sourceUpdateStatus(SAM_VERSION, local, remote));
+  } catch { res.json({ behind: false, current: SAM_VERSION || undefined }); }   // no git/remote → still report the version
 });
 app.post("/api/update", async (_req, res) => {
   try {

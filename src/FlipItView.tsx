@@ -38,7 +38,16 @@ export default function FlipItView() {
   const dayPct = d?.present && d.target ? Math.min(100, ((d.days ?? 0) / d.target) * 100) : 0;
   const rungIdx = d?.rung ?? 0;
 
+  // FLIP IT is a dark "money desk". The main app defines a LIGHT theme globally (e.g. --surface:#fff),
+  // so we can't lean on undefined-var fallbacks — a global --surface:#fff would turn our cards white and
+  // wash every label out. Pin the whole palette on this root so the view owns its colours end to end.
+  const palette = {
+    "--ink": "#100E0C", "--ink-2": "#17130F", "--surface": "#1C1712", "--paper": "#F3EDE4",
+    "--ash": "#B8AFA4", "--line": "rgba(240,130,78,.16)", "--ember": "#F0824E", "--ember-deep": "#E8673A",
+    "--ember-soft": "rgba(240,130,78,.14)", "--live": "#5FD08A", "--c-err": "#EF4444",
+  } as React.CSSProperties;
   const wrap: React.CSSProperties = {
+    ...palette,
     minHeight: "100vh", background: "radial-gradient(1000px 500px at 50% -10%, rgba(240,130,78,.10), transparent 60%), var(--ink,#100E0C)",
     color: "var(--paper,#F3EDE4)", fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif",
   };
