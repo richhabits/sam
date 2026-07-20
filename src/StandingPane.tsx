@@ -23,8 +23,9 @@ export default function StandingPane({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const load = () => getStanding().then((d) => { setList(d.list || []); setOn(d.on !== false); }).catch(() => setErr("Couldn't load the crew."));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount; load is stable
   useEffect(() => {
-    getRoster().then((d) => { const c = d.crew || d || []; setCrew(c); if (c[0]) setSpec(c[0].id); }).catch(() => {});
+    getRoster().then((d) => { const c = d.crew || d || []; setCrew(c); if (c[0]) setSpec(c[0].id); }).catch(() => undefined);
     load();
   }, []);
 
@@ -35,11 +36,14 @@ export default function StandingPane({ onClose }: { onClose: () => void }) {
     try { const r = await standingArm(spec, task.trim(), cron); if (r?.error) setErr(r.error); else { setTask(""); load(); } }
     catch { setErr("Couldn't arm that agent."); } finally { setBusy(false); }
   };
-  const act = async (fn: (id: string) => Promise<any>, id: string) => { await fn(id).catch(() => {}); load(); };
+  const act = async (fn: (id: string) => Promise<any>, id: string) => { await fn(id).catch(() => undefined); load(); };
   const nameOf = (id: string) => crew.find((c) => c.id === id);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

@@ -28,7 +28,7 @@ afterEach(() => {
   if (prevFlag === undefined) delete process.env.SAM_CHIME; else process.env.SAM_CHIME = prevFlag;
 });
 
-const silent = { announce: () => {} };  // never touch the real OS notifier in tests
+const silent = { announce: () => undefined };  // never touch the real OS notifier in tests
 
 describe("the Chime — store", () => {
   it("sets an alarm and a timer, then lists both", () => {
@@ -69,10 +69,10 @@ describe("the Chime — store", () => {
     expect(new Date(snz!.snoozedUntil!).getTime()).toBeGreaterThan(new Date(c.fireAt!).getTime());
 
     // at t2 the snooze is still live → nothing fires
-    expect(C.fireDue(t2, () => {}, silent).length).toBe(0);
+    expect(C.fireDue(t2, () => undefined, silent).length).toBe(0);
     // once the snooze window passes → it fires
     const later = new Date(t2.getTime() + 61_000);
-    expect(C.fireDue(later, () => {}, silent).map((x) => x.id)).toContain(c.id);
+    expect(C.fireDue(later, () => undefined, silent).map((x) => x.id)).toContain(c.id);
   });
 
   it("snoozing a missing chime returns null", () => {
@@ -99,7 +99,7 @@ describe("the Chime — fireDue", () => {
   it("does nothing when the flag is off (default OFF)", () => {
     process.env.SAM_CHIME = "0";
     C.setAlarm("was due", { at: "2020-01-01T00:00:00.000Z" });
-    expect(C.fireDue(new Date(), () => {}, silent)).toEqual([]);
+    expect(C.fireDue(new Date(), () => undefined, silent)).toEqual([]);
   });
 
   it("reschedules a recurring alarm: fires, skips within the window, fires again next occurrence", () => {
@@ -109,11 +109,11 @@ describe("the Chime — fireDue", () => {
     const day21 = new Date(2026, 6, 21, 9, 0, 0);
 
     // first occurrence fires
-    expect(C.fireDue(day20, () => {}, silent).map((c) => c.id)).toContain(a.id);
+    expect(C.fireDue(day20, () => undefined, silent).map((c) => c.id)).toContain(a.id);
     // same day/minute → already ran, does NOT double-fire
-    expect(C.fireDue(day20, () => {}, silent)).toEqual([]);
+    expect(C.fireDue(day20, () => undefined, silent)).toEqual([]);
     // next day at the same time → fires again (rescheduled)
-    expect(C.fireDue(day21, () => {}, silent).map((c) => c.id)).toContain(a.id);
+    expect(C.fireDue(day21, () => undefined, silent).map((c) => c.id)).toContain(a.id);
 
     const after = C.getChime(a.id)!;
     expect(after.enabled).toBe(true);       // recurring stays armed

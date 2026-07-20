@@ -67,7 +67,7 @@ describe("the Standing Crew", () => {
     const out = await S.runDue(new Date(), {
       runner: finalRunner("Spend is £4.20, under budget."),
       notify: (_t, m) => { notes.push(m); },
-      push: () => {},
+      push: () => undefined,
       consentOk: allow,
     });
     expect(out.length).toBe(1);
@@ -116,7 +116,7 @@ describe("the Standing Crew", () => {
     const out = await S.runDue(new Date(), {
       runner: dangerousRunner(),
       notify: (_t, m) => { notes.push(m); },
-      push: () => {},
+      push: () => undefined,
       consentOk: allow,
     });
     expect(out.length).toBe(1);
@@ -135,10 +135,10 @@ describe("the Standing Crew", () => {
   it("claims a fired slot so it does not double-fire on the next tick", async () => {
     process.env.SAM_STANDING = "1";
     S.arm("scout", "hourly scan", "hourly");
-    const first = await S.runDue(new Date(), { runner: finalRunner("done"), notify: () => {}, push: () => {}, consentOk: allow });
+    const first = await S.runDue(new Date(), { runner: finalRunner("done"), notify: () => undefined, push: () => undefined, consentOk: allow });
     expect(first.length).toBe(1);
     // Immediately again — "hourly" is not due again yet (lastRunAt was just claimed).
-    const second = await S.runDue(new Date(), { runner: finalRunner("done"), notify: () => {}, push: () => {}, consentOk: allow });
+    const second = await S.runDue(new Date(), { runner: finalRunner("done"), notify: () => undefined, push: () => undefined, consentOk: allow });
     expect(second).toEqual([]);
   });
 

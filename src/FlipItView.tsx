@@ -22,7 +22,8 @@ function Spark({ vals, up }: { vals: number[]; up: boolean }) {
   const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
   const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * 100},${44 - ((v - lo) / span) * 40 - 2}`).join(" ");
   return (
-    <svg viewBox="0 0 100 44" preserveAspectRatio="none" style={{ width: "100%", height: 44 }}>
+    <svg viewBox="0 0 100 44" preserveAspectRatio="none" style={{ width: "100%", height: 44 }} role="img" aria-label={up ? "trend up" : "trend down"}>
+      <title>{up ? "trend up" : "trend down"}</title>
       <polyline points={pts} fill="none" stroke={up ? "var(--live,#5FD08A)" : "var(--c-err,#EF4444)"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );

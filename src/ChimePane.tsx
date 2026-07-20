@@ -41,6 +41,7 @@ export default function ChimePane({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const load = () => getChimes().then((d) => setList(d.chimes || [])).catch(() => setErr("Couldn't load your chimes."));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: poll once on mount; load is stable
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
 
   const add = async () => {
@@ -52,10 +53,13 @@ export default function ChimePane({ onClose }: { onClose: () => void }) {
       if (r?.error) setErr(r.error); else { setLabel(""); load(); }
     } catch { setErr("Couldn't set that."); } finally { setBusy(false); }
   };
-  const act = async (fn: (id: string) => Promise<any>, id: string) => { await fn(id).catch(() => {}); load(); };
+  const act = async (fn: (id: string) => Promise<any>, id: string) => { await fn(id).catch(() => undefined); load(); };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

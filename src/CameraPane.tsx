@@ -29,6 +29,7 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
   const [tick, setTick] = useState(0);   // forces snapshot <img> refresh
 
   const load = () => getCameras().then((d) => { setCams(d.cameras || []); setOn(d.on !== false); setWhy(d.why || ""); }).catch(() => setErr("Couldn't load cameras."));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load + tick on mount; load is stable
   useEffect(() => { load(); const t = setInterval(() => setTick((n) => n + 1), 5000); return () => clearInterval(t); }, []);
 
   const add = async () => {
@@ -40,10 +41,13 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
       if (r?.error) setErr(r.error); else { setName(""); setLocation(""); setUrl(""); load(); }
     } catch { setErr("Couldn't add that camera."); } finally { setBusy(false); }
   };
-  const del = async (id: string) => { await removeCameraApi(id).catch(() => {}); load(); };
+  const del = async (id: string) => { await removeCameraApi(id).catch(() => undefined); load(); };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by useEscape
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by useEscape
     <div className="drawer-wrap" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 96vw)" }}>
         <div className="drawer-head">
           <div>
