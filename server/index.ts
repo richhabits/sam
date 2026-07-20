@@ -85,6 +85,8 @@ import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoa
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
+import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
+import { bind as routineBind, unbind as routineUnbind, list as routineList } from "./routines.ts";
 import { peopleContext, } from "./people.ts";
 import { pushNotify, } from "./push.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
@@ -377,6 +379,11 @@ if (!BENCH_MODE) setInterval(() => {
 // a risky action it triggers comes back pending and is deferred, never run unattended.
 if (!BENCH_MODE) setInterval(() => { try { if (standingEnabled()) void runStandingDue(new Date()); } catch { /* best-effort */ } }, 60_000).unref?.();
 if (standingEnabled()) console.log(`  🛰️ standing     · ${standingList().filter((a) => a.armed).length} armed`);
+
+// The Chime (SAM_CHIME, default off) — ring alarms/timers that are due. fireDue is clock-injected +
+// claim-before-notify, safe to call every tick. desktopNotify fires inside it; the callback is where
+// SAM's own in-app bell would go. Ringing is a notification only — never runs a tool.
+if (!BENCH_MODE) setInterval(() => { try { fireChimesDue(new Date(), (_c: Chime) => {/* in-app bell hook (UI) */}); } catch { /* best-effort */ } }, 30_000).unref?.();
 
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
 if (!BENCH_MODE) startDropWatcher(async (d) => {
@@ -1391,6 +1398,44 @@ app.post("/api/standing/rearm", (req, res) => {
 app.post("/api/standing/remove", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   standingRemove(req.body?.id) ? res.json({ ok: true }) : res.status(404).json({ error: "no such standing agent" });
+});
+
+// The Chime — alarms + named timers (the store always works; ringing is gated by SAM_CHIME).
+app.get("/api/chimes", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  res.json({ chimes: listChimes() });
+});
+app.post("/api/chime", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const { kind, label, afterMs, at, recur } = req.body || {};
+  try {
+    const c = kind === "timer" ? chimeTimer(label, Number(afterMs)) : chimeAlarm(label, { at, recur });
+    res.json({ chime: c });
+  } catch (e: any) { res.status(400).json({ error: e?.message || "couldn't set that" }); }
+});
+app.post("/api/chime/cancel", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  cancelChime(req.body?.id) ? res.json({ ok: true }) : res.status(404).json({ error: "no such chime" });
+});
+app.post("/api/chime/snooze", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  try { const c = snoozeChime(req.body?.id, Number(req.body?.ms) || 540000); c ? res.json({ chime: c }) : res.status(404).json({ error: "no such chime" }); }
+  catch (e: any) { res.status(400).json({ error: e?.message || "couldn't snooze" }); }
+});
+
+// Routines — spoken triggers bound to saved workflows (the module gates matching on SAM_ROUTINES).
+app.get("/api/routines", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  res.json({ routines: routineList() });
+});
+app.post("/api/routines/bind", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const r = routineBind(req.body?.workflowId, req.body?.phrases || []);
+  r?.ok === false ? res.status(400).json({ error: r.reason }) : res.json(r ?? { ok: true });
+});
+app.post("/api/routines/unbind", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  routineUnbind(req.body?.workflowId); res.json({ ok: true });
 });
 
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is
