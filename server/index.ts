@@ -6,8 +6,8 @@
 
 import "dotenv/config";
 import os from "node:os";
-import { timingSafeEqual, randomBytes, createHash } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { timingSafeEqual, } from "node:crypto";
+import { readFileSync, existsSync, } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
 import { join, dirname } from "node:path";
@@ -24,11 +24,10 @@ if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
 
 import express from "express";
 import cors from "cors";
-import { setPool, poolSize, keyStatus, reloadPools } from "./keys.ts";
-import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
+import { reloadPools } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
-import { sendMail, mailerConfigured, ownerEmail, resetMailer } from "./mailer.ts";
-import { runModel, type Tier, providersStatus, runVision, warmBrain, GATEWAY_URL, deviceId } from "./models.ts";
+import { sendMail, mailerConfigured, ownerEmail, } from "./mailer.ts";
+import { runModel, type Tier, providersStatus, runVision, warmBrain, } from "./models.ts";
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
 import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
@@ -63,7 +62,7 @@ import { registerVoiceRoutes } from "./routes.voice.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, setElonMode, isElonMode, toolTier, isDangerous } from "./authz.ts";
+import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, toolTier, isDangerous } from "./authz.ts";
 import { nowText, locationText, initContext } from "./context.ts";
 import { grabWorld, worldContext } from "./world.ts";
 import { logSecurity, securityStatus, securityEvents } from "./security.ts";
@@ -85,15 +84,11 @@ import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { addPerson, listPeople, peopleContext, faceRoster } from "./people.ts";
-import { vapidPublicKey, addSubscription, pushNotify, subscriberCount } from "./push.ts";
+import { peopleContext, } from "./people.ts";
+import { pushNotify, } from "./push.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
-import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
-import * as notebook from "./notebook.ts";
-import { signingStatus, generateAndroidKeystore } from "./signing.ts";
 import { operatingDoctrine, personaVoice, personaVoiceCompact, PERSONAS } from "./persona.ts";
-import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
 import {
   logExchange,

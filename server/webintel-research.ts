@@ -46,7 +46,7 @@ export interface SearchExtractResult extends MultiResult { query: string; note?:
 /** SearchGraph-lite: search (injected → URLs) → extract across the top results → aggregate. */
 export async function searchAndExtract(query: string, schema: ExtractSchema, search: SearchFn, llm: LlmFn, opts: ResearchOpts = {}): Promise<SearchExtractResult> {
   const urls = await search(query, opts.topN ?? 5);
-  if (!urls || !urls.length) return { query, results: [], table: [], ok: false, failed: [], note: "search returned no URLs" };
+  if (!urls?.length) return { query, results: [], table: [], ok: false, failed: [], note: "search returned no URLs" };
   return { query, ...(await extractMany(urls, schema, llm, opts)) };
 }
 

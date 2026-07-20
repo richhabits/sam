@@ -7,9 +7,6 @@ import { keyStatus, poolSize, setPool } from "./keys.ts";
 import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts";
 import { GATEWAY_URL, deviceId, type Tier } from "./models.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // ADMIN — manage API keys & config from inside the app. Every write here is loopback-gated:
 // these endpoints write credentials to .env, so a remote device (a phone on the shared token)
