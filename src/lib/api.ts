@@ -237,3 +237,8 @@ export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r
 
 export const getDoctor = () => fetch("/api/doctor").then((r) => r.json());
 export const getFlipit = () => fetch("/api/flipit").then((r) => r.json());
+export const getStanding = () => fetch("/api/standing").then((r) => r.json());
+export const standingArm = (specialistId: string, task: string, cron: string) => post("/api/standing/arm", { specialistId, task, cron });
+export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });
+export const standingRearm = (id: string) => post("/api/standing/rearm", { id });
+export const standingRemove = (id: string) => post("/api/standing/remove", { id });
