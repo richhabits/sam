@@ -1535,7 +1535,9 @@ app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: c
 
 // ── Serve the built app from this one process (production mode) ──
 // One server on :8787 — no separate Vite dev server. Leaner + faster.
-const DIST = fileURLToPath(new URL("../dist", import.meta.url)); // decodes spaces in the install path
+// join(dirname(fileURLToPath(import.meta.url)), …) — NOT `new URL("…", import.meta.url)`: vite rewrites
+// that two-arg form to an http dev-server asset URL, which fileURLToPath rejects → blank electron in dev.
+const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dist"); // decodes spaces in the install path
 if (existsSync(DIST)) {
   app.use(express.static(DIST));
   app.get("*", (req, res, next) => {

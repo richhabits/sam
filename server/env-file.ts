@@ -1,6 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { withLatchSync } from "./latch.ts";
+
+// __dirname equivalent. IMPORTANT: plain fileURLToPath(import.meta.url), never
+// `new URL("…", import.meta.url)` — vite treats that two-arg form as an ASSET reference and rewrites it
+// to an http:// dev-server URL, which fileURLToPath then rejects ("URL must be of scheme file"). Bundled
+// into the electron main, that throws at load → a blank window in dev. path.join keeps us on disk.
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // Writing to the user's .env — pulled out of index.ts because the admin routes and five other
 // call sites both need it, which is exactly what kept the admin section from being extractable.
@@ -8,12 +15,12 @@ import { withLatchSync } from "./latch.ts";
 // Packaged app sets DOTENV_CONFIG_PATH to a writable per-user .env; dev/CLI falls back to the
 // repo .env next to the source (../.env, decoded for spaces in the install path).
 export const ENV_PATH =
-  process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
+  process.env.DOTENV_CONFIG_PATH || join(HERE, "..", ".env");
 
 // Same resolution, but read at CALL time. The Safe's migration sets DOTENV_CONFIG_PATH after this
 // module loads (and tests point it at a scratch file), so the strip below must resolve fresh.
 function envPathNow(): string {
-  return process.env.DOTENV_CONFIG_PATH || fileURLToPath(new URL("../.env", import.meta.url));
+  return process.env.DOTENV_CONFIG_PATH || join(HERE, "..", ".env");
 }
 
 /** Of `keys`, which appear as a non-empty `KEY=value` line in the .env FILE right now. This reflects

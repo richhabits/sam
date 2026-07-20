@@ -124,7 +124,7 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
       const data = String(req.body?.data || "");
       const b64 = data.replace(/^data:image\/\w+;base64,/, "");
       if (!b64 || b64.length > 14_000_000) return res.status(400).json({ error: "no/oversized image" });
-      const dir = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault"), "photos");
+      const dir = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault"), "photos");
       mkdirSync(dir, { recursive: true });
       const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
       const file = join(dir, `photo-${stamp}.jpg`);

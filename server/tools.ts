@@ -92,7 +92,7 @@ import { crawl, mapSite } from "./webintel-crawl.ts";
 // it would burn paid quota for no gain (Doctrine #3 — quotas are production infrastructure).
 const samLlm = async (system: string, prompt: string): Promise<string> =>
   (await runModel("free", system, prompt))?.text || "";
-const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(new URL(import.meta.url))), "..", "vault");
+const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
 import type { ArgSchema } from "./parser.ts";
