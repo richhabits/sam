@@ -1157,6 +1157,7 @@ export default function App() {
             );
           })()}
           <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
+          <button type="button" className="icon-btn" onClick={() => setFlipOpen(true)} title="Your £5 trading rig">💷 FLIP IT</button>
           <UpdateButton />
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
@@ -1221,7 +1222,6 @@ export default function App() {
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Pauses on risk</span></button>
               <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><Icon name="book" size={16} /><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Your sources</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setFlipOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">FLIP IT</span><span className="pop-opt-sub">Your £5 rig</span></button>
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
             </div>
             <div className="pop-title">Help</div>
