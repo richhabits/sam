@@ -236,3 +236,4 @@ export const setTelemetry = (on: boolean) => post("/api/telemetry", { on });
 export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r) => r.json());
 
 export const getDoctor = () => fetch("/api/doctor").then((r) => r.json());
+export const getFlipit = () => fetch("/api/flipit").then((r) => r.json());

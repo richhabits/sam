@@ -1331,6 +1331,37 @@ app.post("/api/ask/:id", (req, res) => {
   res.json({ status: r?.ask.status ?? "gone" });
 });
 
+// FLIP IT — surface the sibling £5 trading rig's live state inside SAM (read-only, loopback only).
+// Reads ~/flip-it/state|ledger; absent (most users) ⇒ { present: false } and the pane shows a hint.
+app.get("/api/flipit", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const root = process.env.FLIPIT_DIR || join(os.homedir(), "flip-it");
+  const rj = (p: string) => { try { return JSON.parse(readFileSync(join(root, p), "utf8")); } catch { return null; } };
+  const ladder = rj("state/ladder.json");
+  if (!ladder) { res.json({ present: false }); return; }
+  const amend = (rj("state/amendments.json") || [])[0] || {};
+  const base = amend.strategy || "mom_12_1";
+  const market = rj(`state/market.json`);
+  const holdings = (market?.holdings || rj(`state/holdings_${base}.json`)?.names || []).slice(0, 3);
+  // forward clock — count lived days from the ledger (day n / 60)
+  let days = 0, trades = 0;
+  try {
+    const seen = new Set<string>();
+    for (const line of readFileSync(join(root, `ledger/forward_${base}.jsonl`), "utf8").split("\n")) {
+      const l = line.trim(); if (!l) continue;
+      try { const o = JSON.parse(l); if (o.kind === "day" && !seen.has(o.date)) { seen.add(o.date); days++; trades = o.trades_cum ?? trades; } } catch { /* skip */ }
+    }
+  } catch { /* no ledger yet — day 0 */ }
+  res.json({
+    present: true,
+    equity: Number(ladder.equity ?? 0), rung: Number(ladder.rung ?? 0), hwm: Number(ladder.hwm ?? 0),
+    seeded: !!ladder.seeded, status: ladder.status ?? null,
+    strategy: base, targetVol: amend.target_vol ?? null,
+    days, trades, target: 60, tradeTarget: 20,
+    holdings, breadth: market?.breadth ?? null, movers: market?.movers ?? null,
+  });
+});
+
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is
 // the page itself. Both loopback + the Handshake (when enforced) — live diagnostics, never off-box.
 app.get("/api/scope", (req, res) => {
