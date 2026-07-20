@@ -1982,3 +1982,58 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .safe-btn-primary{background:var(--accent);color:var(--on-accent,#fff);border-color:transparent}
 .safe-btn-danger{background:var(--c-err,#c0392b);color:#fff;border-color:transparent}
 .safe-btn:disabled,.safe-btn-primary:disabled,.safe-btn-danger:disabled{opacity:.5;cursor:not-allowed}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM LAYER — the "one hand touched everything" pass.
+   Apple precision · Kanye/Donda restraint (heavy type, calm tone, negative space)
+   · one orange moment per surface. Primitive-level so it lifts every surface at once.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* — Display type: big headings become expensive. Optical tracking tightens as size grows. — */
+.hello, .onboard-title, .drawer-title, .roster-title, .stu-brand, .dash-num {
+  font-family: var(--display);
+  font-weight: 820;
+  letter-spacing: -.022em;
+  text-wrap: balance;
+}
+.hello { font-size: 38px; line-height: 1.06; letter-spacing: -.03em; }
+.hello-sub { font-size: 17px; line-height: 1.45; max-width: 46ch; }
+.onboard-title { font-size: 33px; letter-spacing: -.028em; }
+/* Uppercase micro-labels — the editorial connective tissue. Consistent everywhere. */
+.pop-title, .admin-cat, .stu-label { font-weight: 700; letter-spacing: .07em; }
+
+/* — The primary CTA: one confident, tactile primitive shared by every "do it" button. — */
+.dl-btn {
+  font: inherit; font-size: 14px; font-weight: 650;
+  padding: 9px 17px; border-radius: 12px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+}
+.dl-btn:not(:disabled):hover { border-color: var(--accent); color: var(--accent-text); transform: translateY(-1px); }
+.dl-btn:not(:disabled):active { transform: translateY(0); }
+.dl-btn:disabled { opacity: .55; cursor: default; }
+.dl-btn.primary,
+.onboard-go, .btn-approve, .safe-btn-primary {
+  background: var(--accent); color: var(--on-accent, #fff); border: 1px solid transparent;
+  box-shadow: var(--shadow-accent);
+}
+.dl-btn.primary:not(:disabled):hover,
+.onboard-go:not(:disabled):hover, .btn-approve:hover, .safe-btn-primary:not(:disabled):hover {
+  color: var(--on-accent, #fff); transform: translateY(-1px);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 34%, transparent); filter: none;
+}
+.dl-btn.primary:not(:disabled):active,
+.onboard-go:not(:disabled):active, .btn-approve:active, .safe-btn-primary:not(:disabled):active { transform: translateY(0); box-shadow: var(--shadow-accent); }
+
+/* The send button — the app's signature action. Give it the same tactile settle. */
+.send:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 34%, transparent); filter: none; }
+.send:not(:disabled):active { transform: translateY(0); }
+
+/* — Unified focus: one accent ring on everything keyboard-reachable (was ad-hoc per element). — */
+button:focus-visible, a:focus-visible, .dl-btn:focus-visible, .pop-opt:focus-visible,
+input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
+  outline: none; box-shadow: var(--ring);
+}
+
+/* — Cards & drawers: a touch more air + confident corners (Donda calm, not busy). — */
+.drawer-title { font-size: 19px; }
+.drawer-sub { line-height: 1.45; }
