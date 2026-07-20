@@ -7,6 +7,9 @@
   "background_color": "#FDFBF9",
   "theme_color": "#E8673A",
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/brand/sam-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/sam-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/sam-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }
