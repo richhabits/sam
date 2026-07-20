@@ -280,7 +280,9 @@ export default function App() {
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("sam.dark") === "1"; } catch { return false; } });
   const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "aurora"; } catch { return "aurora"; } });
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
-  const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") === "1"; } catch { return false; } });
+  // Hands-free is ON by default now — SAM listens for a clap/whistle from the moment it opens
+  // (private, on-device Web Audio, every browser). Set localStorage "sam.wake"="0" to opt out.
+  const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") !== "0"; } catch { return true; } });
   const [profile, setProfile] = useState<Profile>(loadProfile);
   const [profiles, setProfiles] = useState<Profile[]>(loadProfiles);
   // Add/refresh a profile in the saved list (upsert by name).
@@ -1269,6 +1271,10 @@ export default function App() {
 
       <div className="shell">
       <aside className="side">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 14px 10px" }}>
+          <img src="/brand/sam-192.png" alt="SAM" width="30" height="30" style={{ borderRadius: 9, boxShadow: "0 2px 9px rgba(217,83,31,.28)", flex: "0 0 auto" }} />
+          <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 17 }}>SAM</span>
+        </div>
         <div className="side-head"><span className="side-title">Chats</span><button type="button" className="side-new" onClick={newChat} title="New chat">＋</button></div>
         <div className="side-folders">
           <button type="button" className={`side-folder ${!folderFilter ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter("")}
