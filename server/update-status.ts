@@ -19,3 +19,15 @@ export function sourceUpdateStatus(version: string, localSha: string, remoteSha:
   const current = version || localSha.slice(0, 7) || undefined;
   return { behind, current, latest: behind ? remoteSha.slice(0, 7) : (version || undefined) };
 }
+
+// Turn a raw `git pull` failure into a sentence a normal user can act on. A user should NEVER see
+// git's own "no tracking information / git pull <remote> <branch>" wall of text — that leaked once
+// when the checkout sat on a local branch with no upstream.
+export function friendlyUpdateError(raw: string): string {
+  const msg = (raw || "").toString();
+  if (/not a git repository/i.test(msg)) return "This isn't a source checkout — download the latest app from the releases page instead.";
+  if (/no tracking information|no upstream|specify which branch/i.test(msg)) return "SAM's copy isn't tracking the update branch. In the sam folder run `git checkout main` (then `git branch --set-upstream-to=origin/main main`), or reinstall from the releases page.";
+  if (/diverged|non-fast-forward|would be overwritten|Not possible to fast-forward/i.test(msg)) return "Your copy has diverged from GitHub. Run `git pull` in the sam folder to reconcile, or reinstall the app.";
+  if (/could not resolve host|network|timed out/i.test(msg)) return "Couldn't reach GitHub — check your internet and try again.";
+  return msg.slice(0, 200);
+}

@@ -36,7 +36,7 @@ import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens,
 import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
 import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
 import { previousRelease } from "./rollback.ts";
-import { isNewerVer, sourceUpdateStatus } from "./update-status.ts";
+import { friendlyUpdateError, isNewerVer, sourceUpdateStatus } from "./update-status.ts";
 import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
@@ -1342,13 +1342,7 @@ app.post("/api/update", async (_req, res) => {
     const output = (await git("pull --ff-only", 45000)).slice(0, 400);
     res.json({ ok: true, output });
   } catch (e: any) {
-    const msg = (e?.stderr || e?.message || e).toString();
-    const friendly =
-      /not a git repository/i.test(msg) ? "This isn't a source checkout — download the latest app from the releases page instead." :
-      /diverged|non-fast-forward|would be overwritten|Not possible to fast-forward/i.test(msg) ? "Your copy has diverged from GitHub. Run `git pull` in the sam folder to reconcile, or reinstall the app." :
-      /could not resolve host|network|timed out/i.test(msg) ? "Couldn't reach GitHub — check your internet and try again." :
-      msg.slice(0, 200);
-    res.json({ ok: false, error: friendly });
+    res.json({ ok: false, error: friendlyUpdateError(e?.stderr || e?.message || e) });
   }
 });
 // The Console — a self-contained local status page (the Pulse + the Black Box). Loopback + the
