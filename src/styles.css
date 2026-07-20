@@ -16,6 +16,7 @@
   --user-bubble: #F5F0EB; /* your messages */
   /* Semantic colors (swarm panel, dashboard) — legible on light AND dark grounds */
   --c-blue: #3B82F6; --c-ok: #22C55E; --c-err: #EF4444; --c-err-bg: rgba(239,68,68,.12); --c-bg2: var(--surface);
+  --c-warn: #F59E0B; /* amber — status token (was hardcoded in the dashboard/panels) */
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
   --display: "SF Pro Display", var(--sans);
   --radius: 22px;
@@ -252,6 +253,9 @@ button { font-family: inherit; cursor: pointer; }
 .convo-del { background: none; border: none; color: var(--muted); padding: 8px 10px; opacity: 0; font-size: 13px; }
 .convo-list li:hover .convo-del { opacity: 1; }
 .convo-del:hover { color: var(--c-err); }
+/* Touch devices have no hover — reveal hover-only controls so they're reachable on phones/tablets
+   (delete-chat, copy-code, folder-move were invisible/unusable on touch). */
+@media (hover: none) { .convo-del, .side-move { opacity: .75; } .code-copy { opacity: .9; } }
 
 /* tool list (What SAM can do) */
 .tool-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

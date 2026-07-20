@@ -135,11 +135,11 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                   <div key={sw.id} className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontWeight: 600 }}>{sw.goal.slice(0, 60)}{sw.goal.length > 60 ? "…" : ""}</span>
-                      <span className={`dash-lane-tier`} style={{ background: sw.status === "done" ? "var(--c-ok)" : sw.status === "error" ? "var(--c-err)" : sw.status === "paused" ? "#f59e0b" : "var(--c-blue)", color: "#fff", padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{sw.status}</span>
+                      <span className={`dash-lane-tier`} style={{ background: sw.status === "done" ? "var(--c-ok)" : sw.status === "error" ? "var(--c-err)" : sw.status === "paused" ? "var(--c-warn)" : "var(--c-blue)", color: "var(--on-accent)", padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{sw.status}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                       {sw.agents.map((a) => (
-                        <div key={a.id} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 4, background: a.status === "paused" ? "rgba(245,158,11,0.15)" : a.status === "done" ? "rgba(34,197,94,0.1)" : a.status === "error" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", gap: 2, minWidth: 120 }}>
+                        <div key={a.id} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 4, background: a.status === "paused" ? "rgba(245,158,11,0.15)" : a.status === "done" ? "rgba(34,197,94,0.1)" : a.status === "error" ? "rgba(239,68,68,0.1)" : "var(--surface)", display: "flex", flexDirection: "column", gap: 2, minWidth: 120, border: "1px solid var(--border)" }}>
                           <span>{a.emoji} {a.name} <span style={{ opacity: 0.5 }}>{a.status}</span></span>
                           {a.status === "paused" && a.pendingTool && (
                             <div style={{ marginTop: 4 }}>
@@ -153,7 +153,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                         </div>
                       ))}
                     </div>
-                    {sw.synthesis && <div style={{ fontSize: 12, marginTop: 6, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6 }}>{sw.synthesis.slice(0, 200)}{sw.synthesis.length > 200 ? "…" : ""}</div>}
+                    {sw.synthesis && <div style={{ fontSize: 12, marginTop: 6, opacity: 0.8, borderTop: "1px solid var(--border)", paddingTop: 6 }}>{sw.synthesis.slice(0, 200)}{sw.synthesis.length > 200 ? "…" : ""}</div>}
                   </div>
                 ))}
               </div>
@@ -176,7 +176,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                         <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }} onClick={() => removeSchedule(s.id).then(() => getSchedules().then(setSchedules))}>Delete</button>
                       </div>
                     </div>
-                    {s.lastResult && <div style={{ fontSize: 12, marginTop: 2, opacity: 0.8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>{s.lastResult}</div>}
+                    {s.lastResult && <div style={{ fontSize: 12, marginTop: 2, opacity: 0.8, borderTop: "1px solid var(--border)", paddingTop: 4 }}>{s.lastResult}</div>}
                   </div>
                 ))}
               </div>
