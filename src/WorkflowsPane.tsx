@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getWorkflows, installStarterWorkflows, runWorkflowApi, deleteWorkflowApi } from "./lib/api";
+import { getWorkflows, installStarterWorkflows, runWorkflowApi, deleteWorkflowApi, getRoutines, bindRoutine, unbindRoutine } from "./lib/api";
 import Icon from "./Icon";
 import { useEscape } from "./lib/useOverlay";
 
@@ -19,11 +19,27 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState<string>("");
   const [open, setOpen] = useState<string>("");
   const [lastRun, setLastRun] = useState<Record<string, Run>>({});
+  const [phrases, setPhrases] = useState<Record<string, string>>({});   // workflowId → bound phrase (first)
+  const [draft, setDraft] = useState<Record<string, string>>({});
   useEscape(onClose);
 
   const load = () => getWorkflows().then((d) => setFlows(d?.workflows || [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+  const loadRoutines = () => getRoutines().then((d) => {
+    const m: Record<string, string> = {};
+    for (const r of d?.routines || []) m[r.workflowId] = (r.phrases || [])[0] || "";
+    setPhrases(m);
+  }).catch(() => {/* routines are optional — a failure just leaves the binders empty */});
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadRoutines(); }, []);
+
+  const bind = async (id: string) => {
+    const p = (draft[id] || "").trim();
+    if (!p) return;
+    await bindRoutine(id, [p]).catch(() => undefined);
+    setDraft((d) => ({ ...d, [id]: "" }));
+    loadRoutines();
+  };
+  const unbind = async (id: string) => { await unbindRoutine(id).catch(() => undefined); loadRoutines(); };
 
   const install = async () => { setBusy("install"); await installStarterWorkflows(); await load(); setBusy(""); };
   const run = async (id: string) => { setBusy(id); const d = await runWorkflowApi(id); if (d?.run) setLastRun((m) => ({ ...m, [id]: d.run })); await load(); setBusy(""); };
@@ -85,6 +101,17 @@ export default function WorkflowsPane({ onClose }: { onClose: () => void }) {
                           </span>
                         );
                       })}
+                    </div>
+                    {/* Routine: bind a phrase so saying/typing it runs this workflow ahead of the brain */}
+                    <div className="wf-routine">
+                      {phrases[w.id]
+                        ? <div className="wf-routine-on"><Icon name="voice" size={13} /> Say <b>“{phrases[w.id]}”</b> to run this <button type="button" className="wf-routine-clear" onClick={() => unbind(w.id)}>clear</button></div>
+                        : <div className="wf-routine-set">
+                            <Icon name="voice" size={13} />
+                            <input value={draft[w.id] || ""} onChange={(e) => setDraft((d) => ({ ...d, [w.id]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === "Enter") bind(w.id); }} placeholder="say “good morning” to run this…" aria-label="Routine phrase" />
+                            <button type="button" onClick={() => bind(w.id)} disabled={!(draft[w.id] || "").trim()}>Bind</button>
+                          </div>}
                     </div>
                   </div>
                 )}

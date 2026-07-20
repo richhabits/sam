@@ -215,6 +215,10 @@ export const getPreferences = () => fetch("/api/preferences").then((r) => r.json
 export const forgetPreference = (key: string) => post("/api/preferences/forget", { key });
 export const resetPreferences = () => post("/api/preferences/reset");
 export const getWorkflows = () => fetch("/api/workflows").then((r) => r.json());
+// ── Routines — bind a spoken/typed phrase to a saved workflow (fires ahead of the brain) ──
+export const getRoutines = () => fetch("/api/routines").then((r) => r.json());
+export const bindRoutine = (workflowId: string, phrases: string[]) => post("/api/routines/bind", { workflowId, phrases });
+export const unbindRoutine = (workflowId: string) => post("/api/routines/unbind", { workflowId });
 export const installStarterWorkflows = () => post("/api/workflows/install-starters");
 export const runWorkflowApi = (id: string) => post(`/api/workflows/${id}/run`);
 export const deleteWorkflowApi = (id: string) => fetch(`/api/workflows/${id}`, { method: "DELETE" }).then((r) => r.json());
