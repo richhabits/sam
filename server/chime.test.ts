@@ -96,7 +96,7 @@ describe("the Chime — fireDue", () => {
     expect(C.getChime(future.id)!.enabled).toBe(true);
   });
 
-  it("does nothing when the flag is off (default OFF)", () => {
+  it("does nothing when the kill-switch is set (SAM_CHIME=0)", () => {
     process.env.SAM_CHIME = "0";
     C.setAlarm("was due", { at: "2020-01-01T00:00:00.000Z" });
     expect(C.fireDue(new Date(), () => undefined, silent)).toEqual([]);

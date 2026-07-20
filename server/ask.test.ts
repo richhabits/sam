@@ -31,8 +31,8 @@ const raise = (over: any = {}) => A.raiseAsk({
 });
 
 describe("the flag + config", () => {
-  it("is OFF by default (opt-in)", () => { delete process.env.SAM_ASK; expect(A.askEnabled()).toBe(false); });
-  it("turns on with SAM_ASK=1", () => { process.env.SAM_ASK = "1"; expect(A.askEnabled()).toBe(true); });
+  it("is ON by default; SAM_ASK=0 is the kill-switch", () => { delete process.env.SAM_ASK; expect(A.askEnabled()).toBe(true); process.env.SAM_ASK = "0"; expect(A.askEnabled()).toBe(false); });
+  it("stays on with SAM_ASK=1", () => { process.env.SAM_ASK = "1"; expect(A.askEnabled()).toBe(true); });
   it("timeout is configurable, never zero", () => {
     expect(A.askTimeoutMs()).toBe(30 * 60_000);
     process.env.SAM_ASK_TIMEOUT_MS = "5000"; expect(A.askTimeoutMs()).toBe(5000);
@@ -133,11 +133,11 @@ describe("REGRESSION — the active bug: a scheduled risky action no longer repo
     expect(out).toEqual({ kind: "final", text: "done" });
   });
 
-  it("with the Ask OFF: returns 'none' so the caller keeps its old fallback (no behaviour change)", () => {
-    delete process.env.SAM_ASK;
+  it("with the Ask kill-switched (SAM_ASK=0): returns 'none' so the caller keeps its old fallback", () => {
+    process.env.SAM_ASK = "0";
     const out = A.handleUnattended(pending, { tier: "free", source: "scheduler" });
     expect(out.kind).toBe("none");
-    expect(A.openAsks().length).toBe(0);                 // nothing raised when the flag is off
+    expect(A.openAsks().length).toBe(0);                 // nothing raised when the kill-switch is set
   });
 });
 

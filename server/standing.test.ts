@@ -82,8 +82,8 @@ describe("the Standing Crew", () => {
     expect(log.some((e) => e.behavior === S.STANDING_BEHAVIOR && e.kind === "acted")).toBe(true);
   });
 
-  it("does NOT fire when the flag is OFF", async () => {
-    // flag deleted in beforeEach
+  it("does NOT fire when the kill-switch is set (SAM_STANDING=0)", async () => {
+    process.env.SAM_STANDING = "0";   // default is ON now; =0 is the kill-switch
     S.arm("scout", "watch the news", "hourly");
     const out = await S.runDue(new Date(), { runner: finalRunner("x"), consentOk: allow });
     expect(out).toEqual([]);

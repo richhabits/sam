@@ -37,7 +37,7 @@ export interface AddSpec { name: string; location?: string; kind: CamKind; url?:
 export type AddResult = { ok: true; camera: Camera } | { ok: false; reason: string };
 
 // The feature flag. Nothing here does anything user-visible until this is on.
-export function camerasEnabled(): boolean { return process.env.SAM_CAMERAS === "1"; }
+export function camerasEnabled(): boolean { return process.env.SAM_CAMERAS !== "0"; }   // available by default (SAM_CAMERAS=0 kills it); still consent-gated + local-only enforced
 
 // ── local-only guard — the security spine. A camera url must point at THIS machine or the LAN.
 //    Refuses public hostnames/IPs so a "camera" can never be turned into an exfiltration or SSRF target. ──

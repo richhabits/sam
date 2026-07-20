@@ -21,10 +21,10 @@ afterEach(() => {
 });
 
 describe("the Watch — local camera registry", () => {
-  it("is OFF unless SAM_CAMERAS=1", () => {
-    expect(C.camerasEnabled()).toBe(false);
-    process.env.SAM_CAMERAS = "1";
+  it("is ON by default; SAM_CAMERAS=0 is the kill-switch", () => {
     expect(C.camerasEnabled()).toBe(true);
+    process.env.SAM_CAMERAS = "0";
+    expect(C.camerasEnabled()).toBe(false);
   });
 
   it("accepts a LAN snapshot url and lists it", () => {

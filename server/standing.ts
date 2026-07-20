@@ -79,9 +79,9 @@ export interface RunDueDeps {
 // ── the roster lookup (specialists + ninjas) ──
 const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id);
 
-// ── the two OFF-by-default gates ──
+// ── gates: the flag is on by default; the "standing-crew" CONSENT is the real guard and stays opt-in ──
 export function standingEnabled(): boolean {
-  return process.env.SAM_STANDING === "1";   // default OFF (opt-in) — House Rule #4
+  return process.env.SAM_STANDING !== "0";   // available by default (SAM_STANDING=0 kills it); no agent RUNS until it's consented AND armed, and risky steps route via the Ask
 }
 
 // ── persistence (read fresh each call, atomic-ish write, NO silent failure) ──

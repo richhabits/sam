@@ -25,7 +25,7 @@ import { isDangerous } from "./authz.ts";
 import { logAutonomy } from "./autonomy-log.ts";
 
 export function askEnabled(): boolean {
-  return process.env.SAM_ASK === "1";   // default OFF (opt-in) — House Rule #4
+  return process.env.SAM_ASK !== "0";   // default ON (SAM_ASK=0 kills it) — the fail-safe approval path is protective, so it stays on
 }
 
 // How long an unanswered Ask stays open before it SAFE-DEFAULTS to deferred. Configurable; never 0.

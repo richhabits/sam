@@ -159,14 +159,14 @@ export interface FireOptions {
 }
 
 // ── The tick — fire every due chime. Call from the main loop with the clock. ──
-// OFF BY DEFAULT: does nothing unless SAM_CHIME === "1". Firing is safe (a
-// notification only), but unattended scheduling is still autonomy, so it stays
-// opt-in and every fire lands in the autonomy log. Returns the chimes that fired.
+// ON BY DEFAULT (SAM_CHIME=0 silences it). Firing is safe — a notification only —
+// and only chimes YOU set ever fire; every fire lands in the autonomy log.
+// Returns the chimes that fired.
 //
 // Each due chime rings via (1) the caller-provided `notify` (SAM's own bell /
 // in-app card) and (2) a desktop notification (reaches you with the window shut).
 export function fireDue(now: Date, notify: (c: Chime) => void, opts: FireOptions = {}): Chime[] {
-  if (process.env.SAM_CHIME !== "1") return [];
+  if (process.env.SAM_CHIME === "0") return [];
   const announce = opts.announce ?? desktopNotify;
 
   const list = load();

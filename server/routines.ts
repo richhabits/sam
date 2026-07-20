@@ -40,7 +40,7 @@ export interface Routine {
 export interface BindResult { ok: boolean; reason?: string }
 
 // The feature flag — read at CALL time so the kill switch is live without a restart. Default OFF.
-export function routinesEnabled(): boolean { return process.env.SAM_ROUTINES === "1"; }
+export function routinesEnabled(): boolean { return process.env.SAM_ROUTINES !== "0"; }   // on by default (SAM_ROUTINES=0 kills it); only fires when a phrase matches a bound workflow, pause-on-dangerous preserved
 
 // Lowercase + collapse whitespace. The same normaliser is applied to stored phrases AND to the
 // incoming utterance, so matching compares like with like.
