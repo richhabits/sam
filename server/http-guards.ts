@@ -21,11 +21,39 @@ export function isLoopback(req: { socket: { remoteAddress?: string | null } }): 
   return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
 }
 
-// SECURITY · CORS origin allowlist. Only same-origin + localhost (incl. the dev HUD on any port) may
-// reach the local API from a browser — a random website you visit must not. A missing Origin (o == "")
-// is a non-browser/same-origin request and is allowed; anything else must be an http(s) localhost URL.
+// A hostname that belongs to this machine or its private LAN: loopback, localhost, or an RFC-1918 /
+// link-local IP. Phone access serves the HUD from the machine's LAN IP (e.g. 192.168.0.252), so both
+// the CORS origin check and the anti-rebinding host check must treat these as ours — keeping them on
+// ONE helper is deliberate: they drifted apart once (host allowed the LAN, origin didn't) and that
+// silently broke phone access — every API call from the phone HUD was CORS-blocked as "unexpected".
+function isLocalOrPrivateHost(h: string): boolean {
+  const host = (h || "").replace(/^\[|\]$/g, "").toLowerCase();
+  if (host === "localhost" || host === "::1") return true;
+  // Must be a FULL, anchored IPv4 — not a prefix. "192.168.0.252.evil.com" starts with "192.168."
+  // but is an attacker-controlled DOMAIN, and an un-anchored prefix test would wrongly accept it.
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!m) return false;
+  const [a, b, c, d] = m.slice(1).map(Number);
+  if (a > 255 || b > 255 || c > 255 || d > 255) return false;
+  if (a === 127) return true;                         // loopback 127/8
+  if (a === 10) return true;                          // private 10/8
+  if (a === 192 && b === 168) return true;            // private 192.168/16
+  if (a === 172 && b >= 16 && b <= 31) return true;   // private 172.16/12
+  if (a === 169 && b === 254) return true;            // link-local 169.254/16
+  return false;
+}
+
+// SECURITY · CORS origin allowlist. Only same-origin, localhost (incl. the dev HUD on any port), and
+// this machine's own private-LAN address (phone access) may reach the local API from a browser — a
+// random website you visit must not. A missing Origin (o == "") is a non-browser/same-origin request
+// and is allowed; anything else must be an http(s) URL whose host is local or private-LAN. The remote-
+// token gate (SAM_REMOTE) still guards every non-loopback request, so allowing the LAN origin here
+// lets the phone HUD READ responses without weakening auth — the token is still required.
 export function originAllowed(o: string | undefined): boolean {
-  return !o || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+  if (!o) return true;
+  // Host is either a bracketed IPv6 literal ([::1]) or a normal colon-free host, optionally :port.
+  const m = /^https?:\/\/(\[[^\]]+\]|[^/:]+)(?::\d+)?$/.exec(o);
+  return !!m && isLocalOrPrivateHost(m[1]);
 }
 
 // SECURITY · anti-DNS-rebinding. CORS stops a cross-origin site READING our responses, but a rebinding
@@ -33,9 +61,7 @@ export function originAllowed(o: string | undefined): boolean {
 // header, still the ATTACKER'S DOMAIN. Legit requests always carry a localhost/LAN-IP Host, so allow
 // loopback + private-LAN IP hosts (covers phone access) and reject any domain-name Host outright.
 export function hostAllowed(hostHeader: string): boolean {
-  const h = (hostHeader || "").split(":")[0].replace(/^\[|\]$/g, "").toLowerCase();
-  if (h === "localhost" || h === "::1") return true;
-  return /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h);
+  return isLocalOrPrivateHost((hostHeader || "").split(":")[0]);
 }
 
 // Loopback position is NOT authorization on its own — a local non-browser process passes isLoopback

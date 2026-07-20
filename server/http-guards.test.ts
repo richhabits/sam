@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLoopback } from "./http-guards.ts";
+import { hostAllowed, isLoopback, originAllowed } from "./http-guards.ts";
 
 // This function is the gate on every privileged write in SAM — API keys, config, remote tokens,
 // the vault passphrase. It had no direct test before it was extracted from index.ts: the contract
@@ -61,5 +61,47 @@ describe("isLoopback", () => {
     expect(isLoopback(req("127.0.0.1"))).toBe(true);
     expect(isLoopback(req("127.0.0.2"))).toBe(false);
     expect(isLoopback(req("127.1.2.3"))).toBe(false);
+  });
+});
+
+describe("originAllowed — CORS gate (must match hostAllowed so phone access works)", () => {
+  it("allows localhost / loopback origins on any port (dev HUD included)", () => {
+    for (const o of ["http://localhost", "http://localhost:5273", "https://127.0.0.1:8787", "http://[::1]:8787"]) {
+      expect(originAllowed(o), o).toBe(true);
+    }
+  });
+
+  it("allows this machine's own private-LAN origin — the phone-access case that was broken", () => {
+    // The HUD served to a phone loads from the machine's LAN IP and sends it as the Origin. Before
+    // the fix this returned false and every API call from the phone was CORS-blocked ("crashed").
+    for (const o of ["http://192.168.0.252:8787", "http://10.0.0.5:8787", "http://172.16.4.4:8787", "http://169.254.1.2:8787"]) {
+      expect(originAllowed(o), o).toBe(true);
+    }
+  });
+
+  it("allows a missing Origin (non-browser / same-origin request)", () => {
+    expect(originAllowed(undefined)).toBe(true);
+    expect(originAllowed("")).toBe(true);
+  });
+
+  it("rejects public internet origins and lookalikes", () => {
+    for (const o of [
+      "http://evil.com",
+      "https://sam.attacker.com",
+      "http://192.168.0.252.evil.com",      // suffix trick — host is a domain, not the LAN IP
+      "http://localhost.evil.com",
+      "http://8.8.8.8",                      // public IP, not private-LAN
+      "http://172.15.0.1",                   // just below the 172.16/12 private block
+      "http://172.32.0.1",                   // just above it
+      "javascript://localhost",              // wrong scheme
+    ]) {
+      expect(originAllowed(o), o).toBe(false);
+    }
+  });
+
+  it("stays consistent with hostAllowed for the same host", () => {
+    for (const host of ["localhost", "127.0.0.1", "192.168.0.252", "10.1.2.3", "8.8.8.8", "evil.com"]) {
+      expect(originAllowed(`http://${host}:8787`), host).toBe(hostAllowed(`${host}:8787`));
+    }
   });
 });
