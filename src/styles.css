@@ -385,10 +385,19 @@ button { font-family: inherit; cursor: pointer; }
 /* ── PHONE — genuine mobile layout (portrait & PWA standalone) ── */
 @media (max-width: 560px) {
   .bar { padding: 8px 12px; gap: 6px; }
-  .bar-right { gap: 4px; }
-  /* keep only the essentials in the top bar; move the rest into menus */
+  /* One clean row — never let the controls wrap into a ragged vertical pile (the old bug). */
+  .bar-right { gap: 4px; flex-wrap: nowrap; }
+  /* keep only the essentials in the top bar; move the rest into menus. These use a `.bar-right`
+     ancestor so they beat the base `.mode-toggle`/`.pp`/`.biz` rules that are defined LATER in the
+     file — equal-specificity source order would otherwise let the base `display` win and un-hide them
+     (exactly what stranded Business/Personal, the persona picker and the brand select on phone). */
   .bar-right .icon-btn:not(.voice-btn):not([title*="History"]):not([title*="New chat"]) { display: none; }
-  .mode-toggle { display: none; }              /* Business/Personal lives in Settings on phone */
+  .bar-right .mode-toggle,           /* Business/Personal → lives in Settings on phone */
+  .bar-right .pp,                    /* persona picker → Settings */
+  .bar-right .biz { display: none; } /* brand select → Context panel */
+  /* Collapse the keys pill to just its icon so it can't shove the row wider. */
+  .bar-right .key-cta { font-size: 0; gap: 0; padding: 0 11px; }
+  .bar-right .key-cta > :not(svg) { display: none; }
   .wordmark { font-size: 16px; }
   .row { max-width: 100%; }
   .bubble { max-width: 88vw; font-size: 15px; }        /* comfortable tap-size text */
