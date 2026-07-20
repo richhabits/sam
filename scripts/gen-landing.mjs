@@ -50,9 +50,15 @@ for (const n of toolNames.slice().sort()) {
   const i = CATS.findIndex(([, , re]) => re.test(n));
   groups[i === -1 ? CATS.length - 1 : i].push(n);
 }
+// Show a taste per category (the strongest few), not the whole 184-chip dump — the count carries
+// "there's loads more". Kills the endless scroll; reads as a premium capability grid, not a list.
+const PER_CAT = 5;
 const does = CATS.map(([emoji, label], i) => {
   if (!groups[i].length) return "";
-  const chips = groups[i].map((n) => `<span>${n.replace(/_/g, " ")}</span>`).join("");
+  const shown = groups[i].slice(0, PER_CAT);
+  const extra = groups[i].length - shown.length;
+  const chips = shown.map((n) => `<span>${n.replace(/_/g, " ")}</span>`).join("")
+    + (extra > 0 ? `<span class="more">+${extra} more</span>` : "");
   return `<div class="cat"><div class="cat-h">${emoji} ${label} <em>${groups[i].length}</em></div><div class="does">${chips}</div></div>`;
 }).filter(Boolean).join("\n        ");
 
