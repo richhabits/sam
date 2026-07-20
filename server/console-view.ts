@@ -9,6 +9,7 @@
 import type { Issue } from "./issues.ts";
 import type { Influence } from "./knack.ts";
 import type { MetricView } from "./pulse.ts";
+import type { Ask } from "./ask.ts";
 
 type Tone = "ok" | "warn" | "bad" | "muted";
 interface Tile { label: string; value: string; tone: Tone }
@@ -20,7 +21,7 @@ export interface KnackView { enabled: boolean; recent: Influence[] }
 
 /** Build the Console page from a snapshot. Pure — no I/O, so it's directly testable. `knack` is
  *  defaulted so older callers/tests keep working; the route passes the live influence log. */
-export function renderConsole(pulse: MetricView[], issues: Issue[], latencySamples: number[], nowIso: string, knack: KnackView = { enabled: false, recent: [] }): string {
+export function renderConsole(pulse: MetricView[], issues: Issue[], latencySamples: number[], nowIso: string, knack: KnackView = { enabled: false, recent: [] }, asks: Ask[] = []): string {
   const sum = (name: string) => pulse.filter((m) => m.name === name).reduce((n, m) => n + (m.value ?? 0), 0);
   const failures = sum("brain.failures");
   const breakerOpen = sum("breaker.open");
@@ -40,6 +41,7 @@ export function renderConsole(pulse: MetricView[], issues: Issue[], latencySampl
     { label: "Latency p50 / p95", value: `${p50} / ${p95} ms`, tone: p95 > 8000 ? "warn" : "ok" },
     { label: "Issues", value: fmt(issues.length), tone: issues.length > 0 ? "warn" : "ok" },
     { label: "Knack applied", value: knack.enabled ? fmt(sum("knack.applied")) : "off", tone: "muted" },
+    { label: "Awaiting your OK", value: fmt(asks.length), tone: asks.length > 0 ? "warn" : "muted" },
   ];
 
   const tileHtml = tiles.map((t) => `<div class="tile ${t.tone}"><div class="v">${esc(t.value)}</div><div class="l">${esc(t.label)}</div></div>`).join("");
@@ -56,6 +58,12 @@ export function renderConsole(pulse: MetricView[], issues: Issue[], latencySampl
       ? knack.recent.slice(-12).reverse().map((k) => `<tr><td class="msg">${esc(k.pattern)} → ${esc(k.value)}</td><td class="n">${k.confidence.toFixed(2)}</td><td class="at">${esc(k.at.slice(11, 19))}</td></tr>`).join("")
       : `<tr><td colspan="3" class="note">On — no learned pattern has changed a decision yet.</td></tr>`;
 
+  // The Ask — risky actions SAM paused while you were away, awaiting your explicit OK. Nothing here
+  // has run; each safe-defaults to DEFERRED (not performed) if it isn't approved before its timeout.
+  const askHtml = asks.length
+    ? asks.map((a) => `<tr><td class="msg">${esc(a.action)} <span class="pill ${a.blast === "dangerous" ? "bad" : "warn"}">${esc(a.blast)}</span></td><td class="n">${esc(a.source)}</td><td class="at">${esc(new Date(a.raisedAt).toISOString().slice(11, 19))}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="clear">Nothing waiting — no paused actions.</td></tr>`;
+
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SAM · Console</title><style>
 :root{--bg:#faf7f2;--surface:#fff;--text:#1c1712;--muted:#8a8178;--border:#e7e0d6;--accent:#e8673a;--ok:#22a06b;--warn:#c9820b;--bad:#e04a4a}
@@ -71,10 +79,12 @@ h1{font-size:18px;margin:0 0 2px}.sub{color:var(--muted);font-size:13px;margin-b
 table{width:100%;border-collapse:collapse;font-size:13px}td{padding:6px 4px;border-top:1px solid var(--border);vertical-align:top}
 td.msg{width:100%}td.n{color:var(--muted);white-space:nowrap;text-align:right}td.at{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 td.clear{color:var(--ok);text-align:center;border:0}td.note{color:var(--muted);text-align:center;border:0}
+.pill{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;margin-left:6px}.pill.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}.pill.bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent)}
 svg{width:100%;height:48px;display:block}.spark path{fill:none;stroke:var(--accent);stroke-width:2}
 </style></head><body>
 <h1>SAM · Console</h1><div class="sub">Local self-observability · ${esc(nowIso.slice(0, 19).replace("T", " "))} · reads on-device only, nothing leaves this machine</div>
 <div class="tiles">${tileHtml}</div>
+<div class="card"><h2>The Ask — awaiting your OK</h2><table><tbody>${askHtml}</tbody></table></div>
 <div class="card"><h2>Brain latency (recent)</h2>${spark}</div>
 <div class="card"><h2>The Black Box — recent issues</h2><table><tbody>${issueHtml}</tbody></table></div>
 <div class="card"><h2>The Knack — learned influence</h2><table><tbody>${knackHtml}</tbody></table></div>

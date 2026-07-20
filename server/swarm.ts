@@ -7,6 +7,7 @@
 
 import { runModel, type Tier } from "./models.ts";
 import { runAgent, resumeAgent, type AgentResult } from "./agent.ts";
+import { askEnabled, raiseAsk, resolveAsk } from "./ask.ts";
 import { SPECIALISTS, NINJAS, } from "./agents.ts";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -27,6 +28,7 @@ export interface SwarmAgent {
   pendingTool?: string;
   pendingInput?: any;
   pendingPreview?: string;
+  askId?: string;             // set when the Ask surfaced this pause out-of-band (SAM_ASK)
   transcript?: string;
   trace?: string[];
 }
@@ -156,6 +158,13 @@ function handleAgentResult(swarmId: string, agentId: string, result: AgentResult
       a.pendingActivity = result.activity;
       a.transcript = result.transcript;
       a.trace = result.trace;
+      // The Ask: a paused swarm agent used to hang forever with no ping. Surface it out-of-band and
+      // let the timeout sweep (index.ts) safe-default it via approveAgent(false) if unanswered.
+      if (askEnabled() && result.tool) {
+        a.askId = raiseAsk({ pending: { tool: result.tool, input: result.input, transcript: result.transcript, trace: result.trace, activity: result.activity },
+          tier: s.tier, source: "swarm", why: `a background specialist (${a.name}) needs this to continue`,
+          swarmRef: { swarmId, agentId } }).id;
+      }
     }
   });
   checkSwarmCompletion(swarmId);
@@ -191,10 +200,13 @@ export async function approveAgent(swarmId: string, agentId: string, approved: b
   const a = s.agents.find((x) => x.id === agentId);
   if (a?.status !== "paused") throw new Error("Agent not paused");
 
+  if (a.askId) resolveAsk(a.askId, approved);   // keep the Ask record in sync (no double-handling by the sweep)
+
   updateSwarm(swarmId, (sw) => {
     const ag = sw.agents.find((x) => x.id === agentId)!;
     ag.status = "running";
     ag.pendingTool = undefined;
+    ag.askId = undefined;
   });
 
   const spec = byId(a.specialistId)!;

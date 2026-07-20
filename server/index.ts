@@ -9,6 +9,7 @@ import os from "node:os";
 import { timingSafeEqual, randomBytes, createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
+import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -348,6 +349,33 @@ if (!BENCH_MODE) setTimeout(async () => {
   } catch { /* offline or not a clone — no drama */ }
 }, 5000);
 
+// The Ask — how an out-of-band approval request reaches the user (their OWN channels only). The
+// Console card (openAsks) is the always-available local fallback if none of these are configured.
+wireAskDelivery((a: Ask) => {
+  const title = "SAM — approval needed";
+  const body = `${a.action} · ${a.blast}. Approve in the app, or it's deferred (not done).`;
+  desktopNotify(title, body);
+  void pushNotify(title, body, `/?ask=${a.id}`);
+  if (mailerConfigured() && ownerEmail()) {
+    const mins = Math.round((a.expiresAt - a.raisedAt) / 60_000);
+    void sendMail(ownerEmail(), title,
+      `SAM wanted to run an action while you were away and needs your OK — nothing has run:\n\n` +
+      `  What:  ${a.action}\n  Why:   ${a.why}\n  Risk:  ${a.blast}\n  From:  ${a.source}\n\n` +
+      `Open SAM and approve it within ~${mins} min, or it is DEFERRED — not performed.`);
+  }
+});
+
+// Timeout driver: expire un-answered Asks (SAFE default → deferred, never auto-approved) and let a
+// paused swarm agent finish cleanly instead of hanging forever. Cheap 60s tick; unref'd so it never
+// keeps the process alive.
+if (!BENCH_MODE) setInterval(() => {
+  try {
+    for (const a of sweepAsks()) {
+      if (a.swarmRef) void approveAgent(a.swarmRef.swarmId, a.swarmRef.agentId, false).catch(() => {/* the swarm may be gone */});
+    }
+  } catch { /* best-effort */ }
+}, 60_000).unref?.();
+
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
 if (!BENCH_MODE) startDropWatcher(async (d) => {
   console.log(`  📱 drop received · ${d.file} (${d.kind})`);
@@ -356,10 +384,14 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
     const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
     // iOS companion defaults to NO-DANGEROUS (swarm=true) — an unattended phone drop can never
     // trigger a dangerous tool (send/delete/push/shell) without the owner at the machine.
-    const r = await runAgent(system, d.content, (process.env.DEFAULT_TIER as Tier) || "free", undefined, false, true);
+    const tier = (process.env.DEFAULT_TIER as Tier) || "free";
+    const r = await runAgent(system, d.content, tier, undefined, false, true);
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
       desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
+    } else {
+      // A phone drop hit a risky action — deliver an Ask instead of silently dropping it.
+      handleUnattended(r, { tier, source: "ios", why: `an iOS drop (“${d.file}”) needs this to continue` });
     }
   } catch { /* best-effort — nothing downstream depends on this succeeding */ }
 });
@@ -367,12 +399,17 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
 // Scheduler — Recurring background tasks
 if (!BENCH_MODE) startScheduler(async (command: string) => {
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
-  const r = await runAgent(system, command, (process.env.DEFAULT_TIER as Tier) || "free");
+  const tier = (process.env.DEFAULT_TIER as Tier) || "free";
+  const r = await runAgent(system, command, tier);
   if (r.kind === "final" && r.text) {
     desktopNotify("SAM — Scheduled Task", r.text); void pushNotify("SAM — scheduled task", r.text);
     return r.text;
   }
-  return "Finished.";
+  // A scheduled task hit a risky action with no one watching. This used to return "Finished." —
+  // reported as success while nothing ran (SAM's #1 failure class). The Ask delivers it out-of-band
+  // and SAFE-DEFAULTS: not performed unless approved within the timeout.
+  const a = handleUnattended(r, { tier, source: "scheduler", why: `a scheduled task (“${command}”) needs this to continue` });
+  return a.kind !== "none" ? a.text : "Finished.";
 });
 
 // Proactive layer: SAM reaches out first — a once-a-day morning brief (composed
@@ -402,7 +439,11 @@ startProactive(async () => {
     `\n\nSynthesise all of this into a single, warm, punchy morning brief. Lead with the most important thing. Don't just list — weave it into a narrative. If free AI capacity is thin, mention it and the one key to add.`;
   try {
     const qvec = await embedOne(prompt, true);
-    const r = await runAgent(system, prompt, (process.env.DEFAULT_TIER as Tier) || "free", selectTools(qvec, 6));
+    const tier = (process.env.DEFAULT_TIER as Tier) || "free";
+    const r = await runAgent(system, prompt, tier, selectTools(qvec, 6));
+    // The morning brief shouldn't act riskily unattended — but if a tool it reached for needs
+    // approval, surface it as an Ask rather than silently dropping the result.
+    handleUnattended(r, { tier, source: "proactive", why: "your morning brief reached for an action that needs approval" });
     const brief = r.kind === "final" ? (r.text || "") : "";
     // Email the brief to the owner too, if SAM's email is set up (fire-and-forget).
     if (brief && mailerConfigured() && ownerEmail()) void sendMail(ownerEmail(), "☀️ SAM — your morning brief", brief);
@@ -1264,7 +1305,35 @@ app.get("/api/console", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Console is loopback + Handshake only" }); return; }
   const samples = samplesOf("brain.latency_ms", { tier: "free" });
   const s = samples.length ? samples : samplesOf("brain.latency_ms", { tier: "local" });
-  res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString(), { enabled: knackEnabled(), recent: recentInfluences() }));
+  res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString(), { enabled: knackEnabled(), recent: recentInfluences() }, openAsks()));
+});
+
+// The Ask — the still-open out-of-band approval requests (loopback + Handshake, like the Console).
+app.get("/api/asks", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  res.json({ asks: openAsks() });
+});
+
+// Approve or decline an Ask. SAFE by construction: nothing runs unless this fires with approved:true
+// on a still-open Ask. A swarm Ask resumes through the swarm's own path; any other runs the parked
+// action now (fire-and-forget — the result surfaces via a notification).
+app.post("/api/ask/:id", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const ask = getAsk(req.params.id);
+  if (!ask) { res.status(404).json({ error: "no such Ask — it may have expired (deferred)" }); return; }
+  const approved = !!req.body?.approved;
+  if (ask.swarmRef) {
+    void approveAgent(ask.swarmRef.swarmId, ask.swarmRef.agentId, approved).catch(() => {/* resolves the Ask internally */});
+    res.json({ status: approved ? "approved" : "denied" }); return;
+  }
+  const r = resolveAsk(req.params.id, approved);
+  if (r?.action) {
+    const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
+    void resumeAgent(system, r.action.transcript, r.action.tier as Tier, true, r.action.tool, r.action.input, r.action.trace)
+      .then((rr) => { if (rr.kind === "final" && rr.text) { desktopNotify("SAM — approved action done", rr.text); void pushNotify("SAM", rr.text); } })
+      .catch(() => {/* approved action failed; surfaced via notification only */});
+  }
+  res.json({ status: r?.ask.status ?? "gone" });
 });
 
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is
