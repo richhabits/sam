@@ -38,10 +38,14 @@ if (typeof location !== "undefined" && location.protocol.startsWith("http") && "
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {/* browser API unavailable in this context — optional enhancement */}));
 }
 
-// ?app=studio (dedicated Electron window or a tab) → the Creative Space, else the chat.
+// ?app=studio → the Creative Space; ?app=flipit → the £5 money desk; else the chat.
+// Each is its own full-view entity (dedicated Electron window or a browser tab).
 const StudioView = lazy(() => import("./StudioView"));
-const isStudio = new URLSearchParams(location.search).get("app") === "studio";
+const FlipItView = lazy(() => import("./FlipItView"));
+const whichApp = new URLSearchParams(location.search).get("app");
 
 createRoot(document.getElementById("root")!).render(
-  isStudio ? <Suspense fallback={null}><StudioView /></Suspense> : <App />
+  whichApp === "studio" ? <Suspense fallback={null}><StudioView /></Suspense>
+  : whichApp === "flipit" ? <Suspense fallback={null}><FlipItView /></Suspense>
+  : <App />
 );

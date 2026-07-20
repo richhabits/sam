@@ -27,7 +27,6 @@ const LearnedPane = lazy(() => import("./LearnedPane"));
 const WorkflowsPane = lazy(() => import("./WorkflowsPane"));
 const YourSam = lazy(() => import("./YourSam"));
 const SafePane = lazy(() => import("./SafePane"));
-const FlipItPane = lazy(() => import("./FlipItPane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
 
 interface Profile { name: string; about?: string; language?: string }
@@ -306,7 +305,6 @@ export default function App() {
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
   const [yourSamOpen, setYourSamOpen] = useState(false);
   const [safeOpen, setSafeOpen] = useState(false);
-  const [flipOpen, setFlipOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
@@ -361,6 +359,11 @@ export default function App() {
     const sd = (window as any).samDesktop;
     if (sd?.openStudio) sd.openStudio();                              // dedicated Electron window
     else window.open(location.pathname + "?app=studio", "_blank");   // browser tab fallback
+  }
+  function openFlipit() {
+    const sd = (window as any).samDesktop;
+    if (sd?.openFlipit) sd.openFlipit();                              // dedicated Electron window (when wired)
+    else window.open(location.pathname + "?app=flipit", "_blank");   // its own full view — like Studio
   }
   // Open a server-served local view (the Console / the Scope). On file:// (packaged Electron) the
   // page lives on the local server's origin, not the app bundle, so point at it explicitly.
@@ -1157,7 +1160,7 @@ export default function App() {
             );
           })()}
           <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
-          <button type="button" className="icon-btn" onClick={() => setFlipOpen(true)} title="Your £5 trading rig">💷 FLIP IT</button>
+          <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk">💷 FLIP IT</button>
           <UpdateButton />
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
         </div>
@@ -1854,7 +1857,7 @@ export default function App() {
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "lock", label: "The Safe (encrypted secrets)", run: () => setSafeOpen(true) },
-          { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => setFlipOpen(true) },
+          { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
@@ -1925,7 +1928,6 @@ export default function App() {
         {workflowsOpen && <WorkflowsPane onClose={() => setWorkflowsOpen(false)} />}
         {yourSamOpen && <YourSam onClose={() => setYourSamOpen(false)} />}
         {safeOpen && <SafePane onClose={() => setSafeOpen(false)} />}
-        {flipOpen && <FlipItPane onClose={() => setFlipOpen(false)} />}
         {doctorOpen && <DoctorPane onClose={() => setDoctorOpen(false)} />}
       </Suspense>
 
