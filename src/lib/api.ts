@@ -242,3 +242,10 @@ export const standingArm = (specialistId: string, task: string, cron: string) =>
 export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });
 export const standingRearm = (id: string) => post("/api/standing/rearm", { id });
 export const standingRemove = (id: string) => post("/api/standing/remove", { id });
+
+// ── the Chime — alarms + named timers ──
+export const getChimes = () => fetch("/api/chimes").then((r) => r.json());
+export const setChimeTimer = (label: string, afterMs: number) => post("/api/chime", { kind: "timer", label, afterMs });
+export const setChimeAlarm = (label: string, at: string, recur?: string) => post("/api/chime", { kind: "alarm", label, at, recur });
+export const cancelChimeApi = (id: string) => post("/api/chime/cancel", { id });
+export const snoozeChimeApi = (id: string, ms?: number) => post("/api/chime/snooze", { id, ms });
