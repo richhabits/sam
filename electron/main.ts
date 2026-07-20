@@ -208,20 +208,36 @@ app.whenReady().then(() => {
   };
   try { createWindow(); } catch (e) { console.error("createWindow:", e); }
   try { createTray(); } catch (e) { console.error("createTray:", e); }
-  // Updates. electron-updater's silent self-update works on Windows even unsigned. On macOS it needs
-  // a SIGNED zip target (Squirrel.Mac) — an UNSIGNED mac build throws "ZIP file not provided" as an
-  // unhandledRejection on every launch that finds an update. So on macOS we skip it and use the
-  // GitHub-release notifier (a one-click Download dialog) instead — no crash, and it actually works.
-  // (When the mac build is signed + ships a zip, re-enable electron-updater here.)
+  // Updates. Silent self-update on all three platforms now: Windows/Linux via electron-updater as
+  // before, and macOS too — the mac build is signed + notarized and ships a `zip` target (Squirrel.Mac
+  // needs it). It downloads quietly and installs on quit. The `error` handler is the safety net: if a
+  // release is ever missing its mac zip (e.g. an old build), electron-updater emits `error` rather than
+  // throwing, and we fall back to the GitHub-release notifier — a one-click Download dialog. So no crash
+  // and no dead-end, on any platform, ever. (The .dmg is untouched — updates ride the zip, so the
+  // intentionally-unstapled dmg wrapper can't desync the update channel.)
   setTimeout(() => {
     void (async () => {
-      if (process.platform === "darwin") { void checkForUpdates(); return; }
       try {
         const { autoUpdater } = await import("electron-updater");
         autoUpdater.autoDownload = true;
         autoUpdater.autoInstallOnAppQuit = true;   // downloads quietly, installs on quit
         if (process.env.SAM_UPDATE_CHANNEL === "beta") { autoUpdater.channel = "beta"; autoUpdater.allowPrerelease = true; }   // canary channel
-        autoUpdater.on("error", () => void checkForUpdates());   // any hiccup → notifier
+        autoUpdater.on("error", () => void checkForUpdates());   // any hiccup (incl. a mac release with no zip) → notifier
+        // Better UX: once the new version is downloaded, offer to apply it NOW instead of only on the
+        // next quit (which some users never do). Their choice — "Later" still installs silently on quit.
+        autoUpdater.on("update-downloaded", (info: { version?: string }) => {
+          void (async () => {
+            const { response } = await dialog.showMessageBox({
+              type: "info",
+              title: "Update ready",
+              message: `SAM ${info?.version || ""} is ready to install`.replace(/\s+/g, " ").trim(),
+              detail: "Restart now to get it, or keep working — it'll apply next time you quit. Your data stays put.",
+              buttons: ["Restart now", "Later"],
+              defaultId: 0, cancelId: 1,
+            });
+            if (response === 0) autoUpdater.quitAndInstall();
+          })();
+        });
         await autoUpdater.checkForUpdatesAndNotify();
       } catch { void checkForUpdates(); }
     })();
