@@ -2037,3 +2037,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 /* — Cards & drawers: a touch more air + confident corners (Donda calm, not busy). — */
 .drawer-title { font-size: 19px; }
 .drawer-sub { line-height: 1.45; }
+
+/* — Frame polish: the chat surfaces you touch most. — */
+.send { width: 42px; height: 42px; border-radius: 13px; }               /* fuller tap target (Apple ≥44 feel) */
+.icon-btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.row.user .bubble { box-shadow: 0 2px 10px rgba(0,0,0,.05); }           /* softer, more premium lift */
+.composer-inner { box-shadow: 0 12px 44px rgba(0,0,0,.07); }            /* deeper resting float */
+.who { letter-spacing: .015em; }
