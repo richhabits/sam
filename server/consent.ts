@@ -27,6 +27,7 @@ export type Behavior =
   | "reminders"
   | "workflow-schedule"
   | "standing-crew"
+  | "cameras"
   | "learn-preferences";
 
 export const BEHAVIORS: { id: Behavior; label: string; detail: string; dangerousCapable: boolean }[] = [
@@ -35,6 +36,7 @@ export const BEHAVIORS: { id: Behavior; label: string; detail: string; dangerous
   { id: "reminders", label: "Reminders", detail: "Notify you when a reminder you set comes due.", dangerousCapable: false },
   { id: "workflow-schedule", label: "Run saved workflows on schedule", detail: "Let workflows you've saved run on their schedule. A workflow that hits a dangerous step PAUSES for your confirmation — it never runs a dangerous action unattended.", dangerousCapable: true },
   { id: "standing-crew", label: "Standing Crew (background specialists)", detail: "Let specialists you've armed run their task in the background on a schedule. A run that needs a risky/destructive step PAUSES for your approval via the Ask — it never runs a dangerous action unattended.", dangerousCapable: true },
+  { id: "cameras", label: "Cameras (local only)", detail: "Let SAM show you cameras on your own network — a nursery, dog, or doorway cam. Local-only and enforced: SAM refuses any camera that isn't on your network, records nothing, uploads nothing, and never stores camera credentials. Cloud cams (Ring) need your login and aren't wired.", dangerousCapable: false },
   { id: "learn-preferences", label: "Learn my preferences", detail: "Notice durable patterns (wording, preferred brains, formats) and adapt. 100% on-device — nothing learned about you ever leaves the machine.", dangerousCapable: false },
 ];
 

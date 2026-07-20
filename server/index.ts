@@ -86,7 +86,9 @@ import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
-import { bind as routineBind, unbind as routineUnbind, list as routineList } from "./routines.ts";
+import { bind as routineBind, unbind as routineUnbind, list as routineList, matchRoutine, routinesEnabled, routineFor } from "./routines.ts";
+import { getWorkflow, runWorkflow as runWorkflowFor, recordRun as recordWorkflowRunRec } from "./workflows.ts";
+import { camerasEnabled, list as listCameras, add as addCamera, remove as removeCamera } from "./cameras.ts";
 import { peopleContext, } from "./people.ts";
 import { pushNotify, } from "./push.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
@@ -777,6 +779,42 @@ app.post("/api/stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   const send = (e: any) => res.write(`data: ${JSON.stringify(e)}\n\n`);
 
+  // ── Routines: a spoken/typed phrase bound to a saved workflow runs it directly, ahead of the
+  //    brain. Gated by SAM_ROUTINES; the workflow's own pause-on-dangerous contract is preserved
+  //    (execTool refuses unsafe tools here — nothing risky runs unattended from a phrase). ──
+  if (routinesEnabled()) {
+    const wfId = matchRoutine(message);
+    const wf = wfId ? getWorkflow(wfId) : null;
+    if (wf) {
+      try {
+        const phrase = routineFor(wf.id)?.phrases?.[0] || wf.name;
+        send({ type: "route", tier: "local", klass: "routine", reason: `routine · “${phrase}” → ${wf.name}` });
+        const { toolByName } = await import("./tools.ts");
+        const run = await runWorkflowFor(wf, {
+          now: new Date().toISOString(),
+          execTool: async (tool, input) => {
+            const t = toolByName(tool);
+            if (!t) return `(no such tool: ${tool})`;
+            if (!t.safe) return `(“${tool}” needs your approval — run it with SAM open)`;
+            try { return await t.run(input); } catch (e: any) { return `(error: ${e?.message || e})`; }
+          },
+          execBrain: async (prompt) => (await runModel((process.env.DEFAULT_TIER as Tier) || "free", "You are SAM, running a saved routine step. Do this step and hand back a tight result.", prompt)).text,
+        });
+        recordWorkflowRunRec(wf.id, run);
+        const summary = `▶ Ran your **${wf.name}** routine (${run.results?.length ?? 0} steps)${run.status === "paused" ? " — paused at a step that needs your OK." : run.status === "error" ? " — hit an error." : "."}`;
+        send({ type: "token", t: summary });
+        send({ type: "done", text: summary, provider: "routine", trace: [] });
+        send({ type: "end", projectId: projectId || "" });
+        return res.end();
+      } catch (e: any) {
+        send({ type: "token", t: `Couldn't run that routine: ${e?.message || e}` });
+        send({ type: "done", text: "", provider: "routine", trace: [] });
+        send({ type: "end", projectId: projectId || "" });
+        return res.end();
+      }
+    }
+  }
+
   try {
     // Setup (embed/recall/routing) is INSIDE the try — a throw here (e.g. an embed
     // provider blowing up) must still send done+end, or the client's SSE reader hangs.
@@ -1436,6 +1474,31 @@ app.post("/api/routines/bind", (req, res) => {
 app.post("/api/routines/unbind", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
   routineUnbind(req.body?.workflowId); res.json({ ok: true });
+});
+
+// The Watch — local-only cameras. Crown-jewel routes: loopback + Handshake only. Double-gated
+// (SAM_CAMERAS flag + "cameras" consent) before anything can be added; listing reports the gate state
+// so the UI can guide the user. cameras.ts enforces the local-only url guard — no public host ever.
+function camerasReady(): { ok: boolean; why?: string } {
+  if (!camerasEnabled()) return { ok: false, why: "Cameras are off — set SAM_CAMERAS=1 to enable the feature." };
+  if (!consentEnabled("cameras")) return { ok: false, why: "Turn on “Cameras (local only)” in what SAM can do on its own." };
+  return { ok: true };
+}
+app.get("/api/cameras", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const gate = camerasReady();
+  res.json({ on: gate.ok, why: gate.why, cameras: listCameras() });
+});
+app.post("/api/cameras", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const gate = camerasReady();
+  if (!gate.ok) { res.status(403).json({ error: gate.why }); return; }
+  const r = addCamera({ name: req.body?.name, location: req.body?.location, kind: req.body?.kind, url: req.body?.url });
+  r.ok ? res.json({ camera: r.camera }) : res.status(400).json({ error: r.reason });
+});
+app.post("/api/cameras/remove", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  removeCamera(req.body?.id) ? res.json({ ok: true }) : res.status(404).json({ error: "no such camera" });
 });
 
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is

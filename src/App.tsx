@@ -29,6 +29,7 @@ const YourSam = lazy(() => import("./YourSam"));
 const SafePane = lazy(() => import("./SafePane"));
 const StandingPane = lazy(() => import("./StandingPane"));
 const ChimePane = lazy(() => import("./ChimePane"));
+const CameraPane = lazy(() => import("./CameraPane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
 
 interface Profile { name: string; about?: string; language?: string }
@@ -309,6 +310,7 @@ export default function App() {
   const [safeOpen, setSafeOpen] = useState(false);
   const [standingOpen, setStandingOpen] = useState(false);
   const [chimeOpen, setChimeOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
@@ -1231,6 +1233,7 @@ export default function App() {
               <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><Icon name="book" size={16} /><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Your sources</span></button>
               <button type="button" className="pop-opt" onClick={() => { setStandingOpen(true); setSettingsOpen(false); }}><Icon name="team" size={16} /><span className="pop-opt-name">Standing Crew</span><span className="pop-opt-sub">Background agents</span></button>
               <button type="button" className="pop-opt" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}><span style={{ fontSize: 16, width: 16, textAlign: "center" }}>⏰</span><span className="pop-opt-name">Alarms &amp; Timers</span><span className="pop-opt-sub">Rings anytime</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setCameraOpen(true); setSettingsOpen(false); }}><Icon name="camera" size={16} /><span className="pop-opt-name">Cameras</span><span className="pop-opt-sub">Local only</span></button>
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
             </div>
             <div className="pop-title">Help</div>
@@ -1936,6 +1939,7 @@ export default function App() {
         {safeOpen && <SafePane onClose={() => setSafeOpen(false)} />}
         {standingOpen && <StandingPane onClose={() => setStandingOpen(false)} />}
         {chimeOpen && <ChimePane onClose={() => setChimeOpen(false)} />}
+        {cameraOpen && <CameraPane onClose={() => setCameraOpen(false)} />}
         {doctorOpen && <DoctorPane onClose={() => setDoctorOpen(false)} />}
       </Suspense>
 

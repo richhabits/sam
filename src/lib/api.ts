@@ -249,3 +249,8 @@ export const setChimeTimer = (label: string, afterMs: number) => post("/api/chim
 export const setChimeAlarm = (label: string, at: string, recur?: string) => post("/api/chime", { kind: "alarm", label, at, recur });
 export const cancelChimeApi = (id: string) => post("/api/chime/cancel", { id });
 export const snoozeChimeApi = (id: string, ms?: number) => post("/api/chime/snooze", { id, ms });
+
+// ── the Watch — local-only cameras ──
+export const getCameras = () => fetch("/api/cameras").then((r) => r.json());
+export const addCameraApi = (c: { name: string; location?: string; kind: "snapshot" | "rtsp" | "ring"; url?: string }) => post("/api/cameras", c);
+export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id });
