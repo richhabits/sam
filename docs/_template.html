@@ -23,7 +23,7 @@
        site and the app can never drift on what a glyph looks like. Stroke set once, here. */
     .i { width: 1.05em; height: 1.05em; vertical-align: -0.16em; flex: none; fill: none;
          stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    h3 .i, .cat-h .i { width: 1.15em; height: 1.15em; margin-right: .5em; color: var(--ember, #C2410C); }
+    h3 .i, .cat-h .i { width: 1.45em; height: 1.45em; margin-right: .5em; color: var(--ember, #C2410C); }
     .fr-os .i, .does .i { opacity: .75; }
   </style>
 </head>
@@ -128,6 +128,11 @@
      in a narrow column reads cramped rather than confident — this is the "speak louder" fix. */
   .hero-top{padding:52px 0 0}
   .hero-top h1{margin:0}
+  /* the robot, presented as a premium rounded app-icon tile (handles the white bg, reads "it's an app") */
+  .hero-bot{width:84px; height:84px; border-radius:21px; display:block; margin-bottom:24px;
+    box-shadow:0 10px 34px rgba(217,83,31,.28), 0 1px 0 rgba(243,237,228,.08) inset;
+    border:1px solid rgba(243,237,228,.10)}
+  @media(max-width:640px){.hero-bot{width:72px; height:72px; border-radius:18px; margin-bottom:18px}}
   .hero{padding:28px 0 44px; display:grid; grid-template-columns:1fr .9fr; gap:64px; align-items:start}
   @media(max-width:860px){.hero{grid-template-columns:1fr; gap:38px; padding:44px 0 24px}}
   .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--ember); display:inline-flex; align-items:center; gap:9px; margin-bottom:26px}
@@ -272,6 +277,7 @@
 
     <!-- HERO -->
     <div class="hero-top">
+      <img class="hero-bot" src="sam-icon.png" srcset="sam-icon.png 1x, sam-icon-lg.png 2x" alt="SAM" width="84" height="84">
       <span class="eyebrow"><span class="pulse"></span>Free · Private · Mac · Windows · Linux</span>
       <h1>Your own AI. It doesn't just answer — <span class="em">it handles it.</span></h1>
     </div>
