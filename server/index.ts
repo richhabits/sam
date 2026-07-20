@@ -84,6 +84,7 @@ import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
+import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { peopleContext, } from "./people.ts";
 import { pushNotify, } from "./push.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
@@ -370,6 +371,12 @@ if (!BENCH_MODE) setInterval(() => {
     }
   } catch { /* best-effort */ }
 }, 60_000).unref?.();
+
+// The Standing Crew (SAM_STANDING, default off) — fire any armed background specialists whose cron is
+// due. runDue is idempotent + self-claiming + double-gated (flag AND the "standing-crew" consent);
+// a risky action it triggers comes back pending and is deferred, never run unattended.
+if (!BENCH_MODE) setInterval(() => { try { if (standingEnabled()) void runStandingDue(new Date()); } catch { /* best-effort */ } }, 60_000).unref?.();
+if (standingEnabled()) console.log(`  🛰️ standing     · ${standingList().filter((a) => a.armed).length} armed`);
 
 // iOS Companion — watch for iCloud Drop folder notes from the user's iPhone.
 if (!BENCH_MODE) startDropWatcher(async (d) => {
@@ -1360,6 +1367,30 @@ app.get("/api/flipit", (req, res) => {
     days, trades, target: 60, tradeTarget: 20,
     holdings, breadth: market?.breadth ?? null, movers: market?.movers ?? null,
   });
+});
+
+// The Standing Crew — arm/disarm/list background specialists (loopback + Handshake; privileged control).
+app.get("/api/standing", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  res.json({ list: standingList(), on: standingEnabled() });
+});
+app.post("/api/standing/arm", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const { specialistId, task, cron } = req.body || {};
+  try { res.json({ agent: standingArm(specialistId, task, cron) }); }
+  catch (e: any) { res.status(400).json({ error: e?.message || "couldn't arm that agent" }); }
+});
+app.post("/api/standing/disarm", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const a = standingDisarm(req.body?.id); a ? res.json({ agent: a }) : res.status(404).json({ error: "no such standing agent" });
+});
+app.post("/api/standing/rearm", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const a = standingRearm(req.body?.id); a ? res.json({ agent: a }) : res.status(404).json({ error: "no such standing agent" });
+});
+app.post("/api/standing/remove", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  standingRemove(req.body?.id) ? res.json({ ok: true }) : res.status(404).json({ error: "no such standing agent" });
 });
 
 // The Scope — the live view. /api/scope is the compact JSON the page polls every ~1.5s; the view is

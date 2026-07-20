@@ -26,6 +26,7 @@ export type Behavior =
   | "file-watch-suggestions"
   | "reminders"
   | "workflow-schedule"
+  | "standing-crew"
   | "learn-preferences";
 
 export const BEHAVIORS: { id: Behavior; label: string; detail: string; dangerousCapable: boolean }[] = [
@@ -33,6 +34,7 @@ export const BEHAVIORS: { id: Behavior; label: string; detail: string; dangerous
   { id: "file-watch-suggestions", label: "File-watch suggestions", detail: "When something lands in a watched folder, offer a suggestion card (e.g. “summarise this contract?”). Only a suggestion — nothing runs until you accept.", dangerousCapable: false },
   { id: "reminders", label: "Reminders", detail: "Notify you when a reminder you set comes due.", dangerousCapable: false },
   { id: "workflow-schedule", label: "Run saved workflows on schedule", detail: "Let workflows you've saved run on their schedule. A workflow that hits a dangerous step PAUSES for your confirmation — it never runs a dangerous action unattended.", dangerousCapable: true },
+  { id: "standing-crew", label: "Standing Crew (background specialists)", detail: "Let specialists you've armed run their task in the background on a schedule. A run that needs a risky/destructive step PAUSES for your approval via the Ask — it never runs a dangerous action unattended.", dangerousCapable: true },
   { id: "learn-preferences", label: "Learn my preferences", detail: "Notice durable patterns (wording, preferred brains, formats) and adapt. 100% on-device — nothing learned about you ever leaves the machine.", dangerousCapable: false },
 ];
 
