@@ -10,10 +10,16 @@ function wakeGreeting(name?: string): string {
   return pool[0];
 }
 
+type Size = "mini" | "full";
+
 export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: (q: string) => Promise<string>; onClose: () => void }) {
   const [state, setState] = useState<State>("connecting");
   const [heard, setHeard] = useState("");
   const [said, setSaid] = useState("");
+  // Compact by default — Romeo's rule: it must NOT swallow the whole screen while talking.
+  // Persisted so a chosen size sticks. "full" is opt-in via the expand button.
+  const [size, setSize] = useState<Size>(() => ((localStorage.getItem("sam.voice.size") as Size) === "full" ? "full" : "mini"));
+  const setSizeP = (s: Size) => { setSize(s); try { localStorage.setItem("sam.voice.size", s); } catch { /* private mode — non-fatal */ } };
   const active = useRef(true);
   const mouthRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<State>(state);
@@ -83,6 +89,13 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
 
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
+      // Talk first — the moment the channel is live, SAM greets instead of waiting to be spoken to.
+      dc.addEventListener("open", () => {
+        try {
+          dc.send(JSON.stringify({ type: "response.create", response: { modalities: ["audio", "text"], instructions: `Greet the user warmly and briefly, then wait. Say exactly: "${wakeGreeting(name)}"` } }));
+          setState("speaking");
+        } catch { /* if the greet send fails we still fall through to listening */ }
+      });
       dc.addEventListener("message", (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === "response.audio_transcript.delta") {
@@ -172,8 +185,11 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     : state === "speaking" ? "SAM" : state === "blocked" ? "Mic blocked" : state === "unsupported" ? "Voice needs Chrome" : "Connecting…";
 
   return (
-    <div className="vm-wrap">
-      <button type="button" className="vm-close" onClick={onClose} aria-label="Close voice mode">✕</button>
+    <div className={`vm-wrap ${size}`}>
+      <div className="vm-tools">
+        <button type="button" className="vm-icon" onClick={() => setSizeP(size === "mini" ? "full" : "mini")} aria-label={size === "mini" ? "Expand voice" : "Shrink voice"} title={size === "mini" ? "Expand" : "Shrink"}>{size === "mini" ? "⤢" : "⤡"}</button>
+        <button type="button" className="vm-icon" onClick={onClose} aria-label="Close voice mode" title="Close">✕</button>
+      </div>
       <div className={`vm-orb ${state}`} ref={mouthRef}>
         <div className="vm-mouth">
           {[0.5, 0.78, 1, 0.78, 0.5].map((m, i) => (
@@ -188,7 +204,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
         ? <div className="vm-hint">🎤 Your mic is blocked. Click the 🔒/camera icon in the address bar → <b>Always allow</b> the microphone → reopen Voice. You can always type in the chat instead.</div>
         : state === "unsupported"
         ? <div className="vm-hint">Voice conversation works in Chrome. You can still type in the chat.</div>
-        : <button type="button" className="vm-end" onClick={onClose}>End voice</button>}
+        : size === "full" && <button type="button" className="vm-end" onClick={onClose}>End voice</button>}
     </div>
   );
 }

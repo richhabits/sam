@@ -474,13 +474,35 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* ── Voice Mode (hands-free two-way) ─────────── */
 .voice-btn { border-color: var(--accent); color: var(--accent-text); }
 .vm-wrap {
-  position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column;
+  position: fixed; z-index: 60; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 26px;
+}
+/* FULL — takes the screen (opt-in via ⤢). */
+.vm-wrap.full {
+  inset: 0;
   background: radial-gradient(900px 500px at 50% 30%, var(--accent-soft), var(--bg) 70%), var(--bg);
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
-.vm-close { position: absolute; top: 22px; right: 24px; background: none; border: none; font-size: 22px; color: var(--muted); cursor: pointer; }
-.vm-close:hover { color: var(--text); }
+/* MINI — a floating orb card, bottom-right. Chat stays fully usable behind it (Romeo's rule:
+   voice must NOT swallow the screen while talking). */
+.vm-wrap.mini {
+  inset: auto 22px 22px auto; width: min(320px, calc(100vw - 32px));
+  padding: 20px 20px 22px; gap: 13px; border-radius: 26px;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 24px 70px rgba(0,0,0,.28), 0 2px 10px rgba(0,0,0,.12);
+  animation: vmPop .22s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes vmPop { from { transform: translateY(14px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.vm-tools { position: absolute; top: 12px; right: 13px; display: flex; gap: 2px; }
+.vm-wrap.full .vm-tools { top: 20px; right: 22px; }
+.vm-icon { background: none; border: none; font-size: 18px; line-height: 1; color: var(--muted); cursor: pointer; padding: 5px 7px; border-radius: 8px; }
+.vm-icon:hover { color: var(--text); background: var(--accent-soft); }
+.vm-wrap.mini .vm-orb { width: 88px; height: 88px; }
+.vm-wrap.mini .vm-mouth { height: 48px; gap: 5px; }
+.vm-wrap.mini .vm-bar { width: 5px; }
+.vm-wrap.mini .vm-text { font-size: 15px; max-width: 100%; min-height: 24px; padding: 0 4px; }
+.vm-wrap.mini .vm-state { font-size: 12px; }
+.vm-wrap.mini .vm-hint { font-size: 12.5px; padding: 0 4px; }
 .vm-orb { width: 180px; height: 180px; border-radius: 50%; display: grid; place-items: center;
   background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent) 60%, var(--accent-2));
   box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 0 var(--accent-soft); }
