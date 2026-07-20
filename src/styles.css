@@ -33,6 +33,22 @@
      skins); skins whose accent is too bright for white override it below. */
   --on-accent: #fff;
   --ring: 0 0 0 3.5px var(--accent-soft);
+  /* Motion — one signature easing across the app so interactions feel of a piece.
+     Apple-tier: quick, slightly overshooting settle. Everything reads from these. */
+  --ease: cubic-bezier(.22,.8,.2,1);
+  --dur: .17s;
+  --dur-slow: .32s;
+}
+
+/* Premium feel = every interactive element settles smoothly, never snaps. Cheap (only
+   state changes animate) and honoured everywhere via the one easing token above. */
+button, a, .pop-opt, .icon-btn, .dl-btn, select, input, textarea, .chip, [role="button"] {
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+/* Accessibility + respect: kill ALL motion when the OS asks for it (was only scoped to a few overlays). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
 /* dark theme — toggled via [data-theme="dark"] on <html>. Now uses Ember vibe default. */
