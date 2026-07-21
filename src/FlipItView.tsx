@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getFlipit } from "./lib/api";
+import PairPrompt from "./PairPrompt";
 
 // 💷 FLIP IT — the money desk. A full major view (like Studio), read-only, live from
 // /api/flipit. Nothing here trades, and nothing here writes: the rig is a separate thing
@@ -319,11 +320,12 @@ export default function FlipItView() {
           // Refused is not absent. Saying "not set up" when the rig is sitting on disk
           // sends you looking for a missing install instead of a closed door.
           <div style={{ ...card, textAlign: "center", padding: 40 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This desk needs the desktop app</div>
-            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5 }}>
-              The rig is here — the read was refused, not empty. SAM is asking for its per-launch passkey,
-              which only the desktop app carries. Open FLIP IT from the SAM app rather than a browser tab.
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This browser isn't paired yet</div>
+            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 14 }}>
+              The rig is here — the read was refused, not empty. Pair this browser once and the desk works
+              from any tab.
             </div>
+            <PairPrompt />
           </div>
         ) : err || (d && !d.present) ? (
           <div style={{ ...card, textAlign: "center", padding: 40 }}>

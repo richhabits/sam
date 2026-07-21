@@ -277,6 +277,8 @@ export const pairToken = () => { try { return localStorage.getItem(PAIR_KEY) || 
 export const setPairToken = (t: string) => { try { localStorage.setItem(PAIR_KEY, t); } catch { /* private mode — pairing simply will not stick */ } };
 export const clearPairToken = () => { try { localStorage.removeItem(PAIR_KEY); } catch { /* nothing to clear */ } };
 
+// Ungated on purpose — a browser must be able to learn that pairing is what it needs.
+export const pairStatus = () => fetch("/api/pair/status").then((r) => r.json());
 export const requestYardPairing = (label: string) => post("/api/yard/pair/request", { label });
 export const collectYardPairing = (id: string) => fetch(`/api/yard/pair/collect?id=${encodeURIComponent(id)}`).then((r) => r.json());
 export const yardPairPending = () => fetch("/api/yard/pair/pending").then((r) => (r.ok ? r.json() : { pending: [], paired: [], notApp: true }));

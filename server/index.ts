@@ -1542,6 +1542,17 @@ function servePreview(req: any, res: any) {
 // ── Pairing a browser ───────────────────────────────────────────────────────
 // Asking is unprivileged on purpose: a request is inert until a person holding the
 // passkey approves the exact code the browser is showing them.
+// Whether this browser needs to pair at all. Deliberately NOT passkey-gated: a browser
+// that cannot answer this question cannot discover that pairing is what it needs, and a
+// lock whose key is hidden behind the lock is just a wall. It reveals only whether the
+// gate is on and whether THIS caller is already through it — both of which a caller
+// learns anyway from the next 403.
+app.get("/api/pair/status", (req, res) => {
+  if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const paired = checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
+  res.json({ enforced: handshakeEnforced(), paired, needed: handshakeEnforced() && !paired });
+});
+
 app.post("/api/yard/pair/request", (req, res) => {
   if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
   const r = requestPairing(String(req.body?.label || "a browser"));

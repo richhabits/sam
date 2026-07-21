@@ -15,6 +15,7 @@ import { ProgressTracker, TraceStrip } from "./components/Trace";
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
+import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import PersonaPicker from "./PersonaPicker";
 import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
@@ -403,6 +404,8 @@ export default function App() {
   const guardIv = useRef<any>(null);
   const guardPrev = useRef<Uint8ClampedArray | null>(null);
   const [update, setUpdate] = useState<{ behind: boolean; current?: string; latest?: string; url?: string } | null>(null);
+  // Only asks once, and only says yes when the gate is on AND this browser is outside it.
+  const needsPair = useNeedsPairing();
   const [updating, setUpdating] = useState("");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1291,6 +1294,14 @@ export default function App() {
               }}>{updating ? "Evolving…" : "Update now"}</button></>
           )}
           <button type="button" className="update-x" onClick={() => setUpdate(null)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
+      {/* Pairing. Sits with the update banner because it is the same kind of thing: a
+          one-off the whole app is blocked on. Without it, v3.0.0 turned the lock on and
+          left the only key inside a build job's error state. */}
+      {needsPair && (
+        <div style={{ margin: "0 12px 8px" }}>
+          <PairPrompt tone="banner" />
         </div>
       )}
 

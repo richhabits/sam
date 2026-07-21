@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getYardProjects, getYardProject, getYardProjectFile, yardPreviewUrl, command, getYard } from "./lib/api";
+import PairPrompt from "./PairPrompt";
 
 // 🏗 THE YARD — what SAM has built. A full view, like the money desk, opened with ?app=yard.
 //
@@ -152,11 +153,11 @@ export default function YardView() {
           // sends you looking for a bug that is not there.
           <div style={{ ...card, textAlign: "center", padding: 44 }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This browser isn't paired yet</div>
-            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.6 }}>
-              The yard is there — the read was refused, not empty. SAM asks for its per-launch
-              passkey, which only the desktop app carries. Pair this browser from the SAM app
-              (Control Centre → Automations), or open the yard from the app itself.
+            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.6, marginBottom: 14 }}>
+              The yard is there — the read was refused, not empty. Pair this browser once and it
+              works from any tab.
             </div>
+            <PairPrompt />
           </div>
         ) : !projects.length ? (
           <div style={{ ...card, textAlign: "center", padding: 44 }}>

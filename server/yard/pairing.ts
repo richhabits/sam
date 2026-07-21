@@ -27,7 +27,11 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { yardDir } from "./store.ts";
 
-const REQUEST_TTL_MS = 2 * 60_000;      // a pairing request people can actually complete
+// Five minutes, not two. The real journey is: read the code, find the desktop app,
+// open the Control Centre, find the row, compare the number, approve. Two minutes was
+// measured against a machine doing it instantly and expired on a person doing it
+// properly — the request vanished mid-approval with nothing to say why.
+const REQUEST_TTL_MS = 5 * 60_000;
 const MAX_PENDING = 5;                  // enough for a mistake, not enough to spam an approval
 const TOKEN_BYTES = 32;
 

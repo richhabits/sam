@@ -40,11 +40,13 @@ describe("asking to pair", () => {
     expect(pendingRequests().map((p) => p.id)).toEqual([r.id]);
   });
 
-  it("expires a request nobody answered", () => {
+  it("expires a request nobody answered — but not before a person could answer it", () => {
     const t = 1_000_000;
     requestPairing("stale", t);
+    // long enough to read the code, open the app, find the row and approve
     expect(pendingRequests(t + 60_000).length).toBe(1);
-    expect(pendingRequests(t + 5 * 60_000).length).toBe(0);
+    expect(pendingRequests(t + 4 * 60_000).length).toBe(1);
+    expect(pendingRequests(t + 6 * 60_000).length).toBe(0);
   });
 
   it("refuses to drown the approval screen", () => {
