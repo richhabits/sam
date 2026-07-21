@@ -51,6 +51,14 @@ import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, originAllowed } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { desk as flipitDesk } from "./flipit.ts";
+import { JobStore } from "./yard/store.ts";
+import { JobLog } from "./yard/worker.ts";
+import { supervisor } from "./yard/supervisor.ts";
+
+// One store per server process, opened on first use so a SAM with the yard off never
+// creates a database it will not read.
+let _yard: JobStore | null = null;
+const yardStore = (): JobStore => (_yard ??= new JobStore());
 import { issuesSummary, listIssues } from "./issues.ts";
 import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
 import { startKeeper } from "./keeper.ts";
@@ -1399,6 +1407,40 @@ app.get("/api/flipit", (req, res) => {
   });
 });
 
+// THE YARD — long-running build jobs. Reads are loopback + Handshake like every other
+// privileged surface. Enqueue and cancel are the only writes, and cancel is the safe one:
+// it signals the yard and touches nothing else on the machine.
+app.get("/api/yard", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
+  const store = yardStore();
+  store.reapAbandoned();
+  res.json({ on: true, worker: supervisor.status(), ...store.summary(), recent: store.list(undefined, 20) });
+});
+app.get("/api/yard/job/:id", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const job = yardStore().get(String(req.params.id));
+  if (!job) { res.status(404).json({ error: "no such job" }); return; }
+  res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
+});
+app.post("/api/yard/enqueue", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
+  const { kind, payload, budget, project } = req.body || {};
+  if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
+  res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
+});
+app.post("/api/yard/cancel", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  try { res.json({ job: yardStore().cancel(String(req.body?.id || "")) }); }
+  catch (e: any) { res.status(404).json({ error: e?.message || "no such job" }); }
+});
+app.post("/api/yard/retry", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  const job = yardStore().retry(String(req.body?.id || ""));
+  job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
+});
+
 // The Standing Crew — arm/disarm/list background specialists (loopback + Handshake; privileged control).
 app.get("/api/standing", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
@@ -1546,6 +1588,12 @@ if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE 
 const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
+  // THE YARD — long work runs in its own process so a build can never make chat or voice
+  // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
+  if (process.env.SAM_YARD === "1") {
+    yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
+    console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
+  }
   // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
   // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
   void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())
