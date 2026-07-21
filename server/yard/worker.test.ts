@@ -199,3 +199,26 @@ describe("a handler that pegs a core", () => {
     expect(text).not.toMatch(/stopped: budget/);
   });
 });
+
+describe("a worker whose server has gone", () => {
+  // Killing a server used to leave its worker running, reparented to init — one orphan
+  // per restart, each still claiming jobs and holding the lock.
+  it("stands down instead of running on for ever", async () => {
+    const { workerLoop } = await import("./worker.ts");
+    let rounds = 0;
+    await workerLoop(store, { isOrphaned: () => { rounds++; return true; } });
+    expect(rounds).toBe(1);          // noticed on the very first pass
+  });
+
+  it("keeps working while its server is alive", async () => {
+    const { workerLoop } = await import("./worker.ts");
+    let rounds = 0;
+    await workerLoop(store, { isOrphaned: () => false, stop: () => ++rounds > 2 });
+    expect(rounds).toBeGreaterThan(1);
+  });
+
+  it("knows an orphan by its parent", async () => {
+    const { orphaned } = await import("./worker.ts");
+    expect(orphaned()).toBe(process.ppid === 1);   // this test process has a real parent
+  });
+});

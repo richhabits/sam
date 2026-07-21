@@ -19,8 +19,9 @@ import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject } from "./exec.ts";
 import { runModel } from "../models.ts";
-import { createProject, checkpoint, restore, projectPath, isManagedProject, MANIFEST } from "./managed.ts";
+import { createProject, checkpoint, restore, projectPath, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
+import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
@@ -323,6 +324,52 @@ HANDLERS["project.edit"] = async (ctx) => {
   return `edited ${targets.length} file${targets.length === 1 ? "" : "s"} · checkpoint ${after.sha.slice(0, 8)}${spec?.note ? ` · ${String(spec.note).slice(0, 90)}` : ""}`;
 };
 
+// Putting a project on the internet. Checkpoints first, builds if the project needs it,
+// deploys, then FETCHES the result — because a command that exited zero is not the same
+// as a page that loads, and reporting a URL nobody checked is how a broken deploy gets
+// called a success.
+HANDLERS["project.deploy"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  if (!slug || !isManagedProject(slug)) throw Object.assign(new Error(`"${slug}" is not a managed project`), { kind: "permanent" as FailureKind });
+  const dir = projectPath(slug);
+
+  const plan = planDeploy(dir, { production: ctx.payload?.production !== false });
+  // A missing credential is permanent: retrying cannot conjure one, and a queue of
+  // hopeful retries hides the one sentence that says what to do about it.
+  if (!plan.ok) throw Object.assign(new Error(plan.reason), { kind: "permanent" as FailureKind });
+
+  const cp = await checkpoint(slug, `before deploying ${slug}`);
+  if (cp) ctx.log(`checkpointed first: ${cp.sha.slice(0, 8)}`);
+  ctx.log(`shape: ${plan.shape.reason}`);
+  ctx.checkStop();
+
+  if (plan.shape.buildCommand) {
+    ctx.log(`building: ${plan.shape.buildCommand.join(" ")}`);
+    const [cmd, ...args] = plan.shape.buildCommand;
+    const built = await execInProject(dir, cmd, args, { timeoutMs: 10 * 60_000 });
+    for (const line of `${built.stdout}${built.stderr}`.split("\n").filter(Boolean).slice(-40)) ctx.log(`  ${line}`);
+    if (built.code !== 0) throw new Error(`the build failed (exit ${built.code}) — nothing was deployed`);
+  }
+  ctx.checkStop();
+
+  ctx.log(`deploying: vercel ${plan.args.join(" ")}`);
+  const out = await execInProject(dir, "vercel", plan.args, { env: plan.env, timeoutMs: 15 * 60_000 });
+  for (const line of `${out.stdout}${out.stderr}`.split("\n").filter(Boolean).slice(-40)) ctx.log(`  ${line}`);
+  if (out.code !== 0) throw new Error(`the deploy failed (exit ${out.code})`);
+
+  const url = urlFrom(`${out.stdout}\n${out.stderr}`);
+  if (!url) throw new Error("the deploy reported success but named no URL — refusing to claim it is live");
+
+  ctx.log(`checking ${url} is really there…`);
+  const smoke = await smokeTest(url);
+  ctx.log(`  ${smoke.detail}`);
+  updateManifest(slug, { issues: smoke.ok ? [] : [`the last deploy answered badly: ${smoke.detail}`] });
+  if (!smoke.ok) throw new Error(`deployed to ${url}, but it is not serving properly — ${smoke.detail}`);
+
+  await checkpoint(slug, `deployed ${slug}`);
+  return `live at ${url}`;
+};
+
 HANDLERS["project.checkpoint"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");
   const cp = await checkpoint(slug, String(ctx.payload?.message || "checkpoint"));
@@ -393,9 +440,23 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
   }
 }
 
-export async function workerLoop(store: JobStore, opts: { stop?: () => boolean } = {}) {
+// A worker exists to serve one supervisor. If that supervisor dies, this process is
+// reparented to init and would otherwise keep running for ever — claiming jobs, holding
+// the lock, and quietly accumulating one orphan per restart until something looks at the
+// process list. Noticing is cheap, so it is checked every time round the loop.
+export function orphaned(): boolean {
+  return process.ppid === 1;
+}
+
+export async function workerLoop(store: JobStore, opts: { stop?: () => boolean; isOrphaned?: () => boolean } = {}) {
   const stop = opts.stop ?? (() => false);
+  const alone = opts.isOrphaned ?? orphaned;
   while (!stop()) {
+    if (alone()) {
+      console.log("the yard: the server that started this worker is gone — standing down");
+      releaseLock();
+      return;
+    }
     store.reapAbandoned();
     const did = await runOneJob(store);
     if (!did && !stop()) await new Promise((r) => setTimeout(r, IDLE_POLL_MS));

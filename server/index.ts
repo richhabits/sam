@@ -1667,6 +1667,12 @@ app.listen(Number(PORT), HOST, () => {
   if (process.env.SAM_YARD === "1") {
     yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
     console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
+    // Take the worker down with us. Without this the child is reparented to init and
+    // keeps running: one orphan per restart, each still claiming jobs.
+    for (const sig of ["SIGTERM", "SIGINT"] as const) {
+      process.on(sig, () => { supervisor.stop(); process.exit(0); });
+    }
+    process.on("exit", () => supervisor.stop());
   }
   // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
   // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.

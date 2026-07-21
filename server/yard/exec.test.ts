@@ -301,3 +301,26 @@ describe("writing a file the yard decided on", () => {
     expect(() => writeInProject(root, "", "x")).toThrow(/no file path/);
   });
 });
+
+describe("the limits that were set but never exercised", () => {
+  it("stops a command that runs too long, rather than holding the worker for ever", async () => {
+    const started = Date.now();
+    const r = await execInProject(root, "node", ["-e", "setTimeout(()=>{}, 60000)"], { handshake: true, timeoutMs: 1500 });
+    expect(Date.now() - started).toBeLessThan(15_000);   // it did NOT wait the full minute
+    expect(r.code).not.toBe(0);                          // and it is reported as a failure
+  });
+
+  it("caps runaway output instead of taking the process down with it", async () => {
+    // ~4MB, well past the 512KB cap: the danger is an out-of-memory, not a big string
+    const r = await execInProject(root, "node", ["-e", "process.stdout.write('x'.repeat(4*1024*1024))"], { handshake: true });
+    expect(r.stdout.length).toBeLessThanOrEqual(512 * 1024);
+    expect(r.truncated).toBe(true);                      // and it SAYS it was cut, never silently
+  });
+
+  it("reports a command that does not exist as a failure, not a crash", async () => {
+    // on the allowlist, but not installed on every machine
+    const r = await execInProject(root, "wrangler", ["--version"], { handshake: true });
+    expect(typeof r.code).toBe("number");
+    expect(r.code).not.toBe(0);
+  });
+});
