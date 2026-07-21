@@ -236,10 +236,19 @@ export function childEnv(projectRoot: string, injected: Record<string, string> =
   // deliberately does not answer — with no terminal to answer it. Two correct defences
   // colliding. A sibling directory keeps the scrub (nothing can read the real home) and
   // stops any tool mistaking the project for one.
+  const win = process.platform === "win32";
+  const home = fakeHome(projectRoot);
+  // A temp dir that exists on THIS os. "/tmp" is not a real path on Windows, and the
+  // scrubbed env carries no TEMP either — so a Windows build asking for a temp dir would
+  // be handed one that isn't there. Point it at the project's own sandbox, which we know
+  // exists and is writable, rather than a unix path that doesn't.
+  const tmp = win ? home : (process.env.TMPDIR || "/tmp");
   const safe: Record<string, string> = {
     PATH: toolPath(),   // platform-aware inside
-    HOME: fakeHome(projectRoot),
-    TMPDIR: process.env.TMPDIR || "/tmp",
+    // Native Windows tools read USERPROFILE, not HOME; unix tools read HOME. Set both to
+    // the sandbox so neither can reach the operator's real home whatever platform this is.
+    HOME: home,
+    ...(win ? { USERPROFILE: home, TEMP: tmp, TMP: tmp } : { TMPDIR: tmp }),
     LANG: process.env.LANG || "en_GB.UTF-8",
     NODE_ENV: "development",
     CI: "1",                       // keeps build tools non-interactive
@@ -247,6 +256,9 @@ export function childEnv(projectRoot: string, injected: Record<string, string> =
     npm_config_audit: "false",
     npm_config_update_notifier: "false",
   };
+  // SystemRoot is required by many Windows executables just to start (DNS, crypto). Its
+  // absence from a scrubbed env is a classic "works on unix, mysteriously fails on Windows".
+  if (win && process.env.SystemRoot) safe.SystemRoot = process.env.SystemRoot;
   // Injected values are per-job and explicit. Names are constrained so a payload cannot
   // smuggle in something like LD_PRELOAD or NODE_OPTIONS.
   for (const [k, v] of Object.entries(injected)) {

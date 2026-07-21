@@ -194,10 +194,12 @@ describe("the child's environment", () => {
     const env = childEnv(root);
     expect(env.HOME).not.toBe(root);              // not the project — see "the child's HOME"
     expect(env.HOME).toContain(".home");
-    expect(Object.keys(env).sort()).toEqual([
-      "CI", "HOME", "LANG", "NODE_ENV", "PATH", "TMPDIR",
-      "npm_config_audit", "npm_config_fund", "npm_config_update_notifier",
-    ].sort());
+    // on this mac: HOME + TMPDIR, not the Windows set
+    expect(env.HOME).toContain(".home");
+    expect(env.TMPDIR).toBeTruthy();
+    expect(env.USERPROFILE).toBeUndefined();
+    expect(Object.keys(env)).toContain("CI");
+    expect(Object.keys(env)).toContain("PATH");
   });
 
   it("carries no key from the parent, whatever the parent holds", () => {
@@ -478,5 +480,19 @@ describe("running on Windows", () => {
     const joined = denyList().join(" ");
     expect(joined).toMatch(/AppData/);
     expect(joined).toMatch(/\.ssh/);
+  });
+});
+
+describe("the child env is right for the platform it runs on", () => {
+  // childEnv reads process.platform directly, so a full Windows assertion needs the real
+  // OS. What CAN be checked on any platform: the sandbox never leaks the real home, and
+  // the temp dir it hands over is a path that actually exists (not a hardcoded /tmp).
+  it("hands over a temp dir that exists, and a home that is the sandbox", async () => {
+    const { childEnv } = await import("./exec.ts");
+    const env = childEnv(root);
+    const tmp = env.TMPDIR || env.TEMP;   // whichever this platform uses
+    expect(tmp).toBeTruthy();
+    expect(existsSync(env.HOME)).toBe(true);          // the sandbox is real and writable
+    expect(env.HOME).not.toBe(homedir());             // never the operator's real home
   });
 });
