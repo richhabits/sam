@@ -93,6 +93,13 @@ jobs:
         run: npm run platforms          # exits 1 if any macOS-only tool lacks a clean degrade
       - name: Live boot self-test
         run: npm run selftest            # checks tools, agents, vault, model availability
+      # The yard is platform-sensitive (PATH separators, .cmd resolution on Windows,
+      # better-sqlite3 native binding). Run its tests on EVERY OS so the plumbing is proven
+      # on real Windows and Linux. --no-file-parallelism because these are integration tests
+      # (real sqlite, git, lock files) that share OS resources and must not race each other.
+      - name: The yard, on this OS
+        run: npx vitest run server/yard/ --no-file-parallelism
+        shell: bash
       - name: Boot + smoke the API on ${{ matrix.os }}
         shell: bash
         run: |
