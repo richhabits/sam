@@ -26,11 +26,11 @@ afterEach(() => {
   rmSync(base, { recursive: true, force: true });
 });
 
-// The handler reaches for the real Handshake, which is off in tests, so it is enforced
-// here for the duration — the executor's own gate is covered in exec.test.ts.
+// The executor only runs when the yard is switched on, so it is switched on here for the
+// duration. Who may CREATE a job is enforced at the route, and covered in exec.test.ts.
 function withHandshake<T>(fn: () => Promise<T>): Promise<T> {
-  process.env.SAM_REQUIRE_CONTROL_TOKEN = "1";
-  return fn().finally(() => { delete process.env.SAM_REQUIRE_CONTROL_TOKEN; });
+  process.env.SAM_YARD = "1";
+  return fn().finally(() => { delete process.env.SAM_YARD; });
 }
 
 const ctx = (payload: any) => ({

@@ -240,7 +240,12 @@ export const setTelemetry = (on: boolean) => post("/api/telemetry", { on });
 export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r) => r.json());
 
 export const getDoctor = () => fetch("/api/doctor").then((r) => r.json());
-export const getFlipit = () => fetch("/api/flipit").then((r) => r.json());
+// A refused read is NOT an absent rig. Reported separately so the desk can say which,
+// rather than telling you FLIP IT is not installed while it sits there on disk.
+export const getFlipit = () => fetch("/api/flipit").then(async (r) => {
+  if (r.status === 403) return { present: false, refused: true };
+  return r.json();
+});
 export const getStanding = () => fetch("/api/standing").then((r) => r.json());
 export const standingArm = (specialistId: string, task: string, cron: string) => post("/api/standing/arm", { specialistId, task, cron });
 export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });

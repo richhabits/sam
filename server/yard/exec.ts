@@ -31,7 +31,19 @@ import { execFile } from "node:child_process";
 import { realpathSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, sep, dirname, isAbsolute, join } from "node:path";
 import os from "node:os";
-import { handshakeEnforced } from "../handshake.ts";
+// Authorisation for the yard is enforced where work is CREATED, not where it runs.
+// Every yard route demands the Handshake passkey unconditionally — see isYardTrusted in
+// the server — so a job can only exist because something holding the per-launch secret
+// asked for it. The worker is then executing an already-authorised instruction.
+//
+// This used to demand that the Handshake be enforced GLOBALLY, which was the wrong lever:
+// it made running a build require hardening every other route in SAM, and turning it on
+// broke the money desk in a browser tab (the passkey reaches the renderer through
+// Electron's preload, which a plain Chrome tab does not have). One feature should not be
+// able to switch off another; the gate belongs on the yard's own door.
+export function yardAuthorised(): boolean {
+  return process.env.SAM_YARD === "1";
+}
 
 // Only what a build genuinely needs. Adding to this list is a security decision, not a
 // convenience one — every entry is something a job may cause to happen on the machine.
@@ -111,9 +123,9 @@ export function planExec(
   args: string[],
   opts: { cwd?: string; handshake?: boolean } = {},
 ): ExecPlan | ExecRefusal {
-  const handshake = opts.handshake ?? handshakeEnforced();
+  const handshake = opts.handshake ?? yardAuthorised();
   if (!handshake) {
-    return { ok: false, rule: "handshake", reason: "the yard will not run commands unless the Handshake is enforced — being on this machine is not the same as being authorised (set SAM_REQUIRE_CONTROL_TOKEN=1)" };
+    return { ok: false, rule: "handshake", reason: "the yard is not switched on, so it will not run commands (set SAM_YARD=1)" };
   }
   if (typeof command !== "string" || !command) {
     return { ok: false, rule: "shape", reason: "no command given" };

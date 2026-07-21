@@ -60,6 +60,11 @@ import { listProjects } from "./yard/managed.ts";
 
 // One store per server process, opened on first use so a SAM with the yard off never
 // creates a database it will not read.
+// The yard's own door. Loopback position PLUS the passkey, always — never conditional on
+// the global setting. Creating a job means running commands on this machine, so it is held
+// to the stricter bar whether or not the rest of SAM is hardened today.
+const isYardTrusted = (req: any) => isLoopback(req) && checkPasskey(req);
+
 let _yard: JobStore | null = null;
 const yardStore = (): JobStore => (_yard ??= new JobStore());
 import { issuesSummary, listIssues } from "./issues.ts";
@@ -1426,32 +1431,32 @@ app.get("/api/flipit", (req, res) => {
 // privileged surface. Enqueue and cancel are the only writes, and cancel is the safe one:
 // it signals the yard and touches nothing else on the machine.
 app.get("/api/yard", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
   const store = yardStore();
   store.reapAbandoned();
   res.json({ on: true, worker: supervisor.status(), ...store.summary(), recent: store.list(undefined, 20) });
 });
 app.get("/api/yard/job/:id", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   const job = yardStore().get(String(req.params.id));
   if (!job) { res.status(404).json({ error: "no such job" }); return; }
   res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
 });
 app.post("/api/yard/enqueue", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
   const { kind, payload, budget, project } = req.body || {};
   if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
   res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
 });
 app.post("/api/yard/cancel", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   try { res.json({ job: yardStore().cancel(String(req.body?.id || "")) }); }
   catch (e: any) { res.status(404).json({ error: e?.message || "no such job" }); }
 });
 app.post("/api/yard/retry", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
   const job = yardStore().retry(String(req.body?.id || ""));
   job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
 });

@@ -19,7 +19,7 @@ type Loop = {
   previousScheduled: number | null; nextScheduled: number | null; stale: boolean;
 };
 type Rig = {
-  present: boolean; schema?: number; strategy?: string | null; targetVol?: number | null;
+  present: boolean; refused?: boolean; schema?: number; strategy?: string | null; targetVol?: number | null;
   now?: { equity: number; rung: number; hwm: number; drawdown: number; seeded: boolean; status: string | null;
           days: number; target: number; trades: number; tradeTarget: number; inBand: boolean | null; cumNet: number | null } | null;
   series?: Day[] | null;
@@ -315,7 +315,17 @@ export default function FlipItView() {
           </button>
         </div>
 
-        {err || (d && !d.present) ? (
+        {d?.refused ? (
+          // Refused is not absent. Saying "not set up" when the rig is sitting on disk
+          // sends you looking for a missing install instead of a closed door.
+          <div style={{ ...card, textAlign: "center", padding: 40 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This desk needs the desktop app</div>
+            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5 }}>
+              The rig is here — the read was refused, not empty. SAM is asking for its per-launch passkey,
+              which only the desktop app carries. Open FLIP IT from the SAM app rather than a browser tab.
+            </div>
+          </div>
+        ) : err || (d && !d.present) ? (
           <div style={{ ...card, textAlign: "center", padding: 40 }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>FLIP IT isn't set up on this machine</div>
             <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5 }}>

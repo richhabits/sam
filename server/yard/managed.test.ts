@@ -208,8 +208,8 @@ describe("checkpoint and restore", () => {
     await expect(restore("ghost", "a".repeat(40), hs)).rejects.toThrow(/not a managed project/);
   });
 
-  it("will not run at all without the Handshake", async () => {
+  it("will not run at all when the yard is switched off", async () => {
     await createProject("Gated", hs);
-    await expect(checkpoint("gated", "x", { handshake: false })).rejects.toThrow(/Handshake/);
+    await expect(checkpoint("gated", "x", { handshake: false })).rejects.toThrow(/not switched on/);
   });
 });

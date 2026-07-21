@@ -23,15 +23,28 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }); rmSync(outside
 
 const ok = { handshake: true };
 
-describe("the Handshake gate", () => {
-  it("refuses to run anything at all when the Handshake is not enforced", () => {
+describe("the gate in front of everything", () => {
+  // Authorisation lives at the route that CREATES a job — every yard route demands the
+  // passkey unconditionally. What the executor checks is simply that the yard is on.
+  // It used to require the Handshake to be enforced GLOBALLY, which meant switching the
+  // yard on hardened every other route in SAM and took the money desk down in a browser.
+  it("refuses to run anything at all when the yard is not switched on", () => {
     const r = planExec(root, "npm", ["--version"], { handshake: false });
     expect(r.ok).toBe(false);
-    if (!r.ok) { expect(r.rule).toBe("handshake"); expect(r.reason).toMatch(/not the same as being authorised/); }
+    if (!r.ok) { expect(r.rule).toBe("handshake"); expect(r.reason).toMatch(/not switched on/); }
   });
 
   it("is the FIRST gate — an allowed command in a valid place still cannot run without it", () => {
     expect(planExec(root, "git", ["status"], { handshake: false }).ok).toBe(false);
+  });
+
+  it("reads the switch from the environment when not told otherwise", async () => {
+    const { yardAuthorised } = await import("./exec.ts");
+    delete process.env.SAM_YARD;
+    expect(yardAuthorised()).toBe(false);
+    process.env.SAM_YARD = "1";
+    expect(yardAuthorised()).toBe(true);
+    delete process.env.SAM_YARD;
   });
 });
 
@@ -233,7 +246,7 @@ describe("actually running something", () => {
 
   it("throws a refusal rather than returning it as output", async () => {
     await expect(execInProject(root, "bash", ["-c", "echo hi"], { handshake: true })).rejects.toThrow(ExecRefused);
-    await expect(execInProject(root, "npm", ["install"], { handshake: false })).rejects.toThrow(/Handshake/);
+    await expect(execInProject(root, "npm", ["install"], { handshake: false })).rejects.toThrow(/not switched on/);
   });
 
   it("proves at runtime that a child cannot see the vault", async () => {
