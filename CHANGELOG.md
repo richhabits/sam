@@ -2,6 +2,48 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.0.0-alpha.1] - 2026-07-21 — "The Yard"
+
+SAM can build. Describe something, and it scaffolds a real project, commits it, and keeps
+talking to you while it works. Everything here is **off unless you switch it on** (`SAM_YARD=1`),
+so nothing about SAM changes for anyone who doesn't. 1041 tests.
+
+Marked **alpha** for one honest reason: deploying is built and tested but has never shipped a
+real site, because that needs a token only you can create. Everything else in here has been
+driven live, not just tested.
+
+### Added
+- **The yard.** Long work runs in its **own operating-system process**, so a build that pegs a
+  core cannot make chat, voice or a scheduled task wait. Proven: a job holding ~99% of one core
+  for 35 seconds while the server answering it stayed at **1ms**.
+- **Jobs you can watch and stop.** A queue with a live cost meter, a kill switch that asks a job
+  to stop between steps rather than shooting it mid-write, and a heartbeat — a worker that stops
+  reporting has its job **failed honestly** instead of left "running" for ever.
+- **Projects that remember.** Each build gets its own folder and its own git repository under
+  `~/SAMYard`, plus a `project.sam.json` holding what it's *for* — so a project picked up weeks
+  later starts knowing its own history. Every finished step **checkpoints itself**, so going back
+  is a checkout rather than an apology.
+- **Editing what it already built.** Ask for a change and it checkpoints first, reads only the
+  files your request actually implicates, and writes back whole files — never a fragment.
+- **A confined executor.** Commands run as argument lists with **no shell at all**, inside the
+  project only, with a stripped environment. Nothing a build runs can see your keys.
+- **Pair a browser.** The desktop app can approve a browser, code-confirmed, to start and stop
+  work — without the app's own passkey ever being handed out.
+- **Deploying.** Reads what a project is, builds it, ships it, then **fetches the result** — an
+  empty page that returns 200 is reported as a failure, not a success.
+- **The money desk** (`?app=flipit`) rebuilt phone-first, with a **watchdog** that turns red when
+  a scheduled step is overdue — the one failure nothing else would tell you about.
+
+### Fixed
+- **Tools that invented folders and hid their own failures.** Asked to commit, SAM would report
+  it had no access to its own repositories — untrue, and something no tool had actually said. Git
+  errors were being returned as ordinary output, so a failure read as a success. They fail loudly
+  now, and a repo can be named ("commit in mainline") instead of guessed at by path.
+- **Work on external drives was invisible.** Only your home folder was searched, so ten of your
+  repositories didn't exist as far as SAM was concerned. Mounted volumes are searched too, and a
+  name that matches two copies now **refuses and names both** rather than editing the wrong one.
+- **"Something went wrong"** told you nothing. Errors say what actually failed.
+
 ## [2.1.4] - 2026-07-18 — "Brakes"
 
 SAM gets brakes. Say **"stop"** and it stops — and it can no longer run away into a
