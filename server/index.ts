@@ -54,6 +54,9 @@ import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
 import { supervisor } from "./yard/supervisor.ts";
+import { routeOrNull as yardRoute } from "./yard/intent.ts";
+import { answerRouted } from "./yard/dispatch.ts";
+import { listProjects } from "./yard/managed.ts";
 
 // One store per server process, opened on first use so a SAM with the yard off never
 // creates a database it will not read.
@@ -686,6 +689,18 @@ app.post("/api/command", async (req, res) => {
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
   recordTask(new Date().toISOString());   // LOCAL analytics only — a count + date, never the message
+
+  // THE YARD — the one question asked before the ordinary path runs. It returns null for
+  // conversation, which is nearly everything, and then NOTHING below here changes: the
+  // existing behaviour is untouched rather than merely similar. Only a confident, explicit
+  // build/edit/status request leaves this path, and only while the yard is switched on.
+  if (process.env.SAM_YARD === "1" && message?.trim()) {
+    const routed = yardRoute(message, listProjects().map((p) => ({ slug: p.slug, name: p.name })));
+    if (routed) {
+      const answer = await answerRouted(routed, yardStore());
+      if (answer) return res.json({ reply: answer, tool: "the yard", provider: "local", model: "the yard" });
+    }
+  }
 
   // TURBO: one fast model call on the quickest free provider — skip tools, embedding,
   // recall and routing entirely. Trades the tool loop for raw speed.

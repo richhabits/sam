@@ -179,6 +179,62 @@ HANDLERS["project.create"] = async (ctx) => {
   return `created ${m.slug}`;
 };
 
+// The whole first iteration as ONE job: make the project, put something real in it, and
+// checkpoint. One job rather than three because the slug does not exist until the first
+// step has run, and queueing work that refers to a name nothing has produced yet is how
+// a pipeline ends up depending on luck.
+HANDLERS["project.build"] = async (ctx) => {
+  const name = String(ctx.payload?.name || "").trim();
+  if (!name) throw Object.assign(new Error("a build needs a name"), { kind: "permanent" as FailureKind });
+
+  const m = await createProject(name, { spec: String(ctx.payload?.spec || name) });
+  ctx.log(`created ${m.slug} at ${projectPath(m.slug)}`);
+  ctx.checkStop();
+
+  // A plain page, written directly rather than shelled out for. It is deliberately not a
+  // framework: this is the first iteration, it has to actually open in a browser, and a
+  // dependency tree is something to add when the project asks for one.
+  const dir = projectPath(m.slug);
+  const title = m.name.replace(/[<>&]/g, "");
+  writeFileSync(join(dir, "index.html"), page(title));
+  writeFileSync(join(dir, "README.md"), `# ${title}\n\n${m.spec}\n\nBuilt by SAM. Open index.html.\n`);
+  ctx.log("wrote index.html and README.md");
+
+  const cp = await checkpoint(m.slug, `Scaffold ${m.slug}`);
+  if (cp) ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`);
+  return `built ${m.slug}${cp ? ` · checkpoint ${cp.sha.slice(0, 8)}` : ""}`;
+};
+
+function page(title: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: radial-gradient(900px 500px at 50% -10%, rgba(240,130,78,.16), transparent 60%), #100E0C;
+    color: #F3EDE4; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+    text-align: center; padding: 24px;
+  }
+  h1 { font-size: clamp(2rem, 8vw, 4rem); letter-spacing: -.04em; margin: 0 0 .4em; }
+  p { color: #B8AFA4; font-size: 1.05rem; margin: 0; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    <p>Built in the yard. Edit index.html to make it yours.</p>
+  </main>
+</body>
+</html>
+`;
+}
+
 HANDLERS["project.checkpoint"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");
   const cp = await checkpoint(slug, String(ctx.payload?.message || "checkpoint"));
