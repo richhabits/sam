@@ -104,3 +104,31 @@ describe("choosing a repo", () => {
     if (!r.ok) expect(r.reason).toContain("none found on this machine");
   });
 });
+
+describe("the same name in two places", () => {
+  // Once external drives are searched this stops being hypothetical: a working copy on
+  // the internal disk and another on a backup drive share a name. Picking one quietly is
+  // how the wrong copy gets edited — and the wrong one may be what another tool is using.
+  const TWO: Clone[] = [
+    { path: "/Users/x/sam", owner: "richhabits", name: "sam", remote: "https://github.com/richhabits/sam.git" },
+    { path: "/Volumes/ROMEO HQ/SAM", owner: "richhabits", name: "sam", remote: "https://github.com/richhabits/sam.git" },
+  ];
+
+  it("refuses rather than guessing, and names both", () => {
+    const r = chooseRepo("sam", TWO, [], yes);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toMatch(/ambiguous/);
+      expect(r.reason).toContain("/Users/x/sam");
+      expect(r.reason).toContain("/Volumes/ROMEO HQ/SAM");
+    }
+  });
+
+  it("still resolves when the full path is given", () => {
+    expect(chooseRepo("/Volumes/ROMEO HQ/SAM", TWO, [], yes)).toEqual({ ok: true, path: "/Volumes/ROMEO HQ/SAM" });
+  });
+
+  it("resolves a name that is only in one place", () => {
+    expect(chooseRepo("sam", [TWO[0]], [], yes)).toEqual({ ok: true, path: "/Users/x/sam" });
+  });
+});

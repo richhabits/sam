@@ -15,7 +15,7 @@
 //  then explains the imaginary result to the user.
 // ─────────────────────────────────────────────────────────────
 
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
 
@@ -26,7 +26,7 @@ export interface Clone { path: string; owner: string | null; name: string | null
 const SKIP = new Set([
   "node_modules", "Library", "Applications", ".Trash", ".git", "dist", "build",
   "vendor", "venv", ".venv", "__pycache__", ".cache", "Music", "Movies", "Photos",
-  "Pictures", ".npm", ".cargo", "go", "Public",
+  "Pictures", ".npm", ".cargo", "go", "Public", "__MACOSX",
 ]);
 
 // ── Remote parsing (pure) ───────────────────────────────────────────────────
@@ -49,8 +49,22 @@ export function parseRemote(url: string | null | undefined): { owner: string; na
 // actually keeps, in the places they keep them, without ever becoming slow.
 export function scanRoots(): string[] {
   const home = os.homedir();
-  return [home, join(home, "Developer"), join(home, "Projects"), join(home, "Documents"), join(home, "Downloads"), join(home, "code")]
-    .filter((p) => { try { return existsSync(p) && statSync(p).isDirectory(); } catch { return false; } });
+  const roots = [home, join(home, "Developer"), join(home, "Projects"), join(home, "Documents"), join(home, "Downloads"), join(home, "code")];
+  // Mounted volumes too. Work does not only live in a home folder — an external drive is
+  // where a lot of it actually sits, and a repo SAM cannot see is a repo SAM will insist
+  // does not exist. The boot volume is skipped because it is just `/` again under another
+  // name, and descending it twice would double every result.
+  try {
+    for (const name of readdirSync("/Volumes")) {
+      const p = join("/Volumes", name);
+      try {
+        if (!statSync(p).isDirectory()) continue;
+        if (realpathSync(p) === "/") continue;          // the boot volume, wearing its label
+        roots.push(p);
+      } catch { /* an ejecting or permission-denied volume is simply not searched */ }
+    }
+  } catch { /* no /Volumes on this platform */ }
+  return roots.filter((p) => { try { return existsSync(p) && statSync(p).isDirectory(); } catch { return false; } });
 }
 
 // Read .git/config directly rather than shelling out: the walk touches many directories
@@ -123,10 +137,20 @@ export function chooseRepo(
 
   // A bare name — the form a person actually uses ("commit in mainline").
   const want = raw.toLowerCase();
-  const hit = clones.find((c) => (c.name || "").toLowerCase() === want)
-    || clones.find((c) => c.path.split("/").pop()?.toLowerCase() === want)
-    || clones.find((c) => (c.name || "").toLowerCase().replace(/[-_]/g, "") === want.replace(/[-_]/g, ""));
-  if (hit) return { ok: true, path: hit.path };
+  const loose = (s: string) => s.toLowerCase().replace(/[-_]/g, "");
+  const matches = clones.filter((c) =>
+    (c.name || "").toLowerCase() === want
+    || c.path.split("/").pop()?.toLowerCase() === want
+    || loose(c.name || "") === loose(want));
+
+  // The same name in two places is normal once external drives are searched — a copy on
+  // a working disk and a copy on a backup drive. Picking one silently is how the wrong
+  // copy gets edited, and the wrong copy is often the one someone else is also using.
+  // Refuse, and name both, so the choice is made on purpose.
+  if (matches.length > 1) {
+    return { ok: false, reason: `"${raw}" is ambiguous — there are ${matches.length} working copies with that name: ${matches.map((m) => m.path).join("  ·  ")}. Say which one by full path.` };
+  }
+  if (matches.length === 1) return { ok: true, path: matches[0].path };
 
   if (remoteNames.some((n) => n.toLowerCase() === want)) {
     return { ok: false, reason: `"${raw}" is one of your GitHub repos but it isn't cloned on this machine, so there's nothing local to work on. Clone it first, then ask again.` };

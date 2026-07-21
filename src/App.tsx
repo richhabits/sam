@@ -1015,7 +1015,17 @@ export default function App() {
     if (!pending) return;
     const p = pending; setPending(null); setLoading(true);
     try { handleResult(await confirmAction(p, approved, always)); }
-    catch { setMessages((m) => [...m, { role: "sam", text: "Something went wrong finishing that action.", at: now() }]); }
+    catch (e: any) {
+      // Say WHAT went wrong. "Something went wrong" is unactionable — it sends you
+      // hunting with nothing to go on, and it hides the one sentence that would have
+      // explained it (the tool almost always knows, and said so).
+      const why = String(e?.message || e || "").trim();
+      setMessages((m) => [...m, {
+        role: "sam",
+        text: why ? `That action didn't finish: ${why}` : "That action didn't finish, and no reason came back — check the Activity tab in the Control Centre.",
+        at: now(),
+      }]);
+    }
     setLoading(false);
   }
 
