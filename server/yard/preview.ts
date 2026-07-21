@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, statSync, readFileSync, readdirSync } from "node:fs";
-import { join, extname } from "node:path";
+import { join, extname, sep } from "node:path";
 import { projectsRoot, projectPath, isManagedProject } from "./managed.ts";
 import { trueLocation, isWithin } from "./exec.ts";
 
@@ -94,7 +94,7 @@ export function projectFiles(slug: string, limit = 200): FileEntry[] {
       try {
         const st = statSync(join(root, r));
         if (st.isDirectory()) walk(r, depth + 1);
-        else out.push({ path: r, bytes: st.size });
+        else out.push({ path: r.split(sep).join("/"), bytes: st.size });   // web paths are always forward-slash, even on Windows
       } catch { /* vanished mid-walk — simply not listed */ }
     }
   };

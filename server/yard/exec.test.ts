@@ -196,8 +196,7 @@ describe("the child's environment", () => {
     expect(env.HOME).toContain(".home");
     // on this mac: HOME + TMPDIR, not the Windows set
     expect(env.HOME).toContain(".home");
-    expect(env.TMPDIR).toBeTruthy();
-    expect(env.USERPROFILE).toBeUndefined();
+    expect(env.TMPDIR || env.TEMP).toBeTruthy();   // TMPDIR on unix, TEMP on Windows
     expect(Object.keys(env)).toContain("CI");
     expect(Object.keys(env)).toContain("PATH");
   });
@@ -379,7 +378,7 @@ describe("finding the tools a build needs", () => {
   // perfectly-installed vercel is then invisible and the deploy dies with a bare ENOENT.
   it("adds the usual install locations to a minimal inherited PATH", async () => {
     const { toolPath } = await import("./exec.ts");
-    const p = toolPath({ PATH: "/usr/bin:/bin:/usr/sbin:/sbin" } as any);
+    const p = toolPath({ PATH: "/usr/bin:/bin:/usr/sbin:/sbin" } as any, "darwin");
     expect(p).toContain("/opt/homebrew/bin");
     expect(p).toContain("/usr/local/bin");
     expect(p).toContain("/usr/bin");
@@ -398,7 +397,7 @@ describe("finding the tools a build needs", () => {
 
   it("still works when PATH is missing entirely", async () => {
     const { toolPath } = await import("./exec.ts");
-    expect(toolPath({} as any)).toContain("/usr/bin");
+    expect(toolPath({} as any, "darwin")).toContain("/usr/bin");
   });
 });
 
