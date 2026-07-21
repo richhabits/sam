@@ -216,7 +216,7 @@ export interface Desk {
   now: { equity: number; rung: number; hwm: number; drawdown: number; seeded: boolean; status: string | null;
          days: number; target: number; trades: number; tradeTarget: number; inBand: boolean | null; cumNet: number | null } | null;
   series: DayPoint[] | null;
-  holdings: { ticker: string; score: number; price?: number; chg7?: number; chg30?: number; weight: number }[] | null;
+  holdings: { ticker: string; score: number; price?: number; chg7?: number; chg30?: number; spark?: number[]; weight: number }[] | null;
   trades: never[];               // the journal keeps a running count, not individual fills
   tradesAvailable: false;
   pending: { count: number; items: any[] } | null;
@@ -272,6 +272,7 @@ export function buildDesk(root: string, now: number): Desk {
     price: h?.price !== undefined ? Number(h.price) : undefined,
     chg7: h?.chg7 !== undefined ? Number(h.chg7) : undefined,
     chg30: h?.chg30 !== undefined ? Number(h.chg30) : undefined,
+    spark: Array.isArray(h?.spark) ? h.spark.map(Number).filter((n: number) => Number.isFinite(n)) : undefined,
     weight: totalScore > 0 ? (Number(h?.score) > 0 ? Number(h.score) / totalScore : 0) : 0,
   }));
 
