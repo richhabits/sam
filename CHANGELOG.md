@@ -2,15 +2,14 @@
 
 All notable changes to SAM. Newest first.
 
-## [3.0.0-alpha.1] - 2026-07-21 — "The Yard"
+## [3.0.0] - 2026-07-21 — "The Yard"
 
 SAM can build. Describe something, and it scaffolds a real project, commits it, and keeps
 talking to you while it works. Everything here is **off unless you switch it on** (`SAM_YARD=1`),
 so nothing about SAM changes for anyone who doesn't. 1041 tests.
 
-Marked **alpha** for one honest reason: deploying is built and tested but has never shipped a
-real site, because that needs a token only you can create. Everything else in here has been
-driven live, not just tested.
+Everything in here was driven live, not just tested — including the deploy, which now puts a
+page on the public internet and then **fetches it back** to check it is really there.
 
 ### Added
 - **The yard.** Long work runs in its **own operating-system process**, so a build that pegs a
@@ -30,7 +29,13 @@ driven live, not just tested.
 - **Pair a browser.** The desktop app can approve a browser, code-confirmed, to start and stop
   work — without the app's own passkey ever being handed out.
 - **Deploying.** Reads what a project is, builds it, ships it, then **fetches the result** — an
-  empty page that returns 200 is reported as a failure, not a success.
+  empty page that returns 200 is reported as a failure, not a success. Proven end to end: a
+  page described in chat reached a public URL in under 20 seconds.
+- **Source-available licence.** SAM is now © Hectic Radio Ltd, readable and auditable, runnable
+  from an official build — but no longer free to copy, modify or redistribute. See LICENSE.
+- **Secure by default.** Being on this machine is no longer enough: privileged routes require a
+  per-launch token. The desktop app carries it; a browser is paired once, with a code you
+  confirm. One scrubber now governs every log SAM writes, so a credential cannot reach disk.
 - **The money desk** (`?app=flipit`) rebuilt phone-first, with a **watchdog** that turns red when
   a scheduled step is overdue — the one failure nothing else would tell you about.
 
