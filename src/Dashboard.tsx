@@ -18,6 +18,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [people, setPeople] = useState<any[]>([]);
   const [yard, setYard] = useState<any>(null);
+  const [yardErr, setYardErr] = useState<string>("");
   // Re-read the yard straight after acting on it, so the panel reflects the kill
   // immediately rather than at the next five-second tick.
   const refreshYard = () => { getYard().then(setYard).catch(() => {/* the next poll re-reads the truth */}); };
@@ -165,7 +166,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                             the machine: the job settles between steps rather than being shot. */}
                         <button
                           type="button"
-                          onClick={() => { cancelYardJob(yard.current.id).then(refreshYard).catch(() => {/* the next poll re-reads the truth */}); }}
+                          onClick={() => { setYardErr(""); cancelYardJob(yard.current.id).then(refreshYard).catch((e) => setYardErr(String(e?.message || e))); }}
                           style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--c-err)", background: "transparent", color: "var(--c-err)", cursor: "pointer", fontWeight: 600 }}
                         >Kill</button>
                       </div>
@@ -192,6 +193,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                     </div>
                   )}
 
+                  {/* A refused Kill says why. The panel reads fine in a browser tab, but
+                      starting and stopping work needs the passkey only the desktop app has. */}
+                  {yardErr && (
+                    <div style={{ fontSize: 11, color: "var(--c-warn)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      {yardErr}
+                    </div>
+                  )}
                   {/* The last failure stays visible: a failure nobody sees is the same as one
                       that did not happen, and this is the panel where it should be seen. */}
                   {yard.lastFailure && (

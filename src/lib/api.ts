@@ -266,5 +266,13 @@ export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id 
 
 // ── the yard — long-running build jobs (loopback + Handshake) ──
 export const getYard = () => fetch("/api/yard").then((r) => r.json());
-export const cancelYardJob = (id: string) => post("/api/yard/cancel", { id });
+// Surfaces the server's reason instead of failing silently. Starting and stopping work
+// needs the passkey the desktop app carries, so this legitimately refuses in a browser —
+// and a button that does nothing without saying why is the worst version of that.
+export const cancelYardJob = async (id: string) => {
+  const r = await fetch("/api/yard/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `couldn't stop that job (${r.status})`);
+  return body;
+};
 export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
