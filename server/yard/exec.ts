@@ -28,7 +28,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "node:child_process";
-import { realpathSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { realpathSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { resolve, sep, dirname, isAbsolute, join } from "node:path";
 import os from "node:os";
 // Authorisation for the yard is enforced where work is CREATED, not where it runs.
@@ -63,6 +63,9 @@ export function denyList(): string[] {
     join(home, ".gnupg"),
     join(home, "Library"),
     join(home, ".config"),
+    // Windows-sensitive locations; on unix these simply never match anything.
+    join(home, "AppData"),
+    join(home, ".gitconfig"),
   ];
 }
 
@@ -175,15 +178,47 @@ export function planExec(
 // perfectly-installed `vercel` is invisible to it and a deploy fails with a bare ENOENT
 // that says nothing about why. Composed rather than inherited, and de-duplicated so the
 // order stays predictable.
-export function toolPath(env: NodeJS.ProcessEnv = process.env): string {
-  const usual = [
-    "/opt/homebrew/bin", "/opt/homebrew/sbin",   // Apple silicon Homebrew
-    "/usr/local/bin", "/usr/local/sbin",         // Intel Homebrew, and most installers
-    "/usr/bin", "/bin", "/usr/sbin", "/sbin",
-  ];
-  const inherited = (env.PATH || "").split(":").filter(Boolean);
+export function toolPath(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+  const win = platform === "win32";
+  const sep = win ? ";" : ":";
+  // The places installers actually put things, by platform. On Windows the inherited PATH
+  // already carries most of it (installers register there), so the additions are npm's
+  // global prefix and the common Program Files bins.
+  const usual = win
+    ? [`${env.APPDATA || ""}\\npm`, `${env.ProgramFiles || "C:\\Program Files"}\\nodejs`,
+       "C:\\Program Files\\Git\\cmd"].filter((p) => p && !p.startsWith("\\"))
+    : ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin",
+       "/usr/bin", "/bin", "/usr/sbin", "/sbin"];
+  const inherited = (env.PATH || "").split(sep).filter(Boolean);
   const seen = new Set<string>();
-  return [...inherited, ...usual].filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; }).join(":");
+  return [...inherited, ...usual].filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; }).join(sep);
+}
+
+// On Windows, npm/npx/vercel/wrangler etc. are .cmd shims, and execFile WITHOUT a shell
+// will not resolve a bare name to a .cmd — it looks only for an .exe. Turning the shell
+// on to fix that would hand every argument back to cmd.exe and reopen the injection the
+// whole executor exists to prevent. So the command is resolved to its real file here,
+// walking PATH × PATHEXT, and execFile is given the absolute path. Pure and testable:
+// the caller passes what exists on disk.
+export function resolveCommand(
+  command: string,
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  isFile: (p: string) => boolean = (p) => { try { return statSync(p).isFile(); } catch { return false; } },
+): string {
+  if (platform !== "win32") return command;   // unix resolves bare names itself
+  // PATHEXT is upper by convention; the files are lower. The real Windows filesystem is
+  // case-insensitive, so statSync matches either way — do not "fix" this into a
+  // case-sensitive lookup or npm.cmd stops being found.
+  const exts = (env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
+  const dirs = toolPath(env, platform).split(";").filter(Boolean);
+  for (const dir of dirs) {
+    for (const ext of ["", ...exts]) {
+      const candidate = `${dir}\\${command}${ext}`;
+      if (isFile(candidate)) return candidate;
+    }
+  }
+  return command;   // not found — let execFile fail with an honest ENOENT
 }
 
 // A private home for whatever a job runs, kept OUTSIDE the project so it is never
@@ -202,7 +237,7 @@ export function childEnv(projectRoot: string, injected: Record<string, string> =
   // colliding. A sibling directory keeps the scrub (nothing can read the real home) and
   // stops any tool mistaking the project for one.
   const safe: Record<string, string> = {
-    PATH: toolPath(),
+    PATH: toolPath(),   // platform-aware inside
     HOME: fakeHome(projectRoot),
     TMPDIR: process.env.TMPDIR || "/tmp",
     LANG: process.env.LANG || "en_GB.UTF-8",
@@ -235,7 +270,7 @@ export function runPlanned(
   opts: { env?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<ExecResult> {
   return new Promise((res) => {
-    execFile(plan.command, plan.args, {
+    execFile(resolveCommand(plan.command), plan.args, {
       cwd: plan.cwd,
       env: childEnv(projectRoot, opts.env ?? {}),
       timeout: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,

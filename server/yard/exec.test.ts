@@ -423,3 +423,60 @@ describe("the child's HOME", () => {
     expect(home.startsWith(homedir())).toBe(false);
   });
 });
+
+describe("running on Windows", () => {
+  // The yard has only ever run on this Mac, but SAM ships Windows installers. These pin
+  // the two things that actually break there: the PATH separator, and that npm/npx are
+  // .cmd shims execFile cannot resolve without a shell (and turning the shell on would
+  // reopen the injection the whole executor exists to prevent).
+  const winEnv = { PATH: "C:\\Windows\\System32;C:\\Program Files\\nodejs", APPDATA: "C:\\Users\\x\\AppData\\Roaming", PATHEXT: ".COM;.EXE;.BAT;.CMD" } as any;
+
+  it("joins PATH with a semicolon, not a colon", async () => {
+    const { toolPath } = await import("./exec.ts");
+    const p = toolPath(winEnv, "win32");
+    expect(p).toContain(";");
+    expect(p.split(";")).toContain("C:\\Windows\\System32");
+    expect(p).toContain("C:\\Users\\x\\AppData\\Roaming\\npm");   // npm global prefix
+  });
+
+  it("still uses a colon and unix dirs on mac", async () => {
+    const { toolPath } = await import("./exec.ts");
+    const p = toolPath({ PATH: "/usr/bin" } as any, "darwin");
+    expect(p).toContain(":");
+    expect(p).toContain("/opt/homebrew/bin");
+    expect(p).not.toContain(";");
+  });
+
+  it("resolves a bare command to its .cmd shim on Windows", async () => {
+    const { resolveCommand } = await import("./exec.ts");
+    // pretend only npm.cmd exists on disk
+    // Windows filesystem is case-insensitive; PATHEXT is upper, files are lower
+    const exists = (p: string) => p.toLowerCase() === "c:\\program files\\nodejs\\npm.cmd";
+    expect(resolveCommand("npm", winEnv, "win32", exists).toLowerCase()).toBe("c:\\program files\\nodejs\\npm.cmd");
+  });
+
+  it("resolves node.exe over a bare name", async () => {
+    const { resolveCommand } = await import("./exec.ts");
+    const exists = (p: string) => p.toLowerCase() === "c:\\program files\\nodejs\\node.exe";
+    expect(resolveCommand("node", winEnv, "win32", exists).toLowerCase()).toBe("c:\\program files\\nodejs\\node.exe");
+  });
+
+  it("leaves the name alone on unix — the OS resolves it", async () => {
+    const { resolveCommand } = await import("./exec.ts");
+    expect(resolveCommand("npm", { PATH: "/usr/bin" } as any, "darwin")).toBe("npm");
+  });
+
+  it("returns the bare name when nothing matches, so execFile fails honestly", async () => {
+    const { resolveCommand } = await import("./exec.ts");
+    expect(resolveCommand("nope", winEnv, "win32", () => false)).toBe("nope");
+  });
+
+  it("denies the Windows user-profile locations too", async () => {
+    // deny list is built with path.join, so it is already correct per-platform; this just
+    // proves the Windows-sensitive entries are present
+    const { denyList } = await import("./exec.ts");
+    const joined = denyList().join(" ");
+    expect(joined).toMatch(/AppData/);
+    expect(joined).toMatch(/\.ssh/);
+  });
+});
