@@ -49,7 +49,13 @@ if [ -n "$GH_TOKEN_VALUE" ]; then
 else
   REL="$(curl -fsSL "$API")" || die "Couldn't reach GitHub Releases." "GitHub may be down — try again in a minute."
 fi
-TAG="$(printf '%s' "$REL" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+# NB: no `grep -m1` and no `head` here. Either one exits as soon as it has what it
+# needs, which closes the pipe while printf is still writing the release JSON — and
+# with `set -o pipefail` that SIGPIPE fails the whole install. It only started biting
+# when a release grew enough assets for printf to still be writing. Both seds read
+# their input to the end, so nothing is closed early. Written for BSD sed as well as
+# GNU (no `0,/re/` range), and tolerant of any spacing around the colon.
+TAG="$(printf '%s' "$REL" | sed -E -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | sed -n '1p')"
 [ -n "$TAG" ] || die "Couldn't read the latest version." "Report this at github.com/${REPO}/issues."
 
 # choose the right asset
