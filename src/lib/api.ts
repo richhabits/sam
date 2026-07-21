@@ -298,7 +298,12 @@ export const cancelYardJob = async (id: string) => {
 export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
 
 // ── what the yard has built ──
-export const getYardProjects = () => fetch("/api/yard/projects").then((r) => r.json());
+// A refused read is not an empty yard. Reported separately so the view can say which,
+// rather than announcing "nothing built yet" while two projects sit on disk.
+export const getYardProjects = () => fetch("/api/yard/projects").then(async (r) => {
+  if (r.status === 403) return { projects: [], refused: true };
+  return r.json();
+});
 export const getYardProject = (slug: string) => fetch(`/api/yard/projects/${encodeURIComponent(slug)}`).then((r) => r.json());
 export const getYardProjectFile = (slug: string, path: string) =>
   fetch(`/api/yard/projects/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`).then((r) => r.json());

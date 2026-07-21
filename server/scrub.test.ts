@@ -96,7 +96,8 @@ describe("structured data", () => {
 describe("the console itself", () => {
   it("scrubs anything SAM prints, so a sink cannot be forgotten", () => {
     const seen: string[] = [];
-    const fake = { log: (...a: any[]) => seen.push(a.join(" ")), warn: () => {}, error: () => {}, info: () => {} } as any;
+    const noop = () => { /* only log is under test here */ };
+    const fake = { log: (...a: any[]) => seen.push(a.join(" ")), warn: noop, error: noop, info: noop } as any;
     restore.push(scrubConsole(fake));
     fake.log("token vcp_abcdefghij0123456789KLMN here");
     expect(seen[0]).not.toContain("abcdefghij0123456789KLMN");
@@ -104,7 +105,8 @@ describe("the console itself", () => {
   });
 
   it("puts the console back when asked", () => {
-    const fake = { log: () => {}, warn: () => {}, error: () => {}, info: () => {} } as any;
+    const noop = () => { /* restoration is what is under test */ };
+    const fake = { log: noop, warn: noop, error: noop, info: noop } as any;
     const original = fake.log;
     const undo = scrubConsole(fake);
     expect(fake.log).not.toBe(original);

@@ -183,7 +183,7 @@ export function toolPath(env: NodeJS.ProcessEnv = process.env): string {
   ];
   const inherited = (env.PATH || "").split(":").filter(Boolean);
   const seen = new Set<string>();
-  return [...inherited, ...usual].filter((p) => (seen.has(p) ? false : (seen.add(p), true))).join(":");
+  return [...inherited, ...usual].filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; }).join(":");
 }
 
 // A private home for whatever a job runs, kept OUTSIDE the project so it is never

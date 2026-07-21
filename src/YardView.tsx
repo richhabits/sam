@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getYardProjects, getYardProject, getYardProjectFile, yardPreviewUrl } from "./lib/api";
+import { getYardProjects, getYardProject, getYardProjectFile, yardPreviewUrl, command, getYard } from "./lib/api";
 
 // 🏗 THE YARD — what SAM has built. A full view, like the money desk, opened with ?app=yard.
 //
@@ -32,18 +32,25 @@ type Tab = "preview" | "files" | "history" | "brief";
 
 export default function YardView() {
   const [projects, setProjects] = useState<Project[] | null>(null);
+  const [refused, setRefused] = useState(false);
   const [slug, setSlug] = useState<string>("");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [tab, setTab] = useState<Tab>("preview");
   const [openFile, setOpenFile] = useState<{ path: string; text: string } | null>(null);
   const [device, setDevice] = useState<"phone" | "desktop">("desktop");
   const [nonce, setNonce] = useState(0);   // forces the preview to re-fetch after a rebuild
+  // The builder half: say what to change, watch it happen, see the page update.
+  const [split, setSplit] = useState(true);
+  const [said, setSaid] = useState<{ who: "you" | "sam"; text: string }[]>([]);
+  const [asking, setAsking] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => { document.title = "The Yard · SAM"; }, []);
 
   useEffect(() => {
     getYardProjects()
       .then((r) => {
+        setRefused(!!r?.refused);
         const list: Project[] = r?.projects ?? [];
         setProjects(list);
         setSlug((s) => s || list[0]?.slug || "");
@@ -56,6 +63,40 @@ export default function YardView() {
     setDetail(null); setOpenFile(null);
     getYardProject(slug).then(setDetail).catch(() => setDetail(null));
   }, [slug]);
+
+  // Send a change scoped to THIS project, so the request never has to name it and can
+  // never be pointed at the wrong one by a loose phrase.
+  const ask = async () => {
+    const text = asking.trim();
+    if (!text || busy) return;
+    setAsking(""); setBusy(true);
+    setSaid((s) => [...s, { who: "you", text }]);
+    try {
+      const named = m?.name && text.toLowerCase().includes(m.name.toLowerCase()) ? text : `${text} — on the ${m?.name ?? slug}`;
+      const r: any = await command(named);
+      setSaid((s) => [...s, { who: "sam", text: String(r?.reply ?? r?.text ?? "…").split("\n")[0] }]);
+    } catch {
+      setSaid((s) => [...s, { who: "sam", text: "That didn't reach SAM — is it still running?" }]);
+    }
+  };
+
+  // While something is building, watch the queue and refresh the moment it lands. The
+  // whole point of a split view is not having to ask whether it worked.
+  useEffect(() => {
+    if (!busy) return;
+    const iv = setInterval(() => {
+      getYard().then((y: any) => {
+        if (y?.running === 0 && y?.depth === 0) {
+          setBusy(false);
+          setNonce((n) => n + 1);                                  // repaint the preview
+          getYardProject(slug).then(setDetail).catch(() => {/* keeps what it had */});
+          setSaid((s) => [...s, { who: "sam", text: "Done — the preview has been refreshed." }]);
+        }
+      }).catch(() => setBusy(false));
+    }, 3000);
+    const giveUp = setTimeout(() => setBusy(false), 5 * 60_000);
+    return () => { clearInterval(iv); clearTimeout(giveUp); };
+  }, [busy, slug]);
 
   const back = () => {
     const sd = (globalThis as any).samDesktop;
@@ -80,12 +121,12 @@ export default function YardView() {
 
   return (
     <div style={wrap}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "18px 16px 60px" }}>
+      <div style={{ maxWidth: split ? 1560 : 1180, margin: "0 auto", padding: "18px 16px 60px" }}>
         {/* masthead */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.03em" }}>The Yard</div>
-            <div style={{ fontSize: 12, color: "var(--ash)" }}>what SAM has built · looking only</div>
+            <div style={{ fontSize: 12, color: "var(--ash)" }}>{split ? "say what to change · watch it happen" : "what SAM has built"}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!!projects?.length && (
@@ -96,12 +137,27 @@ export default function YardView() {
                 {projects.map((p) => <option key={p.slug} value={p.slug}>{p.name}</option>)}
               </select>
             )}
+            <button type="button" onClick={() => setSplit((v) => !v)}
+              style={{ background: split ? "var(--accent-soft)" : "var(--surface)", border: `1px solid ${split ? "var(--accent)" : "var(--line)"}`, color: split ? "var(--accent)" : "var(--ash)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+              {split ? "Builder" : "Builder off"}
+            </button>
             <button type="button" onClick={back} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>← SAM</button>
           </div>
         </div>
 
         {projects === null ? (
           <div style={{ ...card, textAlign: "center", padding: 40, color: "var(--ash)" }}>Looking…</div>
+        ) : refused ? (
+          // Refused is not empty. Saying "nothing built yet" while projects sit on disk
+          // sends you looking for a bug that is not there.
+          <div style={{ ...card, textAlign: "center", padding: 44 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This browser isn't paired yet</div>
+            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.6 }}>
+              The yard is there — the read was refused, not empty. SAM asks for its per-launch
+              passkey, which only the desktop app carries. Pair this browser from the SAM app
+              (Control Centre → Automations), or open the yard from the app itself.
+            </div>
+          </div>
         ) : !projects.length ? (
           <div style={{ ...card, textAlign: "center", padding: 44 }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Nothing built yet</div>
@@ -111,7 +167,50 @@ export default function YardView() {
             </div>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: split ? "minmax(300px, 380px) 1fr" : "1fr", alignItems: "start" }}>
+            {/* ── THE BUILDER ──────────────────────────────────────────────
+                Describe a change, and the page beside it updates when the job
+                lands. The request is scoped to the project on screen, so it never
+                has to name it — and can never be pointed at the wrong one by a
+                loose phrase. */}
+            {split && (
+              <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, position: "sticky", top: 18, maxHeight: "calc(100vh - 60px)" }}>
+                <div style={lbl}>Change this project</div>
+                <div style={{ flex: 1, overflowY: "auto", display: "grid", gap: 8, minHeight: 120 }}>
+                  {!said.length && (
+                    <div style={{ fontSize: 13, color: "var(--ash)", lineHeight: 1.6 }}>
+                      Try <i>“make the heading gold”</i> or <i>“add a contact section”</i>.
+                      <br /><br />
+                      Every change checkpoints first, so there is always a way back.
+                    </div>
+                  )}
+                  {said.map((t) => (
+                    <div key={`${t.who}-${t.text}`} style={{
+                      fontSize: 13, lineHeight: 1.5, padding: "8px 10px", borderRadius: 10,
+                      background: t.who === "you" ? "var(--accent-soft)" : "var(--ink-2)",
+                      color: t.who === "you" ? "var(--accent)" : "var(--paper)",
+                      justifySelf: t.who === "you" ? "end" : "start", maxWidth: "92%",
+                    }}>{t.text}</div>
+                  ))}
+                  {busy && <div style={{ fontSize: 12, color: "var(--ash)" }}>building… the preview refreshes on its own</div>}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    value={asking} onChange={(e) => setAsking(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") ask(); }}
+                    placeholder={busy ? "building…" : "what should change?"}
+                    disabled={busy}
+                    style={{ flex: 1, background: "var(--ink-2)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 9, padding: "9px 11px", fontSize: 13 }}
+                  />
+                  <button type="button" onClick={ask} disabled={busy || !asking.trim()}
+                    style={{ background: busy || !asking.trim() ? "var(--ink-2)" : "var(--accent)", color: busy || !asking.trim() ? "var(--ash)" : "#0E0F12", border: "none", borderRadius: 9, padding: "9px 14px", fontWeight: 800, fontSize: 13, cursor: busy || !asking.trim() ? "default" : "pointer" }}>
+                    Go
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 14, minWidth: 0 }}>
             {/* what this project is */}
             <div style={{ ...card, background: "linear-gradient(150deg, rgba(124,158,255,.08), var(--surface) 55%)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
@@ -244,6 +343,7 @@ export default function YardView() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
       </div>

@@ -18,14 +18,20 @@ import "./styles.css";
   const onFile = typeof location !== "undefined" && location.protocol === "file:";
   const BASE = "http://localhost:8787";
   const token = (globalThis as unknown as { samDesktop?: { controlToken?: string } }).samDesktop?.controlToken || "";
-  if (onFile || token) {
+  // A browser tab cannot read the per-launch passkey — the desktop app receives it via
+  // preload. What a browser CAN hold is a pairing the operator approved from inside the
+  // app. Attached here, once, for EVERY api call: doing it per-request is how one call
+  // gets forgotten and a panel then reports itself empty when it was actually refused.
+  const pair = (() => { try { return localStorage.getItem("sam.yard.pair") || ""; } catch { return ""; } })();
+  if (onFile || token || pair) {
     const orig = window.fetch.bind(window);
     window.fetch = (input: any, init?: any) => {
       const isApi = typeof input === "string" && (input.startsWith("/api/") || input.includes("/api/"));
       const target = onFile && typeof input === "string" && input.startsWith("/") && !input.startsWith("//") ? BASE + input : input;
-      if (token && isApi) {
+      if (isApi && (token || pair)) {
         const headers = new Headers(init?.headers || undefined);
-        headers.set("X-SAM-Token", token);
+        if (token) headers.set("X-SAM-Token", token);
+        if (pair) headers.set("X-SAM-Pair", pair);
         return orig(target, { ...init, headers });
       }
       return orig(target, init);
