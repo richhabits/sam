@@ -117,9 +117,9 @@ describe("the console itself", () => {
 
 describe("what an error may say to a caller", () => {
   it("collapses a home directory, so a message stops describing the machine", () => {
-    const e = new Error("ENOENT: no such file or directory, open '/Users/romeovalentine/sam/vault/keys.json'");
+    const e = new Error("ENOENT: no such file or directory, open '/Users/alex/sam/vault/keys.json'");
     const out = publicError(e, false);
-    expect(out).not.toContain("romeovalentine");
+    expect(out).not.toContain("alex");
     expect(out).toContain("~/sam/vault/keys.json");   // still diagnosable
   });
 

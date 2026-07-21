@@ -289,7 +289,7 @@
             <button class="ol-tab on" data-os="unix">macOS / Linux</button>
             <button class="ol-tab" data-os="win">Windows</button>
           </div>
-          <div class="ol-cmd"><span class="prompt">$</span><code id="ol-code">curl -fsSL https://richhabits.github.io/sam/install.sh | bash</code><button class="ol-copy" id="ol-copy">Copy</button></div>
+          <div class="ol-cmd"><span class="prompt">$</span><code id="ol-code">curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash</code><button class="ol-copy" id="ol-copy">Copy</button></div>
           <div class="ol-note">Installs, verifies the SHA-256, and launches SAM — ~60 seconds. Re-run to update.</div>
         </div>
         <div class="cta-row">
@@ -438,8 +438,8 @@
 
   // one-paste installer: OS auto-detect + tabs + copy
   const CMDS = {
-    unix: "curl -fsSL https://richhabits.github.io/sam/install.sh | bash",
-    win:  "irm https://richhabits.github.io/sam/install.ps1 | iex",
+    unix: "curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash",
+    win:  "irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex",
   };
   const olCode = document.getElementById("ol-code"), olCopy = document.getElementById("ol-copy");
   const olTabs = [...document.querySelectorAll(".ol-tab")];

@@ -113,7 +113,7 @@ export function scrubConsole(target: Console = console): () => void {
 
 // ── Paths in messages people see ────────────────────────────────────────────
 // A raw error message routinely carries an absolute path — "ENOENT: no such file or
-// directory, open '/Users/romeo/sam/vault/keys.json'". That names the operator, their
+// directory, open '/Users/alex/sam/vault/keys.json'". That names the operator, their
 // layout, and often what SAM keeps where. Homes collapse to ~, so the message stays
 // diagnosable without describing the machine.
 export function collapseHomes(text: string): string {
