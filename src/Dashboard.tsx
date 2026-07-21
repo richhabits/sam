@@ -160,7 +160,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                 because silence and work look identical otherwise. Hidden entirely when off, so a
                 SAM without the yard shows no dead switch. */}
             {yard?.on && (<>
-              <div className="dash-sec"><Icon name="settings" /> The yard ({yard.depth} queued)</div>
+              <div className="dash-sec">
+                <Icon name="settings" /> The yard ({yard.depth} queued)
+                {/* A build you cannot look at is a build you have to take on trust. */}
+                <button type="button" className="dash-sec-link" onClick={() => window.open(`${location.pathname}?app=yard`, "_blank")}>
+                  See what it built
+                </button>
+              </div>
               <div className="dash-lanes">
                 <div className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>

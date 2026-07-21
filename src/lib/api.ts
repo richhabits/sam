@@ -296,3 +296,10 @@ export const cancelYardJob = async (id: string) => {
   return body;
 };
 export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
+
+// ── what the yard has built ──
+export const getYardProjects = () => fetch("/api/yard/projects").then((r) => r.json());
+export const getYardProject = (slug: string) => fetch(`/api/yard/projects/${encodeURIComponent(slug)}`).then((r) => r.json());
+export const getYardProjectFile = (slug: string, path: string) =>
+  fetch(`/api/yard/projects/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`).then((r) => r.json());
+export const yardPreviewUrl = (slug: string) => `/api/yard/preview/${encodeURIComponent(slug)}/`;

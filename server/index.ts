@@ -56,7 +56,8 @@ import { JobLog } from "./yard/worker.ts";
 import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
-import { listProjects } from "./yard/managed.ts";
+import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
+import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import {
   requestPairing, pendingRequests, approvePairing, denyPairing,
   verifyPairToken, pairedBrowsers, revokePairing, stashForCollection, collect,
@@ -1475,6 +1476,63 @@ app.post("/api/yard/retry", (req, res) => {
   const job = yardStore().retry(String(req.body?.id || ""));
   job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
 });
+
+// ── What the yard has built ─────────────────────────────────────────────────
+// Reading, so the same bar as every other panel — this is what lets the builder view
+// work in a browser tab alongside the desktop app.
+app.get("/api/yard/projects", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  res.json({ projects: listProjects(), root: projectsRoot() });
+});
+app.get("/api/yard/projects/:slug", async (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const slug = String(req.params.slug);
+  const manifest = readManifest(slug);
+  if (!manifest) { res.status(404).json({ error: "no such project" }); return; }
+  const history = await checkpoints(slug, 30, { handshake: true }).catch(() => []);
+  res.json({ manifest, checkpoints: history, files: yardProjectFiles(slug), path: projectPath(slug) });
+});
+app.get("/api/yard/projects/:slug/file", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const text = readProjectFile(String(req.params.slug), String(req.query?.path || ""));
+  text === null ? res.status(404).json({ error: "no such file" }) : res.json({ text });
+});
+
+// The preview itself. Under /api like every other route (the house contract, and it is
+// right — one place to reason about the surface). An iframe loads it perfectly well, and
+// every asset the page pulls in resolves through the same confinement.
+// Express 4 wildcard: `*` with the remainder in params[0]. The `*splat` named form is
+// Express 5, and on 4 it silently matches nothing — every asset a page asked for 404'd
+// while the front page still loaded, which looks like a broken project rather than a
+// broken route.
+app.get("/api/yard/preview/:slug/*", servePreview);
+app.get("/api/yard/preview/:slug", servePreview);
+function servePreview(req: any, res: any) {
+  if (!isLoopback(req)) { res.status(403).send("loopback only"); return; }
+  const rel = String(req.params[0] ?? req.params.splat ?? "");
+  const r = resolvePreview(String(req.params.slug), rel);
+  if (!r.ok) { res.status(r.status).send(r.reason); return; }
+  res.type(r.type);
+  // A preview is a working copy, not a published site: never let a browser cache it, or
+  // an edit you just made appears not to have happened.
+  res.setHeader("Cache-Control", "no-store");
+
+  // SAM refuses to be framed anywhere (clickjacking), which also stopped it framing its
+  // OWN preview. Relaxed to same-origin here, and ONLY here.
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+
+  // The important half. This page was written by a model and is served from SAM's own
+  // origin, so on its own it could call SAM's API with the browser's full authority. The
+  // CSP `sandbox` directive puts the document in an opaque origin whatever loads it —
+  // framed or opened directly — so it can render and run its own scripts and reach
+  // nothing of SAM's. Relying on the iframe's sandbox attribute alone would protect the
+  // framed case and leave the direct one wide open.
+  res.setHeader(
+    "Content-Security-Policy",
+    "sandbox allow-scripts; default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'",
+  );
+  res.send(readFileSync(r.path));
+}
 
 // ── Pairing a browser ───────────────────────────────────────────────────────
 // Asking is unprivileged on purpose: a request is inert until a person holding the
