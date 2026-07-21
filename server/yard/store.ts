@@ -195,7 +195,7 @@ export class JobStore {
   // cancel are decisions, not faults, and the machine does not overrule them.
   retry(id: string, now = Date.now()): Job | null {
     const job = this.get(id);
-    if (!job || job.state !== "failed") return null;
+    if (job?.state !== "failed") return null;
     if (!isRetryable(job.failureKind ?? "permanent", job.attempts)) return null;
     return this.transition(id, "queued", { run_after: now + backoffMs(job.attempts), heartbeat_at: null, started_at: null }, now);
   }
@@ -204,7 +204,7 @@ export class JobStore {
   // separate from retry(): it requires a new number, so nobody resumes by reflex.
   raiseBudgetAndRequeue(id: string, newBudget: number, now = Date.now()): Job | null {
     const job = this.get(id);
-    if (!job || job.state !== "failed" || job.failureKind !== "budget") return null;
+    if (job?.state !== "failed" || job.failureKind !== "budget") return null;
     if (newBudget <= job.costTokens) return null;   // wouldn't survive its first step
     return this.transition(id, "queued", { cost_budget: newBudget, run_after: now, heartbeat_at: null, started_at: null }, now);
   }

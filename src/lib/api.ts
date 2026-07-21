@@ -258,3 +258,8 @@ export const snoozeChimeApi = (id: string, ms?: number) => post("/api/chime/snoo
 export const getCameras = () => fetch("/api/cameras").then((r) => r.json());
 export const addCameraApi = (c: { name: string; location?: string; kind: "snapshot" | "rtsp" | "ring"; url?: string }) => post("/api/cameras", c);
 export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id });
+
+// ── the yard — long-running build jobs (loopback + Handshake) ──
+export const getYard = () => fetch("/api/yard").then((r) => r.json());
+export const cancelYardJob = (id: string) => post("/api/yard/cancel", { id });
+export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
