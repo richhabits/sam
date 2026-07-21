@@ -2,6 +2,28 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.0.1] - 2026-07-21 — "The Key"
+
+A fix release. v3.0.0 made SAM secure by default and then made it hard to get in.
+
+### Fixed
+- **Pairing is findable now.** v3.0.0 started requiring a per-launch passkey on privileged
+  routes — right call — but the only way to pair a browser was to press Kill on a running
+  build job and have it fail. For anyone not using the yard, that button didn't exist, so the
+  money desk, cameras and the standing crew simply sat empty with no way to fix it. There's
+  now a prompt wherever the refusal happens: a banner in the app, and a button on the panels
+  themselves.
+- **You get five minutes to approve a pairing, not two.** Two was measured against a machine
+  approving instantly. A person has to read the code, open the app, find the row and compare
+  the number — and the request would vanish mid-approval with nothing to explain why.
+- **Intel Macs get an Intel build.** The mac update feed was written by whichever of the two
+  build jobs finished last, so it described one architecture picked by a race. v3.0.0's
+  described Apple silicon only — an Intel Mac updating would have been handed a build it
+  cannot run. The feed now names every architecture.
+- **The Linux one-paste installer works again.** It broke on a release with enough assets:
+  `grep -m1` closed the pipe while the release JSON was still being written, and the install
+  aborted.
+
 ## [3.0.0] - 2026-07-21 — "The Yard"
 
 SAM can build. Describe something, and it scaffolds a real project, commits it, and keeps
