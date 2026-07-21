@@ -217,6 +217,49 @@ jobs:
           # SHA256SUMS.txt — uploaded as a release asset so install.sh / install.ps1 can verify downloads.
           sha256sum * > SHA256SUMS.txt
           gh release upload "$TAG" -R "$REPO" SHA256SUMS.txt --clobber
+          # ── Repair the mac update feed ───────────────────────────────────────
+          # The two mac jobs (arm64, x64) each publish their OWN latest-mac.yml, and
+          # whichever finishes last overwrites the other — so the feed describes ONE
+          # architecture, picked by a race. v3.0.0 shipped arm64-only, which would have
+          # handed every Intel Mac an Apple-silicon build it cannot run.
+          #
+          # This runs after BOTH builds, so it can name all of them. Only sha512s are
+          # recomputed; nothing is rebuilt or re-signed.
+          cd "$GITHUB_WORKSPACE/dl"
+          gh release download "$TAG" -R "$REPO" -p '*-mac.zip' --clobber || true
+          if ls *mac.zip >/dev/null 2>&1; then
+            python3 - <<'FEED'
+          import base64, hashlib, glob, os, datetime
+          def sha(p):
+              h = hashlib.sha512()
+              with open(p, 'rb') as f:
+                  for c in iter(lambda: f.read(1 << 20), b''): h.update(c)
+              return base64.b64encode(h.digest()).decode()
+
+          ver = os.environ['TAG'].lstrip('v')
+          mac = sorted(glob.glob('*mac.zip') + [d for d in glob.glob('*.dmg') if 'Setup' not in d])
+          if not mac:
+              raise SystemExit('no mac artifacts — leaving the feed alone')
+
+          lines = ['version: ' + ver, 'files:']
+          for f in mac:
+              lines += ['  - url: ' + f, '    sha512: ' + sha(f), '    size: ' + str(os.path.getsize(f))]
+
+          # The fallback `path` is the x64 zip on purpose: Apple silicon runs an x64 build
+          # under Rosetta, whereas an Intel Mac cannot run arm64 at all. If a client matches
+          # nothing, the safe guess is the one that works everywhere.
+          fb = next((f for f in mac if 'arm64' not in f and f.endswith('mac.zip')), mac[0])
+          lines += ['path: ' + fb, 'sha512: ' + sha(fb),
+                    "releaseDate: '" + datetime.datetime.utcnow().isoformat(timespec='milliseconds') + "Z'"]
+          open('latest-mac.yml', 'w').write('\n'.join(lines) + '\n')
+          print('rebuilt latest-mac.yml naming: ' + ', '.join(mac))
+          FEED
+            gh release upload "$TAG" -R "$REPO" latest-mac.yml --clobber
+            echo "OK mac update feed now names every architecture"
+          else
+            echo "WARN no mac zips found - feed left as electron-builder wrote it"
+          fi
+          cd "$GITHUB_WORKSPACE"
           {
             echo "## 🔒 Verify your download (SHA-256)"
             echo ""
