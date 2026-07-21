@@ -250,7 +250,7 @@ jobs:
           # nothing, the safe guess is the one that works everywhere.
           fb = next((f for f in mac if 'arm64' not in f and f.endswith('mac.zip')), mac[0])
           lines += ['path: ' + fb, 'sha512: ' + sha(fb),
-                    "releaseDate: '" + datetime.datetime.utcnow().isoformat(timespec='milliseconds') + "Z'"]
+                    "releaseDate: '" + datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(timespec='milliseconds') + "Z'"]
           open('latest-mac.yml', 'w').write('\n'.join(lines) + '\n')
           print('rebuilt latest-mac.yml naming: ' + ', '.join(mac))
           FEED
