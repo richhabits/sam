@@ -170,10 +170,40 @@ export function planExec(
 // The child's whole world. HOME points at the project so a tool that writes a config
 // writes it there; nothing from the parent environment is carried across, which is what
 // keeps every key in the vault invisible to anything a job runs.
+// Where build tools actually live. A GUI- or launchd-started process inherits a minimal
+// PATH — /usr/bin:/bin:/usr/sbin:/sbin — with no Homebrew and no npm global bin, so a
+// perfectly-installed `vercel` is invisible to it and a deploy fails with a bare ENOENT
+// that says nothing about why. Composed rather than inherited, and de-duplicated so the
+// order stays predictable.
+export function toolPath(env: NodeJS.ProcessEnv = process.env): string {
+  const usual = [
+    "/opt/homebrew/bin", "/opt/homebrew/sbin",   // Apple silicon Homebrew
+    "/usr/local/bin", "/usr/local/sbin",         // Intel Homebrew, and most installers
+    "/usr/bin", "/bin", "/usr/sbin", "/sbin",
+  ];
+  const inherited = (env.PATH || "").split(":").filter(Boolean);
+  const seen = new Set<string>();
+  return [...inherited, ...usual].filter((p) => (seen.has(p) ? false : (seen.add(p), true))).join(":");
+}
+
+// A private home for whatever a job runs, kept OUTSIDE the project so it is never
+// published, never committed, and never confused for the project itself.
+export function fakeHome(projectRoot: string): string {
+  const home = `${trueLocation(projectRoot)}.home`;
+  try { mkdirSync(home, { recursive: true }); } catch { /* fall back to the project below */ }
+  return existsSync(home) ? home : projectRoot;
+}
+
 export function childEnv(projectRoot: string, injected: Record<string, string> = {}): Record<string, string> {
+  // HOME is a SANDBOX beside the project, not the project itself. Pointing it AT the
+  // project made a deploy hang for ever: the tool saw cwd === HOME, decided it was about
+  // to publish someone's entire home folder, and asked a safety question that --yes
+  // deliberately does not answer — with no terminal to answer it. Two correct defences
+  // colliding. A sibling directory keeps the scrub (nothing can read the real home) and
+  // stops any tool mistaking the project for one.
   const safe: Record<string, string> = {
-    PATH: process.env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin",
-    HOME: projectRoot,
+    PATH: toolPath(),
+    HOME: fakeHome(projectRoot),
     TMPDIR: process.env.TMPDIR || "/tmp",
     LANG: process.env.LANG || "en_GB.UTF-8",
     NODE_ENV: "development",

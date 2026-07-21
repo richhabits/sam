@@ -190,9 +190,10 @@ describe("what an argument counts as a path", () => {
 });
 
 describe("the child's environment", () => {
-  it("carries only a short whitelist, with HOME inside the project", () => {
+  it("carries only a short whitelist, with HOME in a sandbox beside the project", () => {
     const env = childEnv(root);
-    expect(env.HOME).toBe(root);
+    expect(env.HOME).not.toBe(root);              // not the project — see "the child's HOME"
+    expect(env.HOME).toContain(".home");
     expect(Object.keys(env).sort()).toEqual([
       "CI", "HOME", "LANG", "NODE_ENV", "PATH", "TMPDIR",
       "npm_config_audit", "npm_config_fund", "npm_config_update_notifier",
@@ -221,7 +222,7 @@ describe("the child's environment", () => {
     expect(env.LD_PRELOAD).toBeUndefined();
     expect(env.DYLD_INSERT_LIBRARIES).toBeUndefined();
     expect(env.NODE_OPTIONS).toBeUndefined();
-    expect(env.HOME).toBe(root);
+    expect(env.HOME).not.toBe("/");                // an injected HOME never wins
     expect(env.PATH).not.toBe("/tmp/evil");
   });
 
@@ -256,7 +257,7 @@ describe("actually running something", () => {
       expect(r.code).toBe(0);
       expect(r.stdout).not.toMatch(/gsk_runtime_leak_canary/);
       expect(r.stdout).not.toMatch(/GROQ_API_KEY/);
-      expect(JSON.parse(r.stdout).HOME).toBe(root);
+      expect(JSON.parse(r.stdout).HOME).toContain(".home");   // the sandbox, not the project
     } finally { delete process.env.GROQ_API_KEY; }
   });
 });
@@ -368,5 +369,57 @@ describe("the deploy credential is scoped to deploy work only", () => {
       expect(line).toMatch(/vcp_?\[redacted\]/);
       expect(line).toContain("deploying with token");
     } finally { delete process.env.VERCEL_TOKEN; }
+  });
+});
+
+describe("finding the tools a build needs", () => {
+  // A launchd- or GUI-started process inherits PATH=/usr/bin:/bin:/usr/sbin:/sbin. A
+  // perfectly-installed vercel is then invisible and the deploy dies with a bare ENOENT.
+  it("adds the usual install locations to a minimal inherited PATH", async () => {
+    const { toolPath } = await import("./exec.ts");
+    const p = toolPath({ PATH: "/usr/bin:/bin:/usr/sbin:/sbin" } as any);
+    expect(p).toContain("/opt/homebrew/bin");
+    expect(p).toContain("/usr/local/bin");
+    expect(p).toContain("/usr/bin");
+  });
+
+  it("keeps what was inherited, and keeps it first", async () => {
+    const { toolPath } = await import("./exec.ts");
+    expect(toolPath({ PATH: "/my/tools:/usr/bin" } as any).startsWith("/my/tools:/usr/bin")).toBe(true);
+  });
+
+  it("never repeats an entry", async () => {
+    const { toolPath } = await import("./exec.ts");
+    const parts = toolPath({ PATH: "/usr/bin:/opt/homebrew/bin" } as any).split(":");
+    expect(parts.length).toBe(new Set(parts).size);
+  });
+
+  it("still works when PATH is missing entirely", async () => {
+    const { toolPath } = await import("./exec.ts");
+    expect(toolPath({} as any)).toContain("/usr/bin");
+  });
+});
+
+describe("the child's HOME", () => {
+  // Pointing HOME at the project made a deploy hang for ever: the tool saw cwd === HOME
+  // and asked "you are deploying your home directory, continue?" — a question --yes does
+  // not answer, with no terminal to answer it.
+  it("is beside the project, never the project itself", async () => {
+    const { childEnv } = await import("./exec.ts");
+    const home = childEnv(root).HOME;
+    expect(home).not.toBe(root);
+    expect(existsSync(home)).toBe(true);
+  });
+
+  it("stays outside the project, so it is never published or committed", async () => {
+    const { childEnv, isWithin } = await import("./exec.ts");
+    expect(isWithin(root, childEnv(root).HOME)).toBe(false);
+  });
+
+  it("still hides the real home — the whole point of the scrub", async () => {
+    const { childEnv } = await import("./exec.ts");
+    const home = childEnv(root).HOME;
+    expect(home).not.toBe(homedir());
+    expect(home.startsWith(homedir())).toBe(false);
   });
 });
