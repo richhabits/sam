@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject } from "./exec.ts";
+import { createProject, checkpoint, restore, projectPath, isManagedProject } from "./managed.ts";
 
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
@@ -133,9 +134,12 @@ export const HANDLERS: Record<string, Handler> = {
 // it were output. A non-zero exit stops the sequence too: continuing past a failed
 // install and reporting success is how a build lies about what it produced.
 HANDLERS.run = async (ctx) => {
-  const root = String(ctx.payload?.root || "");
+  // Either an explicit root, or the slug of a managed project — which is the form that
+  // gets a checkpoint at the end, because only a managed project has somewhere to put one.
+  const slug = String(ctx.payload?.slug || "");
+  const root = slug ? projectPath(slug) : String(ctx.payload?.root || "");
   const steps: any[] = Array.isArray(ctx.payload?.steps) ? ctx.payload.steps : [];
-  if (!root) throw Object.assign(new Error("a run job needs a project root"), { kind: "permanent" as FailureKind });
+  if (!root) throw Object.assign(new Error("a run job needs a project root or a slug"), { kind: "permanent" as FailureKind });
   if (!steps.length) throw Object.assign(new Error("a run job needs at least one step"), { kind: "permanent" as FailureKind });
 
   let last = "";
@@ -149,7 +153,46 @@ HANDLERS.run = async (ctx) => {
     if (r.code !== 0) throw new Error(`step ${i + 1} (${command}) exited ${r.code}`);
     last = `${command} ok`;
   }
-  return `${steps.length} step${steps.length === 1 ? "" : "s"} — ${last}`;
+
+  // A completed iteration checkpoints itself. The undo therefore exists before anyone
+  // discovers they need it — which is the only time an undo is worth having. Deliberately
+  // AFTER the steps succeeded: checkpointing a half-finished build records a state nobody
+  // would ever want to return to.
+  let mark = "";
+  if (slug && isManagedProject(slug)) {
+    const cp = await checkpoint(slug, String(ctx.payload?.message || `${steps.length} step${steps.length === 1 ? "" : "s"}: ${last}`));
+    if (cp) { ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`); mark = ` · checkpoint ${cp.sha.slice(0, 8)}`; }
+    else ctx.log("nothing changed on disk — no checkpoint recorded");
+  }
+  return `${steps.length} step${steps.length === 1 ? "" : "s"} — ${last}${mark}`;
+};
+
+// ── Managed projects as job kinds ───────────────────────────────────────────
+// Creating, checkpointing and going back are all work the yard does, so they are jobs
+// like any other: queued, logged, cancellable, and visible in the same place.
+
+HANDLERS["project.create"] = async (ctx) => {
+  const name = String(ctx.payload?.name || "").trim();
+  if (!name) throw Object.assign(new Error("a project needs a name"), { kind: "permanent" as FailureKind });
+  const m = await createProject(name, { spec: String(ctx.payload?.spec || "") });
+  ctx.log(`created ${m.slug} at ${projectPath(m.slug)}`);
+  return `created ${m.slug}`;
+};
+
+HANDLERS["project.checkpoint"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  const cp = await checkpoint(slug, String(ctx.payload?.message || "checkpoint"));
+  if (!cp) { ctx.log("nothing had changed — no checkpoint recorded"); return "nothing to record"; }
+  ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`);
+  return `checkpoint ${cp.sha.slice(0, 8)}`;
+};
+
+HANDLERS["project.restore"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  const sha = String(ctx.payload?.sha || "");
+  const at = await restore(slug, sha);
+  ctx.log(`restored ${slug} to ${at.sha.slice(0, 8)} — ${at.message}`);
+  return `restored to ${at.sha.slice(0, 8)}`;
 };
 
 export function registerHandler(kind: string, fn: Handler) { HANDLERS[kind] = fn; }
