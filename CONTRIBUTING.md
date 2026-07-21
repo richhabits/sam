@@ -1,52 +1,44 @@
 # Contributing to SAM
 
-Thanks for helping make SAM better! SAM is a free, private, local-first AI assistant by HECTIC.
+Short version: **SAM is source-available, and external code contributions are not being
+accepted.** The source is published so it can be read, reviewed and audited — not so it
+can be forked and rebuilt. See [LICENSE](LICENSE) for what that permits.
 
-## Quick start
-```bash
-git clone https://github.com/richhabits/sam.git
-cd sam && npm install && npm start     # http://localhost:8787
-npm run dev      # hot reload
-npm test         # tests
-npx tsc --noEmit # type-check
-```
+That is a deliberate choice rather than an oversight, and it is worth being plain about
+why: SAM is built and owned by Hectic Radio Ltd, and accepting outside code would mean
+either taking assignment of other people's copyright or ending up with a codebase nobody
+can cleanly own. Neither is a mess worth creating.
 
-## Ground rules (non-negotiable)
-- **Never commit secrets** — no keys, `.env`, or `vault/` contents. CI runs a gitleaks secret-scan that fails the build on any leaked key. `.env.example` holds placeholders only.
-- **Keep it free & private** — no telemetry, no phone-home, no paid-provider defaults. User data stays local.
-- **Safety tiers hold** — dangerous tools (shell, send, delete, push, payments) must always ask first, even under Autopilot/Swarm. If you touch the tool or auth layer, add a test in the same PR.
-- **Tests green + `tsc` clean** before you open a PR. New tools/features tested on the 3-OS CI matrix.
+## What genuinely helps
 
-## Fastest first PR (scaffolded — no need to read the source)
+Three things, all of them valuable and none requiring a pull request:
 
-```bash
-npm run create-tool my_tool           # scaffolds a tool stub + prints where to wire it
-npm run create-pack "My Pack"          # scaffolds a shareable .sampack draft
-npm run validate-packs                 # runs the same safety gate CI runs on packs
-```
+**Report a bug.** Open an issue with what you did, what you expected, and what happened.
+A clear reproduction is worth more than a patch.
 
-Full guides: **[BUILD-A-TOOL.md](docs/BUILD-A-TOOL.md)** · **[BUILD-A-PACK.md](docs/BUILD-A-PACK.md)** ·
-**[ADD-A-PROVIDER.md](docs/ADD-A-PROVIDER.md)** · the map: **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+**Report a security issue — privately.** Do **not** open a public issue. Use GitHub's
+Security tab → *Report a vulnerability*. See [SECURITY.md](SECURITY.md).
 
-## Adding a tool
-`npm run create-tool <name>`, then implement `run()` and register it in `server/tools.ts`
-(`{ name, safe, description, params, run }`). Mark `safe: false` if it changes state; dangerous tools
-are gated in `server/authz.ts`. OS-specific tools must degrade cleanly off-platform.
+**Say what is missing.** Feature requests and honest criticism of how SAM behaves are
+read and taken seriously. "This asked me three times for something obvious" is a useful
+report.
 
-## Adding a pack
-`npm run create-pack "Name"` scaffolds it; fill it in, export+sign from inside SAM, then PR it to
-[`richhabits/sam-packs`](https://github.com/richhabits/sam-packs). Every pack PR is auto-validated
-(structure + signature + the forge static-scan on every tool) — see `docs/BUILD-A-PACK.md`.
+## If you want to suggest a change to the code
 
-## Adding a free provider
-One entry in `PROVIDERS` in `server/models.ts` + the env var in `PROVIDER_ENV`. Add it to the key wizard (`src/KeyWizard.tsx` + `KEY_TEST`) if it has a free tier. See `docs/ADD-A-PROVIDER.md`.
+Describe it in an issue rather than sending a diff. If it's the right change, it gets
+made and credited. If you'd like to discuss something larger — a partnership, a licence
+to build on SAM, or commercial use beyond running an official build — ask:
+richhabitslondon@gmail.com
 
-## For maintainers: PRs from strangers are safe
-Fork PRs can't touch secrets (self-hosted signing jobs are locked to non-fork refs), the pack gate + forge
-scan block unsafe code, and required CI must pass before merge. Review the diff; the automation guards the rest.
+## Packs and skills
 
-## Good first issues
-Look for the [`good-first-issue`](https://github.com/richhabits/sam/labels/good-first-issue) label — scoped, genuinely useful starters.
+Packs and skills are the parts designed to be extended, and they live in their own
+repository under their own terms:
+[`richhabits/sam-packs`](https://github.com/richhabits/sam-packs). Building one there
+does not require any licence to SAM's own source.
 
-## PRs
-Small, focused, one concern each. Explain the *why*. Match the surrounding code's style. Run `npm run stats` if you changed tool/agent/provider counts (badges/docs generate from `docs/stats.json`).
+## Reading the source
+
+You are welcome to. It is meant to be read: every non-obvious decision carries a comment
+explaining *why*, and the tests are written to be read as documentation of what the code
+guarantees. If something is unclear, that is a fair thing to raise in an issue.

@@ -13,7 +13,7 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 </div>
 
 <p align="center">
-<img alt="license" src="https://img.shields.io/badge/license-MIT-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-cross--platform-6E56CF"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
+<img alt="license" src="https://img.shields.io/badge/license-source--available-E8673A"> <img alt="local" src="https://img.shields.io/badge/runs-local--first-16a34a"> <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a"> <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6"> <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40-blue"> <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-cross--platform-6E56CF"> <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 <div align="center">
@@ -229,12 +229,23 @@ Open an [issue](https://github.com/richhabits/sam/issues/new/choose) (bug report
 
 ---
 
-## License
+## Licence
 
-**MIT** © 2026 Hectic Radio Ltd. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
-The **code** is free to use, modify, and redistribute — including commercially — with attribution.
+**Source-available** — © 2026 Hectic Radio Ltd. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-*"SAM", "Smart Artificial Mind", and the SAM logo are trademarks of Hectic Radio Ltd — the MIT license covers the code, not the name or brand. Forks are welcome; just don't imply they're the official SAM.*
+The source is published so it can be **read, reviewed and audited**, and you may **run an
+official build** on machines you own for any purpose, including commercially. It is *not*
+open-source: copying, modifying or redistributing the source needs written permission.
+Ask — permission may well be given: richhabitslondon@gmail.com
+
+SAM was published under MIT until v3.0.0. That grant cannot be withdrawn for the versions
+it was made under; this licence governs v3.0.0 onward.
+
+*"SAM", "Smart Artificial Mind", "FLIP IT" and "Hectic Radio" are trade marks of Hectic
+Radio Ltd. The licence covers the code, not the name or the brand.*
+
+Third-party components keep their own licences — including FFmpeg (GPL-3.0-or-later),
+which SAM invokes as a separate program. See [NOTICE](NOTICE).
 
 <div align="center">
 
