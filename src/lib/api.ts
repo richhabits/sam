@@ -269,8 +269,28 @@ export const getYard = () => fetch("/api/yard").then((r) => r.json());
 // Surfaces the server's reason instead of failing silently. Starting and stopping work
 // needs the passkey the desktop app carries, so this legitimately refuses in a browser —
 // and a button that does nothing without saying why is the worst version of that.
+// ── pairing a browser with the yard ──
+// The token lives in this browser's own storage and is sent only on yard writes. It is
+// not the Handshake passkey and cannot stand in for it anywhere else.
+const PAIR_KEY = "sam.yard.pair";
+export const pairToken = () => { try { return localStorage.getItem(PAIR_KEY) || ""; } catch { return ""; } };
+export const setPairToken = (t: string) => { try { localStorage.setItem(PAIR_KEY, t); } catch { /* private mode — pairing simply will not stick */ } };
+export const clearPairToken = () => { try { localStorage.removeItem(PAIR_KEY); } catch { /* nothing to clear */ } };
+
+export const requestYardPairing = (label: string) => post("/api/yard/pair/request", { label });
+export const collectYardPairing = (id: string) => fetch(`/api/yard/pair/collect?id=${encodeURIComponent(id)}`).then((r) => r.json());
+export const yardPairPending = () => fetch("/api/yard/pair/pending").then((r) => (r.ok ? r.json() : { pending: [], paired: [], notApp: true }));
+export const approveYardPairing = (id: string, code: string) => post("/api/yard/pair/approve", { id, code });
+export const denyYardPairing = (id: string) => post("/api/yard/pair/deny", { id });
+export const revokeYardPairing = (id: string) => post("/api/yard/pair/revoke", { id });
+
 export const cancelYardJob = async (id: string) => {
-  const r = await fetch("/api/yard/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+  const pair = pairToken();
+  const r = await fetch("/api/yard/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(pair ? { "X-SAM-Pair": pair } : {}) },
+    body: JSON.stringify({ id }),
+  });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body?.error || `couldn't stop that job (${r.status})`);
   return body;

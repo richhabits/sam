@@ -57,13 +57,21 @@ import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { listProjects } from "./yard/managed.ts";
+import {
+  requestPairing, pendingRequests, approvePairing, denyPairing,
+  verifyPairToken, pairedBrowsers, revokePairing, stashForCollection, collect,
+} from "./yard/pairing.ts";
 
 // One store per server process, opened on first use so a SAM with the yard off never
 // creates a database it will not read.
 // The yard's own door. Loopback position PLUS the passkey, always — never conditional on
 // the global setting. Creating a job means running commands on this machine, so it is held
 // to the stricter bar whether or not the rest of SAM is hardened today.
-const isYardTrusted = (req: any) => isLoopback(req) && checkPasskey(req);
+// Either the desktop app's per-launch passkey, or a browser this machine's operator
+// deliberately paired from inside that app. A paired token is narrower than the passkey:
+// it opens the yard's writes and nothing else, and it can be revoked on its own.
+const isYardTrusted = (req: any) =>
+  isLoopback(req) && (checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]));
 
 let _yard: JobStore | null = null;
 const yardStore = (): JobStore => (_yard ??= new JobStore());
@@ -1451,21 +1459,60 @@ app.get("/api/yard/job/:id", (req, res) => {
   res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
 });
 app.post("/api/yard/enqueue", (req, res) => {
-  if (!isYardTrusted(req)) { res.status(403).json({ error: "this needs the desktop app — starting or stopping work carries the per-launch passkey, which a browser tab does not have" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
   const { kind, payload, budget, project } = req.body || {};
   if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
   res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
 });
 app.post("/api/yard/cancel", (req, res) => {
-  if (!isYardTrusted(req)) { res.status(403).json({ error: "this needs the desktop app — starting or stopping work carries the per-launch passkey, which a browser tab does not have" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   try { res.json({ job: yardStore().cancel(String(req.body?.id || "")) }); }
   catch (e: any) { res.status(404).json({ error: e?.message || "no such job" }); }
 });
 app.post("/api/yard/retry", (req, res) => {
-  if (!isYardTrusted(req)) { res.status(403).json({ error: "this needs the desktop app — starting or stopping work carries the per-launch passkey, which a browser tab does not have" }); return; }
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   const job = yardStore().retry(String(req.body?.id || ""));
   job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
+});
+
+// ── Pairing a browser ───────────────────────────────────────────────────────
+// Asking is unprivileged on purpose: a request is inert until a person holding the
+// passkey approves the exact code the browser is showing them.
+app.post("/api/yard/pair/request", (req, res) => {
+  if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const r = requestPairing(String(req.body?.label || "a browser"));
+  if (!r) { res.status(429).json({ error: "too many pairing requests are already waiting — approve or dismiss one first" }); return; }
+  res.json({ id: r.id, code: r.code });
+});
+// The browser waits for its OWN request. It learns nothing about anyone else's.
+app.get("/api/yard/pair/collect", (req, res) => {
+  if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const token = collect(String(req.query?.id || ""));
+  res.json({ token });
+});
+// Everything below needs the passkey: this is the approval itself.
+app.get("/api/yard/pair/pending", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  res.json({ pending: pendingRequests(), paired: pairedBrowsers() });
+});
+app.post("/api/yard/pair/approve", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  const a = approvePairing(String(req.body?.id || ""), String(req.body?.code || ""));
+  if (!a) { res.status(400).json({ error: "that code does not match the request — check the number the browser is showing" }); return; }
+  stashForCollection(a.browser.id, a.token);   // the waiting browser collects it, once
+  logSecurity("info", "yard-browser-paired", `Paired "${a.browser.label}" for yard writes`, "");
+  res.json({ browser: a.browser });
+});
+app.post("/api/yard/pair/deny", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  res.json({ ok: denyPairing(String(req.body?.id || "")) });
+});
+app.post("/api/yard/pair/revoke", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  const ok = revokePairing(String(req.body?.id || ""));
+  if (ok) logSecurity("info", "yard-browser-unpaired", "A paired browser was revoked", "");
+  res.json({ ok });
 });
 
 // The Standing Crew — arm/disarm/list background specialists (loopback + Handshake; privileged control).
