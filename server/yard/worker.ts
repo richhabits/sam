@@ -13,12 +13,13 @@
 //  a worker that leaves a phantom in the queue, so every path here ends in a write.
 // ─────────────────────────────────────────────────────────────
 
-import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from "node:fs";
+import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
-import { execInProject } from "./exec.ts";
-import { createProject, checkpoint, restore, projectPath, isManagedProject } from "./managed.ts";
+import { execInProject, writeInProject } from "./exec.ts";
+import { runModel } from "../models.ts";
+import { createProject, checkpoint, restore, projectPath, isManagedProject, MANIFEST } from "./managed.ts";
 
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
@@ -234,6 +235,114 @@ function page(title: string): string {
 </html>
 `;
 }
+
+// ── Editing something that already exists ───────────────────────────────────
+// The dangerous one, so it is built back-to-front: the way back exists BEFORE any
+// change is attempted. Checkpoint, then read, then propose, then write, then
+// checkpoint again. If the proposal is unusable nothing is written at all and the
+// job fails saying so — a half-applied edit is worse than none, because it looks
+// like it worked.
+
+const EDITABLE = /\.(html?|css|js|mjs|ts|tsx|jsx|json|md|txt|svg)$/i;
+
+// SAM's own record of the project is not the model's to rewrite. Given the manifest as
+// context, a model reasonably treats it as part of the work and renames it to match the
+// edit — which silently breaks the one invariant everything else depends on: that the
+// slug in the file matches the folder it sits in. Every later lookup would miss.
+// Guarded twice on purpose: never shown, and refused even if it is somehow proposed.
+const NOT_THE_MODELS = new Set([MANIFEST, ".gitignore"]);
+const MAX_FILES = 12;
+const MAX_BYTES = 60_000;
+
+// Roughly what a model charges for this text. Approximate on purpose: the meter exists
+// to stop a runaway, and a runaway is obvious at any sensible precision.
+const estimate = (s: string) => Math.ceil(String(s || "").length / 4);
+
+function projectFiles(dir: string): { path: string; content: string }[] {
+  const out: { path: string; content: string }[] = [];
+  let budget = MAX_BYTES;
+  const walk = (rel: string) => {
+    if (out.length >= MAX_FILES || budget <= 0) return;
+    let entries: string[];
+    try { entries = readdirSync(join(dir, rel)); } catch { return; }
+    for (const e of entries) {
+      if (e === ".git" || e === "node_modules" || e === "dist" || e.startsWith(".")) continue;
+      const r = rel ? join(rel, e) : e;
+      let isDir = false;
+      try { isDir = statSync(join(dir, r)).isDirectory(); } catch { continue; }
+      if (isDir) { walk(r); continue; }
+      if (!EDITABLE.test(e) || NOT_THE_MODELS.has(r)) continue;
+      if (out.length >= MAX_FILES || budget <= 0) return;
+      try {
+        const content = readFileSync(join(dir, r), "utf8").slice(0, budget);
+        budget -= content.length;
+        out.push({ path: r, content });
+      } catch { /* unreadable file — simply not offered for editing */ }
+    }
+  };
+  walk("");
+  return out;
+}
+
+const EDIT_SYSTEM =
+  "You edit ONE small web project. You are given every file that may be changed, and a request. " +
+  "Return STRICT JSON: {\"files\":[{\"path\":\"relative/path\",\"content\":\"the COMPLETE new contents\"}],\"note\":\"one sentence\"}. " +
+  "Rules: return ONLY files you actually changed; give the WHOLE file, never a fragment or a diff; " +
+  "keep paths relative and inside the project; never touch .git; never invent dependencies. JSON only, no prose.";
+
+HANDLERS["project.edit"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  const what = String(ctx.payload?.what || "").trim();
+  if (!slug || !isManagedProject(slug)) throw Object.assign(new Error(`"${slug}" is not a managed project`), { kind: "permanent" as FailureKind });
+  if (!what) throw Object.assign(new Error("an edit needs to say what to change"), { kind: "permanent" as FailureKind });
+
+  const dir = projectPath(slug);
+
+  // The way back, first. Any uncommitted work is secured before this job touches a file.
+  const before = await checkpoint(slug, `before: ${what.slice(0, 80)}`);
+  ctx.log(before ? `checkpointed first: ${before.sha.slice(0, 8)}` : "already clean — the last checkpoint is the way back");
+  ctx.checkStop();
+
+  const files = projectFiles(dir);
+  if (!files.length) throw Object.assign(new Error("there are no editable files in this project"), { kind: "permanent" as FailureKind });
+  ctx.log(`read ${files.length} file${files.length === 1 ? "" : "s"}`);
+
+  const prompt = [
+    `Request: ${what}`, "",
+    "Files:",
+    ...files.map((f) => `--- ${f.path} ---\n${f.content}`),
+  ].join("\n");
+
+  // Free tier, vault-routed, exactly like everything else SAM does. Metered against the
+  // job's own ceiling so one runaway edit cannot spend the allowance of the queue.
+  ctx.spend(estimate(EDIT_SYSTEM) + estimate(prompt));
+  const r = await runModel("free", EDIT_SYSTEM, prompt, "code");
+  ctx.spend(estimate(r.text));
+  ctx.log(`proposal from ${r.provider}`);
+  ctx.checkStop();
+
+  let spec: any;
+  try { spec = JSON.parse(r.text.match(/\{[\s\S]*\}/)?.[0] || r.text); }
+  catch { throw new Error("the proposal was not valid JSON — nothing was changed"); }
+
+  const proposed: any[] = Array.isArray(spec?.files) ? spec.files : [];
+  const usable = proposed.filter((f) => f && typeof f.path === "string" && typeof f.content === "string" && f.content.length);
+  const refused = usable.filter((f) => NOT_THE_MODELS.has(String(f.path).replace(/^\.\//, "")));
+  for (const f of refused) ctx.log(`ignored a proposed change to ${f.path} — SAM's own record of the project is not editable this way`);
+  const allowed = usable.filter((f) => !NOT_THE_MODELS.has(String(f.path).replace(/^\.\//, "")));
+  if (!allowed.length) throw new Error("the proposal named no files that may be changed — nothing was changed");
+
+  // Every path is checked before ANY of them is written, so a bad one cannot leave the
+  // project half-edited. Refusals throw, which fails the job with the reason intact.
+  const targets = allowed.slice(0, MAX_FILES);
+  for (const f of targets) writeInProject(dir, f.path, f.content);
+  ctx.log(`wrote ${targets.map((f) => f.path).join(", ")}`);
+
+  const after = await checkpoint(slug, what.slice(0, 100));
+  if (!after) { ctx.log("the proposal matched what was already there — nothing changed"); return "no change was needed"; }
+  ctx.log(`checkpoint ${after.sha.slice(0, 8)} — ${after.message}`);
+  return `edited ${targets.length} file${targets.length === 1 ? "" : "s"} · checkpoint ${after.sha.slice(0, 8)}${spec?.note ? ` · ${String(spec.note).slice(0, 90)}` : ""}`;
+};
 
 HANDLERS["project.checkpoint"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");

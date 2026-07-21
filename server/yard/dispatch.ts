@@ -64,11 +64,11 @@ export async function answerRouted(r: Reading, store: JobStore, now = Date.now()
   }
 
   if (r.intent === "EDIT_EXISTING" && r.slug) {
-    const job = store.enqueue("project.checkpoint", { slug: r.slug, message: `before: ${String(r.what || "an edit").slice(0, 80)}` }, { project: r.slug });
+    const job = store.enqueue("project.edit", { slug: r.slug, what: r.what }, { project: r.slug, budget: 60_000 });
     return [
-      `Noted for **${r.slug}**: ${String(r.what || "").slice(0, 140)}`,
-      `I've checkpointed it first (\`${job.id}\`) so there's a way back before anything changes.`,
-      `Editing an existing project isn't wired up yet — that's the next piece of the yard, and I'd rather say so than pretend it happened.`,
+      `On it — **${r.slug}**: ${String(r.what || "").slice(0, 140)}`,
+      `Queued as \`${job.id}\`. It checkpoints the project before touching anything, so there's always a way back.`,
+      `Ask "status" to see how it went.`,
     ].join("\n");
   }
 

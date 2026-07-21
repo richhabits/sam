@@ -28,7 +28,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "node:child_process";
-import { realpathSync, existsSync } from "node:fs";
+import { realpathSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, sep, dirname, isAbsolute, join } from "node:path";
 import os from "node:os";
 import { handshakeEnforced } from "../handshake.ts";
@@ -216,6 +216,31 @@ export function runPlanned(
 // the mistake that made SAM claim it had no access to its own repositories.
 export class ExecRefused extends Error {
   constructor(readonly rule: string, message: string) { super(`the yard refused this: ${message}`); }
+}
+
+// Writing a file the yard has decided on. The path goes through the SAME resolution and
+// deny-list checks as a command argument, because a file path chosen by a model deserves
+// exactly as much suspicion as a command chosen by one — and a write that lands outside
+// the project is the more damaging of the two.
+export function writeInProject(projectRoot: string, relPath: string, content: string): string {
+  const root = trueLocation(projectRoot);
+  const raw = String(relPath || "").trim();
+  if (!raw) throw new ExecRefused("shape", "no file path given");
+  if (isAbsolute(raw) || raw.startsWith("~")) throw new ExecRefused("confinement", `refused "${raw}" — a project file is written by relative path`);
+
+  const target = trueLocation(join(root, raw));
+  const denied = hitsDenyList(target);
+  if (denied) throw new ExecRefused("deny", `refused "${raw}" — it reaches into ${denied}`);
+  if (!isWithin(root, target)) throw new ExecRefused("confinement", `refused "${raw}" — it resolves to ${target}, outside the project`);
+  // Nothing may reach into the repository's own machinery: rewriting .git is a way to
+  // rewrite history, which would quietly destroy the very checkpoints this all rests on.
+  if (target === join(root, ".git") || target.startsWith(join(root, ".git") + sep)) {
+    throw new ExecRefused("deny", `refused "${raw}" — the project's git directory is not writable`);
+  }
+
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, String(content ?? ""));
+  return target;
 }
 
 export async function execInProject(

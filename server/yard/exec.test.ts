@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from "node:fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync, realpathSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import {
@@ -245,5 +245,46 @@ describe("actually running something", () => {
       expect(r.stdout).not.toMatch(/GROQ_API_KEY/);
       expect(JSON.parse(r.stdout).HOME).toBe(root);
     } finally { delete process.env.GROQ_API_KEY; }
+  });
+});
+
+describe("writing a file the yard decided on", () => {
+  it("writes inside the project, creating folders as needed", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    const at = writeInProject(root, "src/pages/index.html", "<h1>hi</h1>");
+    expect(existsSync(at)).toBe(true);
+    expect(readFileSync(at, "utf8")).toBe("<h1>hi</h1>");
+  });
+
+  it("refuses a path that climbs out", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    expect(() => writeInProject(root, "../elsewhere/pwned.txt", "x")).toThrow(/outside the project/);
+    expect(existsSync(join(outside, "pwned.txt"))).toBe(false);
+  });
+
+  it("refuses an absolute path or a home path outright", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    expect(() => writeInProject(root, join(outside, "x.txt"), "x")).toThrow(/relative path/);
+    expect(() => writeInProject(root, "~/.ssh/authorized_keys", "x")).toThrow(/relative path/);
+  });
+
+  it("refuses to follow a symlink out of the project", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    symlinkSync(outside, join(root, "bridge"));
+    expect(() => writeInProject(root, "bridge/pwned.txt", "x")).toThrow(/outside the project/);
+    expect(existsSync(join(outside, "pwned.txt"))).toBe(false);
+  });
+
+  it("refuses to write into the project's own git directory", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    mkdirSync(join(root, ".git"), { recursive: true });
+    // rewriting .git would rewrite history — and history is where every way back lives
+    expect(() => writeInProject(root, ".git/config", "[remote]")).toThrow(/git directory is not writable/);
+    expect(() => writeInProject(root, ".git/hooks/pre-commit", "#!/bin/sh")).toThrow(/git directory is not writable/);
+  });
+
+  it("refuses an empty path rather than writing somewhere surprising", async () => {
+    const { writeInProject } = await import("./exec.ts");
+    expect(() => writeInProject(root, "", "x")).toThrow(/no file path/);
   });
 });
