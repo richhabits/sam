@@ -85,10 +85,10 @@ describe("editing a project", () => {
     expect(readFileSync(join(projectPath("hello-site"), "index.html"), "utf8")).toBe("<h1>before</h1>");
   });
 
-  it("fails when the proposal names no files it is allowed to change", async () => {
+  it("fails when the proposal changes nothing the request implicated", async () => {
     proposal.text = JSON.stringify({ files: [{ path: "project.sam.json", content: "{}" }] });
     await expect(withHandshake(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "x" }) as any)))
-      .rejects.toThrow(/no files that may be changed/);
+      .rejects.toThrow(/changed nothing this request implicated/);
   });
 
   it("refuses a proposal that tries to write outside the project", async () => {

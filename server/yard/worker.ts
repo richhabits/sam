@@ -13,13 +13,14 @@
 //  a worker that leaves a phantom in the queue, so every path here ends in a write.
 // ─────────────────────────────────────────────────────────────
 
-import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, statSync } from "node:fs";
+import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject } from "./exec.ts";
 import { runModel } from "../models.ts";
 import { createProject, checkpoint, restore, projectPath, isManagedProject, MANIFEST } from "./managed.ts";
+import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
@@ -243,46 +244,15 @@ function page(title: string): string {
 // job fails saying so — a half-applied edit is worse than none, because it looks
 // like it worked.
 
-const EDITABLE = /\.(html?|css|js|mjs|ts|tsx|jsx|json|md|txt|svg)$/i;
-
 // SAM's own record of the project is not the model's to rewrite. Given the manifest as
 // context, a model reasonably treats it as part of the work and renames it to match the
 // edit — which silently breaks the one invariant everything else depends on: that the
 // slug in the file matches the folder it sits in. Every later lookup would miss.
-// Guarded twice on purpose: never shown, and refused even if it is somehow proposed.
 const NOT_THE_MODELS = new Set([MANIFEST, ".gitignore"]);
-const MAX_FILES = 12;
-const MAX_BYTES = 60_000;
 
 // Roughly what a model charges for this text. Approximate on purpose: the meter exists
 // to stop a runaway, and a runaway is obvious at any sensible precision.
 const estimate = (s: string) => Math.ceil(String(s || "").length / 4);
-
-function projectFiles(dir: string): { path: string; content: string }[] {
-  const out: { path: string; content: string }[] = [];
-  let budget = MAX_BYTES;
-  const walk = (rel: string) => {
-    if (out.length >= MAX_FILES || budget <= 0) return;
-    let entries: string[];
-    try { entries = readdirSync(join(dir, rel)); } catch { return; }
-    for (const e of entries) {
-      if (e === ".git" || e === "node_modules" || e === "dist" || e.startsWith(".")) continue;
-      const r = rel ? join(rel, e) : e;
-      let isDir = false;
-      try { isDir = statSync(join(dir, r)).isDirectory(); } catch { continue; }
-      if (isDir) { walk(r); continue; }
-      if (!EDITABLE.test(e) || NOT_THE_MODELS.has(r)) continue;
-      if (out.length >= MAX_FILES || budget <= 0) return;
-      try {
-        const content = readFileSync(join(dir, r), "utf8").slice(0, budget);
-        budget -= content.length;
-        out.push({ path: r, content });
-      } catch { /* unreadable file — simply not offered for editing */ }
-    }
-  };
-  walk("");
-  return out;
-}
 
 const EDIT_SYSTEM =
   "You edit ONE small web project. You are given every file that may be changed, and a request. " +
@@ -303,14 +273,24 @@ HANDLERS["project.edit"] = async (ctx) => {
   ctx.log(before ? `checkpointed first: ${before.sha.slice(0, 8)}` : "already clean — the last checkpoint is the way back");
   ctx.checkStop();
 
-  const files = projectFiles(dir);
-  if (!files.length) throw Object.assign(new Error("there are no editable files in this project"), { kind: "permanent" as FailureKind });
-  ctx.log(`read ${files.length} file${files.length === 1 ? "" : "s"}`);
+  // Read everything editable, then show only what this request implicates. Nothing is
+  // ever cut short: an edit returns WHOLE files, so a model shown half a file writes
+  // back half a file and the rest is silently deleted.
+  const existing = readEditable(dir, NOT_THE_MODELS);
+  if (!existing.length) throw Object.assign(new Error("there are no editable files in this project"), { kind: "permanent" as FailureKind });
+
+  const { offered, tooBig, leftOut } = selectContext(existing, what);
+  if (!offered.length) throw Object.assign(new Error("no file in this project is small enough to edit whole"), { kind: "permanent" as FailureKind });
+  ctx.log(`showing ${offered.length} of ${existing.length} file(s): ${offered.map((f) => f.path).join(", ")}`);
+  // Said out loud rather than left implicit — a file left out is a file the edit cannot
+  // change, and finding that out later by its absence is the worst way to learn it.
+  if (leftOut.length) ctx.log(`not shown (less relevant to this request): ${leftOut.join(", ")}`);
+  if (tooBig.length) ctx.log(`NOT SHOWN — too large to send whole, so they cannot be edited safely: ${tooBig.join(", ")}`);
 
   const prompt = [
     `Request: ${what}`, "",
-    "Files:",
-    ...files.map((f) => `--- ${f.path} ---\n${f.content}`),
+    "Files you may change (complete contents):",
+    ...offered.map((f) => `--- ${f.path} ---\n${f.content}`),
   ].join("\n");
 
   // Free tier, vault-routed, exactly like everything else SAM does. Metered against the
@@ -327,10 +307,9 @@ HANDLERS["project.edit"] = async (ctx) => {
 
   const proposed: any[] = Array.isArray(spec?.files) ? spec.files : [];
   const usable = proposed.filter((f) => f && typeof f.path === "string" && typeof f.content === "string" && f.content.length);
-  const refused = usable.filter((f) => NOT_THE_MODELS.has(String(f.path).replace(/^\.\//, "")));
-  for (const f of refused) ctx.log(`ignored a proposed change to ${f.path} — SAM's own record of the project is not editable this way`);
-  const allowed = usable.filter((f) => !NOT_THE_MODELS.has(String(f.path).replace(/^\.\//, "")));
-  if (!allowed.length) throw new Error("the proposal named no files that may be changed — nothing was changed");
+  const { write: allowed, refused } = admissible(usable, offered, existing, NOT_THE_MODELS);
+  for (const r of refused) ctx.log(`left ${r.path} alone — ${r.why}`);
+  if (!allowed.length) throw new Error("the proposal changed nothing this request implicated — nothing was written");
 
   // Every path is checked before ANY of them is written, so a bad one cannot leave the
   // project half-edited. Refusals throw, which fails the job with the reason intact.
