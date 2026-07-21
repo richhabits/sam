@@ -1,9 +1,9 @@
 SAM — Smart Artificial Mind
-Copyright © 2026 Hectic Radio Ltd. All rights reserved where not granted by the LICENSE.
+Copyright © 2026 Hectic Radio Ltd. All rights reserved.
 
-This software is released under the MIT License (see LICENSE). You are free to use,
-modify, and distribute the code under those terms. This NOTICE records authorship,
-ownership, and marks — it does not change the MIT grant.
+This software is source-available, not open-source. See LICENSE for what you may and
+may not do. This NOTICE records authorship, marks, and the third-party components SAM
+ships with — it does not grant or change any permission.
 
 Authorship & ownership
 ----------------------
@@ -12,12 +12,45 @@ and AI-assisted (portions of the code were written by Claude under the author's 
 and review) — the standard, disclosed way modern software is built. Copyright in the
 resulting work is held by Hectic Radio Ltd.
 
-Trademarks
-----------
-"SAM", "Smart Artificial Mind", and the SAM logo are trademarks of Hectic Radio Ltd.
-The MIT License covers the CODE only — it does not grant any right to use these names or
-marks. Forks and derivative works must not use the SAM name or logo in a way that implies
-endorsement by, or origin from, Hectic Radio Ltd, and must be clearly identified as
-independent. Nominative reference (e.g. "based on SAM") is fine.
+Trade marks
+-----------
+"SAM", "Smart Artificial Mind", "FLIP IT", "Hectic Radio" and the SAM logo are trade
+marks of Hectic Radio Ltd. The LICENSE covers the CODE only and grants no right to use
+these names or marks. Nominative reference (e.g. "a review of SAM") is fine.
 
-Third-party components are distributed under their own licenses.
+Third-party components
+----------------------
+SAM depends on and ships with third-party software under its own separate licences.
+Those licences govern those components and are unaffected by SAM's LICENSE; nothing in
+SAM's licence restricts a right you hold under them.
+
+Production dependencies, by licence (audited 2026-07-21):
+  MIT ......................... 209        BSD-3-Clause ................... 5
+  ISC .......................... 20        Python-2.0 ...................... 1
+  Apache-2.0 .................... 7        BlueOak-1.0.0 ................... 1
+  BSD-2-Clause .................. 6        MIT-0 ........................... 1
+
+Components requiring specific notice
+------------------------------------
+ffmpeg-static — GPL-3.0-or-later
+  Provides a prebuilt FFmpeg binary. SAM invokes FFmpeg as a SEPARATE PROGRAM (a child
+  process) and falls back to a system-installed FFmpeg when the bundled binary is absent;
+  SAM is not linked against it. Where a build of SAM distributes that binary, the binary
+  remains under its own GPL-3.0-or-later terms, and its corresponding source is available
+  from the FFmpeg project (ffmpeg.org) and from the ffmpeg-static package. Requests for
+  the corresponding source of a binary shipped by Hectic Radio Ltd:
+  richhabitslondon@gmail.com
+
+web-push — MPL-2.0
+  Used unmodified. MPL-2.0 is file-level copyleft: the source of the covered files is
+  available from the package's own repository, and MPL-2.0 permits their use alongside
+  proprietary code. Should Hectic Radio Ltd ever modify covered files, those modified
+  files' source will be made available under MPL-2.0.
+
+jszip — dual licensed (MIT OR GPL-3.0-or-later)
+  Used under the MIT option.
+
+Everything else above is under permissive terms (MIT, ISC, Apache-2.0, BSD, BlueOak,
+Python-2.0) requiring attribution only. Full per-package licence texts ship inside
+node_modules, and this summary can be regenerated with:
+  npx license-checker-rseidelsohn --production --json

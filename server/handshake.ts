@@ -22,9 +22,15 @@ export function passkey(): string {
   return process.env.SAM_CONTROL_TOKEN;
 }
 
-/** Enforcement is opt-in: off = the existing loopback gate is unchanged; on = the token is required. */
+/** ON by default since v3.0.0. Loopback position alone is not authorization: any local
+ *  process — another app, a supply-chained dependency — reaches 127.0.0.1 and knows no
+ *  secret it must present. SAM runs shell, files, email and cameras, so "already on this
+ *  machine" is far too low a bar for a public release.
+ *
+ *  SAM_REQUIRE_CONTROL_TOKEN=0 is the documented opt-out. The desktop app supplies the
+ *  passkey automatically; a browser tab, which cannot read it, is covered by pairing. */
 export function handshakeEnforced(): boolean {
-  return process.env.SAM_REQUIRE_CONTROL_TOKEN === "1";
+  return process.env.SAM_REQUIRE_CONTROL_TOKEN !== "0";
 }
 
 interface HasHeaders { headers: Record<string, string | string[] | undefined> }

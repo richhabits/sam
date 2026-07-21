@@ -3,6 +3,7 @@
 // config, tokens, vault passphrase — so it belongs in one place with its own tests rather than
 // buried in a 1600-line file.
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
+import { verifyPairToken } from "./yard/pairing.ts";
 
 /**
  * True only for a request that arrived from this machine.
@@ -70,6 +71,10 @@ export function hostAllowed(hostHeader: string): boolean {
 // See control-token.ts for the rationale.
 export function isTrustedLocal(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
   if (!isLoopback(req)) return false;
-  if (handshakeEnforced()) return checkPasskey(req);
-  return true;
+  if (!handshakeEnforced()) return true;
+  // The desktop app carries the per-launch passkey. A browser cannot — it has no way to
+  // read it — so it may instead present a token from a pairing the operator approved
+  // inside the app. Enforcing the Handshake without that second door would simply lock
+  // every browser tab out of SAM's own panels.
+  return checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
 }

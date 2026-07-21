@@ -5,6 +5,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import "dotenv/config";
+// Applied before anything else can print. Every sink SAM writes to funnels through the
+// console eventually, so scrubbing here means a secret cannot reach a log by being
+// forgotten at one call site.
+import { scrubConsole, publicError } from "./scrub.ts";
+scrubConsole();
 import os from "node:os";
 import { timingSafeEqual, } from "node:crypto";
 import { readFileSync, existsSync, } from "node:fs";
@@ -802,7 +807,7 @@ app.post("/api/command", async (req, res) => {
   res.json({ ...withPending(r, ctx), skill: skill?.id || null, projectId: projectId || "", tier: answeredTier, message,
     route: { tier: answeredTier, klass, reason: badgeReason, escalated } });
   } catch (e: any) {
-    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: String(e?.message || e) });
+    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong on my end — give that another go.", error: publicError(e) });
   }
 });
 
@@ -916,7 +921,7 @@ app.post("/api/stream", async (req, res) => {
 app.post("/api/arena", async (req, res) => {
   const { prompt, prompts, brains } = (req.body || {}) as { prompt?: string; prompts?: string[]; brains?: string[] };
   try { res.json(await benchmarkBrains({ prompt, prompts, brains })); }
-  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+  catch (e: any) { res.status(500).json({ error: publicError(e) }); }
 });
 // Current persisted ranking + freshness — the panel shows this on open (is it still steering?).
 app.get("/api/arena", (_req, res) => {
@@ -931,7 +936,7 @@ app.delete("/api/arena", (_req, res) => { clearRanking(); res.json({ current: nu
 app.get("/api/quotes", async (req, res) => {
   const symbols = String(req.query.symbols || "").split(",").map((s) => s.trim()).filter(Boolean);
   try { res.json({ quotes: await marketQuotes(symbols) }); }
-  catch (e: any) { res.status(500).json({ quotes: [], error: String(e?.message || e) }); }
+  catch (e: any) { res.status(500).json({ quotes: [], error: publicError(e) }); }
 });
 
 // Memory dashboard routes live in routes.memory.ts — self-contained (no index.ts-local state).
@@ -956,7 +961,7 @@ app.post("/api/confirm", async (req, res) => {
     const ctx: PendingCtx = { tier: p.tier, projectId: p.projectId, skillBody: p.skillBody, skillId: p.skillId, user: p.user };
     res.json({ ...withPending(r, ctx), skill: p.skillId || null, projectId: p.projectId || "", tier: p.tier });
   } catch (e: any) {
-    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: String(e?.message || e) });
+    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: publicError(e) });
   }
 });
 
@@ -1179,7 +1184,7 @@ app.post("/api/life-index", async (req, res) => {
   const { path } = req.body as { path?: string };
   if (!path?.trim()) return res.status(400).json({ error: "path required" });
   try { const r = await addFolder(path); res.json({ ok: true, ...r }); }
-  catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+  catch (e: any) { res.status(500).json({ error: publicError(e) }); }
 });
 app.delete("/api/life-index", (req, res) => {
   const path = (req.query.path as string) || (req.body as any)?.path;

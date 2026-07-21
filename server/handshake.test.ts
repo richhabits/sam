@@ -44,10 +44,25 @@ describe("passkey — checkPasskey", () => {
 });
 
 describe("passkey — isTrustedLocal enforcement", () => {
-  it("ENFORCEMENT OFF (default): loopback alone is trusted, token or not", () => {
+  // The default flipped for v3.0.0. Being on this machine is not authorization: any local
+  // process reaches 127.0.0.1 and knows no secret it must present, and SAM runs shell,
+  // files, email and cameras. "Already on the machine" is far too low a bar to ship.
+  it("ENFORCEMENT IS ON BY DEFAULT: loopback alone is NOT enough", () => {
     delete process.env.SAM_REQUIRE_CONTROL_TOKEN;
+    expect(handshakeEnforced()).toBe(true);
+    expect(isTrustedLocal(reqWith())).toBe(false);
+    expect(isTrustedLocal(reqWith("a".repeat(64)))).toBe(true);
+  });
+
+  it("=0 is the documented opt-out, and only that exact value", () => {
+    process.env.SAM_REQUIRE_CONTROL_TOKEN = "0";
     expect(handshakeEnforced()).toBe(false);
-    expect(isTrustedLocal(reqWith())).toBe(true); // unchanged legacy behavior
+    expect(isTrustedLocal(reqWith())).toBe(true);
+    // anything else means ON — a typo must fail safe, never silently disable the gate
+    for (const v of ["", "false", "no", "off", "2"]) {
+      process.env.SAM_REQUIRE_CONTROL_TOKEN = v;
+      expect(handshakeEnforced()).toBe(true);
+    }
   });
 
   it("ENFORCEMENT ON: a loopback request WITHOUT the token is refused", () => {

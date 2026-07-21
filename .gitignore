@@ -120,3 +120,7 @@ docs/strips/
 # Root-anchored: a bare `yard/` also matches server/yard, which would have quietly
 # excluded the yard's own source code from every commit.
 /yard/
+
+# Latch working files — personal-data patterns for the pre-launch sweep.
+# Root-anchored, and it must NEVER be committed: it is a list of what to look for.
+/local/

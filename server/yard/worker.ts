@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject } from "./exec.ts";
+import { scrub } from "../scrub.ts";
 import { runModel } from "../models.ts";
 import { createProject, checkpoint, restore, projectPath, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
@@ -74,7 +75,10 @@ export class JobLog {
   }
   write(line: string) {
     if (this.capped) return;
-    const text = `[${new Date().toISOString()}] ${line}\n`;
+    // A job log records real command output — an install that echoes a token, a deploy
+    // that prints a header. It goes to disk, so it is scrubbed on the way in rather than
+    // on the way out: what is never written cannot leak later.
+    const text = `[${new Date().toISOString()}] ${scrub(line)}\n`;
     if (this.written + text.length > LOG_CAP) {
       this.capped = true;
       try { appendFileSync(this.path, "\n— log truncated: this job produced more output than the yard keeps —\n"); } catch { /* disk gone */ }

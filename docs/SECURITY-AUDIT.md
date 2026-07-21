@@ -19,7 +19,7 @@ executable proofs of each claimed boundary, fix what broke, lock it with tests.
 | Forge sandbox | **CRITICAL escape found + fixed** — `node:vm` was escapable to host RCE. Rebuilt as a codegen-disabled child process. |
 | Remote / phone tokens | **Solid** — 256-bit, SHA-256-hashed, constant-time, expiry, encrypted-at-rest, fails-closed, safe scope default. |
 | Gateway (optional, off by default) | **Solid** — per-device + global daily caps, cheap-model whitelist, blocklist, spend ceiling, instant kill-switch, anonymous device IDs. |
-| Network exposure | **Solid** — CORS loopback/same-origin only, anti-DNS-rebinding Host check, token gate off by default, config endpoints loopback-only. |
+| Network exposure | **Solid** — CORS loopback/same-origin only, anti-DNS-rebinding Host check, control-token gate ON by default (SAM_REQUIRE_CONTROL_TOKEN=0 to opt out), config endpoints loopback-only. |
 
 ## Findings
 

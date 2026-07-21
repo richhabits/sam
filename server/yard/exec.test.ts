@@ -324,3 +324,49 @@ describe("the limits that were set but never exercised", () => {
     expect(r.code).not.toBe(0);
   });
 });
+
+describe("the deploy credential is scoped to deploy work only", () => {
+  // The token controls a whole hosting account, so it is the most sensitive thing the
+  // yard holds. Every OTHER job must be blind to it — not by convention, by construction.
+  const CANARY = "vcp_deploycanary0123456789abcdef";
+
+  it("an ordinary job cannot see it, even though the parent process can", async () => {
+    process.env.VERCEL_TOKEN = CANARY;
+    try {
+      const r = await execInProject(root, "node", ["-e", "console.log(JSON.stringify(process.env))"], { handshake: true });
+      expect(r.stdout).not.toContain(CANARY);
+      expect(r.stdout).not.toContain("VERCEL_TOKEN");
+    } finally { delete process.env.VERCEL_TOKEN; }
+  });
+
+  it("is absent from the whitelist a normal job is built from", () => {
+    process.env.VERCEL_TOKEN = CANARY;
+    try {
+      expect(Object.keys(childEnv(root))).not.toContain("VERCEL_TOKEN");
+      expect(Object.values(childEnv(root)).join(" ")).not.toContain(CANARY);
+    } finally { delete process.env.VERCEL_TOKEN; }
+  });
+
+  it("reaches a deploy job ONLY because that job passes it explicitly", async () => {
+    // NB: written without shell punctuation, because the executor refuses arguments
+    // carrying it — as this test found out the first time it was written.
+    const r = await execInProject(root, "node", ["-e", "console.log(String(process.env.VERCEL_TOKEN))"], {
+      handshake: true, env: { VERCEL_TOKEN: CANARY },
+    });
+    expect(r.stdout.trim()).toBe(CANARY);   // the deploy path, and only it, gets the token
+  });
+
+  it("never appears in a job's log, because the log is scrubbed on the way in", async () => {
+    const { scrub } = await import("../scrub.ts");
+    process.env.VERCEL_TOKEN = CANARY;
+    try {
+      const line = scrub(`deploying with token ${CANARY} now`);
+      expect(line).not.toContain(CANARY);
+      // Redacted by REFERENCE (SAM holds this value) before the shape pass can see it,
+      // so the kept prefix is 3 chars rather than 4. Either way the secret is gone and
+      // the log still says what kind of thing was there.
+      expect(line).toMatch(/vcp_?\[redacted\]/);
+      expect(line).toContain("deploying with token");
+    } finally { delete process.env.VERCEL_TOKEN; }
+  });
+});

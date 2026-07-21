@@ -1,21 +1,62 @@
-MIT License
+SAM — Smart Artificial Mind
+Copyright © 2026 Hectic Radio Ltd. All rights reserved.
 
-Copyright (c) 2026 Hectic Radio Ltd
+SOURCE-AVAILABLE LICENCE
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This source code is published so that it can be read, reviewed and audited. It is
+not open-source software, and publishing it grants no licence to use it beyond what
+is written below.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+WHAT YOU MAY DO
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+  1. View, read and study this source code.
+  2. Quote short excerpts for review, commentary, teaching, security research or
+     reporting, with attribution to Hectic Radio Ltd.
+  3. Run an official build of SAM, obtained from an official release, on machines you
+     own or control, for any purpose including commercial use.
+
+WHAT YOU MAY NOT DO WITHOUT PRIOR WRITTEN PERMISSION FROM HECTIC RADIO LTD
+
+  1. Copy, reproduce or redistribute this source code, in whole or in substantial
+     part, in any form.
+  2. Modify this source code, or create derivative works from it.
+  3. Distribute, sublicense, sell, rent, lease or host this software or any
+     derivative of it, including as a hosted or managed service.
+  4. Remove or alter any copyright, trademark or attribution notice.
+
+Permission may be granted. Ask: richhabitslondon@gmail.com
+
+VERSIONS PUBLISHED BEFORE THIS LICENCE
+
+SAM was previously published under the MIT Licence. That grant cannot be withdrawn
+for the versions it was made under: anything obtained under MIT remains available to
+its recipients under MIT, for those versions. This licence governs this version and
+later versions only.
+
+THIRD-PARTY COMPONENTS
+
+SAM includes and depends on third-party software under its own separate licences.
+Those licences govern those components, not this one, and nothing here restricts any
+right you hold under them. See NOTICE for attributions and terms.
+
+TRADE MARKS
+
+"SAM", "Smart Artificial Mind", "FLIP IT", "Hectic Radio" and associated names, logos
+and marks are trade marks of Hectic Radio Ltd. This licence grants no right to use
+them. In particular, a permitted excerpt or fork may not be presented as SAM, nor use
+these marks in its name, branding or promotion.
+
+NO WARRANTY
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. TO THE FULLEST EXTENT PERMITTED BY LAW, IN NO
+EVENT SHALL HECTIC RADIO LTD BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+SAM runs commands, reads and writes files, sends messages and can act on your
+computer. You are responsible for what you ask it to do, and for reviewing what it
+proposes before you approve it.
+
+Nothing here limits any right you hold under law that cannot be excluded by agreement.
