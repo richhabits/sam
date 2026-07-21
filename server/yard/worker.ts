@@ -17,6 +17,7 @@ import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unl
 import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
+import { execInProject } from "./exec.ts";
 
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
@@ -125,6 +126,30 @@ export const HANDLERS: Record<string, Handler> = {
     }
     return `slept ${seconds}s`;
   },
+};
+
+// Run a short sequence of confined commands inside one project. Every step goes through
+// the executor, so a refusal stops the job rather than being written into its log as if
+// it were output. A non-zero exit stops the sequence too: continuing past a failed
+// install and reporting success is how a build lies about what it produced.
+HANDLERS.run = async (ctx) => {
+  const root = String(ctx.payload?.root || "");
+  const steps: any[] = Array.isArray(ctx.payload?.steps) ? ctx.payload.steps : [];
+  if (!root) throw Object.assign(new Error("a run job needs a project root"), { kind: "permanent" as FailureKind });
+  if (!steps.length) throw Object.assign(new Error("a run job needs at least one step"), { kind: "permanent" as FailureKind });
+
+  let last = "";
+  for (const [i, step] of steps.entries()) {
+    ctx.checkStop();
+    const [command, ...args] = Array.isArray(step) ? step : [step?.command, ...(step?.args ?? [])];
+    ctx.log(`step ${i + 1}/${steps.length}: ${command} ${args.join(" ")}`);
+    const r = await execInProject(root, String(command), args.map(String), { cwd: ctx.payload?.cwd, env: ctx.payload?.env });
+    for (const line of `${r.stdout}${r.stderr}`.split("\n").filter(Boolean).slice(0, 200)) ctx.log(`  ${line}`);
+    if (r.truncated) ctx.log("  (output truncated)");
+    if (r.code !== 0) throw new Error(`step ${i + 1} (${command}) exited ${r.code}`);
+    last = `${command} ok`;
+  }
+  return `${steps.length} step${steps.length === 1 ? "" : "s"} — ${last}`;
 };
 
 export function registerHandler(kind: string, fn: Handler) { HANDLERS[kind] = fn; }
