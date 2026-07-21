@@ -58,6 +58,7 @@ import { renderVideo, titleCard } from "./render.ts";
 import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
+import { resolveRepoDir, repoIndex } from "./repos.ts";
 import { logSecurity, securityStatus } from "./security.ts";
 import { addNudge, listNudges, completeNudge } from "./proactive.ts";
 import { addPerson, listPeople } from "./people.ts";
@@ -140,12 +141,24 @@ async function gh(args: string): Promise<string> {
 }
 
 // git in a specific local repo folder (handles spaces in the path).
-async function gitIn(dir: string, args: string): Promise<string> {
+// `dir` is resolved FIRST: a name ("mainline"), a ~path, or a real path. An unresolvable
+// one throws before git is ever invoked, which is how the "/home/romeo/sam" and literal
+// "undefined" folders used to get this far.
+//
+// A failing git command THROWS. It used to return its own error text as an ordinary
+// result, so the agent loop counted the call a success and the model explained an outcome
+// that never happened ("I don't have write access to my own repositories"). A thrown
+// error becomes an honest "that didn't work (…)" the model can actually report.
+async function gitIn(dir: unknown, args: string): Promise<string> {
+  // The GitHub list (cached, and empty if `gh` isn't available) only sharpens the error:
+  // it lets SAM say "that repo is yours but isn't cloned here" instead of "no such repo".
+  const remoteNames = (await grabRepos().catch(() => [])).map((a) => a.name);
+  const at = resolveRepoDir(dir, remoteNames);
   try {
-    const { stdout, stderr } = await sh(`git -C ${shq(dir)} ${args}`, { timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+    const { stdout, stderr } = await sh(`git -C ${shq(at)} ${args}`, { timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
     return ((stdout || "") + (stderr || "")).trim().slice(0, 4000) || "(done)";
   } catch (e: any) {
-    return `git: ${(e?.stderr || e?.message || e).toString().slice(0, 400)}`;
+    throw new Error(`git failed in ${at}: ${(e?.stderr || e?.message || e).toString().trim().slice(0, 400)}`);
   }
 }
 async function currentBranch(dir: string): Promise<string> {
@@ -1864,7 +1877,19 @@ export const TOOLS: Tool[] = [
       const lines = s.latest.map((e) => `• [${e.at}] ${e.type}: ${e.detail}${e.source ? ` (from ${e.source})` : ""}`).join("\n");
       return `🛡️ ${s.headline}. ${s.alerts} blocked, ${s.warns} flagged.\nRecent:\n${lines}`;
     } },
-  { name: "git_status", safe: true, description: "Show git status of a local repo folder (branch + changed files). input: {dir}.", params: "{dir}",
+  { name: "my_repos", safe: true, description: "List the git working copies on THIS machine (name, folder, GitHub remote) — use this to find the folder for a repo before any git tool. input: none.", params: "none",
+    activity: () => `Finding your repos on this machine`,
+    run: async () => {
+      const local = repoIndex();
+      const remote = await grabRepos().catch(() => []);
+      const cloned = new Set(local.map((r) => r.name.toLowerCase()));
+      const missing = remote.filter((r) => !cloned.has(r.name.toLowerCase())).map((r) => r.name);
+      if (!local.length && !remote.length) return "I couldn't find any git repos on this machine, and no GitHub list is available.";
+      const lines = local.map((r) => `• ${r.name} — ${r.path}${r.remote ? `  (${r.remote})` : "  (no remote)"}`);
+      return `Working copies on this machine (${local.length}):\n${lines.join("\n")}` +
+        (missing.length ? `\n\nOn GitHub but not cloned here (${missing.length}): ${missing.join(", ")}` : "");
+    } },
+  { name: "git_status", safe: true, description: "Show git status of a local repo folder (branch + changed files). input: {dir} — a repo NAME like 'sam' or a folder path.", params: "{dir}",
     activity: (i) => `Checking git status in ${i.dir}`,
     run: (i) => gitIn(i.dir, "status --short --branch") },
   { name: "git_commit", safe: false, description: "Stage ALL changes and commit in a local repo. input: {dir, message, branch?} (branch = create/switch to it first).", params: "{dir, message, branch?}",

@@ -50,6 +50,31 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, originAllowed } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
+import { desk as flipitDesk } from "./flipit.ts";
+import { JobStore } from "./yard/store.ts";
+import { JobLog } from "./yard/worker.ts";
+import { supervisor } from "./yard/supervisor.ts";
+import { routeOrNull as yardRoute } from "./yard/intent.ts";
+import { answerRouted } from "./yard/dispatch.ts";
+import { listProjects } from "./yard/managed.ts";
+import {
+  requestPairing, pendingRequests, approvePairing, denyPairing,
+  verifyPairToken, pairedBrowsers, revokePairing, stashForCollection, collect,
+} from "./yard/pairing.ts";
+
+// One store per server process, opened on first use so a SAM with the yard off never
+// creates a database it will not read.
+// The yard's own door. Loopback position PLUS the passkey, always — never conditional on
+// the global setting. Creating a job means running commands on this machine, so it is held
+// to the stricter bar whether or not the rest of SAM is hardened today.
+// Either the desktop app's per-launch passkey, or a browser this machine's operator
+// deliberately paired from inside that app. A paired token is narrower than the passkey:
+// it opens the yard's writes and nothing else, and it can be revoked on its own.
+const isYardTrusted = (req: any) =>
+  isLoopback(req) && (checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]));
+
+let _yard: JobStore | null = null;
+const yardStore = (): JobStore => (_yard ??= new JobStore());
 import { issuesSummary, listIssues } from "./issues.ts";
 import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
 import { startKeeper } from "./keeper.ts";
@@ -677,6 +702,18 @@ app.post("/api/command", async (req, res) => {
   const texts = atts.filter((a) => a?.kind === "text" && a.text);
   if (!message?.trim() && !atts.length) return res.status(400).json({ error: "empty message" });
   recordTask(new Date().toISOString());   // LOCAL analytics only — a count + date, never the message
+
+  // THE YARD — the one question asked before the ordinary path runs. It returns null for
+  // conversation, which is nearly everything, and then NOTHING below here changes: the
+  // existing behaviour is untouched rather than merely similar. Only a confident, explicit
+  // build/edit/status request leaves this path, and only while the yard is switched on.
+  if (process.env.SAM_YARD === "1" && message?.trim()) {
+    const routed = yardRoute(message, listProjects().map((p) => ({ slug: p.slug, name: p.name })));
+    if (routed) {
+      const answer = await answerRouted(routed, yardStore());
+      if (answer) return res.json({ reply: answer, tool: "the yard", provider: "local", model: "the yard" });
+    }
+  }
 
   // TURBO: one fast model call on the quickest free provider — skip tools, embedding,
   // recall and routing entirely. Trades the tool loop for raw speed.
@@ -1386,31 +1423,96 @@ app.post("/api/ask/:id", (req, res) => {
 // Reads ~/flip-it/state|ledger; absent (most users) ⇒ { present: false } and the pane shows a hint.
 app.get("/api/flipit", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
-  const root = process.env.FLIPIT_DIR || join(os.homedir(), "flip-it");
-  const rj = (p: string) => { try { return JSON.parse(readFileSync(join(root, p), "utf8")); } catch { return null; } };
-  const ladder = rj("state/ladder.json");
-  if (!ladder) { res.json({ present: false }); return; }
-  const amend = (rj("state/amendments.json") || [])[0] || {};
-  const base = amend.strategy || "mom_12_1";
-  const market = rj(`state/market.json`);
-  const holdings = (market?.holdings || rj(`state/holdings_${base}.json`)?.names || []).slice(0, 3);
-  // forward clock — count lived days from the ledger (day n / 60)
-  let days = 0, trades = 0;
-  try {
-    const seen = new Set<string>();
-    for (const line of readFileSync(join(root, `ledger/forward_${base}.jsonl`), "utf8").split("\n")) {
-      const l = line.trim(); if (!l) continue;
-      try { const o = JSON.parse(l); if (o.kind === "day" && !seen.has(o.date)) { seen.add(o.date); days++; trades = o.trades_cum ?? trades; } } catch { /* skip */ }
-    }
-  } catch { /* no ledger yet — day 0 */ }
+  const d = flipitDesk();
+  if (!d.present) { res.json({ present: false, schema: 2 }); return; }
+  // schema 2 payload, plus the flat fields the desk shipped before it grew a read model —
+  // kept so an older pane keeps rendering while the new one lands.
   res.json({
-    present: true,
-    equity: Number(ladder.equity ?? 0), rung: Number(ladder.rung ?? 0), hwm: Number(ladder.hwm ?? 0),
-    seeded: !!ladder.seeded, status: ladder.status ?? null,
-    strategy: base, targetVol: amend.target_vol ?? null,
-    days, trades, target: 60, tradeTarget: 20,
-    holdings, breadth: market?.breadth ?? null, movers: market?.movers ?? null,
+    ...d,
+    equity: d.now!.equity, rung: d.now!.rung, hwm: d.now!.hwm,
+    seeded: d.now!.seeded, status: d.now!.status,
+    days: d.now!.days, trades: d.now!.trades, target: d.now!.target, tradeTarget: d.now!.tradeTarget,
   });
+});
+
+// THE YARD — long-running build jobs.
+//
+// The gate is split by what an action can DO, not by which feature it belongs to.
+// READING the queue is no more sensitive than any other panel in SAM, so it sits at the
+// same bar as the rest of them — which is what lets the ops tile work in a browser tab
+// as well as the desktop app. Handing the passkey to a browser instead would have made
+// the gate worthless, since any local process could then ask for it too.
+//
+// WRITING is different: creating a job runs commands on this machine. Those routes hold
+// the passkey unconditionally, whatever the global setting is.
+app.get("/api/yard", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
+  const store = yardStore();
+  store.reapAbandoned();
+  res.json({ on: true, worker: supervisor.status(), ...store.summary(), recent: store.list(undefined, 20) });
+});
+app.get("/api/yard/job/:id", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const job = yardStore().get(String(req.params.id));
+  if (!job) { res.status(404).json({ error: "no such job" }); return; }
+  res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
+});
+app.post("/api/yard/enqueue", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
+  const { kind, payload, budget, project } = req.body || {};
+  if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
+  res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
+});
+app.post("/api/yard/cancel", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
+  try { res.json({ job: yardStore().cancel(String(req.body?.id || "")) }); }
+  catch (e: any) { res.status(404).json({ error: e?.message || "no such job" }); }
+});
+app.post("/api/yard/retry", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
+  const job = yardStore().retry(String(req.body?.id || ""));
+  job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
+});
+
+// ── Pairing a browser ───────────────────────────────────────────────────────
+// Asking is unprivileged on purpose: a request is inert until a person holding the
+// passkey approves the exact code the browser is showing them.
+app.post("/api/yard/pair/request", (req, res) => {
+  if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const r = requestPairing(String(req.body?.label || "a browser"));
+  if (!r) { res.status(429).json({ error: "too many pairing requests are already waiting — approve or dismiss one first" }); return; }
+  res.json({ id: r.id, code: r.code });
+});
+// The browser waits for its OWN request. It learns nothing about anyone else's.
+app.get("/api/yard/pair/collect", (req, res) => {
+  if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  const token = collect(String(req.query?.id || ""));
+  res.json({ token });
+});
+// Everything below needs the passkey: this is the approval itself.
+app.get("/api/yard/pair/pending", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  res.json({ pending: pendingRequests(), paired: pairedBrowsers() });
+});
+app.post("/api/yard/pair/approve", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  const a = approvePairing(String(req.body?.id || ""), String(req.body?.code || ""));
+  if (!a) { res.status(400).json({ error: "that code does not match the request — check the number the browser is showing" }); return; }
+  stashForCollection(a.browser.id, a.token);   // the waiting browser collects it, once
+  logSecurity("info", "yard-browser-paired", `Paired "${a.browser.label}" for yard writes`, "");
+  res.json({ browser: a.browser });
+});
+app.post("/api/yard/pair/deny", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  res.json({ ok: denyPairing(String(req.body?.id || "")) });
+});
+app.post("/api/yard/pair/revoke", (req, res) => {
+  if (!isLoopback(req) || !checkPasskey(req)) { res.status(403).json({ error: "the desktop app approves pairing" }); return; }
+  const ok = revokePairing(String(req.body?.id || ""));
+  if (ok) logSecurity("info", "yard-browser-unpaired", "A paired browser was revoked", "");
+  res.json({ ok });
 });
 
 // The Standing Crew — arm/disarm/list background specialists (loopback + Handshake; privileged control).
@@ -1560,6 +1662,12 @@ if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE 
 const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
+  // THE YARD — long work runs in its own process so a build can never make chat or voice
+  // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
+  if (process.env.SAM_YARD === "1") {
+    yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
+    console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
+  }
   // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
   // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
   void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())

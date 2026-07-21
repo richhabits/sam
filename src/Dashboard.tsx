@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "./Icon";
-import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople } from "./lib/api";
+import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
+  pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
@@ -17,6 +18,30 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [people, setPeople] = useState<any[]>([]);
+  const [yard, setYard] = useState<any>(null);
+  const [yardErr, setYardErr] = useState<string>("");
+  // Pairing has two sides and this one component is both, because it is the same bundle:
+  // in a browser it ASKS, in the desktop app (which holds the passkey) it APPROVES.
+  const [pairing, setPairing] = useState<{ id: string; code: string } | null>(null);
+  const [paired, setPaired] = useState(!!pairToken());
+  const [pairInbox, setPairInbox] = useState<{ pending: any[]; paired: any[]; notApp?: boolean }>({ pending: [], paired: [] });
+  // Re-read the yard straight after acting on it, so the panel reflects the kill
+  // immediately rather than at the next five-second tick.
+  const refreshYard = () => { getYard().then(setYard).catch(() => {/* the next poll re-reads the truth */}); };
+
+  // While a request is outstanding, wait for it to be approved in the app. Polling the
+  // browser's OWN request id means it never learns about anyone else's.
+  useEffect(() => {
+    if (!pairing) return;
+    const iv = setInterval(() => {
+      collectYardPairing(pairing.id).then((r: any) => {
+        if (!r?.token) return;
+        setPairToken(r.token); setPaired(true); setPairing(null); setYardErr("");
+      }).catch(() => {/* still waiting */});
+    }, 1500);
+    const giveUp = setTimeout(() => setPairing(null), 2 * 60_000);   // the request expires server-side too
+    return () => { clearInterval(iv); clearTimeout(giveUp); };
+  }, [pairing]);
   useEscape(onClose);
 
   useEffect(() => {
@@ -27,6 +52,9 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       getSwarms().then(setSwarms).catch(() => {/* background poll — the next tick retries */});
       getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
       getSchedules().then(setSchedules).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
+      getYard().then(setYard).catch(() => {/* the yard may be off, or this SAM may not have it — the tile simply stays hidden */});
+      // Only the app gets a list back; a browser is told nothing about who else is waiting.
+      yardPairPending().then(setPairInbox).catch(() => {/* not the app — nothing to approve here */});
     };
     load();
     const iv = setInterval(load, 5000);
@@ -127,6 +155,139 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
 
             </>)}
             {tab === "auto" && (<>
+            {/* THE YARD — long jobs run in their own process. Same reading as the money desk's
+                watchdog: a worker that has stopped reporting is shown as stopped, never as busy,
+                because silence and work look identical otherwise. Hidden entirely when off, so a
+                SAM without the yard shows no dead switch. */}
+            {yard?.on && (<>
+              <div className="dash-sec"><Icon name="settings" /> The yard ({yard.depth} queued)</div>
+              <div className="dash-lanes">
+                <div className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: 999, display: "inline-block",
+                        background: !yard.worker?.up ? "var(--c-err)" : yard.current?.stale ? "var(--c-warn)" : "var(--c-ok)",
+                      }} />
+                      {yard.worker?.up ? `Worker up (pid ${yard.worker.pid})` : "Worker down"}
+                    </span>
+                    <span style={{ fontSize: 11, opacity: .6 }}>
+                      {yard.done} done · {yard.failed} failed · {yard.cancelled} cancelled
+                    </span>
+                  </div>
+
+                  {yard.current ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13 }}>
+                          {yard.current.stale ? "⚠️ " : ""}{yard.current.kind}
+                          {yard.current.project ? ` · ${yard.current.project}` : ""}
+                          {yard.current.stale && <span style={{ color: "var(--c-err)", fontWeight: 600 }}> — stopped reporting</span>}
+                        </span>
+                        {/* The one write on this panel. It signals the yard and nothing else on
+                            the machine: the job settles between steps rather than being shot. */}
+                        <button
+                          type="button"
+                          onClick={() => { setYardErr(""); cancelYardJob(yard.current.id).then(refreshYard).catch((e) => setYardErr(String(e?.message || e))); }}
+                          style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--c-err)", background: "transparent", color: "var(--c-err)", cursor: "pointer", fontWeight: 600 }}
+                        >Kill</button>
+                      </div>
+                      {/* the meter — only shown when a ceiling was actually set */}
+                      {yard.current.costBudget ? (
+                        <div>
+                          <div style={{ height: 5, borderRadius: 999, background: "var(--surface)", overflow: "hidden", border: "1px solid var(--border)" }}>
+                            <div style={{
+                              width: `${Math.min(100, (yard.current.costTokens / yard.current.costBudget) * 100)}%`, height: "100%",
+                              background: yard.current.costTokens / yard.current.costBudget > 0.8 ? "var(--c-warn)" : "var(--c-blue)",
+                            }} />
+                          </div>
+                          <div style={{ fontSize: 11, opacity: .6, marginTop: 3 }}>
+                            {yard.current.costTokens.toLocaleString()} / {yard.current.costBudget.toLocaleString()} tokens
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, opacity: .6 }}>{yard.current.costTokens.toLocaleString()} tokens · no ceiling set</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, opacity: .6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      {yard.depth > 0 ? `${yard.depth} waiting to start` : "Idle — nothing building."}
+                    </div>
+                  )}
+
+                  {/* A refused Kill says why, and offers the way out rather than being a
+                      dead end: pair this browser, once, from the app. */}
+                  {yardErr && (
+                    <div style={{ fontSize: 11, color: "var(--c-warn)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      {yardErr}
+                      {!paired && !pairing && (
+                        <button
+                          type="button"
+                          onClick={() => { requestYardPairing(navigator.userAgent.includes("Chrome") ? "Chrome on this Mac" : "This browser").then((r: any) => setPairing(r)).catch(() => setYardErr("couldn't start pairing")); }}
+                          style={{ marginLeft: 8, fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--c-warn)", background: "transparent", color: "var(--c-warn)", cursor: "pointer", fontWeight: 600 }}
+                        >Pair this browser</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* THE ASK — the browser shows a code and waits. The code is the point:
+                      it is what the person compares before approving, so a request they
+                      cannot see cannot be approved by a click meant for this one. */}
+                  {pairing && (
+                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, textAlign: "center" }}>
+                      <div style={{ fontSize: 11, opacity: .7, marginBottom: 6 }}>Approve this in the SAM app — check the number matches:</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: ".22em", fontVariantNumeric: "tabular-nums" }}>{pairing.code}</div>
+                      <div style={{ fontSize: 11, opacity: .6, marginTop: 6 }}>waiting… this expires in a couple of minutes</div>
+                    </div>
+                  )}
+                  {paired && !pairing && (
+                    <div style={{ fontSize: 11, opacity: .6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      This browser is paired — it can start and stop work here.
+                    </div>
+                  )}
+
+                  {/* THE APPROVAL — only rendered where the passkey is, i.e. the desktop app. */}
+                  {!!pairInbox.pending?.length && (
+                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, display: "grid", gap: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-warn)" }}>A browser wants to control the yard</div>
+                      {pairInbox.pending.map((p: any) => (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12 }}>
+                            {p.label} · <b style={{ fontSize: 15, letterSpacing: ".18em", fontVariantNumeric: "tabular-nums" }}>{p.code}</b>
+                          </span>
+                          <span style={{ display: "flex", gap: 6 }}>
+                            <button type="button" onClick={() => { approveYardPairing(p.id, p.code).then(() => yardPairPending().then(setPairInbox)).catch(() => {/* the next poll re-reads */}); }}
+                              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--c-ok)", background: "transparent", color: "var(--c-ok)", cursor: "pointer", fontWeight: 600 }}>Approve</button>
+                            <button type="button" onClick={() => { denyYardPairing(p.id).then(() => yardPairPending().then(setPairInbox)).catch(() => {/* the next poll re-reads */}); }}
+                              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-dim)", cursor: "pointer" }}>Deny</button>
+                          </span>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 10.5, opacity: .6 }}>Only approve a number you can see on your own screen.</div>
+                    </div>
+                  )}
+                  {!!pairInbox.paired?.length && (
+                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, display: "grid", gap: 4 }}>
+                      {pairInbox.paired.map((b: any) => (
+                        <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, opacity: .75 }}>
+                          <span>paired · {b.label}</span>
+                          <button type="button" onClick={() => { revokeYardPairing(b.id).then(() => yardPairPending().then(setPairInbox)).catch(() => {/* the next poll re-reads */}); }}
+                            style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--c-err)", cursor: "pointer" }}>Unpair</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* The last failure stays visible: a failure nobody sees is the same as one
+                      that did not happen, and this is the panel where it should be seen. */}
+                  {yard.lastFailure && (
+                    <div style={{ fontSize: 11, color: "var(--c-err)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                      Last failure ({yard.lastFailure.kind}): {String(yard.lastFailure.error ?? "").slice(0, 120)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>)}
+
             {/* swarm monitor */}
             <div className="dash-sec"><Icon name="team" /> Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>
             {swarms.length === 0 ? <div className="dash-empty">No swarms yet — use /swarm &lt;goal&gt; to launch one.</div> : (

@@ -240,7 +240,12 @@ export const setTelemetry = (on: boolean) => post("/api/telemetry", { on });
 export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r) => r.json());
 
 export const getDoctor = () => fetch("/api/doctor").then((r) => r.json());
-export const getFlipit = () => fetch("/api/flipit").then((r) => r.json());
+// A refused read is NOT an absent rig. Reported separately so the desk can say which,
+// rather than telling you FLIP IT is not installed while it sits there on disk.
+export const getFlipit = () => fetch("/api/flipit").then(async (r) => {
+  if (r.status === 403) return { present: false, refused: true };
+  return r.json();
+});
 export const getStanding = () => fetch("/api/standing").then((r) => r.json());
 export const standingArm = (specialistId: string, task: string, cron: string) => post("/api/standing/arm", { specialistId, task, cron });
 export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });
@@ -258,3 +263,36 @@ export const snoozeChimeApi = (id: string, ms?: number) => post("/api/chime/snoo
 export const getCameras = () => fetch("/api/cameras").then((r) => r.json());
 export const addCameraApi = (c: { name: string; location?: string; kind: "snapshot" | "rtsp" | "ring"; url?: string }) => post("/api/cameras", c);
 export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id });
+
+// ── the yard — long-running build jobs (loopback + Handshake) ──
+export const getYard = () => fetch("/api/yard").then((r) => r.json());
+// Surfaces the server's reason instead of failing silently. Starting and stopping work
+// needs the passkey the desktop app carries, so this legitimately refuses in a browser —
+// and a button that does nothing without saying why is the worst version of that.
+// ── pairing a browser with the yard ──
+// The token lives in this browser's own storage and is sent only on yard writes. It is
+// not the Handshake passkey and cannot stand in for it anywhere else.
+const PAIR_KEY = "sam.yard.pair";
+export const pairToken = () => { try { return localStorage.getItem(PAIR_KEY) || ""; } catch { return ""; } };
+export const setPairToken = (t: string) => { try { localStorage.setItem(PAIR_KEY, t); } catch { /* private mode — pairing simply will not stick */ } };
+export const clearPairToken = () => { try { localStorage.removeItem(PAIR_KEY); } catch { /* nothing to clear */ } };
+
+export const requestYardPairing = (label: string) => post("/api/yard/pair/request", { label });
+export const collectYardPairing = (id: string) => fetch(`/api/yard/pair/collect?id=${encodeURIComponent(id)}`).then((r) => r.json());
+export const yardPairPending = () => fetch("/api/yard/pair/pending").then((r) => (r.ok ? r.json() : { pending: [], paired: [], notApp: true }));
+export const approveYardPairing = (id: string, code: string) => post("/api/yard/pair/approve", { id, code });
+export const denyYardPairing = (id: string) => post("/api/yard/pair/deny", { id });
+export const revokeYardPairing = (id: string) => post("/api/yard/pair/revoke", { id });
+
+export const cancelYardJob = async (id: string) => {
+  const pair = pairToken();
+  const r = await fetch("/api/yard/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(pair ? { "X-SAM-Pair": pair } : {}) },
+    body: JSON.stringify({ id }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `couldn't stop that job (${r.status})`);
+  return body;
+};
+export const retryYardJob = (id: string) => post("/api/yard/retry", { id });

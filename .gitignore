@@ -113,4 +113,10 @@ bench/*.out.json
 CLAUDE.md
 docs/BOARD.md
 docs/OWNERSHIP_AUDIT.md
+AUDIT_REPORT.md
 docs/strips/
+
+# the yard — job database, per-job logs (local runtime state).
+# Root-anchored: a bare `yard/` also matches server/yard, which would have quietly
+# excluded the yard's own source code from every commit.
+/yard/
