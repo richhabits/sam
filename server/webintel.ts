@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { checkOutboundUrl } from "./url-guard.ts";
+import { safeFetch } from "./url-guard.ts";
 import { distill } from "./reader.ts";
 
 const UA = "Mozilla/5.0 (compatible; SAM-webintel/0.1; local-first)";
@@ -67,14 +67,13 @@ export async function fetchClean(url: string, opts: { timeoutMs?: number } = {})
   // Refuse loopback/LAN/link-local targets BEFORE opening a socket. SAM runs inside the user's
   // network, so a URL supplied by a prompt — or planted in a page SAM already read — could
   // otherwise reach the router, a NAS, or SAM's own API on localhost. See url-guard.ts.
-  const verdict = await checkOutboundUrl(url);
-  if (!verdict.ok) {
-    return { url, status: 0, error: `blocked: ${verdict.reason}`, title: "", text: "", links: [], bytes: 0, ok: false };
-  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 15000);
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html,*/*" }, signal: ctrl.signal, redirect: "follow" });
+    // safeFetch guards the initial URL AND re-guards every redirect hop (a public URL can 302 to a
+    // private one; redirect:"follow" would sail past a one-shot pre-check). Throws on a blocked hop,
+    // which the catch below turns into the same structured { ok:false, error } result as before.
+    const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "text/html,*/*" }, signal: ctrl.signal });
     const ct = res.headers.get("content-type") || "";
     const body = await res.text();
     let parsed: { title: string; text: string; links: CleanLink[] };

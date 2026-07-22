@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostAllowed, isLoopback, originAllowed } from "./http-guards.ts";
+import { hostAllowed, isLoopback, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 
 // This function is the gate on every privileged write in SAM — API keys, config, remote tokens,
 // the vault passphrase. It had no direct test before it was extracted from index.ts: the contract
@@ -103,5 +103,40 @@ describe("originAllowed — CORS gate (must match hostAllowed so phone access wo
     for (const host of ["localhost", "127.0.0.1", "192.168.0.252", "10.1.2.3", "8.8.8.8", "evil.com"]) {
       expect(originAllowed(`http://${host}:8787`), host).toBe(hostAllowed(`${host}:8787`));
     }
+  });
+});
+
+describe("passkeyRequiredForMutation — remote mode must not re-trust loopback", () => {
+  const mreq = (method: string, path: string, ip: string) => ({ method, path, socket: { remoteAddress: ip } });
+  const LOOP = "127.0.0.1";
+  const LAN = "192.168.0.252"; // an off-machine phone
+
+  it("does not gate anything when the Handshake is off", () => {
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/x", LOOP), { enforced: false, remote: false })).toBe(false);
+  });
+
+  it("gates loopback mutating /api writes in default mode", () => {
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/keys", LOOP), { enforced: true, remote: false })).toBe(true);
+    for (const m of ["PUT", "PATCH", "DELETE"])
+      expect(passkeyRequiredForMutation(mreq(m, "/api/keys", LOOP), { enforced: true, remote: false }), m).toBe(true);
+  });
+
+  it("never gates reads or non-/api paths", () => {
+    expect(passkeyRequiredForMutation(mreq("GET", "/api/status", LOOP), { enforced: true, remote: false })).toBe(false);
+    expect(passkeyRequiredForMutation(mreq("POST", "/pair", LOOP), { enforced: true, remote: false })).toBe(false);
+  });
+
+  it("THE FIX: still gates LOOPBACK writes when remote mode is on", () => {
+    // The bug: SAM_REMOTE=1 blanket-bypassed the Handshake, so any local process could mutate.
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/keys", LOOP), { enforced: true, remote: true })).toBe(true);
+  });
+
+  it("defers the off-machine phone (non-loopback) to the remote-token gate in remote mode", () => {
+    // A phone has no passkey; it authenticates at the remote-token gate, so this gate lets it past.
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/task", LAN), { enforced: true, remote: true })).toBe(false);
+  });
+
+  it("a non-loopback write is NOT deferred when remote mode is off (belt and braces)", () => {
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/task", LAN), { enforced: true, remote: false })).toBe(true);
   });
 });

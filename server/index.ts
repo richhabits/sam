@@ -53,7 +53,7 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { hostAllowed, isLoopback, isTrustedLocal, originAllowed } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isTrustedLocal, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
@@ -173,9 +173,7 @@ app.use((req, res, next) => {
 // calls must carry the per-launch secret the legit frontend holds (a random local process can't).
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
 app.use((req, res, next) => {
-  if (!handshakeEnforced()) return next();
-  const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
-  if (!mutating || !req.path.startsWith("/api/") || process.env.SAM_REMOTE === "1") return next();
+  if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" })) return next();
   if (checkPasskey(req)) return next();
   logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without the passkey — refused despite loopback`, req.socket.remoteAddress || "");
   return res.status(403).json({ error: "passkey required" });

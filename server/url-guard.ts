@@ -96,3 +96,37 @@ export async function checkOutboundUrl(raw: string, resolve: Resolver = dnsResol
   }
   return { ok: true, url };
 }
+
+// A redirect is a second URL SAM never chose. checkOutboundUrl only vets the string it is
+// handed, so a fetch that FOLLOWS redirects re-opens the whole hole from behind: a public URL
+// can answer 302 → http://169.254.169.254/ (cloud metadata) or http://127.0.0.1/ and, with
+// redirect:"follow", the guarded first hop leads straight to an unguarded private one. The fix
+// is to follow redirects by HAND and run the guard again on every Location before touching it.
+export class BlockedFetch extends Error {}
+
+/**
+ * fetch() with the outbound guard applied to the initial URL AND to every redirect hop.
+ * Redirects are followed manually (redirect:"manual") so each Location is re-checked; a hop that
+ * fails the guard, or a chain longer than `maxHops`, throws BlockedFetch instead of connecting.
+ * `resolve`/`fetchImpl` are injectable to keep tests hermetic and offline.
+ */
+export async function safeFetch(
+  raw: string,
+  init: RequestInit = {},
+  opts: { maxHops?: number; resolve?: Resolver; fetchImpl?: typeof fetch } = {},
+): Promise<Response> {
+  const maxHops = opts.maxHops ?? 5;
+  const resolve = opts.resolve ?? dnsResolver;
+  const doFetch = opts.fetchImpl ?? fetch;
+  let current = raw;
+  for (let hop = 0; ; hop++) {
+    const verdict = await checkOutboundUrl(current, resolve);
+    if (!verdict.ok) throw new BlockedFetch(`blocked: ${verdict.reason}`);
+    if (hop > maxHops) throw new BlockedFetch("blocked: too many redirects");
+    const res = await doFetch(verdict.url.href, { ...init, redirect: "manual" });
+    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!location) return res;
+    // Resolve the Location against the current URL (it may be relative) and guard the next hop.
+    current = new URL(location, verdict.url).href;
+  }
+}

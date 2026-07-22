@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkOutboundUrl, isPrivateAddress } from "./url-guard.ts";
+import { checkOutboundUrl, isPrivateAddress, safeFetch, BlockedFetch } from "./url-guard.ts";
 
 // Hermetic resolver — no real DNS, so these tests pass offline and never flake in CI.
 const resolves = (map: Record<string, string[]>) => async (host: string) => {
@@ -104,5 +104,62 @@ describe("checkOutboundUrl", () => {
     const v = await checkOutboundUrl("https://en.wikipedia.org/wiki/Ada_Lovelace", publicDns);
     expect(v.ok).toBe(true);
     if (v.ok) expect(v.url.hostname).toBe("en.wikipedia.org");
+  });
+});
+
+describe("safeFetch — the guard survives redirects", () => {
+  // A fake fetch that returns one scripted response per URL. `redirect:"manual"` means safeFetch
+  // sees the 3xx itself, so we model a redirect as a 302 carrying a Location header.
+  const fakeFetch = (script: Record<string, { status: number; location?: string }>) =>
+    (async (input: any) => {
+      const url = String(input);
+      const r = script[url];
+      if (!r) throw new Error(`unscripted URL in test: ${url}`);
+      return { status: r.status, headers: { get: (h: string) => (h.toLowerCase() === "location" ? r.location ?? null : null) } } as any;
+    }) as unknown as typeof fetch;
+
+  it("follows a redirect to another public host and returns it", async () => {
+    const dns = resolves({ "a.example": ["93.184.216.34"], "b.example": ["93.184.216.35"] });
+    const fetchImpl = fakeFetch({
+      "http://a.example/": { status: 302, location: "http://b.example/" },
+      "http://b.example/": { status: 200 },
+    });
+    const res = await safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl });
+    expect(res.status).toBe(200);
+  });
+
+  it("BLOCKS a public URL that redirects to a private address", async () => {
+    // The exact SSRF: hop 0 is public and passes; hop 1 is 127.0.0.1 and must be refused.
+    const dns = resolves({ "a.example": ["93.184.216.34"] });
+    const fetchImpl = fakeFetch({
+      "http://a.example/": { status: 302, location: "http://127.0.0.1/admin" },
+    });
+    await expect(safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl }))
+      .rejects.toBeInstanceOf(BlockedFetch);
+  });
+
+  it("BLOCKS a redirect to cloud-metadata (169.254.169.254)", async () => {
+    const dns = resolves({ "a.example": ["93.184.216.34"] });
+    const fetchImpl = fakeFetch({
+      "http://a.example/": { status: 302, location: "http://169.254.169.254/latest/meta-data/" },
+    });
+    await expect(safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl }))
+      .rejects.toBeInstanceOf(BlockedFetch);
+  });
+
+  it("blocks a redirect to a public NAME that resolves private", async () => {
+    const dns = resolves({ "a.example": ["93.184.216.34"], "evil.com": ["127.0.0.1"] });
+    const fetchImpl = fakeFetch({
+      "http://a.example/": { status: 302, location: "http://evil.com/" },
+    });
+    await expect(safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl }))
+      .rejects.toBeInstanceOf(BlockedFetch);
+  });
+
+  it("refuses an endless redirect loop rather than hanging", async () => {
+    const dns = resolves({ "a.example": ["93.184.216.34"] });
+    const fetchImpl = fakeFetch({ "http://a.example/": { status: 302, location: "http://a.example/" } });
+    await expect(safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl, maxHops: 3 }))
+      .rejects.toThrow(/too many redirects/);
   });
 });

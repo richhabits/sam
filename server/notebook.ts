@@ -15,7 +15,7 @@ import { openDb } from "./db.ts";
 import { embed, embedOne, cosine } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";
 import { chunkText, extractText } from "./ingest.ts";
-import { checkOutboundUrl } from "./url-guard.ts";
+import { safeFetch } from "./url-guard.ts";
 
 // Lazy DB handle — opened on FIRST use, not at import. This keeps the (native) SQLite open OFF
 // the boot path, so packaging into the Electron main process can't stall startup, and the vault
@@ -105,9 +105,9 @@ export async function addUrl(notebookId: string, url: string): Promise<{ chunks:
   // network — so an unguarded fetch here reaches the router, a NAS, or SAM's own API on localhost.
   // CodeQL flagged this Critical SSRF and it was right; server/url-guard.ts already exists for
   // exactly this and was simply not wired here.
-  const verdict = await checkOutboundUrl(url);
-  if (!verdict.ok) throw new Error(`blocked: ${verdict.reason}`);
-  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (SAM Notebook)" }, signal: AbortSignal.timeout(20000) });
+  // safeFetch re-guards every redirect hop, not just this first URL — a public page can 302 to
+  // the router, a NAS, or SAM's own loopback API, which a one-shot pre-check would miss.
+  const r = await safeFetch(url, { headers: { "User-Agent": "Mozilla/5.0 (SAM Notebook)" }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`fetch ${r.status}`);
   const html = await r.text();
   const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || url).trim().slice(0, 120);

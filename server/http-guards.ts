@@ -65,6 +65,28 @@ export function hostAllowed(hostHeader: string): boolean {
   return isLocalOrPrivateHost((hostHeader || "").split(":")[0]);
 }
 
+/**
+ * Whether a request must present the Handshake passkey before it is allowed to mutate.
+ *
+ * The subtle case is remote mode. Turning SAM_REMOTE on lets a phone reach the API, and a phone
+ * carries no passkey — it proves itself later at the remote-token gate, which it only reaches
+ * because this gate lets it past. That pass must apply to NON-loopback callers only: if remote
+ * mode also waved loopback requests through, it would silently re-trust every local process on
+ * the machine, undoing the one thing the Handshake exists to do. So loopback is held to the
+ * passkey in remote mode exactly as in default mode; only the off-machine phone is deferred to
+ * the token gate. Kept as a pure function so this rule is unit-tested, not buried in middleware.
+ */
+export function passkeyRequiredForMutation(
+  req: { method: string; path: string; socket: { remoteAddress?: string | null } },
+  env: { enforced: boolean; remote: boolean },
+): boolean {
+  if (!env.enforced) return false;
+  const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
+  if (!mutating || !req.path.startsWith("/api/")) return false;
+  if (env.remote && !isLoopback(req)) return false; // off-machine phone → deferred to the remote-token gate
+  return true;
+}
+
 // Loopback position is NOT authorization on its own — a local non-browser process passes isLoopback
 // too (CORS only binds browsers). When control-token enforcement is on, a privileged caller must ALSO
 // present the per-launch secret the legit frontend holds. Off (default): loopback alone, unchanged.
