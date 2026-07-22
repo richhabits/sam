@@ -109,3 +109,50 @@ describe("editing a project", () => {
       .rejects.toThrow(/what to change/);
   });
 });
+
+describe("editing with pinpoint edits (SAM_YARD_PATCH)", () => {
+  // Both the yard AND pinpoint mode on for the duration.
+  function withPatch<T>(fn: () => Promise<T>): Promise<T> {
+    process.env.SAM_YARD = "1"; process.env.SAM_YARD_PATCH = "1";
+    return fn().finally(() => { delete process.env.SAM_YARD; delete process.env.SAM_YARD_PATCH; });
+  }
+  const idx = () => readFileSync(join(projectPath("hello-site"), "index.html"), "utf8");
+
+  it("changes only the named passage and leaves the rest of the file exactly as it was", async () => {
+    writeFileSync(join(projectPath("hello-site"), "index.html"), "<h1>OLD HEADING</h1>\n<p>keep me</p>\n<footer>keep me too</footer>");
+    proposal.text = JSON.stringify({ edits: [{ path: "index.html", find: "<h1>OLD HEADING</h1>", replace: "<h1>NEW HEADING</h1>" }], note: "swapped the heading" });
+    const out = await withPatch(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "change the heading" }) as any));
+    expect(idx()).toBe("<h1>NEW HEADING</h1>\n<p>keep me</p>\n<footer>keep me too</footer>");
+    expect(String(out)).toMatch(/edited 1 file/);
+  });
+
+  it("edits a LARGE file that whole-file mode could never have shown (past the 24KB ceiling)", async () => {
+    const big = "<h1>OLD HEADING</h1>\n" + "<p>filler line that pads the file well past the whole-file ceiling</p>\n".repeat(500);
+    expect(Buffer.byteLength(big)).toBeGreaterThan(24_000);   // whole-file mode would call this tooBig
+    writeFileSync(join(projectPath("hello-site"), "index.html"), big);
+    proposal.text = JSON.stringify({ edits: [{ path: "index.html", find: "<h1>OLD HEADING</h1>", replace: "<h1>NEW HEADING</h1>" }] });
+    await withPatch(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "change the heading" }) as any));
+    const after = idx();
+    expect(after).toContain("<h1>NEW HEADING</h1>");
+    expect(after).not.toContain("OLD HEADING");
+    expect(after.split("filler line").length - 1).toBe(500);   // every filler line survived — not a rewrite
+  });
+
+  it("leaves the file UNTOUCHED when a passage cannot be placed exactly (no half-edit)", async () => {
+    writeFileSync(join(projectPath("hello-site"), "index.html"), "<h1>OLD HEADING</h1>\n<p>keep</p>");
+    // find does not occur ⇒ refused ⇒ nothing applied ⇒ the job reports it changed nothing
+    proposal.text = JSON.stringify({ edits: [{ path: "index.html", find: "<h1>NOT PRESENT</h1>", replace: "x" }] });
+    await expect(withPatch(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "change the heading" }) as any)))
+      .rejects.toThrow(/changed nothing/);
+    expect(idx()).toBe("<h1>OLD HEADING</h1>\n<p>keep</p>");   // exactly as before
+  });
+
+  it("ignores pinpoint edits entirely when the flag is OFF (default behaviour unchanged)", async () => {
+    writeFileSync(join(projectPath("hello-site"), "index.html"), "<h1>OLD HEADING</h1>");
+    proposal.text = JSON.stringify({ edits: [{ path: "index.html", find: "<h1>OLD HEADING</h1>", replace: "<h1>NEW</h1>" }] });
+    // flag off (withHandshake, not withPatch): edits are not read, so nothing is written
+    await expect(withHandshake(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "change the heading" }) as any)))
+      .rejects.toThrow(/changed nothing|not valid JSON|no file/);
+    expect(idx()).toBe("<h1>OLD HEADING</h1>");
+  });
+});

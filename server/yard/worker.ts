@@ -22,6 +22,7 @@ import { scrub } from "../scrub.ts";
 import { runModel } from "../models.ts";
 import { createProject, checkpoint, restore, projectPath, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
+import { applyEdits } from "./edits.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
@@ -265,6 +266,19 @@ const EDIT_SYSTEM =
   "Rules: return ONLY files you actually changed; give the WHOLE file, never a fragment or a diff; " +
   "keep paths relative and inside the project; never touch .git; never invent dependencies. JSON only, no prose.";
 
+// Pinpoint-edit mode (SAM_YARD_PATCH). Lets the model change PART of a file by naming an exact,
+// unique passage — so it never reproduces the bytes it is not touching, and a large file becomes
+// editable without a full rewrite. "files" (whole) is kept for new files and genuine rewrites.
+const EDIT_SYSTEM_PATCH =
+  "You edit ONE web project. You are given files and a request. PREFER PINPOINT EDITS: name an exact " +
+  "passage to replace, so you never rewrite a file you are only partly changing. " +
+  "Return STRICT JSON with either or both of: " +
+  "\"edits\":[{\"path\":\"relative/path\",\"find\":\"an EXACT passage copied VERBATIM from the file\",\"replace\":\"its replacement\"}] " +
+  "for changing existing files, and " +
+  "\"files\":[{\"path\":\"relative/path\",\"content\":\"COMPLETE contents\"}] for NEW files or full rewrites. " +
+  "Every \"find\" MUST appear EXACTLY ONCE in the file — copy enough surrounding text to be unique, or it is refused and nothing changes. " +
+  "Keep paths relative and inside the project; never touch .git; never invent dependencies. Add \"note\":\"one sentence\". JSON only, no prose.";
+
 HANDLERS["project.edit"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");
   const what = String(ctx.payload?.what || "").trim();
@@ -284,7 +298,11 @@ HANDLERS["project.edit"] = async (ctx) => {
   const existing = readEditable(dir, NOT_THE_MODELS);
   if (!existing.length) throw Object.assign(new Error("there are no editable files in this project"), { kind: "permanent" as FailureKind });
 
-  const { offered, tooBig, leftOut } = selectContext(existing, what);
+  // Pinpoint mode returns tiny edit blocks rather than whole files, so a bigger file can be shown
+  // as context and still edited cheaply. The ceiling is raised only when the flag is on.
+  const patchMode = process.env.SAM_YARD_PATCH === "1";
+  const { offered, tooBig, leftOut } = selectContext(existing, what,
+    patchMode ? { maxOne: 100_000, maxBytes: 100_000 } : {});
   if (!offered.length) throw Object.assign(new Error("no file in this project is small enough to edit whole"), { kind: "permanent" as FailureKind });
   ctx.log(`showing ${offered.length} of ${existing.length} file(s): ${offered.map((f) => f.path).join(", ")}`);
   // Said out loud rather than left implicit — a file left out is a file the edit cannot
@@ -300,8 +318,9 @@ HANDLERS["project.edit"] = async (ctx) => {
 
   // Free tier, vault-routed, exactly like everything else SAM does. Metered against the
   // job's own ceiling so one runaway edit cannot spend the allowance of the queue.
-  ctx.spend(estimate(EDIT_SYSTEM) + estimate(prompt));
-  const r = await runModel("free", EDIT_SYSTEM, prompt, "code");
+  const sys = patchMode ? EDIT_SYSTEM_PATCH : EDIT_SYSTEM;
+  ctx.spend(estimate(sys) + estimate(prompt));
+  const r = await runModel("free", sys, prompt, "code");
   ctx.spend(estimate(r.text));
   ctx.log(`proposal from ${r.provider}`);
   ctx.checkStop();
@@ -312,7 +331,35 @@ HANDLERS["project.edit"] = async (ctx) => {
 
   const proposed: any[] = Array.isArray(spec?.files) ? spec.files : [];
   const usable = proposed.filter((f) => f && typeof f.path === "string" && typeof f.content === "string" && f.content.length);
-  const { write: allowed, refused } = admissible(usable, offered, existing, NOT_THE_MODELS);
+
+  // Pinpoint edits (flag-gated). Group by path and apply against the file AS SHOWN — a pinpoint
+  // edit can only touch a file the model actually saw. All-or-nothing per file: if any block
+  // cannot be placed exactly and uniquely, the file is left untouched and the reason is logged,
+  // so a half-matched proposal can never leave a file in a state nobody chose.
+  const patched: { path: string; content: string }[] = [];
+  if (patchMode && Array.isArray(spec?.edits)) {
+    const byPath = new Map<string, { find: string; replace: string }[]>();
+    for (const e of spec.edits) {
+      if (!e || typeof e.path !== "string" || typeof e.find !== "string" || typeof e.replace !== "string") continue;
+      const path = e.path.replace(/^\.\//, "");
+      const list = byPath.get(path) ?? [];
+      list.push({ find: e.find, replace: e.replace });
+      byPath.set(path, list);
+    }
+    for (const [path, blocks] of byPath) {
+      const src = offered.find((f) => f.path === path);
+      if (!src) { ctx.log(`left ${path} alone — a pinpoint edit can only change a file that was shown`); continue; }
+      const out = applyEdits(src.content, blocks);
+      if (!out.ok) { ctx.log(`left ${path} alone — ${out.failures.map((f) => f.why).join("; ").slice(0, 180)}`); continue; }
+      patched.push({ path, content: out.content });
+      ctx.log(`pinpoint: placed ${out.applied} edit(s) in ${path}`);
+    }
+  }
+
+  // Whole-file entries apply only where a pinpoint edit did not already produce that path.
+  const patchedPaths = new Set(patched.map((p) => p.path));
+  const combined = [...patched, ...usable.filter((f) => !patchedPaths.has(String(f.path).replace(/^\.\//, "")))];
+  const { write: allowed, refused } = admissible(combined, offered, existing, NOT_THE_MODELS);
   for (const r of refused) ctx.log(`left ${r.path} alone — ${r.why}`);
   if (!allowed.length) throw new Error("the proposal changed nothing this request implicated — nothing was written");
 
