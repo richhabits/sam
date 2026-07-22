@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +9,12 @@ import {
 
 // The promise this file makes is that work is never lost: every completed step is
 // already committed, and going back is a checkout. These tests are that promise.
+
+// Nearly every test here does REAL git work (init + commits) in a temp repo. Git I/O under the
+// full suite's parallel load occasionally crosses vitest's 5s default — a flake with no bug behind
+// it (each test passes alone). A generous per-test ceiling removes the false red without hiding a
+// genuinely slow test: a real hang still trips it, just not honest I/O contention.
+vi.setConfig({ testTimeout: 20_000 });
 
 let base: string;
 const hs = { handshake: true };   // project management runs inside jobs, behind the Handshake
