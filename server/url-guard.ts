@@ -145,7 +145,8 @@ export async function safeFetch(
       current = new URL(location, verdict.url).href;
     } finally {
       // Each hop gets its own single-use agent (its pinned IP differs); close it so sockets don't leak.
-      await dispatcher?.close().catch(() => {});
+      // A close failure is nothing to act on here — the fetch already resolved; swallow it deliberately.
+      await dispatcher?.close().catch(() => { /* best-effort cleanup */ });
     }
   }
 }
