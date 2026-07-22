@@ -6,6 +6,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     setupFiles: ["./server/test-setup.ts"],
+    // Sweeps the workers' sam-test-* temp dirs after the whole run, in the main process,
+    // because vitest kills its workers rather than letting per-worker exit handlers fire.
+    globalSetup: ["./server/test-teardown.ts"],
     // e2e/ holds Playwright Electron specs (run via `npx playwright test`, not vitest).
     exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**"],
     coverage: {
