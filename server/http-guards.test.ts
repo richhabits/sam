@@ -139,4 +139,15 @@ describe("passkeyRequiredForMutation — remote mode must not re-trust loopback"
   it("a non-loopback write is NOT deferred when remote mode is off (belt and braces)", () => {
     expect(passkeyRequiredForMutation(mreq("POST", "/api/task", LAN), { enforced: true, remote: false })).toBe(true);
   });
+
+  it("THE OTHER FIX: the pairing on-ramp is open, or a browser could never start pairing", () => {
+    // Shipped broken from v3.0.0: enforced Handshake ON, and this POST refused every browser that
+    // tried to pair — the passkey it demands is the very thing pairing exists to obtain.
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/yard/pair/request", LOOP), { enforced: true, remote: false })).toBe(false);
+  });
+
+  it("but the pairing APPROVAL (and its siblings) stay gated — only the app approves", () => {
+    for (const p of ["/api/yard/pair/approve", "/api/yard/pair/deny", "/api/yard/pair/revoke"])
+      expect(passkeyRequiredForMutation(mreq("POST", p, LOOP), { enforced: true, remote: false }), p).toBe(true);
+  });
 });

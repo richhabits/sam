@@ -76,6 +76,14 @@ export function hostAllowed(hostHeader: string): boolean {
  * passkey in remote mode exactly as in default mode; only the off-machine phone is deferred to
  * the token gate. Kept as a pure function so this rule is unit-tested, not buried in middleware.
  */
+// The pairing ON-RAMP. A browser has no passkey — obtaining a way in is the entire point of
+// pairing — so the request that STARTS pairing cannot itself demand one, or the feature deadlocks
+// (this shipped broken from v3.0.0: enforced Handshake ON, and this POST refused every browser that
+// tried to pair). It grants nothing on its own: it only queues a request a human must then approve
+// IN THE APP with the passkey (/api/yard/pair/approve), and it is rate- and time-limited. approve /
+// deny / pending / revoke stay gated. Its siblings (pair/status, pair/collect) are GETs, already open.
+const PAIRING_ONRAMP = "/api/yard/pair/request";
+
 export function passkeyRequiredForMutation(
   req: { method: string; path: string; socket: { remoteAddress?: string | null } },
   env: { enforced: boolean; remote: boolean },
@@ -83,6 +91,7 @@ export function passkeyRequiredForMutation(
   if (!env.enforced) return false;
   const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
   if (!mutating || !req.path.startsWith("/api/")) return false;
+  if (req.path === PAIRING_ONRAMP) return false;    // the one open door: how an unpaired browser gets in
   if (env.remote && !isLoopback(req)) return false; // off-machine phone → deferred to the remote-token gate
   return true;
 }
