@@ -1,4 +1,5 @@
 import { lookup } from "node:dns/promises";
+import { Agent } from "undici";
 
 // Guard for OUTBOUND fetches of URLs SAM did not choose itself.
 //
@@ -46,7 +47,10 @@ export function isPrivateAddress(ip: string): boolean {
   return false;
 }
 
-export type UrlVerdict = { ok: true; url: URL } | { ok: false; reason: string };
+// `address` is the exact IP this verdict validated — the literal host if it was already an IP,
+// otherwise the first address the name resolved to. safeFetch PINS the connection to it (see there),
+// so the socket goes to the same IP the guard approved, not a second resolution that could differ.
+export type UrlVerdict = { ok: true; url: URL; address: string } | { ok: false; reason: string };
 
 /**
  * Decide whether SAM may fetch this URL.
@@ -54,10 +58,9 @@ export type UrlVerdict = { ok: true; url: URL } | { ok: false; reason: string };
  * Resolves the hostname, because a name is not an address: `evil.com` can have an A record
  * pointing at 127.0.0.1, so a blocklist of literal IPs alone is trivially bypassed.
  *
- * KNOWN LIMIT, stated rather than hidden: this is check-then-fetch. A hostname can resolve to a
- * public address here and a private one microseconds later when fetch() resolves it again (DNS
- * rebinding). Closing that needs pinning the checked IP into the connection itself, via a custom
- * agent/socket factory. This guard raises the bar a long way; it does not eliminate the class.
+ * Returns the validated IP in `address`. Check-then-fetch alone is a TOCTOU (a name can resolve
+ * public here and private microseconds later when fetch resolves it again — DNS rebinding); the
+ * caller closes that by pinning `address` into the connection so no second resolution happens.
  */
 export type Resolver = (host: string) => Promise<string[]>;
 
@@ -84,17 +87,20 @@ export async function checkOutboundUrl(raw: string, resolve: Resolver = dnsResol
   }
   if (isPrivateAddress(host)) return { ok: false, reason: `private address ${host}` };
 
-  // A bare name still has to be resolved — see the note above.
+  // A bare name still has to be resolved — see the note above. A literal IP host IS its own address.
+  let address = host;
   if (!/^[\d.]+$/.test(host) && !host.includes(":")) {
     try {
       const addrs = await resolve(host);
       const priv = addrs.find((a) => isPrivateAddress(a));
       if (priv) return { ok: false, reason: `${host} resolves to private address ${priv}` };
+      if (!addrs.length) return { ok: false, reason: `cannot resolve ${host}` };
+      address = addrs[0]; // the exact IP the caller will pin the connection to
     } catch {
       return { ok: false, reason: `cannot resolve ${host}` };
     }
   }
-  return { ok: true, url };
+  return { ok: true, url, address };
 }
 
 // A redirect is a second URL SAM never chose. checkOutboundUrl only vets the string it is
@@ -118,15 +124,42 @@ export async function safeFetch(
   const maxHops = opts.maxHops ?? 5;
   const resolve = opts.resolve ?? dnsResolver;
   const doFetch = opts.fetchImpl ?? fetch;
+  // A test that injects fetchImpl is exercising the redirect/guard logic, not real sockets, so it
+  // gets no pinned dispatcher — pinning only matters against the real, re-resolving fetch.
+  const pinning = !opts.fetchImpl;
   let current = raw;
   for (let hop = 0; ; hop++) {
     const verdict = await checkOutboundUrl(current, resolve);
     if (!verdict.ok) throw new BlockedFetch(`blocked: ${verdict.reason}`);
     if (hop > maxHops) throw new BlockedFetch("blocked: too many redirects");
-    const res = await doFetch(verdict.url.href, { ...init, redirect: "manual" });
-    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
-    if (!location) return res;
-    // Resolve the Location against the current URL (it may be relative) and guard the next hop.
-    current = new URL(location, verdict.url).href;
+    // Pin the socket to the IP the guard just validated. Without this the connection would resolve
+    // the hostname a SECOND time and could land on a private address the guard never saw (DNS
+    // rebinding). The dispatcher connects to `address` while undici keeps the original hostname for
+    // TLS SNI and the Host header, so certificate validation is unaffected.
+    const dispatcher = pinning ? pinnedDispatcher(verdict.address) : undefined;
+    try {
+      const res = await doFetch(verdict.url.href, { ...init, redirect: "manual", ...(dispatcher ? { dispatcher } : {}) } as RequestInit);
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+      if (!location) return res;
+      // Resolve the Location against the current URL (it may be relative) and guard the next hop.
+      current = new URL(location, verdict.url).href;
+    } finally {
+      // Each hop gets its own single-use agent (its pinned IP differs); close it so sockets don't leak.
+      await dispatcher?.close().catch(() => {});
+    }
   }
+}
+
+// An undici Agent whose DNS lookup always returns the one IP we validated. net.connect-style
+// `lookup(host, options, cb)`: the callback shape depends on options.all, so answer both forms.
+function pinnedDispatcher(ip: string): Agent {
+  const family = ip.includes(":") ? 6 : 4;
+  return new Agent({
+    connect: {
+      lookup: (_host: string, options: { all?: boolean }, cb: (err: Error | null, address: any, family?: number) => void) => {
+        if (options?.all) cb(null, [{ address: ip, family }]);
+        else cb(null, ip, family);
+      },
+    },
+  });
 }

@@ -105,6 +105,20 @@ describe("checkOutboundUrl", () => {
     expect(v.ok).toBe(true);
     if (v.ok) expect(v.url.hostname).toBe("en.wikipedia.org");
   });
+
+  it("returns the validated IP as the pin address — the resolved one for a name", async () => {
+    // safeFetch pins the connection to this exact IP, so the socket cannot re-resolve to a
+    // different (private) address. For a name it must be the resolved address, not the name.
+    const v = await checkOutboundUrl("https://en.wikipedia.org/wiki/Ada_Lovelace", publicDns);
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.address).toBe("185.15.59.224");
+  });
+
+  it("returns a literal IP host as its own pin address", async () => {
+    const v = await checkOutboundUrl("http://93.184.216.34/x", publicDns);
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.address).toBe("93.184.216.34");
+  });
 });
 
 describe("safeFetch — the guard survives redirects", () => {
