@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { withLatchSync } from "./latch.ts";
@@ -53,7 +54,8 @@ export function removeEnvKeys(keys: string[]): void {
       const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=/);
       return !(m && drop.has(m[1]));
     });
-    writeFileSync(envPathNow(), kept.join("\n").replace(/\n*$/, "\n"));
+    // AUDIT FIX: 0600 — the .env holds every provider key and must not be world-readable.
+    writeFileAtomic(envPathNow(), kept.join("\n").replace(/\n*$/, "\n"), { mode: 0o600 });
   });
 }
 
@@ -82,7 +84,7 @@ export function writeEnv(key: string, value: string) {
     const line = `${key}=${value}`;
     const re = new RegExp(`^${key}=.*$`, "m");
     txt = re.test(txt) ? txt.replace(re, line) : txt.replace(/\n?$/, "\n") + line + "\n";
-    writeFileSync(ENV_PATH, txt);
+    writeFileAtomic(ENV_PATH, txt, { mode: 0o600 });   // 0600 — this file holds provider keys
     process.env[key] = value; // apply live
   });
 }

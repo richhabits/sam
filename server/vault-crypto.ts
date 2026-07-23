@@ -9,7 +9,8 @@
 //  If none is available, SAM falls back to asking for the passphrase each boot.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +28,7 @@ let sessionKey: Buffer | null = null;
 function loadConfig(): EncConfig | null {
   try { return existsSync(CONFIG) ? JSON.parse(readFileSync(CONFIG, "utf8")) : null; } catch { return null; }
 }
-function saveConfig(c: EncConfig) { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(CONFIG, JSON.stringify(c, null, 2)); }
+function saveConfig(c: EncConfig) { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileAtomic(CONFIG, JSON.stringify(c, null, 2), { mode: 0o600 }); }   // 0600 — KDF salt/verifier
 
 export function isEncryptionEnabled(): boolean { return !!loadConfig(); }
 export function isUnlocked(): boolean { return !!sessionKey; }
