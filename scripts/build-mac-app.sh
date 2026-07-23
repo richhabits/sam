@@ -6,8 +6,11 @@ set -e
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$HOME/Desktop/SAM.app"
 SVG="$REPO/public/icon.svg"
+# AUDIT FIX: build in a private mktemp dir instead of predictable /tmp paths — a pre-planted
+# file or symlink at /tmp/sam-app.applescript could otherwise be edited-in-place and compiled.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/sam-build.XXXXXX")"; trap 'rm -rf "$WORK"' EXIT
 
-cat > /tmp/sam-app.applescript <<'AS'
+cat > "$WORK/sam-app.applescript" <<'AS'
 on run
 	set samDir to "__SAMDIR__"
 	set nodeBin to ""
@@ -26,20 +29,20 @@ AS
 
 # Substitute the real repo path into the compiled AppleScript (heredoc is quoted
 # so it stays literal above — no accidental $HOME expansion in the AppleScript body).
-sed -i '' "s#__SAMDIR__#$REPO#g" /tmp/sam-app.applescript
+sed -i '' "s#__SAMDIR__#$REPO#g" "$WORK/sam-app.applescript"
 
 rm -rf "$APP"
-osacompile -o "$APP" /tmp/sam-app.applescript
+osacompile -o "$APP" "$WORK/sam-app.applescript"
 echo "✓ built $APP"
 
 # apply the SAM icon (best-effort)
-if qlmanage -t -s 1024 -o /tmp "$SVG" >/dev/null 2>&1 && [ -f /tmp/icon.svg.png ]; then
-  rm -rf /tmp/SAM.iconset; mkdir -p /tmp/SAM.iconset
+if qlmanage -t -s 1024 -o "$WORK" "$SVG" >/dev/null 2>&1 && [ -f "$WORK/icon.svg.png" ]; then
+  rm -rf "$WORK/SAM.iconset"; mkdir -p "$WORK/SAM.iconset"
   for s in 16 32 128 256 512; do
-    sips -z $s $s /tmp/icon.svg.png --out /tmp/SAM.iconset/icon_${s}x${s}.png >/dev/null 2>&1
-    sips -z $((s*2)) $((s*2)) /tmp/icon.svg.png --out /tmp/SAM.iconset/icon_${s}x${s}@2x.png >/dev/null 2>&1
+    sips -z $s $s "$WORK/icon.svg.png" --out "$WORK/SAM.iconset/icon_${s}x${s}.png" >/dev/null 2>&1
+    sips -z $((s*2)) $((s*2)) "$WORK/icon.svg.png" --out "$WORK/SAM.iconset/icon_${s}x${s}@2x.png" >/dev/null 2>&1
   done
-  iconutil -c icns /tmp/SAM.iconset -o /tmp/SAM.icns >/dev/null 2>&1 \
-    && cp /tmp/SAM.icns "$APP/Contents/Resources/applet.icns" && touch "$APP" && echo "✓ icon applied"
+  iconutil -c icns "$WORK/SAM.iconset" -o "$WORK/SAM.icns" >/dev/null 2>&1 \
+    && cp "$WORK/SAM.icns" "$APP/Contents/Resources/applet.icns" && touch "$APP" && echo "✓ icon applied"
 fi
 echo "Done. Double-click SAM.app on your Desktop."

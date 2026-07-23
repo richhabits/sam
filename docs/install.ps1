@@ -72,12 +72,13 @@ if ($sums) {
     Invoke-WebRequest -UseBasicParsing -Uri $sums.browser_download_url -OutFile $sumsFile
     $line   = Get-Content $sumsFile | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
     $expect = ([regex]'[a-fA-F0-9]{64}').Match($line).Value
-    if ($expect) {
-      $got = (Get-FileHash -Algorithm SHA256 -Path $file).Hash
-      if ($got -ne $expect.ToUpper()) { Die "SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete it and re-run. If it keeps failing, report it." }
-      Ok "SHA-256 verified"
-    }
-  } catch { Say "  (couldn't verify checksum — continuing)" }
+    # AUDIT FIX: a missing checksum entry used to fall through and install unverified. If this
+    # release advertises a checksums file, an absent/failed verification stops the install.
+    if (-not $expect) { Die "No checksum listed for $($asset.name) in this release's checksums — NOT installing unverified." "Report it — the release may be incomplete." }
+    $got = (Get-FileHash -Algorithm SHA256 -Path $file).Hash
+    if ($got -ne $expect.ToUpper()) { Die "SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete it and re-run. If it keeps failing, report it." }
+    Ok "SHA-256 verified"
+  } catch { Die "Couldn't verify the checksum this release advertises — NOT installing unverified." "Re-run; if it persists, download manually from the releases page." }
 } else { Say "  (no checksum file in this release — skipping verify)" }
 
 # ── run the installer (/S = silent, no launch — used by CI) ──

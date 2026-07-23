@@ -83,17 +83,19 @@ step "Downloading…"
 curl -fsSL --retry 3 -o "$TMP/$FILE" "$ASSET_URL" || die "Download failed (interrupted or blocked)." "Re-run the command — it resumes cleanly."
 
 # ── verify SHA-256 ──
+# AUDIT FIX: when this release ADVERTISES a checksums file (SUMS_URL is set), verification
+# must COMPLETE or we stop — previously a failed download of the sums file, or a missing entry
+# for this asset, silently fell through and installed the binary unverified. A release with no
+# checksums file at all is the only soft case (a loud warning). Fail closed on the tamper path.
 if [ -n "$SUMS_URL" ]; then
-  curl -fsSL -o "$TMP/SHA256SUMS.txt" "$SUMS_URL" || true
-  if [ -s "$TMP/SHA256SUMS.txt" ]; then
-    EXPECT="$(grep -E "  ?${FILE}\$|${FILE} *\$" "$TMP/SHA256SUMS.txt" | grep -oiE '[a-f0-9]{64}' | head -1 || true)"
-    if [ -n "$EXPECT" ]; then
-      if command -v shasum >/dev/null 2>&1; then GOT="$(shasum -a 256 "$TMP/$FILE" | awk '{print $1}')";
-      else GOT="$(sha256sum "$TMP/$FILE" | awk '{print $1}')"; fi
-      [ "$GOT" = "$EXPECT" ] || die "⚠ SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete anything downloaded and re-run. If it keeps failing, report it."
-      ok "SHA-256 verified"
-    fi
-  fi
+  curl -fsSL -o "$TMP/SHA256SUMS.txt" "$SUMS_URL" || die "Couldn't fetch the checksum file this release advertises — NOT installing unverified." "Re-run; if it persists, download manually from the releases page."
+  [ -s "$TMP/SHA256SUMS.txt" ] || die "The checksum file this release advertises is empty — NOT installing unverified." "Re-run; if it persists, report it."
+  EXPECT="$(grep -E "  ?${FILE}\$|${FILE} *\$" "$TMP/SHA256SUMS.txt" | grep -oiE '[a-f0-9]{64}' | head -1 || true)"
+  [ -n "$EXPECT" ] || die "No checksum listed for ${FILE} in this release's SHA256SUMS — NOT installing unverified." "Report it — the release may be incomplete."
+  if command -v shasum >/dev/null 2>&1; then GOT="$(shasum -a 256 "$TMP/$FILE" | awk '{print $1}')";
+  else GOT="$(sha256sum "$TMP/$FILE" | awk '{print $1}')"; fi
+  [ "$GOT" = "$EXPECT" ] || die "⚠ SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete anything downloaded and re-run. If it keeps failing, report it."
+  ok "SHA-256 verified"
 else
   say "  ${DIM}(no checksum file in this release — skipping verify)${RESET}"
 fi
