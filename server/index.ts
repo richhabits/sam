@@ -214,7 +214,11 @@ app.use((_req, res, next) => {
     const q = typeof req.query.token === "string" ? req.query.token : "";
     const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)sam_token=([^;]+)/)?.[1] || "";
     const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const t = q || decodeURIComponent(cookie) || bearer;
+    // AUDIT FIX: a malformed %-escape (e.g. `sam_token=%`) made decodeURIComponent throw an
+    // uncaught exception → 500 on the auth path. Decode defensively; a bad cookie is just no token.
+    let cookieTok = cookie;
+    try { cookieTok = decodeURIComponent(cookie); } catch { cookieTok = ""; }
+    const t = q || cookieTok || bearer;
     // Credential = the legacy owner token (⇒ full scope) OR a scoped per-device token (v1.5).
     let scope: import("./remote-tokens.ts").Scope | null = liveOk(t) ? "full" : null;
     if (!scope) { const s = verifyRemoteToken(t); if (s) scope = s.scope; }
@@ -993,7 +997,11 @@ app.get("/api/vault/log", (_req, res) => res.json(recentLog(12)));
 app.get("/api/vault/graph", (_req, res) => res.json(buildGraph()));
 app.get("/api/vault/stats", (_req, res) => res.json(vaultStats()));
 
-app.get("/api/voice/token", async (_req, res) => {
+app.get("/api/voice/token", async (req, res) => {
+  // AUDIT FIX: this GET MINTS a live OpenAI ephemeral credential, but the global gate only
+  // covers mutations — so it was reachable with no Handshake. When the Handshake is enforced,
+  // require the passkey (or a paired browser), the same trust the yard's own door demands.
+  if (handshakeEnforced() && !isYardTrusted(req)) return res.status(403).json({ error: "passkey required" });
   const key = process.env.OPENAI_API_KEY;
   if (!key) return res.status(401).json({ error: "No OPENAI_API_KEY" });
   try {

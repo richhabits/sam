@@ -33,7 +33,10 @@ let building = false, built = false;
 // If this hasn't changed since last boot, the cached vectors are valid.
 function catalogueHash(skills: Skill[]): string {
   const toolSigs = TOOLS.map((t) => `${t.name}: ${t.description}`).join("\n");
-  const skillSigs = skills.map((s) => `${s.id}. ${s.triggers.join(", ")}`).join("\n");
+  // AUDIT FIX: the fingerprint must mirror EXACTLY the text that gets embedded below, or the
+  // cache goes stale silently. The embedding keys on `s.name`; the hash used `s.id`, so
+  // renaming a skill left the old vectors in place. Same shape as the embed input now.
+  const skillSigs = skills.map((s) => `${s.name}. ${s.triggers.join(", ")}`).join("\n");
   return createHash("sha256").update(toolSigs + "\n---\n" + skillSigs).digest("hex");
 }
 

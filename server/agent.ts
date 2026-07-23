@@ -34,6 +34,9 @@ function trimPrompt(p: string): string {
 export const UNTRUSTED_SOURCE = new Set([
   // live web
   "web_search", "web_fetch", "open_url", "shorten_url", "news_rss", "whois",
+  // AUDIT FIX: these external-content readers were missing from the fence — their output is
+  // just as attacker-influenced as web_fetch's, so a prompt-injection could ride in unmarked.
+  "web_crawl", "web_extract", "web_research", "site_map",
   "browser_navigate", "browser_read", "view_photo",
   "notebook_ask", "research", "retrieve_full",
   // inbox / calendar (messages + invites arrive from anyone)

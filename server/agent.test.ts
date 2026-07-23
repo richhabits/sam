@@ -15,12 +15,20 @@ vi.mock("./models.ts", () => ({
   }),
 }));
 
-import { runAgent, runAgentStream, resumeAgent, parseToolCall } from "./agent.ts";
+import { runAgent, runAgentStream, resumeAgent, parseToolCall, UNTRUSTED_SOURCE } from "./agent.ts";
 import { _reset as resetIssues, listIssues } from "./issues.ts";
 
 beforeEach(() => { replies.length = 0; });
 
 describe("parseToolCall — local recovery (avoids a model repair round-trip)", () => {
+  // AUDIT FIX: every tool that returns attacker-influenced web content must be fenced as
+  // UNTRUSTED, or a prompt-injection rides in unmarked. These readers were missing.
+  it("fences ALL external-content web readers as untrusted", () => {
+    for (const t of ["web_fetch", "web_search", "web_crawl", "web_extract", "web_research", "site_map", "research"]) {
+      expect(UNTRUSTED_SOURCE.has(t), t).toBe(true);
+    }
+  });
+
   it("parses clean JSON, even embedded in prose or a code fence", () => {
     expect(parseToolCall('{"tool":"web_search","input":{"query":"x"}}')).toEqual({ tool: "web_search", input: { query: "x" } });
     expect(parseToolCall('Sure! ```json\n{"tool":"get_datetime","input":{}}\n```')).toEqual({ tool: "get_datetime", input: {} });
