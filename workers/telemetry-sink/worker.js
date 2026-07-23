@@ -15,18 +15,54 @@ const ALLOWED_FEATURES = ["tasks", "toolUses", "workflowRuns", "cacheHits"];
 const MAX_BODY = 2048;              // a valid payload is a few hundred bytes; anything larger is refused
 const RETAIN_DAYS = 90;
 
+// AUDIT FIX (5, 16): validate every VALUE, not just the key NAMES. The old check only confirmed
+// keys were on the whitelist, so os/version/retentionBucket could carry arbitrary free text (PII),
+// and feature counts passed as long as they were `typeof number` (NaN/Infinity/negative/huge all
+// through). Each field now has a strict type/format/bound — nothing free-text can be persisted.
+const RETENTION_BUCKETS = ["d1", "d7", "d30", "d30+"];
+const isCount = (v) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 1e9;   // finite, bounded
+
 function whitelisted(p) {
   if (!p || typeof p !== "object" || Array.isArray(p)) return false;
   if (!Object.keys(p).every((k) => ALLOWED_FIELDS.includes(k))) return false;
+
+  // required, fixed-shape identity fields
+  if (p.schema !== "sam-telemetry/1") return false;
+  if (typeof p.anonId !== "string" || !/^[0-9a-f]{32}$/.test(p.anonId)) return false;   // anonymous id shape
+
+  // every OPTIONAL field, if present, must match its exact expected shape — no free text survives
+  if (p.version !== undefined && (typeof p.version !== "string" || !/^[\w.+-]{1,20}$/.test(p.version))) return false;
+  if (p.os !== undefined && (typeof p.os !== "string" || !/^[a-z0-9]{1,20}$/.test(p.os))) return false;   // process.platform shape
+  if (p.retentionBucket !== undefined && !RETENTION_BUCKETS.includes(p.retentionBucket)) return false;
+  if (p.dau !== undefined && typeof p.dau !== "boolean") return false;
+  if (p.activated !== undefined && typeof p.activated !== "boolean") return false;
+  if (p.crashFree !== undefined && typeof p.crashFree !== "boolean") return false;
+
   if (p.features !== undefined) {
     const f = p.features;
     if (!f || typeof f !== "object" || Array.isArray(f)) return false;
     if (!Object.keys(f).every((k) => ALLOWED_FEATURES.includes(k))) return false;
-    if (!Object.values(f).every((v) => typeof v === "number")) return false;   // counts only, never a name
+    if (!Object.values(f).every(isCount)) return false;   // finite, non-negative, bounded counts only
   }
-  if (typeof p.anonId !== "string" || !/^[0-9a-f]{32}$/.test(p.anonId)) return false;   // anonymous id shape
-  if (p.schema !== "sam-telemetry/1") return false;
   return true;
+}
+
+// AUDIT FIX (15): read the body with a HARD byte cap. The content-length header can lie or be
+// absent, and request.text() buffers the WHOLE body before any length check — so a chunked/oversized
+// POST could exhaust memory. Stream and abort the moment the cap is crossed.
+async function readCapped(request, maxBytes) {
+  if (!request.body) { const t = await request.text(); return t.length <= maxBytes ? t : null; }
+  const reader = request.body.getReader();
+  const dec = new TextDecoder();
+  let out = "", total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) { try { await reader.cancel(); } catch { /* closing */ } return null; }
+    out += dec.decode(value, { stream: true });
+  }
+  return out;
 }
 
 export default {
@@ -38,8 +74,8 @@ export default {
 
     let payload;
     try {
-      const text = await request.text();
-      if (text.length > MAX_BODY) return new Response(null, { status: 413 });
+      const text = await readCapped(request, MAX_BODY);   // hard cap regardless of content-length
+      if (text === null) return new Response(null, { status: 413 });
       payload = JSON.parse(text);
     } catch { return new Response(null, { status: 400 }); }
 
