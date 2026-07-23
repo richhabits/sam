@@ -5,7 +5,8 @@
 //  external cron deps). Each schedule fires a standard SAM command.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,7 +31,8 @@ function load(): Schedule[] {
 
 function save(schedules: Schedule[]) {
   // Silent failure here loses the user's schedules on the next restart with no trace.
-  try { mkdirSync(dirname(FILE), { recursive: true }); writeFileSync(FILE, JSON.stringify(schedules, null, 2)); }
+  // Atomic: a crash mid-write must not truncate the file and lose every schedule on next boot.
+  try { writeFileAtomic(FILE, JSON.stringify(schedules, null, 2)); }
   catch (e: any) { console.error("[SAM] scheduler: FAILED to save schedules —", e?.message || e); }
 }
 

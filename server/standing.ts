@@ -16,7 +16,8 @@
 //  agents survive a restart.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -96,9 +97,8 @@ function load(): StandingAgent[] {
 function save(agents: StandingAgent[]): void {
   // A silent failure here would drop the user's armed crew on the next restart with no trace.
   try {
-    const f = file();
-    mkdirSync(dirname(f), { recursive: true });
-    writeFileSync(f, JSON.stringify(agents, null, 2));
+    // Atomic: a crash mid-write must not truncate the file and drop the crew on next boot.
+    writeFileAtomic(file(), JSON.stringify(agents, null, 2));
   } catch (e: any) {
     console.error("[SAM] standing: FAILED to persist standing crew —", e?.message || e);
   }

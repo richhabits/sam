@@ -8,7 +8,8 @@
 //    • blocked   — an autonomous path WANTED a dangerous action; the gate stopped it and asked instead
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,7 +29,8 @@ export function logAutonomy(e: AutonomyEntry): void {
   const list = read();
   list.push(e);
   const trimmed = list.length > MAX ? list.slice(list.length - MAX) : list;
-  try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify(trimmed, null, 2)); } catch { /* best-effort */ }
+  // Atomic: the trust-contract audit trail must not be truncated to nothing by a crash mid-write.
+  try { writeFileAtomic(FILE, JSON.stringify(trimmed, null, 2)); } catch { /* best-effort */ }
 }
 
 export function readAutonomyLog(limit = 100): AutonomyEntry[] {
@@ -37,5 +39,5 @@ export function readAutonomyLog(limit = 100): AutonomyEntry[] {
 }
 
 export function clearAutonomyLog(): void {
-  try { if (existsSync(FILE)) writeFileSync(FILE, "[]"); } catch { /* best-effort */ }
+  try { if (existsSync(FILE)) writeFileAtomic(FILE, "[]"); } catch { /* best-effort */ }
 }

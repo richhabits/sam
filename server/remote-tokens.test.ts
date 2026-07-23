@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { rmSync } from "node:fs";
+import { rmSync, existsSync, statSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const SCRATCH = "/tmp/sam-remotetok-test";
 let T: typeof import("./remote-tokens.ts");
@@ -20,6 +21,16 @@ describe("scoped remote tokens", () => {
     const listed = T.listTokens();
     expect(JSON.stringify(listed)).not.toContain(c.token);
     expect(JSON.stringify(listed[0])).not.toContain("hash");
+  });
+
+  // AUDIT FIX: a handed-out token that never reached disk is a lie; save() used to swallow
+  // failures. And the token store must not be world-readable on a shared machine.
+  it("actually persists to disk at 0600 (never only in memory, never plaintext)", () => {
+    const c = T.createToken("phone", "full");
+    const f = join(SCRATCH, "remote_tokens.json");
+    expect(existsSync(f)).toBe(true);                        // it reached disk
+    expect(statSync(f).mode & 0o777).toBe(0o600);            // owner-only, not world-readable
+    expect(readFileSync(f, "utf8")).not.toContain(c.token);  // stored hashed/sealed, never the secret
   });
 
   it("rejects an unknown token", () => {
