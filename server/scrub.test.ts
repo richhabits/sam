@@ -104,6 +104,27 @@ describe("the console itself", () => {
     expect(seen[0]).toContain(`vcp_${REDACTED}`);
   });
 
+  // AUDIT FIX: a secret carried inside an OBJECT arg used to bypass the scrub entirely.
+  it("scrubs secrets inside object and array args, not just strings", () => {
+    const seen: any[][] = [];
+    const noop = () => { /* only log is under test here */ };
+    const fake = { log: (...a: any[]) => seen.push(a), warn: noop, error: noop, info: noop } as any;
+    restore.push(scrubConsole(fake));
+    fake.log("ctx", { apiKey: "gsk_abcdefghij0123456789KLMN", nested: ["sk-abcdefghij0123456789KLMN"] });
+    const blob = JSON.stringify(seen[0]);
+    expect(blob).not.toContain("gsk_abcdefghij0123456789KLMN");
+    expect(blob).not.toContain("sk-abcdefghij0123456789KLMN");
+  });
+
+  it("does not loop or throw on a circular object", () => {
+    const seen: any[][] = [];
+    const noop = () => { /* cycle-safety under test */ };
+    const fake = { log: (...a: any[]) => seen.push(a), warn: noop, error: noop, info: noop } as any;
+    restore.push(scrubConsole(fake));
+    const cyclic: any = { name: "x" }; cyclic.self = cyclic;
+    expect(() => fake.log(cyclic)).not.toThrow();
+  });
+
   it("puts the console back when asked", () => {
     const noop = () => { /* restoration is what is under test */ };
     const fake = { log: noop, warn: noop, error: noop, info: noop } as any;

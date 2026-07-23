@@ -39,7 +39,7 @@ const issues = new Map<string, Issue>();
 
 // ── redaction ──
 const SECRET_RES: RegExp[] = [
-  /\b(?:sk|gsk|csk|xai|pplx|fw)[-_][A-Za-z0-9-]{16,}\b/g, // provider key prefixes
+  /\b(?:sk|gsk|csk|xai|pplx|fw|nvapi|vcp)[-_][A-Za-z0-9_-]{16,}\b/g, // provider key prefixes (incl. NVIDIA nvapi-, Vercel vcp_)
   /\bAIza[A-Za-z0-9_-]{30,}\b/g, // google
   /\bghp_[A-Za-z0-9]{36}\b|\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, // github
   /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, // slack

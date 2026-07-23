@@ -99,11 +99,22 @@ export function scrubDeep(value: unknown, env: NodeJS.ProcessEnv = process.env, 
   return String(value);
 }
 
+// AUDIT FIX: console.log(obj) used to bypass the scrub entirely — only string args were
+// redacted, so a secret carried inside an OBJECT (the common `console.log("ctx", { key })`
+// shape) reached server.log in the clear. scrubDeep walks objects/arrays (name- AND
+// shape-based redaction, depth-capped so a cycle can't loop). An Error is rendered to its
+// scrubbed stack so error logging keeps its detail; primitives have nothing to redact.
+function scrubArg(a: any): any {
+  if (typeof a === "string") return scrub(a);
+  if (a instanceof Error) return scrub(a.stack || `${a.name}: ${a.message}`);
+  return scrubDeep(a);
+}
+
 // Wrap the process's own console so anything SAM prints goes through the scrub. Applied
 // once at startup; returns a function that puts the original back (for tests).
 export function scrubConsole(target: Console = console): () => void {
   const original = { log: target.log, warn: target.warn, error: target.error, info: target.info };
-  const wrap = (fn: (...a: any[]) => void) => (...args: any[]) => fn(...args.map((a) => (typeof a === "string" ? scrub(a) : a)));
+  const wrap = (fn: (...a: any[]) => void) => (...args: any[]) => fn(...args.map(scrubArg));
   target.log = wrap(original.log);
   target.warn = wrap(original.warn);
   target.error = wrap(original.error);

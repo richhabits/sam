@@ -23,7 +23,7 @@ const MAX_BYTES = 512 * 1024;   // rotate at 512KB, keep one previous — bounde
 export function redact(s: string): string {
   return (s || "")
     .replace(new RegExp(homedir().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "~")   // home path → ~
-    .replace(/\b(sk-[A-Za-z0-9]{8,}|AIza[A-Za-z0-9_-]{10,}|gsk_[A-Za-z0-9]{10,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g, "«redacted-key»")
+    .replace(/\b(sk-[A-Za-z0-9]{8,}|AIza[A-Za-z0-9_-]{10,}|gsk_[A-Za-z0-9]{10,}|nvapi-[A-Za-z0-9_-]{10,}|vcp_[A-Za-z0-9]{8,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g, "«redacted-key»")
     .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "«redacted-token»")                             // long opaque secrets
     .replace(/(authorization|api[_-]?key|token|password|passphrase|secret)("?\s*[:=]\s*"?)[^"\s,}]+/gi, "$1$2«redacted»");
 }
