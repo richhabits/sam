@@ -149,6 +149,11 @@ export async function applyPack(json: string, choices: ApplyChoice, iso: number)
   }
   for (const t of p.contents.tools || []) {
     if (!wantTools.has(t.name)) continue;
+    // AUDIT FIX: t.name becomes a filename below — an unvalidated `../../../tmp/evil` is an
+    // arbitrary-file-write out of the vault. The skills loop above already gates its id this
+    // way, and forge.ts:fileFor enforces the same rule precisely because a forged tool's name
+    // becomes a path. Match forge's NAME_RE so a pack cannot escape VAULT_DIR/forged.
+    if (!/^[a-z][a-z0-9_]{2,39}$/.test(t.name)) continue;   // safe name only, or it is not installed
     const caps = (t.caps || []).filter((c): c is Capability => ["net", "fs:read", "fs:write"].includes(c));
     if (!scanCode(t.code || "", caps).ok) continue;                 // NEVER install code that fails the scan
     const tier = caps.some((c) => c === "net" || c === "fs:write") ? "dangerous" : "confirm";

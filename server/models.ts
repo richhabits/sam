@@ -599,6 +599,11 @@ async function callOllamaStream(system: string, prompt: string, model: string, f
   return full;
 }
 
+// Private/local mode may never reach a cloud brain — streaming or not. Exported so this one
+// rule is unit-tested rather than merely inlined in a branch condition that a refactor could
+// quietly fold back into the cloud path (which is exactly how the streaming leak happened).
+export function localStaysOnDevice(tier: Tier): boolean { return tier === "local"; }
+
 async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, format?: unknown): Promise<ModelResult> {
   // THE GRAMMAR on streaming: a constrained turn streams straight from the local Ollama with the schema.
   // Cloud brains don't take the Ollama `format`, so this is LOCAL-only (like the non-streaming grammar).
@@ -606,6 +611,18 @@ async function streamModelInner(tier: Tier, system: string, prompt: string, onCh
   if (format) {
     try { const text = await callOllamaStream(system, prompt, OLLAMA_MODEL, format, onChunk); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; }
     catch { /* fall through to the normal streaming path */ }
+  }
+  // PRIVACY GUARANTEE (audit fix): Private/local mode must NEVER reach a cloud brain — the
+  // same promise runModelInner makes. The streaming path used to fall through to the Groq/
+  // Gemini branch below for tier "local", because it only excluded "premium". Local streams
+  // from the local Ollama; if that is down it defers to runModelInner's honest "Private mode
+  // is on — nothing leaves your Mac" message rather than crossing the boundary to cloud.
+  if (localStaysOnDevice(tier)) {
+    try { const text = await callOllamaStream(system, prompt, OLLAMA_MODEL, undefined, onChunk); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; }
+    catch { /* local down → honest local-unavailable via runModelInner below, never cloud */ }
+    const r = await runModelInner(tier, system, prompt, laneHint);
+    onChunk(r.text);
+    return r;
   }
   const tryStream = async (id: string, run: (key: string) => Promise<string>, label: string): Promise<ModelResult | null> => {
     // Route the stream through the Relay (Breaker + boundary + key pool + failure capture), capped

@@ -1,5 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { pickLane } from "./models.ts";
+import { pickLane, localStaysOnDevice } from "./models.ts";
+
+// AUDIT FIX: the streaming path used to send Private/local-mode prompts to Groq/Gemini
+// because it only excluded the "premium" tier. Local must stay on the machine, streaming or
+// not — the same guarantee the non-streaming path already makes.
+describe("Private mode never crosses to a cloud brain", () => {
+  it("keeps the local tier on-device", () => {
+    expect(localStaysOnDevice("local")).toBe(true);
+  });
+  it("lets free and premium reach cloud (they are not private)", () => {
+    expect(localStaysOnDevice("free")).toBe(false);
+    expect(localStaysOnDevice("premium")).toBe(false);
+  });
+});
 
 describe("pickLane — task-aware model routing", () => {
   it("quick chat → fast", () => {

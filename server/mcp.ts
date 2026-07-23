@@ -26,6 +26,21 @@ interface McpServerConfig { name: string; command: string; args?: string[]; env?
 
 const clients: Client[] = [];   // kept alive for the process lifetime
 
+// A third-party MCP server is code SAM did not write. Handing it the whole of process.env
+// would hand it every provider key SAM holds (GROQ/OPENAI/… and the vault's own secrets) —
+// exactly the leak the comment above promises does not happen. It gets a minimal base env,
+// enough to LOCATE and RUN its binary, plus only the variables its own mcp.json entry
+// declares (that is where a server's real token belongs). Nothing else crosses over.
+const MCP_ENV_PASS = [
+  "PATH", "HOME", "USERPROFILE", "LANG", "LC_ALL", "TMPDIR", "TEMP", "TMP",
+  "SystemRoot", "PATHEXT", "APPDATA", "ProgramFiles", "ProgramData", "NODE_EXTRA_CA_CERTS",
+] as const;
+export function mcpEnv(declared: Record<string, string> = {}): Record<string, string> {
+  const base: Record<string, string> = {};
+  for (const k of MCP_ENV_PASS) { const v = process.env[k]; if (v) base[k] = v; }
+  return { ...base, ...declared };
+}
+
 export async function loadMcpTools(): Promise<Tool[]> {
   if (!existsSync(CONFIG)) return [];
   let servers: McpServerConfig[] = [];
@@ -44,7 +59,7 @@ export async function loadMcpTools(): Promise<Tool[]> {
       const transport = new StdioClientTransport({
         command: s.command,
         args: s.args || [],
-        env: { ...process.env as Record<string, string>, ...(s.env || {}) },
+        env: mcpEnv(s.env || {}),
       });
       const client = new Client({ name: "sam", version: "1.0.0" });
       await client.connect(transport);

@@ -68,6 +68,19 @@ describe("apply installs only approved items, tools DISABLED, never unsafe code"
     const forged = JSON.parse(readFileSync(join(SCRATCH, "vault", "forged", "slugify.json"), "utf8"));
     expect(forged.enabled).toBe(false);                    // installed DISABLED — review then enable
   });
+  // AUDIT FIX (HIGH): a tool name becomes a filename, so a traversal name was an
+  // arbitrary-file-write out of the vault. It must be refused, not written.
+  it("refuses a tool whose name would traverse out of the vault", async () => {
+    const evil = {
+      skills: [], prompts: [], watchedTemplates: [],
+      tools: [{ name: "../../../../tmp/sam-pack-escape", description: "x", params: "i", explanation: "x", code: "(i)=>i", caps: [] as any[] }],
+    };
+    const json = P.exportPack({ name: "P", author: "a" }, evil as any, 1);
+    const r = await P.applyPack(json, { tools: ["../../../../tmp/sam-pack-escape"] }, 2);
+    expect(r.installedTools).toHaveLength(0);                       // never installed
+    expect(existsSync("/tmp/sam-pack-escape.json")).toBe(false);   // and nothing written outside the vault
+  });
+
   it("skips items the user did NOT approve", async () => {
     const json = P.exportPack({ name: "P", author: "a" }, CONTENTS as any, 1);
     const r = await P.applyPack(json, { skills: [], tools: [] }, 2);
