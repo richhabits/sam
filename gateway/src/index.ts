@@ -22,6 +22,7 @@ export interface Env {
   MAX_INPUT_CHARS?: string;          // reject prompts larger than this (token-cost bound), default 24000
   PAUSED?: string;                   // INSTANT kill-switch: set "1" to pause everything now (no redeploy)
   ALLOW_ORIGIN?: string;             // CORS, default *
+  QUOTA_DO?: DurableObjectNamespace; // OPTIONAL (Workers Paid): atomic check-and-reserve caps. Bound → used; unbound → KV path.
 }
 
 const json = (data: unknown, status = 200, origin = "*") =>
@@ -34,6 +35,63 @@ async function bump(kv: KVNamespace, key: string, ttl = 172800): Promise<number>
   const n = num((await kv.get(key)) ?? undefined, 0) + 1;
   await kv.put(key, String(n), { expirationTtl: ttl });
   return n;
+}
+
+// ── ATOMIC QUOTA (audit finding 1) ────────────────────────────────────────────
+// KV get-then-put is not atomic, so a concurrent burst can race every daily/global/spend cap
+// (finding 1/10). A Durable Object is a SINGLE-threaded, consistent actor: routing every
+// check-and-reserve through one instance serialises them, so two requests can NEVER both pass
+// when one slot remains. Day-scoped counters live under bare keys and are wiped on rollover;
+// `total` (the cumulative spend ceiling) never resets. blockConcurrencyWhile makes the
+// read→check→reserve one indivisible step. OPTIONAL: a Workers Paid feature — when no DO is
+// bound the Worker falls back to the KV path (bounded by the per-IP cap), so free-plan deploys
+// keep working unchanged.
+interface Caps { perDevice: number; perIp: number; globalDaily: number; spendCeiling: number }
+
+export class QuotaCounter {
+  constructor(private state: DurableObjectState) {}
+  async fetch(req: Request): Promise<Response> {
+    const { action, device, ip, day, caps } = await req.json() as { action: string; device: string; ip?: string; day: string; caps?: Caps };
+    return await this.state.blockConcurrencyWhile(async () => {
+      const s = this.state.storage;
+      const get = async (k: string) => (await s.get<number>(k)) ?? 0;
+      // Keys are DAY-SCOPED, so a new day is implicitly fresh (correctness never depends on a reset
+      // completing). `total` is cumulative and never resets. Old-day keys are purged best-effort on
+      // rollover; leftovers can't affect today's checks because today reads today's keys.
+      const gKey = `g:${day}`, dKey = `d:${device}:${day}`, iKey = ip ? `ip:${ip}:${day}` : "";
+
+      if ((await s.get<string>("day")) !== day) {
+        const stale = [...(await s.list<number>())].map(([k]) => k).filter((k) => k !== "total" && k !== "day" && !k.endsWith(`:${day}`));
+        if (stale.length) await s.delete(stale.slice(0, 128));   // bounded; further rollovers finish it
+        await s.put("day", day);
+      }
+
+      if (action === "peek") {
+        return Response.json({ used: await get(dKey), ipUsed: iKey ? await get(iKey) : 0, global: await get(gKey), total: await get("total") });
+      }
+      if (action === "refund") {   // undo a reservation whose upstream call failed
+        for (const k of ["total", gKey, dKey, iKey].filter(Boolean)) { const v = await get(k); if (v > 0) await s.put(k, v - 1); }
+        return Response.json({ ok: true });
+      }
+
+      // action === "reserve": check every cap, and ONLY if all pass, reserve a slot in each.
+      const c = caps!;
+      const total = await get("total"), g = await get(gKey), d = await get(dKey), i = iKey ? await get(iKey) : 0;
+      if (total >= c.spendCeiling) return Response.json({ ok: false, code: 503, error: "gateway temporarily at capacity — add your own free key to keep going" });
+      if (d >= c.perDevice) return Response.json({ ok: false, code: 429, error: "daily free allowance used up — resets tomorrow, or add your own free key for unlimited" });
+      if (iKey && i >= c.perIp) return Response.json({ ok: false, code: 429, error: "too many requests from this network today — add your own free key to keep going" });
+      if (g >= c.globalDaily) return Response.json({ ok: false, code: 503, error: "gateway busy today — add your own free key to keep going" });
+      await s.put("total", total + 1); await s.put(gKey, g + 1); await s.put(dKey, d + 1);
+      if (iKey) await s.put(iKey, i + 1);
+      return Response.json({ ok: true, n: g + 1 });   // n = new global count → key rotation seed
+    });
+  }
+}
+
+const quotaStub = (env: Env) => env.QUOTA_DO!.get(env.QUOTA_DO!.idFromName("quota"));
+async function doQuota(env: Env, action: string, args: Record<string, unknown>): Promise<any> {
+  const r = await quotaStub(env).fetch("https://quota/", { method: "POST", body: JSON.stringify({ action, ...args }) });
+  return await r.json();
 }
 
 export default {
@@ -54,7 +112,9 @@ export default {
       if (!device) return json({ error: "device required" }, 400, origin);
       const day = today(Date.now());
       const perDevice = num(env.PER_DEVICE_DAILY, 50);
-      const used = num((await env.QUOTA.get(`d:${device}:${day}`)) ?? undefined, 0);
+      const used = env.QUOTA_DO
+        ? Number((await doQuota(env, "peek", { device, day })).used) || 0   // authoritative in DO mode
+        : num((await env.QUOTA.get(`d:${device}:${day}`)) ?? undefined, 0);
       return json({ used, limit: perDevice, remaining: Math.max(0, perDevice - used), resetsDaily: true }, 200, origin);
     }
 
@@ -87,26 +147,34 @@ export default {
       const model = String(body.model || whitelist[0] || "").trim();
       if (!whitelist.includes(model)) return json({ error: "model not allowed", allowed: whitelist }, 400, origin);
 
-      // Hard global kill-switch (cumulative spend ceiling)
-      const totalCalls = num((await env.QUOTA.get("total:calls")) ?? undefined, 0);
-      if (totalCalls >= num(env.SPEND_CEILING_CALLS, 500000)) return json({ error: "gateway temporarily at capacity — add your own free key to keep going" }, 503, origin);
-
-      // Per-device + global daily caps
-      const perDevice = num(env.PER_DEVICE_DAILY, 50);
-      const globalDaily = num(env.GLOBAL_DAILY, 20000);
-      const dUsed = num((await env.QUOTA.get(`d:${device}:${day}`)) ?? undefined, 0);
-      if (dUsed >= perDevice) return json({ error: "daily free allowance used up — resets tomorrow, or add your own free key for unlimited", quota: { used: dUsed, limit: perDevice } }, 429, origin);
-      // Per-IP daily backstop — bounds a single actor even when they rotate the device id every request.
-      const perIp = num(env.PER_IP_DAILY, 200);
-      const ipUsed = ip ? num((await env.QUOTA.get(`ip:${ip}:${day}`)) ?? undefined, 0) : 0;
-      if (ip && ipUsed >= perIp) return json({ error: "too many requests from this network today — add your own free key to keep going" }, 429, origin);
-      const gUsed = num((await env.QUOTA.get(`g:${day}`)) ?? undefined, 0);
-      if (gUsed >= globalDaily) return json({ error: "gateway busy today — add your own free key to keep going" }, 503, origin);
-
-      // Rotate a pooled key + forward to the upstream (OpenAI-compatible).
+      const caps = { perDevice: num(env.PER_DEVICE_DAILY, 50), perIp: num(env.PER_IP_DAILY, 200), globalDaily: num(env.GLOBAL_DAILY, 20000), spendCeiling: num(env.SPEND_CEILING_CALLS, 500000) };
       const keys = (env.PROVIDER_KEYS || "").split(",").map((s) => s.trim()).filter(Boolean);
       if (!keys.length) return json({ error: "gateway not configured" }, 500, origin);
-      const key = keys[(dUsed + gUsed) % keys.length];
+
+      // THE QUOTA DECISION. With a Durable Object bound, this is an ATOMIC check-and-reserve — the
+      // slot is taken BEFORE the upstream call, so a concurrent burst can never overspend a cap
+      // (finding 1). Without one, the KV path reads the counters (non-atomic; the per-IP cap bounds
+      // the race) and bumps AFTER a successful call. Same caps, same messages, either backend.
+      const useDO = !!env.QUOTA_DO;
+      let rotation: number;
+      if (useDO) {
+        const r = await doQuota(env, "reserve", { device, ip, day, caps });
+        if (!r.ok) return json({ error: r.error }, r.code, origin);   // reservation denied → cap hit, nothing forwarded
+        rotation = Number(r.n) || 0;
+      } else {
+        const totalCalls = num((await env.QUOTA.get("total:calls")) ?? undefined, 0);
+        if (totalCalls >= caps.spendCeiling) return json({ error: "gateway temporarily at capacity — add your own free key to keep going" }, 503, origin);
+        const dUsed = num((await env.QUOTA.get(`d:${device}:${day}`)) ?? undefined, 0);
+        if (dUsed >= caps.perDevice) return json({ error: "daily free allowance used up — resets tomorrow, or add your own free key for unlimited", quota: { used: dUsed, limit: caps.perDevice } }, 429, origin);
+        const ipUsed = ip ? num((await env.QUOTA.get(`ip:${ip}:${day}`)) ?? undefined, 0) : 0;
+        if (ip && ipUsed >= caps.perIp) return json({ error: "too many requests from this network today — add your own free key to keep going" }, 429, origin);
+        const gUsed = num((await env.QUOTA.get(`g:${day}`)) ?? undefined, 0);
+        if (gUsed >= caps.globalDaily) return json({ error: "gateway busy today — add your own free key to keep going" }, 503, origin);
+        rotation = dUsed + gUsed;
+      }
+
+      // Rotate a pooled key + forward to the upstream (OpenAI-compatible).
+      const key = keys[Math.abs(rotation) % keys.length];
 
       let upstream: Response;
       try {
@@ -117,15 +185,19 @@ export default {
           // forwarded unclamped (min(NaN,2048)=NaN), which some providers reject or mishandle.
           body: JSON.stringify({ model, messages: body.messages, stream: !!body.stream, max_tokens: Math.max(1, Math.min(num(body.max_tokens, 1024), 2048)), temperature: body.temperature ?? 0.7 }),
         });
-      } catch { return json({ error: "upstream unreachable" }, 502, origin); }
+      } catch {
+        // Never reached upstream. In DO mode the slot was already reserved → give it back.
+        if (useDO) await doQuota(env, "refund", { device, ip, day });
+        return json({ error: "upstream unreachable" }, 502, origin);
+      }
 
-      // Count the call ONLY on a successful upstream (don't burn quota on our own errors).
-      // NOTE: KV get-then-put is not atomic and these increments land AFTER the upstream round-trip,
-      // so concurrent bursts can still race the daily/global/spend caps (finding 1/10). The per-IP
-      // cap above bounds the blast radius on the free plan; TRUE atomic caps need a Cloudflare
-      // Durable Object (check-and-reserve BEFORE forwarding, refund on failure) — a Workers Paid
-      // feature, so it's the operator's deliberate call. See docs/GATEWAY.md.
-      if (upstream.ok) {
+      // Count only SUCCESSFUL calls. DO mode already reserved the slot atomically before forwarding,
+      // so here it only REFUNDS a failed call; the KV path bumps after success (non-atomic — the
+      // per-IP cap bounds the race; true atomicity is the DO path above). Either way, a failed
+      // upstream never costs the caller a slot.
+      if (useDO) {
+        if (!upstream.ok) await doQuota(env, "refund", { device, ip, day });
+      } else if (upstream.ok) {
         await Promise.all([
           bump(env.QUOTA, `d:${device}:${day}`), bump(env.QUOTA, `g:${day}`),
           ...(ip ? [bump(env.QUOTA, `ip:${ip}:${day}`)] : []),

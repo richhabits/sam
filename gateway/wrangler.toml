@@ -22,9 +22,20 @@ MAX_INPUT_CHARS = "24000"                                # reject oversized prom
 PAUSED = "0"                                             # set "1" to instantly pause the whole gateway
 ALLOW_ORIGIN = "*"                                       # CORS only — NOT auth (any non-browser client ignores it); the IP cap is the control
 
-# NOTE (audit): the daily/global/spend caps use KV get-then-put, which is not atomic, so a concurrent
-# burst can race them. The per-IP cap bounds the blast radius on the free plan. For TRUE atomic caps,
-# move check-and-reserve into a Durable Object (Workers Paid) — a deliberate operator upgrade.
+# ── OPTIONAL: TRUE ATOMIC CAPS via a Durable Object (audit finding 1) ──
+# Without a DO the caps use KV get-then-put (not atomic) — a concurrent burst can race them; the
+# per-IP cap bounds the blast radius, which is fine for the free plan. To make the caps EXACT
+# (check-and-reserve serialised through one actor, refund on failure), bind the QuotaCounter DO
+# below. This requires a Workers PAID plan — a deliberate operator upgrade. When bound, the Worker
+# uses it automatically; when absent, it falls back to the KV path. Uncomment to enable:
+#
+# [[durable_objects.bindings]]
+# name = "QUOTA_DO"
+# class_name = "QuotaCounter"
+#
+# [[migrations]]
+# tag = "v1"
+# new_classes = ["QuotaCounter"]
 
 # Set the pooled keys as a SECRET (never committed):
 #   npx wrangler secret put PROVIDER_KEYS      # paste: key1,key2,key3

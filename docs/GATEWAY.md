@@ -86,3 +86,35 @@ That's the whole conversion picture (adoption + cost) with nothing personal. It 
 **Never sees / never stores:** your name, email, IP-derived identity, memory, files, vault, or the *content* of answers. There is no account, no login, no cross-device linking.
 
 Same privacy posture as the rest of SAM: the app records nothing; the gateway records only the anonymous counters that make a fair free allowance possible.
+
+## Hard caps: KV (default) vs atomic (Durable Object)
+
+By default the daily/global/spend caps use Cloudflare KV counters. KV has no atomic increment
+(get-then-put is last-write-wins), so a burst of **simultaneous** requests can read the same
+pre-increment value and all pass — briefly overspending a cap. The **per-IP daily cap**
+(`PER_IP_DAILY`, keyed on the trusted `cf-connecting-ip`) bounds how much any one actor can drain
+this way, which is fine for the free plan.
+
+For **exact** caps, bind the `QuotaCounter` **Durable Object** (uncomment the blocks in
+`wrangler.toml`). A DO is a single-threaded, consistent actor: every check-and-reserve is
+serialised through one instance, so two requests can never both pass when one slot remains, and a
+failed upstream call refunds its slot. The Worker uses the DO automatically when bound and falls
+back to KV when it isn't — so this is opt-in.
+
+**Trade-off:** Durable Objects require a **Workers Paid** plan (min $5/mo). Bind it only if you want
+the caps to be exact rather than best-effort. The per-IP cap already makes the KV path safe for a
+modest free-tier deployment. To enable:
+
+```toml
+# wrangler.toml — uncomment:
+[[durable_objects.bindings]]
+name = "QUOTA_DO"
+class_name = "QuotaCounter"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["QuotaCounter"]
+```
+
+**Also stored (DO mode):** the same anonymous counters, day-scoped, in the DO's own storage instead
+of KV. No new data — same privacy posture.
