@@ -49,6 +49,16 @@ describe("the Watch — local camera registry", () => {
     }
   });
 
+  // AUDIT FIX: the IPv6 ULA/link-local prefix check was a string test on the whole hostname,
+  // so public names starting fc/fd/fe80 were wrongly treated as local (an SSRF allowlist hole).
+  it("does NOT treat public hostnames beginning fc/fd/fe80 as local", () => {
+    for (const bad of ["https://fc-cdn.example.com/s", "http://fdn.io/s", "https://fe80-host.example.net/s"]) {
+      expect(C.isLocalUrl(bad)).toBe(false);
+    }
+    // a genuine IPv6 ULA is still local
+    expect(C.isLocalUrl("http://[fd00::1]/s")).toBe(true);
+  });
+
   it("a snapshot/rtsp camera with no url is refused", () => {
     expect(C.add({ name: "x", kind: "snapshot" }).ok).toBe(false);
   });

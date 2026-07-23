@@ -84,7 +84,7 @@ const FORBIDDEN: { re: RegExp; why: string }[] = [
   { re: /node:|require\(/, why: "node builtins" },
   { re: /__proto__|prototype\s*\[|constructor\s*\[|\.constructor\b/, why: "prototype tampering" },
   { re: /\bBuffer\b|Atomics|SharedArrayBuffer|WebAssembly/, why: "low-level memory" },
-  { re: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/, why: "infinite loop" },
+  { re: /while\s*\(\s*(?:true|1|!0|!!1|"[^"]*"|'[^']*'|`[^`]*`)\s*\)|for\s*\(\s*;\s*;\s*\)|do\s*\{[\s\S]*\}\s*while\s*\(\s*(?:true|1|!0)\s*\)/, why: "infinite loop" },
   { re: /XMLHttpRequest|WebSocket/, why: "raw network object" },
   // bare (ambient) fetch/fs NOT via the sam.* shim
   { re: /(^|[^.\w])fetch\s*\(/, why: "ambient fetch (use sam.fetch after declaring `net`)" },
@@ -118,8 +118,31 @@ const HARNESS = `
 const vm = require("node:vm");
 const { readFileSync, writeFileSync, mkdirSync, existsSync } = require("node:fs");
 const { join, basename } = require("node:path");
+const dns = require("node:dns").promises;
+const net = require("node:net");
 const NET_MAX = ${NET_MAX_BYTES};
 const safeName = (p) => (basename(String(p || "")).replace(/[^a-z0-9_.-]/gi, "_")) || "file";
+// AUDIT FIX: sam.fetch had no SSRF guard, so forged code could reach localhost, the LAN, or
+// the cloud-metadata endpoint (169.254.169.254). A resolved IP is checked against private,
+// loopback, link-local and unique-local ranges; redirects are refused so a public URL can't
+// 302 to a private one after the check. Kept inline because the Cell is a self-contained child.
+const isPrivateIp = (ip) => {
+  const v = net.isIP(ip);
+  if (v === 4) {
+    const p = ip.split(".").map(Number);
+    return p[0] === 10 || p[0] === 127 || p[0] === 0 || (p[0] === 192 && p[1] === 168) ||
+      (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 169 && p[1] === 254) ||
+      (p[0] === 100 && p[1] >= 64 && p[1] <= 127);
+  }
+  if (v === 6) { const l = ip.toLowerCase(); return l === "::1" || l === "::" || l.startsWith("fc") || l.startsWith("fd") || l.startsWith("fe80") || l.startsWith("::ffff:"); }
+  return true;   // unparseable → refuse
+};
+const guardHost = async (host) => {
+  if (net.isIP(host)) { if (isPrivateIp(host)) throw new Error("sam.fetch: refused a private/loopback address"); return; }
+  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) throw new Error("sam.fetch: refused a local hostname");
+  const rec = await dns.lookup(host, { all: true });
+  for (const a of rec) if (isPrivateIp(a.address)) throw new Error("sam.fetch: host resolves to a private address");
+};
 let raw = ""; process.stdin.setEncoding("utf8");
 process.stdin.on("data", (d) => { raw += d; });
 process.stdin.on("end", async () => {
@@ -129,7 +152,8 @@ process.stdin.on("end", async () => {
     const sam = {};
     if (caps.includes("net")) sam.fetch = async (url) => {
       if (!/^https?:\\/\\//i.test(String(url))) throw new Error("sam.fetch: only http(s) URLs");
-      const r = await fetch(String(url), { signal: AbortSignal.timeout(10000) });
+      await guardHost(new URL(String(url)).hostname.replace(/^\\[|\\]$/g, ""));
+      const r = await fetch(String(url), { signal: AbortSignal.timeout(10000), redirect: "error" });
       const buf = await r.arrayBuffer();
       if (buf.byteLength > NET_MAX) throw new Error("sam.fetch: response too large");
       return new TextDecoder().decode(buf);

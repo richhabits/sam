@@ -48,7 +48,10 @@ export function isLocalUrl(raw: string): boolean {
   const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");   // strip IPv6 brackets
   if (host === "localhost" || host.endsWith(".local") || host.endsWith(".lan")) return true;
   if (host === "::1" || host === "0.0.0.0") return true;
-  if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")) return true;   // IPv6 ULA / link-local
+  // AUDIT FIX: the ULA/link-local prefix check must apply ONLY to actual IPv6 addresses. A
+  // string-prefix test on any hostname wrongly classified public names like "fc-cdn.example.com"
+  // or "fdn.io" as local. A bracket-stripped IPv6 literal always contains a colon.
+  if (host.includes(":") && (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80"))) return true;   // IPv6 ULA / link-local
   // IPv4 private ranges: 10/8, 127/8, 192.168/16, 172.16–31/12, 169.254/16 (link-local)
   const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (!m) return false;

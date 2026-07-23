@@ -62,6 +62,24 @@ export function htmlToText(html: string): { title: string; text: string; links: 
   return { title, text, links: links.slice(0, 100) };
 }
 
+// A page SAM reads for context is never worth more than a few MB of text; anything larger is
+// either a download or an attempt to exhaust memory. Read the stream and stop at the cap.
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+async function readCapped(res: Response, maxBytes: number): Promise<string> {
+  if (!res.body) return (await res.text()).slice(0, maxBytes);   // no stream → fall back, still bounded
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let out = "", total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    out += dec.decode(value, { stream: true });
+    if (total >= maxBytes) { try { await reader.cancel(); } catch { /* already closing */ } break; }
+  }
+  return out;
+}
+
 /** Fetch a URL and return cleaned, readable content. Times out; never throws. */
 export async function fetchClean(url: string, opts: { timeoutMs?: number } = {}): Promise<CleanPage> {
   // Refuse loopback/LAN/link-local targets BEFORE opening a socket. SAM runs inside the user's
@@ -75,7 +93,9 @@ export async function fetchClean(url: string, opts: { timeoutMs?: number } = {})
     // which the catch below turns into the same structured { ok:false, error } result as before.
     const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "text/html,*/*" }, signal: ctrl.signal });
     const ct = res.headers.get("content-type") || "";
-    const body = await res.text();
+    // AUDIT FIX: res.text() reads the WHOLE body into memory, so a prompt-supplied URL pointing
+    // at a huge (or endless) response was an OOM/DoS. Read with a hard byte cap and stop early.
+    const body = await readCapped(res, MAX_BODY_BYTES);
     let parsed: { title: string; text: string; links: CleanLink[] };
     if (ct.includes("html")) {
       // The Reader turns HTML into clean markdown (structure kept, boilerplate pruned). If it finds

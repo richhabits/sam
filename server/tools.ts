@@ -1571,28 +1571,40 @@ export const TOOLS: Tool[] = [
       try {
         const dir = resolve(i.dir);
         const map = new Map<string, string[]>();
-        async function walk(currentDir: string) {
-          const files = await readdir(currentDir);
-          for (const file of files) {
-            const filepath = join(currentDir, file);
+        // AUDIT FIX: an unbounded recursive walk over a huge tree (or one with a symlink cycle,
+        // node_modules, or enormous files) could hang the process and exhaust memory/handles.
+        // Bounded on every axis: depth, file count, per-file size, skip-list, and no symlink
+        // descent (stat, not lstat-follow, and directories reached by symlink are not entered).
+        const MAX_DEPTH = 24, MAX_FILES = 200_000, MAX_FILE_BYTES = 256 * 1024 * 1024;
+        const SKIP = new Set([".git", "node_modules", ".cache", "Library", ".Trash"]);
+        let count = 0, truncated = false;
+        async function walk(currentDir: string, depth: number) {
+          if (depth > MAX_DEPTH || truncated) return;
+          const entries = await readdir(currentDir, { withFileTypes: true });
+          for (const ent of entries) {
+            if (truncated) return;
+            if (ent.isSymbolicLink()) continue;                 // never follow a symlink out / into a cycle
+            if (ent.isDirectory()) { if (SKIP.has(ent.name)) continue; await walk(join(currentDir, ent.name), depth + 1); continue; }
+            if (!ent.isFile()) continue;
+            const filepath = join(currentDir, ent.name);
             const stats = await stat(filepath);
-            if (stats.isDirectory()) await walk(filepath);
-            else if (stats.isFile()) {
-              const buffer = await readFile(filepath);
-              const hash = createHash("sha256").update(buffer).digest("hex");
-              if (!map.has(hash)) map.set(hash, []);
-              map.get(hash)!.push(filepath);
-            }
+            if (stats.size > MAX_FILE_BYTES) continue;          // don't slurp a giant file to hash it
+            if (++count > MAX_FILES) { truncated = true; return; }
+            const buffer = await readFile(filepath);
+            const hash = createHash("sha256").update(buffer).digest("hex");
+            if (!map.has(hash)) map.set(hash, []);
+            map.get(hash)!.push(filepath);
           }
         }
-        await walk(dir);
+        await walk(dir, 0);
         let out = "";
         for (const [_hash, paths] of map.entries()) {
           if (paths.length > 1) {
             out += `Duplicate Group:\\n` + paths.map(p => `  - ${p}`).join("\\n") + "\\n\\n";
           }
         }
-        return out.trim() || "No duplicates found.";
+        const note = truncated ? `\\n\\n(stopped after ${MAX_FILES} files — scan a narrower directory for the rest)` : "";
+        return (out.trim() || "No duplicates found.") + note;
       } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
   { name: "add_calendar_event", safe: false, description: "Create a scheduled event in Calendar. input: {title, start_date, end_date} (Dates parseable like '12/25/2026 14:00').", params: "{title, start_date, end_date}", args: { title: { type: "string", required: true }, start_date: { type: "string", required: true }, end_date: { type: "string", required: true } },

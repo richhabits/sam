@@ -32,6 +32,14 @@ describe("static safety scan", () => {
       "(i)=>{while(true){}}", "(i)=>globalThis.x", "(i)=>i.constructor.constructor('x')()",
     ]) expect(F.scanCode(bad).ok, bad).toBe(false);
   });
+
+  // AUDIT FIX: the infinite-loop scan only caught while(true)/for(;;), missing the equivalents
+  // a sync loop that blocks the child's event loop so the async call-timeout never fires.
+  it("catches while(1) / while(!0) / do-while(true), not just while(true)", () => {
+    for (const bad of ["(i)=>{ while(1){} }", "(i)=>{ while (!0) {} }", "(i)=>{ do{}while(true) }", "(i)=>{ while('x'){} }"]) {
+      expect(F.scanCode(bad).ok, bad).toBe(false);
+    }
+  });
   it("passes pure computation", () => {
     expect(F.scanCode("(i)=>i.toUpperCase()").ok).toBe(true);
   });
