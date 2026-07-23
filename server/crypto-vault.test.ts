@@ -54,4 +54,23 @@ describe("vault crypto core", () => {
     expect(keyFingerprint(key)).toBe(keyFingerprint(key));
     expect(keyFingerprint(key)).toHaveLength(12);
   });
+
+  // AUDIT FIX (13): the scrypt work factor is now versioned per-config so it can be raised later
+  // WITHOUT locking out existing vaults.
+  it("stamps the KDF params into a new config", () => {
+    const { config } = newKeyConfig("pass-with-params");
+    expect(config.N).toBe(1 << 16);   // new default
+    expect(config.r).toBe(8);
+    expect(config.p).toBe(1);
+  });
+
+  it("still unlocks a LEGACY config that predates params (derived at the old factor)", () => {
+    // Simulate a pre-versioning config: derive the verifier at the legacy factor, store NO params.
+    const salt = randomBytes(16);
+    const legacyKey = deriveKey("old-vault-pass", salt, { N: 1 << 15 });
+    const legacyConfig = { salt: salt.toString("base64url"), verifier: encrypt("sam-vault-verifier-v1", legacyKey), createdAt: 1 };
+    const opened = unlockKey("old-vault-pass", legacyConfig as any);   // must fall back to legacy N
+    expect(opened).not.toBeNull();
+    expect(unlockKey("wrong", legacyConfig as any)).toBeNull();
+  });
 });

@@ -17,7 +17,8 @@
 //  scheme can change that.  Access is recorded to the Black Box REDACTED — the value never leaves here.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { execFileSync } from "node:child_process";
 import { randomBytes, scryptSync } from "node:crypto";
 import { dirname, join } from "node:path";
@@ -63,7 +64,8 @@ function loadConfig(): SafeConfig | null {
 }
 function saveConfig(c: SafeConfig): void {
   mkdirSync(safeDir(), { recursive: true });
-  writeFileSync(configPath(), JSON.stringify(c, null, 2));
+  // AUDIT FIX: 0600 — safe.json holds the passphrase-wrapped data key + salt; not world-readable.
+  writeFileAtomic(configPath(), JSON.stringify(c, null, 2), { mode: 0o600 });
 }
 
 // ── OS keychain (best-effort; failure → the caller uses a passphrase instead). Mirrors SAM's proven
@@ -116,7 +118,8 @@ function readStore(): Record<string, string> {
 function writeStore(map: Record<string, string>): void {
   if (!dataKey) throw new Error("the Safe is locked");
   mkdirSync(safeDir(), { recursive: true });
-  writeFileSync(storePath(), encrypt(JSON.stringify(map), dataKey));
+  // safe.enc is ciphertext, but keep it owner-only too (defence in depth) and crash-safe.
+  writeFileAtomic(storePath(), encrypt(JSON.stringify(map), dataKey), { mode: 0o600 });
 }
 
 // ── lifecycle ──

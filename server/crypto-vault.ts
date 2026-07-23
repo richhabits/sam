@@ -14,13 +14,21 @@
 
 import { scryptSync, randomBytes, createCipheriv, createDecipheriv, timingSafeEqual, createHash } from "node:crypto";
 
-const SCRYPT_N = 1 << 15;   // 32768 — strong + ~sub-second on a laptop
+// AUDIT FIX: the KDF work factor is now VERSIONED in each config (N/r/p), so it can be raised in
+// future WITHOUT locking out existing vaults — a config written before versioning has no stored
+// params and must keep deriving at the exact legacy factor it was created with. New vaults use the
+// higher default. (Never change SCRYPT_N_LEGACY — old vaults derive their key from it.)
+const SCRYPT_N_LEGACY = 1 << 15;   // 32768 — the pre-versioning factor; frozen for backward compat
+const SCRYPT_N = 1 << 16;          // 65536 — new vaults; ~2x the work, still ~1s, ~67MB (< maxmem)
 const SCRYPT_r = 8, SCRYPT_p = 1;
 const KEYLEN = 32;          // AES-256
 const MAGIC = "SAMENC1";    // envelope version tag
 
-export function deriveKey(passphrase: string, salt: Buffer): Buffer {
-  return scryptSync(Buffer.from(passphrase, "utf8"), salt, KEYLEN, { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p, maxmem: 128 * 1024 * 1024 });
+interface ScryptParams { N?: number; r?: number; p?: number }
+export function deriveKey(passphrase: string, salt: Buffer, params: ScryptParams = {}): Buffer {
+  // No stored params ⇒ a legacy config ⇒ derive at the legacy factor, or the key won't match.
+  const N = params.N ?? SCRYPT_N_LEGACY, r = params.r ?? SCRYPT_r, p = params.p ?? SCRYPT_p;
+  return scryptSync(Buffer.from(passphrase, "utf8"), salt, KEYLEN, { N, r, p, maxmem: 256 * 1024 * 1024 });
 }
 
 // Seal plaintext → a self-describing envelope string: MAGIC.iv.tag.ciphertext (all base64url).
@@ -50,18 +58,20 @@ export function decrypt(envelope: string, key: Buffer): string {
 // without needing to decrypt real data (and without storing the key). It's the GCM tag over a
 // known constant — only the right key reproduces it.
 const VERIFIER_PLAINTEXT = "sam-vault-verifier-v1";
-export interface KeyConfig { salt: string; verifier: string; createdAt: number }
+export interface KeyConfig { salt: string; verifier: string; createdAt: number; N?: number; r?: number; p?: number }
 
 export function newKeyConfig(passphrase: string): { config: KeyConfig; key: Buffer } {
   const salt = randomBytes(16);
-  const key = deriveKey(passphrase, salt);
-  return { config: { salt: salt.toString("base64url"), verifier: encrypt(VERIFIER_PLAINTEXT, key), createdAt: Date.now() }, key };
+  const params = { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p };
+  const key = deriveKey(passphrase, salt, params);
+  // Stamp the params INTO the config so this vault is always derived at the factor it was made with.
+  return { config: { salt: salt.toString("base64url"), verifier: encrypt(VERIFIER_PLAINTEXT, key), createdAt: Date.now(), ...params }, key };
 }
 
 // Check a passphrase against a stored config → the derived key, or null if wrong. Constant-time-ish.
 export function unlockKey(passphrase: string, config: KeyConfig): Buffer | null {
   try {
-    const key = deriveKey(passphrase, Buffer.from(config.salt, "base64url"));
+    const key = deriveKey(passphrase, Buffer.from(config.salt, "base64url"), config);
     const check = decrypt(config.verifier, key);
     const a = Buffer.from(check), b = Buffer.from(VERIFIER_PLAINTEXT);
     return a.length === b.length && timingSafeEqual(a, b) ? key : null;

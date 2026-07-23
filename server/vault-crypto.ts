@@ -30,7 +30,12 @@ function loadConfig(): EncConfig | null {
 }
 function saveConfig(c: EncConfig) { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileAtomic(CONFIG, JSON.stringify(c, null, 2), { mode: 0o600 }); }   // 0600 — KDF salt/verifier
 
-export function isEncryptionEnabled(): boolean { return !!loadConfig(); }
+// AUDIT FIX: existence-based, NOT parse-based. The old `!!loadConfig()` returned false when the
+// config was transiently unreadable (loadConfig catches → null), which made seal() below treat a
+// LOCKED, encryption-ON vault as encryption-OFF and write the secret in PLAINTEXT. Whether
+// encryption is enabled is decided by whether the config file EXISTS, never by whether this one
+// read succeeded.
+export function isEncryptionEnabled(): boolean { return existsSync(CONFIG); }
 export function isUnlocked(): boolean { return !!sessionKey; }
 
 // ── OS KEYCHAIN (best-effort; silent failure → passphrase fallback) ──
@@ -102,7 +107,15 @@ export function unlockWithPassphrase(passphrase: string): boolean {
 export function unlockFromKeychain(): boolean {
   const c = loadConfig(); if (!c?.keychain) return false;
   const hex = keychainRetrieve(); if (!hex) return false;
-  try { sessionKey = Buffer.from(hex, "hex"); return sessionKey.length === 32; } catch { sessionKey = null; return false; }
+  // AUDIT FIX: validate BEFORE assigning. The old code set sessionKey to the parsed buffer and then
+  // checked its length, so a bad-length keychain value left a garbage key installed and isUnlocked()
+  // reporting true — every subsequent seal/open would use the wrong key. Only a valid 32-byte key is set.
+  try {
+    const k = Buffer.from(hex, "hex");
+    if (k.length !== 32) { sessionKey = null; return false; }
+    sessionKey = k;
+    return true;
+  } catch { sessionKey = null; return false; }
 }
 
 export function lock(): void { sessionKey = null; }
@@ -115,6 +128,8 @@ export function encryptionStatus() {
 // Seal / open arbitrary strings with the session key — the primitive other subsystems adopt to
 // store secrets encrypted at rest. Throws if encryption is enabled but locked (fail closed).
 export function seal(plaintext: string): string {
+  // If the config file EXISTS, encryption is ON — from here we NEVER fall back to plaintext; a
+  // locked vault throws (fail closed). Only a genuinely-absent config is a passthrough.
   if (!isEncryptionEnabled()) return plaintext;         // encryption off → passthrough
   if (!sessionKey) throw new Error("vault is locked");
   return encrypt(plaintext, sessionKey);
