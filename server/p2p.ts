@@ -12,15 +12,66 @@
 import { Bonjour } from "bonjour-service";
 import express from "express";
 import { hostname } from "node:os";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, createHmac, createHash, randomBytes } from "node:crypto";
 
-// Constant-time token check with a length floor — a short/absent token is never accepted, and
-// comparison doesn't leak length/prefix via timing (mirrors the main remote-token gate).
-function p2pTokenOk(got: string | undefined): boolean {
-  if (!P2P_TOKEN || P2P_TOKEN.length < 16 || !got) return false;
-  const a = Buffer.from(got), b = Buffer.from(P2P_TOKEN);
-  return a.length === b.length && timingSafeEqual(a, b);
+// ── AUTHENTICATION (audit fix — finding 11) ──────────────────
+// The old scheme sent the shared SAM_P2P_TOKEN as a bearer header to whatever peer we
+// dispatched to. But peers are discovered over mDNS, which is UNAUTHENTICATED: a LAN attacker
+// advertises a fake `sam-p2p` service, we dispatch to it, and it harvests the token straight
+// out of our request header — then replays it to drive OUR agent loop. Discovery is not trust.
+//
+// Now the token is an HMAC KEY that is NEVER transmitted. Each request carries a fresh
+// timestamp + nonce and an HMAC signature bound to (method, path, ts, nonce, body-hash). A peer
+// proves it knows the secret by producing a valid signature; a fake peer that receives a
+// dispatch sees only a one-time signature it cannot reverse into the key. Signatures are
+// time-boxed and single-use (nonce), so a captured one cannot be replayed.
+const P2P_SIG_WINDOW_MS = 60_000;
+
+function p2pSign(key: string, method: string, path: string, ts: string, nonce: string, body: string): string {
+  const bodyHash = createHash("sha256").update(body || "").digest("hex");
+  return createHmac("sha256", key).update([method.toUpperCase(), path, ts, nonce, bodyHash].join("\n")).digest("hex");
 }
+
+/** Headers that prove knowledge of `key` for THIS request, without sending the key. */
+export function p2pAuthHeaders(
+  key: string, method: string, path: string, body: string,
+  gen: { now?: number; nonce?: string } = {},
+): Record<string, string> {
+  const ts = String(gen.now ?? Date.now());
+  const nonce = gen.nonce ?? randomBytes(12).toString("hex");
+  return { "x-sam-p2p-ts": ts, "x-sam-p2p-nonce": nonce, "x-sam-p2p-sig": p2pSign(key, method, path, ts, nonce, body) };
+}
+
+/** Verify a signed request: correct HMAC (constant-time), fresh (within the window). Pure —
+ *  the nonce replay-check is layered on top by the caller (see freshNonce). */
+export function p2pVerify(
+  key: string, method: string, path: string, body: string,
+  headers: { ts?: string; nonce?: string; sig?: string },
+  opts: { now?: number; windowMs?: number } = {},
+): { ok: boolean; reason?: string } {
+  if (!key || key.length < 16) return { ok: false, reason: "no shared secret configured" };
+  const { ts, nonce, sig } = headers;
+  if (!ts || !nonce || !sig) return { ok: false, reason: "missing signature" };
+  const now = opts.now ?? Date.now();
+  const window = opts.windowMs ?? P2P_SIG_WINDOW_MS;
+  const t = Number(ts);
+  if (!Number.isFinite(t) || Math.abs(now - t) > window) return { ok: false, reason: "stale or future signature" };
+  const expect = p2pSign(key, method, path, ts, nonce, body);
+  const a = Buffer.from(sig), b = Buffer.from(expect);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, reason: "bad signature" };
+  return { ok: true };
+}
+
+// Single-use nonce store: a valid signature can only be accepted once inside its time window,
+// so even a captured-and-replayed signature is refused the second time. Bounded by pruning
+// anything past the window. Injectable store + clock keep it unit-testable.
+export function freshNonce(store: Map<string, number>, nonce: string, now: number, windowMs = P2P_SIG_WINDOW_MS): boolean {
+  for (const [n, exp] of store) if (exp <= now) store.delete(n);
+  if (store.has(nonce)) return false;
+  store.set(nonce, now + windowMs);
+  return true;
+}
+const seenNonces = new Map<string, number>();
 
 export interface Peer {
   id: string;
@@ -105,10 +156,13 @@ export async function dispatchToPeer(
   project?: string,
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
   try {
+    // Sign the request instead of shipping the secret. The body is serialized ONCE and both
+    // signed and sent, so the receiver's body-hash matches to the byte.
+    const body = JSON.stringify({ from: NODE_ID, message, project });
     const res = await fetch(`http://${peer.ip}:${peer.port}/p2p/task`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-sam-p2p-token": P2P_TOKEN },
-      body: JSON.stringify({ from: NODE_ID, message, project }),
+      headers: { "Content-Type": "application/json", ...p2pAuthHeaders(P2P_TOKEN, "POST", "/p2p/task", body) },
+      body,
       signal: AbortSignal.timeout(120_000), // 2 min max
     });
     if (!res.ok) return { ok: false, error: `peer returned ${res.status}` };
@@ -145,17 +199,23 @@ export function startP2PServer(
   handleTask: (message: string, from: string, project?: string) => Promise<string>,
 ) {
   const p2p = express();
-  p2p.use(express.json({ limit: "1mb" }));
+  // Keep the EXACT received bytes so the signature's body-hash is verified against what was
+  // actually sent, not a re-serialization that could differ in key order or spacing.
+  p2p.use(express.json({ limit: "1mb", verify: (req, _res, buf) => { (req as any).rawBody = buf.toString("utf8"); } }));
 
   // Health/ping — peers use this to verify reachability
   p2p.get("/p2p/ping", (_req, res) => {
     res.json({ id: NODE_ID, name: hostname(), ts: Date.now() });
   });
 
-  // Receive a task from another SAM — token-gated: this runs our agent loop, so an
-  // unauthenticated LAN caller must never reach it.
+  // Receive a task from another SAM — signature-gated: this runs our agent loop, so an
+  // unauthenticated (or replaying) LAN caller must never reach it.
   p2p.post("/p2p/task", async (req, res) => {
-    if (!p2pTokenOk(req.get("x-sam-p2p-token"))) {
+    const raw = (req as any).rawBody ?? "";
+    const v = p2pVerify(P2P_TOKEN, "POST", "/p2p/task", raw, {
+      ts: req.get("x-sam-p2p-ts"), nonce: req.get("x-sam-p2p-nonce"), sig: req.get("x-sam-p2p-sig"),
+    });
+    if (!v.ok || !freshNonce(seenNonces, String(req.get("x-sam-p2p-nonce")), Date.now())) {
       return res.status(403).json({ ok: false, error: "unauthorized peer" });
     }
     const { from, message, project } = req.body || {};
