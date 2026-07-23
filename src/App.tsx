@@ -237,7 +237,7 @@ export default function App() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(false);   // mobile: Context/Quick-actions slide-in drawer
-  // ── Markets panel: a keyless live watchlist (Fincept strip-map) ──
+  // ── Markets panel: a keyless live watchlist ──
   const [marketsOpen, setMarketsOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("sam.watchlist") || "") || ["AAPL", "MSFT", "NVDA", "BTC-USD", "^GSPC"]; }
@@ -261,7 +261,7 @@ export default function App() {
     const next = [...watchlist, t]; setWatchlist(next); setTickerInput(""); loadQuotes(next);
   };
   const removeTicker = (sym: string) => { const next = watchlist.filter((s) => s !== sym); setWatchlist(next); loadQuotes(next); };
-  // ── Model Colosseum: Elo leaderboard of SAM's free brains (llm-colosseum strip-map) ──
+  // ── Model Colosseum: Elo leaderboard of SAM's free brains ──
   const [colosseumOpen, setColosseumOpen] = useState(false);
   const [arena, setArena] = useState<{ leaderboard?: any[]; log?: any[]; error?: string } | null>(null);
   const [arenaLoading, setArenaLoading] = useState(false);

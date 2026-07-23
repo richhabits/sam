@@ -225,7 +225,7 @@ const DRAFT_SYSTEM =
   "You write ONE small JavaScript tool for an assistant. It's a function `(input, sam) => string` (may be async). " +
   "PURE by default — plain JS only (String, Number, Array, Object, Math, JSON, Date, RegExp). " +
   "If (and ONLY if) the task needs it, you may use capability shims and DECLARE them: `sam.fetch(url)` needs `net`; " +
-  "`sam.readFile(name)`/`sam.writeFile(name,content)` (sandboxed files) need `fs:read`/`fs:write`. " +
+  "`sam.readFile(name)`/`sam.writeFile(name,content)` (isolated files) need `fs:read`/`fs:write`. " +
   "NEVER use eval/Function/require/import/process/child_process/shell/bare fetch/bare fs — those are forbidden. " +
   "Return STRICT JSON: {\"name\":\"snake_case\",\"description\":\"...\",\"params\":\"{...}\",\"explanation\":\"one sentence\",\"caps\":[],\"code\":\"(input, sam) => {...}\",\"tests\":[{\"input\":...}]}. JSON only.";
 

@@ -1,8 +1,7 @@
-// ── Live market quotes — keyless, free (clean-room port of a financial-terminal's data view) ──
-// The genuinely portable part of a Bloomberg-style terminal for a free/local assistant: glanceable
-// prices, no API key, no cost. Reimplemented from scratch in SAM's stack — FinceptTerminal is
-// AGPL/C++ (the idea is portable, its code is not), and Yahoo's chart endpoint needs no key.
-// Works for stocks, ETFs, indices (^GSPC), FX (GBPUSD=X) and crypto (BTC-USD).
+// ── Live market quotes — keyless, free ──
+// Glanceable prices for a free/local assistant: no API key, no cost. A public chart endpoint
+// needs no key, so SAM reads quotes straight from it. Works for stocks, ETFs, indices (^GSPC),
+// FX (GBPUSD=X) and crypto (BTC-USD).
 
 export interface Quote {
   ok: true;

@@ -1039,7 +1039,7 @@ async function browserRead() {
 }
 
 
-// ── VIDEO RENDER (HTML → MP4, ported from hyperframes) ───────
+// ── VIDEO RENDER (HTML → MP4) ───────
 async function renderVideoTool(input: any): Promise<string> {
   try {
     const raw = typeof input?.html === "string" && input.html.trim() ? input.html : null;
@@ -1067,7 +1067,7 @@ async function renderVideoTool(input: any): Promise<string> {
   }
 }
 
-// ── MODEL COLOSSEUM (llm-colosseum strip-map) — wired arena run, shared by the tool + /api/arena ──
+// ── MODEL COLOSSEUM — wired arena run, shared by the tool + /api/arena ──
 const ARENA_DEFAULT_PROMPT = "Explain why the sky is blue in two sentences a 10-year-old would understand.";
 export async function benchmarkBrains(
   opts: { prompt?: string; prompts?: string[]; brains?: string[]; maxBrains?: number } = {},
@@ -2585,16 +2585,16 @@ export const TOOLS: Tool[] = [
     } },
   // ── THE FORGE (Phase 5) — SAM writes its own tools. Confirm-tier: it asks before drafting.
   // The drafted tool is saved DISABLED for the user to review + enable; it can never self-approve.
-  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new tool for a need. Pure-computation by default; may declare capabilities (net, fs:read, fs:write) — net/fs:write become dangerous-tier. SAM writes it, safety-scans it, sandbox-tests it, then saves it DISABLED for you to review + enable in Settings. input: {need}.", params: "{need}",
+  { name: "forge", safe: false, description: "When no existing tool fits, DRAFT a new tool for a need. Pure-computation by default; may declare capabilities (net, fs:read, fs:write) — net/fs:write become dangerous-tier. SAM writes it, safety-scans it, tests it in the Cell (isolated), then saves it DISABLED for you to review + enable in Settings. input: {need}.", params: "{need}",
     activity: (i) => `Forging a tool for: ${i.need ?? i}`,
-    preview: (i) => `Draft, safety-scan and sandbox-test a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code + declared capabilities and enable it in Settings before it can ever run.`,
+    preview: (i) => `Draft, safety-scan and isolate-test in the Cell a brand-new tool for "${i.need ?? i}". It's saved DISABLED — you review the code + declared capabilities and enable it in Settings before it can ever run.`,
     run: async (i) => {
       const r = await forgeTool(String(i.need ?? i ?? ""));
       if (!r.ok) return `Couldn't forge that: ${r.reason}`;
       const t = r.tool!;
       const caps = t.caps.length ? `Capabilities: ${t.caps.join(", ")} → ${t.tier} tier` : `Pure computation → confirm tier`;
       const samples = (r.samples || []).slice(0, 2).map((s) => `  ${JSON.stringify(s.input)} → ${s.output.slice(0, 80)}`).join("\n");
-      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n${caps}\n\nCode:\n${t.code}\n\nSandbox test:\n${samples}`;
+      return `Forged "${t.name}" (saved disabled — review + enable it in Settings):\n${t.explanation}\n${caps}\n\nCode:\n${t.code}\n\nCell test (isolated):\n${samples}`;
     } },
   { name: "forged_tools", safe: true, description: "List the tools SAM has forged for itself — enabled/disabled status + capabilities. input: (none).", params: "(none)",
     activity: () => `Checking SAM-forged tools`, run: async () => {

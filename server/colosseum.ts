@@ -1,8 +1,8 @@
-// ── Model Colosseum — head-to-head LLM ranking (clean-room port of llm-colosseum, MIT) ──
-// The portable idea from the Street-Fighter benchmark, minus the game: pit SAM's rotating free
-// brains against each other on real prompts, let an impartial judge pick the winner, and rank
-// them by Elo. SAM sells "free brains rotating" — this is the leaderboard that says which is
-// actually winning. Core logic takes injected answer/judge fns, so it's testable without network.
+// ── Model Colosseum — head-to-head LLM ranking ──
+// Pit SAM's rotating free brains against each other on real prompts, let an impartial judge pick
+// the winner, and rank them by Elo. SAM sells "free brains rotating" — this is the leaderboard
+// that says which is actually winning. Core logic takes injected answer/judge fns, so it's
+// testable without network.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

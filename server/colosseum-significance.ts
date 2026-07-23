@@ -1,4 +1,4 @@
-// ── Champion significance gate — PostHog Experiments DNA, ported to the Colosseum ──
+// ── Champion significance gate — don't re-crown the Colosseum on noise ──
 //
 // PROPOSAL / drop-in (not yet wired). server/ is shared with the local agent — this is a NEW
 // file (no collision); wiring it into colosseum.ts/routing is the reviewed step (see foot).
@@ -7,14 +7,14 @@
 // With ~18 matches across many rotating brains, each brain plays few games, so a 25-Elo gap is
 // usually noise — the champion can flip night to night and churn routing for no real reason.
 //
-// PostHog's Experiments answer: don't declare a winner without statistical significance. We take
-// that, and fix the thing PostHog's own docs admit they DON'T do — adjust for multiple
-// comparisons. We picked the leader as the MAX of N brains (a winner's-curse selection), so the
-// test is Bonferroni-adjusted by N. Decision = one-sided two-proportion z-test on the
-// leader-vs-runner-up score rate (wins + ½·ties)/games. Only a *significant* leader re-crowns;
-// otherwise routing keeps the incumbent (or the static lane order), which is the stable default.
+// The rule: don't declare a winner without statistical significance, AND adjust for multiple
+// comparisons — a step a plain significance test skips. We picked the leader as the MAX of N
+// brains (a winner's-curse selection), so the test is Bonferroni-adjusted by N. Decision =
+// one-sided two-proportion z-test on the leader-vs-runner-up score rate (wins + ½·ties)/games.
+// Only a *significant* leader re-crowns; otherwise routing keeps the incumbent (or the static
+// lane order), which is the stable default.
 //
-// Verified: posthog-work/verify_significance.mjs — clear 90%-vs-50%@20 crowns (z=3.07); noisy
+// Verified: significance-check/verify_significance.mjs — clear 90%-vs-50%@20 crowns (z=3.07); noisy
 // 55%-vs-50%@20 does not (z=0.32); <8 games never crowns; tie-heavy strong lead@30 crowns.
 
 import type { Rating } from "./colosseum.ts";

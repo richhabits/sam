@@ -1,9 +1,8 @@
-// ── HTML → MP4 video rendering (ported from heygen-com/hyperframes, Apache-2.0) ──
-// The good part of hyperframes, adapted to SAM: not their framework (packages, Lambda, studio)
-// but the ONE clever idea — deterministic rendering. We drive a virtual clock so time-based
+// ── HTML → MP4 video rendering — deterministic, built into SAM ──
+// One clever idea done SAM's way: deterministic rendering. We drive a virtual clock so time-based
 // HTML/CSS/JS animations render frame-identical regardless of machine speed, screenshot each
 // frame in headless Chrome (SAM already ships playwright-core), and encode with FFmpeg.
-// "Write HTML. Render video." — same input always yields the same MP4.
+// "Write HTML. Render video." — the same input always yields the same MP4.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";

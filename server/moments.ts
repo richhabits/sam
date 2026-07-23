@@ -58,7 +58,7 @@ export function nextMoment(): Moment | null {
   if (s.forged >= 1 && !seen("share-forged")) return emit({
     id: "share-forged", kind: "share",
     title: "SAM built its own tool 🛠️",
-    snippet: `Asked SAM for something it couldn't do — so it wrote the tool, sandbox-tested it, and did it. ${REPO}`,
+    snippet: `Asked SAM for something it couldn't do — so it wrote the tool, tested it in the Cell, and did it. ${REPO}`,
     url: REPO,
   });
   if (s.localTasks >= 5 && !seen("share-local")) return emit({

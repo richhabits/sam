@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · CONTEXT COMPRESSION (Headroom-style, built-in & free)
+//  S.A.M. · CONTEXT COMPRESSION (built-in & free)
 //  Big tool outputs (web pages, MCP/API JSON, file reads) get
 //  RE-SENT to the model every agent-loop step, so they dominate
 //  token cost. We shrink each result before it enters the running
