@@ -61,6 +61,31 @@ async function checkForUpdates() {
   } catch { /* offline — no drama */ }
 }
 
+// AUDIT FIX (finding 6): the preload exposes the per-launch control token + privileged IPC to the
+// page. If a window ever navigates to (or opens) an external origin, that origin would inherit the
+// preload. SAM only ever loads its OWN content (the dev server, packaged file://, or the overlay's
+// data: document), so every other navigation is refused and any external link opens in the real
+// browser instead. Applied to every window SAM creates.
+function isInternalUrl(url: string): boolean {
+  try {
+    const dev = process.env.VITE_DEV_SERVER_URL;
+    if (dev && url.startsWith(dev)) return true;
+    const u = new URL(url);
+    return u.protocol === "file:" || u.protocol === "data:";   // packaged content + the overlay document
+  } catch { return false; }
+}
+function hardenNavigation(w: BrowserWindow) {
+  const wc = w.webContents;
+  wc.on("will-navigate", (e, url) => {
+    if (!isInternalUrl(url)) { e.preventDefault(); shell.openExternal(url).catch(() => { /* best-effort */ }); }
+  });
+  wc.setWindowOpenHandler(({ url }) => {
+    if (isInternalUrl(url)) return { action: "allow" };
+    shell.openExternal(url).catch(() => { /* best-effort */ });
+    return { action: "deny" };   // never spawn a node-preloaded window onto an external origin
+  });
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1000,
@@ -75,6 +100,7 @@ function createWindow() {
     backgroundColor: '#00000000', // transparent to let vibrancy show
   });
 
+  hardenNavigation(win);
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
@@ -137,6 +163,7 @@ function createOverlay() {
       nodeIntegration: false, contextIsolation: true,
     },
   });
+  hardenNavigation(overlay);
   overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlay.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(overlayHTML()));
   overlay.on("blur", () => { if (overlay?.isVisible()) overlay.hide(); });   // dismiss when it loses focus
@@ -257,6 +284,7 @@ app.whenReady().then(() => {
       backgroundColor: '#00000000', // transparent for vibrancy
     });
 
+    hardenNavigation(studioWin);
     if (process.env.VITE_DEV_SERVER_URL) {
       studioWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=studio`);
     } else {
@@ -266,16 +294,24 @@ app.whenReady().then(() => {
 
   // ── Overlay wiring (Phase 4) ──
   createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)
-  ipcMain.handle("overlay:run", (_e, payload) => runOverlayAction(payload));
-  ipcMain.handle("overlay:copy", (_e, text: string) => { clipboard.writeText(String(text || "")); return true; });
-  ipcMain.handle("overlay:paste", async (_e, text: string) => { overlay?.hide(); await pasteBack(String(text || "")); return true; });
-  ipcMain.handle("overlay:run-as-task", (_e, task: string) => {
+  // AUDIT FIX (finding 7): these handlers were global — ANY renderer (the main or studio window,
+  // or injected content in one) could invoke them, and overlay:paste synthesises keystrokes into
+  // whatever app has focus (a paste-injection primitive). Each overlay action now only runs when
+  // the caller IS the overlay window; anything else is refused.
+  const fromOverlay = (e: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent) =>
+    !!overlay && !overlay.isDestroyed() && e.sender === overlay.webContents;
+
+  ipcMain.handle("overlay:run", (e, payload) => { if (!fromOverlay(e)) throw new Error("not the overlay"); return runOverlayAction(payload); });
+  ipcMain.handle("overlay:copy", (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); clipboard.writeText(String(text || "")); return true; });
+  ipcMain.handle("overlay:paste", async (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); overlay?.hide(); await pasteBack(String(text || "")); return true; });
+  ipcMain.handle("overlay:run-as-task", (e, task: string) => {
+    if (!fromOverlay(e)) throw new Error("not the overlay");
     overlay?.hide(); win?.show(); win?.focus();
     // Hand the task to the main window — the full agent + approval gate live there.
     win?.webContents.send("sam:prefill", String(task || ""));
     return true;
   });
-  ipcMain.on("overlay:hide", () => overlay?.hide());
+  ipcMain.on("overlay:hide", (e) => { if (fromOverlay(e)) overlay?.hide(); });
 
   // Global hotkey — summon the lightweight overlay (⌥Space). The main window opens from the tray.
   const okAlt = globalShortcut.register("Option+Space", () => void summonOverlay());
