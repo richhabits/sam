@@ -28,7 +28,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh once on mount
   useEffect(() => { refresh(); }, []);
-  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => {/* audio playback is optional — never surface a chime failure */}); setTurns([]); setAudio(""); }, [active]);
+  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => setSources([]) /* sources failed to load → show none; an empty source list is a valid, non-error state */); setTurns([]); setAudio(""); }, [active]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to newest on turns change
   useEffect(() => { chatRef.current?.scrollTo(0, chatRef.current.scrollHeight); }, [turns]);
 

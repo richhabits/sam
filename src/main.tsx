@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { lazy, Suspense } from "react";
 import App from "./App";
+import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles.css";
 
 // A packaged Electron build loads the UI from file://, where a root-relative URL
@@ -51,9 +52,21 @@ const FlipItView = lazy(() => import("./FlipItView"));
 const YardView = lazy(() => import("./YardView"));
 const whichApp = new URLSearchParams(location.search).get("app");
 
+// A top-level boundary is the last safety net: a render error anywhere below shows a plain
+// recoverable message instead of a blank white window with no way back.
+const rootFallback = (
+  <div style={{ padding: "2rem", fontFamily: "system-ui", lineHeight: 1.5 }}>
+    <h2>SAM hit a display error.</h2>
+    <p>The page couldn’t render. Reload to try again — your data is safe on disk.</p>
+    <button type="button" onClick={() => location.reload()}>Reload</button>
+  </div>
+);
+
 createRoot(document.getElementById("root")!).render(
-  whichApp === "studio" ? <Suspense fallback={null}><StudioView /></Suspense>
-  : whichApp === "flipit" ? <Suspense fallback={null}><FlipItView /></Suspense>
-  : whichApp === "yard" ? <Suspense fallback={null}><YardView /></Suspense>
-  : <App />
+  <ErrorBoundary label="app root" fallback={rootFallback}>
+    {whichApp === "studio" ? <Suspense fallback={null}><StudioView /></Suspense>
+    : whichApp === "flipit" ? <Suspense fallback={null}><FlipItView /></Suspense>
+    : whichApp === "yard" ? <Suspense fallback={null}><YardView /></Suspense>
+    : <App />}
+  </ErrorBoundary>
 );

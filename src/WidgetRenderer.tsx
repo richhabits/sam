@@ -1,5 +1,6 @@
 import React from "react";
 import { renderMarkdown } from "./lib/md";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 // ── WIDGET COMPONENTS ──
 
@@ -78,18 +79,22 @@ const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: 
 
     try {
       const w = JSON.parse(widgetJson);
+      // Each widget is wrapped so a render error in one (a chart with no `series`, a followup
+      // with no `questions`) shows an inline fallback instead of crashing the whole chat.
       if (w.type === "chart") {
-        out.push(<ChartWidget key={`w${i}`} data={w} />);
+        out.push(<ErrorBoundary key={`w${i}`} label="chart widget"><ChartWidget data={w} /></ErrorBoundary>);
       } else if (w.type === "kanban") {
-        out.push(<KanbanWidget key={`w${i}`} data={w} />);
+        out.push(<ErrorBoundary key={`w${i}`} label="kanban widget"><KanbanWidget data={w} /></ErrorBoundary>);
       } else if (w.type === "followup" && onFollowUp) {
         out.push(
-          <div key={`w${i}`} className="widget-followup">
-            {w.questions.map((q: string, j: number) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
-              <button type="button" key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
-            ))}
-          </div>
+          <ErrorBoundary key={`w${i}`} label="followup widget">
+            <div className="widget-followup">
+              {(w.questions ?? []).map((q: string, j: number) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: render-only widget from model output; order is stable
+                <button type="button" key={j} className="wf-chip" onClick={() => onFollowUp(q)}>{q}</button>
+              ))}
+            </div>
+          </ErrorBoundary>
         );
       } else {
         out.push(<div key={`w${i}`} className="widget-error">Unknown widget type: {w.type}</div>);

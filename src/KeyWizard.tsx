@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useEscape } from "./lib/useOverlay";
 
 // ⚡ Power up SAM — 60-second free-key wizard. Each provider: deep-link to its key page, paste field,
@@ -29,8 +29,20 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
   }, []);
   const online = Object.values(status).filter((s) => s === "ok").length;
 
-  async function validate(id: string, key: string) {
+  // AUDIT FIX: validating on every keystroke fired two live network calls per character (and
+  // POSTed half-typed keys). The visible value updates instantly; the network validation is
+  // debounced so it runs once the user pauses, on the whole key.
+  const debounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  function onKeyChange(id: string, key: string) {
     setKeys((k) => ({ ...k, [id]: key }));
+    const v = key.trim();
+    if (debounce.current[id]) clearTimeout(debounce.current[id]);
+    if (!v) { setStatus((s) => ({ ...s, [id]: "idle" })); return; }
+    setStatus((s) => ({ ...s, [id]: "checking" }));
+    debounce.current[id] = setTimeout(() => validate(id, key), 600);
+  }
+
+  async function validate(id: string, key: string) {
     const v = key.trim();
     if (!v) { setStatus((s) => ({ ...s, [id]: "idle" })); return; }
     setStatus((s) => ({ ...s, [id]: "checking" }));
@@ -75,7 +87,7 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
 
         {clip && (
           <div className="wiz-clip">📋 Spotted a <b>{PROVIDERS.find((p) => p.id === clip.id)?.label}</b> key on your clipboard —{" "}
-            <button type="button" className="wiz-add" onClick={() => { validate(clip.id, clip.key); setClip(null); }}>add it</button>
+            <button type="button" className="wiz-add" onClick={() => { setKeys((k) => ({ ...k, [clip.id]: clip.key })); validate(clip.id, clip.key); setClip(null); }}>add it</button>
             <button type="button" className="wiz-x" onClick={() => setClip(null)}>dismiss</button>
           </div>
         )}
@@ -91,7 +103,7 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
                 </div>
                 <div className="wiz-note">{p.note}</div>
                 <div className="wiz-inp">
-                  <input type="password" placeholder={st === "ok" ? "pooled ✓" : "paste your key here"} value={keys[p.id] || ""} onChange={(e) => validate(p.id, e.target.value)} />
+                  <input type="password" placeholder={st === "ok" ? "pooled ✓" : "paste your key here"} value={keys[p.id] || ""} onChange={(e) => onKeyChange(p.id, e.target.value)} />
                   <span className={"wiz-tick " + st}>{st === "checking" ? "…" : st === "ok" ? "✓" : st === "bad" ? "✗ invalid" : ""}</span>
                 </div>
               </div>
