@@ -14,11 +14,17 @@ id = "REPLACE_WITH_KV_ID"
 [vars]
 UPSTREAM_URL = "https://api.groq.com/openai/v1"          # any OpenAI-compatible base
 MODEL_WHITELIST = "llama-3.1-8b-instant,gemma2-9b-it"    # cheap models only
-PER_DEVICE_DAILY = "15"                                  # small per-device daily allowance for the beta
+PER_DEVICE_DAILY = "15"                                  # small per-device allowance (device id is client-supplied; PER_IP is the real backstop)
+PER_IP_DAILY = "200"                                     # per-source-IP daily cap — bounds an actor who rotates device ids
 GLOBAL_DAILY = "3000"                                    # conservative global/day
-SPEND_CEILING_CALLS = "60000"                            # ~ maps to a ~$25/mo ceiling at cheap-model rates
+SPEND_CEILING_CALLS = "60000"                            # call-count ceiling; input is also bounded by MAX_INPUT_CHARS
+MAX_INPUT_CHARS = "24000"                                # reject oversized prompts (~6k tokens) so call caps bound token cost
 PAUSED = "0"                                             # set "1" to instantly pause the whole gateway
-ALLOW_ORIGIN = "*"
+ALLOW_ORIGIN = "*"                                       # CORS only — NOT auth (any non-browser client ignores it); the IP cap is the control
+
+# NOTE (audit): the daily/global/spend caps use KV get-then-put, which is not atomic, so a concurrent
+# burst can race them. The per-IP cap bounds the blast radius on the free plan. For TRUE atomic caps,
+# move check-and-reserve into a Durable Object (Workers Paid) — a deliberate operator upgrade.
 
 # Set the pooled keys as a SECRET (never committed):
 #   npx wrangler secret put PROVIDER_KEYS      # paste: key1,key2,key3
