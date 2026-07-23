@@ -98,6 +98,21 @@ describe("editing a project", () => {
     expect(existsSync(join(base, "projects", "escaped.txt"))).toBe(false);
   });
 
+  // AUDIT FIX: a proposal mixing a good edit with one that escapes confinement must leave
+  // the project EXACTLY as it was — the whole batch is pre-flighted before the first write,
+  // so a bad path in the middle can no longer half-apply.
+  it("writes NONE of a batch when any path escapes the project (no half-edit)", async () => {
+    proposal.text = JSON.stringify({ files: [
+      { path: "index.html", content: "<h1>after</h1>" },       // legitimate
+      { path: "../escaped.html", content: "pwned" },           // escapes — fails the batch
+    ] });
+    await expect(withHandshake(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "x" }) as any)))
+      .rejects.toThrow(/outside the project/);
+    // the legitimate file was NOT written — the batch was rejected as a whole
+    expect(readFileSync(join(projectPath("hello-site"), "index.html"), "utf8")).toBe("<h1>before</h1>");
+    expect(existsSync(join(base, "projects", "escaped.html"))).toBe(false);
+  });
+
   it("refuses to edit something that is not a managed project", async () => {
     proposal.text = JSON.stringify({ files: [] });
     await expect(withHandshake(() => HANDLERS["project.edit"](ctx({ slug: "nope", what: "x" }) as any)))
@@ -107,6 +122,13 @@ describe("editing a project", () => {
   it("refuses an edit that does not say what to change", async () => {
     await expect(withHandshake(() => HANDLERS["project.edit"](ctx({ slug: "hello-site", what: "" }) as any)))
       .rejects.toThrow(/what to change/);
+  });
+
+  // AUDIT FIX: a `run` job with an explicit root must stay inside the yard's projects tree.
+  // Before, an arbitrary root let a job operate anywhere the deny-list did not happen to name.
+  it("refuses a run job whose explicit root is outside the yard's projects tree", async () => {
+    await expect(withHandshake(() => HANDLERS.run(ctx({ root: "/tmp", steps: [["node", "--version"]] }) as any)))
+      .rejects.toThrow(/inside the yard|managed project/);
   });
 });
 

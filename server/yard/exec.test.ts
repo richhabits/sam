@@ -23,6 +23,16 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }); rmSync(outside
 
 const ok = { handshake: true };
 
+// The yard now refuses `node -e` (inline eval is an escape hatch past the deny list), so
+// tests that need to observe REAL runtime behaviour write a script FILE into the project
+// and run that — exactly the shape a genuine job takes.
+let probeN = 0;
+function jsStep(code: string): string {
+  const name = `._probe${probeN++}.js`;
+  writeFileSync(join(root, name), code);
+  return name;
+}
+
 describe("the gate in front of everything", () => {
   // Authorisation lives at the route that CREATES a job — every yard route demands the
   // passkey unconditionally. What the executor checks is simply that the yard is on.
@@ -187,6 +197,39 @@ describe("what an argument counts as a path", () => {
     expect(looksLikePath("~/.ssh")).toBe(true);
     expect(looksLikePath("..")).toBe(true);
   });
+
+  // AUDIT FIX: a path hidden in the VALUE half of a `--flag=VALUE` pair used to slip past,
+  // because looksLikePath skips anything starting with '-'. The deny-list must still see it.
+  it("checks a path smuggled inside a --flag=VALUE pair (was a confinement hole)", () => {
+    // --prefix=<the SAM source tree> would make npm write node_modules into a deny-listed dir.
+    const r = planExec(root, "npm", ["install", `--prefix=${join(homedir(), "sam")}`, "left-pad"], ok);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rule).toBe("deny");
+  });
+  it("refuses a --flag=VALUE that escapes the project even when not deny-listed", () => {
+    const r = planExec(root, "npm", ["install", `--prefix=${outside}`], ok);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rule).toBe("confinement");
+  });
+  it("still allows an in-project --flag=VALUE path", () => {
+    expect(planExec(root, "npm", ["install", `--prefix=${join(root, "sub")}`], ok).ok).toBe(true);
+  });
+});
+
+describe("interpreters cannot be handed inline code", () => {
+  // AUDIT FIX (HIGH): `node -e "<js>"` runs arbitrary JavaScript with the process's full
+  // filesystem/network reach — straight past a deny-list that only inspects argv PATHS.
+  it("refuses node -e / --eval / -p / --print / stdin", () => {
+    for (const a of ["-e", "--eval", "-p", "--print", "-"]) {
+      const r = planExec(root, "node", [a, "require('child_process').execSync('id')"], ok);
+      expect(r.ok, a).toBe(false);
+      if (!r.ok) expect(r.rule).toBe("command");
+    }
+    expect(planExec(root, "node", ["--eval=1+1"], ok).ok).toBe(false);
+  });
+  it("still allows node to run an in-project script file", () => {
+    expect(planExec(root, "node", ["build.js"], ok).ok).toBe(true);
+  });
 });
 
 describe("the child's environment", () => {
@@ -242,7 +285,7 @@ describe("actually running something", () => {
   });
 
   it("gives back a non-zero exit as a result, not an exception", async () => {
-    const r = await execInProject(root, "node", ["-e", "process.exit(3)"], { handshake: true });
+    const r = await execInProject(root, "node", [jsStep("process.exit(3)")], { handshake: true });
     expect(r.code).toBe(3);
   });
 
@@ -254,7 +297,7 @@ describe("actually running something", () => {
   it("proves at runtime that a child cannot see the vault", async () => {
     process.env.GROQ_API_KEY = "gsk_runtime_leak_canary";
     try {
-      const r = await execInProject(root, "node", ["-e", "console.log(JSON.stringify(process.env))"], { handshake: true });
+      const r = await execInProject(root, "node", [jsStep("console.log(JSON.stringify(process.env))")], { handshake: true });
       expect(r.code).toBe(0);
       expect(r.stdout).not.toMatch(/gsk_runtime_leak_canary/);
       expect(r.stdout).not.toMatch(/GROQ_API_KEY/);
@@ -307,14 +350,14 @@ describe("writing a file the yard decided on", () => {
 describe("the limits that were set but never exercised", () => {
   it("stops a command that runs too long, rather than holding the worker for ever", async () => {
     const started = Date.now();
-    const r = await execInProject(root, "node", ["-e", "setTimeout(()=>{}, 60000)"], { handshake: true, timeoutMs: 1500 });
+    const r = await execInProject(root, "node", [jsStep("setTimeout(()=>{}, 60000)")], { handshake: true, timeoutMs: 1500 });
     expect(Date.now() - started).toBeLessThan(15_000);   // it did NOT wait the full minute
     expect(r.code).not.toBe(0);                          // and it is reported as a failure
   });
 
   it("caps runaway output instead of taking the process down with it", async () => {
     // ~4MB, well past the 512KB cap: the danger is an out-of-memory, not a big string
-    const r = await execInProject(root, "node", ["-e", "process.stdout.write('x'.repeat(4*1024*1024))"], { handshake: true });
+    const r = await execInProject(root, "node", [jsStep("process.stdout.write('x'.repeat(4*1024*1024))")], { handshake: true });
     expect(r.stdout.length).toBeLessThanOrEqual(512 * 1024);
     expect(r.truncated).toBe(true);                      // and it SAYS it was cut, never silently
   });
@@ -335,7 +378,7 @@ describe("the deploy credential is scoped to deploy work only", () => {
   it("an ordinary job cannot see it, even though the parent process can", async () => {
     process.env.VERCEL_TOKEN = CANARY;
     try {
-      const r = await execInProject(root, "node", ["-e", "console.log(JSON.stringify(process.env))"], { handshake: true });
+      const r = await execInProject(root, "node", [jsStep("console.log(JSON.stringify(process.env))")], { handshake: true });
       expect(r.stdout).not.toContain(CANARY);
       expect(r.stdout).not.toContain("VERCEL_TOKEN");
     } finally { delete process.env.VERCEL_TOKEN; }
@@ -352,7 +395,7 @@ describe("the deploy credential is scoped to deploy work only", () => {
   it("reaches a deploy job ONLY because that job passes it explicitly", async () => {
     // NB: written without shell punctuation, because the executor refuses arguments
     // carrying it — as this test found out the first time it was written.
-    const r = await execInProject(root, "node", ["-e", "console.log(String(process.env.VERCEL_TOKEN))"], {
+    const r = await execInProject(root, "node", [jsStep("console.log(String(process.env.VERCEL_TOKEN))")], {
       handshake: true, env: { VERCEL_TOKEN: CANARY },
     });
     expect(r.stdout.trim()).toBe(CANARY);   // the deploy path, and only it, gets the token

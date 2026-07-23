@@ -17,10 +17,10 @@ import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unl
 import { join } from "node:path";
 import { JobStore, yardDir } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
-import { execInProject, writeInProject } from "./exec.ts";
+import { execInProject, writeInProject, resolveProjectWrite, isWithin } from "./exec.ts";
 import { scrub } from "../scrub.ts";
 import { runModel } from "../models.ts";
-import { createProject, checkpoint, restore, projectPath, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
+import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 import { applyEdits } from "./edits.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
@@ -148,6 +148,12 @@ HANDLERS.run = async (ctx) => {
   const root = slug ? projectPath(slug) : String(ctx.payload?.root || "");
   const steps: any[] = Array.isArray(ctx.payload?.steps) ? ctx.payload.steps : [];
   if (!root) throw Object.assign(new Error("a run job needs a project root or a slug"), { kind: "permanent" as FailureKind });
+  // An explicit root (the no-slug form) must still live inside the yard's own projects
+  // tree. A run job is not a licence to operate anywhere on disk the deny-list happens not
+  // to name — confinement starts at the project, not at the crown-jewel blacklist.
+  if (!slug && !isWithin(projectsRoot(), root)) {
+    throw Object.assign(new Error("a run job's root must be a managed project inside the yard"), { kind: "permanent" as FailureKind });
+  }
   if (!steps.length) throw Object.assign(new Error("a run job needs at least one step"), { kind: "permanent" as FailureKind });
 
   let last = "";
@@ -365,7 +371,11 @@ HANDLERS["project.edit"] = async (ctx) => {
 
   // Every path is checked before ANY of them is written, so a bad one cannot leave the
   // project half-edited. Refusals throw, which fails the job with the reason intact.
+  // admissible() vets path membership/editability but NOT filesystem confinement (symlink
+  // resolution, the deny-list, .git), so the full resolution is pre-flighted here across
+  // the whole batch before the first byte lands.
   const targets = allowed.slice(0, MAX_FILES);
+  for (const f of targets) resolveProjectWrite(dir, f.path);
   for (const f of targets) writeInProject(dir, f.path, f.content);
   ctx.log(`wrote ${targets.map((f) => f.path).join(", ")}`);
 

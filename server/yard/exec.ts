@@ -110,12 +110,50 @@ export function hitsDenyList(target: string): string | null {
   return null;
 }
 
+// Does a bare VALUE (no leading-flag exemption) look like a path? Used for the value half
+// of a `--flag=VALUE` pair, where the value is a path even though the whole argument began
+// with '-'.
+function looksLikePathValue(v: string): boolean {
+  if (!v) return false;
+  return isAbsolute(v) || v.startsWith("~") || v.includes("/") || v.includes("\\") || v === "..";
+}
+
 // An argument is treated as a path if it looks like one at all. False positives are
 // harmless here — a flag that happens to contain a slash simply gets checked — whereas
 // a false negative is a hole.
 export function looksLikePath(arg: string): boolean {
   if (!arg || arg.startsWith("-")) return false;
-  return isAbsolute(arg) || arg.startsWith("~") || arg.includes("/") || arg.includes("\\") || arg === "..";
+  return looksLikePathValue(arg);
+}
+
+// Every path-shaped value an argument carries, so the deny-list / confinement checks see
+// ALL of them. looksLikePath alone skips anything starting with '-', which meant a path
+// hidden in a `--flag=VALUE` pair (`--prefix=/abs`, `--git-dir=/x`, `--output=/x`) slipped
+// past unchecked — a job could write into the deny-listed SAM tree with `npm install
+// --prefix=/…/sam`. Now the value half of such a pair is extracted and checked too. The
+// space-separated form (`--prefix /abs`) is already covered: the value is its own argv
+// element and looksLikePath catches it.
+export function pathArguments(arg: string): string[] {
+  const out: string[] = [];
+  if (looksLikePath(arg)) out.push(arg);
+  const eq = arg.match(/^--?[A-Za-z0-9][\w-]*=(.+)$/);
+  if (eq && looksLikePathValue(eq[1])) out.push(eq[1]);
+  return out;
+}
+
+// An interpreter cannot be confined by inspecting its arguments. `node -e "<js>"`,
+// `node -p`, or a script read from stdin runs arbitrary JavaScript that reads and writes
+// anywhere the process can — straight past the deny list, which only ever sees argv PATHS.
+// So the inline-evaluation forms are refused outright at plan time. (Running a project's
+// own committed .js still executes model-authored code with the process's privileges; that
+// residual needs an OS-level sandbox around runPlanned and is tracked separately. This
+// closes the direct-eval hole, which is the demonstrated escape.)
+export function refusedInterpreterFlag(command: string, args: string[]): string | null {
+  if (command !== "node") return null;
+  for (const a of args) {
+    if (/^(-e|--eval|-p|--print|-)$/.test(a) || a.startsWith("--eval=") || a.startsWith("--print=") || a.startsWith("-e=")) return a;
+  }
+  return null;
 }
 
 // The whole decision, as a pure function: given a project root and a request, either a
@@ -145,6 +183,10 @@ export function planExec(
   if (sneaky !== undefined) {
     return { ok: false, rule: "shape", reason: `refused an argument carrying shell punctuation: ${sneaky.slice(0, 60)}` };
   }
+  const evalFlag = refusedInterpreterFlag(command, args);
+  if (evalFlag !== undefined && evalFlag !== null) {
+    return { ok: false, rule: "command", reason: `refused "${command} ${evalFlag}" — the yard will not evaluate inline code` };
+  }
 
   const root = trueLocation(projectRoot);
   const cwd = trueLocation(opts.cwd ? (isAbsolute(opts.cwd) ? opts.cwd : join(projectRoot, opts.cwd)) : projectRoot);
@@ -158,12 +200,13 @@ export function planExec(
   if (deniedCwd) return { ok: false, rule: "deny", reason: `the yard will never work inside ${deniedCwd}` };
 
   for (const arg of args) {
-    if (!looksLikePath(arg)) continue;
-    const expanded = arg.startsWith("~") ? join(os.homedir(), arg.slice(1)) : (isAbsolute(arg) ? arg : join(cwd, arg));
-    const denied = hitsDenyList(expanded);
-    if (denied) return { ok: false, rule: "deny", reason: `refused "${arg}" — it reaches into ${denied}` };
-    if (!isWithin(root, expanded)) {
-      return { ok: false, rule: "confinement", reason: `refused "${arg}" — it resolves to ${trueLocation(expanded)}, outside the project` };
+    for (const cand of pathArguments(arg)) {
+      const expanded = cand.startsWith("~") ? join(os.homedir(), cand.slice(1)) : (isAbsolute(cand) ? cand : join(cwd, cand));
+      const denied = hitsDenyList(expanded);
+      if (denied) return { ok: false, rule: "deny", reason: `refused "${arg}" — it reaches into ${denied}` };
+      if (!isWithin(root, expanded)) {
+        return { ok: false, rule: "confinement", reason: `refused "${arg}" — it resolves to ${trueLocation(expanded)}, outside the project` };
+      }
     }
   }
 
@@ -311,7 +354,12 @@ export class ExecRefused extends Error {
 // deny-list checks as a command argument, because a file path chosen by a model deserves
 // exactly as much suspicion as a command chosen by one — and a write that lands outside
 // the project is the more damaging of the two.
-export function writeInProject(projectRoot: string, relPath: string, content: string): string {
+// Resolve where a project write would REALLY land, applying the same resolution and
+// deny-list checks as a command argument, and throw if it is not allowed — WITHOUT writing
+// anything. Split out from the write so a batch of edits can be validated in full before
+// the first byte is committed: a bad path in the middle must not leave the project
+// half-edited (the check used to live inside the write, so it fired mid-loop).
+export function resolveProjectWrite(projectRoot: string, relPath: string): string {
   const root = trueLocation(projectRoot);
   const raw = String(relPath || "").trim();
   if (!raw) throw new ExecRefused("shape", "no file path given");
@@ -326,7 +374,11 @@ export function writeInProject(projectRoot: string, relPath: string, content: st
   if (target === join(root, ".git") || target.startsWith(join(root, ".git") + sep)) {
     throw new ExecRefused("deny", `refused "${raw}" — the project's git directory is not writable`);
   }
+  return target;
+}
 
+export function writeInProject(projectRoot: string, relPath: string, content: string): string {
+  const target = resolveProjectWrite(projectRoot, relPath);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, String(content ?? ""));
   return target;
