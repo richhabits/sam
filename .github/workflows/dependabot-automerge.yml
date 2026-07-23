@@ -1,6 +1,9 @@
 name: Dependabot auto-merge
-# Patch + minor Dependabot PRs that PASS full CI auto-merge themselves — dependencies stay current
-# without the maintainer clicking. Major bumps are left for a human (they can break things).
+# Dependabot PRs that PASS full CI auto-merge themselves — dependencies stay current without the
+# maintainer clicking. AUDIT HARDENING: a runtime (production) MINOR bump ships new code that runs
+# in prod, so a malicious minor release would land unreviewed. So auto-merge covers: any PATCH, and
+# MINOR only for dev-dependencies / GitHub Actions (not direct:production). Production minor + all
+# major bumps wait for a human.
 on: pull_request_target
 permissions:
   contents: write
@@ -15,8 +18,11 @@ jobs:
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge for patch + minor (merges once required checks pass)
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+      - name: Enable auto-merge (patch always; minor only for non-production deps; merges once checks pass)
+        if: >
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          (steps.meta.outputs.update-type == 'version-update:semver-minor' &&
+           steps.meta.outputs.dependency-type != 'direct:production')
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}

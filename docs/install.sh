@@ -109,7 +109,16 @@ if [ "$PLATFORM" = "mac" ]; then
   APP="$(find "$MNT" -maxdepth 1 -name '*.app' | head -1)"
   rm -rf "/Applications/SAM.app" 2>/dev/null || true
   cp -R "$APP" /Applications/ || { hdiutil detach "$MNT" -quiet || true; die "Couldn't write to /Applications." "Grant permission, or drag SAM.app from the mounted disk manually."; }
-  xattr -dr com.apple.quarantine "/Applications/SAM.app" 2>/dev/null || true   # unsigned build → skip Gatekeeper
+  # AUDIT FIX: the app is notarized, so let Gatekeeper VERIFY it rather than blanket-stripping
+  # quarantine (which disabled the very check that protects the user, for everyone). Only if
+  # Gatekeeper rejects the app — a genuinely unsigned/dev build, or an offline machine that can't
+  # confirm notarization — do we clear quarantine so it will still launch, and we say so.
+  if spctl --assess --type execute "/Applications/SAM.app" >/dev/null 2>&1; then
+    ok "Gatekeeper verified (notarized)"
+  else
+    say "  ${DIM}(Gatekeeper couldn't verify this build — clearing quarantine so it will launch)${RESET}"
+    xattr -dr com.apple.quarantine "/Applications/SAM.app" 2>/dev/null || true
+  fi
   hdiutil detach "$MNT" -quiet || true
   ok "Installed SAM.app"
   if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; open -a "/Applications/SAM.app" || true; fi
