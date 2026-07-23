@@ -12,6 +12,7 @@
 
 import { generateKeyPairSync, sign as edSign, verify as edVerify, createPublicKey, createPrivateKey } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { scanCode, testForged, listForged, type Capability, type ForgedTool } from "./forge.ts";
@@ -54,7 +55,8 @@ function loadKeys(): { publicKey: string; privateKey: string } {
     publicKey: publicKey.export({ type: "spki", format: "der" }).toString("base64"),
     privateKey: privateKey.export({ type: "pkcs8", format: "der" }).toString("base64"),
   };
-  try { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(KEYFILE, JSON.stringify(keys)); } catch { /* ephemeral */ }
+  // AUDIT FIX: atomic + 0600 — KEYFILE holds the Ed25519 pack-signing PRIVATE key.
+  try { writeFileAtomic(KEYFILE, JSON.stringify(keys), { mode: 0o600 }); } catch { /* ephemeral */ }
   return keys;
 }
 

@@ -151,7 +151,13 @@ export function pathArguments(arg: string): string[] {
 export function refusedInterpreterFlag(command: string, args: string[]): string | null {
   if (command !== "node") return null;
   for (const a of args) {
-    if (/^(-e|--eval|-p|--print|-)$/.test(a) || a.startsWith("--eval=") || a.startsWith("--print=") || a.startsWith("-e=")) return a;
+    // Long forms and stdin.
+    if (a === "-" || a === "--eval" || a === "--print" || a.startsWith("--eval=") || a.startsWith("--print=")) return a;
+    // AUDIT FIX: node BUNDLES single-char flags — `-pe`, `-ep`, `-e`, `-p`, `-e=…` all evaluate inline
+    // JS. The old exact-token test missed the clustered forms (`node -pe "<js>"` ran). Refuse any
+    // single-dash cluster containing e or p (the eval/print flags); `--` long options are handled above.
+    const m = a.match(/^-([a-zA-Z]+)(=|$)/);
+    if (m && /[ep]/.test(m[1])) return a;
   }
   return null;
 }

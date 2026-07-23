@@ -83,7 +83,11 @@ export function writeEnv(key: string, value: string) {
     value = value.replace(/[\r\n]/g, " "); // one value = one line — no .env line injection
     const line = `${key}=${value}`;
     const re = new RegExp(`^${key}=.*$`, "m");
-    txt = re.test(txt) ? txt.replace(re, line) : txt.replace(/\n?$/, "\n") + line + "\n";
+    // AUDIT FIX: use a replacer FUNCTION, not a replacement string. A secret value containing `$`
+    // (e.g. `p$&ss`, `pa$1`) passed as String.replace's replacement string gets `$&`/`$1`/`` $` ``
+    // INTERPRETED, silently corrupting the stored credential (SAM's #1 silent-corruption class). A
+    // function's return value is inserted verbatim, so `$` is literal.
+    txt = re.test(txt) ? txt.replace(re, () => line) : txt.replace(/\n?$/, "\n") + line + "\n";
     writeFileAtomic(ENV_PATH, txt, { mode: 0o600 });   // 0600 — this file holds provider keys
     process.env[key] = value; // apply live
   });

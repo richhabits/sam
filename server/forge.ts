@@ -120,12 +120,16 @@ const { readFileSync, writeFileSync, mkdirSync, existsSync } = require("node:fs"
 const { join, basename } = require("node:path");
 const dns = require("node:dns").promises;
 const net = require("node:net");
+const http = require("node:http");
+const https = require("node:https");
 const NET_MAX = ${NET_MAX_BYTES};
 const safeName = (p) => (basename(String(p || "")).replace(/[^a-z0-9_.-]/gi, "_")) || "file";
 // AUDIT FIX: sam.fetch had no SSRF guard, so forged code could reach localhost, the LAN, or
 // the cloud-metadata endpoint (169.254.169.254). A resolved IP is checked against private,
-// loopback, link-local and unique-local ranges; redirects are refused so a public URL can't
-// 302 to a private one after the check. Kept inline because the Cell is a self-contained child.
+// loopback, link-local and unique-local ranges. AUDIT FIX #2: the connection is PINNED to the
+// validated IP (we request against that address directly), so there is no second DNS resolution
+// for a rebinding attack to win — the original hostname is preserved for TLS SNI + the Host header.
+// Redirects are refused. Kept inline because the Cell is a self-contained child (no undici require).
 const isPrivateIp = (ip) => {
   const v = net.isIP(ip);
   if (v === 4) {
@@ -137,11 +141,14 @@ const isPrivateIp = (ip) => {
   if (v === 6) { const l = ip.toLowerCase(); return l === "::1" || l === "::" || l.startsWith("fc") || l.startsWith("fd") || l.startsWith("fe80") || l.startsWith("::ffff:"); }
   return true;   // unparseable → refuse
 };
+// Validate the host AND return the exact IP to connect to — so the socket goes to the address we
+// checked, not one a re-resolution might return (DNS rebinding).
 const guardHost = async (host) => {
-  if (net.isIP(host)) { if (isPrivateIp(host)) throw new Error("sam.fetch: refused a private/loopback address"); return; }
+  if (net.isIP(host)) { if (isPrivateIp(host)) throw new Error("sam.fetch: refused a private/loopback address"); return host; }
   if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) throw new Error("sam.fetch: refused a local hostname");
   const rec = await dns.lookup(host, { all: true });
   for (const a of rec) if (isPrivateIp(a.address)) throw new Error("sam.fetch: host resolves to a private address");
+  return rec[0].address;
 };
 let raw = ""; process.stdin.setEncoding("utf8");
 process.stdin.on("data", (d) => { raw += d; });
@@ -151,12 +158,31 @@ process.stdin.on("end", async () => {
     const { code, input, caps, dir } = JSON.parse(raw);
     const sam = {};
     if (caps.includes("net")) sam.fetch = async (url) => {
-      if (!/^https?:\\/\\//i.test(String(url))) throw new Error("sam.fetch: only http(s) URLs");
-      await guardHost(new URL(String(url)).hostname.replace(/^\\[|\\]$/g, ""));
-      const r = await fetch(String(url), { signal: AbortSignal.timeout(10000), redirect: "error" });
-      const buf = await r.arrayBuffer();
-      if (buf.byteLength > NET_MAX) throw new Error("sam.fetch: response too large");
-      return new TextDecoder().decode(buf);
+      const u = new URL(String(url));
+      if (!/^https?:$/.test(u.protocol)) throw new Error("sam.fetch: only http(s) URLs");
+      const host = u.hostname.replace(/^\\[|\\]$/g, "");
+      const ip = await guardHost(host);   // the guard-approved address we will actually connect to
+      const mod = u.protocol === "https:" ? https : http;
+      return await new Promise((resolve, reject) => {
+        const rq = mod.request({
+          host: ip,                                            // PIN the socket to the validated IP
+          servername: net.isIP(host) ? undefined : host,       // TLS SNI = the real hostname
+          port: u.port || (u.protocol === "https:" ? 443 : 80),
+          path: (u.pathname || "/") + (u.search || ""),
+          method: "GET",
+          headers: { Host: u.host },                           // Host header = the real hostname
+          timeout: 10000,
+        }, (r) => {
+          if (r.statusCode >= 300 && r.statusCode < 400) { r.destroy(); return reject(new Error("sam.fetch: refused a redirect")); }
+          const chunks = []; let total = 0;
+          r.on("data", (d) => { total += d.length; if (total > NET_MAX) { r.destroy(); reject(new Error("sam.fetch: response too large")); } else chunks.push(d); });
+          r.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+          r.on("error", reject);
+        });
+        rq.on("timeout", () => rq.destroy(new Error("sam.fetch: timeout")));
+        rq.on("error", reject);
+        rq.end();
+      });
     };
     if (caps.includes("fs:read")) sam.readFile = async (f) => { try { return readFileSync(join(dir, safeName(f)), "utf8"); } catch { return ""; } };
     if (caps.includes("fs:write")) sam.writeFile = async (f, c) => { if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, safeName(f)), String(c == null ? "" : c).slice(0, NET_MAX)); return "ok"; };

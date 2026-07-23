@@ -227,6 +227,18 @@ describe("interpreters cannot be handed inline code", () => {
     }
     expect(planExec(root, "node", ["--eval=1+1"], ok).ok).toBe(false);
   });
+
+  // AUDIT FIX: node BUNDLES single-char flags — `node -pe "<js>"` and `-ep`/`-e=` all evaluate inline
+  // JS. The first guard matched only the exact split tokens and missed these clusters.
+  it("refuses node's COMBINED short-flag eval forms (-pe, -ep, -e=…)", () => {
+    for (const a of ["-pe", "-ep", "-e=1+1", "-pe"]) {
+      const r = planExec(root, "node", [a, "require('fs').writeFileSync('/tmp/evil','x')"], ok);
+      expect(r.ok, a).toBe(false);
+      if (!r.ok) expect(r.rule).toBe("command");
+    }
+    // a benign cluster with no e/p is still fine (e.g. version/interactive are separate)
+    expect(planExec(root, "node", ["build.js"], ok).ok).toBe(true);
+  });
   it("still allows node to run an in-project script file", () => {
     expect(planExec(root, "node", ["build.js"], ok).ok).toBe(true);
   });

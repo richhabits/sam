@@ -6,7 +6,8 @@
 //  (local, gitignored). No third party — SAM pushes direct.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import webpush from "web-push";
@@ -18,11 +19,14 @@ const SUBS = join(VAULT, "push-subs.json");
 type Sub = { endpoint: string; keys: { p256dh: string; auth: string } };
 
 function load<T>(p: string, fallback: T): T { try { return existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : fallback; } catch { return fallback; } }
-function saveJson(p: string, v: unknown) { try { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(v)); } catch { /* ignore */ } }
+// AUDIT FIX: atomic (temp+rename, no truncation on crash) + optional 0600. push-keys.json holds the
+// VAPID PRIVATE key — a crash mid-write would corrupt it and invalidate every subscription, and it
+// must not be world-readable.
+function saveJson(p: string, v: unknown, mode?: number) { try { writeFileAtomic(p, JSON.stringify(v), mode !== undefined ? { mode } : {}); } catch { /* ignore */ } }
 
 // Generate the VAPID keypair once, reuse forever (so existing subscriptions stay valid).
 let keys = load<{ publicKey: string; privateKey: string } | null>(KEYS, null);
-if (!keys?.publicKey) { keys = webpush.generateVAPIDKeys(); saveJson(KEYS, keys); }
+if (!keys?.publicKey) { keys = webpush.generateVAPIDKeys(); saveJson(KEYS, keys, 0o600); }
 webpush.setVapidDetails("mailto:sam@localhost", keys!.publicKey, keys!.privateKey);
 
 export function vapidPublicKey(): string { return keys!.publicKey; }
