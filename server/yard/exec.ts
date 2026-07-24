@@ -312,7 +312,9 @@ export function childEnv(projectRoot: string, injected: Record<string, string> =
   // smuggle in something like LD_PRELOAD or NODE_OPTIONS.
   for (const [k, v] of Object.entries(injected)) {
     if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(k)) continue;
-    if (["PATH", "HOME", "LD_PRELOAD", "DYLD_INSERT_LIBRARIES", "NODE_OPTIONS"].includes(k)) continue;
+    // AUDIT FIX: also block LD_LIBRARY_PATH / DYLD_LIBRARY_PATH — like LD_PRELOAD, they redirect the
+    // dynamic loader to attacker-controlled shared libraries.
+    if (["PATH", "HOME", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "NODE_OPTIONS"].includes(k)) continue;
     safe[k] = String(v);
   }
   return safe;

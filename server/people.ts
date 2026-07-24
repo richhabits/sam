@@ -7,7 +7,8 @@
 //  your machine; we store a text description, not the photo.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -34,7 +35,7 @@ function load(): Person[] {
 function save(list: Person[]) {
   try {
     mkdirSync(dirname(FILE), { recursive: true });
-    writeFileSync(FILE, JSON.stringify(list, null, 2));
+    writeFileAtomic(FILE, JSON.stringify(list, null, 2));  // AUDIT: atomic
     _cache = list; _mtime = statSync(FILE).mtimeMs;   // keep cache hot after a write
   } catch { /* ignore */ }
 }

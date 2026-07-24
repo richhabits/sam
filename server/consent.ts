@@ -11,7 +11,8 @@
 //  whether SAM speaks up unprompted; the gate decides whether anything actually runs.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,7 +51,7 @@ function load(): State {
   try { cache = existsSync(FILE) ? JSON.parse(readFileSync(FILE, "utf8")) : {}; } catch { cache = {}; }
   return cache!;
 }
-function persist() { try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify(load(), null, 2)); } catch { /* best-effort */ } }
+function persist() { try { writeFileAtomic(FILE, JSON.stringify(load(), null, 2)); } catch { /* best-effort (atomic write) */ } }
 
 // The ONLY gate for surfacing a proactive behavior. Unknown or unset ⇒ false (off by default).
 export function isEnabled(b: Behavior): boolean {

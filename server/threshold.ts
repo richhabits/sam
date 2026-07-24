@@ -11,7 +11,8 @@
 //  Storage is bounded (last KEEP sessions) so it can't grow without limit. Secrets are redacted before
 //  anything is written.
 // ─────────────────────────────────────────────────────────────
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { capture, recentTrail, redact } from "./issues.ts";
@@ -63,7 +64,7 @@ export function crossOut(summary: SessionSummary): Outcome<{ persisted: string; 
   try {
     mkdirSync(dir(), { recursive: true });
     const next = [...readSessions(), summary].slice(-KEEP);
-    writeFileSync(FILE(), `${next.map((s) => JSON.stringify(s)).join("\n")}\n`);
+    writeFileAtomic(FILE(), `${next.map((s) => JSON.stringify(s)).join("\n")}\n`);  // AUDIT: atomic
     return ok({ persisted: FILE(), kept: next.length });
   } catch (e) {
     capture(e, { threshold: "crossOut" });   // LOUD — recorded, never swallowed

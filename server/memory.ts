@@ -6,7 +6,8 @@
 //  Upgraded to SQLite for infinite scale and zero memory bloat.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "./db.ts";
@@ -48,7 +49,7 @@ function adoptLegacy(ns: string) {
     _owner = ns;
     // If this write fails the owner isn't persisted, so the NEXT named user becomes owner on
     // the following boot — a quiet identity change. Log it rather than swallow.
-    try { mkdirSync(dirname(OWNER_FILE), { recursive: true }); writeFileSync(OWNER_FILE, JSON.stringify({ owner: ns })); }
+    try { writeFileAtomic(OWNER_FILE, JSON.stringify({ owner: ns }), { mode: 0o600 }); }   // AUDIT: identity gate — atomic + 0600
     catch (e: any) { console.error("[SAM] memory: FAILED to persist owner —", e?.message || e); }
   }
   if (_adopted || ns !== _owner) return;   // only the owner adopts legacy memories
@@ -128,7 +129,12 @@ export async function remember(text: string, kind = "fact", user?: string): Prom
     id, clean, JSON.stringify(vec), e.model, kind, ts, 0, ns
   );
   index.push({ id, vec: Float32Array.from(vec), ts, user: ns });   // keep the index in sync
-  _pinned = e.model;   // once we've written under a model, pin the vault to it
+  // AUDIT FIX: only ESTABLISH the pin on a fresh vault — never let a single write RE-pin it. If the
+  // pinned model's embedder is transiently down, embedOne falls back to another model; the old code
+  // then re-pinned the whole vault to that fallback, so recall pointed at the (near-empty) fallback
+  // bucket and every prior memory became unreachable until restart. Keeping the established pin means
+  // the one fallback-written memory is briefly unreachable and self-heals; the vault stays intact.
+  if (_pinned == null) _pinned = e.model;
   return true;
 }
 

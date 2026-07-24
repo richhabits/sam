@@ -6,7 +6,8 @@
 //  (works even if the window's closed) + queued for the app.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { execFile } from "node:child_process";
@@ -22,7 +23,7 @@ function load<T>(p: string, fallback: T): T {
   return fallback;
 }
 function save(p: string, data: any) {
-  try { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(data, null, 2)); } catch { /* ignore */ }
+  try { writeFileAtomic(p, JSON.stringify(data, null, 2)); } catch { /* ignore (atomic write) */ }
 }
 
 // ── Nudge store ──

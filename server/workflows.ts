@@ -11,7 +11,8 @@
 //  before a dangerous one run; the dangerous step waits for you.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDangerous } from "./authz.ts";
@@ -76,7 +77,7 @@ export function saveWorkflow(wf: Workflow): { ok: boolean; reason?: string } {
   if (!ID_RE.test(wf.id || "")) return { ok: false, reason: "Bad workflow id." };
   if (!NAME_RE.test(wf.name || "")) return { ok: false, reason: "Bad workflow name." };
   if (!Array.isArray(wf.steps) || !wf.steps.length) return { ok: false, reason: "A workflow needs at least one step." };
-  ensure(); writeFileSync(fileFor(wf.id), JSON.stringify(wf, null, 2));
+  ensure(); writeFileAtomic(fileFor(wf.id), JSON.stringify(wf, null, 2));  // AUDIT: atomic
   return { ok: true };
 }
 export function deleteWorkflow(id: string): boolean { if (!ID_RE.test(id || "")) return false; const f = fileFor(id); if (!existsSync(f)) return false; unlinkSync(f); return true; }

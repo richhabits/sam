@@ -8,7 +8,8 @@
 //  strict whitelist of these aggregates and only sends them if the user explicitly opts in.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,7 +34,7 @@ function read(): Analytics {
   try { if (existsSync(FILE)) return { ...EMPTY, ...JSON.parse(readFileSync(FILE, "utf8")) }; } catch { /* ignore */ }
   return { ...EMPTY };
 }
-function write(a: Analytics) { try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify(a, null, 2)); } catch { /* best-effort */ } }
+function write(a: Analytics) { try { writeFileAtomic(FILE, JSON.stringify(a, null, 2)); } catch { /* best-effort (atomic write) */ } }
 
 // `at` is injected (the caller owns the clock) so this is pure + testable.
 function touch(a: Analytics, at: string): Analytics {

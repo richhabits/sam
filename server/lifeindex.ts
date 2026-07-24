@@ -14,7 +14,8 @@
 //   • EXPLICIT — folders are added by the user; we never scan the whole disk.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, watch, type FSWatcher } from "node:fs";
+import { readFileSync, existsSync, watch, type FSWatcher } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { execFile } from "node:child_process";
@@ -37,7 +38,7 @@ function load(): Store {
   return { folders: [], watching: true };
 }
 function save(s: Store): void {
-  try { if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(STORE, JSON.stringify(s, null, 2)); } catch { /* best-effort */ }
+  try { writeFileAtomic(STORE, JSON.stringify(s, null, 2)); } catch { /* best-effort (atomic write) */ }
 }
 
 export function listFolders(): WatchedFolder[] { return load().folders; }

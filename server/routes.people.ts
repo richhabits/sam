@@ -9,6 +9,7 @@ import { logSecurity } from "./security.ts";
 import { generateAndroidKeystore, signingStatus } from "./signing.ts";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,7 +30,8 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
   // returned by the API. Takes effect on the next restart (MCP servers load at boot).
   const MCP_CONFIG = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault"), "mcp.json");
   function readMcpConfig(): { servers: any[] } { try { const c = JSON.parse(readFileSync(MCP_CONFIG, "utf8")); return { servers: Array.isArray(c?.servers) ? c.servers : [] }; } catch { return { servers: [] }; } }
-  function writeMcpConfig(cfg: { servers: any[] }) { mkdirSync(dirname(MCP_CONFIG), { recursive: true }); writeFileSync(MCP_CONFIG, JSON.stringify(cfg, null, 2)); }
+  // AUDIT: mcp.json holds provider secrets — atomic (crash-safe) + 0600 (not world-readable).
+  function writeMcpConfig(cfg: { servers: any[] }) { writeFileAtomic(MCP_CONFIG, JSON.stringify(cfg, null, 2), { mode: 0o600 }); }
   app.get("/api/mcp/presets", (_req, res) => {
     const configured = new Set(readMcpConfig().servers.map((s: any) => s?.name));
     // never leak env VALUES — only the catalog + which ids are connected

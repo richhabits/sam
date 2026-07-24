@@ -13,7 +13,8 @@
 //  model who you are. If a personalisation can't be done without transmitting the profile, we don't do it.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Tier } from "./models.ts";
@@ -27,7 +28,7 @@ export interface Preference { key: string; value: string; confidence: number; co
 function read(): Preference[] {
   try { return existsSync(FILE) ? JSON.parse(readFileSync(FILE, "utf8")) : []; } catch { return []; }
 }
-function write(list: Preference[]) { try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify(list, null, 2)); } catch { /* best-effort */ } }
+function write(list: Preference[]) { try { writeFileAtomic(FILE, JSON.stringify(list, null, 2)); } catch { /* best-effort (atomic write) */ } }
 
 // Record a durable signal. Same key+value ⇒ confidence climbs (up to 1); a changed value resets it —
 // SAM adapts to your latest habit, not your oldest. `at` is injected so this stays pure + testable.
