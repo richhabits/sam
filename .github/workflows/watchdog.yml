@@ -26,10 +26,9 @@ jobs:
         run: |
           npm run stats
           git diff --exit-code docs/stats.json README.md || { echo "::error::stats drifted"; exit 1; }
-      - name: Gitleaks (full history)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # AUDIT FIX: removed an UNPINNED gitleaks/gitleaks-action@v2 that ran with GITHUB_TOKEN — the
+      # dedicated secret-scan.yml workflow already runs gitleaks over full history with a
+      # checksum-verified binary, so this was redundant third-party-action exposure.
       # On ANY failure above → open (or reuse) a dated alert issue so it's impossible to miss.
       - name: Open an alert issue on failure
         if: failure()

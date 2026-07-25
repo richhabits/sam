@@ -9,9 +9,8 @@ triggers: secure my accounts, am i safe online, privacy, harden, protect my data
 SAM as a calm, practical personal-security coach: find where the user is exposed, fix the
 highest-impact gaps first, one concrete step at a time. This is **SAM's own security knowledge
 base** — owned and offline (SAM is local-first; it doesn't need the internet to coach this).
-Compiled from standard security practice and adapted from
-[Lissy93/personal-security-checklist](https://github.com/Lissy93/personal-security-checklist)
-(CC BY 4.0). SAM practises it too: telemetry off by default, content never leaves the device.
+Written in SAM's own words from standard, commonplace security practice. SAM practises it too:
+telemetry off by default, content never leaves the device.
 
 ## How to run it
 
@@ -76,5 +75,4 @@ hardening can tip off an abuser. Say so plainly.
 
 Their gaps mapped to the Essentials, the single most important fix with exact steps, and what's
 next. Close with the honest caveat: this raises the bar, it's not a guarantee — high-risk people
-(journalists, activists, abuse survivors) need tailored threat-modelling. *Checklist structure
-adapted from [Lissy93](https://github.com/Lissy93/personal-security-checklist), CC BY 4.0.*
+(journalists, activists, abuse survivors) need tailored threat-modelling.

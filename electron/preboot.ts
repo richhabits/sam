@@ -30,8 +30,19 @@ if (!process.env.SAM_REQUIRE_CONTROL_TOKEN) process.env.SAM_REQUIRE_CONTROL_TOKE
 // Surface boot failures — the server boots in this process; without this a startup throw would vanish
 // (Electron swallows main-process errors) and the app would hang with a blank window.
 const _errLog = path.join(os.tmpdir(), "sam-main-error.log");
-process.on("uncaughtException", (e: any) => { try { fs.appendFileSync(_errLog, `[uncaught] ${e?.stack || e}\n`); } catch { /* the crash logger must never itself crash — that would hide the original error */ }; console.error("SAM uncaughtException:", e?.stack || e); });
-process.on("unhandledRejection", (e: any) => { try { fs.appendFileSync(_errLog, `[reject] ${e?.stack || e}\n`); } catch { /* the crash logger must never itself crash — that would hide the original error */ }; console.error("SAM unhandledRejection:", e); });
+// AUDIT FIX: a crash stack can carry the control token or a provider key, and this file sits in the
+// shared temp dir. Redact known-shaped secrets before writing, and keep the file owner-only (0600).
+function _redact(s: string): string {
+  let out = String(s ?? "");
+  if (process.env.SAM_CONTROL_TOKEN) out = out.split(process.env.SAM_CONTROL_TOKEN).join("«token»");
+  return out.replace(/\b(sk-[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|nvapi-[A-Za-z0-9_-]{16,}|vcp_[A-Za-z0-9]{12,})\b/g, "«redacted-key»");
+}
+function _crashLog(line: string) {
+  try { fs.appendFileSync(_errLog, _redact(line), { mode: 0o600 }); try { fs.chmodSync(_errLog, 0o600); } catch { /* best-effort */ } }
+  catch { /* the crash logger must never itself crash — that would hide the original error */ }
+}
+process.on("uncaughtException", (e: any) => { _crashLog(`[uncaught] ${e?.stack || e}\n`); console.error("SAM uncaughtException:", e?.stack || e); });
+process.on("unhandledRejection", (e: any) => { _crashLog(`[reject] ${e?.stack || e}\n`); console.error("SAM unhandledRejection:", e); });
 
 // Packaged app: the .app bundle is READ-ONLY, so the server's data — the vault (memory, notebooks,
 // photos, keys) and the .env it writes config to — must live in a writable per-user directory.

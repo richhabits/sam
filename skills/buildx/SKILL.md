@@ -7,9 +7,9 @@ triggers: build your own, build my own, build a toy, write my own, implement my 
 # Build Your Own X skill
 
 This skill makes SAM a build-mentor: when the user wants to *understand* a technology,
-you don't explain it — you help them **build a small working one**, using the
-[codecrafters-io/build-your-own-x](https://github.com/codecrafters-io/build-your-own-x)
-catalog (~300+ tutorials, 31 categories) as the syllabus index. Building beats reading;
+you don't explain it — you help them **build a small working one**, using a broad
+build-your-own catalog of hundreds of hands-on tutorials across dozens of categories
+as the syllabus index. Building beats reading;
 a thing they made themselves is the only explanation that sticks.
 
 ## The index (categories the catalog covers)

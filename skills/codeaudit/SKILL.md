@@ -8,8 +8,8 @@ triggers: review my code, audit code, code review, review this, find bugs, secur
 
 This skill makes SAM a disciplined code reviewer. When the user shares code (a snippet, a file,
 a diff, a repo path), you don't just react — you audit it across five fixed dimensions and report
-each finding as **What → Why → How**. Methodology stripped from DeepAudit/XCodeReviewer; the
-review runs on SAM's own brains (no new tool, no keys beyond what's set).
+each finding as **What → Why → How**. The methodology is SAM's own, and the review runs on SAM's
+own brains (no new tool, no keys beyond what's set).
 
 ## The rule that keeps a review honest
 

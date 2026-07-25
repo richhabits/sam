@@ -34,8 +34,10 @@ concurrency:
   group: build-desktop-${{ github.ref }}
   cancel-in-progress: false
 
+# AUDIT FIX: least privilege by default — top-level READ so test-gate / install-test can't write.
+# Only the jobs that publish (build, checksums) get contents:write at the job level.
 permissions:
-  contents: write   # attach installers to the release
+  contents: read
 
 jobs:
   # RELEASE GATE — tests + type-check must pass before ANY installer is built or published.
@@ -56,6 +58,8 @@ jobs:
 
   build:
     needs: test-gate   # no installer builds or publishes unless the gate is green
+    permissions:
+      contents: write   # this job attaches installers to the release
     strategy:
       fail-fast: false
       matrix:

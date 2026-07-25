@@ -15,7 +15,9 @@ jobs:
     steps:
       - name: Fetch Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v2
+        # AUDIT FIX: pinned to an immutable SHA (was the moving @v2 tag). This runs in a
+        # pull_request_target job holding contents:write + a token, so a retagged action is a risk.
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a  # v2 (2.x)
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Enable auto-merge (patch always; minor only for non-production deps; merges once checks pass)
