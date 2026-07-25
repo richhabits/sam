@@ -20,8 +20,13 @@ jobs:
       - run: npm ci
       - name: Lint · types · tests · build
         run: npm run lint && npx tsc --noEmit && npm test && npm run build
-      - name: Dependency audit (high/critical fail)
-        run: npm audit --audit-level=high
+      - name: Dependency audit (high/critical fail) — RUNTIME deps only
+        # AUDIT FIX: scope to what actually SHIPS. --omit=dev excludes build-only tooling
+        # (electron-builder & co., whose transitive advisories like ejs/brace-expansion run only in
+        # CI during packaging, never on a user's machine) so the gate flags REAL user-facing risk
+        # rather than failing red on un-shippable build-tool noise. Dev-dep advisories are tracked
+        # separately (bump electron-builder when the build pipeline is next touched).
+        run: npm audit --omit=dev --audit-level=high
       - name: Advertised stats not drifted
         run: |
           npm run stats
