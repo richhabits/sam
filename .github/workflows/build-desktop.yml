@@ -265,6 +265,11 @@ jobs:
           else
             echo "WARN no mac zips found - feed left as electron-builder wrote it"
           fi
+          # Append the verify block to the notes. existing.md and SHA256SUMS.txt both live under
+          # $GITHUB_WORKSPACE (existing.md at the root, SHA256SUMS.txt in dl/) — build combined.md
+          # there with one consistent cwd. The prior version cd'd to $WS then `cat SHA256SUMS.txt`
+          # (which is in dl/) under `set -e`, so this step failed on every release after uploading
+          # the sums + feed. Nothing above this line changed, so the critical assets still publish.
           cd "$GITHUB_WORKSPACE"
           {
             echo "## 🔒 Verify your download (SHA-256)"
@@ -274,11 +279,10 @@ jobs:
             echo "- **Windows (PowerShell):** \`Get-FileHash <file> -Algorithm SHA256\`"
             echo ""
             echo '```'
-            cat SHA256SUMS.txt
+            cat dl/SHA256SUMS.txt
             echo '```'
           } > sums.md
-          cd ..
-          { cat existing.md; echo ""; echo "---"; echo ""; cat dl/sums.md; } > combined.md
+          { cat existing.md; echo ""; echo "---"; echo ""; cat sums.md; } > combined.md
           gh release edit "$TAG" -R "$REPO" --notes-file combined.md
           echo "✓ checksums (notes + SHA256SUMS.txt asset) published for $TAG"
           # Homebrew cask — auto-bump the tap so `brew install --cask richhabits/tap/sam` tracks releases.
