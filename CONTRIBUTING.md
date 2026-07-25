@@ -28,7 +28,7 @@ report.
 Describe it in an issue rather than sending a diff. If it's the right change, it gets
 made and credited. If you'd like to discuss something larger — a partnership, a licence
 to build on SAM, or commercial use beyond running an official build — ask:
-richhabitslondon@gmail.com
+smartartificialmind@gmail.com
 
 ## Packs and skills
 

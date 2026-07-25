@@ -236,7 +236,7 @@ Open an [issue](https://github.com/richhabits/sam/issues/new/choose) (bug report
 The source is published so it can be **read, reviewed and audited**, and you may **run an
 official build** on machines you own for any purpose, including commercially. It is *not*
 open-source: copying, modifying or redistributing the source needs written permission.
-Ask — permission may well be given: richhabitslondon@gmail.com
+Ask — permission may well be given: smartartificialmind@gmail.com
 
 SAM was published under MIT until v3.0.0. That grant cannot be withdrawn for the versions
 it was made under; this licence governs v3.0.0 onward.
