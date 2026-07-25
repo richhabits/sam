@@ -36,8 +36,34 @@
   /* Motion — one signature easing across the app so interactions feel of a piece.
      Apple-tier: quick, slightly overshooting settle. Everything reads from these. */
   --ease: cubic-bezier(.22,.8,.2,1);
+  /* A springier settle for physical moments (send, panel open) — overshoots a touch then rests. */
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
   --dur: .17s;
   --dur-slow: .32s;
+
+  /* ── Design scales — one deliberate ladder each, so nothing is a magic number ──
+     Type: snapped from 26 ad-hoc sizes to 9 purposeful steps + a hero.
+     Every step earns its place; new UI reads from these, never invents a size. */
+  --fs-micro: 11px;    /* uppercase eyebrows / tiny meta */
+  --fs-caption: 12px;  /* captions, timestamps, sub-labels */
+  --fs-sm: 13px;       /* dense / secondary UI text */
+  --fs-md: 14px;       /* controls, chips */
+  --fs-body: 15px;     /* default UI + message text */
+  --fs-base: 16px;     /* comfortable reading / composer */
+  --fs-lg: 18px;       /* section titles */
+  --fs-xl: 22px;       /* headings */
+  --fs-2xl: 28px;      /* view titles */
+  --fs-3xl: 34px;      /* hero numbers */
+  --fs-display: 44px;  /* onboarding splash */
+  /* Space: a 4px rhythm — consistent gaps/padding read as intentional. */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  /* Radius: snapped from 10 ad-hoc values to 4 + a pill. --radius (22) kept for back-compat. */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
+  /* Elevation ladder — depth you feel; every raised surface picks a rung, not a bespoke shadow. */
+  --elev-1: var(--shadow);
+  --elev-2: var(--shadow-lg);
+  --elev-3: 0 24px 64px rgba(28,25,23,.14), 0 8px 24px rgba(28,25,23,.08);
 }
 
 /* Premium feel = every interactive element settles smoothly, never snaps. Cheap (only
@@ -78,6 +104,11 @@ body { background: var(--bg); }
   letter-spacing: -0.011em; overflow: hidden;
 }
 button { font-family: inherit; cursor: pointer; }
+/* Inline SAM icons (Icon.tsx svg.ic) replaced the emoji that were doing icon duty. Sit them on
+   the text baseline and never let flex shrink them. They inherit colour/opacity/accent for free. */
+.ic { vertical-align: -.15em; flex: 0 0 auto; }
+.ctx-ic, .plus-opt .icon { display: inline-flex; align-items: center; justify-content: center; }
+.onboard-pills span, .confirm-head, .update-bar span { display: inline-flex; align-items: center; gap: 6px; }
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg); }
 
@@ -143,13 +174,13 @@ button { font-family: inherit; cursor: pointer; }
 .pop-opt:hover { background: var(--bg); }
 .pop-opt.on { background: var(--accent-soft); }
 .pop-opt.on::after { content: "✓"; position: absolute; right: 13px; top: 11px; font-size: 13px; font-weight: 700; color: var(--accent-text, var(--accent)); }
-.pop-opt-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; color: var(--text);
+.pop-opt-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; color: var(--text);
   letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pop-opt.on .pop-opt-name { color: var(--accent-text, var(--accent)); }
 /* The state, right-aligned like a Settings value — "Off", "Automatic", "100% on your computer".
    Was a second line under every row: ~20 rows became 40 lines of text. Clamped with an ellipsis
    and the full string kept in a title, so long explanations stay reachable without the bulk. */
-.pop-opt-sub { flex: 0 1 auto; max-width: 42%; font-size: 12.5px; color: var(--muted);
+.pop-opt-sub { flex: 0 1 auto; max-width: 42%; font-size: 12px; color: var(--muted);
   text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Apple grouped-inset cards: each section's rows sit inside one rounded container with hairline
@@ -530,7 +561,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-wrap.mini .vm-bar { width: 5px; }
 .vm-wrap.mini .vm-text { font-size: 15px; max-width: 100%; min-height: 24px; padding: 0 4px; }
 .vm-wrap.mini .vm-state { font-size: 12px; }
-.vm-wrap.mini .vm-hint { font-size: 12.5px; padding: 0 4px; }
+.vm-wrap.mini .vm-hint { font-size: 12px; padding: 0 4px; }
 .vm-orb { width: 180px; height: 180px; border-radius: 50%; display: grid; place-items: center;
   background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent) 60%, var(--accent-2));
   box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 0 var(--accent-soft); }
@@ -865,7 +896,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .icon-btn.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* ── Brand wordmark ── */
-.wordmark { font-family: var(--display, var(--sans)); font-size: 26px; font-weight: 900;
+.wordmark { font-family: var(--display, var(--sans)); font-size: 28px; font-weight: 900;
   letter-spacing: -.045em; color: var(--text); line-height: 1; }
 .wm-dot { color: var(--accent); }
 :root[data-skin="jarvis"] .wordmark { text-shadow: 0 0 16px rgba(41,198,246,.6); }
@@ -1656,7 +1687,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dash-tabs { display: flex; gap: 2px; margin: 0 0 16px; padding: 3px;
   background: var(--bg); border: 1px solid var(--border); border-radius: 11px; }
 .dash-tabs button { flex: 1; padding: 7px 4px; appearance: none; border: 0; border-radius: 8px;
-  background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600;
+  background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
   cursor: pointer; transition: background .12s ease, color .12s ease; }
 .dash-tabs button:hover { color: var(--text); }
 .dash-tabs button.on { background: var(--surface); color: var(--text);
@@ -1689,7 +1720,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   border: 1px solid var(--border); border-radius: 11px; }
 .seg-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 9px 4px; appearance: none; border: 0; border-radius: 8px; background: none;
-  color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
   transition: background .12s ease, color .12s ease; }
 .seg-btn .ic { opacity: .7; }
 .seg-btn:hover { color: var(--text); }
@@ -1733,7 +1764,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
    screens before you reached anything else. */
 .admin-rowhead { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px;
   appearance: none; background: none; border: 0; cursor: pointer; font: inherit; text-align: left; }
-.admin-rowhead .admin-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500;
+.admin-rowhead .admin-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-keys { flex: none; font-size: 12px; color: var(--muted); }
 .admin-row.open .admin-keys { color: var(--accent-text, var(--accent)); }
@@ -1811,7 +1842,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
    ========================================================================== */
 .stu-panel { padding: 0; gap: 0; overflow: hidden; }
 .stu-head { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 0; flex: none; }
-.stu-brand { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.stu-brand { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
 .stu-brand .ic { color: var(--accent-text, var(--accent)); }
 .stu-mode .seg-btn { flex-direction: row; gap: 7px; font-size: 13px; padding: 8px 4px; }
 
@@ -1839,14 +1870,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .stu-label { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .stu-label .ic { opacity: .8; }
-.stu-note { font-size: 12.5px; color: var(--muted); padding: 2px 0; }
+.stu-note { font-size: 12px; color: var(--muted); padding: 2px 0; }
 
 /* Ratio: the box IS the ratio. Five identical pills reading "16:9" made you parse text to
    choose a shape. */
 .stu-ratios { display: flex; gap: 7px; flex-wrap: wrap; }
 .stu-ratio { flex: 1 1 62px; display: flex; flex-direction: column; align-items: center; gap: 5px;
   padding: 9px 6px; appearance: none; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 11px; color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  border-radius: 11px; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .stu-ratio-box { display: block; width: 30px; max-height: 30px; border-radius: 3px;
   border: 1.75px solid currentColor; opacity: .75; }
 .stu-ratio:hover { color: var(--text); }
@@ -1920,7 +1951,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .wf-card .wf-body, .wf-card .wf-run-result { margin-left: 14px; margin-right: 14px; }
 .wf-card .wf-run-result { margin-bottom: 12px; }
 .wf-card:not(.open) .wf-run-result { margin-top: 0; padding-top: 0; background: none;
-  font-size: 11.5px; }
+  font-size: 12px; }
 .wf-run, .wf-install, .wf-run-result { display: inline-flex; align-items: center; gap: 6px; }
 .wf-run-result { justify-content: flex-start; }
 .wf-del { display: inline-flex; align-items: center; color: var(--muted); }
@@ -1947,7 +1978,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* ── Learned: the on-device promise as a chip, not a clause ───────────────── */
 .learned-lock { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px;
-  padding: 1px 7px; border-radius: 999px; font-size: 11.5px;
+  padding: 1px 7px; border-radius: 999px; font-size: 12px;
   background: color-mix(in srgb, var(--c-ok) 13%, transparent); }
 
 /* ── Usage ────────────────────────────────────────────────────────────────── */
@@ -1965,36 +1996,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   align-items: center; justify-content: center; }
 .handoff-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text); }
 .handoff-copy { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
-  appearance: none; border: 1px solid var(--border); border-radius: 9px; background: var(--surface);
+  appearance: none; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
   color: var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .handoff-copy:hover { border-color: var(--accent); }
 .handoff-sub { margin: 6px 0 8px; font-size: 12px; color: var(--muted); }
 .handoff-text { width: 100%; padding: 9px 10px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 9px; color: var(--muted);
-  font: inherit; font-size: 11.5px; line-height: 1.45; resize: vertical; }
+  border: 1px solid var(--border); border-radius: 8px; color: var(--muted);
+  font: inherit; font-size: 12px; line-height: 1.45; resize: vertical; }
 
 /* ── 🔒 The Safe pane ── */
 .safe-pane{max-width:520px}
 .safe-body{display:flex;flex-direction:column;gap:14px;padding:4px 2px}
 .safe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius,14px);padding:16px;display:flex;flex-direction:column;gap:12px}
-.safe-card h3{margin:0;font-size:15px}
-.safe-sub{color:var(--muted);font-size:13px}
-.safe-hint{color:var(--muted);font-size:12px;font-weight:400}
-.safe-field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}
+.safe-card h3{margin:0;font-size: 15px}
+.safe-sub{color:var(--muted);font-size: 13px}
+.safe-hint{color:var(--muted);font-size: 12px;font-weight:400}
+.safe-field{display:flex;flex-direction:column;gap:6px;font-size: 13px;font-weight:600}
 .safe-field input,.safe-check input{accent-color:var(--accent)}
-.safe-field input[type=password]{font:inherit;font-weight:400;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)}
-.safe-check{display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:600;cursor:pointer}
-.safe-warn{background:var(--c-err-bg,#fdecec);color:var(--c-err,#c0392b);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.45}
-.safe-msg{border-radius:10px;padding:10px 12px;font-size:13px}
+.safe-field input[type=password]{font:inherit;font-weight:400;padding:9px 11px;border:1px solid var(--border);border-radius: 10px;background:var(--bg);color:var(--text)}
+.safe-check{display:flex;align-items:baseline;gap:8px;font-size: 13px;font-weight:600;cursor:pointer}
+.safe-warn{background:var(--c-err-bg,#fdecec);color:var(--c-err,#c0392b);border-radius: 10px;padding:10px 12px;font-size: 12px;line-height:1.45}
+.safe-msg{border-radius: 10px;padding:10px 12px;font-size: 13px}
 .safe-err{background:var(--c-err-bg,#fdecec);color:var(--c-err,#c0392b)}
 .safe-ok{background:color-mix(in srgb,var(--c-ok,#22a06b) 14%,transparent);color:var(--c-ok,#1c8a5b)}
-.safe-status{display:flex;align-items:center;gap:8px;font-size:14px}
-.safe-dot{width:8px;height:8px;border-radius:50%;background:var(--c-ok,#22a06b);display:inline-block}
+.safe-status{display:flex;align-items:center;gap:8px;font-size: 14px}
+.safe-dot{width:8px;height:8px;border-radius: 50%;background:var(--c-ok,#22a06b);display:inline-block}
 .safe-names{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto}
-.safe-name{font:12px/1 var(--mono,ui-monospace,monospace);background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 7px;color:var(--muted)}
+.safe-name{font:12px/1 var(--mono,ui-monospace,monospace);background:var(--bg);border:1px solid var(--border);border-radius: 7px;padding:5px 7px;color:var(--muted)}
 .safe-row{display:flex;gap:8px}
 .safe-confirm{display:flex;flex-direction:column;gap:10px}
-.safe-btn,.safe-btn-primary,.safe-btn-danger{border:1px solid var(--border);border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;align-self:flex-start;background:var(--surface);color:var(--text)}
+.safe-btn,.safe-btn-primary,.safe-btn-danger{border:1px solid var(--border);border-radius: 10px;padding:9px 14px;font:inherit;font-weight:600;font-size: 13px;cursor:pointer;align-self:flex-start;background:var(--surface);color:var(--text)}
 .safe-btn-primary{background:var(--accent);color:var(--on-accent,#fff);border-color:transparent}
 .safe-btn-danger{background:var(--c-err,#c0392b);color:#fff;border-color:transparent}
 .safe-btn:disabled,.safe-btn-primary:disabled,.safe-btn-danger:disabled{opacity:.5;cursor:not-allowed}
@@ -2012,9 +2043,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   letter-spacing: -.022em;
   text-wrap: balance;
 }
-.hello { font-size: 38px; line-height: 1.06; letter-spacing: -.03em; }
-.hello-sub { font-size: 17px; line-height: 1.45; max-width: 46ch; }
-.onboard-title { font-size: 33px; letter-spacing: -.028em; }
+.hello { font-size: 34px; line-height: 1.06; letter-spacing: -.03em; }
+.hello-sub { font-size: 18px; line-height: 1.45; max-width: 46ch; }
+.onboard-title { font-size: 34px; letter-spacing: -.028em; }
 /* Uppercase micro-labels — the editorial connective tissue. Consistent everywhere. */
 .pop-title, .admin-cat, .stu-label { font-weight: 700; letter-spacing: .07em; }
 
@@ -2063,10 +2094,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 
 /* Routine binder inside a workflow card — bind a phrase → runs the workflow ahead of the brain */
 .wf-routine { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-.wf-routine-on { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.wf-routine-on { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .wf-routine-on b { color: var(--accent-text); }
 .wf-routine-clear { margin-left: auto; font-size: 12px; padding: 2px 9px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
 .wf-routine-set { display: flex; align-items: center; gap: 7px; }
-.wf-routine-set input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-.wf-routine-set button { font-size: 12.5px; font-weight: 600; padding: 6px 13px; border-radius: 9px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent, #fff); cursor: pointer; }
+.wf-routine-set input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.wf-routine-set button { font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent, #fff); cursor: pointer; }
 .wf-routine-set button:disabled { opacity: .5; cursor: default; }

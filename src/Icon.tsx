@@ -23,7 +23,7 @@ export type IconName =
   | "download" | "folder" | "bell" | "lock" | "trash" | "globe" | "mail" | "calendar"
   | "terminal" | "screen" | "music" | "cursor" | "branch" | "grid" | "cloud" | "location"
   | "doc" | "play" | "link" | "video" | "camera" | "copy" | "frame" | "sliders" | "pause"
-  | "warn" | "ban" | "pulse";
+  | "warn" | "ban" | "pulse" | "gift" | "hand";
 
 const P: Record<IconName, React.ReactNode> = {
   chat: <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12Z" />,
@@ -81,6 +81,8 @@ const P: Record<IconName, React.ReactNode> = {
   warn: <><path d="M12 4.5 20.5 19.5h-17Z" /><path d="M12 10v4M12 16.75v.01" /></>,
   ban: <><circle cx="12" cy="12" r="8.5" /><path d="m6.5 6.5 11 11" /></>,
   pulse: <path d="M3 12h4l2.5-6 4 12L16 12h5" />,
+  gift: <><rect x="3.5" y="8.5" width="17" height="4" rx="1" /><path d="M5 12.5V20h14v-7.5M12 8.5V20" /><path d="M12 8.5C10 8.5 8 8 8 6.2A1.7 1.7 0 0 1 12 6.2C12 8 14 8.5 16 8.5" /></>,
+  hand: <path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V11m0-1a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-1a5 5 0 0 1-4.3-2.5L4 15c-.7-1.2.9-2.5 2-1.6l1 .9V7a1.5 1.5 0 0 1 3 0v4" />,
 };
 
 /** Runtime set of every glyph name — lets callers hold an icon name in data and check it. */

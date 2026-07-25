@@ -1104,7 +1104,7 @@ export default function App() {
           <div className="onboard-title">Hi, I'm SAM.</div>
           <div className="onboard-by">by <b>HECTIC</b></div>
           <div className="onboard-sub">Your own AI assistant — I answer, draft, search the web, and take action on your computer. First up, what should I call you?</div>
-          <div className="onboard-pills"><span>🔒 Private</span><span>💸 Free</span><span>🖐️ Takes action</span><span>🎨 Yours</span></div>
+          <div className="onboard-pills"><span><Icon name="lock" size={13} /> Private</span><span><Icon name="gift" size={13} /> Free</span><span><Icon name="hand" size={13} /> Takes action</span><span><Icon name="sparkle" size={13} /> Yours</span></div>
           <input className="onboard-input" autoFocus value={onboardName} onChange={(e) => setOnboardName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="Your name" />
           <input className="onboard-input" value={onboardAbout} onChange={(e) => setOnboardAbout(e.target.value)}
@@ -1114,7 +1114,7 @@ export default function App() {
           </select>
           <input className="onboard-input" value={onboardKey} onChange={(e) => setOnboardKey(e.target.value)} type="password"
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }}
-            placeholder="⚡ Optional: paste a free Groq key for speed — or skip, SAM's free already" />
+            placeholder="Optional: paste a free Groq key for speed — or skip, SAM's free already" />
           <div className="onboard-hint">No key? Skip it — SAM works free out of the box. Want it snappy? <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Grab a free Groq key</a> (~30 sec) and paste it above.</div>
           <button type="button" className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
           <div className="onboard-note">Then try: <b>"what's the weather and directions to the nearest coffee?"</b> — you'll watch SAM use a real tool. Private &amp; free — runs on your computer.</div>
@@ -1148,7 +1148,7 @@ export default function App() {
           <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
-          {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock">⬇️ Add to Dock</button>}
+          {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={15} /> Add to Dock</button>}
           {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" /> Voice</button>
           <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" /> Studio</button>
@@ -1198,7 +1198,7 @@ export default function App() {
           <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
           <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk">💷 FLIP IT</button>
           <UpdateButton />
-          <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings">⚙</button>
+          <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
         </div>
         {settingsOpen && createPortal(<>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: popover scrim; click-outside close, Esc handled elsewhere */}
@@ -1282,7 +1282,7 @@ export default function App() {
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><Icon name="phone" size={16} /><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">QR code</span></button>
             </div>
-            <div className="pop-sub-label">👥 Who's using SAM · <b>{profile.name}</b></div>
+            <div className="pop-sub-label"><Icon name="people" size={14} /> Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
               <button type="button" key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
             ))}
@@ -1297,14 +1297,14 @@ export default function App() {
       {update?.behind && (
         <div className="update-bar">
           {updating === "done" ? (
-            <><span>✨ Updated — restart SAM to apply the new version.</span>
+            <><span><Icon name="sparkle" size={14} /> Updated — restart SAM to apply the new version.</span>
               <button type="button" className="update-go" onClick={() => location.reload()}>Reload</button></>
           ) : update.url ? (
             // Packaged app — no git to pull, so send them to the signed installer download.
-            <><span>✨ SAM {update.latest} is available{update.current ? ` (you have ${update.current})` : ""}.</span>
+            <><span><Icon name="sparkle" size={14} /> SAM {update.latest} is available{update.current ? ` (you have ${update.current})` : ""}.</span>
               <a className="update-go" href={update.url} target="_blank" rel="noreferrer" onClick={() => setTimeout(() => setUpdate(null), 500)}>Download</a></>
           ) : (
-            <><span>✨ A new version of SAM is available.</span>
+            <><span><Icon name="sparkle" size={14} /> A new version of SAM is available.</span>
               <button type="button" className="update-go" disabled={!!updating} onClick={async () => {
                 setUpdating("…"); const r = await runUpdate();
                 setUpdating(r.ok ? "done" : ""); if (!r.ok) sysNote("Update failed: " + (r.error || "unknown"));
@@ -1502,7 +1502,7 @@ export default function App() {
                 <div className="who">SAM</div>
                 {pending.trace && pending.trace.length > 0 && <TraceStrip steps={pending.trace} />}
                 <div className="confirm">
-                  <div className="confirm-head">⚠️ SAM wants to do this — approve?</div>
+                  <div className="confirm-head"><Icon name="warn" size={16} /> SAM wants to do this — approve?</div>
                   <div className="confirm-what">{pending.activity}</div>
                   {pending.preview && <pre className="confirm-preview">{pending.preview}</pre>}
                   <div className="confirm-actions">
@@ -1569,7 +1569,7 @@ export default function App() {
                 <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
                 <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
                 <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
-                <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon">👁️</span> Look (Vision)</button>
+                <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="eye" size={17} /></span> Look (Vision)</button>
                 <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
                 <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
                 <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
@@ -1577,17 +1577,17 @@ export default function App() {
                 <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
                 <button type="button" className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon">🔎</span> Find my… (camera)</button>
                 <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
-                <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
+                <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon"><Icon name="shield" size={17} /></span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
                 <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
                 </div>
               </>
             )}
           </div>
           {quality === "turbo" && (
-            <button type="button" className="turbo-pill" title="⚡ Turbo is on — one fast call, no tools. Click to switch back to Automatic."
+            <button type="button" className="turbo-pill" title="Turbo is on — one fast call, no tools. Click to switch back to Automatic."
               onClick={() => { setQuality("auto"); showToast("Switched to Automatic"); }}
               style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", marginRight: 6, borderRadius: 999, border: "1px solid var(--accent, #E8673A)", background: "transparent", color: "var(--accent, #E8673A)", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>
-              ⚡ Turbo
+              <Icon name="pulse" size={13} /> Turbo
             </button>
           )}
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
@@ -1625,7 +1625,7 @@ export default function App() {
         <div className="ctx-label">Live status</div>
         <div className="ctx-live">
           <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
-          {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic">🧠</span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
+          {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic"><Icon name="brain" size={14} /></span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
           {swarms.filter((s) => s.status === "running" || s.status === "planning" || s.status === "paused").slice(0, 3).map((s) => {
             const done = s.agents.filter((a) => a.status === "done").length;
             return <button type="button" key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
@@ -1634,9 +1634,9 @@ export default function App() {
             </button>;
           })}
           {status?.vault?.count != null && status.vault.count > 0 && <button type="button" className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
-          <div className="ctx-row"><span className="ctx-ic">{quality === "private" ? "🔒" : quality === "best" ? "✨" : "⚡"}</span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
+          <div className="ctx-row"><span className="ctx-ic"><Icon name={quality === "private" ? "lock" : quality === "best" ? "sparkle" : "pulse"} size={14} /></span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
           {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
-          {elon && <div className="ctx-row danger"><span className="ctx-ic">⚡</span>Elon Mode ON</div>}
+          {elon && <div className="ctx-row danger"><span className="ctx-ic"><Icon name="sparkle" size={14} /></span>Elon Mode ON</div>}
           {guardian && <div className="ctx-row"><span className="ctx-ic">🛡️</span>Guardian watching</div>}
         </div>
       </aside>
