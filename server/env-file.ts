@@ -73,10 +73,16 @@ export function writeEnv(key: string, value: string) {
   // Under a latch: .env is a shared artifact — the server, a CLI, and a second session can all
   // call this. The read-modify-write below is otherwise a lost-update race (two savers → one key
   // silently dropped). withLatchSync makes a concurrent writer fail loudly instead. See latch.ts.
+  // Resolve the path at CALL time (envPathNow), never the import-time ENV_PATH const. In the
+  // packaged app, preboot sets DOTENV_CONFIG_PATH to a writable per-user .env, but it can land
+  // AFTER this module was imported — so ENV_PATH captured the read-only in-bundle fallback and
+  // every key-save silently failed (keys never persisted). removeEnvKeys already reads/writes
+  // envPathNow(); writeEnv must too, or reads and writes disagree.
+  const path = envPathNow();
   withLatchSync("env", () => {
     let txt = "";
     try {
-      txt = readFileSync(ENV_PATH, "utf8");
+      txt = readFileSync(path, "utf8");
     } catch {
       /* no .env yet — start from empty, it gets created on write */
     }
@@ -88,7 +94,7 @@ export function writeEnv(key: string, value: string) {
     // INTERPRETED, silently corrupting the stored credential (SAM's #1 silent-corruption class). A
     // function's return value is inserted verbatim, so `$` is literal.
     txt = re.test(txt) ? txt.replace(re, () => line) : txt.replace(/\n?$/, "\n") + line + "\n";
-    writeFileAtomic(ENV_PATH, txt, { mode: 0o600 });   // 0600 — this file holds provider keys
+    writeFileAtomic(path, txt, { mode: 0o600 });   // 0600 — this file holds provider keys
     process.env[key] = value; // apply live
   });
 }

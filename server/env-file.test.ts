@@ -45,3 +45,24 @@ describe("writeEnv stores values verbatim (audit finding: $-corruption)", () => 
     expect(readFileSync(envPath, "utf8")).toContain("K=a$`b$1c");
   });
 });
+
+describe("writeEnv resolves the path at CALL time (packaged-app key persistence)", () => {
+  // The bug the packaged-app smoke-test caught: preboot sets DOTENV_CONFIG_PATH AFTER env-file is
+  // imported. writeEnv used the import-time ENV_PATH const → it wrote to the read-only in-bundle
+  // fallback and keys silently never persisted. It must use the CURRENT DOTENV_CONFIG_PATH.
+  it("writes to DOTENV_CONFIG_PATH even when it is set AFTER the module was imported", async () => {
+    delete process.env.DOTENV_CONFIG_PATH;      // import with NO path set → const captures the fallback
+    vi.resetModules();
+    const mod = await import("./env-file.ts");
+    const dir2 = mkdtempSync(join(tmpdir(), "sam-envfile-late-"));
+    const late = join(dir2, ".env");
+    process.env.DOTENV_CONFIG_PATH = late;      // NOW set it — as preboot does, after import
+    try {
+      mod.writeEnv("GROQ_API_KEYS", "gsk_test_value");
+      expect(readFileSync(late, "utf8")).toContain("GROQ_API_KEYS=gsk_test_value");   // landed at the CURRENT path
+    } finally {
+      delete process.env.DOTENV_CONFIG_PATH;
+      rmSync(dir2, { recursive: true, force: true });
+    }
+  });
+});
