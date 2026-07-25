@@ -41,15 +41,15 @@ function saveProfiles(list: Profile[]) { try { localStorage.setItem("sam.profile
 const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
 const TIPS = [
-  "💡 Try /team <big request> — SAM assembles a crew of specialists.",
-  "🥷 Try /ninjas <problem> — a squad finds and fixes it.",
-  "📸 Click 👁️ Look to let SAM see through your camera.",
-  "🎙 Hit Voice to go hands-free — talk and listen.",
-  "🛡️ Guardian mode watches your camera and flags strangers.",
-  "⌨️ ⌘⇧T opens Team, ⌘⇧N opens Ninjas — power user moves.",
-  "🔒 Type /private to go fully local — nothing leaves your Mac.",
-  "📣 Type /share to copy your SAM pitch + link.",
-  "✈️ Turn on Autopilot in settings — SAM handles routine stuff silently.",
+  "Try /team <big request> — SAM assembles a crew of specialists.",
+  "Try /ninjas <problem> — a squad finds and fixes it.",
+  "Click Look to let SAM see through your camera.",
+  "Hit Voice to go hands-free — talk and listen.",
+  "Guardian mode watches your camera and flags strangers.",
+  "⌘⇧T opens Team, ⌘⇧N opens Ninjas — power user moves.",
+  "Type /private to go fully local — nothing leaves your Mac.",
+  "Type /share to copy your SAM pitch + link.",
+  "Turn on Autopilot in settings — SAM handles routine stuff silently.",
 ];
 function greeting(name: string) {
   const h = new Date().getHours();
@@ -100,19 +100,19 @@ function howAnswered(provider?: string): string {
   return `on ${NAMES[id] || id} (free)`;
 }
 
-const COMMANDS: [string, string][] = [
-  ["/team", "🤝 Assemble the crew — big jobs, run in parallel"],
-  ["/ninjas", "🥷 Deploy the problem squad — find & deal with it"],
-  ["/turbo", "⚡ Fastest"],
-  ["/private", "🔒 On your computer (local only)"],
-  ["/best", "✨ Best quality"],
-  ["/auto", "⚡ Free & capable (default)"],
-  ["/tools", "🧰 Everything SAM can do"],
-  ["/history", "🕑 Past conversations"],
-  ["/export", "📤 Download this chat"],
-  ["/share", "📣 Copy the SAM link to share"],
-  ["/new", "✏️ Start a new chat"],
-  ["/help", "❓ All commands"],
+const COMMANDS: [string, IconName, string][] = [
+  ["/team", "team", "Assemble the crew — big jobs, run in parallel"],
+  ["/ninjas", "ninja", "Deploy the problem squad — find & deal with it"],
+  ["/turbo", "pulse", "Fastest"],
+  ["/private", "lock", "On your computer (local only)"],
+  ["/best", "sparkle", "Best quality"],
+  ["/auto", "check", "Free & capable (default)"],
+  ["/tools", "sliders", "Everything SAM can do"],
+  ["/history", "clock", "Past conversations"],
+  ["/export", "download", "Download this chat"],
+  ["/share", "link", "Copy the SAM link to share"],
+  ["/new", "pencil", "Start a new chat"],
+  ["/help", "book", "All commands"],
 ];
 
 const SUGGESTIONS = [
@@ -1136,7 +1136,7 @@ export default function App() {
       {dragOver && (
         // biome-ignore lint/a11y/noStaticElementInteractions: dismissible drop overlay; click-anywhere or Esc dismisses
         // biome-ignore lint/a11y/useKeyWithClickEvents: dismissible drop overlay; click-anywhere or Esc dismisses
-        <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card">📎 Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>
+        <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card"><Icon name="doc" size={18} /> Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>
       )}
       <header className="bar">
         <div className="brandmark">
@@ -1242,10 +1242,10 @@ export default function App() {
             {stab === "look" && (<>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
-              {[["classic", "Classic", "☀️"], ["jarvis", "Jarvis", "🤖"], ["ember", "Ember", "🔥"], ["stealth", "Stealth", "🥷"], ["midnight", "Midnight", "🌙"], ["nord", "Nord", "❄️"], ["dracula", "Dracula", "🧛"], ["linen", "Linen", "📜"], ["aurora", "Aurora", "🌌"]].map(([id, label, ic]) => (
+              {[["classic", "Classic"], ["jarvis", "Jarvis"], ["ember", "Ember"], ["stealth", "Stealth"], ["midnight", "Midnight"], ["nord", "Nord"], ["dracula", "Dracula"], ["linen", "Linen"], ["aurora", "Aurora"]].map(([id, label]) => (
                 <button type="button" key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)} aria-label={`Theme: ${label}`} title={`Theme: ${label}`}>
                   <div className={`skin-prev prev-${id}`}></div>
-                  <div className="skin-chip-label">{ic} {label}</div>
+                  <div className="skin-chip-label">{label}</div>
                 </button>
               ))}
             </div>
@@ -1262,7 +1262,7 @@ export default function App() {
               <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Pauses on risk</span></button>
               <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><Icon name="book" size={16} /><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Your sources</span></button>
               <button type="button" className="pop-opt" onClick={() => { setStandingOpen(true); setSettingsOpen(false); }}><Icon name="team" size={16} /><span className="pop-opt-name">Standing Crew</span><span className="pop-opt-sub">Background agents</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}><span style={{ fontSize: 16, width: 16, textAlign: "center" }}>⏰</span><span className="pop-opt-name">Alarms &amp; Timers</span><span className="pop-opt-sub">Rings anytime</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}><Icon name="clock" size={16} /><span className="pop-opt-name">Alarms &amp; Timers</span><span className="pop-opt-sub">Rings anytime</span></button>
               <button type="button" className="pop-opt" onClick={() => { setCameraOpen(true); setSettingsOpen(false); }}><Icon name="camera" size={16} /><span className="pop-opt-name">Cameras</span><span className="pop-opt-sub">Local only</span></button>
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
             </div>
@@ -1343,8 +1343,8 @@ export default function App() {
           {/* Rename/delete only appear for the SELECTED folder — discoverable without adding
               two buttons per chip, and replaces the undiscoverable double-click-to-rename. */}
           {folderFilter && folders.includes(folderFilter) && (<>
-            <button type="button" className="side-folder edit-folder" onClick={() => renameFolder(folderFilter)} title={`Rename folder "${folderFilter}"`}>✎</button>
-            <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}>🗑</button>
+            <button type="button" className="side-folder edit-folder" onClick={() => renameFolder(folderFilter)} title={`Rename folder "${folderFilter}"`}><Icon name="pencil" size={13} /></button>
+            <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}><Icon name="trash" size={13} /></button>
           </>)}
         </div>
         <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
@@ -1364,7 +1364,7 @@ export default function App() {
           // biome-ignore lint/a11y/noStaticElementInteractions: onClick only stops propagation to the chat's delegated copy handler
           // biome-ignore lint/a11y/useKeyWithClickEvents: onClick only stops propagation to the chat's delegated copy handler
           <div className="find-bar" onClick={(e) => e.stopPropagation()}>
-            <span className="find-ic">🔍</span>
+            <span className="find-ic"><Icon name="search" size={15} /></span>
             <input ref={findRef} className="find-input" value={findQ} placeholder="Find in conversation…"
               onChange={(e) => { setFindQ(e.target.value); setFindIdx(0); }}
               onKeyDown={(e) => {
@@ -1393,7 +1393,7 @@ export default function App() {
         )}
         {started && swarms.some(s => s.status === "running" || s.status === "paused" || s.status === "planning") && (
           <div className="pinned-bar" style={{ borderColor: "var(--c-blue)" }}>
-            <div className="pb-head"><span className="pb-title">🐝 Active Swarm</span></div>
+            <div className="pb-head"><span className="pb-title"><Icon name="team" size={15} /> Active Swarm</span></div>
             <div className="pb-list">
               {swarms.filter(s => s.status !== "done" && s.status !== "error").map(s => (
                 <div key={s.id} className="pb-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
@@ -1536,7 +1536,7 @@ export default function App() {
             {attachments.map((a, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: append-only attachment list; order is stable
               <div key={i} className="attach">
-                {a.kind === "image" ? <img src={a.data} alt={a.name} /> : <span className="attach-file">📄</span>}
+                {a.kind === "image" ? <img src={a.data} alt={a.name} /> : <span className="attach-file"><Icon name="doc" size={15} /></span>}
                 <span className="attach-name">{a.name}</span>
                 <button type="button" className="attach-x" onClick={() => setAttachments((as) => as.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
               </div>
@@ -1545,9 +1545,9 @@ export default function App() {
         )}
         {input.startsWith("/") && !input.includes(" ") && COMMANDS.some(([c]) => c.startsWith(input.toLowerCase())) && (
           <div className="cmd-hints">
-            {COMMANDS.filter(([c]) => c.startsWith(input.toLowerCase())).map(([c, d]) => (
+            {COMMANDS.filter(([c]) => c.startsWith(input.toLowerCase())).map(([c, ic, d]) => (
               <button type="button" key={c} className="cmd-hint" onClick={() => { const takesArg = c === "/team" || c === "/ninjas"; setInput(takesArg ? c + " " : c); inputRef.current?.focus(); if (!takesArg) { setTimeout(() => send(c), 0); } }}>
-                <span className="ch-cmd">{c}</span><span className="ch-desc">{d}</span>
+                <span className="ch-ic"><Icon name={ic} size={15} /></span><span className="ch-cmd">{c}</span><span className="ch-desc">{d}</span>
               </button>
             ))}
           </div>
@@ -1629,13 +1629,13 @@ export default function App() {
           {swarms.filter((s) => s.status === "running" || s.status === "planning" || s.status === "paused").slice(0, 3).map((s) => {
             const done = s.agents.filter((a) => a.status === "done").length;
             return <button type="button" key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
-              <span className="ctx-ic">🐝</span><span className="ctx-swarm-goal">{s.goal}</span>
+              <span className="ctx-ic"><Icon name="team" size={14} /></span><span className="ctx-swarm-goal">{s.goal}</span>
               <span className="ctx-swarm-prog">{s.status === "planning" ? "…" : s.status === "paused" ? "⏸" : `${done}/${s.agents.length}`}</span>
             </button>;
           })}
           {status?.vault?.count != null && status.vault.count > 0 && <button type="button" className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
           <div className="ctx-row"><span className="ctx-ic"><Icon name={quality === "private" ? "lock" : quality === "best" ? "sparkle" : "pulse"} size={14} /></span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
-          {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
+          {autopilot && <div className="ctx-row"><span className="ctx-ic"><Icon name="pulse" size={14} /></span>Autopilot on</div>}
           {elon && <div className="ctx-row danger"><span className="ctx-ic"><Icon name="sparkle" size={14} /></span>Elon Mode ON</div>}
           {guardian && <div className="ctx-row"><span className="ctx-ic"><Icon name="shield" size={14} /></span>Guardian watching</div>}
         </div>
@@ -1687,7 +1687,7 @@ export default function App() {
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
-              <div><div className="drawer-title">⚔️ Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
+              <div><div className="drawer-title"><Icon name="trophy" size={18} /> Colosseum</div><div className="drawer-sub">Your free brains, ranked head-to-head by Elo.</div></div>
               <button type="button" className="admin-save" onClick={runBenchmark} disabled={arenaLoading}>{arenaLoading ? "Fighting…" : "Run benchmark"}</button>
             </div>
             {arenaStatus?.current && !arenaLoading && (
@@ -1764,16 +1764,16 @@ export default function App() {
                   const { markdown } = await exportMemory();
                   const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
                   const a = document.createElement("a"); a.href = url; a.download = "sam-memory.md"; a.click(); URL.revokeObjectURL(url);
-                }}>⬇︎ Export</button>
+                }}><Icon name="download" size={14} /> Export</button>
                 <button type="button" className="icon-btn" title="Forget everything SAM has learned about you" onClick={async () => {
                   if (!window.confirm("Forget everything SAM has learned about you? This can't be undone.")) return;
                   await clearMemory(); loadMemory();
-                }}>🗑 Forget everything</button>
+                }}><Icon name="trash" size={14} /> Forget everything</button>
                 <button type="button" className="icon-btn" onClick={() => setMemoryOpen(false)} aria-label="Close">✕</button>
               </div>
             </div>
             {(() => {
-              const KINDS: [string, string][] = [["fact", "🧠 Facts"], ["plan", "🗺️ Plans"], ["decision", "✅ Decisions"], ["task", "📌 Open loops"]];
+              const KINDS: [string, string][] = [["fact", "Facts"], ["plan", "Plans"], ["decision", "Decisions"], ["task", "Open loops"]];
               // A delete that fails must not look like it worked — the row would silently return.
               const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => showToast("Couldn't forget that — it's still stored."));
               if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.</div>;
@@ -1812,7 +1812,7 @@ export default function App() {
           <div className="roster" onMouseDown={(e) => e.stopPropagation()}>
             <div className="roster-head">
               <div>
-                <div className="roster-title">🤝 Meet the team</div>
+                <div className="roster-title"><Icon name="team" size={17} /> Meet the team</div>
                 <div className="roster-sub">{roster.length} specialists SAM can call on. Say <b>/team &lt;job&gt;</b> and it assembles the right ones.</div>
               </div>
               <button type="button" className="icon-btn" onClick={() => setRosterOpen(false)} aria-label="Close">✕</button>
@@ -1852,7 +1852,7 @@ export default function App() {
               onDragLeave={(e) => { if (e.currentTarget === e.target) setImportDrag(false); }}
               onDrop={(e) => { e.preventDefault(); setImportDrag(false); readImportFile(e.dataTransfer.files?.[0]); }}>
               <input type="file" accept=".json,.txt,.md,.csv" style={{ display: "none" }} onChange={(e) => readImportFile(e.target.files?.[0])} />
-              <div className="import-drop-icon">🗂️</div>
+              <div className="import-drop-icon"><Icon name="folder" size={28} /></div>
               {importFile
                 ? <div className="import-drop-loaded">✓ {importFile} — ready to import</div>
                 : <><div className="import-drop-title">Drag &amp; drop your history here</div><div className="import-drop-sub">.json / .txt — or click to browse. SAM ignores any instructions inside; it only extracts facts about you.</div></>}
@@ -1923,7 +1923,7 @@ export default function App() {
           { icon: "lock", label: "Private mode — local only", run: () => setQuality("private") },
           { icon: "sparkle", label: "Auto — free brains", run: () => setQuality("auto") },
           { icon: "sparkle", label: "Best quality", run: () => setQuality("best") },
-          { icon: dark ? "☀️" : "🌙", label: dark ? "Light theme" : "Dark theme", run: () => setDark((v) => !v) },
+          { icon: dark ? "sun" : "moon", label: dark ? "Light theme" : "Dark theme", run: () => setDark((v) => !v) },
           { icon: "pencil", label: "Text size: Large", run: () => setFontSize("large") },
           { icon: "pencil", label: "Text size: Normal", run: () => setFontSize("normal") },
           { icon: "chart", label: "Text size: Compact", run: () => setFontSize("compact") },
@@ -1931,12 +1931,12 @@ export default function App() {
           { icon: "sliders", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
           { icon: "sparkle", label: "Skin: Ember", run: () => setSkin("ember") },
           { icon: "ninja", label: "Skin: Stealth", run: () => setSkin("stealth") },
-          { icon: "🌙", label: "Skin: Midnight", run: () => setSkin("midnight") },
-          { icon: "❄️", label: "Skin: Nord", run: () => setSkin("nord") },
-          { icon: "🧛", label: "Skin: Dracula", run: () => setSkin("dracula") },
-          { icon: "📜", label: "Skin: Linen", run: () => setSkin("linen") },
-          { icon: "🌌", label: "Skin: Aurora (dark glass)", run: () => setSkin("aurora") },
-          { icon: mode === "business" ? "🏠" : "💼", label: mode === "business" ? "Switch to Personal" : "Switch to Business", run: () => setMode((m) => (m === "business" ? "personal" : "business")) },
+          { icon: "moon", label: "Skin: Midnight", run: () => setSkin("midnight") },
+          { icon: "sparkle", label: "Skin: Nord", run: () => setSkin("nord") },
+          { icon: "sparkle", label: "Skin: Dracula", run: () => setSkin("dracula") },
+          { icon: "book", label: "Skin: Linen", run: () => setSkin("linen") },
+          { icon: "sparkle", label: "Skin: Aurora (dark glass)", run: () => setSkin("aurora") },
+          { icon: mode === "business" ? "home" : "briefcase", label: mode === "business" ? "Switch to Personal" : "Switch to Business", run: () => setMode((m) => (m === "business" ? "personal" : "business")) },
         ];
         const q = pq.trim().toLowerCase();
         const filtered = q ? acts.filter((a) => a.label.toLowerCase().includes(q)) : acts;

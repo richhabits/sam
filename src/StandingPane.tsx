@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 import { getRoster, getStanding, standingArm, standingDisarm, standingRearm, standingRemove } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -47,7 +48,7 @@ export default function StandingPane({ onClose }: { onClose: () => void }) {
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">🛰️ The Standing Crew</div>
+            <div className="drawer-title"><Icon name="team" size={18} /> The Standing Crew</div>
             <div className="drawer-sub">Arm a specialist to work in the <b>background on a schedule</b>. Risky steps pause for your OK — never run unattended.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>

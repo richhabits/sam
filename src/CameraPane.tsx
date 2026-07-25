@@ -52,7 +52,7 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
       <aside className="drawer" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 96vw)" }}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">📷 Cameras</div>
+            <div className="drawer-title"><Icon name="camera" size={18} /> Cameras</div>
             <div className="drawer-sub">Cameras on <b>your own network</b> — nursery, dog, doorway. Local-only: nothing is recorded, uploaded, or sent anywhere.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>

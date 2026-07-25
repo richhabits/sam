@@ -39,7 +39,7 @@ export default function YourSam({ onClose }: { onClose: () => void }) {
       <aside className="drawer yoursam" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">📈 Your SAM</div>
+            <div className="drawer-title"><Icon name="chart" size={18} /> Your SAM</div>
             <div className="drawer-sub">Your usage, computed <b>on your device</b>. This is a feature for you — not surveillance of you.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>

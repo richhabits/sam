@@ -92,7 +92,7 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
         <div className="wiz-meter"><span style={{ width: `${(online / PROVIDERS.length) * 100}%` }} /></div>
 
         {clip && (
-          <div className="wiz-clip">📋 Spotted a <b>{PROVIDERS.find((p) => p.id === clip.id)?.label}</b> key on your clipboard —{" "}
+          <div className="wiz-clip"><Icon name="copy" size={14} /> Spotted a <b>{PROVIDERS.find((p) => p.id === clip.id)?.label}</b> key on your clipboard —{" "}
             <button type="button" className="wiz-add" onClick={() => { setKeys((k) => ({ ...k, [clip.id]: clip.key })); validate(clip.id, clip.key); setClip(null); }}>add it</button>
             <button type="button" className="wiz-x" onClick={() => setClip(null)}>dismiss</button>
           </div>

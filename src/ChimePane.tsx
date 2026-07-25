@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 import { getChimes, setChimeTimer, setChimeAlarm, cancelChimeApi, snoozeChimeApi } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -63,7 +64,7 @@ export default function ChimePane({ onClose }: { onClose: () => void }) {
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">⏰ Alarms &amp; Timers</div>
+            <div className="drawer-title"><Icon name="clock" size={18} /> Alarms &amp; Timers</div>
             <div className="drawer-sub">Set a timer or an alarm. SAM rings even with the window shut.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
@@ -76,7 +77,7 @@ export default function ChimePane({ onClose }: { onClose: () => void }) {
               <button key={t} type="button" onClick={() => setTab(t)}
                 style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
                   background: tab === t ? "var(--accent)" : "transparent", color: tab === t ? "#fff" : "var(--muted)" }}>
-                {t === "timer" ? "⏱ Timer" : "⏰ Alarm"}
+                <Icon name="clock" size={14} /> {t === "timer" ? "Timer" : "Alarm"}
               </button>
             ))}
           </div>
@@ -115,7 +116,7 @@ export default function ChimePane({ onClose }: { onClose: () => void }) {
             {list.length === 0 ? <div className="drawer-empty">Nothing set — add a timer or alarm above.</div> : list.map((c) => (
               <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 0", borderTop: "1px solid var(--border)" }}>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{c.kind === "timer" ? "⏱" : "⏰"} {c.label}</div>
+                  <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}><Icon name="clock" size={14} /> {c.label}</div>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", fontFamily: "var(--mono)" }}>{whenLabel(c)}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>

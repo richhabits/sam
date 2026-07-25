@@ -223,7 +223,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                   </div>
                 ))}
               </div>
-              <div className="admin-lead">🆓 <b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
+              <div className="admin-lead"><b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
               {starters.map(row)}
               <button type="button" className="admin-more" onClick={() => setShowMore((v) => !v)}>
                 {showMore ? "▾ Hide extra free brains" : `▸ ＋ ${moreFree.length} more FREE brains — stack them for more free capacity`}
@@ -291,7 +291,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         </div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">📧 SAM's email {cfg?.email?.configured ? "· on" : ""}</span><span className="admin-note">so SAM can email your brief + nudges, and send on its own</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="mail" size={15} /> SAM's email {cfg?.email?.configured ? "· on" : ""}</span><span className="admin-note">so SAM can email your brief + nudges, and send on its own</span></div>
           <div style={{ display: "flex", gap: 8, flexDirection: "column", marginTop: 12 }}>
             <div className="admin-note" style={{ marginBottom: 2 }}>Pick your provider (fills the settings) — or Custom for any SMTP:</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -322,7 +322,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         <div className="admin-cat"><Icon name="briefcase" /> Business integrations</div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">🔌 Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="link" size={15} /> Integrations — connect your business tools</span><span className="admin-note">one-tap MCP: revenue, ads, social, workspace — SAM gains their tools (always ask-first)</span></div>
           <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
             {mcp.map((p) => (
               <div key={p.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
@@ -363,12 +363,12 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         <div className="admin-cat" id="admin-phone"><Icon name="phone" /> Phone &amp; devices</div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">📱 Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
           {phone.remoteOn && phoneQR ? (
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
               <img src={phoneQR} alt="Scan to open SAM on your phone" style={{ width: 160, height: 160, borderRadius: 12, background: "#fff", padding: 6 }} />
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera 📷</div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera</div>
                 <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
                 <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -376,7 +376,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                     if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
                     const r = await regeneratePhone().catch(() => ({ ok: false }));
                     if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
-                  }}>🔁 New token</button>
+                  }}><Icon name="refresh" size={14} /> New token</button>
                   <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
                     if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
                     const r = await disablePhone().catch(() => ({ ok: false }));
@@ -398,7 +398,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             </div>
           )}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <div className="admin-note" style={{ marginBottom: 8, lineHeight: 1.5 }}>🔔 <b>Alerts on this device</b> — get SAM's morning brief, reminders &amp; task results as push notifications, even when SAM's closed. {pushOn ? <b style={{ color: "var(--accent-text)" }}>· On for this device ✓</b> : ""} {pushMsg && <b style={{ color: "var(--accent-text)" }}>{pushMsg}</b>}</div>
+            <div className="admin-note" style={{ marginBottom: 8, lineHeight: 1.5 }}><Icon name="bell" size={14} /> <b>Alerts on this device</b> — get SAM's morning brief, reminders &amp; task results as push notifications, even when SAM's closed. {pushOn ? <b style={{ color: "var(--accent-text)" }}>· On for this device ✓</b> : ""} {pushMsg && <b style={{ color: "var(--accent-text)" }}>{pushMsg}</b>}</div>
             {!pushOn && <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
               setPushMsg("…"); const r = await enablePush();
               setPushMsg(r === "ok" ? "" : r === "denied" ? "You blocked notifications — allow them in your browser/phone settings." : r === "unsupported" ? "This device doesn't support push (on iPhone: install SAM via Share → Add to Home Screen first)." : "Couldn't enable — try again.");
@@ -410,14 +410,14 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         <div className="admin-cat"><Icon name="download" /> Ship your app</div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">🍎 Sign the Mac app {signing?.mac?.ready ? "· ✓ ready" : ""}</span><span className="admin-note">so it opens with no "unidentified developer" warning</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="briefcase" size={15} /> Sign the Mac app {signing?.mac?.ready ? "· ✓ ready" : ""}</span><span className="admin-note">so it opens with no "unidentified developer" warning</span></div>
           {/* SAM checks what you have and tells you exactly what's left — no external checklist. */}
           <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
               <span>{signing?.mac?.hasCert ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Developer ID certificate {signing?.mac?.certName ? <span className="admin-note">· {signing.mac.certName.slice(0, 42)}</span> : ""}</span>
               <span>{signing?.mac?.hasAppleId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Apple ID &nbsp; {signing?.mac?.hasTeamId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Team ID &nbsp; {signing?.mac?.hasPassword ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} App password</span>
             </div>
-            {signing?.mac?.next && <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, color: signing.mac.ready ? "var(--c-ok, #22C55E)" : "var(--accent-text)" }}>👉 {signing.mac.next}</div>}
+            {signing?.mac?.next && <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, color: signing.mac.ready ? "var(--c-ok, #22C55E)" : "var(--accent-text)" }}>{signing.mac.next}</div>}
           </div>
           <div className="admin-note" style={{ margin: "10px 0", lineHeight: 1.6 }}>
             <b>3 one-time steps</b> (you need a <a href="https://developer.apple.com/programs/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>paid Apple Developer account</a>, $99/yr):<br />
@@ -446,7 +446,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         <div className="admin-row">
           <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Android app {signing?.android?.hasKeystore ? "· keystore ready" : ""}</span><span className="admin-note">install SAM on Android — free, no account needed</span></div>
           <div className="admin-note" style={{ margin: "8px 0", lineHeight: 1.6 }}>
-            SAM already installs as an app on Android <b>right now</b> — connect your phone (📱 above), open the link, then <b>⋮ → Add to Home Screen</b>. No signing, no Play Store, works today.<br />
+            SAM already installs as an app on Android <b>right now</b> — connect your phone (above), open the link, then <b>⋮ → Add to Home Screen</b>. No signing, no Play Store, works today.<br />
             For a <b>Play Store</b> build later you'll need a signing keystore — SAM can make one for you, locally, no account:
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

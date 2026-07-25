@@ -23,7 +23,7 @@ export type IconName =
   | "download" | "folder" | "bell" | "lock" | "trash" | "globe" | "mail" | "calendar"
   | "terminal" | "screen" | "music" | "cursor" | "branch" | "grid" | "cloud" | "location"
   | "doc" | "play" | "link" | "video" | "camera" | "copy" | "frame" | "sliders" | "pause"
-  | "warn" | "ban" | "pulse" | "gift" | "hand" | "sound" | "mute" | "qr";
+  | "warn" | "ban" | "pulse" | "gift" | "hand" | "sound" | "mute" | "qr" | "sun" | "moon";
 
 const P: Record<IconName, React.ReactNode> = {
   chat: <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12Z" />,
@@ -86,6 +86,8 @@ const P: Record<IconName, React.ReactNode> = {
   sound: <><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5Z" /><path d="M16.5 8.8a5 5 0 0 1 0 6.4M19.2 6.5a8.5 8.5 0 0 1 0 11" /></>,
   mute: <><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5Z" /><path d="m16.5 9.5 5 5M21.5 9.5l-5 5" /></>,
   qr: <><rect x="3.5" y="3.5" width="6" height="6" rx="1" /><rect x="14.5" y="3.5" width="6" height="6" rx="1" /><rect x="3.5" y="14.5" width="6" height="6" rx="1" /><path d="M14.5 14.5h3v3M20.5 14.5v6M17.5 20.5h-3" /></>,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" /></>,
+  moon: <path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5Z" />,
 };
 
 /** Runtime set of every glyph name — lets callers hold an icon name in data and check it. */
