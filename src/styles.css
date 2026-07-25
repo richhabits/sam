@@ -137,7 +137,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .brandmark { display: flex; align-items: baseline; gap: 10px; }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 0 3px var(--accent-soft); }
-.tag { font-size: 13px; color: var(--muted); }
+.tag { font-size: 13px; color: var(--muted); white-space: nowrap; letter-spacing: -.01em; }
 .bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 
 .biz { display: flex; align-items: center; gap: 8px; }

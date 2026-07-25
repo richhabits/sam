@@ -1141,10 +1141,10 @@ export default function App() {
       <header className="bar">
         <div className="brandmark">
           <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
-          <span className="dot-live" title={status ? "Connected" : "Starting…"} />
           {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
           <button type="button" className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
           <span className="wordmark">SAM<span className="wm-dot">.</span></span>
+          <span className="dot-live" title={status ? "Connected" : "Starting…"} />
           <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
@@ -1177,7 +1177,7 @@ export default function App() {
             </label>
           )}
           {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
-            <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now">🔇 Stop</button>
+            <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now"><Icon name="ban" size={14} /> Stop</button>
           )}
           {(() => {
             const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
@@ -1196,7 +1196,7 @@ export default function App() {
             );
           })()}
           <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
-          <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk">💷 FLIP IT</button>
+          <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={14} /> FLIP IT</button>
           <UpdateButton />
           <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
         </div>
@@ -1337,7 +1337,7 @@ export default function App() {
             <button type="button" key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
               onDoubleClick={() => renameFolder(f)} title={`Filter by ${f}`}
               onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
-              onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}>📁 {f}</button>
+              onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}><Icon name="folder" size={13} /> {f}</button>
           ))}
           <button type="button" className="side-folder add" onClick={addFolder} title="New folder">＋</button>
           {/* Rename/delete only appear for the SELECTED folder — discoverable without adding
@@ -1566,19 +1566,19 @@ export default function App() {
                 {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal IS provided — Escape closes the menu (see the plusOpen useEffect); the backdrop is a pointer-only convenience layer */}
                 <div className="plus-backdrop" onClick={() => setPlusOpen(false)} />
                 <div className="plus-menu" role="menu">
-                <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
-                <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
-                <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
+                <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon"><Icon name="doc" size={17} /></span> Add file or photo</button>
+                <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon"><Icon name="team" size={17} /></span> Assemble Team</button>
+                <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon"><Icon name="ninja" size={17} /></span> Deploy Ninjas</button>
                 <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="eye" size={17} /></span> Look (Vision)</button>
-                <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
+                <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon"><Icon name="people" size={17} /></span> Who's this? (learn faces)</button>
                 <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon"><Icon name="camera" size={17} /></span> Take a photo</button>
-                <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
-                <button type="button" className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
-                <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
-                <button type="button" className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon">🔎</span> Find my… (camera)</button>
-                <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
+                <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="doc" size={17} /></span> Scan text (camera)</button>
+                <button type="button" className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon"><Icon name="qr" size={17} /></span> Scan QR / barcode</button>
+                <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon"><Icon name="sound" size={17} /></span> Read this aloud</button>
+                <button type="button" className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon"><Icon name="search" size={17} /></span> Find my… (camera)</button>
+                <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon"><Icon name="clock" size={17} /></span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
                 <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon"><Icon name="shield" size={17} /></span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
-                <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
+                <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon"><Icon name="sliders" size={17} /></span> What I can do</button>
                 </div>
               </>
             )}
@@ -1594,8 +1594,8 @@ export default function App() {
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => { dt.items.add(f); }); onFiles(dt.files); } }}
             placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
-          <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input">🎤</button>
-          <button type="button" className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? "🔊" : "🔇"}</button>
+          <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input"><Icon name="voice" size={18} /></button>
+          <button type="button" className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? <Icon name="sound" size={18} /> : <Icon name="mute" size={18} />}</button>
           {loading
             ? <button type="button" className="send stop" onClick={stop} aria-label="Stop">■</button>
             : <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send">↑</button>}
