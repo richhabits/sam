@@ -78,16 +78,20 @@ describe("ranking → routing", () => {
     ],
   };
   const P = (id: string) => ({ id, tier: "free" as const, label: id, run: async () => "" });
+  // A recent-but-fixed-relative timestamp so these routing tests never go stale as real time passes.
+  // (The previous fixed "2026-07-17" silently expired once now() crossed RANKING_MAX_AGE_DAYS.) The
+  // staleness behaviour is proven separately below with an intentionally-old relative date.
+  const FRESH = new Date(Date.now() - 3_600_000).toISOString();   // one hour ago — inside the window
 
   it("saves and reloads the ranking", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");
+    saveRanking(result, FRESH);
     const r = loadRanking();
     expect(r?.top).toBe("groq");
     expect(r?.elo.groq).toBe(1046);
   });
 
   it("clearRanking forgets it → routing has nothing to steer by", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");
+    saveRanking(result, FRESH);
     expect(loadRanking()).not.toBeNull();
     clearRanking();
     expect(loadRanking()).toBeNull();
@@ -95,25 +99,25 @@ describe("ranking → routing", () => {
   });
 
   it("arenaSort tries the higher-Elo brain first once a benchmark is on file", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");
+    saveRanking(result, FRESH);
     const ordered = arenaSort([P("cerebras"), P("groq")]).map((p) => p.id);
     expect(ordered[0]).toBe("groq");   // arena winner leads, even though it was passed in second
   });
 
   it("leaves unranked brains in their incoming order (stable)", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");
+    saveRanking(result, FRESH);
     const ordered = arenaSort([P("mystery1"), P("mystery2")]).map((p) => p.id);
     expect(ordered).toEqual(["mystery1", "mystery2"]);   // both unranked → tie at floor → order preserved
   });
 
   it("ranks a TESTED brain (even a loser) above an UNTESTED one", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");   // cerebras is in the ranking at 970 (it lost)
+    saveRanking(result, FRESH);   // cerebras is in the ranking at 970 (it lost)
     const ordered = arenaSort([P("mystery"), P("cerebras")]).map((p) => p.id);
     expect(ordered).toEqual(["cerebras", "mystery"]);   // no more untested-leapfrogs-a-loser
   });
 
   it("freeOrder PINS the champion first on every call (spread-loads only the rest)", () => {
-    saveRanking(result, "2026-07-17T00:00:00Z");   // groq is champion (1046)
+    saveRanking(result, FRESH);   // groq is champion (1046)
     const pool = [P("cerebras"), P("groq"), P("nvidia"), P("mistral")];
     for (let i = 0; i < 5; i++) {
       expect(freeOrder(pool, "fast")[0].id).toBe("groq");   // champion first despite spreadLoad rotation
