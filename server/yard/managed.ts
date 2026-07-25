@@ -20,7 +20,7 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
-import { execInProject } from "./exec.ts";
+import { execInProject, isWithin } from "./exec.ts";
 
 export function yardRoot(): string {
   return process.env.SAMYARD_DIR || join(os.homedir(), "SAMYard");
@@ -64,12 +64,23 @@ export function uniqueSlug(name: string, taken: (slug: string) => boolean = (s) 
   throw new Error(`the yard: too many projects already called "${base}"`);
 }
 
+// AUDIT FIX: a slug from a request param reaches join() below — reject anything that would resolve
+// outside the projects tree (e.g. "../../etc") before it becomes a path. Mirrors the confinement
+// used in exec/preview. A bad slug is simply "no such project".
+function slugConfined(slug: string): boolean {
+  const s = String(slug || "");
+  if (!s || s.includes("/") || s.includes("\\") || s.includes("..")) return false;
+  return isWithin(projectsRoot(), projectPath(s));
+}
+
 export function readManifest(slug: string): Manifest | null {
+  if (!slugConfined(slug)) return null;
   try { return JSON.parse(readFileSync(join(projectPath(slug), MANIFEST), "utf8")) as Manifest; }
   catch { return null; }
 }
 
 export function writeManifest(slug: string, m: Manifest): void {
+  if (!slugConfined(slug)) throw new Error(`the yard: refusing an out-of-tree project slug "${slug}"`);
   m.updatedAt = Date.now();
   writeFileSync(join(projectPath(slug), MANIFEST), `${JSON.stringify(m, null, 2)}\n`);
 }

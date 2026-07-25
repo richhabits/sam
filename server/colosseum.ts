@@ -35,9 +35,16 @@ export function judgePrompt(prompt: string, a: string, b: string): string {
 }
 
 export function parseVerdict(text: string): "A" | "B" | "tie" {
-  const m = (text || "").trim().toUpperCase().match(/\b(A|B|TIE|DRAW)\b/);
-  if (!m || m[1] === "DRAW" || m[1] === "TIE") return "tie";
-  return m[1] as "A" | "B";
+  // AUDIT FIX: don't take the FIRST \b-token — a reply like "A close call, but B wins" would score
+  // A (the stray article) instead of B. The judge is asked for exactly one token, so decide by the
+  // SET of standalone tokens present: any TIE/DRAW, or BOTH A and B (ambiguous), → tie; a wrong
+  // winner is worse for the ranking than a safe tie.
+  const toks: string[] = (text || "").toUpperCase().match(/\b(A|B|TIE|DRAW)\b/g) || [];
+  if (toks.includes("TIE") || toks.includes("DRAW")) return "tie";
+  const hasA = toks.includes("A"), hasB = toks.includes("B");
+  if (hasA && !hasB) return "A";
+  if (hasB && !hasA) return "B";
+  return "tie";   // none present, or both (ambiguous)
 }
 
 // ── the arena ──

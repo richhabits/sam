@@ -45,7 +45,7 @@ async function findByContent(root: string, query: string, limit = 30): Promise<s
 }
 import { homedir, } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
-import { resolve, dirname, basename, extname, join } from "node:path";
+import { resolve, dirname, basename, extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
@@ -259,10 +259,20 @@ async function webSearch(q: string): Promise<string> {
   });
   const html = await r.text();
   const out: string[] = [];
-  const re = /<a[^>]*class="result__a"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/g;
+  // AUDIT FIX: capture the result href too, not just title+snippet. The old regex dropped the URL,
+  // so the `research` tool (which harvests sources by scanning this output for https://) found NONE
+  // on a keyless install → "couldn't find sources" despite real results. DDG wraps the target in a
+  // /l/?uddg=<encoded> redirect; decode it back to the real URL.
+  const re = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/g;
+  const realUrl = (href: string) => {
+    const m = href.match(/[?&]uddg=([^&]+)/);
+    if (m) { try { return decodeURIComponent(m[1]); } catch { /* keep raw */ } }
+    return href.startsWith("//") ? "https:" + href : href;
+  };
   for (let m = re.exec(html); m && out.length < 6; m = re.exec(html)) {
     const strip = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
-    out.push(`• ${strip(m[1])} — ${strip(m[2])}`);
+    const url = realUrl(m[1]);
+    out.push(`• ${strip(m[2])} — ${strip(m[3])}\n  ${url}`);
   }
   return out.length ? out.join("\n") : "No results parsed. Try web_fetch on a specific URL instead.";
 }
@@ -1240,6 +1250,10 @@ export const TOOLS: Tool[] = [
       if (!vault) return "I couldn't find your Obsidian vault. Set OBSIDIAN_VAULT in Settings to its folder path.";
       const safeTitle = String(i.title || "SAM note").replace(/[/\\:*?"<>|]/g, "-").slice(0, 80);
       const dir = i.folder ? join(vault, String(i.folder)) : join(vault, "SAM");
+      // AUDIT FIX: keep the write INSIDE the vault — an unvalidated `folder` like '../../..' would
+      // otherwise write markdown anywhere on disk.
+      const rv = resolve(vault);
+      if (resolve(dir) !== rv && !resolve(dir).startsWith(rv + sep)) return "That folder is outside your Obsidian vault.";
       mkdirSync(dir, { recursive: true });
       const file = join(dir, `${safeTitle}.md`);
       const body = `${i.content || ""}\n\n---\n_Saved by SAM ${new Date().toISOString().slice(0, 16).replace("T", " ")}_\n`;
@@ -1540,8 +1554,8 @@ export const TOOLS: Tool[] = [
         if (!res.ok) throw new Error("Weather API failed");
         const data = await res.json();
         const current = data.current_condition[0];
-        const future = data.weather.slice(0, 7).map((w: any) => `${w.date}: ${w.maxtempC}C/${w.mintempC}C (Rain: ${w.hourly[0]?.chanceofrain || 0}%)`).join("\\n");
-        return `Current: ${current.temp_C}C, ${current.weatherDesc[0].value}\\nForecast:\\n${future}`;
+        const future = data.weather.slice(0, 7).map((w: any) => `${w.date}: ${w.maxtempC}C/${w.mintempC}C (Rain: ${w.hourly[0]?.chanceofrain || 0}%)`).join("\n");
+        return `Current: ${current.temp_C}C, ${current.weatherDesc[0].value}\nForecast:\n${future}`;
       } catch (e: any) { return `Failed to get forecast: ${e.message}`; }
     } },
   { name: "stock_price", safe: true, description: "Get live market data for a stock ticker symbol (e.g. AAPL, TSLA). input: {ticker}.", params: "{ticker}",
@@ -1566,9 +1580,9 @@ export const TOOLS: Tool[] = [
         const top = items.slice(0, 5).map(item => {
           const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
           const linkMatch = item.match(/<link>([\s\S]*?)<\/link>/);
-          return `- ${titleMatch ? titleMatch[1] : "No Title"}\\n  ${linkMatch ? linkMatch[1] : "No Link"}`;
+          return `- ${titleMatch ? titleMatch[1] : "No Title"}\n  ${linkMatch ? linkMatch[1] : "No Link"}`;
         });
-        return top.length ? top.join("\\n\\n") : "No news found.";
+        return top.length ? top.join("\n\n") : "No news found.";
       } catch (e: any) { return `Failed to fetch news: ${e.message}`; }
     } },
   { name: "dedupe_files", safe: true, description: "Recursively scan a directory, hash all files, and list exact duplicates (read-only, does not delete). input: {dir}.", params: "{dir}",
@@ -1606,10 +1620,10 @@ export const TOOLS: Tool[] = [
         let out = "";
         for (const [_hash, paths] of map.entries()) {
           if (paths.length > 1) {
-            out += `Duplicate Group:\\n` + paths.map(p => `  - ${p}`).join("\\n") + "\\n\\n";
+            out += `Duplicate Group:\n` + paths.map(p => `  - ${p}`).join("\n") + "\n\n";
           }
         }
-        const note = truncated ? `\\n\\n(stopped after ${MAX_FILES} files — scan a narrower directory for the rest)` : "";
+        const note = truncated ? `\n\n(stopped after ${MAX_FILES} files — scan a narrower directory for the rest)` : "";
         return (out.trim() || "No duplicates found.") + note;
       } catch (e: any) { return `Failed to dedupe files: ${e.message}`; }
     } },
@@ -1694,18 +1708,25 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         if (IS_MAC) {
-          const lastStr = i.last_name ? `last name:"${esc(i.last_name)}", ` : "";
-          let script = `tell application "Contacts"\nset newPerson to make new person with properties {first name:"${esc(i.first_name)}", ${lastStr}}\n`;
+          // AUDIT FIX: build the property record with NO trailing comma. The old form always left a
+          // dangling ", " before `}` (both with and without a last name), which AppleScript rejects —
+          // so add_contact failed every time on macOS.
+          let props = `first name:"${esc(i.first_name)}"`;
+          if (i.last_name) props += `, last name:"${esc(i.last_name)}"`;
+          let script = `tell application "Contacts"\nset newPerson to make new person with properties {${props}}\n`;
           if (i.phone) script += `make new phone at end of phones of newPerson with properties {label:"Mobile", value:"${esc(i.phone)}"}\n`;
           if (i.email) script += `make new email at end of emails of newPerson with properties {label:"Work", value:"${esc(i.email)}"}\n`;
           script += `save\nend tell`;
           await osa(script);
           return "Contact added successfully.";
         } else {
-          const vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${i.last_name || ""};${i.first_name};;;\nFN:${i.first_name} ${i.last_name || ""}\nTEL;TYPE=CELL:${i.phone || ""}\nEMAIL;TYPE=WORK:${i.email || ""}\nEND:VCARD`;
+          const vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${i.last_name || ""};${i.first_name};;;\nFN:${i.first_name} ${i.last_name || ""}\nTEL;TYPE=CELL:${i.phone || ""}\nEMAIL;TYPE=WORK:${i.email || ""}\nEND:VCARD`.replace(/[\r\n]+/g, "\n");
           const contactsDir = resolve(homedir(), "SAM_Contacts");
           mkdirSync(contactsDir, { recursive: true });
-          const file = resolve(contactsDir, `${i.first_name}_${i.last_name || ""}.vcf`.trim());
+          // AUDIT FIX: sanitize the name components before they become a filename — an unsanitized
+          // '../../..' name was a path-traversal write out of SAM_Contacts.
+          const safe = (s: string) => (s || "").replace(/[^a-z0-9]/gi, "_");
+          const file = resolve(contactsDir, `${safe(i.first_name)}_${safe(i.last_name)}.vcf`);
           await writeFile(file, vcf);
           return `Contact saved as VCF in ${file}.`;
         }
