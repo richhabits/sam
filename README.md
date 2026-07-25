@@ -67,7 +67,7 @@ Most "AI assistants" just talk. SAM works:
 | **Cost** | Free (£0/mo) | $20/mo | Free |
 | **Runs on your machine** | ✅ | ❌ cloud | ✅ |
 | **Works fully offline** | ✅ (Ollama) | ❌ | ⚠️ if you self-host a model |
-| **Takes real actions** | ✅ 173 tools | ⚠️ limited | ❌ mostly chat |
+| **Takes real actions** | ✅ 186 tools | ⚠️ limited | ❌ mostly chat |
 | **Team of agents** | ✅ parallel crew | ❌ | ❌ |
 | **Your data stays home** | ✅ | ❌ | ✅ |
 | **Free brains, auto-rotating** | ✅ ~40 | n/a | ❌ bring your own |
