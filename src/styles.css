@@ -107,6 +107,8 @@ button { font-family: inherit; cursor: pointer; }
 /* Inline SAM icons (Icon.tsx svg.ic) replaced the emoji that were doing icon duty. Sit them on
    the text baseline and never let flex shrink them. They inherit colour/opacity/accent for free. */
 .ic { vertical-align: -.15em; flex: 0 0 auto; }
+/* Status-tinted glyphs (e.g. the signing checklist): done reads green, pending reads muted. */
+.ic.ok { color: var(--c-ok); } .ic.todo { color: var(--muted); opacity: .55; }
 .ctx-ic, .plus-opt .icon { display: inline-flex; align-items: center; justify-content: center; }
 .onboard-pills span, .confirm-head, .update-bar span { display: inline-flex; align-items: center; gap: 6px; }
 ::-webkit-scrollbar { width: 10px; }

@@ -414,8 +414,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           {/* SAM checks what you have and tells you exactly what's left — no external checklist. */}
           <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
-              <span>{signing?.mac?.hasCert ? "✅" : "⬜️"} Developer ID certificate {signing?.mac?.certName ? <span className="admin-note">· {signing.mac.certName.slice(0, 42)}</span> : ""}</span>
-              <span>{signing?.mac?.hasAppleId ? "✅" : "⬜️"} Apple ID &nbsp; {signing?.mac?.hasTeamId ? "✅" : "⬜️"} Team ID &nbsp; {signing?.mac?.hasPassword ? "✅" : "⬜️"} App password</span>
+              <span>{signing?.mac?.hasCert ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Developer ID certificate {signing?.mac?.certName ? <span className="admin-note">· {signing.mac.certName.slice(0, 42)}</span> : ""}</span>
+              <span>{signing?.mac?.hasAppleId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Apple ID &nbsp; {signing?.mac?.hasTeamId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Team ID &nbsp; {signing?.mac?.hasPassword ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} App password</span>
             </div>
             {signing?.mac?.next && <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, color: signing.mac.ready ? "var(--c-ok, #22C55E)" : "var(--accent-text)" }}>👉 {signing.mac.next}</div>}
           </div>
