@@ -191,6 +191,8 @@ jobs:
           path: |
             dist-app/*.dmg
             dist-app/*.exe
+            dist-app/*.AppImage
+            dist-app/*.deb
             dist-app/*.blockmap
             dist-app/latest*.yml
           if-no-files-found: warn
