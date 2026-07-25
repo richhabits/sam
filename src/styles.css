@@ -645,6 +645,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .bubble { transition: background .2s ease; }
 .chip, .icon-btn, .pop-opt, .send, .mic, .plus { transition: all .16s cubic-bezier(.2,.7,.2,1); }
+
+/* ── Tactile press — interactive surfaces dip and spring back when pressed. The physicality
+   that separates "designed" from "merely functional". Transform-only (cheap); the global
+   reduced-motion rule kills it. One consistent gesture across every button in the app. ── */
+.send:not(:disabled):active, .icon-btn:not(:disabled):active, .plus:active, .mic:active,
+.pop-opt:active, .chip:active, .key-cta:active, .onboard-go:not(:disabled):active,
+.update-go:active, .turbo-pill:active, .cmdp-row:active, .tab:active, .nav-item:active {
+  transform: scale(.96);
+}
+/* The primary action should feel eager: hover blooms its accent glow a touch further. */
+.send:not(:disabled):hover { box-shadow: var(--shadow-accent), 0 10px 28px color-mix(in srgb, var(--accent) 24%, transparent); }
 /* connection dot reflects real state */
 .dot-live { transition: background .3s, box-shadow .3s; }
 .bar .dot-live { background: var(--accent); }
