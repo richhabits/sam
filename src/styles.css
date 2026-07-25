@@ -475,7 +475,10 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; flex-direction: column; gap: 2px; z-index: 50;
   animation: rowIn .2s cubic-bezier(.2,.7,.2,1) both;
 }
-.plus-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: none; border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--text); width: 100%; text-align: left; }
+/* Full-screen click-away layer behind the actions menu — click anywhere off the menu to close it.
+   Sits just under .plus-menu (z-index 50) so item clicks still land on the buttons. */
+.plus-backdrop { position: fixed; inset: 0; z-index: 49; background: transparent; }
+.plus-opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: none; border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--text); width: 100%; text-align: left; cursor: pointer; }
 .plus-opt:hover { background: var(--bg); color: var(--accent-text); }
 .plus-opt .icon { font-size: 16px; }
 .send { box-shadow: var(--shadow-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s, filter .15s, box-shadow .15s; }

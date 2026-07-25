@@ -58,6 +58,16 @@ function greeting(name: string) {
 }
 function randomTip() { return TIPS[Math.floor(Math.random() * TIPS.length)]; }
 
+// Distinct message per failure class — a locked (unpaired) device, an unreachable server, or a real
+// vision/provider miss are three different problems. The old catch-all blamed a missing Gemini key for
+// all of them, which nearly cost a security gate. `locked` comes from api.ts's typed error (401).
+function visionErrorNote(e: unknown): string {
+  const err = e as { locked?: boolean; status?: number; message?: string };
+  if (err?.locked || err?.status === 401) return "🔒 This device isn't paired with SAM. Open the pairing link SAM printed on start (or pair from the desktop app), then try again.";
+  if (err?.status === undefined && !err?.locked) return "Couldn't reach SAM to look — is the server running? Try again in a moment.";
+  return "Couldn't read that just now — SAM's free vision may be busy. Try again, or add a Gemini or Groq key in Settings for a stronger lane.";
+}
+
 interface Msg { role: "user" | "sam"; text: string; how?: string; trace?: string[]; at?: string; pinned?: boolean; noBrain?: boolean }
 // `title` is auto-derived from the first message on every turn; `name` is a user-set
 // override that survives it. `pinned` floats a chat to the top of the sidebar.
@@ -276,6 +286,13 @@ export default function App() {
   const resetRanking = () => { clearArena().then(() => { setArenaStatus({ current: null }); setArena(null); }).catch(() => showToast("Couldn't reset the ranking — SAM is still using the current champion.")); };
   const [pending, setPending] = useState<AgentResult | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
+  // Escape closes the actions ("+") menu — pairs with the click-away backdrop so it's easy to dismiss.
+  useEffect(() => {
+    if (!plusOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPlusOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [plusOpen]);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -676,7 +693,7 @@ export default function App() {
     setMessages((m) => [...m, { role: "user", text: userLabel, at: now() }]);
     setLoading(true);
     try { handleResult(await command(prompt, brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "camera.jpg", mime: "image/jpeg", data }])); }
-    catch { sysNote("Couldn't see through the camera just now — need a Gemini key for vision (Settings → API keys)."); }
+    catch (e) { sysNote(visionErrorNote(e)); }
     setLoading(false); inputRef.current?.focus();
   }
 
@@ -770,7 +787,7 @@ export default function App() {
       const r = await command("Read ALL the text in this image exactly, as continuous natural speech (no markdown, no bullet points) — you're reading it out loud to someone.", brand || undefined, QUALITY_TIER[quality], undefined, [{ kind: "image", name: "read.jpg", mime: "image/jpeg", data }]);
       handleResult(r);
       if (r.text) speakText(r.text);   // always speak this one, even if auto-speak is off
-    } catch { sysNote("Couldn't read it just now — need a vision brain (Groq or Gemini key, or Ollama)."); }
+    } catch (e) { sysNote(visionErrorNote(e)); }
     setLoading(false);
   }
 
@@ -1537,11 +1554,18 @@ export default function App() {
         )}
         <div className="composer-inner">
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: hover wrapper (onMouseLeave dismiss); contains a real button */}
-          <div className="plus-wrap" onMouseLeave={() => setPlusOpen(false)}>
+          <div className="plus-wrap">
             <button type="button" className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
             {plusOpen && (
-              <div className="plus-menu">
+              /* AUDIT/UX FIX: the menu used to dismiss on onMouseLeave, and with the menu anchored above
+                 the "+" there was a dead gap over the button — crossing it made the whole menu vanish, so
+                 items were painfully hard to select. Now it stays open until you pick one, click the
+                 click-away backdrop, or press Escape — no fragile hover-dismiss. */
+              <>
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: click-away backdrop for a menu */}
+                {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal IS provided — Escape closes the menu (see the plusOpen useEffect); the backdrop is a pointer-only convenience layer */}
+                <div className="plus-backdrop" onClick={() => setPlusOpen(false)} />
+                <div className="plus-menu" role="menu">
                 <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon">📄</span> Add file or photo</button>
                 <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🤝</span> Assemble Team</button>
                 <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
@@ -1555,7 +1579,8 @@ export default function App() {
                 <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon">⏱️</span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
                 <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon">🛡️</span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
                 <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon">🛠️</span> What I can do</button>
-              </div>
+                </div>
+              </>
             )}
           </div>
           {quality === "turbo" && (
