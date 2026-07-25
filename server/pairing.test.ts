@@ -35,9 +35,9 @@ describe("pairing codes → sessions", () => {
     expect(P.sessionCount()).toBe(1);
   });
 
-  it("refuses an expired code (5-minute window)", () => {
+  it("refuses an expired code (15-minute window)", () => {
     const code = P.mintPairingCode(NOW);
-    expect(P.claimCode(code, NOW + 6 * 60 * 1000)).toBeNull();
+    expect(P.claimCode(code, NOW + 16 * 60 * 1000)).toBeNull();
   });
 
   it("refuses an unknown / garbage code", () => {

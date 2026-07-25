@@ -209,7 +209,7 @@ app.get("/pair", (req, res) => {
   const code = typeof req.query.code === "string" ? req.query.code : "";
   const token = claimCode(code, Date.now(), "browser");
   if (!token) {
-    res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used or has expired (they last 5 minutes). Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
+    res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used or has expired (they last 15 minutes). Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
     return;
   }
   res.setHeader("Set-Cookie", sessionCookieHeader(token));
@@ -220,7 +220,7 @@ app.get("/pair", (req, res) => {
 app.post("/api/pair/new", (req, res) => {
   const code = mintPairingCode(Date.now());
   const host = (req.headers.host || `localhost:${PORT}`).split(",")[0];
-  res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 300 });
+  res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 900 });
 });
 // Revoke every paired session (privileged). The desktop app keeps working (it uses the passkey).
 app.post("/api/pair/revoke-all", (_req, res) => {
@@ -1782,7 +1782,7 @@ app.listen(Number(PORT), HOST, () => {
   // usable code isn't left in the log every boot. The desktop app never needs this (it has the passkey).
   if (handshakeEnforced() && sessionCount() === 0) {
     const code = mintPairingCode(Date.now());
-    console.log(`  🔗 pair a browser · open  http://localhost:${PORT}/pair?code=${code}  (valid 5 min, one-time)\n`);
+    console.log(`  🔗 pair a browser · open  http://localhost:${PORT}/pair?code=${code}  (valid 15 min, one-time)\n`);
   }
   // THE YARD — long work runs in its own process so a build can never make chat or voice
   // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.

@@ -27,7 +27,7 @@ import { openDb } from "./db.ts";
 
 export const SESSION_COOKIE = "sam_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // 30-day rolling expiry
-const CODE_TTL_MS = 5 * 60 * 1000;                 // a pairing code is good for 5 minutes
+const CODE_TTL_MS = 15 * 60 * 1000;                // a pairing code is good for 15 minutes (forgiving for a walk-to-the-phone hand-off; still single-use + short-lived)
 const TOUCH_THROTTLE_MS = 60 * 60 * 1000;          // only rewrite last_seen once an hour (roll without write-amplifying)
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
