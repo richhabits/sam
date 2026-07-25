@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Icon from "./Icon";
 import { getAnalytics, setTelemetry, getTelemetryPreview } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -47,7 +48,7 @@ export default function YourSam({ onClose }: { onClose: () => void }) {
         {!s ? <div className="drawer-empty">Loading…</div> : (
           <>
             <div className="ys-hero">
-              <span className="ys-hero-lock">🔒</span>
+              <span className="ys-hero-lock"><Icon name="lock" size={22} /></span>
               <span><b>{s.dataLeftDevice} bytes</b> of your data have left this device.<br /><span className="ys-hero-sub">Everything below was computed locally.</span></span>
             </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 import { getSafeMigratePreview, getSafeStatus, safeLock, safeMigrate, safeSetup, safeUnlock } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -69,7 +70,7 @@ export default function SafePane({ onClose }: { onClose: () => void }) {
       <aside className="drawer safe-pane" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">🔒 The Safe</div>
+            <div className="drawer-title"><Icon name="lock" size={18} /> The Safe</div>
             <div className="drawer-sub">Your secrets, <b>encrypted at rest on this device</b>. A key value never leaves the Safe — nothing here is sent anywhere.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
@@ -88,7 +89,7 @@ export default function SafePane({ onClose }: { onClose: () => void }) {
                 <label className="safe-field">Passphrase backup <span className="safe-hint">recommended — recovers the Safe if the keychain is ever lost</span>
                   <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder={useKeychain ? "optional but recommended" : "required (≥ 8 characters)"} autoComplete="new-password" />
                 </label>
-                <div className="safe-warn">⚠️ There is <b>no recovery</b> without at least one of: this keychain, or the passphrase. Keychain <b>and</b> passphrase is the safest choice.</div>
+                <div className="safe-warn"><Icon name="warn" size={15} /> There is <b>no recovery</b> without at least one of: this keychain, or the passphrase. Keychain <b>and</b> passphrase is the safest choice.</div>
                 <button type="button" className="safe-btn-primary" disabled={busy || (!useKeychain && pass.length < 8)} onClick={doSetup}>Set up the Safe</button>
               </section>
             )}
@@ -123,7 +124,7 @@ export default function SafePane({ onClose }: { onClose: () => void }) {
                         <button type="button" className="safe-btn-primary" disabled={busy} onClick={() => setConfirmMigrate(true)}>Seal {preview.count} secret{preview.count === 1 ? "" : "s"} & remove from .env…</button>
                       ) : (
                         <div className="safe-confirm">
-                          <div className="safe-warn">⚠️ This <b>rewrites your .env</b> — each secret is sealed and verified, then its plaintext line is removed. Irreversible. (Every secret is checked first; if any fails, nothing changes.)</div>
+                          <div className="safe-warn"><Icon name="warn" size={15} /> This <b>rewrites your .env</b> — each secret is sealed and verified, then its plaintext line is removed. Irreversible. (Every secret is checked first; if any fails, nothing changes.)</div>
                           <div className="safe-row">
                             <button type="button" className="safe-btn-danger" disabled={busy} onClick={doMigrate}>Yes, seal & strip .env</button>
                             <button type="button" className="safe-btn" disabled={busy} onClick={() => setConfirmMigrate(false)}>Cancel</button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Icon from "./Icon";
 import { useEscape } from "./lib/useOverlay";
 
 // ⚡ Power up SAM — 60-second free-key wizard. Each provider: deep-link to its key page, paste field,
@@ -81,7 +82,7 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
       <aside className="drawer wizard" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">⚡ Power up SAM</div>
+            <div className="drawer-title"><Icon name="sparkle" size={18} /> Power up SAM</div>
             <div className="drawer-sub">{online} of {PROVIDERS.length} free brains online — each takes ~30 seconds, all free. (SAM already works right now.)</div>
             {loadErr && <div className="drawer-sub" style={{ color: "#e06c6c" }}>✗ {loadErr}</div>}
           </div>

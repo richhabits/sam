@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 import { getCameras, addCameraApi, removeCameraApi } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -103,7 +104,7 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
           </div>
 
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-            🔒 SAM only connects to cameras on your own network — a public address is refused. It records nothing and uploads nothing.
+            <Icon name="lock" size={14} /> SAM only connects to cameras on your own network — a public address is refused. It records nothing and uploads nothing.
           </div>
         </div>
       </aside>

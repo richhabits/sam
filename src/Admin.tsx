@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import Icon from "./Icon";
+import Icon, { type IconName } from "./Icon";
 import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp, getSigningStatus, genAndroidKeystore } from "./lib/api";
 import QRCode from "qrcode";
 import { enablePush, pushEnabled } from "./lib/push";
@@ -204,20 +204,20 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           const activeKeys = PROVIDERS.reduce((n, p) => n + (count(p.id) > 0 ? 1 : 0), 0);
           // Media matrix — what each ability runs on NOW, and which key switches it on.
           const has = (id: string) => count(id) > 0;
-          const ABILITIES = [
-            { icon: "💬", label: "Chat", on: true, via: activeKeys ? `${activeKeys} free brains, rotating` : "free no-key brain + Ollama", up: activeKeys ? "" : "add Groq/Cerebras for speed" },
-            { icon: "🎨", label: "Images", on: true, via: has("together") || has("siliconflow") ? "unlimited + free-credit lanes" : "Pollinations — unlimited, no key", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
-            { icon: "🔊", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
-            { icon: "👁", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
-            { icon: "🎧", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
-            { icon: "🎬", label: "Video", on: has("fal") || has("novita") || has("siliconflow"), via: has("fal") ? "HappyHorse #1 (fal)" : has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("fal") ? "" : "add fal (HappyHorse!) / Novita / SiliconFlow" },
+          const ABILITIES: { icon: IconName; label: string; on: boolean; via: string; up: string }[] = [
+            { icon: "chat", label: "Chat", on: true, via: activeKeys ? `${activeKeys} free brains, rotating` : "free no-key brain + Ollama", up: activeKeys ? "" : "add Groq/Cerebras for speed" },
+            { icon: "studio", label: "Images", on: true, via: has("together") || has("siliconflow") ? "unlimited + free-credit lanes" : "Pollinations — unlimited, no key", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
+            { icon: "voice", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
+            { icon: "eye", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
+            { icon: "music", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
+            { icon: "video", label: "Video", on: has("fal") || has("novita") || has("siliconflow"), via: has("fal") ? "HappyHorse #1 (fal)" : has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("fal") ? "" : "add fal (HappyHorse!) / Novita / SiliconFlow" },
           ];
           return (
             <>
               <div className="admin-matrix">
                 {ABILITIES.map((a) => (
                   <div key={a.label} className={"matrix-cell" + (a.on ? " on" : "")}>
-                    <span className="matrix-ic">{a.icon}</span>
+                    <span className="matrix-ic"><Icon name={a.icon} size={17} /></span>
                     <span className="matrix-name">{a.label}</span>
                     <span className="matrix-via">{a.on ? `✓ ${a.via}` : "off"}{a.up ? ` · ${a.up}` : ""}</span>
                   </div>
@@ -254,7 +254,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         </div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">📸 Stock media &amp; assets</span><span className="admin-note">real photos, b-roll, GIFs, film info — free keys</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="camera" size={15} /> Stock media &amp; assets</span><span className="admin-note">real photos, b-roll, GIFs, film info — free keys</span></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             {([["pexels","Pexels","https://www.pexels.com/api/","photos + video"],["pixabay","Pixabay","https://pixabay.com/api/docs/","photos + video + music"],["giphy","GIPHY","https://developers.giphy.com/","GIFs"],["tmdb","TMDb","https://www.themoviedb.org/settings/api","film info + posters"],["omdb","OMDb","https://www.omdbapi.com/apikey.aspx","film info (backup)"]] as const).map(([id,label,url,note]) => (
               <div key={id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -263,7 +263,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               </div>
             ))}
             <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0", paddingTop: 8 }} />
-            <div className="admin-note" style={{ marginBottom: 4 }}>☁️ <b>Cloudflare FLUX</b> — the big free image lane (~100k/day). <a className="admin-getkey" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">get token ↗</a></div>
+            <div className="admin-note" style={{ marginBottom: 4 }}><Icon name="cloud" size={14} /> <b>Cloudflare FLUX</b> — the big free image lane (~100k/day). <a className="admin-getkey" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">get token ↗</a></div>
             <input className="admin-input" style={{ margin: 0 }} placeholder={`Cloudflare Account ID ${cfg?.media?.cloudflareAccount ? "(saved)" : ""}`} value={mediaKeys.cloudflareAccount} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareAccount: e.target.value }))} />
             <input className="admin-input" style={{ margin: 0 }} type="password" placeholder="Cloudflare API Token (Workers AI)" value={mediaKeys.cloudflareToken} onChange={(e) => setMediaKeys(m => ({ ...m, cloudflareToken: e.target.value }))} />
             <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
@@ -381,9 +381,9 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                     if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
                     const r = await disablePhone().catch(() => ({ ok: false }));
                     if (r.ok) { setPhone({ remoteOn: false, lan: phone.lan, url: null }); setPhoneQR(""); setPhoneMsg("🔴 Phone access off — restart SAM to fully close the LAN."); }
-                  }}>🔴 Turn off</button>
+                  }}>Turn off</button>
                 </div>
-                <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, opacity: .8 }}>🔒 Same-Wi-Fi traffic isn't encrypted — fine on your own home network. For access from <b>anywhere</b> (encrypted), use <a href="https://tailscale.com/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Tailscale</a>.</div>
+                <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, opacity: .8 }}><Icon name="lock" size={13} /> Same-Wi-Fi traffic isn't encrypted — fine on your own home network. For access from <b>anywhere</b> (encrypted), use <a href="https://tailscale.com/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Tailscale</a>.</div>
                 {phoneMsg && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{phoneMsg}</div>}
               </div>
             </div>
@@ -444,7 +444,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         </div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name">🤖 Android app {signing?.android?.hasKeystore ? "· keystore ready" : ""}</span><span className="admin-note">install SAM on Android — free, no account needed</span></div>
+          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Android app {signing?.android?.hasKeystore ? "· keystore ready" : ""}</span><span className="admin-note">install SAM on Android — free, no account needed</span></div>
           <div className="admin-note" style={{ margin: "8px 0", lineHeight: 1.6 }}>
             SAM already installs as an app on Android <b>right now</b> — connect your phone (📱 above), open the link, then <b>⋮ → Add to Home Screen</b>. No signing, no Play Store, works today.<br />
             For a <b>Play Store</b> build later you'll need a signing keystore — SAM can make one for you, locally, no account:

@@ -111,7 +111,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
             {/* security watchdog */}
             <div className="dash-sec"><Icon name="shield" /> Security</div>
             <div className={`dash-security ${sec && !sec.clear ? "flagged" : "clear"}`}>
-              <span className="dash-shield">{sec && !sec.clear ? "⚠️" : "🛡️"}</span>
+              <span className="dash-shield">{sec && !sec.clear ? <Icon name="warn" size={16} /> : <Icon name="shield" size={16} />}</span>
               <span>{sec ? sec.headline : "Checking…"}</span>
             </div>
 

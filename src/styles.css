@@ -656,6 +656,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 /* The primary action should feel eager: hover blooms its accent glow a touch further. */
 .send:not(:disabled):hover { box-shadow: var(--shadow-accent), 0 10px 28px color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/* ── Depth & lift — interactive cards rise a hair on hover and read from the elevation ladder.
+   Restraint is the point: you feel the depth, you don't see the shadow. ── */
+.team-member, .stu-thumb, .ys-tool, .matrix-cell {
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.team-member:hover, .stu-thumb:hover { transform: translateY(-2px); box-shadow: var(--elev-2); }
+.matrix-cell:hover { border-color: var(--border-strong); box-shadow: var(--elev-1); }
+/* Crafted top-edge highlight on the glass header — a 1px inner light line reads as a real material. */
+.bar { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 90%, #fff); }
 /* connection dot reflects real state */
 .dot-live { transition: background .3s, box-shadow .3s; }
 .bar .dot-live { background: var(--accent); }

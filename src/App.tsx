@@ -1571,7 +1571,7 @@ export default function App() {
                 <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon">🥷</span> Deploy Ninjas</button>
                 <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="eye" size={17} /></span> Look (Vision)</button>
                 <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon">🙋</span> Who's this? (learn faces)</button>
-                <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon">📸</span> Take a photo</button>
+                <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon"><Icon name="camera" size={17} /></span> Take a photo</button>
                 <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon">📄</span> Scan text (camera)</button>
                 <button type="button" className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon">🔳</span> Scan QR / barcode</button>
                 <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon">🔈</span> Read this aloud</button>
@@ -1637,7 +1637,7 @@ export default function App() {
           <div className="ctx-row"><span className="ctx-ic"><Icon name={quality === "private" ? "lock" : quality === "best" ? "sparkle" : "pulse"} size={14} /></span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
           {autopilot && <div className="ctx-row"><span className="ctx-ic">✈️</span>Autopilot on</div>}
           {elon && <div className="ctx-row danger"><span className="ctx-ic"><Icon name="sparkle" size={14} /></span>Elon Mode ON</div>}
-          {guardian && <div className="ctx-row"><span className="ctx-ic">🛡️</span>Guardian watching</div>}
+          {guardian && <div className="ctx-row"><span className="ctx-ic"><Icon name="shield" size={14} /></span>Guardian watching</div>}
         </div>
       </aside>
       </div>
@@ -1996,11 +1996,11 @@ export default function App() {
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
-              <div><div className="drawer-title">What SAM can do</div><div className="drawer-sub">Reading &amp; searching happen automatically. 🔒 = SAM asks you first.</div></div>
+              <div><div className="drawer-title">What SAM can do</div><div className="drawer-sub">Reading &amp; searching happen automatically. <Icon name="lock" size={12} /> = SAM asks you first.</div></div>
               <button type="button" className="icon-btn" onClick={() => setToolsOpen(false)} aria-label="Close">✕</button>
             </div>
             <ul className="tool-list">
-              {tools.map((t) => (<li key={t.name}><span className="t-lock">{t.safe ? "•" : "🔒"}</span><span className="t-desc">{t.description}</span></li>))}
+              {tools.map((t) => (<li key={t.name}><span className="t-lock">{t.safe ? "•" : <Icon name="lock" size={12} />}</span><span className="t-desc">{t.description}</span></li>))}
             </ul>
           </aside>
         </div>
