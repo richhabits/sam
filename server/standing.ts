@@ -79,6 +79,7 @@ export interface RunDueDeps {
 
 // ── the roster lookup (specialists + ninjas) ──
 const byId = (id: string) => [...SPECIALISTS, ...NINJAS].find((s) => s.id === id);
+const _standingRunning = new Set<string>();   // agent ids currently executing — guards against a long run double-firing on the next tick
 
 // ── gates: the flag is on by default; the "standing-crew" CONSENT is the real guard and stays opt-in ──
 export function standingEnabled(): boolean {
@@ -192,6 +193,7 @@ export async function runDue(now: Date = new Date(), deps: RunDueDeps = {}): Pro
   const all = load();
   const due = all.filter((a) => {
     if (!a.armed) return false;
+    if (_standingRunning.has(a.id)) return false;   // AUDIT FIX: still running from a prior (un-awaited) tick — don't fire it again concurrently
     const parsed = parseCron(a.cron);
     return !!parsed && parsed.shouldRun(nowClock, a.lastRunAt ? new Date(a.lastRunAt) : null);
   });
@@ -217,6 +219,7 @@ export async function runDue(now: Date = new Date(), deps: RunDueDeps = {}): Pro
     const label = spec ? `${spec.name}` : a.specialistId;
     let outcome: RunOutcome;
     let summary: string;
+    _standingRunning.add(a.id);   // hold the in-flight guard across the (possibly long) agent run
     try {
       const r = await runner(systemFor(a), a.task);
       if (r.kind === "final") {
@@ -243,6 +246,8 @@ export async function runDue(now: Date = new Date(), deps: RunDueDeps = {}): Pro
       outcome = "error";
       logAutonomy({ at: nowIso, behavior: STANDING_BEHAVIOR, kind: "acted",
         summary: `${label} errored on “${a.task.slice(0, 80)}”: ${summary}` });
+    } finally {
+      _standingRunning.delete(a.id);
     }
     // Record the outcome (the claim already wrote lastRunAt).
     const fresh = load();

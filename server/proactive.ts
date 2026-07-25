@@ -70,6 +70,7 @@ export function desktopNotify(title: string, msg: string) {
 
 // Queue of things for the app to show next time it checks.
 let pending: { type: "brief" | "nudge"; text: string; at: string }[] = [];
+let _lastBriefFired = "";   // in-memory once-a-day guard (backs up the persisted lastBrief)
 export function takePending() { const p = pending; pending = []; return p; }
 
 // ── Scheduler ──
@@ -96,8 +97,12 @@ export function startProactive(composeBrief: () => Promise<string>) {
       // 2) morning brief — once per day, at/after the brief time — ONLY if "daily-briefing" is enabled (off by default).
       if (isEnabled("daily-briefing")) {
         const st = load<{ lastBrief?: string }>(STATE, {});
-        if (st.lastBrief !== today() && hhmm() >= briefTime()) {
-          save(STATE, { ...st, lastBrief: today() });   // mark first (avoid double-fire)
+        // AUDIT FIX (quota): the once-a-day guard hung on the disk write persisting. If save() ever
+        // failed, lastBrief stayed stale on disk and the brief re-composed every tick (a 5-minute
+        // brain-call hammer all day). An in-memory guard makes a failed persist harmless this process.
+        if (st.lastBrief !== today() && _lastBriefFired !== today() && hhmm() >= briefTime()) {
+          _lastBriefFired = today();                     // in-memory first — survives a failed disk write
+          save(STATE, { ...st, lastBrief: today() });   // then persist (atomic) so it survives a restart too
           const brief = await composeBrief().catch(() => "");
           if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", b); pending.push({ type: "brief", text: brief, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "daily-briefing", kind: "acted", summary: "Delivered the morning briefing" }); }
         }

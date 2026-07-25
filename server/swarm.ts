@@ -228,6 +228,10 @@ export async function approveAgent(swarmId: string, agentId: string, approved: b
 async function checkSwarmCompletion(swarmId: string) {
   const s = getSwarm(swarmId);
   if (!s || s.status === "done" || s.status === "error") return;
+  // AUDIT FIX: `[].every()` is vacuously TRUE, so a swarm with NO agents (crashed while still
+  // planning, before makePlan populated it) would read as "all finished" → get flipped to 'done'
+  // and a synthesis fabricated over zero real work. A swarm that hasn't started is not complete.
+  if (s.status === "planning" || s.agents.length === 0) return;
 
   const allFinished = s.agents.every((a) => a.status === "done" || a.status === "error");
   const anyPaused = s.agents.some((a) => a.status === "paused");
@@ -270,6 +274,12 @@ export function resumeOrphanedSwarms() {
         }
       });
       const updated = getSwarm(s.id)!;
+      // AUDIT FIX: a swarm that died while still 'planning' (agents never populated) can't be
+      // resumed — mark it honestly as errored rather than letting it linger or be fabricated 'done'.
+      if (updated.status === "planning" || updated.agents.length === 0) {
+        updateSwarm(s.id, (sw) => { sw.status = "error"; sw.synthesis = "Interrupted during planning by an app restart — start it again."; });
+        continue;
+      }
       for (const a of updated.agents) {
         if (a.status === "pending") void runAgentLoop(s.id, a.id);
       }

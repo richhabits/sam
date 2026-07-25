@@ -100,6 +100,7 @@ async function scanExisting(): Promise<DropResult[]> {
 
 let _watcher: ReturnType<typeof watch> | null = null;
 let onDrop: ((d: DropResult) => void) | null = null;
+const _processing = new Set<string>();   // filenames mid-process — dedups iCloud's repeated rename events
 
 // Start watching the iCloud Drop folder.
 export function startDropWatcher(handler: (d: DropResult) => void) {
@@ -117,10 +118,18 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
   try {
     _watcher = watch(DROP, async (event, filename) => {
       if (!filename || filename.startsWith(".") || event !== "rename") return;
-      // Small delay to let iCloud finish syncing the file.
-      await new Promise((r) => setTimeout(r, 1500));
-      const result = await processFile(filename);
-      if (result && onDrop) onDrop(result);
+      // AUDIT FIX: iCloud emits SEVERAL 'rename' events for one file as it syncs. Without a dedup
+      // latch each event ran processFile → the same drop executed its autonomous command twice.
+      if (_processing.has(filename)) return;
+      _processing.add(filename);
+      try {
+        // Small delay to let iCloud finish syncing the file.
+        await new Promise((r) => setTimeout(r, 1500));
+        const result = await processFile(filename);
+        if (result && onDrop) onDrop(result);
+      } finally {
+        _processing.delete(filename);
+      }
     });
     console.log(`  📱 iOS companion · watching ${DROP}`);
   } catch (e: any) {

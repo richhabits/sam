@@ -146,6 +146,7 @@ export function parseCron(cron: string): ParsedSchedule | null {
 
 // ── The scheduler loop ──
 let running = false;
+const inFlight = new Set<string>();   // schedule ids currently executing — the real double-fire guard for long jobs
 let executor: ((command: string) => Promise<string>) | null = null;
 
 export function startScheduler(run: (command: string) => Promise<string>) {
@@ -163,13 +164,15 @@ export function startScheduler(run: (command: string) => Promise<string>) {
     const now = new Date();
     const due = load().filter((s) => {
       if (!s.enabled) return false;
+      if (inFlight.has(s.id)) return false;   // AUDIT FIX: still executing from a prior tick — never fire it twice
       const parsed = parseCron(s.cron);
       return !!parsed && parsed.shouldRun(now, s.lastRun ? new Date(s.lastRun) : null);
     });
     if (!due.length) return;
 
-    // Claim all due schedules in one write (set lastRun) — this is what stops the
-    // next tick, or a crash-restart, from re-firing them.
+    // Claim all due schedules in one write (set lastRun). The lastRun claim alone is NOT enough: a
+    // job that outlives its interval finishes after the next tick, so shouldRun() would re-fire it —
+    // the in-flight `running` set is the real guard against a long job double-firing.
     const all = load();
     const nowIso = now.toISOString();
     for (const d of due) { const s = all.find((x) => x.id === d.id); if (s) s.lastRun = nowIso; }
@@ -177,9 +180,11 @@ export function startScheduler(run: (command: string) => Promise<string>) {
 
     // Fire each without blocking the scheduler.
     for (const d of due) {
+      inFlight.add(d.id);
       executor!(d.command)
         .then((result) => markRan(d.id, result))
-        .catch((e: any) => markRan(d.id, `Error: ${e?.message || e}`));
+        .catch((e: any) => markRan(d.id, `Error: ${e?.message || e}`))
+        .finally(() => inFlight.delete(d.id));
     }
   }, 60_000);
 

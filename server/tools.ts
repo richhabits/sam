@@ -1074,12 +1074,18 @@ export async function benchmarkBrains(
 ): Promise<ArenaResult | { error: string }> {
   const all = availableBrains();
   if (all.length < 2) return { error: "Need at least 2 available brains to run the arena — add a free key or two." };
-  const chosen = Array.isArray(opts.brains) && opts.brains.length ? all.filter((b) => opts.brains!.includes(b.id)) : all.slice(0, opts.maxBrains ?? 4);
+  // AUDIT FIX (quota, doctrine #3): model_arena is a SAFE auto-running tool, and the arena is a
+  // round-robin — cost grows as C(brains,2) × prompts × 3 brain calls. The explicit-brains path had
+  // NO ceiling, so a chat-triggered arena over many brains/prompts could fire thousands of calls and
+  // drain the free-tier pool. Cap BOTH dimensions (8 brains / 5 prompts still covers the ~7-key
+  // nightly benchmark, which uses one prompt).
+  const MAX_BRAINS = 8, MAX_PROMPTS = 5;
+  const chosen = (Array.isArray(opts.brains) && opts.brains.length ? all.filter((b) => opts.brains!.includes(b.id)) : all.slice(0, opts.maxBrains ?? 4)).slice(0, MAX_BRAINS);
   // Guard on CHOSEN competitors, not just available — a 1-brain "benchmark" would otherwise
   // persist a degenerate ranking and corrupt routing (the champion would be that lone brain).
   if (chosen.length < 2) return { error: "Need at least 2 valid brains to benchmark — got " + chosen.length + "." };
   const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
-  const prompts = opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT];
+  const prompts = (opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT]).slice(0, MAX_PROMPTS);
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
   const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
   const result = await runArena(competitors, prompts, answer, judge);
