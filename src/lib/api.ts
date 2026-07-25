@@ -35,8 +35,22 @@ export async function command(message: string, projectId?: string, tier?: string
     body: JSON.stringify({ message, projectId, tier, user: USER, attachments, history }),
     signal,
   });
-  if (!res.ok) throw new Error("command failed");
+  if (!res.ok) throw await apiError(res);
   return res.json();
+}
+
+// Turn a failed response into a typed error so the UI can tell auth failures apart from provider or
+// network failures — instead of every catch guessing (the camera's old "need a Gemini key" blamed the
+// key for ANY failure and nearly got a security gate turned off). `locked` = this device isn't paired.
+export interface ApiError extends Error { status?: number; locked?: boolean; hint?: string }
+export async function apiError(res: Response): Promise<ApiError> {
+  let body: any = null;
+  try { body = await res.json(); } catch { /* non-JSON error body */ }
+  const e = new Error(body?.error || `request failed (${res.status})`) as ApiError;
+  e.status = res.status;
+  e.locked = res.status === 401 || body?.locked === true;
+  e.hint = body?.hint;
+  return e;
 }
 
 // Approve (or decline) a pending risky action and continue the agent.

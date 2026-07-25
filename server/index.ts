@@ -55,6 +55,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
+import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount } from "./pairing.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -174,9 +175,14 @@ app.use((req, res, next) => {
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
 app.use((req, res, next) => {
   if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" })) return next();
+  // A mutating call is authorised by EITHER the Electron preload passkey OR a paired browser session
+  // (a same-origin, HttpOnly, Strict cookie earned via the pairing flow — see server/pairing.ts).
   if (checkPasskey(req)) return next();
-  logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without the passkey — refused despite loopback`, req.socket.remoteAddress || "");
-  return res.status(403).json({ error: "passkey required" });
+  if (validateSession(sessionTokenFromCookie(req.headers.cookie), Date.now())) return next();
+  logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without a passkey or paired session — refused despite loopback`, req.socket.remoteAddress || "");
+  // Distinct, actionable error — NOT "passkey required" (which no browser can satisfy). The frontend
+  // renders this as "SAM is locked — pair this device", never as a provider/key failure.
+  return res.status(401).json({ error: "not paired", locked: true, hint: "This device isn't paired with SAM. Open the pairing link SAM printed on start, or run pairing from the desktop app." });
 });
 
 // SECURITY headers (defense-in-depth for the served browser/phone HUD — Electron loads file://
@@ -192,6 +198,35 @@ app.use((_req, res, next) => {
     "img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https:; " +
     "connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
   next();
+});
+
+// ── THE PAIRING — how a browser / phone earns the Handshake (see server/pairing.ts) ──
+// GET /pair?code=… is the on-ramp: it is a GET (so the mutation gate never blocked it) and it is
+// still behind the Host guard above (rebinding-safe). It swaps a one-time code for a session cookie,
+// then bounces to the app. Minting a code and revoking sessions ARE privileged (they go through the
+// Handshake gate below, so only the desktop app or an already-paired browser can do them).
+app.get("/pair", (req, res) => {
+  const code = typeof req.query.code === "string" ? req.query.code : "";
+  const token = claimCode(code, Date.now(), "browser");
+  if (!token) {
+    res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used or has expired (they last 5 minutes). Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
+    return;
+  }
+  res.setHeader("Set-Cookie", sessionCookieHeader(token));
+  // Same-origin bounce to the app; the cookie now authorises every mutating call from this browser.
+  res.status(200).type("html").send(`<!doctype html><meta charset=utf8><meta http-equiv="refresh" content="0;url=/"><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>✅ This device is paired</h2><p>Opening SAM…</p><p><a href="/">Continue</a></p></body>`);
+});
+// Mint a fresh pairing code (privileged) — the desktop app calls this to pair a new browser/phone.
+app.post("/api/pair/new", (req, res) => {
+  const code = mintPairingCode(Date.now());
+  const host = (req.headers.host || `localhost:${PORT}`).split(",")[0];
+  res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 300 });
+});
+// Revoke every paired session (privileged). The desktop app keeps working (it uses the passkey).
+app.post("/api/pair/revoke-all", (_req, res) => {
+  const n = revokeAllSessions();
+  res.setHeader("Set-Cookie", clearSessionCookieHeader());
+  res.json({ revoked: n });
 });
 
 // ── REMOTE-MODE token gate (phone access) ─────────────────────
@@ -1555,8 +1590,8 @@ function servePreview(req: any, res: any) {
 // learns anyway from the next 403.
 app.get("/api/pair/status", (req, res) => {
   if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
-  const paired = checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
-  res.json({ enforced: handshakeEnforced(), paired, needed: handshakeEnforced() && !paired });
+  const paired = checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]) || validateSession(sessionTokenFromCookie(req.headers.cookie), Date.now());
+  res.json({ enforced: handshakeEnforced(), paired, sessions: sessionCount(), needed: handshakeEnforced() && !paired });
 });
 
 app.post("/api/yard/pair/request", (req, res) => {
@@ -1742,6 +1777,13 @@ if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE 
 const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
+  // THE PAIRING — when the Handshake is enforced and NO browser is paired yet, print a one-time
+  // link so the Chrome-App / phone can earn a session. Printed only when needed (no sessions), so a
+  // usable code isn't left in the log every boot. The desktop app never needs this (it has the passkey).
+  if (handshakeEnforced() && sessionCount() === 0) {
+    const code = mintPairingCode(Date.now());
+    console.log(`  🔗 pair a browser · open  http://localhost:${PORT}/pair?code=${code}  (valid 5 min, one-time)\n`);
+  }
   // THE YARD — long work runs in its own process so a build can never make chat or voice
   // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
   if (process.env.SAM_YARD === "1") {

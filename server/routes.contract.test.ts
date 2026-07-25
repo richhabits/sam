@@ -93,7 +93,9 @@ describe("route contract", () => {
   });
 
   it("every route lives under /api (except the SPA catch-all)", () => {
-    const stray = routes.filter((r) => !r.path.startsWith("/api/") && r.path !== "*").map((r) => `${r.method} ${r.path}`);
+    // "*" is the SPA catch-all; "/pair" is the browser-facing pairing page (a user opens it to earn a
+    // session cookie — a page, not an API endpoint, like the SPA). Everything else stays under /api.
+    const stray = routes.filter((r) => !r.path.startsWith("/api/") && r.path !== "*" && r.path !== "/pair").map((r) => `${r.method} ${r.path}`);
     expect(stray).toEqual([]);
   });
 
