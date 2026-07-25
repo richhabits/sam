@@ -1032,6 +1032,10 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .stu-canvas { display: flex; flex-direction: column; padding: 22px; gap: 14px; overflow: hidden; }
 .stu-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--surface) 60%, var(--bg)), var(--bg)); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
 .stu-hero { max-width: 100%; max-height: 100%; border-radius: 12px; object-fit: contain; }
+/* Placeholder shown when a saved image can't load — the generation is kept, not deleted. */
+.stu-hero-broken { display: flex; align-items: center; justify-content: center; text-align: center;
+  min-width: 220px; min-height: 160px; padding: 2rem; color: var(--text-dim, #888);
+  background: var(--surface, rgba(0,0,0,0.04)); border: 1px dashed var(--border, #ccc); font-size: 13px; }
 .stu-hint { color: var(--muted); font-size: 15px; text-align: center; padding: 20px; max-width: 420px; line-height: 1.6; }
 .stu-hint b { color: var(--accent-text); }
 

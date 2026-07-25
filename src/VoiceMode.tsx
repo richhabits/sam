@@ -97,7 +97,10 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
         } catch { /* if the greet send fails we still fall through to listening */ }
       });
       dc.addEventListener("message", (e) => {
-        const msg = JSON.parse(e.data);
+        // AUDIT FIX: a non-JSON / partial data-channel frame threw an uncaught error that killed the
+        // handler for the rest of the session. Ignore an unparseable frame instead.
+        let msg: any;
+        try { msg = JSON.parse(e.data); } catch { return; }
         if (msg.type === "response.audio_transcript.delta") {
           setState("speaking");
           setSaid(prev => prev + msg.delta);

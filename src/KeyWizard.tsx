@@ -58,14 +58,19 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
   // Depends on PROVIDERS now that the list is fetched rather than hardcoded: before it arrives
   // there is nothing to match against, so the effect must re-run once it does.
   useEffect(() => {
-    const iv = setInterval(async () => {
+    // AUDIT FIX: don't poll the OS clipboard on a timer (a silent background read every 1.8s is a
+    // privacy smell, and some platforms prompt on each read). Check REACTIVELY — once on open and
+    // whenever the window regains focus (i.e. right after the user copied a key elsewhere).
+    const check = async () => {
       try {
         const t = (await navigator.clipboard.readText()).trim();
         const hit = PROVIDERS.find((p) => p.keyPattern && new RegExp(p.keyPattern).test(t) && status[p.id] !== "ok" && keys[p.id] !== t);
         if (hit) setClip({ id: hit.id, key: t }); else if (clip && !PROVIDERS.find((p) => p.keyPattern && new RegExp(p.keyPattern).test(t))) setClip(null);
       } catch { /* clipboard blocked — fine */ }
-    }, 1800);
-    return () => clearInterval(iv);
+    };
+    window.addEventListener("focus", check);
+    check();
+    return () => window.removeEventListener("focus", check);
   }, [status, keys, clip, PROVIDERS]);
 
   return (

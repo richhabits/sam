@@ -111,6 +111,9 @@ export default function StudioView() {
   const [count, setCount] = useState(1);
   const [pending, setPending] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  // AUDIT FIX: images that fail to load are marked here, NOT deleted — a transient load error (the
+  // server's 60-file cache, a hiccup) must not permanently destroy a saved generation.
+  const [brokenImg, setBrokenImg] = useState<Set<string>>(new Set());
   const [enhancing, setEnhancing] = useState(false);
   const [items, setItems] = useState<Item[]>(loadGallery);
   const [selected, setSelected] = useState(0);
@@ -423,8 +426,11 @@ export default function StudioView() {
           )}
           {item && (item.kind === "video"
             ? <video key={item.id} src={item.url} controls autoPlay loop className="stu-hero" />
-            // A gallery entry can outlive the server's 60-file cache — drop it rather than show a broken tile.
-            : <img key={item.id} src={item.url} alt={item.prompt} className="stu-hero" onError={() => remove(item)} />)}
+            // AUDIT FIX: a load error marks the tile 'unavailable' but KEEPS the generation (its prompt
+            // + settings stay, so it's still re-runnable via Tweak/Again) — never auto-delete saved data.
+            : brokenImg.has(item.id)
+              ? <div className="stu-hero stu-hero-broken" title={item.prompt}>This image is temporarily unavailable — Tweak to re-run it.</div>
+              : <img key={item.id} src={item.url} alt={item.prompt} className="stu-hero" onError={() => setBrokenImg((s) => new Set(s).add(item.id))} />)}
           {item && (
             <div className="stu-actions">
               <a className="stu-act" href={item.url} download target="_blank" rel="noreferrer" title="Download"><Icon name="download" size={15} /><span>Save</span></a>

@@ -101,20 +101,26 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
     flash(id); refresh();
   }
   async function saveEleven() {
-    if (eleven.trim()) await saveConfig("elevenlabs", eleven.trim());
-    if (voice.trim()) await saveConfig("elevenVoice", voice.trim());
-    setEleven(""); flash("elevenlabs"); refresh();
+    // AUDIT FIX: check each save's result — don't flash "Saved ✓" when the server refused.
+    if (eleven.trim()) { const r = await saveConfig("elevenlabs", eleven.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
+    if (voice.trim()) { const r = await saveConfig("elevenVoice", voice.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
+    setSaveError(null); setEleven(""); flash("elevenlabs"); refresh();
   }
   async function setService(v: string) { await saveConfig("musicService", v); refresh(); }
 
   async function saveEmail() {
     // Only send fields the user actually changed (blank password = keep the saved one).
-    if (email.smtpHost) await saveConfig("smtpHost", email.smtpHost.trim());
-    if (email.smtpPort) await saveConfig("smtpPort", email.smtpPort.trim());
-    if (email.smtpUser) await saveConfig("smtpUser", email.smtpUser.trim());
-    if (email.smtpPass) await saveConfig("smtpPass", email.smtpPass.trim());
-    if (email.smtpFrom) await saveConfig("smtpFrom", email.smtpFrom.trim());
-    if (email.ownerEmail) await saveConfig("ownerEmail", email.ownerEmail.trim());
+    // AUDIT FIX: check each save and stop at the first failure — never flash "Saved ✓" on an error.
+    const fields: [string, string][] = [
+      ["smtpHost", email.smtpHost], ["smtpPort", email.smtpPort], ["smtpUser", email.smtpUser],
+      ["smtpPass", email.smtpPass], ["smtpFrom", email.smtpFrom], ["ownerEmail", email.ownerEmail],
+    ];
+    for (const [key, val] of fields) {
+      if (!val) continue;
+      const r = await saveConfig(key, val.trim());
+      if (r?.error) { setSaveError({ id: "email", msg: String(r.error) }); return; }
+    }
+    setSaveError(null);
     setEmail((e) => ({ ...e, smtpPass: "" }));
     flash("email"); refresh();
   }

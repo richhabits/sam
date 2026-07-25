@@ -6,7 +6,7 @@ import Icon from "./Icon";
 
 type NB = { id: string; title: string; sources: number; chunks: number };
 type Source = { source: string; title: string; chunks: number };
-type Turn = { q: string; a: string; citations: string[]; loading?: boolean };
+type Turn = { id: string; q: string; a: string; citations: string[]; loading?: boolean };
 
 // NotebookLM, in SAM: pick/create a notebook, add sources (web / file / text),
 // then ask questions answered ONLY from those sources — with citations — or generate
@@ -54,9 +54,12 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
   async function ask() {
     if (!active || !q.trim() || busy) return;
     const question = q.trim(); setQ("");
-    setTurns((t) => [...t, { q: question, a: "", citations: [], loading: true }]);
+    // AUDIT FIX: bind the answer to THIS turn by a stable id, not `t.length-1` — a second question
+    // asked before the first returns would otherwise write the first answer into the wrong turn.
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setTurns((t) => [...t, { id, q: question, a: "", citations: [], loading: true }]);
     const r = await askNotebook(active, question).catch(() => ({ answer: "Something went wrong.", citations: [] }));
-    setTurns((t) => t.map((x, i) => i === t.length - 1 ? { q: question, a: r.answer, citations: r.citations || [] } : x));
+    setTurns((t) => t.map((x) => x.id === id ? { id, q: question, a: r.answer, citations: r.citations || [] } : x));
   }
 
   async function makeAudio() {
