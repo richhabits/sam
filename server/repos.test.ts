@@ -111,7 +111,7 @@ describe("the same name in two places", () => {
   // how the wrong copy gets edited — and the wrong one may be what another tool is using.
   const TWO: Clone[] = [
     { path: "/Users/x/sam", owner: "richhabits", name: "sam", remote: "https://github.com/richhabits/sam.git" },
-    { path: "/Volumes/ROMEO HQ/SAM", owner: "richhabits", name: "sam", remote: "https://github.com/richhabits/sam.git" },
+    { path: "/Volumes/Backup/sam", owner: "richhabits", name: "sam", remote: "https://github.com/richhabits/sam.git" },
   ];
 
   it("refuses rather than guessing, and names both", () => {
@@ -120,12 +120,12 @@ describe("the same name in two places", () => {
     if (!r.ok) {
       expect(r.reason).toMatch(/ambiguous/);
       expect(r.reason).toContain("/Users/x/sam");
-      expect(r.reason).toContain("/Volumes/ROMEO HQ/SAM");
+      expect(r.reason).toContain("/Volumes/Backup/sam");
     }
   });
 
   it("still resolves when the full path is given", () => {
-    expect(chooseRepo("/Volumes/ROMEO HQ/SAM", TWO, [], yes)).toEqual({ ok: true, path: "/Volumes/ROMEO HQ/SAM" });
+    expect(chooseRepo("/Volumes/Backup/sam", TWO, [], yes)).toEqual({ ok: true, path: "/Volumes/Backup/sam" });
   });
 
   it("resolves a name that is only in one place", () => {
