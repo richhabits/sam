@@ -357,6 +357,20 @@ export const revokeAllDevices = () => post("/api/pair/revoke-all", {});
 export const setDeviceGrants = (id: string, grants: Partial<Record<Grant, boolean>>) =>
   post(`/api/pair/devices/${encodeURIComponent(id)}/grants`, { grants });
 
+// B5 — "what did the phone do yesterday." deviceId scopes to one device; hours defaults
+// to 24 (literally "yesterday") on the server if omitted.
+export type AttrCapability = "assign-task" | "cancel" | "retry" | "raise-budget" | "revoke-device" | "set-grants";
+export interface ActivityEntry { at: string; deviceId: string; deviceLabel: string; capability: AttrCapability; detail: string }
+export const getDeviceActivity = (opts: { deviceId?: string; hours?: number } = {}) => {
+  const q = new URLSearchParams();
+  if (opts.deviceId) q.set("deviceId", opts.deviceId);
+  if (opts.hours) q.set("hours", String(opts.hours));
+  return fetch(`/api/pair/activity?${q.toString()}`).then(async (r) => {
+    if (r.status === 403) return { activity: [], refused: true };
+    return r.json() as Promise<{ activity: ActivityEntry[]; refused?: boolean }>;
+  });
+};
+
 export const cancelYardJob = async (id: string) => {
   const pair = pairToken();
   const r = await fetch("/api/yard/cancel", {

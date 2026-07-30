@@ -56,6 +56,7 @@ import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
+import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -233,11 +234,23 @@ app.get("/api/pair/devices", (req, res) => {
   if (!isTrustedLocal(req) && !isPairedSession(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json({ devices: listSessions() });
 });
+// B5 — the single view: "what did the phone do yesterday." Same trust as the device list
+// (reading who-did-what is no more sensitive than reading who's paired). ?deviceId= scopes
+// to one device (a device row's own "activity" link); ?hours= scopes the time window,
+// default 24 — literally "yesterday" unless asked for more.
+app.get("/api/pair/activity", (req, res) => {
+  if (!isTrustedLocal(req) && !isPairedSession(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  const hours = Number(req.query.hours) || 24;
+  const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId : undefined;
+  res.json({ activity: readAttribution({ deviceId, sinceMs: Date.now() - hours * 3600_000, limit: 200 }) });
+});
 // Revoke-one, alongside revoke-all above — same trust either way (the general Handshake
 // mutation gate: the desktop passkey, or any already-paired session). A paired device can
 // already nuke every session via revoke-all; this is the same power, finer-grained.
 app.post("/api/pair/devices/:id/revoke", (req, res) => {
-  const ok = revokeSessionById(String(req.params.id));
+  const targetId = String(req.params.id);
+  const ok = revokeSessionById(targetId);
+  if (ok) attributeRemote(req, "revoke-device", targetId === sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie)) ? "revoked itself" : "revoked another device");
   ok ? res.json({ ok: true }) : res.status(404).json({ error: "no such device" });
 });
 // B3 — setting a device's capability tier. Deliberately isTrustedLocal, NOT the general
@@ -1566,6 +1579,17 @@ function missingGrant(req: any, kind: string, budget: number | null): Grant | nu
   if (budget !== null && budget > SPEND_FLOOR_TOKENS && !hasGrant(id, "spendAbove")) return "spendAbove";
   return null;
 }
+
+// B5 — "every remote action logged with device identity and capability used." Loopback (the
+// operator, at the Mac) isn't "remote" and isn't logged here — this answers "what did the
+// PHONE do," not "what did I do." The label is snapshotted at call time (listSessions() is
+// already-loaded metadata, not a live join) so a later revoke/relabel never rewrites history.
+function attributeRemote(req: any, capability: AttrCapability, detail: string): void {
+  if (isLoopback(req)) return;
+  const id = sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie));
+  const label = listSessions().find((d) => d.id === id)?.label ?? "unknown device";
+  logAttribution({ deviceId: id, deviceLabel: label, capability, detail });
+}
 app.post("/api/yard/enqueue", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
@@ -1573,17 +1597,25 @@ app.post("/api/yard/enqueue", (req, res) => {
   if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
   const needs = missingGrant(req, kind, budget ?? null);
   if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
-  res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
+  const job = yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null });
+  attributeRemote(req, "assign-task", kind);
+  res.json({ job });
 });
 app.post("/api/yard/cancel", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
-  try { res.json({ job: yardStore().cancel(String(req.body?.id || "")) }); }
+  try {
+    const job = yardStore().cancel(String(req.body?.id || ""));
+    attributeRemote(req, "cancel", job.kind);
+    res.json({ job });
+  }
   catch (e: any) { res.status(404).json({ error: e?.message || "no such job" }); }
 });
 app.post("/api/yard/retry", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   const job = yardStore().retry(String(req.body?.id || ""));
-  job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
+  if (!job) { res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" }); return; }
+  attributeRemote(req, "retry", job.kind);
+  res.json({ job });
 });
 // A6 — the meter's "raise budget and resume" action. Deliberately separate from retry:
 // it demands a new ceiling, so nobody resumes a budget stop by reflex.
@@ -1594,6 +1626,7 @@ app.post("/api/yard/raise-budget", (req, res) => {
   const needs = missingGrant(req, "", budget);
   if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
   const job = yardStore().raiseBudgetAndRequeue(String(req.body?.id || ""), Math.round(budget));
+  if (job) attributeRemote(req, "raise-budget", job.kind);
   job ? res.json({ job }) : res.status(409).json({ error: "that job isn't a budget stop, or the new budget wouldn't even survive its first step" });
 });
 

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
   pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
-  getPairedDevices, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant } from "./lib/api";
+  getPairedDevices, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant,
+  getDeviceActivity, type ActivityEntry } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
@@ -34,6 +35,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const refreshDevices = useCallback(() => {
     getPairedDevices().then((r) => { setDevices(r.devices || []); setDevicesRefused(!!r.refused); }).catch(() => {/* the next poll re-reads */});
   }, []);
+  // B5 — the single view: "what did the phone do yesterday." Default window is the server's
+  // own default (24h, literally yesterday); scoping to one device is a click away.
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [activityDevice, setActivityDevice] = useState<string | null>(null);
+  const refreshActivity = useCallback(() => {
+    getDeviceActivity({ deviceId: activityDevice || undefined }).then((r) => setActivity(r.activity || [])).catch(() => {/* the next poll re-reads */});
+  }, [activityDevice]);
   // Re-read the yard straight after acting on it, so the panel reflects the kill
   // immediately rather than at the next five-second tick.
   const refreshYard = () => { getYard().then(setYard).catch(() => {/* the next poll re-reads the truth */}); };
@@ -65,11 +73,12 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       // Only the app gets a list back; a browser is told nothing about who else is waiting.
       yardPairPending().then(setPairInbox).catch(() => {/* not the app — nothing to approve here */});
       refreshDevices();
+      refreshActivity();
     };
     load();
     const iv = setInterval(load, 5000);
     return () => clearInterval(iv);
-  }, [refreshDevices]);
+  }, [refreshDevices, refreshActivity]);
 
   // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
   // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
@@ -326,10 +335,17 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                   <div key={d.id} className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 4, padding: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontWeight: 600 }}>{d.label}</span>
-                      <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }}
-                        onClick={() => revokeDevice(d.id).then(refreshDevices).catch(() => {/* the next poll re-reads */})}>
-                        Revoke
-                      </button>
+                      <span style={{ display: "flex", gap: 6 }}>
+                        {/* B5 — jump the activity list below to just this device */}
+                        <button type="button" className="mini" style={activityDevice === d.id ? { color: "var(--c-blue)", opacity: 1 } : undefined}
+                          onClick={() => setActivityDevice(activityDevice === d.id ? null : d.id)}>
+                          {activityDevice === d.id ? "Showing activity ✕" : "Activity"}
+                        </button>
+                        <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }}
+                          onClick={() => revokeDevice(d.id).then(refreshDevices).catch(() => {/* the next poll re-reads */})}>
+                          Revoke
+                        </button>
+                      </span>
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.7 }}>
                       paired {new Date(d.created).toLocaleDateString()} · last seen {new Date(d.lastSeen).toLocaleString()}
@@ -359,6 +375,29 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* B5 — the single view: "what did the phone do yesterday." Every entry is
+                already device+capability+detail, never content — safe to show as-is. */}
+            {!devicesRefused && devices.length > 0 && (
+              <>
+                <div className="dash-sec">
+                  <Icon name="clock" /> Recent activity{activityDevice ? ` — ${devices.find((d) => d.id === activityDevice)?.label ?? "one device"}` : ""} (last 24h)
+                </div>
+                {activity.length === 0 ? (
+                  <div className="dash-empty">Nothing in the last 24 hours.</div>
+                ) : (
+                  <div className="dash-lanes">
+                    {activity.map((e, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: the log has no stable per-entry id — (device, timestamp) can collide within the same second on a busy device
+                      <div key={`${e.deviceId}-${e.at}-${i}`} className="dash-lane on" style={{ padding: "6px 10px", fontSize: 12 }}>
+                        <span style={{ opacity: 0.6, marginRight: 8 }}>{new Date(e.at).toLocaleString()}</span>
+                        <b>{e.deviceLabel}</b> {e.capability} <span style={{ opacity: 0.7 }}>· {e.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             {/* swarm monitor */}
