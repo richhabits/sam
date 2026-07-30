@@ -302,6 +302,14 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [plusOpen]);
+  // A8's "See what SAM can do" onboarding card lives in TasksView, a sibling with no
+  // direct handle to this state — the "+" menu only exists in the composer, which isn't
+  // even mounted in Tasks mode, so this also has to switch surface back to "agent".
+  useEffect(() => {
+    const onOpenPlus = () => { setSurface("agent"); setPlusOpen(true); };
+    window.addEventListener("sam:open-plus", onOpenPlus);
+    return () => window.removeEventListener("sam:open-plus", onOpenPlus);
+  }, []);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);

@@ -207,9 +207,12 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <div style={{ flex: "1 1 55%", overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          {!filtered.length && (
+          {!filtered.length && jobs.length === 0 && (
+            <FirstRunCards onNewTask={() => setNewOpen(true)} onPlaybooks={() => setPlaybooksOpen(true)} />
+          )}
+          {!filtered.length && jobs.length > 0 && (
             <div style={{ ...card, textAlign: "center", padding: 40, color: "var(--muted)", fontSize: 13.5 }}>
-              {jobs.length ? "No tasks match that filter or search." : "Nothing has run yet — assign a task to get started."}
+              No tasks match that filter or search.
             </div>
           )}
           {filtered.map((j) => {
@@ -439,9 +442,31 @@ function StepChecklist({ steps }: { steps: JobStep[] }) {
   );
 }
 
-// Minimal for A1: the two job kinds that already exist end-to-end (build a new project,
-// edit an existing one). A generic "run this prompt" kind — what the Playbook (A4) needs
-// to enqueue arbitrary work — doesn't exist server-side yet.
+// A8 — first-run onboarding. Three real actions, each already fully wired (nothing
+// aspirational): build a project, save a playbook, or open the capability sheet built in
+// A2. The third dispatches a window event rather than a prop — the "+" menu lives in
+// App.tsx, a sibling this component has no direct handle to.
+function FirstRunCards({ onNewTask, onPlaybooks }: { onNewTask: () => void; onPlaybooks: () => void }) {
+  const cardStyle: React.CSSProperties = { ...card, padding: 20, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 6 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "20px 4px" }}>
+      <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>Nothing has run yet. Three ways to start:</div>
+      <button type="button" style={cardStyle} onClick={onNewTask}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14, color: "var(--text)" }}><Icon name="grid" size={15} /> Build a project</span>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Say what it is, watch the checklist tick through, see it land.</span>
+      </button>
+      <button type="button" style={cardStyle} onClick={onPlaybooks}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14, color: "var(--text)" }}><Icon name="book" size={15} /> Save a Playbook</span>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Turn a prompt you'd otherwise retype into a one-tap, parameterised job.</span>
+      </button>
+      <button type="button" style={cardStyle} onClick={() => window.dispatchEvent(new Event("sam:open-plus"))}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14, color: "var(--text)" }}><Icon name="sliders" size={15} /> See what SAM can do</span>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>The "+" menu, grouped — capture, work, and system actions in one place.</span>
+      </button>
+    </div>
+  );
+}
+
 function NewTaskSheet({ onClose, onCreated, busy, setBusy, setErr }: { onClose: () => void; onCreated: () => void; busy: boolean; setBusy: (b: boolean) => void; setErr: (s: string) => void }) {
   const [kind, setKind] = useState<"project.build" | "project.edit">("project.build");
   const [name, setName] = useState("");
