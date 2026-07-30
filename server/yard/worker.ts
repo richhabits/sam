@@ -165,6 +165,7 @@ HANDLERS.run = async (ctx) => {
   for (const [i, step] of steps.entries()) {
     ctx.checkStop();
     const [command, ...args] = Array.isArray(step) ? step : [step?.command, ...(step?.args ?? [])];
+    ctx.step(`${i + 1}/${steps.length}: ${command} ${args.join(" ")}`.trim());
     ctx.log(`step ${i + 1}/${steps.length}: ${command} ${args.join(" ")}`);
     const r = await execInProject(root, String(command), args.map(String), { cwd: ctx.payload?.cwd, env: ctx.payload?.env });
     for (const line of `${r.stdout}${r.stderr}`.split("\n").filter(Boolean).slice(0, 200)) ctx.log(`  ${line}`);
@@ -179,6 +180,7 @@ HANDLERS.run = async (ctx) => {
   // would ever want to return to.
   let mark = "";
   if (slug && isManagedProject(slug)) {
+    ctx.step("checkpointing");
     const cp = await checkpoint(slug, String(ctx.payload?.message || `${steps.length} step${steps.length === 1 ? "" : "s"}: ${last}`));
     if (cp) { ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`); mark = ` · checkpoint ${cp.sha.slice(0, 8)}`; }
     else ctx.log("nothing changed on disk — no checkpoint recorded");
@@ -408,18 +410,20 @@ HANDLERS["project.deploy"] = async (ctx) => {
   if (!slug || !isManagedProject(slug)) throw Object.assign(new Error(`"${slug}" is not a managed project`), { kind: "permanent" as FailureKind });
   const dir = projectPath(slug);
 
+  ctx.step("checking the deploy is possible");
   const plan = planDeploy(dir, { production: ctx.payload?.production !== false });
   // A missing credential is permanent: retrying cannot conjure one, and a queue of
   // hopeful retries hides the one sentence that says what to do about it.
   if (!plan.ok) throw Object.assign(new Error(plan.reason), { kind: "permanent" as FailureKind });
 
+  ctx.step("checkpointing the way back");
   const cp = await checkpoint(slug, `before deploying ${slug}`);
   if (cp) ctx.log(`checkpointed first: ${cp.sha.slice(0, 8)}`);
   ctx.log(`shape: ${plan.shape.reason}`);
   ctx.checkStop();
 
   if (plan.shape.buildCommand) {
-    ctx.log(`building: ${plan.shape.buildCommand.join(" ")}`);
+    ctx.step(`building: ${plan.shape.buildCommand.join(" ")}`);
     const [cmd, ...args] = plan.shape.buildCommand;
     const built = await execInProject(dir, cmd, args, { timeoutMs: 10 * 60_000 });
     for (const line of `${built.stdout}${built.stderr}`.split("\n").filter(Boolean).slice(-40)) ctx.log(`  ${line}`);
@@ -427,6 +431,7 @@ HANDLERS["project.deploy"] = async (ctx) => {
   }
   ctx.checkStop();
 
+  ctx.step("deploying");
   ctx.log(`deploying: vercel ${plan.args.join(" ")}`);
   const out = await execInProject(dir, "vercel", plan.args, { env: plan.env, timeoutMs: 15 * 60_000 });
   for (const line of `${out.stdout}${out.stderr}`.split("\n").filter(Boolean).slice(-40)) ctx.log(`  ${line}`);
@@ -435,6 +440,7 @@ HANDLERS["project.deploy"] = async (ctx) => {
   const url = urlFrom(`${out.stdout}\n${out.stderr}`);
   if (!url) throw new Error("the deploy reported success but named no URL — refusing to claim it is live");
 
+  ctx.step(`checking ${url} is really there`);
   ctx.log(`checking ${url} is really there…`);
   const smoke = await smokeTest(url);
   ctx.log(`  ${smoke.detail}`);
@@ -447,6 +453,7 @@ HANDLERS["project.deploy"] = async (ctx) => {
 
 HANDLERS["project.checkpoint"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");
+  ctx.step(`checkpointing ${slug}`);
   const cp = await checkpoint(slug, String(ctx.payload?.message || "checkpoint"));
   if (!cp) { ctx.log("nothing had changed — no checkpoint recorded"); return "nothing to record"; }
   ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`);
@@ -456,6 +463,7 @@ HANDLERS["project.checkpoint"] = async (ctx) => {
 HANDLERS["project.restore"] = async (ctx) => {
   const slug = String(ctx.payload?.slug || "");
   const sha = String(ctx.payload?.sha || "");
+  ctx.step(`restoring ${slug} to ${sha ? sha.slice(0, 8) : "its last checkpoint"}`);
   const at = await restore(slug, sha);
   ctx.log(`restored ${slug} to ${at.sha.slice(0, 8)} — ${at.message}`);
   return `restored to ${at.sha.slice(0, 8)}`;
