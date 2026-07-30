@@ -54,6 +54,7 @@ export interface Job {
   logPath: string | null;
   project: string | null;
   steps: JobStep[];
+  tier: string | null;   // the model tier actually used ("free"/"local"/"premium"/…), for A6's free-vs-paid split
 }
 
 const COLUMNS = `
@@ -74,7 +75,8 @@ const COLUMNS = `
   run_after INTEGER NOT NULL DEFAULT 0,
   log_path TEXT,
   project TEXT,
-  steps_json TEXT NOT NULL DEFAULT '[]'
+  steps_json TEXT NOT NULL DEFAULT '[]',
+  tier TEXT
 `;
 
 function hydrate(r: any): Job {
@@ -88,6 +90,7 @@ function hydrate(r: any): Job {
     cancelRequested: !!r.cancel_requested, runAfter: r.run_after,
     logPath: r.log_path, project: r.project,
     steps: (() => { try { return JSON.parse(r.steps_json ?? "[]"); } catch { return []; } })(),
+    tier: r.tier ?? null,
   };
 }
 
@@ -107,6 +110,7 @@ export class JobStore {
     // A jobs.db from before A3 has no steps_json column — CREATE TABLE IF NOT EXISTS
     // doesn't add columns to an existing table. Same pattern as memory.ts's migration.
     try { this.db.exec(`ALTER TABLE jobs ADD COLUMN steps_json TEXT NOT NULL DEFAULT '[]'`); } catch { /* already there */ }
+    try { this.db.exec(`ALTER TABLE jobs ADD COLUMN tier TEXT`); } catch { /* already there */ }
   }
 
   close() { try { this.db.close(); } catch { /* already closed — the desired end state */ } }
@@ -163,6 +167,12 @@ export class JobStore {
   // runs, unlike the state-machine methods below which each move the row exactly once.
   setSteps(id: string, steps: JobStep[]): void {
     this.db.prepare("UPDATE jobs SET steps_json=? WHERE id=?").run(JSON.stringify(steps.slice(-200)), id);
+  }
+
+  // Which tier actually ran, for A6's free-vs-paid split — recorded once, at first spend,
+  // not reset on every subsequent spend() call within the same job.
+  setTier(id: string, tier: string): void {
+    this.db.prepare("UPDATE jobs SET tier=? WHERE id=? AND tier IS NULL").run(tier, id);
   }
 
   private transition(id: string, to: JobState, patch: Record<string, any> = {}, now = Date.now()): Job {
@@ -267,5 +277,22 @@ export class JobStore {
         ? { id: this.list("failed", 1)[0].id, error: this.list("failed", 1)[0].lastError, kind: this.list("failed", 1)[0].failureKind }
         : null,
     };
+  }
+
+  // A6's meter. Queried over the WHOLE table, not the capped recent-jobs list — a "this
+  // week" total computed from only the last 20 jobs would silently undercount on a busy
+  // week, and "no invented currency" cuts both ways: an honest total or none at all.
+  // Today/week are local calendar days (this runs on the operator's own machine).
+  meter(now = Date.now()) {
+    const d = new Date(now);
+    const todayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const weekStart = todayStart - 6 * 24 * 60 * 60 * 1000;   // rolling 7 days, today included
+    const sumSince = (since: number) =>
+      (this.db.prepare("SELECT COALESCE(SUM(cost_tokens),0) c FROM jobs WHERE created_at >= ?").get(since) as any).c as number;
+    const rows = this.db.prepare("SELECT tier, COALESCE(SUM(cost_tokens),0) c FROM jobs WHERE created_at >= ? GROUP BY tier")
+      .all(weekStart) as { tier: string | null; c: number }[];
+    const byTier: Record<string, number> = {};
+    for (const r of rows) byTier[r.tier ?? "unattributed"] = r.c;
+    return { todayTokens: sumSince(todayStart), weekTokens: sumSince(weekStart), byTier };
   }
 }

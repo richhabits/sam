@@ -321,12 +321,14 @@ describe("playbook.run", () => {
   it("a final answer finishes the job and logs the answer", async () => {
     agentResult.kind = "final";
     agentResult.text = "shipped the launch post";
+    delete process.env.DEFAULT_TIER;   // defaults to "free" — real attribution, not a guess
     const j = store.enqueue("playbook.run", { prompt: "write a launch post" });
     await runOneJob(store);
     const after = store.get(j.id)!;
     expect(after.state).toBe("done");
     expect(after.steps[0]).toMatchObject({ label: "working", state: "done" });
     expect(after.costTokens).toBeGreaterThan(0);   // the rough estimate, not zero
+    expect(after.tier).toBe("free");   // A6 — real tier attribution, not invented
     const log = readFileSync(after.logPath!, "utf8");
     expect(log).toMatch(/shipped the launch post/);
   });

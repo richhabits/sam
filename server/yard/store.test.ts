@@ -334,3 +334,74 @@ describe("steps (the live checklist)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("tier attribution (A6's free-vs-paid split)", () => {
+  let s: JobStore;
+  beforeEach(() => { s = new JobStore(":memory:"); });
+  afterEach(() => s.close());
+
+  it("a fresh job has no tier recorded until spend reports one", () => {
+    const j = s.enqueue("k");
+    expect(j.tier).toBeNull();
+  });
+
+  it("setTier records it, and round-trips through get()", () => {
+    const j = s.enqueue("k");
+    s.setTier(j.id, "free");
+    expect(s.get(j.id)!.tier).toBe("free");
+  });
+
+  it("the FIRST tier reported wins — a job doesn't switch attribution mid-run", () => {
+    const j = s.enqueue("k");
+    s.setTier(j.id, "free");
+    s.setTier(j.id, "premium");
+    expect(s.get(j.id)!.tier).toBe("free");
+  });
+});
+
+describe("meter (A6 — today/this-week totals + tier split)", () => {
+  let s: JobStore;
+  beforeEach(() => { s = new JobStore(":memory:"); });
+  afterEach(() => s.close());
+
+  const DAY = 24 * 60 * 60 * 1000;
+  const NOW = new Date(2026, 0, 15, 14, 30).getTime();       // a fixed Wednesday afternoon
+  const TODAY_START = new Date(2026, 0, 15).getTime();
+
+  // Enqueue-claim-cost in one step, at a specific point in time — claim() always grabs
+  // the oldest QUEUED job, so each of these must run to completion before the next
+  // enqueue, or an earlier job would get claimed by mistake.
+  const jobAt = (at: number, tokens: number, tier?: string) => {
+    const j = s.enqueue("k", {}, { now: at });
+    s.claim(at);
+    s.addCost(j.id, tokens, at);
+    if (tier) s.setTier(j.id, tier);
+    return j;
+  };
+
+  it("sums today's and this week's cost from real jobs, not just the capped recent list", () => {
+    jobAt(TODAY_START + 3600_000, 100);      // today
+    jobAt(NOW - 3 * DAY, 50);                // 3 days ago — within the rolling week
+    jobAt(NOW - 10 * DAY, 999);              // 10 days ago — outside the window entirely
+
+    const m = s.meter(NOW);
+    expect(m.todayTokens).toBe(100);
+    expect(m.weekTokens).toBe(150);   // today's 100 + 3-days-ago's 50 — NOT the 999 from 10 days ago
+  });
+
+  it("splits cost by tier, grouping never-tagged jobs as 'unattributed'", () => {
+    jobAt(NOW, 40, "free");
+    jobAt(NOW, 60, "premium");
+    jobAt(NOW, 10);   // never called setTier — e.g. a project.build, which never spends against a model
+
+    const m = s.meter(NOW);
+    expect(m.byTier.free).toBe(40);
+    expect(m.byTier.premium).toBe(60);
+    expect(m.byTier.unattributed).toBe(10);
+  });
+
+  it("a quiet day is a real zero, not a missing field", () => {
+    const m = s.meter(NOW);
+    expect(m).toEqual({ todayTokens: 0, weekTokens: 0, byTier: {} });
+  });
+});

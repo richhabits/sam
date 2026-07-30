@@ -352,6 +352,17 @@ export const cancelYardJob = async (id: string) => {
   return body;
 };
 export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
+export const raiseYardJobBudget = async (id: string, budget: number) => {
+  const pair = pairToken();
+  const r = await fetch("/api/yard/raise-budget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(pair ? { "X-SAM-Pair": pair } : {}) },
+    body: JSON.stringify({ id, budget }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `couldn't raise that budget (${r.status})`);
+  return body;
+};
 
 // ── what the yard has built ──
 // A refused read is not an empty yard. Reported separately so the view can say which,

@@ -1,7 +1,7 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, getYardProjects,
+  getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, raiseYardJobBudget, getYardProjects,
   getPlaybooks, savePlaybook, deletePlaybook, importPlaybook, runPlaybook,
   getYardProject, getYardProjectFile, yardFileUrl,
 } from "./lib/api";
@@ -23,7 +23,7 @@ type Job = {
   attempts: number; createdAt: number; startedAt: number | null; finishedAt: number | null;
   heartbeatAt: number | null; costTokens: number; costBudget: number | null;
   lastError: string | null; failureKind: string | null; cancelRequested: boolean;
-  logPath: string | null; project: string | null; steps: JobStep[];
+  logPath: string | null; project: string | null; steps: JobStep[]; tier: string | null;
 };
 
 type Filter = "all" | "queued" | "running" | "failed" | "done" | "cancelled";
@@ -85,6 +85,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   const [on, setOn] = useState<boolean | null>(null);
   const [refused, setRefused] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [meter, setMeter] = useState<{ todayTokens: number; weekTokens: number; byTier: Record<string, number> } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ job: Job; log: string[] } | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -108,6 +109,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
       setOn(!!r.on);
       setRefused(!!r.refused);
       setJobs(r.recent || []);
+      setMeter(r.meter || null);
       setNow(Date.now());
     }).catch(() => { /* transient fetch failure — the next poll tries again */ });
   }, []);
@@ -140,6 +142,11 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
     setErr("");
     try { await retryYardJob(id); refresh(); }
     catch (e: any) { setErr(e?.message || "couldn't retry that job"); }
+  };
+  const raiseBudget = async (id: string, budget: number) => {
+    setErr("");
+    try { await raiseYardJobBudget(id, budget); refresh(); if (selected === id) getYardJob(id).then((r: any) => r.job && setDetail(r)); }
+    catch (e: any) { setErr(e?.message || "couldn't raise that budget"); }
   };
 
   if (on === null) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Looking…</div>;
@@ -194,6 +201,8 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
         </button>
       </div>
 
+      {meter && <TaskMeter meter={meter} />}
+
       {err && <div style={{ margin: "10px 16px 0", color: "#E5484D", fontSize: 12.5 }}>{err}</div>}
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
@@ -220,8 +229,11 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
                   {(j.state === "queued" || j.state === "running") && (
                     <button type="button" onClick={(e) => { e.stopPropagation(); kill(j.id); }} style={{ ...btn, padding: "3px 8px", fontSize: 11 }}>Stop</button>
                   )}
-                  {j.state === "failed" && (
+                  {j.state === "failed" && j.failureKind !== "budget" && (
                     <button type="button" onClick={(e) => { e.stopPropagation(); retry(j.id); }} style={{ ...btn, padding: "3px 8px", fontSize: 11 }}>Retry</button>
+                  )}
+                  {j.state === "failed" && j.failureKind === "budget" && (
+                    <span style={{ ...btn, padding: "3px 8px", fontSize: 11, cursor: "default", color: "#E5A100", background: "transparent" }}>Budget stop</span>
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 14, fontSize: 11.5, color: "var(--muted)" }}>
@@ -243,7 +255,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
           {!selected || !detail ? (
             <div style={{ color: "var(--muted)", fontSize: 13, padding: 20, textAlign: "center" }}>Select a task to see its log and status.</div>
           ) : (
-            <TaskDetail job={detail.job} log={detail.log} onKill={() => kill(detail.job.id)} onRetry={() => retry(detail.job.id)} />
+            <TaskDetail job={detail.job} log={detail.log} onKill={() => kill(detail.job.id)} onRetry={() => retry(detail.job.id)} onRaiseBudget={(b) => raiseBudget(detail.job.id, b)} />
           )}
         </div>
       </div>
@@ -254,23 +266,37 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   );
 }
 
-function TaskDetail({ job, log, onKill, onRetry }: { job: Job; log: string[]; onKill: () => void; onRetry: () => void }) {
+function TaskDetail({ job, log, onKill, onRetry, onRaiseBudget }: { job: Job; log: string[]; onKill: () => void; onRetry: () => void; onRaiseBudget: (budget: number) => void }) {
   const meta = STATUS_META[job.state];
+  const isBudgetStop = job.state === "failed" && job.failureKind === "budget";
+  const [newBudget, setNewBudget] = useState(() => String(Math.max(job.costTokens * 2, (job.costBudget || 0) * 2, 1000)));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{titleFor(job)}</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 11.5 }}>
         <span style={{ color: meta.color, fontWeight: 700 }}><Icon name={meta.icon} size={11} /> {meta.label}</span>
         <span style={{ color: "var(--muted)" }}>kind: {job.kind}</span>
-        <span style={{ color: "var(--muted)" }}>cost: {cost(job)}</span>
+        <span style={{ color: "var(--muted)" }}>cost: {cost(job)}{job.tier ? ` (${job.tier})` : ""}</span>
         <span style={{ color: "var(--muted)" }}>created {when(job.createdAt)}</span>
         {job.finishedAt && <span style={{ color: "var(--muted)" }}>finished {when(job.finishedAt)}</span>}
       </div>
-      {job.lastError && <div style={{ ...card, padding: 10, borderColor: "#E5484D", color: "#E5484D", fontSize: 12.5 }}>{job.lastError}</div>}
-      <div style={{ display: "flex", gap: 8 }}>
-        {(job.state === "queued" || job.state === "running") && <button type="button" style={btn} onClick={onKill}>Stop</button>}
-        {job.state === "failed" && <button type="button" style={btn} onClick={onRetry}>Retry</button>}
-      </div>
+      {job.lastError && <div style={{ ...card, padding: 10, borderColor: isBudgetStop ? "#E5A100" : "#E5484D", color: isBudgetStop ? "#E5A100" : "#E5484D", fontSize: 12.5 }}>{job.lastError}</div>}
+      {isBudgetStop ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>New budget (tokens)</span>
+          <input type="number" min={job.costTokens + 1} value={newBudget} onChange={(e) => setNewBudget(e.target.value)}
+            style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "6px 9px", color: "var(--text)", fontSize: 12.5, width: 100 }} />
+          <button type="button" style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }}
+            onClick={() => { const n = Number(newBudget); if (Number.isFinite(n) && n > 0) onRaiseBudget(n); }}>
+            Raise budget &amp; resume
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8 }}>
+          {(job.state === "queued" || job.state === "running") && <button type="button" style={btn} onClick={onKill}>Stop</button>}
+          {job.state === "failed" && <button type="button" style={btn} onClick={onRetry}>Retry</button>}
+        </div>
+      )}
       {job.steps.length > 0 && <StepChecklist steps={job.steps} />}
       <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
@@ -368,6 +394,26 @@ function TaskFiles({ slug }: { slug: string }) {
 // The live plan — steps the job itself declared as it ran (ctx.step, server/yard/worker.ts),
 // never a model guessing after the fact. A job kind that never calls ctx.step has no steps
 // at all; the caller only renders this when there's something real to show.
+// A6 — the meter. Real token counts from server/yard/store.ts's meter() (queried over
+// the WHOLE job table, not the capped recent list) and real provider-tier attribution
+// (job.tier, set once per job at first ctx.spend(tokens, tier) — see worker.ts). No
+// invented currency: a job kind that never spends against a model (project.create,
+// checkpoint, restore) simply never tags a tier, and shows up as "unattributed", not
+// silently folded into "free".
+function TaskMeter({ meter }: { meter: { todayTokens: number; weekTokens: number; byTier: Record<string, number> } }) {
+  const tiers = Object.entries(meter.byTier);
+  const weekTotal = tiers.reduce((s, [, n]) => s + n, 0);
+  const freeTokens = meter.byTier.free || 0;
+  const freePct = weekTotal > 0 ? Math.round((freeTokens / weekTotal) * 100) : null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "7px 16px", borderBottom: "1px solid var(--border)", fontSize: 11.5, color: "var(--muted)" }}>
+      <span><Icon name="chart" size={12} /> Today <strong style={{ color: "var(--text)" }}>{meter.todayTokens.toLocaleString()}</strong></span>
+      <span>This week <strong style={{ color: "var(--text)" }}>{meter.weekTokens.toLocaleString()}</strong></span>
+      {freePct !== null && <span>{freePct}% free tier this week</span>}
+    </div>
+  );
+}
+
 const STEP_META: Record<JobStep["state"], { icon: any; color: string }> = {
   running: { icon: "pulse", color: "var(--accent)" },
   done: { icon: "check", color: "#3FAE5C" },

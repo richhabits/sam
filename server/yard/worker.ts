@@ -114,7 +114,9 @@ export interface JobContext {
   payload: any;
   project: string | null;
   log: (line: string) => void;
-  spend: (tokens: number) => void;
+  // tier is optional and recorded once (first call that supplies it wins) — A6's free-
+  // vs-paid split reads it straight off the job row, real attribution, never invented.
+  spend: (tokens: number, tier?: string) => void;
   checkStop: () => void;
   // Declares a new step as "running", auto-finishing whichever step was running before
   // it as "done". The UI's live checklist comes straight from these — never a model
@@ -213,7 +215,7 @@ HANDLERS["playbook.run"] = async (ctx) => {
     "Nobody is watching live — be direct, use whatever tools the request needs, and your final answer " +
     "should say plainly what you actually did (or, if you couldn't finish, exactly why).";
   const tier = (process.env.DEFAULT_TIER as Tier) || "free";
-  ctx.spend(roughTokens(system) + roughTokens(prompt));
+  ctx.spend(roughTokens(system) + roughTokens(prompt), tier);
   const r = await runAgent(system, prompt, tier);
   ctx.checkStop();
   ctx.spend(roughTokens(r.text || ""));
@@ -380,7 +382,7 @@ HANDLERS["project.edit"] = async (ctx) => {
   // job's own ceiling so one runaway edit cannot spend the allowance of the queue.
   ctx.step("asking for a proposal");
   const sys = patchMode ? EDIT_SYSTEM_PATCH : EDIT_SYSTEM;
-  ctx.spend(estimate(sys) + estimate(prompt));
+  ctx.spend(estimate(sys) + estimate(prompt), "free");
   const r = await runModel("free", sys, prompt, "code");
   ctx.spend(estimate(r.text));
   ctx.log(`proposal from ${r.provider}`);
@@ -536,7 +538,10 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
   const ctx: JobContext = {
     id: job.id, payload: job.payload, project: job.project,
     log: (line) => log.write(line),
-    spend: (tokens) => { if (store.addCost(job.id, tokens).stopped) throw new JobStopped("budget"); },
+    spend: (tokens, tier) => {
+      if (tier) store.setTier(job.id, tier);
+      if (store.addCost(job.id, tokens).stopped) throw new JobStopped("budget");
+    },
     checkStop: () => {
       // Renew the claim HERE, not only on a timer. A handler that pegs a core blocks
       // this process's own timers, so the interval below never fires, the claim goes

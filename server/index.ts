@@ -1492,7 +1492,7 @@ app.get("/api/yard", (req, res) => {
   if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
   const store = yardStore();
   store.reapAbandoned();
-  res.json({ on: true, worker: supervisor.status(), ...store.summary(), recent: store.list(undefined, 20) });
+  res.json({ on: true, worker: supervisor.status(), ...store.summary(), meter: store.meter(), recent: store.list(undefined, 20) });
 });
 app.get("/api/yard/job/:id", (req, res) => {
   if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
@@ -1516,6 +1516,15 @@ app.post("/api/yard/retry", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   const job = yardStore().retry(String(req.body?.id || ""));
   job ? res.json({ job }) : res.status(409).json({ error: "that job can't be retried — a budget stop or a cancel is a decision, not a fault" });
+});
+// A6 — the meter's "raise budget and resume" action. Deliberately separate from retry:
+// it demands a new ceiling, so nobody resumes a budget stop by reflex.
+app.post("/api/yard/raise-budget", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
+  const budget = Number(req.body?.budget);
+  if (!Number.isFinite(budget) || budget <= 0) { res.status(400).json({ error: "give it a real budget (a positive number of tokens)" }); return; }
+  const job = yardStore().raiseBudgetAndRequeue(String(req.body?.id || ""), Math.round(budget));
+  job ? res.json({ job }) : res.status(409).json({ error: "that job isn't a budget stop, or the new budget wouldn't even survive its first step" });
 });
 
 // ── What the yard has built ─────────────────────────────────────────────────
