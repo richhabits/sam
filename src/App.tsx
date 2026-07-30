@@ -9,6 +9,7 @@ import { isStopCommand } from "./lib/stopIntent";
 import WidgetRenderer from "./WidgetRenderer";
 import ChatList, { displayTitle } from "./ChatList";
 import { matchesQuery } from "./lib/chatTitle";
+import { type Capability, GROUP_LABELS, groupCapabilities } from "./lib/capabilities";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
 // Heavy panels are lazy-loaded — they only download when you actually open them,
 // so the initial app is slimmer and paints faster.
@@ -236,6 +237,9 @@ export default function App() {
   // thread). A toggle, not a route: one SAM, the header stays, only the body underneath swaps.
   const [surface, setSurface] = useState<"agent" | "tasks">(() => { try { return (localStorage.getItem("sam.surface") as any) || "agent"; } catch { return "agent"; } });
   useEffect(() => { try { localStorage.setItem("sam.surface", surface); } catch { /* private mode — the toggle just won't stick */ } }, [surface]);
+  // Set by a capability entry ("New task") that needs to both switch surface AND open a sheet
+  // once Tasks has mounted. TasksView consumes it once, then reports back to clear it.
+  const [taskIntent, setTaskIntent] = useState<"new" | null>(null);
   // Persona: a switchable VOICE over the ONE shared memory (default warm "sam"). Tone only.
   const [persona, setPersona] = useState<string>(() => { try { return localStorage.getItem("sam.persona") || "sam"; } catch { return "sam"; } });
   const [quality, setQuality] = useState<Quality>(init.quality);
@@ -1334,7 +1338,7 @@ export default function App() {
       <div className="shell">
       {surface === "tasks" ? (
         <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-          <Suspense fallback={null}><TasksView /></Suspense>
+          <Suspense fallback={null}><TasksView openNewOnMount={taskIntent === "new"} onOpenedNew={() => setTaskIntent(null)} /></Suspense>
         </div>
       ) : (
       <>
@@ -1571,32 +1575,60 @@ export default function App() {
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
           <div className="plus-wrap">
             <button type="button" className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
-            {plusOpen && (
-              /* AUDIT/UX FIX: the menu used to dismiss on onMouseLeave, and with the menu anchored above
-                 the "+" there was a dead gap over the button — crossing it made the whole menu vanish, so
-                 items were painfully hard to select. Now it stays open until you pick one, click the
-                 click-away backdrop, or press Escape — no fragile hover-dismiss. */
-              <>
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: click-away backdrop for a menu */}
-                {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal IS provided — Escape closes the menu (see the plusOpen useEffect); the backdrop is a pointer-only convenience layer */}
-                <div className="plus-backdrop" onClick={() => setPlusOpen(false)} />
-                <div className="plus-menu" role="menu">
-                <button type="button" className="plus-opt" onClick={() => { fileRef.current?.click(); setPlusOpen(false); }}><span className="icon"><Icon name="doc" size={17} /></span> Add file or photo</button>
-                <button type="button" className="plus-opt" onClick={() => { setInput("/team "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon"><Icon name="team" size={17} /></span> Assemble Team</button>
-                <button type="button" className="plus-opt" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setPlusOpen(false); }}><span className="icon"><Icon name="ninja" size={17} /></span> Deploy Ninjas</button>
-                <button type="button" className="plus-opt" onClick={() => { lookThroughCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="eye" size={17} /></span> Look (Vision)</button>
-                <button type="button" className="plus-opt" onClick={() => { whoIsThis(); setPlusOpen(false); }}><span className="icon"><Icon name="people" size={17} /></span> Who's this? (learn faces)</button>
-                <button type="button" className="plus-opt" onClick={() => { snapPhoto(); setPlusOpen(false); }}><span className="icon"><Icon name="camera" size={17} /></span> Take a photo</button>
-                <button type="button" className="plus-opt" onClick={() => { scanTextFromCamera(); setPlusOpen(false); }}><span className="icon"><Icon name="doc" size={17} /></span> Scan text (camera)</button>
-                <button type="button" className="plus-opt" onClick={() => { scanQR(); setPlusOpen(false); }}><span className="icon"><Icon name="qr" size={17} /></span> Scan QR / barcode</button>
-                <button type="button" className="plus-opt" onClick={() => { readAloudScan(); setPlusOpen(false); }}><span className="icon"><Icon name="sound" size={17} /></span> Read this aloud</button>
-                <button type="button" className="plus-opt" onClick={() => { findObject(); setPlusOpen(false); }}><span className="icon"><Icon name="search" size={17} /></span> Find my… (camera)</button>
-                <button type="button" className="plus-opt" onClick={() => { toggleTimelapse(); setPlusOpen(false); }}><span className="icon"><Icon name="clock" size={17} /></span> {timelapse ? "Stop timelapse watch" : "Timelapse watch"}</button>
-                <button type="button" className="plus-opt" onClick={() => { toggleGuardian(); setPlusOpen(false); }}><span className="icon"><Icon name="shield" size={17} /></span> {guardian ? "Disable Guardian" : "Enable Guardian"}</button>
-                <button type="button" className="plus-opt" onClick={() => { setToolsOpen(true); setPlusOpen(false); }}><span className="icon"><Icon name="sliders" size={17} /></span> What I can do</button>
-                </div>
-              </>
-            )}
+            {plusOpen && (() => {
+              // THE FACE, A2 — one registry, grouped (Work first — it's where the yard's tasks
+              // live), feeding the "+" sheet. Every entry here existed before as a flat list;
+              // this slice groups them and adds the two that were missing entirely: there was no
+              // way to reach Tasks, or start one, from this menu at all. `enabled` is wired for
+              // real (see Capability's doc) but every entry below is honestly enabled:true today
+              // — none of these have a cheap, real "is this actually wired" signal yet. That's
+              // the next increment, not faked here.
+              const items: Capability[] = [
+                { id: "attach", label: "Add file or photo", group: "capture", icon: "doc", enabled: true, run: () => fileRef.current?.click() },
+                { id: "vision", label: "Look (Vision)", group: "capture", icon: "eye", enabled: true, run: lookThroughCamera },
+                { id: "faces", label: "Who's this? (learn faces)", group: "capture", icon: "people", enabled: true, run: whoIsThis },
+                { id: "photo", label: "Take a photo", group: "capture", icon: "camera", enabled: true, run: snapPhoto },
+                { id: "scan-text", label: "Scan text (camera)", group: "capture", icon: "doc", enabled: true, run: scanTextFromCamera },
+                { id: "scan-qr", label: "Scan QR / barcode", group: "capture", icon: "qr", enabled: true, run: scanQR },
+                { id: "read-aloud", label: "Read this aloud", group: "capture", icon: "sound", enabled: true, run: readAloudScan },
+                { id: "find", label: "Find my… (camera)", group: "capture", icon: "search", enabled: true, run: findObject },
+                { id: "new-task", label: "New task", group: "work", icon: "grid", enabled: true, run: () => { setTaskIntent("new"); setSurface("tasks"); } },
+                { id: "view-tasks", label: "View tasks", group: "work", icon: "clock", enabled: true, run: () => setSurface("tasks") },
+                { id: "team", label: "Assemble Team", group: "work", icon: "team", enabled: true, run: () => { setInput("/team "); inputRef.current?.focus(); } },
+                { id: "ninjas", label: "Deploy Ninjas", group: "work", icon: "ninja", enabled: true, run: () => { setInput("/ninjas "); inputRef.current?.focus(); } },
+                { id: "timelapse", label: timelapse ? "Stop timelapse watch" : "Timelapse watch", group: "system", icon: "clock", enabled: true, run: toggleTimelapse },
+                { id: "guardian", label: guardian ? "Disable Guardian" : "Enable Guardian", group: "system", icon: "shield", enabled: true, run: toggleGuardian },
+                { id: "what-can-do", label: "What I can do", group: "system", icon: "sliders", enabled: true, run: () => setToolsOpen(true) },
+              ];
+              const groups = groupCapabilities(items);
+              return (
+                /* AUDIT/UX FIX: the menu used to dismiss on onMouseLeave, and with the menu anchored above
+                   the "+" there was a dead gap over the button — crossing it made the whole menu vanish, so
+                   items were painfully hard to select. Now it stays open until you pick one, click the
+                   click-away backdrop, or press Escape — no fragile hover-dismiss. */
+                <>
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: click-away backdrop for a menu */}
+                  {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal IS provided — Escape closes the menu (see the plusOpen useEffect); the backdrop is a pointer-only convenience layer */}
+                  <div className="plus-backdrop" onClick={() => setPlusOpen(false)} />
+                  <div className="plus-menu" role="menu" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                    {groups.map(({ group, items: groupItems }, gi) => (
+                      <div key={group}>
+                        {gi > 0 && <div style={{ height: 1, background: "var(--border)", margin: "6px 4px" }} />}
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--muted)", padding: "6px 12px 2px" }}>{GROUP_LABELS[group]}</div>
+                        {groupItems.map((item) => (
+                          <button type="button" key={item.id} className="plus-opt" disabled={!item.enabled}
+                            title={!item.enabled ? item.reason : undefined}
+                            style={!item.enabled ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                            onClick={() => { if (!item.enabled) return; item.run(); setPlusOpen(false); }}>
+                            <span className="icon"><Icon name={item.icon as IconName} size={17} /></span> {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
           {quality === "turbo" && (
             <button type="button" className="turbo-pill" title="Turbo is on — one fast call, no tools. Click to switch back to Automatic."

@@ -74,7 +74,7 @@ function cost(j: Job): string {
 const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" };
 const btn: React.CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "var(--radius-sm)", padding: "6px 11px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
 
-export default function TasksView() {
+export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMount?: boolean; onOpenedNew?: () => void } = {}) {
   const [on, setOn] = useState<boolean | null>(null);
   const [refused, setRefused] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -89,6 +89,11 @@ export default function TasksView() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { document.title = "Tasks · SAM"; }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onOpenedNew is a fresh closure every parent render; keying off it would re-fire this on every re-render instead of once per genuine intent change
+  useEffect(() => {
+    if (openNewOnMount) { setNewOpen(true); onOpenedNew?.(); }
+  }, [openNewOnMount]);
 
   const refresh = useCallback(() => {
     getYard().then((r: any) => {
