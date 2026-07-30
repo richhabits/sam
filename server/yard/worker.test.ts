@@ -1,8 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { JobStore } from "./store.ts";
+
+// playbook.run drives the real agent loop — stubbed here so its tests exercise the
+// job-kind's OWN logic (the step, the cost estimate, the unattended-Ask path) without a
+// real model call. handleUnattended's own decision logic already has dedicated coverage
+// in ask.test.ts; this only needs it to actually be called correctly.
+const agentResult: { kind: "final" | "pending"; text?: string; tool?: string; input?: any; transcript?: string; trace: string[] } =
+  { kind: "final", text: "did the thing", trace: [] };
+vi.mock("../agent.ts", () => ({ runAgent: async () => agentResult }));
+
 import { runOneJob, registerHandler, HANDLERS, JobStopped, claimLock, releaseLock } from "./worker.ts";
 
 // Every path through the worker must end in a written outcome. A worker that returns
@@ -293,5 +302,56 @@ describe("the checklist (ctx.step)", () => {
     expect(store.get(j.id)!.steps[0].state).toBe("failed");
     const retried = store.retry(j.id);
     expect(retried!.steps).toEqual([]);
+  });
+});
+
+// A4 — the Playbook. A saved, rendered prompt runs through the same agent loop the chat
+// UI uses, unattended, as a yard job. runAgent is stubbed (see the vi.mock above); these
+// tests are about THIS job kind's own behaviour, not the agent loop's.
+describe("playbook.run", () => {
+  it("refuses a run with no rendered prompt — permanent, not worth retrying", async () => {
+    const j = store.enqueue("playbook.run", {});
+    await runOneJob(store);
+    const after = store.get(j.id)!;
+    expect(after.state).toBe("failed");
+    expect(after.failureKind).toBe("permanent");
+    expect(after.lastError).toMatch(/needs a rendered prompt/);
+  });
+
+  it("a final answer finishes the job and logs the answer", async () => {
+    agentResult.kind = "final";
+    agentResult.text = "shipped the launch post";
+    const j = store.enqueue("playbook.run", { prompt: "write a launch post" });
+    await runOneJob(store);
+    const after = store.get(j.id)!;
+    expect(after.state).toBe("done");
+    expect(after.steps[0]).toMatchObject({ label: "working", state: "done" });
+    expect(after.costTokens).toBeGreaterThan(0);   // the rough estimate, not zero
+    const log = readFileSync(after.logPath!, "utf8");
+    expect(log).toMatch(/shipped the launch post/);
+  });
+
+  it("a pending (risky) action is deferred as an Ask, not silently dropped or falsely reported done", async () => {
+    agentResult.kind = "pending";
+    agentResult.text = undefined;
+    agentResult.tool = "send_email";
+    agentResult.input = { to: "someone@example.com" };
+    agentResult.transcript = "opaque-resume-state";
+    delete process.env.SAM_ASK;   // ON by default (SAM_ASK=0 is the kill switch) — ensure that default holds for this test
+    const j = store.enqueue("playbook.run", { prompt: "email the investor update" });
+    await runOneJob(store);
+    const after = store.get(j.id)!;
+    expect(after.state).toBe("done");   // deferring IS the job's legitimate outcome
+    expect(after.steps.at(-1)).toMatchObject({ label: "needs your OK", state: "done" });
+    const log = readFileSync(after.logPath!, "utf8");
+    expect(log).toMatch(/Deferred/);
+    // restore for any later test in this file
+    agentResult.kind = "final"; agentResult.text = "did the thing";
+    agentResult.tool = undefined; agentResult.input = undefined; agentResult.transcript = undefined;
+  });
+
+  it("records which playbook and version a run came from, in the job's own payload", async () => {
+    const j = store.enqueue("playbook.run", { prompt: "x", playbookId: "pb_1", playbookName: "Ship it", playbookVersion: 3 });
+    expect(j.payload).toMatchObject({ playbookId: "pb_1", playbookName: "Ship it", playbookVersion: 3 });
   });
 });

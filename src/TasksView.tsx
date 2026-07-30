@@ -1,6 +1,9 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, getYardProjects } from "./lib/api";
+import {
+  getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, getYardProjects,
+  getPlaybooks, savePlaybook, deletePlaybook, importPlaybook, runPlaybook,
+} from "./lib/api";
 import Icon from "./Icon";
 import PairPrompt from "./PairPrompt";
 
@@ -86,6 +89,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(Date.now());
   const [newOpen, setNewOpen] = useState(false);
+  const [playbooksOpen, setPlaybooksOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -180,6 +184,9 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
           ))}
         </div>
         <div style={{ flex: 1 }} />
+        <button type="button" style={btn} onClick={() => setPlaybooksOpen(true)}>
+          <Icon name="book" size={12} /> Playbooks
+        </button>
         <button type="button" style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => setNewOpen(true)}>
           <Icon name="plus" size={12} /> New task
         </button>
@@ -240,6 +247,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
       </div>
 
       {newOpen && <NewTaskSheet onClose={() => setNewOpen(false)} onCreated={() => { setNewOpen(false); refresh(); }} busy={busy} setBusy={setBusy} setErr={setErr} />}
+      {playbooksOpen && <PlaybookSheet onClose={() => setPlaybooksOpen(false)} onRan={() => { setPlaybooksOpen(false); refresh(); }} setErr={setErr} />}
     </div>
   );
 }
@@ -360,6 +368,135 @@ function NewTaskSheet({ onClose, onCreated, busy, setBusy, setErr }: { onClose: 
             {busy ? "Starting…" : "Start"}
           </button>
         </div>
+      </aside>
+    </div>
+  );
+}
+
+// A4 — the Playbook. The operator's master prompts, saved, named, versioned, and
+// parameterised — one tap enqueues a rendered version as a playbook.run yard job.
+type Playbook = {
+  id: string; name: string; template: string; params: string[];
+  lastValues: Record<string, string>; version: number; createdAt: number; updatedAt: number;
+};
+
+const inputStyle: React.CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text)", fontSize: 13 };
+
+function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan: () => void; setErr: (s: string) => void }) {
+  const [playbooks, setPlaybooks] = useState<Playbook[] | null>(null);
+  const [refused, setRefused] = useState(false);
+  const [mode, setMode] = useState<"list" | "edit" | "run">("list");
+  const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const [name, setName] = useState("");
+  const [template, setTemplate] = useState("");
+  const [running, setRunning] = useState<Playbook | null>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(() => {
+    getPlaybooks().then((r: any) => { setRefused(!!r.refused); setPlaybooks(r.playbooks || []); }).catch(() => { /* transient — the sheet just shows what it last had */ });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (pb?: Playbook) => { setEditingId(pb?.id); setName(pb?.name || ""); setTemplate(pb?.template || ""); setMode("edit"); };
+  const save = async () => {
+    setErr(""); setBusy(true);
+    try { await savePlaybook({ id: editingId, name, template }); setMode("list"); load(); }
+    catch (e: any) { setErr(e?.message || "couldn't save that playbook"); }
+    finally { setBusy(false); }
+  };
+  const remove = async (pb: Playbook) => {
+    setErr("");
+    try { await deletePlaybook(pb.id); load(); }
+    catch (e: any) { setErr(e?.message || "couldn't delete that playbook"); }
+  };
+  const doRun = async (pb: Playbook, vals: Record<string, string>) => {
+    setErr(""); setBusy(true);
+    try { await runPlaybook(pb.id, vals); onRan(); }
+    catch (e: any) { setErr(e?.message || "couldn't start that playbook"); setBusy(false); }
+  };
+  const startRun = (pb: Playbook) => {
+    if (!pb.params.length) { doRun(pb, {}); return; }
+    setRunning(pb); setValues({ ...pb.lastValues }); setMode("run");
+  };
+  const onImportFile = async (file: File) => {
+    setErr("");
+    try { const text = await file.text(); await importPlaybook(text, file.name); load(); }
+    catch (e: any) { setErr(e?.message || "couldn't import that file"); }
+  };
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; click-outside close
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; click-outside close
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80 }} onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; stops backdrop-close propagation only */}
+      <aside style={{ ...card, width: "min(520px,92vw)", maxHeight: "80vh", padding: 20, display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        {mode === "list" && (<>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", flex: 1 }}>Playbooks</div>
+            <input ref={fileRef} type="file" accept=".md,text/markdown" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = ""; }} />
+            <button type="button" style={btn} onClick={() => fileRef.current?.click()}><Icon name="download" size={12} /> Import .md</button>
+            <button type="button" style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => startEdit()}>
+              <Icon name="plus" size={12} /> New
+            </button>
+          </div>
+          {refused ? (
+            <div style={{ textAlign: "center", padding: 24 }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>This device isn't paired yet — pair it to see and run playbooks.</div>
+              <PairPrompt />
+            </div>
+          ) : !playbooks?.length ? (
+            <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: 24 }}>
+              No playbooks yet. Import a .md brief, or write one from scratch.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {playbooks.map((pb) => (
+                <div key={pb.id} style={{ ...card, padding: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pb.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>v{pb.version}{pb.params.length ? ` · ${pb.params.join(", ")}` : ""}</div>
+                  </div>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => startEdit(pb)}><Icon name="pencil" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => remove(pb)}><Icon name="trash" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px", background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => startRun(pb)}>Run</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>)}
+
+        {mode === "edit" && (<>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{editingId ? "Edit playbook" : "New playbook"}</div>
+          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          <textarea placeholder={"The prompt. Use {{name}} for anything you want filled in on run — e.g. {{project}}, {{repo}}, {{branch}}, {{target}}."}
+            value={template} onChange={(e) => setTemplate(e.target.value)} rows={10}
+            style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 12.5, resize: "vertical" }} />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" style={btn} onClick={() => setMode("list")}>Cancel</button>
+            <button type="button" disabled={busy || !name.trim() || !template.trim()} style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff", opacity: busy ? 0.6 : 1 }} onClick={save}>
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>)}
+
+        {mode === "run" && running && (<>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Run “{running.name}”</div>
+          {running.params.map((p) => (
+            <label key={p} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--muted)" }}>
+              {p}
+              <input value={values[p] || ""} onChange={(e) => setValues((v) => ({ ...v, [p]: e.target.value }))} style={inputStyle} placeholder={running.lastValues[p] || `{{${p}}}`} />
+            </label>
+          ))}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" style={btn} onClick={() => setMode("list")}>Cancel</button>
+            <button type="button" disabled={busy} style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff", opacity: busy ? 0.6 : 1 }} onClick={() => doRun(running, values)}>
+              {busy ? "Starting…" : "Run"}
+            </button>
+          </div>
+        </>)}
       </aside>
     </div>
   );

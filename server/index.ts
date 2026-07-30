@@ -64,6 +64,7 @@ import { routeOrNull as yardRoute } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
+import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
 import {
   requestPairing, pendingRequests, approvePairing, denyPairing,
   verifyPairToken, pairedBrowsers, revokePairing, stashForCollection, collect,
@@ -1573,6 +1574,50 @@ function servePreview(req: any, res: any) {
   );
   res.send(readFileSync(r.path));
 }
+
+// ── The Playbook — saved, parameterised prompts as one-tap yard jobs ───────
+// Reads share the yard's read trust; writes (save/delete/import/run) share its write
+// trust — a playbook is inert text until RUN, but a save/delete is still an operator
+// action, held to the same bar as starting a job.
+app.get("/api/playbooks", (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json({ playbooks: listPlaybooks() });
+});
+app.get("/api/playbooks/:id", (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  const pb = getPlaybook(String(req.params.id));
+  pb ? res.json({ playbook: pb }) : res.status(404).json({ error: "no such playbook" });
+});
+app.post("/api/playbooks", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to save playbooks" }); return; }
+  const { id, name, template } = req.body || {};
+  if (!String(name || "").trim() || !String(template || "").trim()) { res.status(400).json({ error: "a playbook needs a name and a template" }); return; }
+  res.json({ playbook: savePlaybook({ id: id ? String(id) : undefined, name: String(name), template: String(template) }) });
+});
+app.delete("/api/playbooks/:id", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to delete playbooks" }); return; }
+  res.json({ ok: deletePlaybook(String(req.params.id)) });
+});
+app.post("/api/playbooks/import", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to import playbooks" }); return; }
+  const { text, filename } = req.body || {};
+  if (!String(text || "").trim()) { res.status(400).json({ error: "nothing to import" }); return; }
+  res.json({ playbook: importMarkdown(String(text), filename ? String(filename) : undefined) });
+});
+app.post("/api/playbooks/:id/run", (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
+  const pb = getPlaybook(String(req.params.id));
+  if (!pb) { res.status(404).json({ error: "no such playbook" }); return; }
+  const values = (req.body && typeof req.body.values === "object" && req.body.values) || {};
+  const merged = { ...pb.lastValues, ...values };
+  // Remember what was actually typed, so the next run starts prefilled — even though the
+  // template body is unchanged, so this never bumps the version.
+  savePlaybook({ id: pb.id, name: pb.name, template: pb.template, lastValues: merged });
+  const prompt = renderTemplate(pb.template, merged);
+  const job = yardStore().enqueue("playbook.run", { prompt, playbookId: pb.id, playbookName: pb.name, playbookVersion: pb.version });
+  res.json({ job, prompt });
+});
 
 // ── Pairing a browser ───────────────────────────────────────────────────────
 // Asking is unprivileged on purpose: a request is inert until a person holding the

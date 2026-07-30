@@ -297,6 +297,29 @@ export const enqueueYardJob = async (kind: string, payload: any = {}, opts: { bu
   if (!r.ok) throw new Error(body?.error || `couldn't start that job (${r.status})`);
   return body;
 };
+
+// ── the Playbook — saved, parameterised prompts, one tap to run ──
+const yardPost = async (path: string, body: any, method: "POST" | "DELETE" = "POST") => {
+  const pair = pairToken();
+  const r = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", ...(pair ? { "X-SAM-Pair": pair } : {}) },
+    body: method === "DELETE" ? undefined : JSON.stringify(body),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out?.error || `that didn't work (${r.status})`);
+  return out;
+};
+export const getPlaybooks = () => fetch("/api/playbooks").then(async (r) => {
+  if (r.status === 403) return { playbooks: [], refused: true };
+  return r.json();
+});
+export const getPlaybook = (id: string) => fetch(`/api/playbooks/${encodeURIComponent(id)}`).then((r) => r.json());
+export const savePlaybook = (input: { id?: string; name: string; template: string }) => yardPost("/api/playbooks", input);
+export const deletePlaybook = (id: string) => yardPost(`/api/playbooks/${encodeURIComponent(id)}`, null, "DELETE");
+export const importPlaybook = (text: string, filename?: string) => yardPost("/api/playbooks/import", { text, filename });
+export const runPlaybook = (id: string, values: Record<string, string>) => yardPost(`/api/playbooks/${encodeURIComponent(id)}/run`, { values });
+
 // Surfaces the server's reason instead of failing silently. Starting and stopping work
 // needs the passkey the desktop app carries, so this legitimately refuses in a browser —
 // and a button that does nothing without saying why is the worst version of that.

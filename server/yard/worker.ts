@@ -19,7 +19,9 @@ import { JobStore, yardDir, type JobStep } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject, resolveProjectWrite, isWithin } from "./exec.ts";
 import { scrub } from "../scrub.ts";
-import { runModel } from "../models.ts";
+import { runModel, type Tier } from "../models.ts";
+import { runAgent } from "../agent.ts";
+import { handleUnattended } from "../ask.ts";
 import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 import { applyEdits } from "./edits.ts";
@@ -186,6 +188,45 @@ HANDLERS.run = async (ctx) => {
     else ctx.log("nothing changed on disk — no checkpoint recorded");
   }
   return `${steps.length} step${steps.length === 1 ? "" : "s"} — ${last}${mark}`;
+};
+
+// ── The Playbook — a saved prompt as a job ──────────────────────────────────
+// A4's missing piece: every other job kind does ONE specific thing (build, edit, deploy).
+// This one runs an arbitrary, already-rendered prompt through the same agent loop the chat
+// UI uses (server/agent.ts) — unattended, in the yard, instead of live in a conversation.
+// Nothing new is invented for tool-calling or safety: it's the scheduler's own pattern
+// (server/index.ts's startScheduler callback) moved into a job kind so a Playbook run gets
+// a durable thread, a log, and a cost line instead of a fire-and-forget background call.
+//
+// Cost is APPROXIMATE — a rough chars/4 estimate of prompt+answer, not real per-call token
+// accounting from inside the agent loop's own tool calls. A real meter (A6) needs runAgent
+// to report spend as it goes; that's a bigger change than this slice, said plainly rather
+// than faked with a precise-looking number.
+const roughTokens = (s: string) => Math.ceil(String(s || "").length / 4);
+
+HANDLERS["playbook.run"] = async (ctx) => {
+  const prompt = String(ctx.payload?.prompt || "").trim();
+  if (!prompt) throw Object.assign(new Error("a playbook run needs a rendered prompt"), { kind: "permanent" as FailureKind });
+
+  ctx.step("working");
+  const system = "You are SAM, running an unattended background task enqueued from a saved playbook. " +
+    "Nobody is watching live — be direct, use whatever tools the request needs, and your final answer " +
+    "should say plainly what you actually did (or, if you couldn't finish, exactly why).";
+  const tier = (process.env.DEFAULT_TIER as Tier) || "free";
+  ctx.spend(roughTokens(system) + roughTokens(prompt));
+  const r = await runAgent(system, prompt, tier);
+  ctx.checkStop();
+  ctx.spend(roughTokens(r.text || ""));
+
+  if (r.kind === "final" && r.text) { ctx.log(r.text); return r.text.slice(0, 400); }
+
+  // Reached a dangerous/confirm action with nobody live to approve it. Same fix the
+  // scheduler already uses: raise it as an Ask out-of-band rather than silently dropping it
+  // or (worse) reporting success when nothing ran.
+  ctx.step("needs your OK");
+  const a = handleUnattended(r, { tier, source: "yard", why: `a playbook run ("${prompt.slice(0, 80)}") needs this to continue` });
+  if (a.kind === "deferred") { ctx.log(a.text); return a.text; }
+  throw new Error("the agent stopped without a final answer and there was nothing to defer — this shouldn't happen");
 };
 
 // ── Managed projects as job kinds ───────────────────────────────────────────
