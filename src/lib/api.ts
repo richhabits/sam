@@ -364,3 +364,7 @@ export const getYardProject = (slug: string) => fetch(`/api/yard/projects/${enco
 export const getYardProjectFile = (slug: string, path: string) =>
   fetch(`/api/yard/projects/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`).then((r) => r.json());
 export const yardPreviewUrl = (slug: string) => `/api/yard/preview/${encodeURIComponent(slug)}/`;
+// A5 — one specific file's URL (image preview, download). Encode each path SEGMENT, not
+// the whole path — encoding "/" itself would break the route's wildcard match.
+export const yardFileUrl = (slug: string, path: string) =>
+  yardPreviewUrl(slug) + String(path).split("/").map(encodeURIComponent).join("/");

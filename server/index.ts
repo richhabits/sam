@@ -1549,7 +1549,10 @@ app.get("/api/yard/projects/:slug/file", (req, res) => {
 app.get("/api/yard/preview/:slug/*", servePreview);
 app.get("/api/yard/preview/:slug", servePreview);
 function servePreview(req: any, res: any) {
-  if (!isLoopback(req)) { res.status(403).send("loopback only"); return; }
+  // Flagged as a known gap since A1: this was isLoopback-only with no session path at
+  // all, so a paired phone could enqueue and watch a task but never see its own preview
+  // or files. Same trust as the rest of the yard's reads now.
+  if (!isYardReadTrusted(req)) { res.status(403).send("loopback or a paired device only"); return; }
   const rel = String(req.params[0] ?? req.params.splat ?? "");
   const r = resolvePreview(String(req.params.slug), rel);
   if (!r.ok) { res.status(r.status).send(r.reason); return; }

@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld("samDesktop", {
   // The per-launch control token (the Handshake). Only the real renderer gets it — a local process
   // can't read this context. The frontend attaches it to /api calls; see src/lib/authFetch.ts.
   controlToken: process.env.SAM_CONTROL_TOKEN || "",
+  // A5 — desktop-only "reveal in Finder" for a task's files. relPath is "<slug>/<file path
+  // within the project>", re-validated and confined server-side in main.ts — this bridge
+  // just carries the string, it enforces nothing itself.
+  revealInFinder: (relPath: string) => ipcRenderer.invoke("reveal-in-finder", relPath),
 });
 
 // ── OVERLAY BRIDGE (Phase 4) — the lightweight ⌥Space palette talks to the main

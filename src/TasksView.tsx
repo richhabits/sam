@@ -3,9 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, getYardProjects,
   getPlaybooks, savePlaybook, deletePlaybook, importPlaybook, runPlaybook,
+  getYardProject, getYardProjectFile, yardFileUrl,
 } from "./lib/api";
 import Icon from "./Icon";
 import PairPrompt from "./PairPrompt";
+import { renderMarkdown } from "./lib/md";
 
 // THE FACE, Tasks half — every yard job as a durable, revisitable thread, in the same
 // app shell the Agent (chat) lives in. Read-only data comes straight from the job table
@@ -273,6 +275,92 @@ function TaskDetail({ job, log, onKill, onRetry }: { job: Job; log: string[]; on
       <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
       </div>
+      {job.project && <TaskFiles slug={job.project} />}
+    </div>
+  );
+}
+
+// A5 — this task's files. Sourced straight from the project store (getYardProject,
+// yardFileUrl) — no new storage layer, same data YardView's own file browser already
+// reads. A job with no project (most job kinds today aren't project-scoped, or the
+// project vanished) simply shows nothing here — not an error, just nothing to show.
+const IMAGE_EXT = new Set(["svg", "png", "jpg", "jpeg", "gif", "webp", "ico"]);
+const TEXT_EXT = new Set(["md", "txt", "html", "htm", "css", "js", "mjs", "json", "ts", "tsx", "jsx", "yml", "yaml"]);
+function extOf(path: string): string { return (path.split(".").pop() || "").toLowerCase(); }
+function fileBytes(n: number): string { return n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`; }
+
+function TaskFiles({ slug }: { slug: string }) {
+  const [files, setFiles] = useState<{ path: string; bytes: number }[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null);
+  const isDesktop = typeof window !== "undefined" && !!(window as any).samDesktop?.isNative;
+
+  useEffect(() => {
+    getYardProject(slug).then((r: any) => setFiles(r?.files || [])).catch(() => setFiles([]));
+  }, [slug]);
+
+  const preview = (path: string) => {
+    if (open === path) { setOpen(null); setText(null); return; }
+    setOpen(path); setText(null);
+    if (TEXT_EXT.has(extOf(path))) {
+      getYardProjectFile(slug, path).then((r: any) => setText(typeof r?.text === "string" ? r.text : "(couldn't read this file)")).catch(() => setText("(couldn't read this file)"));
+    }
+  };
+
+  if (!files) return null;
+  if (!files.length) return <div style={{ fontSize: 12, color: "var(--muted)" }}>No files in this project (yet).</div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--muted)" }}>Files</div>
+      {files.map((f) => {
+        const ext = extOf(f.path);
+        const previewable = IMAGE_EXT.has(ext) || TEXT_EXT.has(ext);
+        return (
+          <div key={f.path} style={{ ...card, padding: "8px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {previewable ? (
+                // biome-ignore lint/a11y/useSemanticElements: can't be a real <button> — the download <a> next to it can't nest inside one
+                <div role="button" tabIndex={0}
+                  onClick={() => preview(f.path)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); preview(f.path); } }}
+                  style={{ flex: 1, minWidth: 0, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, color: "var(--text)" }}>
+                  {f.path}
+                </div>
+              ) : (
+                <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, color: "var(--text)" }}>
+                  {f.path}
+                </div>
+              )}
+              <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{fileBytes(f.bytes)}</span>
+              <a href={yardFileUrl(slug, f.path)} download={f.path.split("/").pop()} style={{ ...btn, padding: "3px 8px", fontSize: 11, textDecoration: "none" }}>
+                <Icon name="download" size={11} />
+              </a>
+              {isDesktop && (
+                <button type="button" style={{ ...btn, padding: "3px 8px", fontSize: 11 }}
+                  onClick={() => (window as any).samDesktop.revealInFinder(`${slug}/${f.path}`)}>
+                  <Icon name="folder" size={11} />
+                </button>
+              )}
+            </div>
+            {open === f.path && (
+              <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                {IMAGE_EXT.has(ext) ? (
+                  <img src={yardFileUrl(slug, f.path)} alt={f.path} style={{ maxWidth: "100%", borderRadius: "var(--radius-sm)" }} />
+                ) : ext === "md" ? (
+                  // Same rendering path chat text already uses (src/lib/md.ts) — the yard's
+                  // own model-written output, not arbitrary third-party HTML.
+                  <div style={{ fontSize: 12.5, color: "var(--text)" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(text || "") }} />
+                ) : (
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", color: "var(--text)" }}>
+                    {text === null ? "Loading…" : text}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

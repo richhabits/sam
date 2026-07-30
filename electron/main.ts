@@ -7,6 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
 import { crossOutOnce } from "../server/threshold.ts";   // same module the server booted → shares the once-guard
+import { projectsRoot } from "../server/yard/managed.ts";
+import { isWithin, trueLocation } from "../server/yard/exec.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8787;
@@ -269,6 +271,18 @@ app.whenReady().then(() => {
       } catch { void checkForUpdates(); }
     })();
   }, 8000);
+
+  // A5 — "reveal in Finder" for a task's files. Desktop-only by construction: the
+  // renderer can only reach this from inside Electron (window.samDesktop.isNative), and
+  // even so the path is re-resolved and confined to the yard's own projects root here —
+  // never trust a path a renderer handed over, resolve what it REALLY is and check.
+  ipcMain.handle("reveal-in-finder", (_e, relPath: string) => {
+    const root = projectsRoot();
+    const target = trueLocation(path.join(root, String(relPath || "")));
+    if (!isWithin(root, target)) return false;
+    shell.showItemInFolder(target);
+    return true;
+  });
 
   ipcMain.on("open-studio", () => {
     const studioWin = new BrowserWindow({
