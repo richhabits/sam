@@ -32,6 +32,7 @@ const StandingPane = lazy(() => import("./StandingPane"));
 const ChimePane = lazy(() => import("./ChimePane"));
 const CameraPane = lazy(() => import("./CameraPane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
+const TasksView = lazy(() => import("./TasksView"));
 
 interface Profile { name: string; about?: string; language?: string }
 // Multiple people can share one SAM — each profile has its OWN memory (server namespaces
@@ -231,6 +232,10 @@ export default function App() {
 
   const [brand, setBrand] = useState<string>(init.brand);
   const [mode, setMode] = useState<"business" | "personal">(() => { try { return (localStorage.getItem("sam.mode") as any) || "business"; } catch { return "business"; } });
+  // THE FACE — Agent (this persistent chat, unchanged) vs Tasks (every yard job as a durable
+  // thread). A toggle, not a route: one SAM, the header stays, only the body underneath swaps.
+  const [surface, setSurface] = useState<"agent" | "tasks">(() => { try { return (localStorage.getItem("sam.surface") as any) || "agent"; } catch { return "agent"; } });
+  useEffect(() => { try { localStorage.setItem("sam.surface", surface); } catch { /* private mode — the toggle just won't stick */ } }, [surface]);
   // Persona: a switchable VOICE over the ONE shared memory (default warm "sam"). Tone only.
   const [persona, setPersona] = useState<string>(() => { try { return localStorage.getItem("sam.persona") || "sam"; } catch { return "sam"; } });
   const [quality, setQuality] = useState<Quality>(init.quality);
@@ -1148,6 +1153,10 @@ export default function App() {
           <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
+          <div className="mode-toggle surface-toggle" role="tablist" title="Agent: the conversation · Tasks: every job SAM has run">
+            <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={14} /> Agent</button>
+            <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={14} /> Tasks</button>
+          </div>
           {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={15} /> Add to Dock</button>}
           {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
           <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" /> Voice</button>
@@ -1323,6 +1332,12 @@ export default function App() {
       )}
 
       <div className="shell">
+      {surface === "tasks" ? (
+        <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+          <Suspense fallback={null}><TasksView /></Suspense>
+        </div>
+      ) : (
+      <>
       <aside className="side">
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 14px 10px" }}>
           <img src="/brand/sam-192.png" alt="SAM" width="30" height="30" style={{ borderRadius: 9, boxShadow: "0 2px 9px rgba(217,83,31,.28)", flex: "0 0 auto" }} />
@@ -1640,6 +1655,8 @@ export default function App() {
           {guardian && <div className="ctx-row"><span className="ctx-ic"><Icon name="shield" size={14} /></span>Guardian watching</div>}
         </div>
       </aside>
+      </>
+      )}
       </div>
 
       {marketsOpen && (

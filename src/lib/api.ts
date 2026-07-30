@@ -278,8 +278,25 @@ export const getCameras = () => fetch("/api/cameras").then((r) => r.json());
 export const addCameraApi = (c: { name: string; location?: string; kind: "snapshot" | "rtsp" | "ring"; url?: string }) => post("/api/cameras", c);
 export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id });
 
-// ── the yard — long-running build jobs (loopback + Handshake) ──
-export const getYard = () => fetch("/api/yard").then((r) => r.json());
+// ── the yard — long-running build jobs (loopback, or a paired device) ──
+// A refused read is not an off yard — reported separately so the Tasks view can tell
+// "pair this device" apart from "nothing has run yet".
+export const getYard = () => fetch("/api/yard").then(async (r) => {
+  if (r.status === 403) return { on: false, refused: true, recent: [] };
+  return r.json();
+});
+export const getYardJob = (id: string) => fetch(`/api/yard/job/${encodeURIComponent(id)}`).then((r) => r.json());
+export const enqueueYardJob = async (kind: string, payload: any = {}, opts: { budget?: number; project?: string } = {}) => {
+  const pair = pairToken();
+  const r = await fetch("/api/yard/enqueue", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(pair ? { "X-SAM-Pair": pair } : {}) },
+    body: JSON.stringify({ kind, payload, ...opts }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `couldn't start that job (${r.status})`);
+  return body;
+};
 // Surfaces the server's reason instead of failing silently. Starting and stopping work
 // needs the passkey the desktop app carries, so this legitimately refuses in a browser —
 // and a button that does nothing without saying why is the worst version of that.
