@@ -195,6 +195,8 @@ export async function approveSwarmAgent(swarmId: string, agentId: string, approv
 export interface Schedule {
   id: string; command: string; cron: string; enabled: boolean;
   lastRun?: string; lastResult?: string; created: string; runCount: number;
+  // A7 — computed server-side, same zone-correct math the scheduler fires from.
+  nextRun?: number | null; stale?: boolean;
 }
 export async function getSchedules() { return api<Schedule[]>("/api/schedules"); }
 export async function addSchedule(command: string, cron: string) { return api<Schedule>("/api/schedules", { method: "POST", body: JSON.stringify({ command, cron }) }); }

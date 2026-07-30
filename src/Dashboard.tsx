@@ -336,8 +336,17 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                       <span style={{ fontWeight: 600 }}>{s.command.slice(0, 60)}{s.command.length > 60 ? "…" : ""}</span>
                       <span className="dash-lane-tier">{s.cron}</span>
                     </div>
+                    {/* A7 — a schedule that silently stops firing is the failure mode that matters */}
+                    {s.stale && (
+                      <div style={{ fontSize: 11, color: "#E5A100", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                        <Icon name="warn" size={11} /> Overdue — was due {new Date(s.nextRun ? s.nextRun : Date.now()).toLocaleString()} and hasn't run
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, opacity: 0.7 }}>
-                      <span>Ran {s.runCount} times {s.lastRun && `(last: ${new Date(s.lastRun).toLocaleTimeString()})`}</span>
+                      <span>
+                        Ran {s.runCount} times {s.lastRun && `(last: ${new Date(s.lastRun).toLocaleTimeString()})`}
+                        {s.enabled && s.nextRun ? ` · next ${new Date(s.nextRun).toLocaleString()}` : ""}
+                      </span>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button type="button" className="mini" onClick={() => toggleSchedule(s.id).then(() => getSchedules().then(setSchedules))}>{s.enabled ? "Pause" : "Resume"}</button>
                         <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }} onClick={() => removeSchedule(s.id).then(() => getSchedules().then(setSchedules))}>Delete</button>

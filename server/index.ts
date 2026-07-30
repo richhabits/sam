@@ -111,7 +111,7 @@ import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
-import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule } from "./scheduler.ts";
+import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
 import { bind as routineBind, unbind as routineUnbind, list as routineList, matchRoutine, routinesEnabled, routineFor } from "./routines.ts";
@@ -471,8 +471,18 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
   } catch { /* best-effort — nothing downstream depends on this succeeding */ }
 });
 
-// Scheduler — Recurring background tasks
+// Scheduler — Recurring background tasks.
+// A7: when the yard is on, a due schedule is now a "cron-backed yard job" — enqueued as
+// playbook.run rather than run inline on the server's own event loop, so a long scheduled
+// task gets the same durable thread, checklist and cost tracking as everything else in
+// the yard, and can never be the thing that makes the assistant stop answering (the whole
+// reason the yard exists in the first place — see server/yard/worker.ts's own header).
+// The yard off (default): byte-identical to before — inline runAgent + handleUnattended.
 if (!BENCH_MODE) startScheduler(async (command: string) => {
+  if (process.env.SAM_YARD === "1") {
+    const job = yardStore().enqueue("playbook.run", { prompt: command, scheduled: true });
+    return `queued in the yard — job ${job.id}`;
+  }
   const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
   const tier = (process.env.DEFAULT_TIER as Tier) || "free";
   const r = await runAgent(system, command, tier);
@@ -1191,7 +1201,10 @@ app.post("/api/swarms/approve", async (req, res) => {
 });
 
 // ── Scheduled Tasks ──
-app.get("/api/schedules", (_req, res) => res.json(listSchedules()));
+// A7: each schedule carries its computed nextRun + stale status, straight off the same
+// zone-correct math the scheduler itself fires from — the UI can never show a next-run
+// time that disagrees with what will actually happen.
+app.get("/api/schedules", (_req, res) => res.json(listSchedules().map((s) => ({ ...s, ...scheduleStatus(s) }))));
 app.post("/api/schedules", (req, res) => {
   const { command, cron } = req.body;
   if (!command || !cron) return res.status(400).json({ error: "missing command or cron" });
