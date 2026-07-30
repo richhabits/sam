@@ -4,6 +4,7 @@
 // buried in a 1600-line file.
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { verifyPairToken } from "./yard/pairing.ts";
+import { validateSession, sessionTokenFromCookie } from "./pairing.ts";
 
 /**
  * True only for a request that arrived from this machine.
@@ -108,4 +109,39 @@ export function isTrustedLocal(req: { socket: { remoteAddress?: string | null };
   // inside the app. Enforcing the Handshake without that second door would simply lock
   // every browser tab out of SAM's own panels.
   return checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
+}
+
+type CookieReq = { headers: Record<string, string | string[] | undefined> };
+
+/**
+ * A device that completed the Pairing (server/pairing.ts): a same-origin, HttpOnly,
+ * SameSite=Strict session cookie the operator's own approval flow issued. Distinct from
+ * isTrustedLocal just above, which stays loopback-only on purpose (see its pinned test in
+ * handshake.test.ts — Console, the Scope, and every shell/file/camera-adjacent panel must
+ * NOT loosen). The yard treats a paired session as equivalent trust, because a paired
+ * session is the only way a phone can reach it before Movement B's transport exists.
+ */
+export function isPairedSession(req: CookieReq): boolean {
+  const cookie = req.headers?.cookie;
+  return validateSession(sessionTokenFromCookie(typeof cookie === "string" ? cookie : undefined), Date.now());
+}
+
+/**
+ * The yard's own door. On loopback: the passkey, always — never conditional on the global
+ * Handshake setting, because creating a job means running commands on this machine. Off
+ * loopback: a paired session. A deliberately temporary stand-in for a real per-device
+ * capability tier (Movement B formalizes read/chat/assign vs. deploy/shell/spend grants);
+ * for now a paired phone gets the same yard access as the desktop app. Never reaches
+ * ~/flip-it either way — nothing here touches that path.
+ */
+export function isYardTrusted(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
+  if (isLoopback(req)) return checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
+  return isPairedSession(req);
+}
+
+/** The yard's READ routes (job list/detail, project browsing): the same trust as writes,
+ *  plus isTrustedLocal's own Handshake-aware loopback path so the desktop app's read
+ *  behaviour is unchanged from before this existed. */
+export function isYardReadTrusted(req: { socket: { remoteAddress?: string | null }; headers: Record<string, string | string[] | undefined> }): boolean {
+  return isTrustedLocal(req) || isPairedSession(req);
 }

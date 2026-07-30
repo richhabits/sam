@@ -53,7 +53,7 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { hostAllowed, isLoopback, isTrustedLocal, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount } from "./pairing.ts";
 import { desk as flipitDesk } from "./flipit.ts";
@@ -71,14 +71,8 @@ import {
 
 // One store per server process, opened on first use so a SAM with the yard off never
 // creates a database it will not read.
-// The yard's own door. Loopback position PLUS the passkey, always — never conditional on
-// the global setting. Creating a job means running commands on this machine, so it is held
-// to the stricter bar whether or not the rest of SAM is hardened today.
-// Either the desktop app's per-launch passkey, or a browser this machine's operator
-// deliberately paired from inside that app. A paired token is narrower than the passkey:
-// it opens the yard's writes and nothing else, and it can be revoked on its own.
-const isYardTrusted = (req: any) =>
-  isLoopback(req) && (checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]));
+// isYardTrusted / isYardReadTrusted now live in http-guards.ts (they need their own unit
+// tests, same as isTrustedLocal).
 
 let _yard: JobStore | null = null;
 const yardStore = (): JobStore => (_yard ??= new JobStore());
@@ -1493,14 +1487,14 @@ app.get("/api/flipit", (req, res) => {
 // WRITING is different: creating a job runs commands on this machine. Those routes hold
 // the passkey unconditionally, whatever the global setting is.
 app.get("/api/yard", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
   const store = yardStore();
   store.reapAbandoned();
   res.json({ on: true, worker: supervisor.status(), ...store.summary(), recent: store.list(undefined, 20) });
 });
 app.get("/api/yard/job/:id", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   const job = yardStore().get(String(req.params.id));
   if (!job) { res.status(404).json({ error: "no such job" }); return; }
   res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
@@ -1527,11 +1521,11 @@ app.post("/api/yard/retry", (req, res) => {
 // Reading, so the same bar as every other panel — this is what lets the builder view
 // work in a browser tab alongside the desktop app.
 app.get("/api/yard/projects", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json({ projects: listProjects(), root: projectsRoot() });
 });
 app.get("/api/yard/projects/:slug", async (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   const slug = String(req.params.slug);
   const manifest = readManifest(slug);
   if (!manifest) { res.status(404).json({ error: "no such project" }); return; }
@@ -1539,7 +1533,7 @@ app.get("/api/yard/projects/:slug", async (req, res) => {
   res.json({ manifest, checkpoints: history, files: yardProjectFiles(slug), path: projectPath(slug) });
 });
 app.get("/api/yard/projects/:slug/file", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   const text = readProjectFile(String(req.params.slug), String(req.query?.path || ""));
   text === null ? res.status(404).json({ error: "no such file" }) : res.json({ text });
 });

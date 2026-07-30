@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { hostAllowed, isLoopback, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 
 // This function is the gate on every privileged write in SAM — API keys, config, remote tokens,
@@ -149,5 +152,83 @@ describe("passkeyRequiredForMutation — remote mode must not re-trust loopback"
   it("but the pairing APPROVAL (and its siblings) stay gated — only the app approves", () => {
     for (const p of ["/api/yard/pair/approve", "/api/yard/pair/deny", "/api/yard/pair/revoke"])
       expect(passkeyRequiredForMutation(mreq("POST", p, LOOP), { enforced: true, remote: false }), p).toBe(true);
+  });
+});
+
+// isYardTrusted / isYardReadTrusted honour the same session-cookie Pairing that unblocks the rest
+// of SAM's API, so a phone that paired can reach its own task list before Movement B's transport
+// exists. Needs a real (isolated) session — pairing.ts opens its db from VAULT_DIR at import time,
+// so each test gets its own tmpdir and a fresh module graph, same pattern as pairing.test.ts.
+describe("isYardTrusted / isYardReadTrusted / isPairedSession", () => {
+  let dir: string;
+  let P: typeof import("./pairing.ts");
+  let G: typeof import("./http-guards.ts");
+  // isPairedSession checks against the real clock (Date.now()), same as production callers — so
+  // the session minted here must live near "now", not a fixed epoch (a distant NOW reads as an
+  // expired 30-day-old session against wall-clock time and every assertion below flips silently).
+  const NOW = Date.now();
+  const LOOP = "127.0.0.1";
+  const LAN = "192.168.0.252"; // a paired phone, off loopback
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), "sam-http-guards-"));
+    process.env.VAULT_DIR = dir;
+    delete process.env.SAM_REQUIRE_CONTROL_TOKEN; // default: enforced
+    process.env.SAM_CONTROL_TOKEN = "b".repeat(64);
+    vi.resetModules();
+    P = await import("./pairing.ts");
+    G = await import("./http-guards.ts");
+  });
+  afterEach(() => {
+    delete process.env.VAULT_DIR;
+    delete process.env.SAM_REQUIRE_CONTROL_TOKEN;
+    delete process.env.SAM_CONTROL_TOKEN;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const pairedCookieReq = (ip: string, token: string) => ({
+    socket: { remoteAddress: ip },
+    headers: { cookie: `${P.SESSION_COOKIE}=${encodeURIComponent(token)}` },
+  });
+  const bareReq = (ip: string) => ({ socket: { remoteAddress: ip }, headers: {} });
+
+  it("isPairedSession: false with no cookie, true with a live session, false once revoked", () => {
+    expect(G.isPairedSession(bareReq(LAN))).toBe(false);
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(G.isPairedSession(pairedCookieReq(LAN, token))).toBe(true);
+    P.revokeSession(token);
+    expect(G.isPairedSession(pairedCookieReq(LAN, token))).toBe(false);
+  });
+
+  it("isYardTrusted: loopback behaviour is unchanged — passkey required, paired session irrelevant", () => {
+    expect(G.isYardTrusted(bareReq(LOOP))).toBe(false); // loopback, no passkey → still refused
+    const withPasskey = { socket: { remoteAddress: LOOP }, headers: { "x-sam-token": "b".repeat(64) } };
+    expect(G.isYardTrusted(withPasskey)).toBe(true);
+  });
+
+  it("isYardTrusted: THE FIX — a paired non-loopback device is now trusted", () => {
+    expect(G.isYardTrusted(bareReq(LAN))).toBe(false); // not paired
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(G.isYardTrusted(pairedCookieReq(LAN, token))).toBe(true);
+  });
+
+  it("isYardTrusted: a revoked session goes back to refused, not silently trusted", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(G.isYardTrusted(pairedCookieReq(LAN, token))).toBe(true);
+    P.revokeSession(token);
+    expect(G.isYardTrusted(pairedCookieReq(LAN, token))).toBe(false);
+  });
+
+  it("isYardReadTrusted: same paired-session grant applies to the read routes", () => {
+    expect(G.isYardReadTrusted(bareReq(LAN))).toBe(false);
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(G.isYardReadTrusted(pairedCookieReq(LAN, token))).toBe(true);
+  });
+
+  it("isYardReadTrusted: still refuses a stray x-sam-pair token off loopback (that's yard-write pairing, not this)", () => {
+    // Guards against conflating the two pairing systems: the older yard/pairing.ts request/
+    // approve token was never meant to satisfy isTrustedLocal's loopback-only reads.
+    const req = { socket: { remoteAddress: LAN }, headers: { "x-sam-pair": "not-a-real-token" } };
+    expect(G.isYardReadTrusted(req)).toBe(false);
   });
 });
