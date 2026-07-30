@@ -28,6 +28,12 @@ export function isLoopback(req: { socket: { remoteAddress?: string | null } }): 
 // the CORS origin check and the anti-rebinding host check must treat these as ours — keeping them on
 // ONE helper is deliberate: they drifted apart once (host allowed the LAN, origin didn't) and that
 // silently broke phone access — every API call from the phone HUD was CORS-blocked as "unexpected".
+//
+// B1 — also allows the private mesh's own address range (100.64.0.0/10, RFC 6598 "shared address
+// space" — the block a WireGuard-class overlay assigns its own devices from). Without this, a phone
+// reaching SAM over the mesh gets exactly the same CORS/Host rejection phone-on-LAN access had before
+// it was fixed: same bug, different range. The mesh is a narrower TRANSPORT than the LAN, not a
+// looser one — see isYardTrusted/isPairedSession for the actual authorization boundary, unchanged.
 function isLocalOrPrivateHost(h: string): boolean {
   const host = (h || "").replace(/^\[|\]$/g, "").toLowerCase();
   if (host === "localhost" || host === "::1") return true;
@@ -42,7 +48,17 @@ function isLocalOrPrivateHost(h: string): boolean {
   if (a === 192 && b === 168) return true;            // private 192.168/16
   if (a === 172 && b >= 16 && b <= 31) return true;   // private 172.16/12
   if (a === 169 && b === 254) return true;            // link-local 169.254/16
+  if (a === 100 && b >= 64 && b <= 127) return true;  // the mesh's own range, 100.64/10
   return false;
+}
+
+// Just the mesh's own slice of the check above, for picking which local interface to bind to
+// (server/index.ts) — a plain dotted-quad test, not a Host-header string like isLocalOrPrivateHost.
+export function isMeshAddress(ip: string): boolean {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(ip || ""));
+  if (!m) return false;
+  const [a, b] = m.slice(1).map(Number);
+  return a === 100 && b >= 64 && b <= 127;
 }
 
 // SECURITY · CORS origin allowlist. Only same-origin, localhost (incl. the dev HUD on any port), and

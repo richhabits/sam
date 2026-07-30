@@ -53,7 +53,7 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount } from "./pairing.ts";
 import { desk as flipitDesk } from "./flipit.ts";
@@ -169,7 +169,7 @@ app.use((req, res, next) => {
 // calls must carry the per-launch secret the legit frontend holds (a random local process can't).
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
 app.use((req, res, next) => {
-  if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" })) return next();
+  if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" || process.env.SAM_MESH === "1" })) return next();
   // A mutating call is authorised by EITHER the Electron preload passkey OR a paired browser session
   // (a same-origin, HttpOnly, Strict cookie earned via the pairing flow — see server/pairing.ts).
   if (checkPasskey(req)) return next();
@@ -224,16 +224,19 @@ app.post("/api/pair/revoke-all", (_req, res) => {
   res.json({ revoked: n });
 });
 
-// ── REMOTE-MODE token gate (phone access) ─────────────────────
-// Active only when SAM_REMOTE=1 + a strong SAM_REMOTE_TOKEN are set (see listen() below).
+// ── REMOTE-MODE token gate (phone access — LAN or, since B1, the mesh) ─────────────────────
+// Active when SAM_REMOTE=1 OR SAM_MESH=1, plus a strong SAM_REMOTE_TOKEN (see listen() below).
 // Every non-loopback request must present the token — via ?token= once (sets a cookie),
 // the cookie afterwards, or an Authorization: Bearer header. Loopback stays open as ever.
+// The mesh is a narrower TRANSPORT (server never listens on 0.0.0.0, only its own private
+// interface) — it is not a looser trust boundary, so it is held to the identical token gate
+// the LAN path already uses rather than growing a second, parallel one.
 {
   // Per-IP brute-force protection: after a few bad tokens from one IP, lock THAT IP with growing
   // backoff — so a real attacker is throttled without a fat-fingered typo locking everyone out.
   const fails = new Map<string, { n: number; until: number }>();
   app.use((req, res, next) => {
-    if (!(process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16)) return next();   // remote off → no gate
+    if (!((process.env.SAM_REMOTE === "1" || process.env.SAM_MESH === "1") && (process.env.SAM_REMOTE_TOKEN || "").length >= 16)) return next();   // remote+mesh off → no gate
     const LIVE = process.env.SAM_REMOTE_TOKEN || "";   // read live so regenerate/disable takes effect without restart
     const liveOk = (t: string) => { if (!t || t.length !== LIVE.length) return false; try { return timingSafeEqual(Buffer.from(t), Buffer.from(LIVE)); } catch { return false; } };
     const ip = req.socket.remoteAddress || "";
@@ -1827,18 +1830,42 @@ if (existsSync(DIST)) {
   console.log(`  app served     · http://localhost:${PORT}  (single process)`);
 }
 
+// B1 — the mesh interface, if the operator has one configured and connected. Scans the
+// OS's own interface list rather than shelling out to any client CLI, so this has no
+// dependency on a specific mesh provider or how it's installed — any WireGuard-class
+// overlay that assigns itself an address in 100.64.0.0/10 (RFC 6598) is found the same
+// way. Returns null, never a guess, when nothing matches.
+function meshAddress(): string | null {
+  const nets = os.networkInterfaces();
+  for (const iface of Object.values(nets).flat()) {
+    if (iface && iface.family === "IPv4" && !iface.internal && isMeshAddress(iface.address)) return iface.address;
+  }
+  return null;
+}
+
 // Bind strictly to loopback — prevents network peers on the same Wi-Fi/LAN
 // from reaching the API. The CORS check catches browser-origin abuse; this
 // is the second layer that stops raw TCP connections from other devices.
 // ── LISTEN ────────────────────────────────────────────────────
 // Default: loopback only (private, nothing reachable from the network).
-// REMOTE MODE (phone access): SAM_REMOTE=1 + SAM_REMOTE_TOKEN=<long secret> binds to the
-// LAN but requires the token on EVERY request (cookie set on first visit via ?token=…).
-// We refuse to open the network without a strong token — no token, no remote. Note it's
-// plain HTTP on your LAN: fine on home Wi-Fi, don't use on networks you don't trust.
-const REMOTE = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
-if (process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
-const HOST = REMOTE ? "0.0.0.0" : "127.0.0.1";
+// REMOTE MODE (phone access, same Wi-Fi): SAM_REMOTE=1 + SAM_REMOTE_TOKEN=<long secret>
+// binds to the LAN but requires the token on EVERY request (cookie set on first visit via
+// ?token=…). We refuse to open the network without a strong token — no token, no remote.
+// Note it's plain HTTP on your LAN: fine on home Wi-Fi, don't use on networks you don't trust.
+// MESH MODE (B1, off-network phone access — the actual "the Wire"): SAM_MESH=1 + the same
+// SAM_REMOTE_TOKEN binds ONLY to the mesh's own interface — never 0.0.0.0, never the LAN.
+// Zero public exposure: the server doesn't even listen where a LAN peer or the open
+// internet could reach it, only the private overlay the operator's own devices joined.
+// Takes priority over SAM_REMOTE when both are set. Fails CLOSED to loopback — never
+// silently widens to 0.0.0.0 — if the mesh interface isn't actually present; a missing
+// mesh must never become a wider exposure than intended.
+const MESH_IP = process.env.SAM_MESH === "1" ? meshAddress() : null;
+const MESH = !!MESH_IP && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+if (process.env.SAM_MESH === "1" && !MESH_IP) console.log("  ⚠️ SAM_MESH ignored — no mesh interface found (100.64.0.0/10). Is the mesh client installed and connected?\n");
+else if (process.env.SAM_MESH === "1" && !MESH) console.log("  ⚠️ SAM_MESH ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
+const REMOTE = !MESH && process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+if (!MESH && process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
+const HOST = MESH ? MESH_IP! : REMOTE ? "0.0.0.0" : "127.0.0.1";
 app.listen(Number(PORT), HOST, () => {
   console.log(`  SAM online · http://localhost:${PORT}\n`);
   // THE PAIRING — when the Handshake is enforced and NO browser is paired yet, print a one-time
@@ -1864,7 +1891,9 @@ app.listen(Number(PORT), HOST, () => {
   // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
   void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())
     .then((r) => { if (r === "sent" || r === "failed") console.log(`  telemetry heartbeat · ${r}`); });
-  if (REMOTE) {
+  if (MESH) {
+    console.log(`  🔒 mesh access  · open http://${MESH_IP}:${PORT}/?token=YOUR_TOKEN on any device joined to the mesh (works off Wi-Fi, over cellular)\n`);
+  } else if (REMOTE) {
     const nets = os.networkInterfaces();
     const lan = Object.values(nets).flat().find((n) => n && n.family === "IPv4" && !n.internal)?.address;
     if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);

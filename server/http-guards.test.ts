@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { hostAllowed, isLoopback, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isMeshAddress, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 
 // This function is the gate on every privileged write in SAM — API keys, config, remote tokens,
 // the vault passphrase. It had no direct test before it was extracted from index.ts: the contract
@@ -82,6 +82,12 @@ describe("originAllowed — CORS gate (must match hostAllowed so phone access wo
     }
   });
 
+  it("B1: allows the mesh's own address range (100.64.0.0/10) — same bug, different range", () => {
+    for (const o of ["http://100.64.0.1:8787", "http://100.100.50.1:8787", "http://100.127.255.254:8787"]) {
+      expect(originAllowed(o), o).toBe(true);
+    }
+  });
+
   it("allows a missing Origin (non-browser / same-origin request)", () => {
     expect(originAllowed(undefined)).toBe(true);
     expect(originAllowed("")).toBe(true);
@@ -96,6 +102,8 @@ describe("originAllowed — CORS gate (must match hostAllowed so phone access wo
       "http://8.8.8.8",                      // public IP, not private-LAN
       "http://172.15.0.1",                   // just below the 172.16/12 private block
       "http://172.32.0.1",                   // just above it
+      "http://100.63.255.255",               // just below the mesh's 100.64/10 block
+      "http://100.128.0.0",                  // just above it
       "javascript://localhost",              // wrong scheme
     ]) {
       expect(originAllowed(o), o).toBe(false);
@@ -105,6 +113,32 @@ describe("originAllowed — CORS gate (must match hostAllowed so phone access wo
   it("stays consistent with hostAllowed for the same host", () => {
     for (const host of ["localhost", "127.0.0.1", "192.168.0.252", "10.1.2.3", "8.8.8.8", "evil.com"]) {
       expect(originAllowed(`http://${host}:8787`), host).toBe(hostAllowed(`${host}:8787`));
+    }
+  });
+});
+
+describe("isMeshAddress — B1's interface picker (100.64.0.0/10, RFC 6598)", () => {
+  it("accepts addresses across the whole block", () => {
+    for (const ip of ["100.64.0.0", "100.64.0.1", "100.100.50.1", "100.127.255.255"]) {
+      expect(isMeshAddress(ip), ip).toBe(true);
+    }
+  });
+
+  it("rejects addresses just outside the block in both directions", () => {
+    for (const ip of ["100.63.255.255", "100.128.0.0", "99.64.0.1", "101.64.0.1"]) {
+      expect(isMeshAddress(ip), ip).toBe(false);
+    }
+  });
+
+  it("rejects other private ranges, a mesh address is its own specific block", () => {
+    for (const ip of ["10.0.0.1", "192.168.1.1", "172.16.0.1", "127.0.0.1"]) {
+      expect(isMeshAddress(ip), ip).toBe(false);
+    }
+  });
+
+  it("fails closed on garbage input", () => {
+    for (const ip of [undefined, null, "", "not-an-ip", "100.64.0.1.evil.com"]) {
+      expect(isMeshAddress(ip as any), String(ip)).toBe(false);
     }
   });
 });
