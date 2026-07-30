@@ -25,6 +25,16 @@ export function yardDir(): string {
   return process.env.YARD_DIR || join(ROOT, "yard");
 }
 
+// A step the job itself declared as it ran — never a model guessing after the fact.
+// "stopped" is distinct from "failed": a cancel or a budget stop is a decision, not a
+// fault, same distinction the job's own failureKind already draws.
+export interface JobStep {
+  label: string;
+  state: "running" | "done" | "failed" | "stopped";
+  at: number;
+  error?: string;
+}
+
 export interface Job {
   id: string;
   kind: string;
@@ -43,6 +53,7 @@ export interface Job {
   runAfter: number;
   logPath: string | null;
   project: string | null;
+  steps: JobStep[];
 }
 
 const COLUMNS = `
@@ -62,7 +73,8 @@ const COLUMNS = `
   cancel_requested INTEGER NOT NULL DEFAULT 0,
   run_after INTEGER NOT NULL DEFAULT 0,
   log_path TEXT,
-  project TEXT
+  project TEXT,
+  steps_json TEXT NOT NULL DEFAULT '[]'
 `;
 
 function hydrate(r: any): Job {
@@ -75,6 +87,7 @@ function hydrate(r: any): Job {
     lastError: r.last_error, failureKind: r.failure_kind,
     cancelRequested: !!r.cancel_requested, runAfter: r.run_after,
     logPath: r.log_path, project: r.project,
+    steps: (() => { try { return JSON.parse(r.steps_json ?? "[]"); } catch { return []; } })(),
   };
 }
 
@@ -91,6 +104,9 @@ export class JobStore {
     this.db.pragma("busy_timeout = 5000");
     this.db.exec(`CREATE TABLE IF NOT EXISTS jobs (${COLUMNS});
                   CREATE INDEX IF NOT EXISTS jobs_state ON jobs(state, run_after);`);
+    // A jobs.db from before A3 has no steps_json column — CREATE TABLE IF NOT EXISTS
+    // doesn't add columns to an existing table. Same pattern as memory.ts's migration.
+    try { this.db.exec(`ALTER TABLE jobs ADD COLUMN steps_json TEXT NOT NULL DEFAULT '[]'`); } catch { /* already there */ }
   }
 
   close() { try { this.db.close(); } catch { /* already closed — the desired end state */ } }
@@ -141,6 +157,12 @@ export class JobStore {
 
   heartbeat(id: string, now = Date.now()): void {
     this.db.prepare("UPDATE jobs SET heartbeat_at=? WHERE id=? AND state='running'").run(now, id);
+  }
+
+  // Metadata, not a state transition — can be called any number of times while a job
+  // runs, unlike the state-machine methods below which each move the row exactly once.
+  setSteps(id: string, steps: JobStep[]): void {
+    this.db.prepare("UPDATE jobs SET steps_json=? WHERE id=?").run(JSON.stringify(steps.slice(-200)), id);
   }
 
   private transition(id: string, to: JobState, patch: Record<string, any> = {}, now = Date.now()): Job {
@@ -197,7 +219,9 @@ export class JobStore {
     const job = this.get(id);
     if (job?.state !== "failed") return null;
     if (!isRetryable(job.failureKind ?? "permanent", job.attempts)) return null;
-    return this.transition(id, "queued", { run_after: now + backoffMs(job.attempts), heartbeat_at: null, started_at: null }, now);
+    // Fresh attempt, fresh checklist — last attempt's failed step staying on screen next
+    // to a job that's running again would read as still-broken.
+    return this.transition(id, "queued", { run_after: now + backoffMs(job.attempts), heartbeat_at: null, started_at: null, steps_json: "[]" }, now);
   }
 
   // Raising the ceiling is the operator's way to resume a budget stop. Deliberately

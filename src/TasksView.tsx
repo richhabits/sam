@@ -10,13 +10,15 @@ import PairPrompt from "./PairPrompt";
 // build problem. Starting/stopping work still goes through the yard's own trust gate
 // (loopback, or a paired device — see server/http-guards.ts).
 
+type JobStep = { label: string; state: "running" | "done" | "failed" | "stopped"; at: number; error?: string };
+
 type Job = {
   id: string; kind: string; payload: any;
   state: "queued" | "running" | "done" | "failed" | "cancelled";
   attempts: number; createdAt: number; startedAt: number | null; finishedAt: number | null;
   heartbeatAt: number | null; costTokens: number; costBudget: number | null;
   lastError: string | null; failureKind: string | null; cancelRequested: boolean;
-  logPath: string | null; project: string | null;
+  logPath: string | null; project: string | null; steps: JobStep[];
 };
 
 type Filter = "all" | "queued" | "running" | "failed" | "done" | "cancelled";
@@ -218,6 +220,11 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
                   <span>cost {cost(j)}</span>
                   {j.startedAt && <span>{elapsed((j.finishedAt || now) - j.startedAt)}</span>}
                 </div>
+                {j.state === "running" && j.steps.length > 0 && (
+                  <div style={{ fontSize: 11.5, color: "var(--accent)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Icon name="pulse" size={11} /> {j.steps[j.steps.length - 1].label}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -254,9 +261,38 @@ function TaskDetail({ job, log, onKill, onRetry }: { job: Job; log: string[]; on
         {(job.state === "queued" || job.state === "running") && <button type="button" style={btn} onClick={onKill}>Stop</button>}
         {job.state === "failed" && <button type="button" style={btn} onClick={onRetry}>Retry</button>}
       </div>
+      {job.steps.length > 0 && <StepChecklist steps={job.steps} />}
       <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
       </div>
+    </div>
+  );
+}
+
+// The live plan — steps the job itself declared as it ran (ctx.step, server/yard/worker.ts),
+// never a model guessing after the fact. A job kind that never calls ctx.step has no steps
+// at all; the caller only renders this when there's something real to show.
+const STEP_META: Record<JobStep["state"], { icon: any; color: string }> = {
+  running: { icon: "pulse", color: "var(--accent)" },
+  done: { icon: "check", color: "#3FAE5C" },
+  failed: { icon: "warn", color: "#E5484D" },
+  stopped: { icon: "ban", color: "var(--muted)" },
+};
+function StepChecklist({ steps }: { steps: JobStep[] }) {
+  return (
+    <div style={{ ...card, padding: "6px 10px" }}>
+      {steps.map((s, i) => {
+        const m = STEP_META[s.state];
+        return (
+          <div key={`${s.at}-${s.label}`} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
+            <span style={{ color: m.color, flexShrink: 0, marginTop: 1 }}><Icon name={m.icon} size={13} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, color: s.state === "running" ? "var(--text)" : "var(--muted)", fontWeight: s.state === "running" ? 600 : 400 }}>{s.label}</div>
+              {s.error && <div style={{ fontSize: 11, color: "#E5484D", marginTop: 2 }}>{s.error}</div>}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

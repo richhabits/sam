@@ -1,9 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import Database from "better-sqlite3";
 import { JobStore } from "./store.ts";
 import {
   canTransition, assertTransition, isClaimForfeit, isRetryable, backoffMs,
   overBudget, isTerminal, HEARTBEAT_GRACE_MS, MAX_ATTEMPTS,
 } from "./state.ts";
+
+// Same 17-column shape as pre-A3's COLUMNS in store.ts, minus steps_json — a hand-built
+// stand-in for a jobs.db that predates the migration, since there's no fixture on disk.
+const LEGACY_SCHEMA = `CREATE TABLE jobs (
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL DEFAULT '{}',
+  state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
+  started_at INTEGER, finished_at INTEGER, heartbeat_at INTEGER,
+  cost_tokens INTEGER NOT NULL DEFAULT 0, cost_budget INTEGER, last_error TEXT,
+  failure_kind TEXT, cancel_requested INTEGER NOT NULL DEFAULT 0,
+  run_after INTEGER NOT NULL DEFAULT 0, log_path TEXT, project TEXT
+)`;
 
 describe("job state rules", () => {
   it("allows only the transitions that make sense", () => {
@@ -267,5 +282,55 @@ describe("the job table", () => {
     expect(sum.current?.id).toBe(running.id);
     expect(sum.current?.costTokens).toBe(25);
     expect(sum.current?.stale).toBe(false);
+  });
+});
+
+describe("steps (the live checklist)", () => {
+  let s: JobStore;
+  beforeEach(() => { s = new JobStore(":memory:"); });
+  afterEach(() => s.close());
+
+  it("a fresh job has no steps", () => {
+    const j = s.enqueue("k");
+    expect(j.steps).toEqual([]);
+  });
+
+  it("setSteps persists and round-trips through get()", () => {
+    const j = s.enqueue("k");
+    s.setSteps(j.id, [{ label: "first", state: "running", at: 111 }]);
+    expect(s.get(j.id)!.steps).toEqual([{ label: "first", state: "running", at: 111 }]);
+    s.setSteps(j.id, [
+      { label: "first", state: "done", at: 111 },
+      { label: "second", state: "failed", at: 222, error: "it broke" },
+    ]);
+    expect(s.get(j.id)!.steps).toHaveLength(2);
+    expect(s.get(j.id)!.steps[1].error).toBe("it broke");
+  });
+
+  it("retry clears steps — a new attempt gets a clean checklist", () => {
+    const j = s.enqueue("k");
+    s.claim();
+    s.setSteps(j.id, [{ label: "x", state: "running", at: 1 }]);
+    s.fail(j.id, "boom", "transient");
+    const retried = s.retry(j.id)!;
+    expect(retried.steps).toEqual([]);
+  });
+
+  it("a database from before A3 (no steps_json column) opens fine — the migration is additive", () => {
+    // JobStore's constructor can't reopen a :memory: db by path, so this needs a real
+    // throwaway file to prove the ALTER TABLE path against a genuinely pre-existing table.
+    const dir = mkdtempSync(join(tmpdir(), "yard-migrate-"));
+    const file = join(dir, "jobs.db");
+    const pre = new Database(file);
+    pre.exec(LEGACY_SCHEMA);
+    pre.prepare(`INSERT INTO jobs (id, kind, state, created_at) VALUES (?, ?, 'queued', ?)`).run("job_old", "legacy", 1000);
+    pre.close();
+
+    const migrated = new JobStore(file);
+    expect(migrated.get("job_old")!.steps).toEqual([]);   // defaulted, not crashed
+    migrated.setSteps("job_old", [{ label: "works now", state: "running", at: 2000 }]);
+    expect(migrated.get("job_old")!.steps[0].label).toBe("works now");
+    migrated.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 });

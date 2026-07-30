@@ -222,3 +222,76 @@ describe("a worker whose server has gone", () => {
     expect(orphaned()).toBe(process.ppid === 1);   // this test process has a real parent
   });
 });
+
+// A3 — the live plan/checklist. Steps come from the job itself (ctx.step), never a model
+// guessing after the fact; these prove the state transitions the UI's checklist depends on.
+describe("the checklist (ctx.step)", () => {
+  it("a step is 'running' until the next one starts, then 'done'", async () => {
+    registerHandler("plan", async (ctx) => {
+      ctx.step("first");
+      expect(store.get(ctx.id)!.steps).toEqual([{ label: "first", state: "running", at: expect.any(Number) }]);
+      ctx.step("second");
+      const after = store.get(ctx.id)!.steps;
+      expect(after[0]).toMatchObject({ label: "first", state: "done" });
+      expect(after[1]).toMatchObject({ label: "second", state: "running" });
+    });
+    const j = store.enqueue("plan");
+    await runOneJob(store);
+    expect(store.get(j.id)!.state).toBe("done");
+  });
+
+  it("the last step is finished 'done' when the job succeeds", async () => {
+    registerHandler("plan-ok", async (ctx) => { ctx.step("only step"); });
+    const j = store.enqueue("plan-ok");
+    await runOneJob(store);
+    const steps = store.get(j.id)!.steps;
+    expect(steps).toHaveLength(1);
+    expect(steps[0].state).toBe("done");
+  });
+
+  it("the step in progress is marked 'failed' with the error, when the handler throws", async () => {
+    registerHandler("plan-fail", async (ctx) => {
+      ctx.step("the step that breaks");
+      throw new Error("it broke here specifically");
+    });
+    const j = store.enqueue("plan-fail");
+    await runOneJob(store);
+    const steps = store.get(j.id)!.steps;
+    expect(steps).toHaveLength(1);
+    expect(steps[0].state).toBe("failed");
+    expect(steps[0].error).toMatch(/broke here specifically/);
+  });
+
+  it("the step in progress is marked 'stopped', not 'failed', on a cancel", async () => {
+    registerHandler("plan-cancel", async (ctx) => {
+      ctx.step("about to be cancelled");
+      store.cancel(ctx.id);
+      ctx.checkStop();   // throws JobStopped("cancelled")
+    });
+    const j = store.enqueue("plan-cancel");
+    await runOneJob(store);
+    const steps = store.get(j.id)!.steps;
+    expect(steps[0].state).toBe("stopped");
+    expect(store.get(j.id)!.state).toBe("cancelled");
+  });
+
+  it("a handler that never calls ctx.step leaves an empty checklist, not an error", async () => {
+    registerHandler("no-plan", async () => "fine without one");
+    const j = store.enqueue("no-plan");
+    await runOneJob(store);
+    expect(store.get(j.id)!.steps).toEqual([]);
+    expect(store.get(j.id)!.state).toBe("done");
+  });
+
+  it("a retry starts with a clean checklist, not the failed attempt's steps", async () => {
+    registerHandler("plan-retry", async (ctx) => {
+      ctx.step("will fail this attempt");
+      throw new Error("transient hiccup");
+    });
+    const j = store.enqueue("plan-retry");
+    await runOneJob(store);
+    expect(store.get(j.id)!.steps[0].state).toBe("failed");
+    const retried = store.retry(j.id);
+    expect(retried!.steps).toEqual([]);
+  });
+});

@@ -38,6 +38,7 @@ const ctx = (payload: any) => ({
   log: () => { /* the log is exercised in worker.test.ts */ },
   spend: () => { /* the meter is exercised in store.test.ts */ },
   checkStop: () => { /* stopping is exercised in worker.test.ts */ },
+  step: () => { /* the checklist is exercised in worker.test.ts */ },
 });
 
 describe("editing a project", () => {

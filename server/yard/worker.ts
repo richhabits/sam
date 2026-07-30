@@ -15,7 +15,7 @@
 
 import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { JobStore, yardDir } from "./store.ts";
+import { JobStore, yardDir, type JobStep } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject, resolveProjectWrite, isWithin } from "./exec.ts";
 import { scrub } from "../scrub.ts";
@@ -114,6 +114,11 @@ export interface JobContext {
   log: (line: string) => void;
   spend: (tokens: number) => void;
   checkStop: () => void;
+  // Declares a new step as "running", auto-finishing whichever step was running before
+  // it as "done". The UI's live checklist comes straight from these — never a model
+  // guessing after the fact. Optional per handler: a kind that never calls this just
+  // shows no checklist, falling back to the raw log (same as before A3).
+  step: (label: string) => void;
 }
 export type Handler = (ctx: JobContext) => Promise<string | void>;
 
@@ -126,7 +131,7 @@ export const HANDLERS: Record<string, Handler> = {
     const asked = Number(ctx.payload?.seconds);
     const seconds = Math.min(Math.max(Number.isFinite(asked) ? asked : 5, 0), 600);
     const burn = !!ctx.payload?.burn;
-    ctx.log(`sleeping ${seconds}s${burn ? " while burning a core" : ""}`);
+    ctx.step(`sleeping ${seconds}s${burn ? " while burning a core" : ""}`);
     for (let i = 0; i < seconds; i++) {
       ctx.checkStop();
       if (burn) { const until = Date.now() + 1000; while (Date.now() < until) { /* deliberate load */ } }
@@ -188,6 +193,7 @@ HANDLERS.run = async (ctx) => {
 HANDLERS["project.create"] = async (ctx) => {
   const name = String(ctx.payload?.name || "").trim();
   if (!name) throw Object.assign(new Error("a project needs a name"), { kind: "permanent" as FailureKind });
+  ctx.step(`creating "${name}"`);
   const m = await createProject(name, { spec: String(ctx.payload?.spec || "") });
   ctx.log(`created ${m.slug} at ${projectPath(m.slug)}`);
   return `created ${m.slug}`;
@@ -201,6 +207,7 @@ HANDLERS["project.build"] = async (ctx) => {
   const name = String(ctx.payload?.name || "").trim();
   if (!name) throw Object.assign(new Error("a build needs a name"), { kind: "permanent" as FailureKind });
 
+  ctx.step(`creating "${name}"`);
   const m = await createProject(name, { spec: String(ctx.payload?.spec || name) });
   ctx.log(`created ${m.slug} at ${projectPath(m.slug)}`);
   ctx.checkStop();
@@ -208,12 +215,14 @@ HANDLERS["project.build"] = async (ctx) => {
   // A plain page, written directly rather than shelled out for. It is deliberately not a
   // framework: this is the first iteration, it has to actually open in a browser, and a
   // dependency tree is something to add when the project asks for one.
+  ctx.step("writing the first page");
   const dir = projectPath(m.slug);
   const title = m.name.replace(/[<>&]/g, "");
   writeFileSync(join(dir, "index.html"), page(title));
   writeFileSync(join(dir, "README.md"), `# ${title}\n\n${m.spec}\n\nBuilt by SAM. Open index.html.\n`);
   ctx.log("wrote index.html and README.md");
 
+  ctx.step("checkpointing");
   const cp = await checkpoint(m.slug, `Scaffold ${m.slug}`);
   if (cp) ctx.log(`checkpoint ${cp.sha.slice(0, 8)} — ${cp.message}`);
   return `built ${m.slug}${cp ? ` · checkpoint ${cp.sha.slice(0, 8)}` : ""}`;
@@ -294,6 +303,7 @@ HANDLERS["project.edit"] = async (ctx) => {
   const dir = projectPath(slug);
 
   // The way back, first. Any uncommitted work is secured before this job touches a file.
+  ctx.step("checkpointing the way back");
   const before = await checkpoint(slug, `before: ${what.slice(0, 80)}`);
   ctx.log(before ? `checkpointed first: ${before.sha.slice(0, 8)}` : "already clean — the last checkpoint is the way back");
   ctx.checkStop();
@@ -301,6 +311,7 @@ HANDLERS["project.edit"] = async (ctx) => {
   // Read everything editable, then show only what this request implicates. Nothing is
   // ever cut short: an edit returns WHOLE files, so a model shown half a file writes
   // back half a file and the rest is silently deleted.
+  ctx.step("reading the project's files");
   const existing = readEditable(dir, NOT_THE_MODELS);
   if (!existing.length) throw Object.assign(new Error("there are no editable files in this project"), { kind: "permanent" as FailureKind });
 
@@ -324,6 +335,7 @@ HANDLERS["project.edit"] = async (ctx) => {
 
   // Free tier, vault-routed, exactly like everything else SAM does. Metered against the
   // job's own ceiling so one runaway edit cannot spend the allowance of the queue.
+  ctx.step("asking for a proposal");
   const sys = patchMode ? EDIT_SYSTEM_PATCH : EDIT_SYSTEM;
   ctx.spend(estimate(sys) + estimate(prompt));
   const r = await runModel("free", sys, prompt, "code");
@@ -342,6 +354,7 @@ HANDLERS["project.edit"] = async (ctx) => {
   // edit can only touch a file the model actually saw. All-or-nothing per file: if any block
   // cannot be placed exactly and uniquely, the file is left untouched and the reason is logged,
   // so a half-matched proposal can never leave a file in a state nobody chose.
+  ctx.step("applying the edits");
   const patched: { path: string; content: string }[] = [];
   if (patchMode && Array.isArray(spec?.edits)) {
     const byPath = new Map<string, { find: string; replace: string }[]>();
@@ -379,6 +392,7 @@ HANDLERS["project.edit"] = async (ctx) => {
   for (const f of targets) writeInProject(dir, f.path, f.content);
   ctx.log(`wrote ${targets.map((f) => f.path).join(", ")}`);
 
+  ctx.step("checkpointing the result");
   const after = await checkpoint(slug, what.slice(0, 100));
   if (!after) { ctx.log("the proposal matched what was already there — nothing changed"); return "no change was needed"; }
   ctx.log(`checkpoint ${after.sha.slice(0, 8)} — ${after.message}`);
@@ -458,6 +472,18 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
   const log = new JobLog(job.logPath ?? jobLogPath(job.id));
   const beat = setInterval(() => { store.heartbeat(job.id); refreshLock(); }, HEARTBEAT_MS);
 
+  // Steps this attempt has declared, in order. Starts empty even on a retry (the store
+  // clears steps_json when it requeues a failed job) — a fresh attempt gets a fresh
+  // checklist, not the previous attempt's failure still sitting on screen.
+  const steps: JobStep[] = [];
+  const finalizeStep = (state: JobStep["state"], error?: string) => {
+    const last = steps[steps.length - 1];
+    if (last?.state !== "running") return;
+    last.state = state;
+    if (error) last.error = error.slice(0, 300);
+    store.setSteps(job.id, steps);
+  };
+
   const ctx: JobContext = {
     id: job.id, payload: job.payload, project: job.project,
     log: (line) => log.write(line),
@@ -473,6 +499,11 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
       const j = store.get(job.id);
       if (j && j.state !== "running") throw new JobStopped(j.state === "cancelled" ? "cancelled" : "lost", j.state);
     },
+    step: (label) => {
+      finalizeStep("done");
+      steps.push({ label, state: "running", at: Date.now() });
+      store.setSteps(job.id, steps);
+    },
   };
 
   try {
@@ -481,11 +512,13 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
     if (!handler) throw Object.assign(new Error(`the yard has no handler for "${job.kind}"`), { kind: "permanent" as FailureKind });
     const result = await handler(ctx);
     ctx.checkStop();
+    finalizeStep("done");
     log.write(`done: ${result ?? "ok"}`);
     store.finish(job.id);
     return job.id;
   } catch (e: any) {
     if (e instanceof JobStopped) {
+      finalizeStep("stopped");
       log.write(`stopped: ${e.why}${e.state ? ` — the job is now ${e.state}` : ""}`);
       // A budget stop has already been recorded by the meter; only a cancel still
       // needs acknowledging. Guarded because the state may already have moved.
@@ -493,6 +526,7 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
       return job.id;
     }
     const kind: FailureKind = e?.kind === "permanent" ? "permanent" : "transient";
+    finalizeStep("failed", String(e?.message || e));
     log.write(`failed (${kind}): ${e?.message || e}`);
     if (store.get(job.id)?.state === "running") store.fail(job.id, String(e?.message || e), kind);
     return job.id;
