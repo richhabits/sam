@@ -112,3 +112,41 @@ export function revokeSession(token: string): boolean {
 export function sessionCount(): number {
   return (db.prepare(`SELECT COUNT(*) AS n FROM sessions`).get() as { n: number }).n;
 }
+
+// ── B2 — the device registry ──────────────────────────────────────────────
+// Every session already IS a device credential (first-seen/last-seen/label);
+// nothing about the sessions table itself needed to change, only a way to see
+// and manage it one row at a time instead of only "how many" (sessionCount)
+// and "burn them all" (revokeAllSessions).
+
+export interface DeviceSession { id: string; created: number; lastSeen: number; label: string }
+
+// `hash` is the primary key and safe to hand back as an "id": it's a one-way SHA-256 of
+// the raw token, so exposing it in a device list can never be used to reconstruct a
+// working session cookie — the same reason the raw token itself is never stored.
+export function listSessions(): DeviceSession[] {
+  const rows = db.prepare(`SELECT hash, created, last_seen, label FROM sessions ORDER BY last_seen DESC`).all() as
+    { hash: string; created: number; last_seen: number; label: string }[];
+  return rows.map((r) => ({ id: r.hash, created: r.created, lastSeen: r.last_seen, label: r.label }));
+}
+
+// Revoke ONE device by the id listSessions() handed out — distinct from revokeSession(),
+// which takes the raw token (only the browser holding the cookie has that). This is what
+// an operator clicking "revoke" on a device THEY are looking at, not holding, calls.
+export function revokeSessionById(id: string): boolean {
+  const r = db.prepare(`DELETE FROM sessions WHERE hash = ?`).run(String(id || ""));
+  return r.changes > 0;
+}
+
+// A friendly label from the one thing every pairing request already carries — the User-
+// Agent — so a device registry says "iPhone · Safari" instead of "browser" for every
+// single row. Best-effort and cosmetic only: nothing security-relevant reads this string.
+export function guessLabel(userAgent: string | undefined): string {
+  const ua = String(userAgent || "");
+  const device = /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android"
+    : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "device";
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome"
+    : /CriOS\//.test(ua) ? "Chrome" : /FxiOS\//.test(ua) ? "Firefox" : /Firefox\//.test(ua) ? "Firefox"
+    : /Safari\//.test(ua) ? "Safari" : "browser";
+  return `${device} · ${browser}`;
+}

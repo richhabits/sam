@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
-  pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing } from "./lib/api";
+  pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
+  getPairedDevices, revokeDevice, revokeAllDevices, type PairedDevice } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
@@ -25,6 +26,14 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [pairing, setPairing] = useState<{ id: string; code: string } | null>(null);
   const [paired, setPaired] = useState(!!pairToken());
   const [pairInbox, setPairInbox] = useState<{ pending: any[]; paired: any[]; notApp?: boolean }>({ pending: [], paired: [] });
+  // B2 — the device registry (the session-cookie Pairing, distinct from the yard-specific
+  // request/approve pairing above). refused (not devicesRefused: true) means "this caller
+  // isn't authenticated enough to see the list" — not "no devices are paired".
+  const [devices, setDevices] = useState<PairedDevice[]>([]);
+  const [devicesRefused, setDevicesRefused] = useState(false);
+  const refreshDevices = useCallback(() => {
+    getPairedDevices().then((r) => { setDevices(r.devices || []); setDevicesRefused(!!r.refused); }).catch(() => {/* the next poll re-reads */});
+  }, []);
   // Re-read the yard straight after acting on it, so the panel reflects the kill
   // immediately rather than at the next five-second tick.
   const refreshYard = () => { getYard().then(setYard).catch(() => {/* the next poll re-reads the truth */}); };
@@ -55,11 +64,12 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       getYard().then(setYard).catch(() => {/* the yard may be off, or this SAM may not have it — the tile simply stays hidden */});
       // Only the app gets a list back; a browser is told nothing about who else is waiting.
       yardPairPending().then(setPairInbox).catch(() => {/* not the app — nothing to approve here */});
+      refreshDevices();
     };
     load();
     const iv = setInterval(load, 5000);
     return () => clearInterval(iv);
-  }, []);
+  }, [refreshDevices]);
 
   // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
   // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
@@ -293,6 +303,41 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                 </div>
               </div>
             </>)}
+
+            {/* B2 — the device registry. Alongside the yard tile per the brief: this is
+                who can reach it, the yard tile above is what it's doing. Shown whenever
+                the Pairing itself is reachable, independent of whether the yard is on. */}
+            <div className="dash-sec">
+              <Icon name="phone" /> Paired devices ({devices.length})
+              {devices.length > 1 && (
+                <button type="button" className="dash-sec-link" style={{ color: "var(--c-err)" }}
+                  onClick={() => { if (window.confirm(`Revoke all ${devices.length} paired devices? Each will need to re-pair.`)) revokeAllDevices().then(refreshDevices).catch(() => {/* the next poll re-reads */}); }}>
+                  Revoke all
+                </button>
+              )}
+            </div>
+            {devicesRefused ? (
+              <div className="dash-empty">This browser isn't paired enough to see the device list.</div>
+            ) : devices.length === 0 ? (
+              <div className="dash-empty">No devices paired yet — open the pairing link SAM printed on start.</div>
+            ) : (
+              <div className="dash-lanes">
+                {devices.map((d) => (
+                  <div key={d.id} className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 4, padding: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 600 }}>{d.label}</span>
+                      <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }}
+                        onClick={() => revokeDevice(d.id).then(refreshDevices).catch(() => {/* the next poll re-reads */})}>
+                        Revoke
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 11, opacity: 0.7 }}>
+                      paired {new Date(d.created).toLocaleDateString()} · last seen {new Date(d.lastSeen).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* swarm monitor */}
             <div className="dash-sec"><Icon name="team" /> Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>

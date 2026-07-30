@@ -53,9 +53,9 @@ import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./me
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
-import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount } from "./pairing.ts";
+import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel } from "./pairing.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -202,7 +202,9 @@ app.use((_req, res, next) => {
 // Handshake gate below, so only the desktop app or an already-paired browser can do them).
 app.get("/pair", (req, res) => {
   const code = typeof req.query.code === "string" ? req.query.code : "";
-  const token = claimCode(code, Date.now(), "browser");
+  // B2 — a real device label from the one thing every pairing request already carries,
+  // instead of every row in the registry reading the same literal "browser".
+  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"]));
   if (!token) {
     res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used or has expired (they last 15 minutes). Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
     return;
@@ -222,6 +224,21 @@ app.post("/api/pair/revoke-all", (_req, res) => {
   const n = revokeAllSessions();
   res.setHeader("Set-Cookie", clearSessionCookieHeader());
   res.json({ revoked: n });
+});
+
+// B2 — the device registry. Reads need to already be authenticated (loopback+passkey, or
+// ANY paired session) — labels and timestamps for every paired device are more than the
+// bare yes/no /api/pair/status exposes, and not something an unpaired caller should see.
+app.get("/api/pair/devices", (req, res) => {
+  if (!isTrustedLocal(req) && !isPairedSession(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json({ devices: listSessions() });
+});
+// Revoke-one, alongside revoke-all above — same trust either way (the general Handshake
+// mutation gate: the desktop passkey, or any already-paired session). A paired device can
+// already nuke every session via revoke-all; this is the same power, finer-grained.
+app.post("/api/pair/devices/:id/revoke", (req, res) => {
+  const ok = revokeSessionById(String(req.params.id));
+  ok ? res.json({ ok: true }) : res.status(404).json({ error: "no such device" });
 });
 
 // ── REMOTE-MODE token gate (phone access — LAN or, since B1, the mesh) ─────────────────────

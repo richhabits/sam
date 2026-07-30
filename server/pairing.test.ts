@@ -96,3 +96,73 @@ describe("cookie handling", () => {
     expect(raw.includes(Buffer.from(token))).toBe(false);   // the live token is not on disk
   });
 });
+
+// B2 — the device registry: named devices, first/last-seen, individual revocation.
+describe("the device registry", () => {
+  it("lists every paired device with a safe id, never the raw token", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW, "Test Device")!;
+    const devices = P.listSessions();
+    expect(devices).toHaveLength(1);
+    expect(devices[0].label).toBe("Test Device");
+    expect(devices[0].created).toBe(NOW);
+    expect(devices[0].lastSeen).toBe(NOW);
+    expect(devices[0].id).not.toBe(token);       // the id is the hash, not the live token
+    expect(devices[0].id.length).toBeGreaterThan(20);
+  });
+
+  it("sorts by most-recently-seen first", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW, "Older");
+    // A code is only good for 15 minutes, so "seen a day later" needs a code minted then too.
+    P.claimCode(P.mintPairingCode(NOW + DAY), NOW + DAY, "Newer");
+    const devices = P.listSessions();
+    expect(devices.map((d) => d.label)).toEqual(["Newer", "Older"]);
+  });
+
+  it("revokes ONE device by its listed id, leaving the others paired", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW, "Keep me");
+    P.claimCode(P.mintPairingCode(NOW), NOW, "Revoke me");
+    const devices = P.listSessions();
+    const toRevoke = devices.find((d) => d.label === "Revoke me")!;
+    expect(P.revokeSessionById(toRevoke.id)).toBe(true);
+    const remaining = P.listSessions();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].label).toBe("Keep me");
+  });
+
+  it("revoking an unknown id is reported honestly, not thrown", () => {
+    expect(P.revokeSessionById("not-a-real-id")).toBe(false);
+  });
+
+  it("a device revoked by id can no longer validate its session", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW, "x")!;
+    const id = P.listSessions()[0].id;
+    P.revokeSessionById(id);
+    expect(P.validateSession(token, NOW)).toBe(false);
+  });
+});
+
+describe("guessLabel — a friendly device name from the one thing pairing always carries", () => {
+  const UA = {
+    iphoneSafari: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    ipadSafari: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    macChrome: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    macSafari: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    androidChrome: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    windowsEdge: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+  };
+
+  it("names device + browser correctly across common combinations", () => {
+    expect(P.guessLabel(UA.iphoneSafari)).toBe("iPhone · Safari");
+    expect(P.guessLabel(UA.ipadSafari)).toBe("iPad · Safari");
+    expect(P.guessLabel(UA.macChrome)).toBe("Mac · Chrome");
+    expect(P.guessLabel(UA.macSafari)).toBe("Mac · Safari");
+    expect(P.guessLabel(UA.androidChrome)).toBe("Android · Chrome");
+    expect(P.guessLabel(UA.windowsEdge)).toBe("Windows · Edge");
+  });
+
+  it("degrades to generic labels rather than guessing, for missing/unrecognised input", () => {
+    expect(P.guessLabel(undefined)).toBe("device · browser");
+    expect(P.guessLabel("")).toBe("device · browser");
+    expect(P.guessLabel("SomeWeirdClient/1.0")).toBe("device · browser");
+  });
+});

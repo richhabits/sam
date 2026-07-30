@@ -342,6 +342,16 @@ export const approveYardPairing = (id: string, code: string) => post("/api/yard/
 export const denyYardPairing = (id: string) => post("/api/yard/pair/deny", { id });
 export const revokeYardPairing = (id: string) => post("/api/yard/pair/revoke", { id });
 
+// B2 — the device registry (the NEW session-cookie Pairing from server/pairing.ts —
+// distinct from the yard-specific request/approve pairing above).
+export interface PairedDevice { id: string; created: number; lastSeen: number; label: string }
+export const getPairedDevices = () => fetch("/api/pair/devices").then(async (r) => {
+  if (r.status === 403) return { devices: [], refused: true };
+  return r.json() as Promise<{ devices: PairedDevice[]; refused?: boolean }>;
+});
+export const revokeDevice = (id: string) => post(`/api/pair/devices/${encodeURIComponent(id)}/revoke`, {});
+export const revokeAllDevices = () => post("/api/pair/revoke-all", {});
+
 export const cancelYardJob = async (id: string) => {
   const pair = pairToken();
   const r = await fetch("/api/yard/cancel", {
