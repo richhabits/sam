@@ -11,6 +11,7 @@ import { writeFileAtomic } from "./atomic.ts";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import webpush from "web-push";
+import { scrub, collapseHomes } from "./scrub.ts";
 
 const VAULT = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const KEYS = join(VAULT, "push-keys.json");
@@ -40,10 +41,21 @@ export function addSubscription(sub: Sub): boolean {
 }
 export function subscriberCount(): number { return subs.length; }
 
+// B4 — a push notification sits on a lock screen anyone nearby can glance at, not just the
+// operator. Every body that reaches sendNotification runs through the same scrubber the
+// logs use (server/scrub.ts) — defense in depth for anything credential-shaped that
+// shouldn't be there regardless of source. The real discipline is upstream, though: a
+// caller should hand this a short STRUCTURAL summary ("Task finished — <name>"), never the
+// actual content of what SAM said, found, or produced. summarize() below is that helper.
+export function summarize(label: string, maxLen = 100): string {
+  return collapseHomes(scrub(String(label || ""))).slice(0, maxLen);
+}
+
 // Fire-and-forget push to every subscribed device; prunes dead endpoints (404/410).
 export async function pushNotify(title: string, body: string, url = "/"): Promise<void> {
   if (!subs.length) return;
-  const payload = JSON.stringify({ title, body: (body || "").replace(/[#*`>]/g, "").slice(0, 220), url });
+  const safeBody = collapseHomes(scrub((body || "").replace(/[#*`>]/g, ""))).slice(0, 220);
+  const payload = JSON.stringify({ title, body: safeBody, url });
   const dead: string[] = [];
   await Promise.all(subs.map(async (s) => {
     try { await webpush.sendNotification(s as any, payload); }

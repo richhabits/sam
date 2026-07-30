@@ -118,7 +118,7 @@ import { bind as routineBind, unbind as routineUnbind, list as routineList, matc
 import { getWorkflow, runWorkflow as runWorkflowFor, recordRun as recordWorkflowRunRec } from "./workflows.ts";
 import { camerasEnabled, list as listCameras, add as addCamera, remove as removeCamera } from "./cameras.ts";
 import { peopleContext, } from "./people.ts";
-import { pushNotify, } from "./push.ts";
+import { pushNotify, summarize as pushSummary } from "./push.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
 import { operatingDoctrine, personaVoice, personaVoiceCompact, PERSONAS } from "./persona.ts";
@@ -496,7 +496,10 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
     const r = await runAgent(system, d.content, tier, undefined, false, true);
     if (r.kind === "final" && r.text) {
       // Queue the result for the app to show + send a notification.
-      desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", r.text);
+      // B4 — the desktop notification (this machine, the operator's own) keeps the full
+      // answer; the phone push (a lock screen, anyone nearby) gets a structural summary
+      // only — what happened, never the actual content of what SAM produced.
+      desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", pushSummary(`iOS drop processed — ${d.file}`));
     } else {
       // A phone drop hit a risky action — deliver an Ask instead of silently dropping it.
       handleUnattended(r, { tier, source: "ios", why: `an iOS drop (“${d.file}”) needs this to continue` });
@@ -520,7 +523,9 @@ if (!BENCH_MODE) startScheduler(async (command: string) => {
   const tier = (process.env.DEFAULT_TIER as Tier) || "free";
   const r = await runAgent(system, command, tier);
   if (r.kind === "final" && r.text) {
-    desktopNotify("SAM — Scheduled Task", r.text); void pushNotify("SAM — scheduled task", r.text);
+    // B4 — same split: the desktop notification keeps the answer, the push gets the
+    // schedule's own command (what the operator asked for, not what SAM produced).
+    desktopNotify("SAM — Scheduled Task", r.text); void pushNotify("SAM — scheduled task", pushSummary(`Scheduled task finished — ${command}`));
     return r.text;
   }
   // A scheduled task hit a risky action with no one watching. This used to return "Finished." —
@@ -1501,7 +1506,7 @@ app.post("/api/ask/:id", (req, res) => {
   if (r?.action) {
     const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");
     void resumeAgent(system, r.action.transcript, r.action.tier as Tier, true, r.action.tool, r.action.input, r.action.trace)
-      .then((rr) => { if (rr.kind === "final" && rr.text) { desktopNotify("SAM — approved action done", rr.text); void pushNotify("SAM", rr.text); } })
+      .then((rr) => { if (rr.kind === "final" && rr.text) { desktopNotify("SAM — approved action done", rr.text); void pushNotify("SAM", pushSummary(`Approved action done — ${ask.action}`)); } })
       .catch(() => {/* approved action failed; surfaced via notification only */});
   }
   res.json({ status: r?.ask.status ?? "gone" });

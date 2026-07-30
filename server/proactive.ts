@@ -78,7 +78,7 @@ const briefTime = () => (process.env.SAM_BRIEF_TIME || "08:00");
 function hhmm(d = new Date()) { return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
 function today() { return new Date().toLocaleDateString("en-GB"); }
 
-import { pushNotify } from "./push.ts";
+import { pushNotify, summarize as pushSummary } from "./push.ts";
 import { isEnabled } from "./consent.ts";
 import { logAutonomy } from "./autonomy-log.ts";
 
@@ -90,6 +90,10 @@ export function startProactive(composeBrief: () => Promise<string>) {
       if (isEnabled("reminders")) {
         const due = dueNudges();
         if (due.length) {
+          // B4: a reminder's TEXT is the point of the notification — the user wrote it
+          // themselves specifically to see it again, same as the brief's own "Task
+          // finished — Hectic Bullz site" example (short, named, purposeful). Not the
+          // AI-synthesized-content case B4 warns about; left as-is deliberately.
           for (const n of due) { desktopNotify("SAM — reminder", n.text); void pushNotify("⏰ SAM reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "reminders", kind: "acted", summary: `Reminded: ${n.text}` }); }
           markNotified(due.map((n) => n.id));
         }
@@ -104,7 +108,11 @@ export function startProactive(composeBrief: () => Promise<string>) {
           _lastBriefFired = today();                     // in-memory first — survives a failed disk write
           save(STATE, { ...st, lastBrief: today() });   // then persist (atomic) so it survives a restart too
           const brief = await composeBrief().catch(() => "");
-          if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", b); pending.push({ type: "brief", text: brief, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "daily-briefing", kind: "acted", summary: "Delivered the morning briefing" }); }
+          // B4: unlike a reminder, the brief is AI-SYNTHESIZED from calendar/email content —
+          // exactly the case B4 means. Desktop notification (this machine) keeps the real
+          // brief; the push (a lock screen) gets a generic "it's ready", not calendar
+          // events or email subject lines.
+          if (brief) { const b = brief.replace(/[#*`]/g, "").slice(0, 200); desktopNotify("SAM — morning brief", b); void pushNotify("☀️ SAM — morning brief", pushSummary("Your morning brief is ready")); pending.push({ type: "brief", text: brief, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "daily-briefing", kind: "acted", summary: "Delivered the morning briefing" }); }
         }
       }
     } catch { /* never let the timer crash the app */ }
