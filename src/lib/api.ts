@@ -344,13 +344,18 @@ export const revokeYardPairing = (id: string) => post("/api/yard/pair/revoke", {
 
 // B2 — the device registry (the NEW session-cookie Pairing from server/pairing.ts —
 // distinct from the yard-specific request/approve pairing above).
-export interface PairedDevice { id: string; created: number; lastSeen: number; label: string }
+export type Grant = "deploy" | "shellExec" | "spendAbove";
+export interface PairedDevice { id: string; created: number; lastSeen: number; label: string; grants: Partial<Record<Grant, boolean>> }
 export const getPairedDevices = () => fetch("/api/pair/devices").then(async (r) => {
   if (r.status === 403) return { devices: [], refused: true };
   return r.json() as Promise<{ devices: PairedDevice[]; refused?: boolean }>;
 });
 export const revokeDevice = (id: string) => post(`/api/pair/devices/${encodeURIComponent(id)}/revoke`, {});
 export const revokeAllDevices = () => post("/api/pair/revoke-all", {});
+// B3 — capability tiers. Loopback-only server-side (grants can't be self-elevated from a
+// remote device) — this call will 403 from anywhere but the Mac itself, by design.
+export const setDeviceGrants = (id: string, grants: Partial<Record<Grant, boolean>>) =>
+  post(`/api/pair/devices/${encodeURIComponent(id)}/grants`, { grants });
 
 export const cancelYardJob = async (id: string) => {
   const pair = pairToken();

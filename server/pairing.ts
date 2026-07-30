@@ -40,6 +40,10 @@ db.exec(`
     label     TEXT NOT NULL DEFAULT ''
   )
 `);
+// B3 — per-device capability tiers. A device from before this existed has no row here yet;
+// the additive ALTER (same pattern as server/yard/store.ts's own migrations) means it just
+// gets the default '{}' — no grants — rather than the app failing to open its own db.
+try { db.exec(`ALTER TABLE sessions ADD COLUMN grants TEXT NOT NULL DEFAULT '{}'`); } catch { /* already there */ }
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -89,6 +93,13 @@ export function sessionTokenFromCookie(cookieHeader: string | undefined): string
   try { return decodeURIComponent(m[1]); } catch { return ""; }
 }
 
+// The same "id" listSessions()/getGrants() use, derived from a raw cookie token — so a
+// caller that already has the token (a request handler, mid-request) can look up or check
+// that device's own grants without a second round-trip or exposing the hashing itself.
+export function sessionIdFromToken(token: string): string {
+  return sha(String(token || ""));
+}
+
 /** The Set-Cookie value for a freshly-minted session. Same-origin local app: HttpOnly + Strict +
  *  Max-Age; no Secure flag because loopback is plain http (Strict + HttpOnly carry the weight). */
 export function sessionCookieHeader(token: string): string {
@@ -119,15 +130,19 @@ export function sessionCount(): number {
 // and manage it one row at a time instead of only "how many" (sessionCount)
 // and "burn them all" (revokeAllSessions).
 
-export interface DeviceSession { id: string; created: number; lastSeen: number; label: string }
+export interface DeviceSession { id: string; created: number; lastSeen: number; label: string; grants: Grants }
 
 // `hash` is the primary key and safe to hand back as an "id": it's a one-way SHA-256 of
 // the raw token, so exposing it in a device list can never be used to reconstruct a
 // working session cookie — the same reason the raw token itself is never stored.
 export function listSessions(): DeviceSession[] {
-  const rows = db.prepare(`SELECT hash, created, last_seen, label FROM sessions ORDER BY last_seen DESC`).all() as
-    { hash: string; created: number; last_seen: number; label: string }[];
-  return rows.map((r) => ({ id: r.hash, created: r.created, lastSeen: r.last_seen, label: r.label }));
+  const rows = db.prepare(`SELECT hash, created, last_seen, label, grants FROM sessions ORDER BY last_seen DESC`).all() as
+    { hash: string; created: number; last_seen: number; label: string; grants: string }[];
+  return rows.map((r) => {
+    let grants: Grants = {};
+    try { grants = JSON.parse(r.grants) || {}; } catch { /* corrupt row — treat as no grants, never as all-granted */ }
+    return { id: r.hash, created: r.created, lastSeen: r.last_seen, label: r.label, grants };
+  });
 }
 
 // Revoke ONE device by the id listSessions() handed out — distinct from revokeSession(),
@@ -149,4 +164,41 @@ export function guessLabel(userAgent: string | undefined): string {
     : /CriOS\//.test(ua) ? "Chrome" : /FxiOS\//.test(ua) ? "Firefox" : /Firefox\//.test(ua) ? "Firefox"
     : /Safari\//.test(ua) ? "Safari" : "browser";
   return `${device} · ${browser}`;
+}
+
+// ── B3 — capability tiers per device ────────────────────────────────────────
+// A newly paired device gets read/chat/assign-task for free — that's just "isPairedSession
+// returns true" elsewhere in the codebase, nothing to store here for it. What DOES need
+// storing is the tier ABOVE that: deploy, raw shell exec, and spending past the default
+// floor are each an explicit, named, per-device grant — off until the operator turns it
+// on, from the Mac, looking at the specific device. There is no grant, and can never be
+// one, for anything touching ~/flip-it: that module is read-only end to end (see its own
+// header) and no yard job kind reaches it, so there is no capability to accidentally grant
+// in the first place — the ungrantable rule holds by construction, not by a check here.
+export type Grant = "deploy" | "shellExec" | "spendAbove";
+export type Grants = Partial<Record<Grant, boolean>>;
+const KNOWN_GRANTS: Grant[] = ["deploy", "shellExec", "spendAbove"];
+
+export function getGrants(id: string): Grants {
+  const row = db.prepare(`SELECT grants FROM sessions WHERE hash = ?`).get(String(id || "")) as { grants: string } | undefined;
+  if (!row) return {};
+  try {
+    const parsed = JSON.parse(row.grants);
+    const out: Grants = {};
+    for (const k of KNOWN_GRANTS) if (parsed?.[k] === true) out[k] = true;   // only ever the three known keys, only ever `true`
+    return out;
+  } catch { return {}; }
+}
+
+// Whole-object replace, not a patch — an operator looking at one device's toggles sets
+// exactly what they see, so a stale client can never silently leave an old grant standing.
+export function setGrants(id: string, grants: Grants): boolean {
+  const clean: Grants = {};
+  for (const k of KNOWN_GRANTS) if (grants?.[k] === true) clean[k] = true;
+  const r = db.prepare(`UPDATE sessions SET grants = ? WHERE hash = ?`).run(JSON.stringify(clean), String(id || ""));
+  return r.changes > 0;
+}
+
+export function hasGrant(id: string, grant: Grant): boolean {
+  return getGrants(id)[grant] === true;
 }

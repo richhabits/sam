@@ -55,7 +55,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel } from "./pairing.ts";
+import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -239,6 +239,19 @@ app.get("/api/pair/devices", (req, res) => {
 app.post("/api/pair/devices/:id/revoke", (req, res) => {
   const ok = revokeSessionById(String(req.params.id));
   ok ? res.json({ ok: true }) : res.status(404).json({ error: "no such device" });
+});
+// B3 — setting a device's capability tier. Deliberately isTrustedLocal, NOT the general
+// Handshake mutation gate every other pairing-management route uses (which a mere paired
+// session already satisfies): "grants are set on the Mac, never self-elevated from the
+// remote device" is read at its strongest here — even a browser tab that happens to be
+// on loopback, holding only a paired session cookie, is refused. Only the desktop app's
+// own passkey (or the equivalent old-style yard pair token) passes. A device cannot grant
+// itself power by any route that a remote device could also reach.
+app.post("/api/pair/devices/:id/grants", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "grants can only be changed on this computer, not remotely" }); return; }
+  const id = String(req.params.id);
+  const ok = setGrants(id, req.body?.grants || {});
+  ok ? res.json({ ok: true, grants: getGrants(id) }) : res.status(404).json({ error: "no such device" });
 });
 
 // ── REMOTE-MODE token gate (phone access — LAN or, since B1, the mesh) ─────────────────────
@@ -1533,11 +1546,28 @@ app.get("/api/yard/job/:id", (req, res) => {
   if (!job) { res.status(404).json({ error: "no such job" }); return; }
   res.json({ job, log: job.logPath ? new JobLog(job.logPath).tail(60) : [] });
 });
+// B3 — capability tiers. Loopback (the desktop app) always has full power; tiers exist for
+// what a PAIRED device can do, not what's running on the Mac itself. A newly paired device
+// gets read/chat/assign-task for free (that's just isYardTrusted returning true elsewhere —
+// nothing to check here for it); deploy, raw shell exec, and spending past the floor each
+// need their own explicit per-device grant, set from the Mac (see /api/pair/devices/:id/grants,
+// loopback-only).
+const SPEND_FLOOR_TOKENS = 5000;   // a few average tasks' worth — above this, a remote device needs the grant
+function missingGrant(req: any, kind: string, budget: number | null): Grant | null {
+  if (isLoopback(req)) return null;
+  const id = sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie));
+  if (kind === "project.deploy" && !hasGrant(id, "deploy")) return "deploy";
+  if (kind === "run" && !hasGrant(id, "shellExec")) return "shellExec";
+  if (budget !== null && budget > SPEND_FLOOR_TOKENS && !hasGrant(id, "spendAbove")) return "spendAbove";
+  return null;
+}
 app.post("/api/yard/enqueue", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
   const { kind, payload, budget, project } = req.body || {};
   if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
+  const needs = missingGrant(req, kind, budget ?? null);
+  if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
   res.json({ job: yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null }) });
 });
 app.post("/api/yard/cancel", (req, res) => {
@@ -1556,6 +1586,8 @@ app.post("/api/yard/raise-budget", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   const budget = Number(req.body?.budget);
   if (!Number.isFinite(budget) || budget <= 0) { res.status(400).json({ error: "give it a real budget (a positive number of tokens)" }); return; }
+  const needs = missingGrant(req, "", budget);
+  if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
   const job = yardStore().raiseBudgetAndRequeue(String(req.body?.id || ""), Math.round(budget));
   job ? res.json({ job }) : res.status(409).json({ error: "that job isn't a budget stop, or the new budget wouldn't even survive its first step" });
 });

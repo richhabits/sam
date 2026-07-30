@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
   pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
-  getPairedDevices, revokeDevice, revokeAllDevices, type PairedDevice } from "./lib/api";
+  getPairedDevices, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
@@ -333,6 +333,28 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.7 }}>
                       paired {new Date(d.created).toLocaleDateString()} · last seen {new Date(d.lastSeen).toLocaleString()}
+                    </div>
+                    {/* B3 — capability tiers. Read/chat/assign-task are free the moment a device
+                        pairs (nothing to toggle for them); these three are the ones that stay off
+                        until set here, on the Mac. Toggling calls the loopback-only grants route —
+                        it 403s from anywhere else, by design, so this UI only really does anything
+                        when Dashboard itself is opened on this machine. */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 2 }}>
+                      {(["deploy", "shellExec", "spendAbove"] as Grant[]).map((g) => {
+                        const on = !!d.grants?.[g];
+                        return (
+                          <button key={g} type="button" className="mini"
+                            style={{ opacity: on ? 1 : 0.55, borderColor: on ? "var(--c-ok)" : undefined, color: on ? "var(--c-ok)" : undefined }}
+                            title={on ? `Revoke ${g}` : `Grant ${g}`}
+                            onClick={() => {
+                              const next = { ...d.grants, [g]: !on };
+                              if (!next[g]) delete next[g];
+                              setDeviceGrants(d.id, next).then(refreshDevices).catch(() => {/* the next poll re-reads */});
+                            }}>
+                            {on ? "✓ " : ""}{g === "spendAbove" ? "spend above floor" : g}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

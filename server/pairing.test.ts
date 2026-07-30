@@ -166,3 +166,60 @@ describe("guessLabel — a friendly device name from the one thing pairing alway
     expect(P.guessLabel("SomeWeirdClient/1.0")).toBe("device · browser");
   });
 });
+
+// B3 — capability tiers per device.
+describe("grants — per-device capability tiers", () => {
+  it("a freshly paired device has no grants at all", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW);
+    const id = P.listSessions()[0].id;
+    expect(P.getGrants(id)).toEqual({});
+    expect(P.hasGrant(id, "deploy")).toBe(false);
+    expect(P.hasGrant(id, "shellExec")).toBe(false);
+    expect(P.hasGrant(id, "spendAbove")).toBe(false);
+  });
+
+  it("setGrants grants exactly what's asked, nothing implied", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW);
+    const id = P.listSessions()[0].id;
+    expect(P.setGrants(id, { deploy: true })).toBe(true);
+    expect(P.getGrants(id)).toEqual({ deploy: true });
+    expect(P.hasGrant(id, "deploy")).toBe(true);
+    expect(P.hasGrant(id, "shellExec")).toBe(false);   // NOT implied by deploy
+  });
+
+  it("setGrants is a whole-object REPLACE, not a patch — an old grant doesn't survive a new call that omits it", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW);
+    const id = P.listSessions()[0].id;
+    P.setGrants(id, { deploy: true, shellExec: true });
+    expect(P.getGrants(id)).toEqual({ deploy: true, shellExec: true });
+    P.setGrants(id, { shellExec: true });   // deploy left out this time
+    expect(P.getGrants(id)).toEqual({ shellExec: true });   // deploy is GONE, not still true
+  });
+
+  it("only the three known keys are ever stored, however the input is shaped", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW);
+    const id = P.listSessions()[0].id;
+    P.setGrants(id, { deploy: true, notARealGrant: true, spendAbove: "yes" } as any);
+    expect(P.getGrants(id)).toEqual({ deploy: true });   // the bogus key and the non-boolean are both dropped
+  });
+
+  it("setGrants on an unknown device is reported honestly, not thrown", () => {
+    expect(P.setGrants("not-a-real-id", { deploy: true })).toBe(false);
+  });
+
+  it("a revoked device's grants go with it — there is no lingering row to query", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW);
+    const id = P.listSessions()[0].id;
+    P.setGrants(id, { deploy: true });
+    P.revokeSessionById(id);
+    expect(P.getGrants(id)).toEqual({});
+  });
+
+  it("listSessions reports each device's own grants alongside its other metadata", () => {
+    P.claimCode(P.mintPairingCode(NOW), NOW, "Grant me");
+    const id = P.listSessions()[0].id;
+    P.setGrants(id, { shellExec: true });
+    const devices = P.listSessions();
+    expect(devices[0].grants).toEqual({ shellExec: true });
+  });
+});

@@ -3,6 +3,7 @@ import {
   foldLedger, drawdown, parseStepLog, loopState, previousRun, nextRun,
   wallAt, instantForWall, buildDesk,
 } from "./flipit.ts";
+import * as flipit from "./flipit.ts";
 
 // The desk's only real logic is arithmetic and calendars, so that is what gets tested:
 // fold the journal the way the rig folds it, and get the schedule right across weekends
@@ -222,5 +223,25 @@ describe("assembling the desk", () => {
     const d = buildDesk("/nonexistent/rig", now);
     expect(d.trades).toEqual([]);
     expect(d.tradesAvailable).toBe(false);
+  });
+});
+
+// B3 — "hard-coded and ungrantable from any remote device: any write or approval path into
+// ~/flip-it." There is no per-device grant for this anywhere in the codebase, and there
+// never should be — the guarantee holds because this module has no write-shaped export to
+// grant access TO in the first place (see its own file header). This test is the tripwire:
+// if anyone ever adds one, it fails here before it can be wired into a capability tier.
+describe("read-only by construction — the ~/flip-it guarantee", () => {
+  const WRITE_SHAPED = /^(write|save|set|put|post|update|delete|remove|create|place|submit|approve|order|buy|sell|trade|execute|apply|commit|push)/i;
+
+  it("exports nothing whose name suggests it writes to the rig", () => {
+    const writeLike = Object.keys(flipit).filter((name) => WRITE_SHAPED.test(name));
+    expect(writeLike, `flip-it must stay read-only — found write-shaped export(s): ${writeLike.join(", ")}`).toEqual([]);
+  });
+
+  it("every export is a function or a plain value — no live handle to a writable resource", () => {
+    for (const [name, value] of Object.entries(flipit)) {
+      expect(typeof value === "function" || typeof value !== "object", `${name} is a live object export, not a function — worth a second look`).toBe(true);
+    }
   });
 });
