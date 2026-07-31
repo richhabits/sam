@@ -1,0 +1,11 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
+  // Tests here are run by the REPO'S vitest (root vitest.config.ts sweeps mobile/** too), not
+  // by Expo. They import server modules by explicit .ts path — which the root tsconfig allows
+  // and Expo's base config does not — so compiling them here fails on that difference alone,
+  // and the app bundle has no business containing tests either way.
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+}
