@@ -10,6 +10,14 @@ import { getKey } from "./keys.ts";
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 
+// Every embed below is on the critical path of a chat turn (recall runs on EVERY message), and
+// `fetch` has no default timeout — so a wedged Ollama or a black-holed cloud socket hung the turn
+// forever rather than degrading to "no embeddings available", which every caller already handles.
+// Generous on purpose: a cold local model load legitimately takes ~10s the first time, so this is
+// a stop-the-hang bound, not a latency budget. Each provider returns null on abort, same as any
+// other failure, and the next one in the chain gets its turn.
+const EMBED_TIMEOUT_MS = Number(process.env.SAM_EMBED_TIMEOUT_MS) || 30_000;
+
 // Bounded-concurrency mapper — runs at most `limit` promises at once.
 // Prevents CPU/thermal spikes on low-end laptops while still being
 // dramatically faster than sequential loops.
@@ -58,6 +66,7 @@ async function viaJina(texts: string[], isQuery: boolean): Promise<Embedded | nu
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: "jina-embeddings-v3", task: isQuery ? "retrieval.query" : "retrieval.passage", dimensions: 512, input: texts }),
+      signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
     });
     if (!r.ok) return null;
     const d = await r.json();
@@ -84,7 +93,7 @@ async function viaGemini(texts: string[]): Promise<Embedded | null> {
               content: { parts: [{ text }] },
               outputDimensionality: 768,
             })),
-          }) }
+          }), signal: AbortSignal.timeout(EMBED_TIMEOUT_MS) }
       );
       if (!r.ok) return null;
       const d = await r.json();
@@ -107,6 +116,7 @@ async function viaOllama(texts: string[]): Promise<Embedded | null> {
       const r = await fetch(`${OLLAMA_URL}/api/embeddings`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: embedModel, prompt: text }),
+        signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
       });
       if (!r.ok) return null;
       const d = await r.json();

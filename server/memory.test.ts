@@ -7,14 +7,25 @@ import { tmpdir } from "node:os";
 describe("Memory Subsystem", () => {
   let originalEnv: string | undefined;
 
+  let originalMock: string | undefined;
+
   beforeEach(() => {
     // Overwrite VAULT_DIR to use a temporary directory for testing
     originalEnv = process.env.VAULT_DIR;
     process.env.VAULT_DIR = join(tmpdir(), `sam-test-vault-${Date.now()}`);
     mkdirSync(process.env.VAULT_DIR, { recursive: true });
+    // Embed with the deterministic mock, never a live provider. Without this the suite
+    // silently depended on the DEVELOPER'S machine: with Ollama up, `remember` blocked on a
+    // real cold model load (>5s → timeout); with a cloud key in .env it would have burned
+    // embedding quota to assert "doesn't crash". Both are the same bug — a unit test reaching
+    // the network. mockEmbed is what SAM_BENCH_MOCK exists for (server/embeddings.ts).
+    originalMock = process.env.SAM_BENCH_MOCK;
+    process.env.SAM_BENCH_MOCK = "1";
   });
 
   afterEach(() => {
+    if (originalMock === undefined) delete process.env.SAM_BENCH_MOCK;
+    else process.env.SAM_BENCH_MOCK = originalMock;
     if (process.env.VAULT_DIR) {
       try {
         rmSync(process.env.VAULT_DIR, { recursive: true, force: true });
@@ -28,11 +39,12 @@ describe("Memory Subsystem", () => {
     expect(stats).toHaveProperty("count");
   });
 
-  it("can store a memory without crashing", async () => {
-    // Mock the embeddings so it doesn't try to call an external API
-    // Actually, `remember` handles embedding gracefully if external APIs fail
-    // It might just not embed if offline, but it should still store.
-    await expect(remember("I love programming in Rust.")).resolves.not.toThrow();
+  it("stores a memory, and dedups the second identical one", async () => {
+    // Now that embedding is deterministic (mock), this can assert the real contract instead
+    // of merely "didn't throw": the write lands, and an identical re-write is rejected by the
+    // cosine dedup rather than stored twice.
+    await expect(remember("I love programming in Rust.")).resolves.toBe(true);
+    await expect(remember("I love programming in Rust.")).resolves.toBe(false);
   });
 
   it("can recall memory", async () => {
