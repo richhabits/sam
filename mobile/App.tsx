@@ -10,6 +10,7 @@ import {
   TextInput,
   useColorScheme,
   View,
+  Image,
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { claim, getHost, getToken } from './lib/api';
@@ -134,9 +135,7 @@ export default function App() {
         <ScrollView contentContainerStyle={s.pairScroll} keyboardShouldPersistTaps="handled">
           <View style={s.halo} pointerEvents="none" />
           <View style={s.brandRow}>
-            <View style={s.mark}>
-              <Text style={s.markGlyph}>◆</Text>
-            </View>
+            <Image source={require('./assets/sam-mark.png')} style={s.mark} />
             <View>
               <Text style={s.brand}>S.A.M.</Text>
               <Text style={s.brandSub}>Smart Artificial Mind</Text>
@@ -203,9 +202,7 @@ export default function App() {
   return (
     <SafeAreaView style={s.screen}>
       <View style={s.header}>
-        <View style={s.markSmall}>
-          <Text style={s.markGlyphSmall}>◆</Text>
-        </View>
+        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} />
 
         <View style={s.segment}>
           {(['agent', 'tasks'] as const).map((k) => {
@@ -272,7 +269,7 @@ export default function App() {
       ) : surface === 'tasks' ? (
         <TasksScreen t={t} onNeedsPairing={onNeedsPairing} />
       ) : (
-        <SettingsScreen t={t} onForgotten={() => setPaired(false)} />
+        <SettingsScreen t={t} onForgotten={() => setPaired(false)} onClose={() => setSurface('agent')} />
       )}
 
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

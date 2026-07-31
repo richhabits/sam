@@ -24,9 +24,11 @@ type Device = { id: string; label: string; lastSeen: number };
 export default function SettingsScreen({
   t,
   onForgotten,
+  onClose,
 }: {
   t: Theme;
   onForgotten: () => void;
+  onClose?: () => void;
 }) {
   const s = useMemo(() => makeStyles(t), [t]);
   const [host, setHost] = useState('');
@@ -74,6 +76,18 @@ export default function SettingsScreen({
       contentContainerStyle={s.scroll}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />}
     >
+      {/* Without this the segmented control shows NEITHER tab selected and there is no way
+          back — which reads, correctly, as "the app is empty". A screen you can be stranded
+          on is a bug, not a layout. */}
+      <View style={s.titleRow}>
+        <Text style={s.screenTitle}>Settings</Text>
+        {onClose ? (
+          <Pressable onPress={onClose} hitSlop={10}>
+            <Text style={s.done}>Done</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
       <View style={s.card}>
         <View style={s.pill}>
           <View style={s.dot} />
@@ -132,6 +146,14 @@ export default function SettingsScreen({
 function makeStyles(t: Theme) {
   return StyleSheet.create({
     scroll: { padding: space[4], paddingBottom: space[6] },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: space[3],
+    },
+    screenTitle: { color: t.text, fontSize: fs.xl, fontWeight: '800' },
+    done: { color: t.accentText, fontSize: fs.body, fontWeight: '700' },
     card: {
       backgroundColor: t.surface,
       borderRadius: radius.xl,

@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AddSheet from './AddSheet';
 import { streamChat, type Turn } from './lib/chat';
 import { loadThread, saveThread } from './lib/history';
 import { parseMarkdown } from './lib/markdown';
@@ -78,6 +79,10 @@ export default function ChatScreen({
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
   const input = useRef<TextInput>(null);
+  const [sheet, setSheet] = useState(false);
+  const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
+  // Bumped on every send to remount the composer — see the note in send().
+  const [composerKey, setComposerKey] = useState(0);
 
   // Keep the newest turn in view as tokens arrive, not just when a message is added.
   useEffect(() => {
@@ -113,10 +118,17 @@ export default function ChatScreen({
       .map((m) => ({ role: m.role, text: m.text }));
 
     setDraft('');
-    // Clearing state alone is NOT enough: with an autocorrect suggestion still open, iOS
-    // re-applies the pending correction to the native field after React empties it, and the
-    // sent message stays sitting in the box looking unsent. clear() ends that session too.
-    input.current?.clear();
+    // Emptying `draft` is not enough on its own. With an autocorrect suggestion still open,
+    // iOS applies the pending correction to the NATIVE field after React has emptied it —
+    // and since React's own value never changed, a controlled TextInput has nothing to
+    // re-sync, so the sent text sits in the box looking unsent. clear() does not help (the
+    // correction lands after it) and neither does blur()+clear()+refocus. Remounting the
+    // field is the one thing iOS cannot write through: a new native field starts genuinely
+    // empty. autoFocus keeps the keyboard up so it still reads as one conversation.
+    //
+    // Only reproduces with a word iOS actually corrects ("colour" -> "color") — which is why
+    // it survived two earlier fixes that were tested with words it leaves alone.
+    setComposerKey((k) => k + 1);
     setError('');
     setBusy(true);
     setMsgs((prev) => [...prev, { role: 'user', text: message }, { role: 'sam', text: '', pending: true }]);
@@ -142,6 +154,7 @@ export default function ChatScreen({
           onDone: (text) => patch((m) => ({ ...m, text, pending: false })),
         },
         ctrl.signal,
+        tier === 'auto' ? undefined : tier,
       );
     } catch (e: any) {
       if (ctrl.signal.aborted) {
@@ -157,7 +170,7 @@ export default function ChatScreen({
       setBusy(false);
       abort.current = null;
     }
-  }, [draft, busy, msgs, onNeedsPairing]);
+  }, [draft, busy, msgs, onNeedsPairing, tier]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
@@ -200,8 +213,41 @@ export default function ChatScreen({
         {error ? <Text style={s.error}>{error}</Text> : null}
       </ScrollView>
 
+      <View style={s.tierBar}>
+        {(['auto', 'free', 'turbo'] as const).map((k) => (
+          <Pressable
+            key={k}
+            onPress={() => setTier(k)}
+            style={[s.tierChip, tier === k && { backgroundColor: t.accentSoft, borderColor: t.accent }]}
+          >
+            <Text style={[s.tierText, { color: tier === k ? t.accentText : t.muted }]}>
+              {k === 'auto' ? 'Auto' : k === 'free' ? 'Free only' : 'Turbo'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <AddSheet t={t} visible={sheet} onClose={() => setSheet(false)} onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))} />
+
       <View style={s.composer}>
+        <Pressable
+          onPress={() => setSheet(true)}
+          style={({ pressed }) => [s.plus, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+          hitSlop={6}
+        >
+          <Text style={s.plusText}>+</Text>
+        </Pressable>
         <TextInput
+          key={composerKey}
+          autoFocus={composerKey > 0}
+          // Autocorrect OFF is the actual fix, not a preference. Three attempts to clean up
+          // after it failed (see send()), because iOS writes the correction into the native
+          // field out of band and a controlled input has nothing to re-sync against. With no
+          // correction pending there is nothing to write back. The cost is real — no
+          // autocorrect while typing to SAM — and it is the right trade for a composer where
+          // the text is often a command, a path or a flag that iOS would "fix" anyway.
+          autoCorrect={false}
+          spellCheck={false}
           ref={input}
           style={s.input}
           value={draft}
@@ -298,6 +344,26 @@ function makeStyles(t: Theme) {
       paddingTop: 12,
       paddingBottom: 12,
     },
+    plus: {
+      width: 38,
+      height: 38,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.surface,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    plusText: { color: t.text, fontSize: fs.lg, fontWeight: '600', lineHeight: 22 },
+    tierBar: { flexDirection: 'row', gap: space[2], paddingHorizontal: space[4], paddingBottom: space[2] },
+    tierChip: {
+      paddingHorizontal: space[3],
+      paddingVertical: 5,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    tierText: { fontSize: fs.micro, fontWeight: '700' },
     sendBtn: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   });
 }

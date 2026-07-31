@@ -34,6 +34,9 @@ export async function streamChat(
   history: Turn[],
   handlers: StreamHandlers = {},
   signal?: AbortSignal,
+  // Which brain to use. undefined = let SAM's router decide (the default, and the point of
+  // the router). "free" pins it to the no-cost tier; "turbo" is the router's fast path.
+  tier?: 'free' | 'turbo',
 ): Promise<string> {
   const [host, token] = await Promise.all([getHost(), getToken()]);
   if (!host || !token) throw new ApiError(401, 'not paired');
@@ -43,7 +46,7 @@ export async function streamChat(
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     // Only the last 10 turns matter (the server slices to that anyway) and each is capped
     // server-side at 1200 chars — no reason to ship a whole conversation over mobile data.
-    body: JSON.stringify({ message, history: history.slice(-10) }),
+    body: JSON.stringify({ message, history: history.slice(-10), ...(tier ? { tier } : {}) }),
     signal,
   });
 
