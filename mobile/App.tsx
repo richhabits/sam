@@ -3,60 +3,30 @@ import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   useColorScheme,
   View,
 } from 'react-native';
 import * as Linking from 'expo-linking';
-import { api, claim, forgetDevice, getHost, getToken } from './lib/api';
-import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
+import { claim, getHost, getToken } from './lib/api';
+import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
+import ChatScreen from './ChatScreen';
+import TasksScreen from './TasksScreen';
+import SettingsScreen from './SettingsScreen';
 
-type Device = { id: string; label: string; lastSeen: number };
+// THE POCKET — SAM, in your hand.
+//
+// Same two surfaces the desk has (Agent | Tasks), because this is the same product in a
+// smaller frame, not a companion app. Pairing gates everything: no account, no password —
+// the Mac approves this phone once and the token lives in the Keychain.
 
-/** SAM's tactile press — the same scale(.96) every button on the desk has. */
-function Button({
-  title,
-  onPress,
-  disabled,
-  variant = 'primary',
-  t,
-}: {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-  variant?: 'primary' | 'danger';
-  t: Theme;
-}) {
-  const bg = disabled ? t.borderStrong : variant === 'danger' ? 'transparent' : t.accent;
-  const fg = variant === 'danger' ? t.danger : t.onAccent;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        {
-          backgroundColor: bg,
-          borderRadius: radius.md,
-          paddingVertical: 14,
-          alignItems: 'center',
-          transform: [{ scale: pressed ? 0.96 : 1 }],
-          borderWidth: variant === 'danger' ? 1 : 0,
-          borderColor: t.border,
-        },
-      ]}
-    >
-      <Text style={{ color: fg, fontSize: fs.base, fontWeight: '700' }}>{title}</Text>
-    </Pressable>
-  );
-}
+type Surface = 'agent' | 'tasks' | 'settings';
 
 export default function App() {
   const scheme = useColorScheme();
@@ -64,23 +34,19 @@ export default function App() {
   const s = useMemo(() => makeStyles(t), [t]);
 
   const [paired, setPaired] = useState<boolean | null>(null); // null = still checking on boot
+  const [surface, setSurface] = useState<Surface>('agent');
   const [host, setHostInput] = useState('http://127.0.0.1:8787');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [sound, setSound] = useState(true);
-  const [notifyStatus, setNotifyStatus] = useState<string>('');
 
   useEffect(() => {
     // Restore BOTH halves of the pairing, not just the token: a device that paired with a SAM
     // on some other address then reopened the app used to be shown the hardcoded loopback
     // default, so a re-pair after a revoke silently pointed at the wrong machine.
     (async () => {
-      const [token, saved, snd] = await Promise.all([getToken(), getHost(), soundEnabled()]);
+      const [token, saved] = await Promise.all([getToken(), getHost()]);
       if (saved) setHostInput(saved);
-      setSound(snd);
       setPaired(!!token);
     })();
   }, []);
@@ -88,14 +54,8 @@ export default function App() {
   // Ask for notification permission only once this phone is actually paired. Asking on first
   // launch — before SAM has anything to tell you — is the prompt everyone denies.
   useEffect(() => {
-    if (!paired) return;
-    ensurePermission().then(setNotifyStatus);
+    if (paired) ensurePermission();
   }, [paired]);
-
-  const toggleSound = useCallback(async (on: boolean) => {
-    setSound(on);
-    await setSoundEnabled(on);
-  }, []);
 
   const doClaim = useCallback(
     async (withHost = host, withCode = code) => {
@@ -104,13 +64,12 @@ export default function App() {
       try {
         await claim(withHost, withCode);
         setPaired(true);
+        setSurface('agent');
         // Confirm the channel at the one moment the operator is watching for it. Pairing is
         // exactly when "will SAM actually be able to reach me?" is the open question, and a
         // silent success answers it with nothing — you'd find out days later, when the
-        // notification that mattered didn't arrive. Asking here also puts the iOS permission
-        // prompt at the moment it makes sense, instead of on a cold first launch.
+        // notification that mattered didn't arrive.
         const status = await ensurePermission();
-        setNotifyStatus(status);
         if (status === 'granted') {
           await notify('SAM', 'This phone is paired. Notifications will reach you here.');
         }
@@ -124,7 +83,6 @@ export default function App() {
   );
 
   // Pairing by link — the phone's version of clicking the /pair URL SAM prints on the Mac.
-  // Handles both the link that opened the app cold and any that arrive while it's running.
   // A pairing code is single-use, so handling the same link twice is ALWAYS wrong — and iOS
   // hands it over twice as a matter of course: getInitialURL() returns the URL that launched
   // the app, and the 'url' listener fires for the same one. Without this guard the first claim
@@ -141,8 +99,6 @@ export default function App() {
       const target = link.host || host;
       setHostInput(target);
       setCode(link.code);
-      // Claim straight away: the operator already authorised this by minting the code and
-      // opening the link. Making them tap "Pair" afterwards adds a step and no security.
       doClaim(target, link.code);
     },
     [host, doClaim],
@@ -154,30 +110,10 @@ export default function App() {
     return () => sub.remove();
   }, [handleUrl]);
 
-  const loadDevices = useCallback(async () => {
-    setError('');
-    try {
-      const body = await api('/api/pair/devices');
-      setDevices(body.devices);
-    } catch (e: any) {
-      setError(e?.message || 'could not load devices');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (paired) loadDevices();
-  }, [paired, loadDevices]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadDevices();
-    setRefreshing(false);
-  }, [loadDevices]);
-
-  const doForget = useCallback(async () => {
-    await forgetDevice();
-    setDevices(null);
+  // Any surface can discover the operator revoked this device; all of them route back here.
+  const onNeedsPairing = useCallback(() => {
     setPaired(false);
+    setError('This device was unpaired. Pair it again to carry on.');
   }, []);
 
   if (paired === null) {
@@ -192,7 +128,7 @@ export default function App() {
   if (!paired) {
     return (
       <SafeAreaView style={s.screen}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={s.pairScroll} keyboardShouldPersistTaps="handled">
           <View style={s.halo} pointerEvents="none" />
           <View style={s.brandRow}>
             <View style={s.mark}>
@@ -231,23 +167,25 @@ export default function App() {
               autoCapitalize="none"
               autoCorrect={false}
               // The real thing is 32 hex characters, so the placeholder shows 32 hex characters.
-              // It read "ABCD-1234" once, which told everyone to expect a short numeric code and
-              // got a made-up 6-digit one typed in and rejected. A placeholder is a promise about
-              // the shape of the input.
               placeholder="78736a8389fc6172fa17425ae40e908f"
               placeholderTextColor={t.muted}
             />
 
             {error ? <Text style={s.error}>{error}</Text> : null}
 
-            <View style={{ marginTop: space[3] }}>
-              <Button
-                t={t}
-                title={busy ? 'Pairing…' : 'Pair'}
-                onPress={() => doClaim()}
-                disabled={busy || !host || !code}
-              />
-            </View>
+            <Pressable
+              onPress={() => doClaim()}
+              disabled={busy || !host || !code}
+              style={({ pressed }) => [
+                s.primary,
+                {
+                  backgroundColor: busy || !host || !code ? t.borderStrong : t.accent,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                },
+              ]}
+            >
+              <Text style={s.primaryText}>{busy ? 'Pairing…' : 'Pair'}</Text>
+            </Pressable>
             <Text style={s.note}>
               The code is exchanged for a token kept in this phone's Keychain. Nothing leaves your
               network.
@@ -261,78 +199,47 @@ export default function App() {
 
   return (
     <SafeAreaView style={s.screen}>
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />
-        }
-      >
-        <View style={s.halo} pointerEvents="none" />
-        <View style={s.brandRow}>
-          <View style={s.mark}>
-            <Text style={s.markGlyph}>◆</Text>
-          </View>
-          <View>
-            <Text style={s.brand}>S.A.M.</Text>
-            <Text style={s.brandSub}>Smart Artificial Mind</Text>
-          </View>
+      <View style={s.header}>
+        <View style={s.markSmall}>
+          <Text style={s.markGlyphSmall}>◆</Text>
         </View>
 
-        <View style={s.card}>
-          <View style={s.pairedRow}>
-            <View style={s.pill}>
-              <View style={s.dot} />
-              <Text style={s.pillText}>Connected</Text>
-            </View>
-          </View>
-          <Text style={s.hostText}>{host.replace(/^https?:\/\//, '')}</Text>
-
-          {error ? <Text style={s.error}>{error}</Text> : null}
-
-          <Text style={s.label}>DEVICES ON THIS SAM</Text>
-          {devices === null ? (
-            <ActivityIndicator color={t.accent} style={{ marginVertical: space[4] }} />
-          ) : devices.length === 0 ? (
-            <Text style={s.sub}>No devices listed.</Text>
-          ) : (
-            devices.map((d) => (
-              <View key={d.id} style={s.device}>
-                <Text style={s.deviceLabel}>{d.label}</Text>
-                <Text style={s.deviceMeta}>{new Date(d.lastSeen).toLocaleString()}</Text>
-              </View>
-            ))
-          )}
-
-          <Text style={s.label}>NOTIFICATIONS</Text>
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.rowLabel}>Sound</Text>
-              <Text style={s.rowMeta}>
-                {notifyStatus === 'granted'
-                  ? 'SAM can reach this phone.'
-                  : notifyStatus
-                    ? `Permission: ${notifyStatus} — enable it in iOS Settings.`
-                    : 'Checking…'}
-              </Text>
-            </View>
-            <Switch
-              value={sound}
-              onValueChange={toggleSound}
-              trackColor={{ true: t.accent, false: t.borderStrong }}
-            />
-          </View>
-          <Pressable
-            onPress={() => notify('SAM', 'Test notification — this is what a task finishing looks like.')}
-            style={({ pressed }) => [s.testBtn, { opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text style={s.testBtnText}>Send a test notification</Text>
-          </Pressable>
-
-          <View style={{ marginTop: space[4] }}>
-            <Button t={t} title="Forget this device" onPress={doForget} variant="danger" />
-          </View>
+        <View style={s.segment}>
+          {(['agent', 'tasks'] as const).map((k) => {
+            const on = surface === k;
+            return (
+              <Pressable
+                key={k}
+                onPress={() => setSurface(k)}
+                style={[s.segBtn, on && { backgroundColor: t.surface }]}
+              >
+                <Text style={[s.segText, { color: on ? t.text : t.muted }]}>
+                  {k === 'agent' ? 'Agent' : 'Tasks'}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-      </ScrollView>
+
+        <Pressable
+          onPress={() => setSurface((v) => (v === 'settings' ? 'agent' : 'settings'))}
+          style={({ pressed }) => [s.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
+          hitSlop={8}
+        >
+          <Text style={[s.iconGlyph, { color: surface === 'settings' ? t.accentText : t.muted }]}>
+            •••
+          </Text>
+        </Pressable>
+      </View>
+
+      {surface === 'agent' ? (
+        <ChatScreen t={t} onNeedsPairing={onNeedsPairing} />
+      ) : surface === 'tasks' ? (
+        <TasksScreen t={t} onNeedsPairing={onNeedsPairing} />
+      ) : (
+        <SettingsScreen t={t} onForgotten={() => setPaired(false)} />
+      )}
+
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </SafeAreaView>
   );
@@ -342,7 +249,39 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.bg },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
-    scroll: { padding: space[5], paddingTop: space[6], gap: space[3] },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+      paddingHorizontal: space[4],
+      paddingVertical: space[2],
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+    },
+    markSmall: {
+      width: 30,
+      height: 30,
+      borderRadius: radius.sm,
+      backgroundColor: t.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    markGlyphSmall: { color: t.onAccent, fontSize: fs.sm, lineHeight: 16 },
+    // The desk's own Agent/Tasks toggle, pill-shaped for a thumb.
+    segment: {
+      flex: 1,
+      flexDirection: 'row',
+      backgroundColor: t.accentSoft,
+      borderRadius: radius.pill,
+      padding: 3,
+    },
+    segBtn: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: radius.pill },
+    segText: { fontSize: fs.md, fontWeight: '700' },
+    iconBtn: { width: 30, alignItems: 'center' },
+    iconGlyph: { fontSize: fs.base, fontWeight: '800' },
+
+    pairScroll: { padding: space[5], paddingTop: space[6], gap: space[3] },
     card: {
       backgroundColor: t.surface,
       borderRadius: radius.xl,
@@ -355,8 +294,7 @@ const makeStyles = (t: Theme) =>
       shadowOffset: { width: 0, height: 4 },
     },
     // A soft terracotta bloom behind the card — the phone's echo of the radial accent wash the
-    // desk HUD sits on (--accent-soft in src/styles.css). Sized generously and pushed off the
-    // top edge so it reads as light falling into the screen, not as a shape on it.
+    // desk HUD sits on (--accent-soft in src/styles.css).
     halo: {
       position: 'absolute',
       top: -260,
@@ -384,18 +322,6 @@ const makeStyles = (t: Theme) =>
     brand: { fontSize: fs.lg, fontWeight: '800', letterSpacing: 1.5, color: t.text },
     brandSub: { fontSize: fs.caption, color: t.muted, letterSpacing: 0.3, marginTop: 1 },
     title: { fontSize: fs['2xl'], fontWeight: '700', color: t.text, letterSpacing: -0.5 },
-    pill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[2],
-      alignSelf: 'flex-start',
-      backgroundColor: t.accentSoft,
-      borderRadius: radius.pill,
-      paddingHorizontal: space[3],
-      paddingVertical: 6,
-    },
-    pillText: { fontSize: fs.caption, fontWeight: '700', color: t.accentText, letterSpacing: 0.5 },
-    hostText: { fontSize: fs.lg, color: t.text, fontWeight: '600', marginTop: space[3] },
     sub: { fontSize: fs.body, color: t.muted, lineHeight: 22, marginTop: space[2] },
     strong: { color: t.text, fontWeight: '600' },
     label: {
@@ -419,6 +345,8 @@ const makeStyles = (t: Theme) =>
     // Monospace, because it's a 32-character hex string being checked character by character
     // against a screen across the room.
     codeInput: { fontFamily: 'Menlo', fontSize: fs.md, letterSpacing: 0.5 },
+    primary: { marginTop: space[3], borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+    primaryText: { color: t.onAccent, fontSize: fs.base, fontWeight: '700' },
     error: {
       color: t.danger,
       fontSize: fs.sm,
@@ -429,21 +357,4 @@ const makeStyles = (t: Theme) =>
       overflow: 'hidden',
     },
     note: { fontSize: fs.caption, color: t.muted, marginTop: space[4], lineHeight: 18 },
-    pairedRow: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: t.ok },
-    device: { borderTopWidth: 1, borderTopColor: t.border, paddingVertical: space[3] },
-    deviceLabel: { fontSize: fs.body, color: t.text, fontWeight: '600' },
-    deviceMeta: { fontSize: fs.caption, color: t.muted, marginTop: 2 },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[3],
-      borderTopWidth: 1,
-      borderTopColor: t.border,
-      paddingVertical: space[3],
-    },
-    rowLabel: { fontSize: fs.body, color: t.text, fontWeight: '600' },
-    rowMeta: { fontSize: fs.caption, color: t.muted, marginTop: 2, lineHeight: 16 },
-    testBtn: { paddingVertical: space[2] },
-    testBtnText: { fontSize: fs.sm, color: t.accentText, fontWeight: '600' },
   });
