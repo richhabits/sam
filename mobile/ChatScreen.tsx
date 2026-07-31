@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { streamChat, type Turn } from './lib/chat';
+import { loadThread, saveThread } from './lib/history';
+import { parseMarkdown } from './lib/markdown';
 import { fs, radius, space, type Theme } from './lib/theme';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
@@ -26,7 +28,48 @@ type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boole
 const GREETING =
   "I'm SAM — your own assistant, running on your machine.\n\nAsk me anything, or give me something to do. I'll tell you which brain answered and what it cost.";
 
-export default function ChatScreen({ t, onNeedsPairing }: { t: Theme; onNeedsPairing: () => void }) {
+/** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
+ *  lazy port looks like. Blocks re-parse on every token, which is cheap and keeps a code fence
+ *  from flashing as prose before its closing ``` arrives. */
+function Rendered({ text, t, s }: { text: string; t: Theme; s: any }) {
+  return (
+    <>
+      {parseMarkdown(text).map((b, i) =>
+        b.kind === 'codeblock' ? (
+          <View key={i} style={s.codeblock}>
+            <Text style={s.codeblockText}>{b.text}</Text>
+          </View>
+        ) : (
+          <Text key={i} style={s.samText}>
+            {b.segments.map((seg, j) =>
+              seg.kind === 'bold' ? (
+                <Text key={j} style={{ fontWeight: '700' }}>
+                  {seg.text}
+                </Text>
+              ) : seg.kind === 'code' ? (
+                <Text key={j} style={s.inlineCode}>
+                  {seg.text}
+                </Text>
+              ) : (
+                <Text key={j}>{seg.text}</Text>
+              ),
+            )}
+          </Text>
+        ),
+      )}
+    </>
+  );
+}
+
+export default function ChatScreen({
+  t,
+  onNeedsPairing,
+  resetKey = 0,
+}: {
+  t: Theme;
+  onNeedsPairing: () => void;
+  resetKey?: number;
+}) {
   const s = useMemo(() => makeStyles(t), [t]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
@@ -44,6 +87,21 @@ export default function ChatScreen({ t, onNeedsPairing }: { t: Theme; onNeedsPai
 
   // A stream left running when the screen goes away keeps a socket and a setState alive.
   useEffect(() => () => abort.current?.abort(), []);
+
+  // Restore the thread on launch. Losing every conversation on app switch is the most
+  // "unfinished" thing a chat client can do, and SAM's pitch is a memory that compounds.
+  // resetKey changes when "New chat" fires, which re-runs this against a cleared store.
+  useEffect(() => {
+    loadThread().then((turns) => setMsgs(turns.map((x) => ({ ...x }))));
+  }, [resetKey]);
+
+  // Persist only settled turns — a half-streamed answer written to the Keychain would be
+  // restored as a truncated reply that looks like SAM gave up mid-sentence.
+  useEffect(() => {
+    if (busy) return;
+    const settled = msgs.filter((m) => !m.pending && m.text);
+    if (settled.length) void saveThread(settled.map(({ role, text, route }) => ({ role, text, route })));
+  }, [msgs, busy]);
 
   const send = useCallback(async () => {
     const message = draft.trim();
@@ -131,7 +189,7 @@ export default function ChatScreen({ t, onNeedsPairing }: { t: Theme; onNeedsPai
                   {m.pending && !m.text ? (
                     <ActivityIndicator color={t.accent} />
                   ) : (
-                    <Text style={s.samText}>{m.text}</Text>
+                    <Rendered text={m.text} t={t} s={s} />
                   )}
                 </View>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
@@ -203,6 +261,16 @@ function makeStyles(t: Theme) {
       paddingVertical: space[3],
     },
     samText: { color: t.text, fontSize: fs.body, lineHeight: 22 },
+    inlineCode: { fontFamily: 'Menlo', fontSize: fs.sm, color: t.accentText },
+    codeblock: {
+      backgroundColor: t.bg,
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: radius.sm,
+      padding: space[3],
+      marginTop: space[2],
+    },
+    codeblockText: { fontFamily: 'Menlo', fontSize: fs.caption, color: t.text, lineHeight: 18 },
     route: { color: t.muted, fontSize: fs.micro, paddingLeft: space[2] },
     error: { color: t.danger, fontSize: fs.sm, textAlign: 'center', paddingTop: space[2] },
     composer: {

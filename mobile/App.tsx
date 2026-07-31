@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { claim, getHost, getToken } from './lib/api';
+import { clearThread } from './lib/history';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
@@ -39,6 +40,8 @@ export default function App() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     // Restore BOTH halves of the pairing, not just the token: a device that paired with a SAM
@@ -222,18 +225,50 @@ export default function App() {
         </View>
 
         <Pressable
-          onPress={() => setSurface((v) => (v === 'settings' ? 'agent' : 'settings'))}
+          onPress={() => setMenu((v) => !v)}
           style={({ pressed }) => [s.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
           hitSlop={8}
         >
-          <Text style={[s.iconGlyph, { color: surface === 'settings' ? t.accentText : t.muted }]}>
+          <Text style={[s.iconGlyph, { color: menu || surface === 'settings' ? t.accentText : t.muted }]}>
             •••
           </Text>
         </Pressable>
       </View>
 
+      {/* Tapping anywhere else dismisses — a menu you can only close by hitting the same
+          3 pixels again is the kind of thing that only feels fine to whoever built it. */}
+      {menu ? (
+        <>
+          <Pressable style={s.scrim} onPress={() => setMenu(false)} />
+          <View style={s.menu}>
+            <Pressable
+              onPress={() => {
+                setMenu(false);
+                setSurface('agent');
+                // Clear the stored thread, then bump the key so the chat reloads from an
+                // empty store rather than trusting the screen to have dropped it too.
+                void clearThread().then(() => setResetKey((k) => k + 1));
+              }}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: t.accentSoft }]}
+            >
+              <Text style={s.menuText}>New chat</Text>
+            </Pressable>
+            <View style={s.menuSep} />
+            <Pressable
+              onPress={() => {
+                setMenu(false);
+                setSurface('settings');
+              }}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: t.accentSoft }]}
+            >
+              <Text style={s.menuText}>Settings</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+
       {surface === 'agent' ? (
-        <ChatScreen t={t} onNeedsPairing={onNeedsPairing} />
+        <ChatScreen t={t} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
       ) : surface === 'tasks' ? (
         <TasksScreen t={t} onNeedsPairing={onNeedsPairing} />
       ) : (
@@ -280,6 +315,26 @@ const makeStyles = (t: Theme) =>
     segText: { fontSize: fs.md, fontWeight: '700' },
     iconBtn: { width: 30, alignItems: 'center' },
     iconGlyph: { fontSize: fs.base, fontWeight: '800' },
+    scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+    menu: {
+      position: 'absolute',
+      top: 52,
+      right: space[3],
+      zIndex: 2,
+      minWidth: 180,
+      backgroundColor: t.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: t.border,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOpacity: 0.18,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 8 },
+    },
+    menuRow: { paddingHorizontal: space[4], paddingVertical: 14 },
+    menuText: { color: t.text, fontSize: fs.body, fontWeight: '600' },
+    menuSep: { height: 1, backgroundColor: t.border },
 
     pairScroll: { padding: space[5], paddingTop: space[6], gap: space[3] },
     card: {
