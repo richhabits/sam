@@ -93,6 +93,22 @@ export function sessionTokenFromCookie(cookieHeader: string | undefined): string
   try { return decodeURIComponent(m[1]); } catch { return ""; }
 }
 
+// C2 — a native app has no browser cookie jar shared with its own HTTP client, so the
+// HttpOnly cookie that protects a WEB session (see this file's header — it exists to defeat
+// DNS-rebinding-style attacks from a malicious PAGE's JS) doesn't even apply: there is no
+// page, no JS-in-a-browser-context that could read it either way. The standard native-app
+// equivalent is a bearer token held in the OS keychain, sent explicitly on every request —
+// which is what this reads, as a fallback ONLY when no session cookie was presented. A
+// browser paired via the cookie flow is completely unaffected; this never replaces or
+// weakens that path, only adds a second valid carrier for the exact same kind of token.
+export function sessionTokenFromRequest(req: { headers?: { cookie?: string; authorization?: string } }): string {
+  const fromCookie = sessionTokenFromCookie(req.headers?.cookie);
+  if (fromCookie) return fromCookie;
+  const auth = req.headers?.authorization || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : "";
+}
+
 // The same "id" listSessions()/getGrants() use, derived from a raw cookie token — so a
 // caller that already has the token (a request handler, mid-request) can look up or check
 // that device's own grants without a second round-trip or exposing the hashing itself.
@@ -156,7 +172,26 @@ export function revokeSessionById(id: string): boolean {
 // A friendly label from the one thing every pairing request already carries — the User-
 // Agent — so a device registry says "iPhone · Safari" instead of "browser" for every
 // single row. Best-effort and cosmetic only: nothing security-relevant reads this string.
-export function guessLabel(userAgent: string | undefined): string {
+// C2 — the native app can't be identified from a User-Agent: React Native's is a bare
+// "CFNetwork/… Darwin/…" with no device or product in it, so a paired iPhone landed in the
+// registry as "device · browser". That matters more than cosmetics suggests — this list IS
+// the operator's revoke surface, and a row that misnames what it is makes "which of these
+// do I kill?" a guess. So a native client names its PLATFORM through a dedicated header.
+// Deliberately a closed allowlist and not a free-text label: the client is naming itself,
+// and a device that could write its own row in the security list could write "Romeo's Mac".
+const NATIVE_CLIENTS: Record<string, string> = {
+  "ios-iphone": "iPhone · SAM app",
+  "ios-ipad": "iPad · SAM app",
+  android: "Android · SAM app",
+};
+
+// A friendly label from the one thing every pairing request already carries — the User-
+// Agent — so a device registry says "iPhone · Safari" instead of "browser" for every
+// single row. Best-effort and cosmetic only: nothing security-relevant reads this string.
+export function guessLabel(userAgent: string | undefined, client?: string | string[] | undefined): string {
+  const hint = Array.isArray(client) ? client[0] : client;
+  const native = NATIVE_CLIENTS[String(hint || "").toLowerCase()];
+  if (native) return native;
   const ua = String(userAgent || "");
   const device = /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android"
     : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "device";

@@ -4,7 +4,7 @@
 // buried in a 1600-line file.
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { verifyPairToken } from "./yard/pairing.ts";
-import { validateSession, sessionTokenFromCookie } from "./pairing.ts";
+import { validateSession, sessionTokenFromRequest } from "./pairing.ts";
 
 /**
  * True only for a request that arrived from this machine.
@@ -100,6 +100,11 @@ export function hostAllowed(hostHeader: string): boolean {
 // IN THE APP with the passkey (/api/yard/pair/approve), and it is rate- and time-limited. approve /
 // deny / pending / revoke stay gated. Its siblings (pair/status, pair/collect) are GETs, already open.
 const PAIRING_ONRAMP = "/api/yard/pair/request";
+// C2's equivalent open door for a native app: the exact same code-for-token exchange GET /pair
+// does for a browser (single-use, 15-minute code — claimCode() itself is what's rate/time-limited,
+// not this gate), just over POST+JSON because a native client has no cookie-bearing GET-redirect
+// flow to use instead. Grants nothing but a session token; still can't reach anything privileged.
+const CLAIM_ONRAMP = "/api/pair/claim";
 
 export function passkeyRequiredForMutation(
   req: { method: string; path: string; socket: { remoteAddress?: string | null } },
@@ -108,7 +113,7 @@ export function passkeyRequiredForMutation(
   if (!env.enforced) return false;
   const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
   if (!mutating || !req.path.startsWith("/api/")) return false;
-  if (req.path === PAIRING_ONRAMP) return false;    // the one open door: how an unpaired browser gets in
+  if (req.path === PAIRING_ONRAMP || req.path === CLAIM_ONRAMP) return false;    // the open doors: how an unpaired browser/app gets in
   if (env.remote && !isLoopback(req)) return false; // off-machine phone → deferred to the remote-token gate
   return true;
 }
@@ -131,15 +136,18 @@ type CookieReq = { headers: Record<string, string | string[] | undefined> };
 
 /**
  * A device that completed the Pairing (server/pairing.ts): a same-origin, HttpOnly,
- * SameSite=Strict session cookie the operator's own approval flow issued. Distinct from
- * isTrustedLocal just above, which stays loopback-only on purpose (see its pinned test in
- * handshake.test.ts — Console, the Scope, and every shell/file/camera-adjacent panel must
- * NOT loosen). The yard treats a paired session as equivalent trust, because a paired
- * session is the only way a phone can reach it before Movement B's transport exists.
+ * SameSite=Strict session cookie the operator's own approval flow issued — OR, since C2,
+ * the identical kind of session token carried as `Authorization: Bearer` instead, which is
+ * how a native app (no browser cookie jar to share with its own HTTP client) presents the
+ * same credential. Both carriers validate against the exact same session store; neither
+ * loosens the other. Distinct from isTrustedLocal just above, which stays loopback-only on
+ * purpose (see its pinned test in handshake.test.ts — Console, the Scope, and every shell/
+ * file/camera-adjacent panel must NOT loosen). The yard treats a paired session as
+ * equivalent trust, because a paired session is the only way a phone can reach it before
+ * Movement B's transport exists.
  */
 export function isPairedSession(req: CookieReq): boolean {
-  const cookie = req.headers?.cookie;
-  return validateSession(sessionTokenFromCookie(typeof cookie === "string" ? cookie : undefined), Date.now());
+  return validateSession(sessionTokenFromRequest(req), Date.now());
 }
 
 /**

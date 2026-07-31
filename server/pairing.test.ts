@@ -97,6 +97,81 @@ describe("cookie handling", () => {
   });
 });
 
+// The trap this pins: sessionTokenFromCookie and sessionTokenFromRequest answer the same
+// question with DIFFERENT carrier sets. Any code deciding "is this caller paired?" with the
+// cookie-only one silently disagrees with the guards (isPairedSession → sessionTokenFromRequest).
+// /api/pair/status did exactly that, so a bearer-carrying client — the Pocket, any native
+// app — was told `needed: true` while its requests already passed the yard's door, and the
+// HUD printed "this browser isn't paired… the yard will stay empty" over a populated yard.
+describe("carrier parity — the two extractors must not disagree about a live session", () => {
+  it("a real session validates through the Bearer carrier, not just the cookie", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(P.validateSession(P.sessionTokenFromRequest({ headers: { authorization: `Bearer ${token}` } }), NOW)).toBe(true);
+    expect(P.validateSession(P.sessionTokenFromRequest({ headers: { cookie: `sam_session=${token}` } }), NOW)).toBe(true);
+  });
+
+  it("the cookie-only extractor is blind to that same session — why it must not gate anything", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    expect(P.sessionTokenFromCookie(`authorization=Bearer ${token}`)).toBe("");
+    expect(P.validateSession(P.sessionTokenFromCookie(undefined), NOW)).toBe(false);
+  });
+});
+
+describe("guessLabel — C2, naming a native client", () => {
+  it("names the SAM app per platform, from the closed allowlist", () => {
+    expect(P.guessLabel(undefined, "ios-iphone")).toBe("iPhone · SAM app");
+    expect(P.guessLabel(undefined, "ios-ipad")).toBe("iPad · SAM app");
+    expect(P.guessLabel(undefined, "android")).toBe("Android · SAM app");
+  });
+
+  it("without the hint, RN's bare User-Agent used to read as a browser — the bug this fixes", () => {
+    const rnUA = "sam-mobile/1.0 CFNetwork/3826.500.111 Darwin/24.4.0";
+    expect(P.guessLabel(rnUA)).toBe("device · browser");
+    expect(P.guessLabel(rnUA, "ios-iphone")).toBe("iPhone · SAM app");
+  });
+
+  it("a client cannot write its own row — unknown hints fall back to UA, never echo", () => {
+    const evil = "Romeo's Mac · trusted";
+    expect(P.guessLabel("Mozilla/5.0 (iPhone) Safari/604", evil)).toBe("iPhone · Safari");
+    expect(P.guessLabel(undefined, evil)).not.toContain("trusted");
+  });
+
+  it("browsers are completely unaffected — no hint, same labels as before", () => {
+    expect(P.guessLabel("Mozilla/5.0 (Macintosh) Chrome/120 Safari/537")).toBe("Mac · Chrome");
+    expect(P.guessLabel("Mozilla/5.0 (iPhone) Safari/604")).toBe("iPhone · Safari");
+  });
+});
+
+describe("sessionTokenFromRequest — C2, the native-app carrier", () => {
+  it("reads the cookie when present", () => {
+    expect(P.sessionTokenFromRequest({ headers: { cookie: "sam_session=abc123" } })).toBe("abc123");
+  });
+
+  it("falls back to Authorization: Bearer when there's no cookie", () => {
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "Bearer xyz789" } })).toBe("xyz789");
+  });
+
+  it("is case-insensitive on the Bearer scheme", () => {
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "bearer xyz789" } })).toBe("xyz789");
+  });
+
+  it("prefers the cookie over Authorization when both are present", () => {
+    expect(P.sessionTokenFromRequest({ headers: { cookie: "sam_session=fromcookie", authorization: "Bearer frombearer" } })).toBe("fromcookie");
+  });
+
+  it("returns empty for no credential, a malformed header, or a non-Bearer scheme", () => {
+    expect(P.sessionTokenFromRequest({ headers: {} })).toBe("");
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "xyz789" } })).toBe("");
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "Basic xyz789" } })).toBe("");
+  });
+
+  it("a bearer token from claimCode validates exactly like a cookie token would", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const fromBearer = P.sessionTokenFromRequest({ headers: { authorization: `Bearer ${token}` } });
+    expect(P.validateSession(fromBearer, NOW)).toBe(true);
+  });
+});
+
 // B2 — the device registry: named devices, first/last-seen, individual revocation.
 describe("the device registry", () => {
   it("lists every paired device with a safe id, never the raw token", () => {

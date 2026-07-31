@@ -55,7 +55,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, claimCode, validateSession, sessionTokenFromCookie, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
+import { mintPairingCode, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
@@ -171,10 +171,12 @@ app.use((req, res, next) => {
 // Remote mode has its own token, so this only guards the local channel. See control-token.ts.
 app.use((req, res, next) => {
   if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" || process.env.SAM_MESH === "1" })) return next();
-  // A mutating call is authorised by EITHER the Electron preload passkey OR a paired browser session
-  // (a same-origin, HttpOnly, Strict cookie earned via the pairing flow — see server/pairing.ts).
+  // A mutating call is authorised by EITHER the Electron preload passkey OR a paired session —
+  // a same-origin, HttpOnly, Strict cookie earned via the pairing flow (browsers), or the same
+  // session token as an Authorization: Bearer header (native apps — see sessionTokenFromRequest
+  // in server/pairing.ts for why a native client uses a different carrier for an equivalent credential).
   if (checkPasskey(req)) return next();
-  if (validateSession(sessionTokenFromCookie(req.headers.cookie), Date.now())) return next();
+  if (validateSession(sessionTokenFromRequest(req), Date.now())) return next();
   logSecurity("alert", "blocked-untrusted-local", `Privileged ${req.method} ${req.path} without a passkey or paired session — refused despite loopback`, req.socket.remoteAddress || "");
   // Distinct, actionable error — NOT "passkey required" (which no browser can satisfy). The frontend
   // renders this as "SAM is locked — pair this device", never as a provider/key failure.
@@ -214,6 +216,20 @@ app.get("/pair", (req, res) => {
   // Same-origin bounce to the app; the cookie now authorises every mutating call from this browser.
   res.status(200).type("html").send(`<!doctype html><meta charset=utf8><meta http-equiv="refresh" content="0;url=/"><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>✅ This device is paired</h2><p>Opening SAM…</p><p><a href="/">Continue</a></p></body>`);
 });
+// C2 — the same exchange as GET /pair above, for a caller with no cookie jar of its own (a
+// native app). Same claimCode(), same single-use/15-minute code, same kind of session token —
+// just handed back in a JSON body instead of a Set-Cookie, because there is no browser page
+// here for the HttpOnly protection to defend (see sessionTokenFromRequest in pairing.ts for
+// the full reasoning). The native app is expected to hold the returned token in its own
+// secure storage (Keychain) and send it back as `Authorization: Bearer <token>`.
+app.post("/api/pair/claim", (req, res) => {
+  const code = typeof req.body?.code === "string" ? req.body.code : "";
+  // X-SAM-Client lets the native app name its platform — React Native's User-Agent carries no
+  // device, so without it every phone registers as "device · browser". Closed allowlist, see guessLabel.
+  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"], req.headers["x-sam-client"]));
+  if (!token) { res.status(400).json({ error: "That code was already used or has expired (they last 15 minutes)." }); return; }
+  res.json({ token });
+});
 // Mint a fresh pairing code (privileged) — the desktop app calls this to pair a new browser/phone.
 app.post("/api/pair/new", (req, res) => {
   const code = mintPairingCode(Date.now());
@@ -250,7 +266,7 @@ app.get("/api/pair/activity", (req, res) => {
 app.post("/api/pair/devices/:id/revoke", (req, res) => {
   const targetId = String(req.params.id);
   const ok = revokeSessionById(targetId);
-  if (ok) attributeRemote(req, "revoke-device", targetId === sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie)) ? "revoked itself" : "revoked another device");
+  if (ok) attributeRemote(req, "revoke-device", targetId === sessionIdFromToken(sessionTokenFromRequest(req)) ? "revoked itself" : "revoked another device");
   ok ? res.json({ ok: true }) : res.status(404).json({ error: "no such device" });
 });
 // B3 — setting a device's capability tier. Deliberately isTrustedLocal, NOT the general
@@ -1573,7 +1589,7 @@ app.get("/api/yard/job/:id", (req, res) => {
 const SPEND_FLOOR_TOKENS = 5000;   // a few average tasks' worth — above this, a remote device needs the grant
 function missingGrant(req: any, kind: string, budget: number | null): Grant | null {
   if (isLoopback(req)) return null;
-  const id = sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie));
+  const id = sessionIdFromToken(sessionTokenFromRequest(req));
   if (kind === "project.deploy" && !hasGrant(id, "deploy")) return "deploy";
   if (kind === "run" && !hasGrant(id, "shellExec")) return "shellExec";
   if (budget !== null && budget > SPEND_FLOOR_TOKENS && !hasGrant(id, "spendAbove")) return "spendAbove";
@@ -1586,7 +1602,7 @@ function missingGrant(req: any, kind: string, budget: number | null): Grant | nu
 // already-loaded metadata, not a live join) so a later revoke/relabel never rewrites history.
 function attributeRemote(req: any, capability: AttrCapability, detail: string): void {
   if (isLoopback(req)) return;
-  const id = sessionIdFromToken(sessionTokenFromCookie(req.headers?.cookie));
+  const id = sessionIdFromToken(sessionTokenFromRequest(req));
   const label = listSessions().find((d) => d.id === id)?.label ?? "unknown device";
   logAttribution({ deviceId: id, deviceLabel: label, capability, detail });
 }
@@ -1744,7 +1760,13 @@ app.post("/api/playbooks/:id/run", (req, res) => {
 // learns anyway from the next 403.
 app.get("/api/pair/status", (req, res) => {
   if (!isLoopback(req)) { res.status(403).json({ error: "loopback only" }); return; }
-  const paired = checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]) || validateSession(sessionTokenFromCookie(req.headers.cookie), Date.now());
+  // Must read the SAME carriers the guards do (sessionTokenFromRequest — cookie OR
+  // Authorization: Bearer, see C2 in pairing.ts). Reading the cookie alone told every
+  // bearer-carrying caller (the Pocket, any native client) it still needed to pair while
+  // its requests were already sailing through isPairedSession — so the HUD showed
+  // "this browser isn't paired… the yard will stay empty" above a fully populated yard.
+  // Whatever answers this question has to answer it the way the door answers it.
+  const paired = checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]) || validateSession(sessionTokenFromRequest(req), Date.now());
   res.json({ enforced: handshakeEnforced(), paired, sessions: sessionCount(), needed: handshakeEnforced() && !paired });
 });
 

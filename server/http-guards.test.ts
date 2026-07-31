@@ -187,6 +187,10 @@ describe("passkeyRequiredForMutation — remote mode must not re-trust loopback"
     for (const p of ["/api/yard/pair/approve", "/api/yard/pair/deny", "/api/yard/pair/revoke"])
       expect(passkeyRequiredForMutation(mreq("POST", p, LOOP), { enforced: true, remote: false }), p).toBe(true);
   });
+
+  it("C2: the native-app claim on-ramp is open too, same reasoning as the browser one", () => {
+    expect(passkeyRequiredForMutation(mreq("POST", "/api/pair/claim", LOOP), { enforced: true, remote: false })).toBe(false);
+  });
 });
 
 // isYardTrusted / isYardReadTrusted honour the same session-cookie Pairing that unblocks the rest
@@ -232,6 +236,14 @@ describe("isYardTrusted / isYardReadTrusted / isPairedSession", () => {
     expect(G.isPairedSession(pairedCookieReq(LAN, token))).toBe(true);
     P.revokeSession(token);
     expect(G.isPairedSession(pairedCookieReq(LAN, token))).toBe(false);
+  });
+
+  it("C2: isPairedSession is equally true via Authorization: Bearer — no cookie needed", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const bearerReq = { socket: { remoteAddress: LAN }, headers: { authorization: `Bearer ${token}` } };
+    expect(G.isPairedSession(bearerReq)).toBe(true);
+    P.revokeSession(token);
+    expect(G.isPairedSession(bearerReq)).toBe(false);
   });
 
   it("isYardTrusted: loopback behaviour is unchanged — passkey required, paired session irrelevant", () => {
