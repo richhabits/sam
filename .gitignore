@@ -130,3 +130,7 @@ docs/strips/
 # Latch working files — personal-data patterns for the pre-launch sweep.
 # Root-anchored, and it must NEVER be committed: it is a list of what to look for.
 /local/
+
+# Electron-ABI build of better-sqlite3 for `npm run dev:hud` (node ABI stays in
+# node_modules/better-sqlite3/build/Release). Local dev artifact — never committed.
+/build/Release/

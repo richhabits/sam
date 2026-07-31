@@ -42,7 +42,8 @@
     "lint:fix": "biome lint --write .",
     "create-tool": "node scripts/create-tool.mjs",
     "create-pack": "node scripts/create-pack.mjs",
-    "validate-packs": "tsx scripts/validate-packs.ts"
+    "validate-packs": "tsx scripts/validate-packs.ts",
+    "electron:sqlite": "node scripts/electron-sqlite.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
