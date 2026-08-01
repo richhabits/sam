@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { api } from './lib/api';
 import { metrics, type, type IOS } from './lib/ios';
 import { Row, Section } from './ui';
+import { pickFile, pickPhoto, takePhoto, type Attachment } from './lib/attach';
 
 // "ADD TO SAM" — the + in the composer.
 //
@@ -12,8 +13,9 @@ import { Row, Section } from './ui';
 // feel like a mock-up. Whenever a capability lands server-side, it earns a row here — not before.
 //
 // What is deliberately ABSENT, and why:
-//   • Camera / Photos / Files — need expo-camera / image-picker / document-picker, i.e. native
-//     modules and a rebuild. Worth doing as one batch, not one rebuild per button.
+//   • Camera / Photos / Files are here now (expo-image-picker / expo-document-picker). They
+//     attach to the message rather than sending immediately, and they route through
+//     /api/command, the only endpoint that reads `attachments` and runs vision.
 //   • Starting a yard job — POST /api/yard/enqueue is isYardTrusted, which on loopback demands
 //     the desktop passkey a phone cannot hold. It works from a real device over the LAN, and
 //     returns 403 from the simulator. Read-only until that difference is deliberate, not a
@@ -57,11 +59,13 @@ export default function AddSheet({
   visible,
   onClose,
   onPick,
+  onAttach,
 }: {
   ios: IOS;
   visible: boolean;
   onClose: () => void;
   onPick: (text: string) => void;
+  onAttach: (a: Attachment) => void;
 }) {
   const [open, setOpen] = useState<Kind | null>(null);
   const [rows, setRows] = useState<Item[] | null>(null);
@@ -128,7 +132,35 @@ export default function AddSheet({
 
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           {!open ? (
-            <Section ios={ios} footer="Picking one drops its name into the message box. Nothing runs until you send it.">
+            <>
+            <Section ios={ios} header="Attach" footer="Photos and files ride along with your next message. SAM looks at images on your machine.">
+              <Row
+                ios={ios}
+                title="Camera"
+                onPress={async () => {
+                  const a = await takePhoto();
+                  if (a) { onAttach(a); onClose(); }
+                }}
+              />
+              <Row
+                ios={ios}
+                title="Photos"
+                onPress={async () => {
+                  const a = await pickPhoto();
+                  if (a) { onAttach(a); onClose(); }
+                }}
+              />
+              <Row
+                ios={ios}
+                title="Files"
+                last
+                onPress={async () => {
+                  const a = await pickFile();
+                  if (a) { onAttach(a); onClose(); }
+                }}
+              />
+            </Section>
+            <Section ios={ios} header="From SAM" footer="Picking one drops its name into the message box. Nothing runs until you send it.">
               {CATALOGUE.map((c, i) => (
                 <Row
                   key={c.kind}
@@ -141,6 +173,7 @@ export default function AddSheet({
                 />
               ))}
             </Section>
+            </>
           ) : rows === null ? (
             <ActivityIndicator color={ios.tint} style={{ marginVertical: 32 }} />
           ) : error ? (

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import AddSheet from './AddSheet';
 import { streamChat, type Turn } from './lib/chat';
+import { sendWithAttachments, type Attachment } from './lib/attach';
 import { loadThread, saveThread } from './lib/history';
 import { parseMarkdown } from './lib/markdown';
 import { fs, radius, space, type Theme } from './lib/theme';
@@ -86,6 +87,8 @@ export default function ChatScreen({
   const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
   // Bumped on every send to remount the composer — see the note in send().
   const [composerKey, setComposerKey] = useState(0);
+  // Attachments ride along with the NEXT message and are cleared once it is sent.
+  const [attached, setAttached] = useState<Attachment[]>([]);
 
   // Keep the newest turn in view as tokens arrive, not just when a message is added.
   useEffect(() => {
@@ -113,7 +116,10 @@ export default function ChatScreen({
 
   const send = useCallback(async () => {
     const message = draft.trim();
-    if (!message || busy) return;
+    const attachments = attached;
+    // An attachment on its own is a complete thought ("what is this?"), so an empty box with
+    // something attached is still sendable.
+    if ((!message && !attachments.length) || busy) return;
 
     // History is what's on screen BEFORE this turn — the server appends the new message itself.
     const history: Turn[] = msgs
@@ -134,7 +140,12 @@ export default function ChatScreen({
     setComposerKey((k) => k + 1);
     setError('');
     setBusy(true);
-    setMsgs((prev) => [...prev, { role: 'user', text: message }, { role: 'sam', text: '', pending: true }]);
+    setAttached([]);
+    setMsgs((prev) => [
+      ...prev,
+      { role: 'user', text: message || (attachments.length === 1 ? `📎 ${attachments[0].name || 'attachment'}` : `📎 ${attachments.length} attachments`) },
+      { role: 'sam', text: '', pending: true },
+    ]);
 
     const ctrl = new AbortController();
     abort.current = ctrl;
@@ -145,6 +156,18 @@ export default function ChatScreen({
       setMsgs((prev) => prev.map((m, i) => (i === prev.length - 1 ? fn(m) : m)));
 
     try {
+      if (attachments.length) {
+        // /api/stream ignores `attachments`; /api/command reads them and runs vision. One
+        // request, one finished answer — faking a stream over a completed reply is theatre.
+        const r = await sendWithAttachments(message, attachments, history);
+        patch((m) => ({
+          ...m,
+          text: r.text || '(no answer)',
+          pending: false,
+          route: [r.tier, r.provider].filter(Boolean).join(' · ') || 'looked at your attachment',
+        }));
+        return;
+      }
       await streamChat(
         message,
         history,
@@ -173,7 +196,7 @@ export default function ChatScreen({
       setBusy(false);
       abort.current = null;
     }
-  }, [draft, busy, msgs, onNeedsPairing, tier]);
+  }, [draft, busy, msgs, onNeedsPairing, tier, attached]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
@@ -216,6 +239,20 @@ export default function ChatScreen({
         {error ? <Text style={s.error}>{error}</Text> : null}
       </ScrollView>
 
+      {attached.length ? (
+        <View style={s.tierBar}>
+          {attached.map((a, i) => (
+            <Pressable
+              key={i}
+              onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
+              style={[s.tierChip, { backgroundColor: ios.fill }]}
+            >
+              <Text style={[s.tierText, { color: ios.tint }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       <View style={s.tierBar}>
         {(['auto', 'free', 'turbo'] as const).map((k) => (
           <Pressable
@@ -230,7 +267,13 @@ export default function ChatScreen({
         ))}
       </View>
 
-      <AddSheet ios={ios} visible={sheet} onClose={() => setSheet(false)} onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))} />
+      <AddSheet
+        ios={ios}
+        visible={sheet}
+        onClose={() => setSheet(false)}
+        onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))}
+        onAttach={(a) => setAttached((prev) => [...prev, a])}
+      />
 
       <View style={s.composer}>
         <Pressable
@@ -264,17 +307,17 @@ export default function ChatScreen({
         />
         <Pressable
           onPress={busy ? stop : send}
-          disabled={!busy && !draft.trim()}
+          disabled={!busy && !draft.trim() && !attached.length}
           style={({ pressed }) => [
             s.sendBtn,
             {
-              backgroundColor: busy ? ios.fill : draft.trim() ? ios.tint : ios.fill,
+              backgroundColor: busy ? ios.fill : draft.trim() || attached.length ? ios.tint : ios.fill,
               
               transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
         >
-          <Text style={{ color: busy ? ios.label : draft.trim() ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
+          <Text style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
             {busy ? '■' : '↑'}
           </Text>
         </Pressable>

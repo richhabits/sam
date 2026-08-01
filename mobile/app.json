@@ -13,7 +13,9 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSCameraUsageDescription": "SAM uses the camera when you attach a photo to a message — the image is sent to your own SAM on your machine, nowhere else.",
+        "NSPhotoLibraryUsageDescription": "SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else."
       }
     },
     "android": {
