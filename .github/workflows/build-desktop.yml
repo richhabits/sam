@@ -45,8 +45,8 @@ jobs:
   test-gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -78,9 +78,9 @@ jobs:
             arch: x64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sam-${{ matrix.platform }}-${{ matrix.arch }}   # unique per platform+arch
           path: |
@@ -334,7 +334,7 @@ jobs:
       # chronically rate-limited (403) for UNauthenticated api.github.com. Real users need no token.
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: One-paste install (${{ matrix.os }})
         shell: bash
         run: |

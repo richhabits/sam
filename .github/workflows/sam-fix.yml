@@ -26,11 +26,11 @@ jobs:
       # CI run that branch protection actually counts — then the PR merges on green with a normal
       # click. Falls back to GITHUB_TOKEN if no PAT: still opens the PR, but its checks won't count
       # toward the gate (a GITHUB_TOKEN push can't trigger CI), so that one needs an admin merge.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.SAM_BOT_PAT || secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
