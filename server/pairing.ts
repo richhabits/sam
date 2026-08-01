@@ -210,9 +210,14 @@ export function guessLabel(userAgent: string | undefined, client?: string | stri
 // one, for anything touching ~/flip-it: that module is read-only end to end (see its own
 // header) and no yard job kind reaches it, so there is no capability to accidentally grant
 // in the first place — the ungrantable rule holds by construction, not by a check here.
-export type Grant = "deploy" | "shellExec" | "spendAbove";
+// B3+ — "approve" lets a paired device resolve an Ask (server/index.ts /api/ask/:id): the
+// parked, dangerous action SAM stopped to check on. It is the highest-consequence grant here,
+// because approving IS the safety mechanism — so it is off until the operator turns it on for
+// one named device, from the Mac. Without it a phone can SEE nothing and resolve nothing; the
+// endpoints stay loopback-only exactly as before.
+export type Grant = "deploy" | "shellExec" | "spendAbove" | "approve";
 export type Grants = Partial<Record<Grant, boolean>>;
-const KNOWN_GRANTS: Grant[] = ["deploy", "shellExec", "spendAbove"];
+const KNOWN_GRANTS: Grant[] = ["deploy", "shellExec", "spendAbove", "approve"];
 
 export function getGrants(id: string): Grants {
   const row = db.prepare(`SELECT grants FROM sessions WHERE hash = ?`).get(String(id || "")) as { grants: string } | undefined;
@@ -220,7 +225,7 @@ export function getGrants(id: string): Grants {
   try {
     const parsed = JSON.parse(row.grants);
     const out: Grants = {};
-    for (const k of KNOWN_GRANTS) if (parsed?.[k] === true) out[k] = true;   // only ever the three known keys, only ever `true`
+    for (const k of KNOWN_GRANTS) if (parsed?.[k] === true) out[k] = true;   // only ever the known keys, only ever `true`
     return out;
   } catch { return {}; }
 }

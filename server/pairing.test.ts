@@ -298,3 +298,43 @@ describe("grants — per-device capability tiers", () => {
     expect(devices[0].grants).toEqual({ shellExec: true });
   });
 });
+
+// The "approve" grant resolves an Ask — the parked, dangerous action SAM stopped to check on.
+// Approving IS the safety mechanism, so the only acceptable default is off, and the only way
+// on is the operator turning it on for one named device from the Mac.
+describe("the approve grant — off until the operator says otherwise", () => {
+  it("a freshly paired device cannot approve", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const id = P.sessionIdFromToken(token);
+    expect(P.hasGrant(id, "approve")).toBe(false);
+    expect(P.getGrants(id)).toEqual({});
+  });
+
+  it("granting approve does not quietly hand over deploy, shell or spend", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const id = P.sessionIdFromToken(token);
+    P.setGrants(id, { approve: true });
+    expect(P.hasGrant(id, "approve")).toBe(true);
+    expect(P.hasGrant(id, "deploy")).toBe(false);
+    expect(P.hasGrant(id, "shellExec")).toBe(false);
+    expect(P.hasGrant(id, "spendAbove")).toBe(false);
+  });
+
+  // Whole-object replace: an operator looking at one device's toggles sets exactly what they
+  // see, so revoking approve must actually revoke it rather than leave a stale grant standing.
+  it("revoking is a real revoke, not a merge", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const id = P.sessionIdFromToken(token);
+    P.setGrants(id, { approve: true, deploy: true });
+    P.setGrants(id, { deploy: true });
+    expect(P.hasGrant(id, "approve")).toBe(false);
+    expect(P.hasGrant(id, "deploy")).toBe(true);
+  });
+
+  it("a made-up grant name is never stored", () => {
+    const token = P.claimCode(P.mintPairingCode(NOW), NOW)!;
+    const id = P.sessionIdFromToken(token);
+    P.setGrants(id, { approve: true, ungrantable: true } as any);
+    expect(P.getGrants(id)).toEqual({ approve: true });
+  });
+});

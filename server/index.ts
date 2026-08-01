@@ -1514,8 +1514,20 @@ app.get("/api/console", (req, res) => {
 });
 
 // The Ask — the still-open out-of-band approval requests (loopback + Handshake, like the Console).
+// An Ask is SAM stopping to check before doing something consequential, so being able to
+// answer one from wherever you are is the single most useful thing a phone can do — and also
+// the most dangerous, because approving IS the safety mechanism. So: the operator at the Mac
+// is unchanged (isTrustedLocal), and a paired device gets in ONLY if the operator turned on
+// that device's "approve" grant, one device at a time, from the Mac. Default off. A phone
+// without the grant sees exactly what it saw before this existed — nothing.
+function canApprove(req: any): boolean {
+  if (isTrustedLocal(req)) return true;
+  if (!isPairedSession(req)) return false;
+  return hasGrant(sessionIdFromToken(sessionTokenFromRequest(req)), "approve");
+}
+
 app.get("/api/asks", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!canApprove(req)) { res.status(403).json({ error: "this device needs the \"approve\" grant — set it from the SAM app on the Mac", needsGrant: "approve" }); return; }
   res.json({ asks: openAsks() });
 });
 
@@ -1523,14 +1535,19 @@ app.get("/api/asks", (req, res) => {
 // on a still-open Ask. A swarm Ask resumes through the swarm's own path; any other runs the parked
 // action now (fire-and-forget — the result surfaces via a notification).
 app.post("/api/ask/:id", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!canApprove(req)) { res.status(403).json({ error: "this device needs the \"approve\" grant — set it from the SAM app on the Mac", needsGrant: "approve" }); return; }
   const ask = getAsk(req.params.id);
   if (!ask) { res.status(404).json({ error: "no such Ask — it may have expired (deferred)" }); return; }
   const approved = !!req.body?.approved;
   if (ask.swarmRef) {
+    attributeRemote(req, "approve-ask", `${approved ? "approved" : "denied"} — ${ask.action}`);
     void approveAgent(ask.swarmRef.swarmId, ask.swarmRef.agentId, approved).catch(() => {/* resolves the Ask internally */});
     res.json({ status: approved ? "approved" : "denied" }); return;
   }
+  // A phone resolving an Ask is the highest-consequence remote action there is, so it is
+  // logged with device identity like every other one (B5). Recorded before the action runs:
+  // "who said yes" must survive whatever the action then does.
+  attributeRemote(req, "approve-ask", `${approved ? "approved" : "denied"} — ${ask.action}`);
   const r = resolveAsk(req.params.id, approved);
   if (r?.action) {
     const system = buildSystem("", undefined, { name: process.env.SAM_USER_NAME || "there", mode: "business" }, "");

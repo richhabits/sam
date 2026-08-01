@@ -25,7 +25,7 @@ const MAX = 1000;
 // The capabilities this log actually sees exercised — matches the write paths that call
 // logAttribution below. Not the same list as pairing.ts's Grant type: this also covers
 // the always-free tier (assign-task, cancel, retry) that needs no grant to use.
-export type Capability = "assign-task" | "cancel" | "retry" | "raise-budget" | "revoke-device" | "set-grants";
+export type Capability = "assign-task" | "cancel" | "retry" | "raise-budget" | "revoke-device" | "set-grants" | "approve-ask";
 
 export interface AttributionEntry {
   at: string;          // ISO timestamp
