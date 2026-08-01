@@ -13,8 +13,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it, expect } from "vitest";
-import { PROVIDER_REGISTRY, POOLED, PROVIDER_ENV, uiCatalogue } from "./providers.registry.ts";
+import { describe, expect, it } from "vitest";
+import { POOLED, PROVIDER_ENV, PROVIDER_REGISTRY, uiCatalogue } from "./providers.registry.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -45,7 +45,12 @@ describe("the registry is the single source", () => {
     // Not every entry is a chat brain: `fal` and `leonardo` are image/video backends consumed by
     // tools.ts. The rule that matters is that nothing sits in the registry unused — a provider
     // offered in Settings that no code ever calls is a key the user wastes time obtaining.
-    const tools = read("server/tools.ts");
+    // Three consumers now, not two: a key in this registry can be a chat brain (models.ts), an
+    // image/video backend (tools.ts), or a read connector (connectors.registry.ts — GitHub's
+    // token answers as all three sources of truth for one credential). GitHub Models is being
+    // retired as a brain while the same token keeps reading repos, which is exactly why the
+    // connector had to count as a use.
+    const tools = read("server/tools.ts") + read("server/connectors.registry.ts");
     const dead = PROVIDER_REGISTRY.filter((p) => !runtime.includes(p.id) && !tools.includes(`"${p.id}"`));
     expect(dead.map((p) => p.id), "offered in Settings but never used by any code").toEqual([]);
   });

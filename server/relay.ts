@@ -10,11 +10,18 @@
 //     request), then allowed one probe after a cooldown; a success closes it again.
 //   • THE BOUNDARY. A request that must stay local may NEVER cross to a cloud brain. The crossing is
 //     refused EXPLICITLY here — never a silent fallback.
+//
+//  It is also the one place every brain call passes through, so it is where each call is TIMED and
+//  its outcome remembered (server/speed.ts). The Breaker forgets at process exit, which is why a
+//  brain whose model slug was retired upstream could lead its lane and fail first on every single
+//  turn, for weeks, in silence. The health memory persists.
 // ─────────────────────────────────────────────────────────────
-import { getKey, poolSize, reportFailure, reportSuccess } from "./keys.ts";
+
 import { capture } from "./issues.ts";
+import { getKey, poolSize, reportFailure, reportSuccess } from "./keys.ts";
+import { assertNever, err, type Outcome, ok } from "./outcome.ts";
 import { count } from "./pulse.ts";
-import { assertNever, err, ok, type Outcome } from "./outcome.ts";
+import { record as recordHealth } from "./speed.ts";
 
 // ── The Breaker ──────────────────────────────────────────────
 const BREAKER_TRIP = 3;             // consecutive brain-level failures before it opens
@@ -107,10 +114,16 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
 
   if (b.noKey) {
     for (let i = 0; i < 2; i++) {
+      const t0 = Date.now();
       try {
         const text = await b.run(system, prompt, "");
-        if (text) { onSuccess(b.id); return ok(text); }
+        if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); onSuccess(b.id); return ok(text); }
+        recordHealth(b.id, { ms: Date.now() - t0, ok: false });
       } catch (e) {
+        // The status is what separates "busy" from "gone" — a no-key brain that starts answering
+        // 402 has stopped being free, and the health memory needs to know that, not just that it
+        // failed. (Pollinations did exactly this; see server/speed.ts.)
+        recordHealth(b.id, { ms: Date.now() - t0, ok: false, status: (e as { status?: number })?.status });
         capture(e, { brain: b.id, boundary: b.boundary });
       }
       if (i === 0) await new Promise((r) => setTimeout(r, opts.retryDelayMs ?? 800));
@@ -125,11 +138,16 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
     const key = getKey(b.id);
     if (!key) break;
     ran = true;
+    const t0 = Date.now();
     try {
       const text = await b.run(system, prompt, key);
-      if (text) { reportSuccess(b.id, key); onSuccess(b.id); return ok(text); }
+      if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); reportSuccess(b.id, key); onSuccess(b.id); return ok(text); }
+      recordHealth(b.id, { ms: Date.now() - t0, ok: false });
     } catch (e) {
       const status = (e as { status?: number })?.status;
+      // 404 here is a RETIRED MODEL SLUG, not a blip — it is what made cerebras lead the fast
+      // lane while answering nothing at all. The health memory sinks those; 429/5xx it doesn't.
+      recordHealth(b.id, { ms: Date.now() - t0, ok: false, status });
       reportFailure(b.id, key, status);
       capture(e, { brain: b.id, boundary: b.boundary, status });
       // A 4xx that isn't rate-limit means a bad key/request — stop hammering this brain.

@@ -8,16 +8,17 @@
 //  Add a provider = one entry in PROVIDERS below. That's it.
 // ─────────────────────────────────────────────────────────────
 
-import { getKey, reportSuccess, reportFailure, poolSize, keyStatus } from "./keys.ts";
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { relayBrain } from "./relay.ts";
-import { count, observe, mark } from "./pulse.ts";
-import { recordModelCall, estTokens, costUSD } from "./metrics.ts";
 import { loadRanking, rankingStale } from "./colosseum.ts";
-import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
+import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./keys.ts";
+import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
+import { count, mark, observe } from "./pulse.ts";
+import { relayBrain } from "./relay.ts";
+import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
+import { healthOrder } from "./speed.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -196,9 +197,16 @@ interface Provider {
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct";
 const MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "llama-3.3-70b";
+// AUDITED LIVE 2026-08-01 against the providers' own /v1/models. `llama-3.3-70b` was RETIRED by
+// Cerebras — every call 404'd `model_not_found`, and because cerebras leads the `fast` lane, that
+//404 was the FIRST thing every quick chat did. GET /v1/models now lists exactly
+// [zai-glm-4.7, gpt-oss-120b, gemma-4-31b]; gpt-oss-120b answered in 422ms.
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "gpt-oss-120b";
 const GITHUB_MODEL = process.env.GITHUB_MODEL || "gpt-4o-mini";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+// Same audit: `meta-llama/llama-3.3-70b-instruct:free` no longer exists as a free slug —
+// OpenRouter answers 404 and names the PAID slug as the replacement. Of the 14 free slugs live
+// today, nemotron-3-super was both the fastest (579ms) and the largest context (262k).
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 // ── The "Invincible" Expansion Default Models ──
@@ -300,7 +308,12 @@ const PROVIDERS: Provider[] = [
   { id: "cohere", tier: "free", label: `cohere:${COHERE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cohere.com/v1", COHERE_MODEL, s, p, k) },
   { id: "perplexity", tier: "free", label: `perplexity:${PERPLEXITY_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.perplexity.ai", PERPLEXITY_MODEL, s, p, k) },
   { id: "mistral", tier: "free", label: `mistral:${MISTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.mistral.ai/v1", MISTRAL_MODEL, s, p, k) },
-  { id: "github", tier: "free", label: `github:${GITHUB_MODEL}`, run: (s, p, k) => callOpenAICompat("https://models.inference.ai.azure.com", GITHUB_MODEL, s, p, k) },
+  // GITHUB MODELS IS BEING RETIRED. Audited 2026-08-01: the old Azure endpoint answers 401, and
+  // the current one (models.github.ai/inference) answers HTTP 410 `github_models_retirement_brownout`.
+  // It stays listed because GITHUB_TOKEN is still a live credential — the GitHub CONNECTOR reads
+  // your repos and issues with it (server/connectors.registry.ts) — but it is no longer a brain
+  // anyone should be told to get a key for. The health memory sinks it on its first 410 anyway.
+  { id: "github", tier: "free", label: `github:${GITHUB_MODEL}`, run: (s, p, k) => callOpenAICompat("https://models.github.ai/inference", GITHUB_MODEL, s, p, k) },
   { id: "gemini", tier: "free", label: "gemini-2.5-flash", run: callGemini },
   { id: "openrouter", tier: "free", label: `openrouter:${OPENROUTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://openrouter.ai/api/v1", OPENROUTER_MODEL, s, p, k) },
 
@@ -318,6 +331,14 @@ const PROVIDERS: Provider[] = [
   // ── ALWAYS-LAST · never dry: free brains that need NO key at all. SAM works out of the box on
   //    these. Several independent lanes (different models + a different endpoint) so one transient
   //    hiccup can't take the whole no-key path down — there's always another free brain to fall to.
+  //
+  //    ⚠️ AUDITED 2026-08-01 and no longer the guarantee it reads as. Pollinations' anonymous tier
+  //    now answers 402 Payment Required for anything NOVEL — repeated identical prompts still
+  //    return 200 because they are served from ITS cache (the same response id came back every
+  //    time). Worse, the 402 took up to 24 SECONDS to arrive, so the no-key floor was costing a
+  //    keyless user half a minute to say no. Left in place because a cached hit is still a free
+  //    answer and the endpoint may re-open, but the health memory demotes it the moment it 402s,
+  //    and SAM's real zero-key story is now local Ollama. See docs/FREE-ROUTES.md.
   { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
   { id: "pollinations-fast", tier: "free", noKey: true, label: "pollinations:openai-fast", run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", "openai-fast", s, p, "") },
   { id: "pollinations-get", tier: "free", noKey: true, label: "pollinations:get", run: (s, p) => callPollinationsGet(s, p) },
@@ -395,9 +416,14 @@ export function arenaSort(pool: Provider[]): Provider[] {
 export function freeOrder(pool: Provider[], lane: Lane): Provider[] {
   const laned = laneSort(pool, lane);
   const rank = loadRanking();
-  if (!rank || rankingStale(rank.ts, Date.now())) return spreadLoad(laned);
-  const sorted = arenaSort(laned);
-  return sorted.length > 1 ? [sorted[0], ...spreadLoad(sorted.slice(1))] : sorted;
+  const ordered = !rank || rankingStale(rank.ts, Date.now())
+    ? spreadLoad(laned)
+    : (() => { const s = arenaSort(laned); return s.length > 1 ? [s[0], ...spreadLoad(s.slice(1))] : s; })();
+  // LAST, over everything above it: what actually happened when SAM called these. Lane preference
+  // says which brain is RIGHT for the job and Elo says which is BEST — neither notices that the
+  // brain has been answering 404 since its provider retired the model slug. Measurement does, and
+  // it only sinks the dead and the measurably slow; everything else keeps the order chosen above.
+  return healthOrder(ordered);
 }
 
 // ── DISPATCH with graceful fallback ──────────────────────────
@@ -407,13 +433,18 @@ export function freeOrder(pool: Provider[], lane: Lane): Provider[] {
 // code-strong ones for programming. It still falls through ALL free providers on
 // failure (nothing wasted) — this only changes which is TRIED first.
 export type Lane = "fast" | "deep" | "code";
+// AUDITED LIVE 2026-08-01. `hermes` led BOTH deep and code, and Nous now charges for it — it
+// answers 402 with an x402 payment challenge, so every deep or code turn opened with a failure
+// before reaching a brain that works. It stays in the cascade (a key/entitlement makes it answer
+// again) but it no longer leads. Measured on the day: groq 115ms · mistral 297ms · gemini 430ms ·
+// cerebras 422ms (after the slug fix) · nvidia 11s.
 const LANE_PREF: Record<Lane, string[]> = {
   // fastest inference first (default — keeps quick chat snappy)
-  fast: ["cerebras", "groq", "sambanova"],
+  fast: ["cerebras", "groq", "mistral", "sambanova"],
   // biggest / strongest reasoning free models first
-  deep: ["hermes", "zhipu", "deepseek", "nvidia", "together", "alibaba", "fireworks", "cerebras", "groq"],
+  deep: ["zhipu", "deepseek", "together", "alibaba", "fireworks", "cerebras", "groq", "hermes"],
   // strongest at code first
-  code: ["hermes", "zhipu", "deepseek", "fireworks", "together", "nvidia", "cerebras", "groq"],
+  code: ["zhipu", "deepseek", "fireworks", "together", "cerebras", "groq", "hermes"],
 };
 export function pickLane(text: string): Lane {
   const t = (text || "").slice(0, 600).toLowerCase();
@@ -440,6 +471,66 @@ export async function ollamaReady(): Promise<boolean> {
 }
 // Any cloud provider with a real key pooled? (noKey lanes like Pollinations don't count as "has keys")
 function hasCloudKeys(): boolean { return PROVIDERS.some((p) => p.tier === "free" && !p.noKey && poolSize(p.id) > 0); }
+
+// ── THE HEDGE ────────────────────────────────────────────────
+// How long the leader gets on its own before the next brain is started ALONGSIDE it. Sized from
+// the audit: the healthy free brains answered in 115–430ms, so a brain that has said nothing in
+// ~1.4s is not "nearly done", it's stalled. Deep/code lanes think for longer, so they wait longer.
+const HEDGE_MS: Record<Lane, number> = { fast: 1400, deep: 4000, code: 4000 };
+// Never more than this many free calls in flight for one turn. The hedge trades a little free
+// quota for latency; unbounded, it would trade ALL of it.
+const MAX_INFLIGHT = Number(process.env.SAM_HEDGE_INFLIGHT) || 3;
+
+/**
+ * Walk the pool, starting the next brain whenever the ones already running have gone quiet for
+ * the hedge window, and return the first real answer. Losers are left to finish — their fetches
+ * can't be cancelled through the provider closures, and their outcomes still teach the health
+ * memory something. SAM_HEDGE=0 falls back to the strictly serial walk.
+ */
+export async function hedged(
+  pool: Provider[],
+  system: string,
+  prompt: string,
+  lane: Lane,
+  // Injectable so the hedge can be tested without a network: the RACE is the thing worth pinning,
+  // not who wins it.
+  opts: { run?: (p: Provider) => Promise<string | null>; waitMs?: number } = {},
+): Promise<{ text: string; prov: Provider } | null> {
+  const tryOne = opts.run ?? ((p: Provider) => tryProvider(p, system, prompt));
+  if (process.env.SAM_HEDGE === "0" || pool.length < 2) {
+    for (const prov of pool) {
+      const text = await tryOne(prov);
+      if (text) return { text, prov };
+    }
+    return null;
+  }
+  const wait = opts.waitMs ?? HEDGE_MS[lane] ?? HEDGE_MS.fast;
+  const inflight = new Map<number, Promise<{ i: number; text: string | null }>>();
+  let next = 0;
+  const start = () => {
+    const i = next++;
+    const prov = pool[i];
+    inflight.set(i, tryOne(prov).then((text) => ({ i, text })).catch(() => ({ i, text: null })));
+  };
+  start();
+  while (inflight.size) {
+    // Race what's running against the hedge timer — but only arm the timer while there is someone
+    // left to start, so the last brain in the pool gets its full timeout rather than a busy loop.
+    const canStart = next < pool.length && inflight.size < MAX_INFLIGHT;
+    let timer: NodeJS.Timeout | undefined;
+    const tick = canStart
+      ? new Promise<"tick">((r) => { timer = setTimeout(() => r("tick"), wait); })
+      : new Promise<"tick">(() => {/* never — nothing left to hedge with */});
+    const settled = await Promise.race([...inflight.values(), tick]);
+    if (timer) clearTimeout(timer);
+    if (settled === "tick") { start(); continue; }
+    inflight.delete(settled.i);
+    if (settled.text) return { text: settled.text, prov: pool[settled.i] };
+    // That one came back empty — bring the next in immediately rather than waiting out the window.
+    if (next < pool.length) start();
+  }
+  return null;
+}
 
 async function runModelInner(tier: Tier, system: string, prompt: string, laneHint?: Lane, format?: unknown): Promise<ModelResult> {
   // Local first when asked (free, private, no key).
@@ -485,9 +576,20 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
     // Free tier: best model for the task FIRST (lane), then spread load across the top few
     // (Oliver Twist) so no single free quota burns out. Still falls through ALL on failure.
     const ranked = t === "free" ? freeOrder(pool, lane) : pool;
-    for (const prov of ranked) {
-      const text = await tryProvider(prov, system, prompt);
-      if (text) return { text, provider: prov.label, tier: t };
+    // FREE is hedged, PAID is strictly serial. On the free tier a stalled leader used to own the
+    // whole request — every call carries a 30s timeout, so one hung provider cost 30 seconds
+    // before the second was even attempted, and the audit found brains taking 11s and 24s to
+    // answer or refuse. Now, if the leader hasn't answered within the hedge window, the next one
+    // starts ALONGSIDE it and whoever answers first wins. Never on premium: firing two paid calls
+    // to save a second is spending the user's money on impatience.
+    if (t === "free") {
+      const won = await hedged(ranked, system, prompt, lane);
+      if (won) return { text: won.text, provider: won.prov.label, tier: t };
+    } else {
+      for (const prov of ranked) {
+        const text = await tryProvider(prov, system, prompt);
+        if (text) return { text, provider: prov.label, tier: t };
+      }
     }
   }
 

@@ -57,7 +57,13 @@ export function redact(input: unknown): string {
 }
 
 function safeString(v: unknown): string {
-  try { return typeof v === "string" ? v : JSON.stringify(v); } catch { return String(v); }
+  // JSON.stringify(undefined) returns undefined — the VALUE, not the string "undefined" — and so
+  // does stringifying a function or a symbol. That handed redact() a non-string to call .replace()
+  // on, and it threw INSIDE the error path: every brain failure with no HTTP status (i.e. every
+  // timeout, and a timeout is exactly when you most want the capture) printed "issues.capture
+  // failed" and recorded nothing. Found by the 2026-08-01 free-route audit, where four brains
+  // timed out and none of them were captured.
+  try { const s = typeof v === "string" ? v : JSON.stringify(v); return s ?? String(v); } catch { return String(v); }
 }
 
 function redactData(data?: Record<string, unknown>): Record<string, unknown> | undefined {

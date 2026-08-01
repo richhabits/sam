@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { _reset, trail, capture, issuesSummary, listIssues, redact } from "./issues.ts";
+import { _reset, capture, issuesSummary, listIssues, redact, trail } from "./issues.ts";
 
 // The black box (local error capture), strictly local. Proves: capture records a structured issue,
 // recurring faults GROUP by fingerprint (count/first/last), secrets are REDACTED before storage,
@@ -50,6 +50,20 @@ describe("redaction — a local issue log must not become a secrets log", () => 
     expect(redact("Authorization: Bearer abcdef0123456789abcdef")).toContain("[redacted]");
     expect(redact("token=ghp_012345678901234567890123456789012345")).toContain("[redacted]");
     expect(redact("hi there")).toBe("hi there"); // ordinary text untouched
+  });
+
+  // The observability layer threw inside its own error path. A brain that fails with no HTTP
+  // status — every TIMEOUT, which is precisely when you want the capture — passed
+  // { status: undefined } into context, and JSON.stringify(undefined) returns undefined rather
+  // than a string, so .replace() blew up. Four brains timed out during the 2026-08-01 free-route
+  // audit and not one of them was recorded.
+  it("survives values that don't stringify — undefined, functions, symbols", () => {
+    expect(redact(undefined)).toBe("undefined");
+    expect(redact(() => 1)).toContain("=>");
+    expect(redact(Symbol("s"))).toContain("Symbol");
+    const issue = capture(new Error("timed out"), { brain: "nvidia", status: undefined });
+    expect(issue).toBeTruthy();
+    expect(issue!.context.status).toBe("undefined");
   });
 
   it("redacts trail data by sensitive KEY name and by value shape", () => {

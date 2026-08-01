@@ -47,7 +47,12 @@ export const PROVIDER_REGISTRY: ProviderSpec[] = [
   { id: "openrouter", label: "OpenRouter", tier: "free", envPlural: "OPENROUTER_API_KEYS", envSingular: "OPENROUTER_API_KEY", starter: true, note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys", keyPattern: "^sk-or-[A-Za-z0-9-]{20,}$" },
   { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com", keyPattern: "^nvapi-[A-Za-z0-9_-]{20,}$" },
   { id: "mistral", label: "Mistral", tier: "free", envPlural: "MISTRAL_API_KEYS", envSingular: "MISTRAL_API_KEY", starter: true, note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys", keyPattern: "^[A-Za-z0-9]{32}$" },
-  { id: "github", label: "GitHub Models", tier: "free", envPlural: "GITHUB_API_KEYS", envSingular: "GITHUB_TOKEN", starter: true, note: "💬 general chat — free with a GitHub token", url: "https://github.com/settings/tokens", keyPattern: "^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,})$" },
+  // NOT a starter brain any more. Audited 2026-08-01: GitHub Models answers HTTP 410
+  // `github_models_retirement_brownout` — the product is being retired, so telling a new user to
+  // go and get a token "for free chat" sends them after a brain that cannot answer. The entry
+  // stays because the token itself is still worth having: it is what the GitHub CONNECTOR reads
+  // your repos and issues with (server/connectors.registry.ts).
+  { id: "github", label: "GitHub", tier: "free", envPlural: "GITHUB_API_KEYS", envSingular: "GITHUB_TOKEN", note: "📦 your repos and issues (GitHub Models, the chat brain, is being retired by GitHub)", url: "https://github.com/settings/tokens", keyPattern: "^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,})$" },
   { id: "together", label: "Together AI", tier: "free", envPlural: "TOGETHER_API_KEYS", envSingular: "TOGETHER_API_KEY", note: "🧠 reasoning + 🎨 FREE images (FLUX)", url: "https://api.together.xyz/settings/api-keys" },
   { id: "deepseek", label: "DeepSeek", tier: "free", envPlural: "DEEPSEEK_API_KEYS", envSingular: "DEEPSEEK_API_KEY", note: "🧠 deep reasoning + 💻 code — the heavy thinker", url: "https://platform.deepseek.com/api_keys" },
   { id: "sambanova", label: "SambaNova", tier: "free", envPlural: "SAMBANOVA_API_KEYS", envSingular: "SAMBANOVA_API_KEY", note: "⚡ fast chat — very quick 70B", url: "https://cloud.sambanova.ai" },
