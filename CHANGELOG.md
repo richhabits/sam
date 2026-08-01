@@ -2,6 +2,50 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.1.1] - 2026-08-01 — "One Bar"
+
+A security fix. SAM held writing to a high bar and quietly let reading through.
+
+### Fixed
+- **Your notes were readable by any other app on this Mac.** `/api/vault/log`, `/api/vault/graph`
+  and `/api/vault/stats` answered any request that reached the loopback port, with no credential
+  at all. The guard on the privileged routes asks whether a request is a *mutation* — and a GET
+  never is, so every read walked straight past it. What leaked is note titles, timestamps, the
+  vault path and a graph built by walking the whole vault. Not credentials, and not remotely
+  reachable — but any process on your machine could ask, including a supply-chained dependency
+  inside some unrelated app, and it never had to know a secret.
+
+  Reads of your private content are now held to the same bar as a change: the desktop app's
+  per-launch passkey, or a session you approved by pairing. Every real client already carries
+  one, so nothing you use loses access — the app sends the passkey, a paired browser its cookie,
+  your phone the same token as a Bearer.
+
+  If you run SAM only as the desktop app on a machine where you trust every other program, the
+  practical exposure was small. Update anyway; the routes were open to anything.
+
+### Security
+- The same hole reached further on unreleased code — the GitHub, Slack, Notion, Linear and Vercel
+  connectors were built on the same unguarded reads. Those landed after v3.1.0 and were fixed
+  before they ever shipped, so no released build ever exposed them. Recorded here because the
+  fix is public and the shape is worth knowing.
+
+## [3.1.0] - 2026-07-25 — "The Pairing"
+
+Backfilled — this release shipped without a changelog entry.
+
+### Added
+- **Pairing.** Browsers and phones earn the Handshake with a single-use pairing code and keep a
+  revocable, HttpOnly session cookie, so the Handshake can stay on by default instead of being
+  the thing everyone turns off. This also fixed the long-standing "the camera wants an API key"
+  confusion, which was the Handshake refusing the browser frontend all along.
+
+### Fixed
+- **Keys saved in the packaged app now persist.** `writeEnv` resolved the `.env` path when the
+  module was imported rather than when it was called — and the packaged app sets that path
+  after import, so every save silently wrote to a read-only location inside the bundle.
+- Around 106 fixes from a multi-agent audit pass across the yard, gateway, vault, Electron
+  shell, HUD and CI, plus a checksums job that had been breaking the release notes step.
+
 ## [3.0.1] - 2026-07-21 — "The Key"
 
 A fix release. v3.0.0 made SAM secure by default and then made it hard to get in.
