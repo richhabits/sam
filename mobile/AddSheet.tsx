@@ -24,7 +24,7 @@ import { pickFile, pickPhoto, takePhoto, type Attachment } from './lib/attach';
 //     "approve" grant to (69d15bd). Off by default, so it is not listed here as if it were
 //     always available.
 
-type Kind = 'skills' | 'playbooks' | 'schedules' | 'projects' | 'tools';
+type Kind = 'skills' | 'playbooks' | 'schedules' | 'projects' | 'tools' | 'github/repos' | 'github/issues';
 
 type Item = { id: string; title: string; sub?: string };
 
@@ -34,17 +34,30 @@ const CATALOGUE: { kind: Kind; label: string; hint: string }[] = [
   { kind: 'schedules', label: 'Scheduled', hint: 'Things SAM does on a timer' },
   { kind: 'projects', label: 'Projects', hint: 'What SAM is building' },
   { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach' },
+  { kind: 'github/repos', label: 'GitHub repos', hint: 'Yours, most recently pushed first' },
+  { kind: 'github/issues', label: 'Assigned to you', hint: 'Open issues and PRs waiting on you' },
 ];
 
 /** Each endpoint returns a different shape; normalise to one row so the list stays dumb. */
 function toRows(kind: Kind, body: any): Item[] {
-  const arr = Array.isArray(body) ? body : body?.[kind] || body?.items || [];
+  // Each endpoint names its own array; github/* answers under the last path segment.
+  const key = kind.includes('/') ? kind.split('/')[1] : kind;
+  const arr = Array.isArray(body) ? body : body?.[key] || body?.items || [];
   if (!Array.isArray(arr)) return [];
   return arr.slice(0, 60).map((x: any, i: number) => ({
     id: String(x?.id ?? x?.name ?? i),
-    title: String(x?.name ?? x?.title ?? x?.id ?? 'untitled'),
+    title:
+      kind === 'github/repos'
+        ? String(x?.full ?? x?.name ?? 'repo')
+        : kind === 'github/issues'
+          ? `#${x?.number} ${x?.title ?? ''}`.trim()
+          : String(x?.name ?? x?.title ?? x?.id ?? 'untitled'),
     sub:
-      kind === 'skills'
+      kind === 'github/repos'
+        ? [x?.private ? 'private' : null, x?.language, (x?.pushedAt || '').slice(0, 10)].filter(Boolean).join(' · ')
+        : kind === 'github/issues'
+          ? [x?.isPR ? 'PR' : 'issue', x?.repo].filter(Boolean).join(' · ')
+          : kind === 'skills'
         ? [x?.tier, (x?.triggers || []).slice(0, 3).join(', ')].filter(Boolean).join(' · ')
         : kind === 'tools'
           ? x?.description || x?.summary

@@ -57,6 +57,7 @@ import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrust
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { mintPairingCode, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
+import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -1525,6 +1526,39 @@ function canApprove(req: any): boolean {
   if (!isPairedSession(req)) return false;
   return hasGrant(sessionIdFromToken(sessionTokenFromRequest(req)), "approve");
 }
+
+// GITHUB — read-only. Same trust as the other read surfaces (the global middleware already
+// requires a passkey or a paired session), so a paired phone can see its own repos and the
+// issues waiting on it. Nothing here writes to a repo; see server/github.ts for why.
+function ghFail(res: any, e: any) {
+  const status = e instanceof GitHubError ? e.status : 502;
+  // 401 here means "no token / bad token", which the UI renders as connect-GitHub rather
+  // than as an outage. Distinguishing them is the difference between a fixable prompt and a
+  // dead end.
+  res.status(status).json({ error: e?.message || "GitHub request failed", needsToken: status === 401 });
+}
+
+app.get("/api/github/status", async (_req, res) => {
+  try {
+    res.json({ connected: true, user: await ghWhoami() });
+  } catch (e: any) {
+    if (e instanceof GitHubError && e.status === 401) { res.json({ connected: false, reason: e.message }); return; }
+    ghFail(res, e);
+  }
+});
+
+app.get("/api/github/repos", async (req, res) => {
+  try {
+    res.json({ repos: await ghRepos(Number(req.query.limit) || 30) });
+  } catch (e: any) { ghFail(res, e); }
+});
+
+app.get("/api/github/issues", async (req, res) => {
+  try {
+    const repo = typeof req.query.repo === "string" && /^[\w.-]+\/[\w.-]+$/.test(req.query.repo) ? req.query.repo : undefined;
+    res.json({ issues: await ghIssues(repo, Number(req.query.limit) || 30) });
+  } catch (e: any) { ghFail(res, e); }
+});
 
 app.get("/api/asks", (req, res) => {
   if (!canApprove(req)) { res.status(403).json({ error: "this device needs the \"approve\" grant — set it from the SAM app on the Mac", needsGrant: "approve" }); return; }
