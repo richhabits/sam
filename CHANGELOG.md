@@ -23,6 +23,27 @@ A security fix. SAM held writing to a high bar and quietly let reading through.
   If you run SAM only as the desktop app on a machine where you trust every other program, the
   practical exposure was small. Update anyway; the routes were open to anything.
 
+- **The keepalive was not keeping anything alive.** If you installed the launchd agent with
+  `scripts/install-server-daemon.sh`, it pointed at a built server path that no longer existed,
+  so every start died instantly and launchd tried again five seconds later — 60,104 failed
+  starts and 28 MB of identical stack traces, while SAM appeared simply to be down. A dead
+  keepalive is quiet, and a crash-looping one is quiet in the same way.
+
+  launchd cannot make this call on its own: it cannot tell a crash apart from a start that
+  should not have happened, and both normal reasons to hold off — the repo's drive not mounted,
+  or the desktop app already serving the port with its own passkey — look exactly like a crash.
+  A supervisor now makes that decision, waits quietly instead of looping, and stands down when
+  something is already serving. It also no longer carries a fixed control-channel token in a
+  world-readable plist, which handed the Handshake's secret to the very processes it refuses.
+
+  Only affects people who installed the agent; it is not part of the packaged app.
+
+### Internal
+- The CI secret scan had been failing for weeks on two key-shaped test fixtures in the phone's
+  scrubber test — placeholders it needs in order to prove it redacts them. Allowlisted like the
+  server's equivalent. Worth knowing that it did not reproduce on a current local gitleaks; CI
+  pins an older version whose rules still flag them.
+
 ### Security
 - The same hole reached further on unreleased code — the GitHub, Slack, Notion, Linear and Vercel
   connectors were built on the same unguarded reads. Those landed after v3.1.0 and were fixed
