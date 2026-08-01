@@ -18,6 +18,8 @@ import { clearThread } from './lib/history';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
+import { iosDark, iosLight, metrics, type as iosType } from './lib/ios';
+import { Segmented } from './ui';
 import ChatScreen from './ChatScreen';
 import TasksScreen from './TasksScreen';
 import SettingsScreen from './SettingsScreen';
@@ -33,6 +35,7 @@ type Surface = 'agent' | 'tasks' | 'settings';
 export default function App() {
   const scheme = useColorScheme();
   const t = scheme === 'dark' ? dark : light;
+  const ios = scheme === 'dark' ? iosDark : iosLight;
   const s = useMemo(() => makeStyles(t), [t]);
 
   const [paired, setPaired] = useState<boolean | null>(null); // null = still checking on boot
@@ -200,35 +203,26 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={s.screen}>
-      <View style={s.header}>
+    <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
+      {/* A 44pt nav bar with a hairline, the way every native app draws one — the mark is
+          the leading item, the segmented control is the title view, ••• is the trailing action. */}
+      <View style={[s.navbar, { backgroundColor: ios.card, borderBottomColor: ios.separator }]}>
         <Image source={require('./assets/sam-mark.png')} style={s.markSmall} />
 
-        <View style={s.segment}>
-          {(['agent', 'tasks'] as const).map((k) => {
-            const on = surface === k;
-            return (
-              <Pressable
-                key={k}
-                onPress={() => setSurface(k)}
-                style={[s.segBtn, on && { backgroundColor: t.surface }]}
-              >
-                <Text style={[s.segText, { color: on ? t.text : t.muted }]}>
-                  {k === 'agent' ? 'Agent' : 'Tasks'}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={{ flex: 1, paddingHorizontal: 10 }}>
+          <Segmented
+            ios={ios}
+            value={surface === 'settings' ? 'agent' : surface}
+            onChange={(k) => setSurface(k)}
+            options={[
+              { key: 'agent', label: 'Agent' },
+              { key: 'tasks', label: 'Tasks' },
+            ]}
+          />
         </View>
 
-        <Pressable
-          onPress={() => setMenu((v) => !v)}
-          style={({ pressed }) => [s.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
-          hitSlop={8}
-        >
-          <Text style={[s.iconGlyph, { color: menu || surface === 'settings' ? t.accentText : t.muted }]}>
-            •••
-          </Text>
+        <Pressable onPress={() => setMenu((v) => !v)} hitSlop={10} style={{ minWidth: 28, alignItems: 'flex-end' }}>
+          <Text style={[iosType.title2, { color: ios.tint, lineHeight: 24 }]}>•••</Text>
         </Pressable>
       </View>
 
@@ -237,7 +231,7 @@ export default function App() {
       {menu ? (
         <>
           <Pressable style={s.scrim} onPress={() => setMenu(false)} />
-          <View style={s.menu}>
+          <View style={[s.menu, { backgroundColor: ios.card }]}>
             <Pressable
               onPress={() => {
                 setMenu(false);
@@ -246,30 +240,30 @@ export default function App() {
                 // empty store rather than trusting the screen to have dropped it too.
                 void clearThread().then(() => setResetKey((k) => k + 1));
               }}
-              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: t.accentSoft }]}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: ios.cardPressed }]}
             >
-              <Text style={s.menuText}>New chat</Text>
+              <Text style={[iosType.body, { color: ios.label }]}>New chat</Text>
             </Pressable>
-            <View style={s.menuSep} />
+            <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.margin }} />
             <Pressable
               onPress={() => {
                 setMenu(false);
                 setSurface('settings');
               }}
-              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: t.accentSoft }]}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: ios.cardPressed }]}
             >
-              <Text style={s.menuText}>Settings</Text>
+              <Text style={[iosType.body, { color: ios.label }]}>Settings</Text>
             </Pressable>
           </View>
         </>
       ) : null}
 
       {surface === 'agent' ? (
-        <ChatScreen t={t} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
+        <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
       ) : surface === 'tasks' ? (
-        <TasksScreen t={t} onNeedsPairing={onNeedsPairing} />
+        <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
       ) : (
-        <SettingsScreen t={t} onForgotten={() => setPaired(false)} onClose={() => setSurface('agent')} />
+        <SettingsScreen ios={ios} onForgotten={() => setPaired(false)} />
       )}
 
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -282,23 +276,14 @@ const makeStyles = (t: Theme) =>
     screen: { flex: 1, backgroundColor: t.bg },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
 
-    header: {
+    navbar: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: space[3],
-      paddingHorizontal: space[4],
-      paddingVertical: space[2],
-      borderBottomWidth: 1,
-      borderBottomColor: t.border,
+      height: 44,
+      paddingHorizontal: metrics.margin,
+      borderBottomWidth: metrics.hairline,
     },
-    markSmall: {
-      width: 30,
-      height: 30,
-      borderRadius: radius.sm,
-      backgroundColor: t.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    markSmall: { width: 28, height: 28, borderRadius: 6 },
     markGlyphSmall: { color: t.onAccent, fontSize: fs.sm, lineHeight: 16 },
     // The desk's own Agent/Tasks toggle, pill-shaped for a thumb.
     segment: {

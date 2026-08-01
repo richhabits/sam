@@ -15,6 +15,7 @@ import { streamChat, type Turn } from './lib/chat';
 import { loadThread, saveThread } from './lib/history';
 import { parseMarkdown } from './lib/markdown';
 import { fs, radius, space, type Theme } from './lib/theme';
+import { metrics, type as iosType, type IOS } from './lib/ios';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -64,14 +65,16 @@ function Rendered({ text, t, s }: { text: string; t: Theme; s: any }) {
 
 export default function ChatScreen({
   t,
+  ios,
   onNeedsPairing,
   resetKey = 0,
 }: {
   t: Theme;
+  ios: IOS;
   onNeedsPairing: () => void;
   resetKey?: number;
 }) {
-  const s = useMemo(() => makeStyles(t), [t]);
+  const s = useMemo(() => makeStyles(ios), [ios]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -176,7 +179,7 @@ export default function ChatScreen({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: ios.groupedBg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
@@ -200,7 +203,7 @@ export default function ChatScreen({
               <View key={i} style={s.samWrap}>
                 <View style={s.bubbleSam}>
                   {m.pending && !m.text ? (
-                    <ActivityIndicator color={t.accent} />
+                    <ActivityIndicator color={ios.tint} />
                   ) : (
                     <Rendered text={m.text} t={t} s={s} />
                   )}
@@ -218,16 +221,16 @@ export default function ChatScreen({
           <Pressable
             key={k}
             onPress={() => setTier(k)}
-            style={[s.tierChip, tier === k && { backgroundColor: t.accentSoft, borderColor: t.accent }]}
+            style={[s.tierChip, tier === k && { backgroundColor: ios.fill }]}
           >
-            <Text style={[s.tierText, { color: tier === k ? t.accentText : t.muted }]}>
+            <Text style={[s.tierText, { color: tier === k ? ios.tint : ios.secondaryLabel }]}>
               {k === 'auto' ? 'Auto' : k === 'free' ? 'Free only' : 'Turbo'}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      <AddSheet t={t} visible={sheet} onClose={() => setSheet(false)} onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))} />
+      <AddSheet ios={ios} visible={sheet} onClose={() => setSheet(false)} onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))} />
 
       <View style={s.composer}>
         <Pressable
@@ -253,7 +256,7 @@ export default function ChatScreen({
           value={draft}
           onChangeText={setDraft}
           placeholder="Message SAM"
-          placeholderTextColor={t.muted}
+          placeholderTextColor={ios.secondaryLabel}
           multiline
           onSubmitEditing={send}
           returnKeyType="send"
@@ -265,14 +268,13 @@ export default function ChatScreen({
           style={({ pressed }) => [
             s.sendBtn,
             {
-              backgroundColor: busy ? t.surface : draft.trim() ? t.accent : t.borderStrong,
-              borderWidth: busy ? 1 : 0,
-              borderColor: t.borderStrong,
+              backgroundColor: busy ? ios.fill : draft.trim() ? ios.tint : ios.fill,
+              
               transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
         >
-          <Text style={{ color: busy ? t.text : t.onAccent, fontSize: fs.base, fontWeight: '700' }}>
+          <Text style={{ color: busy ? ios.label : draft.trim() ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
             {busy ? '■' : '↑'}
           </Text>
         </Pressable>
@@ -281,89 +283,69 @@ export default function ChatScreen({
   );
 }
 
-function makeStyles(t: Theme) {
+function makeStyles(ios: IOS) {
   return StyleSheet.create({
-    list: { padding: space[4], paddingBottom: space[5], gap: space[3] },
+    list: { padding: metrics.margin, paddingBottom: 24, gap: 8 },
+    // iMessage geometry: 18pt radius, a squared corner on the sender's side, 17pt body.
     bubbleUser: {
       alignSelf: 'flex-end',
-      maxWidth: '85%',
-      backgroundColor: t.accent,
-      borderRadius: radius.lg,
-      borderBottomRightRadius: radius.sm,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
+      maxWidth: '78%',
+      backgroundColor: ios.tint,
+      borderRadius: 18,
+      borderBottomRightRadius: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
     },
-    userText: { color: t.onAccent, fontSize: fs.body, lineHeight: 22 },
-    samWrap: { alignSelf: 'flex-start', maxWidth: '92%', gap: space[1] },
+    userText: { ...iosType.body, color: ios.onTint, lineHeight: 22 },
+    samWrap: { alignSelf: 'flex-start', maxWidth: '86%', gap: 3 },
     bubbleSam: {
       alignSelf: 'flex-start',
       maxWidth: '100%',
-      backgroundColor: t.surface,
-      borderRadius: radius.lg,
-      borderBottomLeftRadius: radius.sm,
-      borderWidth: 1,
-      borderColor: t.border,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
+      backgroundColor: ios.card,
+      borderRadius: 18,
+      borderBottomLeftRadius: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
     },
-    samText: { color: t.text, fontSize: fs.body, lineHeight: 22 },
-    inlineCode: { fontFamily: 'Menlo', fontSize: fs.sm, color: t.accentText },
+    samText: { ...iosType.body, color: ios.label, lineHeight: 22 },
+    inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tint },
     codeblock: {
-      backgroundColor: t.bg,
-      borderWidth: 1,
-      borderColor: t.border,
-      borderRadius: radius.sm,
-      padding: space[3],
-      marginTop: space[2],
+      backgroundColor: ios.groupedBg,
+      borderRadius: 8,
+      padding: 10,
+      marginTop: 6,
     },
-    codeblockText: { fontFamily: 'Menlo', fontSize: fs.caption, color: t.text, lineHeight: 18 },
-    route: { color: t.muted, fontSize: fs.micro, paddingLeft: space[2] },
-    error: { color: t.danger, fontSize: fs.sm, textAlign: 'center', paddingTop: space[2] },
+    codeblockText: { fontFamily: 'Menlo', fontSize: 13, color: ios.label, lineHeight: 18 },
+    route: { ...iosType.caption, color: ios.secondaryLabel, paddingLeft: 6 },
+    error: { ...iosType.footnote, color: ios.destructive, textAlign: 'center', paddingTop: 8 },
     composer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: space[2],
-      paddingHorizontal: space[4],
-      paddingTop: space[2],
-      paddingBottom: space[3],
-      borderTopWidth: 1,
-      borderTopColor: t.border,
-      backgroundColor: t.bg,
+      gap: 8,
+      paddingHorizontal: metrics.margin,
+      paddingTop: 6,
+      paddingBottom: 8,
+      borderTopWidth: metrics.hairline,
+      borderTopColor: ios.separator,
+      backgroundColor: ios.card,
     },
     input: {
       flex: 1,
       maxHeight: 120,
-      minHeight: 44,
-      color: t.text,
-      fontSize: fs.body,
-      backgroundColor: t.surface,
-      borderWidth: 1,
-      borderColor: t.border,
-      borderRadius: radius.xl,
-      paddingHorizontal: space[4],
-      paddingTop: 12,
-      paddingBottom: 12,
+      minHeight: 36,
+      ...iosType.body,
+      color: ios.label,
+      backgroundColor: ios.groupedBg,
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingTop: 8,
+      paddingBottom: 8,
     },
-    plus: {
-      width: 38,
-      height: 38,
-      borderRadius: radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: t.surface,
-      borderWidth: 1,
-      borderColor: t.border,
-    },
-    plusText: { color: t.text, fontSize: fs.lg, fontWeight: '600', lineHeight: 22 },
-    tierBar: { flexDirection: 'row', gap: space[2], paddingHorizontal: space[4], paddingBottom: space[2] },
-    tierChip: {
-      paddingHorizontal: space[3],
-      paddingVertical: 5,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: t.border,
-    },
-    tierText: { fontSize: fs.micro, fontWeight: '700' },
-    sendBtn: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+    plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    plusText: { fontSize: 26, color: ios.tint, lineHeight: 30, fontWeight: '300' },
+    tierBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6 },
+    tierChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    tierText: { ...iosType.caption, fontWeight: '600' },
+    sendBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   });
 }

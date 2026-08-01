@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
-import { fs, radius, space, type Theme } from './lib/theme';
+import { metrics, type, type IOS } from './lib/ios';
+import { Row, Section } from './ui';
 
 // "ADD TO SAM" — the + in the composer.
 //
@@ -17,23 +18,24 @@ import { fs, radius, space, type Theme } from './lib/theme';
 //     the desktop passkey a phone cannot hold. It works from a real device over the LAN, and
 //     returns 403 from the simulator. Read-only until that difference is deliberate, not a
 //     surprise.
-//   • Approvals (/api/asks) — isTrustedLocal, loopback only. Opening those to paired devices is
-//     a security decision for the operator, not a UI change.
+//   • Approvals (/api/asks) — now reachable, but only for a device the operator gave the
+//     "approve" grant to (69d15bd). Off by default, so it is not listed here as if it were
+//     always available.
 
 type Kind = 'skills' | 'playbooks' | 'schedules' | 'projects' | 'tools';
 
-type Row = { id: string; title: string; sub?: string };
+type Item = { id: string; title: string; sub?: string };
 
-const CATALOGUE: { kind: Kind; label: string; hint: string; glyph: string }[] = [
-  { kind: 'skills', label: 'Skills', hint: 'What SAM is good at', glyph: '◆' },
-  { kind: 'playbooks', label: 'Playbooks', hint: 'Saved runs you can fire', glyph: '▸' },
-  { kind: 'schedules', label: 'Scheduled', hint: 'Things SAM does on a timer', glyph: '◷' },
-  { kind: 'projects', label: 'Projects', hint: 'What SAM is building', glyph: '▣' },
-  { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach', glyph: '⚙' },
+const CATALOGUE: { kind: Kind; label: string; hint: string }[] = [
+  { kind: 'skills', label: 'Skills', hint: 'What SAM is good at' },
+  { kind: 'playbooks', label: 'Playbooks', hint: 'Saved runs you can fire' },
+  { kind: 'schedules', label: 'Scheduled', hint: 'Things SAM does on a timer' },
+  { kind: 'projects', label: 'Projects', hint: 'What SAM is building' },
+  { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach' },
 ];
 
 /** Each endpoint returns a different shape; normalise to one row so the list stays dumb. */
-function toRows(kind: Kind, body: any): Row[] {
+function toRows(kind: Kind, body: any): Item[] {
   const arr = Array.isArray(body) ? body : body?.[kind] || body?.items || [];
   if (!Array.isArray(arr)) return [];
   return arr.slice(0, 60).map((x: any, i: number) => ({
@@ -51,19 +53,18 @@ function toRows(kind: Kind, body: any): Row[] {
 }
 
 export default function AddSheet({
-  t,
+  ios,
   visible,
   onClose,
   onPick,
 }: {
-  t: Theme;
+  ios: IOS;
   visible: boolean;
   onClose: () => void;
   onPick: (text: string) => void;
 }) {
-  const s = useMemo(() => makeStyles(t), [t]);
   const [open, setOpen] = useState<Kind | null>(null);
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [rows, setRows] = useState<Item[] | null>(null);
   const [error, setError] = useState('');
 
   // Reset every time the sheet closes, so reopening never shows the previous list for a
@@ -90,111 +91,85 @@ export default function AddSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={s.backdrop} onPress={onClose} />
-      <View style={s.sheet}>
-        <View style={s.grabber} />
-        <View style={s.head}>
-          <Pressable onPress={open ? () => setOpen(null) : onClose} hitSlop={10} style={s.headBtn}>
-            <Text style={s.headBtnText}>{open ? '‹' : '✕'}</Text>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          maxHeight: '80%',
+          backgroundColor: ios.groupedBg,
+          borderTopLeftRadius: 12,
+          borderTopRightRadius: 12,
+          paddingBottom: 34,
+        }}
+      >
+        {/* iOS sheet grabber, then a nav bar: leading action, centred title, hairline. */}
+        <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: ios.separator, marginTop: 6 }} />
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 44,
+            paddingHorizontal: metrics.margin,
+            borderBottomWidth: metrics.hairline,
+            borderBottomColor: ios.separator,
+          }}
+        >
+          <Pressable onPress={open ? () => setOpen(null) : onClose} hitSlop={10} style={{ minWidth: 70 }}>
+            <Text style={[type.body, { color: ios.tint }]}>{open ? '‹ Back' : 'Cancel'}</Text>
           </Pressable>
-          <Text style={s.title}>
+          <Text style={[type.headline, { color: ios.label, flex: 1, textAlign: 'center' }]}>
             {open ? CATALOGUE.find((c) => c.kind === open)?.label : 'Add to SAM'}
           </Text>
-          <View style={s.headBtn} />
+          <View style={{ minWidth: 70 }} />
         </View>
 
-        <ScrollView contentContainerStyle={s.body}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           {!open ? (
-            CATALOGUE.map((c) => (
-              <Pressable
-                key={c.kind}
-                onPress={() => load(c.kind)}
-                style={({ pressed }) => [s.row, pressed && { backgroundColor: t.accentSoft }]}
-              >
-                <Text style={s.glyph}>{c.glyph}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowTitle}>{c.label}</Text>
-                  <Text style={s.rowSub}>{c.hint}</Text>
-                </View>
-                <Text style={s.chev}>›</Text>
-              </Pressable>
-            ))
+            <Section ios={ios} footer="Picking one drops its name into the message box. Nothing runs until you send it.">
+              {CATALOGUE.map((c, i) => (
+                <Row
+                  key={c.kind}
+                  ios={ios}
+                  title={c.label}
+                  subtitle={c.hint}
+                  chevron
+                  onPress={() => load(c.kind)}
+                  last={i === CATALOGUE.length - 1}
+                />
+              ))}
+            </Section>
           ) : rows === null ? (
-            <ActivityIndicator color={t.accent} style={{ marginVertical: space[5] }} />
+            <ActivityIndicator color={ios.tint} style={{ marginVertical: 32 }} />
           ) : error ? (
-            <Text style={s.error}>{error}</Text>
+            <Section ios={ios}>
+              <Row ios={ios} title={error} destructive last />
+            </Section>
           ) : rows.length === 0 ? (
-            <Text style={s.empty}>Nothing here yet.</Text>
+            <Section ios={ios}>
+              <Row ios={ios} title="Nothing here yet" last />
+            </Section>
           ) : (
-            rows.map((r) => (
-              <Pressable
-                key={r.id}
-                // Picking drops the name into the composer rather than firing anything. The
-                // phone should never silently start work on the operator's machine — you say
-                // what you want and send it, same as every other message.
-                onPress={() => {
-                  onPick(r.title);
-                  onClose();
-                }}
-                style={({ pressed }) => [s.row, pressed && { backgroundColor: t.accentSoft }]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowTitle}>{r.title}</Text>
-                  {r.sub ? (
-                    <Text style={s.rowSub} numberOfLines={1}>
-                      {r.sub}
-                    </Text>
-                  ) : null}
-                </View>
-              </Pressable>
-            ))
+            <Section ios={ios}>
+              {rows.map((r, i) => (
+                <Row
+                  key={r.id}
+                  ios={ios}
+                  title={r.title}
+                  subtitle={r.sub}
+                  onPress={() => {
+                    onPick(r.title);
+                    onClose();
+                  }}
+                  last={i === rows.length - 1}
+                />
+              ))}
+            </Section>
           )}
         </ScrollView>
       </View>
     </Modal>
   );
-}
-
-function makeStyles(t: Theme) {
-  return StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,.35)' },
-    sheet: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      maxHeight: '78%',
-      backgroundColor: t.surface,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      paddingBottom: space[6],
-    },
-    grabber: {
-      alignSelf: 'center',
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: t.borderStrong,
-      marginTop: space[2],
-    },
-    head: { flexDirection: 'row', alignItems: 'center', padding: space[3] },
-    headBtn: { width: 40, alignItems: 'center' },
-    headBtnText: { color: t.text, fontSize: fs.xl, fontWeight: '600' },
-    title: { flex: 1, textAlign: 'center', color: t.text, fontSize: fs.lg, fontWeight: '700' },
-    body: { paddingHorizontal: space[3] },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[3],
-      paddingVertical: 14,
-      paddingHorizontal: space[3],
-      borderRadius: radius.md,
-    },
-    glyph: { color: t.accentText, fontSize: fs.lg, width: 24, textAlign: 'center' },
-    rowTitle: { color: t.text, fontSize: fs.body, fontWeight: '600' },
-    rowSub: { color: t.muted, fontSize: fs.caption, marginTop: 2 },
-    chev: { color: t.muted, fontSize: fs.lg },
-    empty: { color: t.muted, fontSize: fs.sm, textAlign: 'center', paddingVertical: space[5] },
-    error: { color: t.danger, fontSize: fs.sm, textAlign: 'center', paddingVertical: space[5] },
-  });
 }

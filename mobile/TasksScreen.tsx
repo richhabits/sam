@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { api } from './lib/api';
-import { fs, radius, space, type Theme } from './lib/theme';
+import { metrics, type, type IOS } from './lib/ios';
+import { Row, Screen, Section } from './ui';
 
-// THE TASKS SURFACE — every job SAM has run, in your pocket.
+// THE TASKS SURFACE — every job SAM has run, as a native grouped list.
 //
 // Reads the same /api/yard the desk's TasksView reads, so the two never disagree about what
-// happened. Read-only on purpose for now: starting work from a phone means running commands
-// on the operator's machine, and the yard's own door (isYardTrusted, server/http-guards.ts)
-// is deliberately stricter than "this device is paired". Showing state is not that.
+// happened. Read-only from the simulator by design: assigning work is isYardTrusted, which on
+// loopback wants the desktop passkey a phone cannot hold (a real device over the LAN is a
+// paired session and passes).
 
 type Job = {
   id: string;
@@ -42,7 +43,7 @@ function titleFor(j: Job): string {
     case 'project.create':
       return `Create: ${p.name || j.id}`;
     case 'project.edit':
-      return `Edit ${p.slug || j.project || 'project'}: ${String(p.what || '').slice(0, 40)}`;
+      return `Edit ${p.slug || j.project || 'project'}`;
     case 'project.deploy':
       return `Deploy ${p.slug || j.project || j.id}`;
     default:
@@ -50,11 +51,9 @@ function titleFor(j: Job): string {
   }
 }
 
-export default function TasksScreen({ t, onNeedsPairing }: { t: Theme; onNeedsPairing: () => void }) {
-  const s = useMemo(() => makeStyles(t), [t]);
+export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeedsPairing: () => void }) {
   const [yard, setYard] = useState<Yard | null>(null);
   const [error, setError] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -70,124 +69,83 @@ export default function TasksScreen({ t, onNeedsPairing }: { t: Theme; onNeedsPa
     load();
   }, [load]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
-
   const tone = (state: Job['state']) =>
-    state === 'done' ? t.ok : state === 'failed' ? t.danger : state === 'running' ? t.accent : t.muted;
+    state === 'done'
+      ? ios.green
+      : state === 'failed'
+        ? ios.destructive
+        : state === 'running'
+          ? ios.tint
+          : ios.secondaryLabel;
 
   if (!yard && !error) {
     return (
-      <View style={s.center}>
-        <ActivityIndicator color={t.accent} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: ios.groupedBg }}>
+        <ActivityIndicator color={ios.tint} />
       </View>
     );
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={s.list}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />}
-    >
-      {error ? <Text style={s.error}>{error}</Text> : null}
+    <Screen ios={ios} title="Tasks">
+      {error ? (
+        <Section ios={ios}>
+          <Row ios={ios} title={error} destructive last />
+        </Section>
+      ) : null}
 
       {yard && !yard.on ? (
-        <View style={s.empty}>
-          <Text style={s.emptyTitle}>The yard is off</Text>
-          <Text style={s.emptySub}>Turn it on from SAM on your Mac and jobs will appear here.</Text>
-        </View>
+        <Section ios={ios} footer="Turn the yard on from SAM on your Mac and jobs will appear here.">
+          <Row ios={ios} title="The yard is off" last />
+        </Section>
       ) : null}
 
       {yard?.on ? (
         <>
-          <View style={s.counts}>
-            {([
-              ['Running', yard.running, t.accent],
-              ['Queued', yard.queued, t.muted],
-              ['Failed', yard.failed, t.danger],
-              ['Done', yard.done, t.ok],
-            ] as const).map(([label, n, c]) => (
-              <View key={label} style={s.count}>
-                <Text style={[s.countN, { color: c }]}>{n}</Text>
-                <Text style={s.countLabel}>{label}</Text>
-              </View>
-            ))}
-          </View>
+          <Section ios={ios} header="Now">
+            <Row ios={ios} title="Running" value={String(yard.running)} />
+            <Row ios={ios} title="Queued" value={String(yard.queued)} />
+            <Row ios={ios} title="Failed" value={String(yard.failed)} />
+            <Row ios={ios} title="Done" value={String(yard.done)} last />
+          </Section>
 
           {yard.meter ? (
-            <Text style={s.meter}>
-              Today {yard.meter.todayTokens ?? 0} · This week {yard.meter.weekTokens ?? 0} tokens
-            </Text>
+            <Section
+              ios={ios}
+              header="Cost"
+              footer="SAM routes to a free or local brain first — this is what everything actually cost."
+            >
+              <Row ios={ios} title="Today" value={`${yard.meter.todayTokens ?? 0} tokens`} />
+              <Row ios={ios} title="This week" value={`${yard.meter.weekTokens ?? 0} tokens`} last />
+            </Section>
           ) : null}
 
-          {!yard.recent?.length ? (
-            <View style={s.empty}>
-              <Text style={s.emptyTitle}>Nothing has run yet</Text>
-              <Text style={s.emptySub}>Jobs you start on the Mac show up here.</Text>
-            </View>
-          ) : (
-            yard.recent.map((j) => (
-              <View key={j.id} style={s.job}>
-                <View style={s.jobHead}>
-                  <Text style={[s.state, { color: tone(j.state) }]}>{j.state}</Text>
-                  <Text style={s.jobTitle} numberOfLines={1}>
-                    {titleFor(j)}
-                  </Text>
-                </View>
-                <Text style={s.jobMeta}>
-                  {new Date(j.createdAt).toLocaleString()}
-                  {j.costTokens ? ` · ${j.costTokens} tokens` : ''}
-                </Text>
-                {j.lastError ? (
-                  <Text style={s.jobError} numberOfLines={2}>
-                    {j.lastError}
-                  </Text>
-                ) : null}
-              </View>
-            ))
-          )}
+          <Section ios={ios} header="Recent">
+            {!yard.recent?.length ? (
+              <Row ios={ios} title="Nothing has run yet" last />
+            ) : (
+              yard.recent.map((j, i) => (
+                <Row
+                  key={j.id}
+                  ios={ios}
+                  title={titleFor(j)}
+                  subtitle={`${new Date(j.createdAt).toLocaleString()}${j.costTokens ? ` · ${j.costTokens} tokens` : ''}${
+                    j.lastError ? ` · ${j.lastError}` : ''
+                  }`}
+                  accessory={
+                    <Text style={[type.footnote, { color: tone(j.state), fontWeight: '600', marginLeft: 8 }]}>
+                      {j.state}
+                    </Text>
+                  }
+                  last={i === yard.recent.length - 1}
+                />
+              ))
+            )}
+          </Section>
         </>
       ) : null}
-    </ScrollView>
-  );
-}
 
-function makeStyles(t: Theme) {
-  return StyleSheet.create({
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    list: { padding: space[4], gap: space[3], paddingBottom: space[6] },
-    counts: { flexDirection: 'row', gap: space[2] },
-    count: {
-      flex: 1,
-      backgroundColor: t.surface,
-      borderWidth: 1,
-      borderColor: t.border,
-      borderRadius: radius.md,
-      paddingVertical: space[3],
-      alignItems: 'center',
-    },
-    countN: { fontSize: fs.xl, fontWeight: '800' },
-    countLabel: { color: t.muted, fontSize: fs.micro, marginTop: 2 },
-    meter: { color: t.muted, fontSize: fs.caption, paddingHorizontal: space[1] },
-    job: {
-      backgroundColor: t.surface,
-      borderWidth: 1,
-      borderColor: t.border,
-      borderRadius: radius.md,
-      padding: space[4],
-      gap: space[1],
-    },
-    jobHead: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
-    state: { fontSize: fs.micro, fontWeight: '800', textTransform: 'uppercase' },
-    jobTitle: { flex: 1, color: t.text, fontSize: fs.md, fontWeight: '700' },
-    jobMeta: { color: t.muted, fontSize: fs.caption },
-    jobError: { color: t.danger, fontSize: fs.caption },
-    empty: { alignItems: 'center', paddingVertical: space[6], gap: space[2] },
-    emptyTitle: { color: t.text, fontSize: fs.lg, fontWeight: '700' },
-    emptySub: { color: t.muted, fontSize: fs.sm, textAlign: 'center' },
-    error: { color: t.danger, fontSize: fs.sm, textAlign: 'center' },
-  });
+      <View style={{ height: metrics.margin }} />
+    </Screen>
+  );
 }

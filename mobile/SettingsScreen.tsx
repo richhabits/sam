@@ -1,42 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { fs, radius, space, type Theme } from './lib/theme';
+import { type, type IOS } from './lib/ios';
+import { Row, Screen, Section } from './ui';
 
-// SETTINGS — what used to be the whole app.
-//
-// Connection, the device registry, notifications and "forget this device" are all things you
-// touch once and then never again, so they belong behind the ••• rather than in front of the
-// thing you open the app to do. Same content as before, moved.
+// Settings, as iOS does settings: grouped inset sections with headers and footers, not one
+// hand-built card. The footers are where the honest detail goes — a native app explains a
+// toggle underneath it rather than hiding the explanation somewhere else.
 
 type Device = { id: string; label: string; lastSeen: number };
 
-export default function SettingsScreen({
-  t,
-  onForgotten,
-  onClose,
-}: {
-  t: Theme;
-  onForgotten: () => void;
-  onClose?: () => void;
-}) {
-  const s = useMemo(() => makeStyles(t), [t]);
+export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgotten: () => void }) {
   const [host, setHost] = useState('');
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [sound, setSound] = useState(true);
   const [notifyStatus, setNotifyStatus] = useState('');
   const [error, setError] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,166 +35,84 @@ export default function SettingsScreen({
     ensurePermission().then(setNotifyStatus);
   }, [load]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
-
   const toggleSound = useCallback(async (on: boolean) => {
     setSound(on);
     await setSoundEnabled(on);
   }, []);
 
-  const doForget = useCallback(async () => {
-    await forgetDevice();
-    onForgotten();
-  }, [onForgotten]);
-
   return (
-    <ScrollView
-      contentContainerStyle={s.scroll}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />}
-    >
-      {/* Without this the segmented control shows NEITHER tab selected and there is no way
-          back — which reads, correctly, as "the app is empty". A screen you can be stranded
-          on is a bug, not a layout. */}
-      <View style={s.titleRow}>
-        <Text style={s.screenTitle}>Settings</Text>
-        {onClose ? (
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Text style={s.done}>Done</Text>
-          </Pressable>
-        ) : null}
-      </View>
+    <Screen ios={ios} title="Settings">
+      <Section ios={ios} header="Connection" footer={error || undefined}>
+        <Row ios={ios} title="SAM" value={host.replace(/^https?:\/\//, '') || '—'} last />
+      </Section>
 
-      <View style={s.card}>
-        <View style={s.pill}>
-          <View style={s.dot} />
-          <Text style={s.pillText}>Connected</Text>
-        </View>
-        <Text style={s.hostText}>{host.replace(/^https?:\/\//, '')}</Text>
-
-        {error ? <Text style={s.error}>{error}</Text> : null}
-
-        <Text style={s.label}>DEVICES ON THIS SAM</Text>
+      <Section
+        ios={ios}
+        header="Devices on this SAM"
+        footer="Every browser and phone that has paired. Revoke one from SAM on your Mac."
+      >
         {devices === null ? (
-          <ActivityIndicator color={t.accent} style={{ marginVertical: space[4] }} />
+          <View style={{ padding: 20 }}>
+            <ActivityIndicator color={ios.tint} />
+          </View>
         ) : devices.length === 0 ? (
-          <Text style={s.sub}>No devices listed.</Text>
+          <Row ios={ios} title="No devices" last />
         ) : (
-          devices.map((d) => (
-            <View key={d.id} style={s.device}>
-              <Text style={s.deviceLabel}>{d.label}</Text>
-              <Text style={s.deviceMeta}>{new Date(d.lastSeen).toLocaleString()}</Text>
-            </View>
+          devices.map((d, i) => (
+            <Row
+              key={d.id}
+              ios={ios}
+              title={d.label}
+              subtitle={new Date(d.lastSeen).toLocaleString()}
+              last={i === devices.length - 1}
+            />
           ))
         )}
+      </Section>
 
-        <Text style={s.label}>NOTIFICATIONS</Text>
-        <View style={s.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.rowLabel}>Sound</Text>
-            <Text style={s.rowMeta}>
-              {notifyStatus === 'granted'
-                ? 'SAM can reach this phone.'
-                : notifyStatus
-                  ? `Permission: ${notifyStatus} — enable it in iOS Settings.`
-                  : 'Checking…'}
-            </Text>
-          </View>
-          <Switch value={sound} onValueChange={toggleSound} trackColor={{ true: t.accent, false: t.borderStrong }} />
-        </View>
-        <Pressable
+      <Section
+        ios={ios}
+        header="Notifications"
+        footer={
+          notifyStatus === 'granted'
+            ? 'SAM can reach this phone. Every notification is redacted before it renders — a lock screen is a public surface.'
+            : notifyStatus
+              ? `Permission: ${notifyStatus} — enable it in iOS Settings.`
+              : 'Checking…'
+        }
+      >
+        <Row
+          ios={ios}
+          title="Sound"
+          accessory={<Switch value={sound} onValueChange={toggleSound} trackColor={{ true: ios.green, false: undefined }} />}
+        />
+        <Row
+          ios={ios}
+          title="Send a test notification"
           onPress={() => notify('SAM', 'Test notification — this is what a task finishing looks like.')}
-          style={({ pressed }) => [s.testBtn, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text style={s.testBtnText}>Send a test notification</Text>
-        </Pressable>
+          last
+        />
+      </Section>
 
-        <Pressable
-          onPress={doForget}
-          style={({ pressed }) => [s.forget, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
-        >
-          <Text style={s.forgetText}>Forget this device</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+      <Section
+        ios={ios}
+        footer="Forgetting removes this phone's token from its Keychain. Nothing on your Mac changes — revoke there to close the session properly."
+      >
+        <Row
+          ios={ios}
+          title="Forget this device"
+          destructive
+          onPress={async () => {
+            await forgetDevice();
+            onForgotten();
+          }}
+          last
+        />
+      </Section>
+
+      <Text style={[type.caption, { color: ios.tertiaryLabel, textAlign: 'center', marginTop: 24 }]}>
+        S.A.M. · Smart Artificial Mind
+      </Text>
+    </Screen>
   );
-}
-
-function makeStyles(t: Theme) {
-  return StyleSheet.create({
-    scroll: { padding: space[4], paddingBottom: space[6] },
-    titleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: space[3],
-    },
-    screenTitle: { color: t.text, fontSize: fs.xl, fontWeight: '800' },
-    done: { color: t.accentText, fontSize: fs.body, fontWeight: '700' },
-    card: {
-      backgroundColor: t.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: t.border,
-      padding: space[5],
-    },
-    pill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[2],
-      alignSelf: 'flex-start',
-      backgroundColor: t.accentSoft,
-      borderRadius: radius.pill,
-      paddingHorizontal: space[3],
-      paddingVertical: 6,
-    },
-    pillText: { fontSize: fs.caption, fontWeight: '700', color: t.accentText, letterSpacing: 0.5 },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: t.ok },
-    hostText: { fontSize: fs.lg, color: t.text, fontWeight: '600', marginTop: space[3] },
-    sub: { fontSize: fs.body, color: t.muted, lineHeight: 22, marginTop: space[2] },
-    label: {
-      fontSize: fs.micro,
-      fontWeight: '700',
-      letterSpacing: 1,
-      color: t.muted,
-      marginTop: space[4],
-      marginBottom: space[2],
-    },
-    device: { borderTopWidth: 1, borderTopColor: t.border, paddingVertical: space[3] },
-    deviceLabel: { fontSize: fs.body, color: t.text, fontWeight: '600' },
-    deviceMeta: { fontSize: fs.caption, color: t.muted, marginTop: 2 },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[3],
-      borderTopWidth: 1,
-      borderTopColor: t.border,
-      paddingVertical: space[3],
-    },
-    rowLabel: { fontSize: fs.body, color: t.text, fontWeight: '600' },
-    rowMeta: { fontSize: fs.caption, color: t.muted, marginTop: 2, lineHeight: 16 },
-    testBtn: { paddingVertical: space[2] },
-    testBtnText: { fontSize: fs.sm, color: t.accentText, fontWeight: '600' },
-    forget: {
-      marginTop: space[4],
-      borderWidth: 1,
-      borderColor: t.border,
-      borderRadius: radius.md,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    forgetText: { color: t.danger, fontSize: fs.base, fontWeight: '700' },
-    error: {
-      color: t.danger,
-      fontSize: fs.sm,
-      marginTop: space[3],
-      backgroundColor: 'rgba(239,68,68,.10)',
-      borderRadius: radius.sm,
-      padding: space[3],
-      overflow: 'hidden',
-    },
-  });
 }
