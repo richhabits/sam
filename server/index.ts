@@ -1102,9 +1102,24 @@ app.get("/api/projects", (_req, res) => res.json(PROJECTS));
 app.get("/api/skills", (_req, res) =>
   res.json(SKILLS.map((s) => ({ id: s.id, name: s.name, tier: s.tier, triggers: s.triggers })))
 );
-app.get("/api/vault/log", (_req, res) => res.json(recentLog(12)));
-app.get("/api/vault/graph", (_req, res) => res.json(buildGraph()));
-app.get("/api/vault/stats", (_req, res) => res.json(vaultStats()));
+// THE VAULT — Romeo's own notes. Same bar as the connectors (canReadPrivate), and for the same
+// reason: these were plain loopback GETs, so any other process on this Mac could read them without
+// knowing a secret. Lower severity than the connectors hole — the log returns note titles and
+// timestamps, stats a count and the vault path, and none of it is a credential — but "it's only
+// metadata" is a judgement about today's payload, not a property of the route. buildGraph in
+// particular walks the whole vault, so what leaks here grows with what Romeo writes down.
+app.get("/api/vault/log", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your notes");
+  res.json(recentLog(12));
+});
+app.get("/api/vault/graph", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your notes");
+  res.json(buildGraph());
+});
+app.get("/api/vault/stats", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your notes");
+  res.json(vaultStats());
+});
 
 app.get("/api/voice/token", async (req, res) => {
   // AUDIT FIX: this GET MINTS a live OpenAI ephemeral credential, but the global gate only
@@ -1539,16 +1554,22 @@ function canApprove(req: any): boolean {
 // other app on the machine — or a supply-chained dependency in any of them — could read this
 // operator's repos, and with the connectors, their Slack messages and Notion pages.
 //
-// Reads of THIRD-PARTY WORKSPACE CONTENT are therefore held to the same bar as a mutation: the
+// Reads of THE OPERATOR'S OWN CONTENT are therefore held to the same bar as a mutation: the
 // desktop app's per-launch passkey, or a session the operator approved by pairing. Every real
-// client already carries one (Electron the passkey, a paired browser the cookie, the phone the
-// same session token as a Bearer), so nothing legitimate loses access.
-function canReadWorkspaces(req: any): boolean {
+// client already carries one (Electron the passkey, a paired browser the pair token or cookie,
+// the phone the same session token as a Bearer), so nothing legitimate loses access.
+//
+// Deliberately NOT named for one kind of content. This started as canReadWorkspaces, covering the
+// third-party connectors, and the vault — Romeo's own notes — sat unguarded beside it because the
+// name made it sound like somebody else's problem. A guard whose name understates its remit is how
+// the last hole survived review; this one is named for the trust bar, so anything private can hide
+// behind it without needing a second, identical function.
+function canReadPrivate(req: any): boolean {
   return isTrustedLocal(req) || isPairedSession(req);
 }
-function denyRead(res: any) {
+function denyRead(res: any, what = "connected services") {
   res.status(401).json({
-    error: "this device isn't paired with SAM — connected services are readable only from the app or a paired device",
+    error: `this device isn't paired with SAM — ${what} are readable only from the app or a paired device`,
     locked: true,
   });
 }
@@ -1563,7 +1584,7 @@ function ghFail(res: any, e: any) {
 }
 
 app.get("/api/github/status", async (req, res) => {
-  if (!canReadWorkspaces(req)) return denyRead(res);
+  if (!canReadPrivate(req)) return denyRead(res);
   try {
     res.json({ connected: true, user: await ghWhoami() });
   } catch (e: any) {
@@ -1573,14 +1594,14 @@ app.get("/api/github/status", async (req, res) => {
 });
 
 app.get("/api/github/repos", async (req, res) => {
-  if (!canReadWorkspaces(req)) return denyRead(res);
+  if (!canReadPrivate(req)) return denyRead(res);
   try {
     res.json({ repos: await ghRepos(Number(req.query.limit) || 30) });
   } catch (e: any) { ghFail(res, e); }
 });
 
 app.get("/api/github/issues", async (req, res) => {
-  if (!canReadWorkspaces(req)) return denyRead(res);
+  if (!canReadPrivate(req)) return denyRead(res);
   try {
     const repo = typeof req.query.repo === "string" && /^[\w.-]+\/[\w.-]+$/.test(req.query.repo) ? req.query.repo : undefined;
     res.json({ issues: await ghIssues(repo, Number(req.query.limit) || 30) });
@@ -1591,7 +1612,7 @@ app.get("/api/github/issues", async (req, res) => {
 // Read-only, same trust as the GitHub routes above: the global middleware already requires a
 // passkey or a paired session, so a paired phone sees its own workspaces and nothing can write.
 app.get("/api/connectors", async (req, res) => {
-  if (!canReadWorkspaces(req)) return denyRead(res);
+  if (!canReadPrivate(req)) return denyRead(res);
   try {
     res.json({ connectors: await connectorStatuses({ refresh: req.query.refresh === "1" }) });
   } catch (e: any) {
@@ -1600,7 +1621,7 @@ app.get("/api/connectors", async (req, res) => {
 });
 
 app.get("/api/connectors/:id/:kind", async (req, res) => {
-  if (!canReadWorkspaces(req)) return denyRead(res);
+  if (!canReadPrivate(req)) return denyRead(res);
   try {
     const param = typeof req.query.param === "string" && req.query.param ? req.query.param : undefined;
     res.json({ rows: await connectorList(req.params.id, req.params.kind, { param, limit: Number(req.query.limit) || 30 }) });

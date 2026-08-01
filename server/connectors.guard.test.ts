@@ -32,28 +32,40 @@ describe("why the global gate was not enough", () => {
 describe("every workspace read is guarded at the route", () => {
   // Source-scanned rather than mocked: the risk is a NEW route being added without the guard,
   // and only reading the file catches that.
-  const routes = [...src.matchAll(/app\.get\("(\/api\/(?:connectors|github)[^"]*)",[^\n]*\n([^\n]*)/g)];
+  const routes = [...src.matchAll(/app\.get\("(\/api\/(?:connectors|github|vault)[^"]*)",[^\n]*\n([^\n]*)/g)];
 
   it("finds the routes at all — a refactor that moves them must fail here, not pass silently", () => {
     const paths = routes.map((m) => m[1]);
     expect(paths).toContain("/api/connectors");
     expect(paths).toContain("/api/connectors/:id/:kind");
     expect(paths).toContain("/api/github/status");
-    expect(paths.length).toBeGreaterThanOrEqual(5);
+    // The vault is Romeo's own notes, not a third-party workspace, and it sat unguarded next to
+    // the connectors precisely because it read as a different category. It is the same bar.
+    expect(paths).toContain("/api/vault/log");
+    expect(paths).toContain("/api/vault/graph");
+    expect(paths).toContain("/api/vault/stats");
+    expect(paths.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("checks canReadWorkspaces on the first line of every one of them", () => {
-    const unguarded = routes.filter((m) => !m[2].includes("canReadWorkspaces")).map((m) => m[1]);
-    expect(unguarded, `these return workspace data to any local process: ${unguarded.join(", ")}`).toEqual([]);
+  it("checks canReadPrivate on the first line of every one of them", () => {
+    const unguarded = routes.filter((m) => !m[2].includes("canReadPrivate")).map((m) => m[1]);
+    expect(unguarded, `these return private data to any local process: ${unguarded.join(", ")}`).toEqual([]);
   });
 
   it("accepts the desktop passkey OR a paired session, and nothing else", () => {
     // Both doors are needed and neither is optional: Electron carries the passkey, a paired
-    // browser carries the cookie, the phone carries the same session token as a Bearer. Dropping
-    // either one locks out a real client; adding a third (e.g. plain isLoopback) reopens the hole.
-    const fn = src.slice(src.indexOf("function canReadWorkspaces"), src.indexOf("function denyRead"));
+    // browser carries the pair token or cookie, the phone carries the same session token as a
+    // Bearer. Dropping either one locks out a real client; adding a third (e.g. plain isLoopback)
+    // reopens the hole.
+    const fn = src.slice(src.indexOf("function canReadPrivate"), src.indexOf("function denyRead"));
     expect(fn).toContain("isTrustedLocal(req)");
     expect(fn).toContain("isPairedSession(req)");
     expect(fn).not.toMatch(/\bisLoopback\(req\)/);
+  });
+
+  it("leaves no canReadWorkspaces behind — one bar, one name", () => {
+    // The old name covered only the connectors, which is how the vault stayed unguarded beside it.
+    // If a merge or a revert reintroduces it, two near-identical guards start drifting apart.
+    expect(src).not.toContain("function canReadWorkspaces");
   });
 });
