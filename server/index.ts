@@ -1528,9 +1528,32 @@ function canApprove(req: any): boolean {
   return hasGrant(sessionIdFromToken(sessionTokenFromRequest(req)), "approve");
 }
 
-// GITHUB — read-only. Same trust as the other read surfaces (the global middleware already
-// requires a passkey or a paired session), so a paired phone can see its own repos and the
-// issues waiting on it. Nothing here writes to a repo; see server/github.ts for why.
+// ── WHO MAY READ YOUR WORKSPACES ─────────────────────────────
+// 4e7f307 claimed "the global middleware already requires a passkey or a paired session". IT DOES
+// NOT, for these: passkeyRequiredForMutation() returns false for GET (see server/http-guards.ts),
+// so the Handshake gate never ran on a read. Verified by curling /api/connectors and
+// /api/github/status with NO credential at all and getting the GitHub account back.
+//
+// That is exactly the hole server/handshake.ts was written against, in its own words: "a control
+// channel that trusts callers by network position alone can be driven by any local process". Any
+// other app on the machine — or a supply-chained dependency in any of them — could read this
+// operator's repos, and with the connectors, their Slack messages and Notion pages.
+//
+// Reads of THIRD-PARTY WORKSPACE CONTENT are therefore held to the same bar as a mutation: the
+// desktop app's per-launch passkey, or a session the operator approved by pairing. Every real
+// client already carries one (Electron the passkey, a paired browser the cookie, the phone the
+// same session token as a Bearer), so nothing legitimate loses access.
+function canReadWorkspaces(req: any): boolean {
+  return isTrustedLocal(req) || isPairedSession(req);
+}
+function denyRead(res: any) {
+  res.status(401).json({
+    error: "this device isn't paired with SAM — connected services are readable only from the app or a paired device",
+    locked: true,
+  });
+}
+
+// GITHUB — read-only. Nothing here writes to a repo; see server/github.ts for why.
 function ghFail(res: any, e: any) {
   const status = e instanceof GitHubError ? e.status : 502;
   // 401 here means "no token / bad token", which the UI renders as connect-GitHub rather
@@ -1539,7 +1562,8 @@ function ghFail(res: any, e: any) {
   res.status(status).json({ error: e?.message || "GitHub request failed", needsToken: status === 401 });
 }
 
-app.get("/api/github/status", async (_req, res) => {
+app.get("/api/github/status", async (req, res) => {
+  if (!canReadWorkspaces(req)) return denyRead(res);
   try {
     res.json({ connected: true, user: await ghWhoami() });
   } catch (e: any) {
@@ -1549,12 +1573,14 @@ app.get("/api/github/status", async (_req, res) => {
 });
 
 app.get("/api/github/repos", async (req, res) => {
+  if (!canReadWorkspaces(req)) return denyRead(res);
   try {
     res.json({ repos: await ghRepos(Number(req.query.limit) || 30) });
   } catch (e: any) { ghFail(res, e); }
 });
 
 app.get("/api/github/issues", async (req, res) => {
+  if (!canReadWorkspaces(req)) return denyRead(res);
   try {
     const repo = typeof req.query.repo === "string" && /^[\w.-]+\/[\w.-]+$/.test(req.query.repo) ? req.query.repo : undefined;
     res.json({ issues: await ghIssues(repo, Number(req.query.limit) || 30) });
@@ -1565,6 +1591,7 @@ app.get("/api/github/issues", async (req, res) => {
 // Read-only, same trust as the GitHub routes above: the global middleware already requires a
 // passkey or a paired session, so a paired phone sees its own workspaces and nothing can write.
 app.get("/api/connectors", async (req, res) => {
+  if (!canReadWorkspaces(req)) return denyRead(res);
   try {
     res.json({ connectors: await connectorStatuses({ refresh: req.query.refresh === "1" }) });
   } catch (e: any) {
@@ -1573,6 +1600,7 @@ app.get("/api/connectors", async (req, res) => {
 });
 
 app.get("/api/connectors/:id/:kind", async (req, res) => {
+  if (!canReadWorkspaces(req)) return denyRead(res);
   try {
     const param = typeof req.query.param === "string" && req.query.param ? req.query.param : undefined;
     res.json({ rows: await connectorList(req.params.id, req.params.kind, { param, limit: Number(req.query.limit) || 30 }) });
