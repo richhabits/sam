@@ -410,3 +410,33 @@ export const yardPreviewUrl = (slug: string) => `/api/yard/preview/${encodeURICo
 // the whole path — encoding "/" itself would break the route's wildcard match.
 export const yardFileUrl = (slug: string, path: string) =>
   yardPreviewUrl(slug) + String(path).split("/").map(encodeURIComponent).join("/");
+
+// ── CONNECTORS — the services SAM reads (GitHub, Slack, Notion, Linear, Vercel) ──
+// Every list answers the same { rows } shape, so this client is four lines and the pane that
+// uses it has no per-service branches at all.
+export interface ConnectorList { kind: string; label: string; hint: string; param?: string; drill?: string }
+export interface ConnectorStatus {
+  id: string; label: string; note: string; url: string; configKey?: string;
+  connected: boolean;
+  /** The one failure a paste can fix. An outage sets `error` and leaves this false. */
+  needsToken: boolean;
+  detail?: string; error?: string;
+  lists: ConnectorList[];
+}
+export interface ConnectorRow { id: string; title: string; sub?: string; url?: string }
+
+export const getConnectors = (refresh = false) =>
+  fetch(`/api/connectors${refresh ? "?refresh=1" : ""}`)
+    .then((r) => r.json())
+    .then((j) => (j?.connectors || []) as ConnectorStatus[]);
+
+// Surfaces the server's own sentence — "that Slack token was rejected" and "Slack did not answer
+// in time" send the operator to different places, and a generic "failed to load" sends them nowhere.
+export const getConnectorRows = (id: string, kind: string, param?: string) => {
+  const q = param ? `?param=${encodeURIComponent(param)}` : "";
+  return fetch(`/api/connectors/${encodeURIComponent(id)}/${encodeURIComponent(kind)}${q}`).then(async (r) => {
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error || `could not read ${id}`);
+    return (j?.rows || []) as ConnectorRow[];
+  });
+};

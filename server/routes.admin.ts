@@ -1,11 +1,12 @@
 import type { Express } from "express";
-import { writeEnv } from "./env-file.ts";
 import { isElonMode, setElonMode } from "./authz.ts";
+import { forgetStatuses as forgetConnectorStatuses } from "./connectors.ts";
+import { writeEnv } from "./env-file.ts";
 import { isLoopback } from "./http-guards.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { keyStatus, poolSize, setPool } from "./keys.ts";
 import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts";
-import { GATEWAY_URL, deviceId, type Tier } from "./models.ts";
+import { deviceId, GATEWAY_URL, type Tier } from "./models.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
 
 // ADMIN — manage API keys & config from inside the app. Every write here is loopback-gated:
@@ -27,6 +28,9 @@ export function registerAdminRoutes(app: Express) {
     notion: "NOTION_API_KEY", slack: "SLACK_BOT_TOKEN",
     discord: "DISCORD_WEBHOOK_URL", twitter: "TWITTER_BEARER_TOKEN", slackChannel: "SLACK_CHANNEL",
     linear: "LINEAR_API_KEY", linearTeam: "LINEAR_TEAM_ID",
+    // The yard already deploys with VERCEL_TOKEN but there was nowhere to paste it except a text
+    // editor — and it is now also what the Vercel connector reads.
+    vercel: "VERCEL_TOKEN",
     // SAM's own email (SMTP) — set from Settings, saved to .env
     smtpHost: "SMTP_HOST", smtpPort: "SMTP_PORT", smtpUser: "SMTP_USER",
     smtpPass: "SMTP_PASS", smtpFrom: "SMTP_FROM", ownerEmail: "SAM_OWNER_EMAIL",
@@ -50,6 +54,7 @@ export function registerAdminRoutes(app: Express) {
       twitter: !!process.env.TWITTER_BEARER_TOKEN,
       linear: !!process.env.LINEAR_API_KEY,
       linearTeam: process.env.LINEAR_TEAM_ID || "",
+      vercel: !!process.env.VERCEL_TOKEN,
       // Apple signing (owner) — non-secret fields + whether the app-specific password is set
       media: { pexels: !!process.env.PEXELS_API_KEY, pixabay: !!process.env.PIXABAY_API_KEY, giphy: !!process.env.GIPHY_API_KEY, tmdb: !!process.env.TMDB_API_KEY, omdb: !!process.env.OMDB_API_KEY },
       apple: {
@@ -114,6 +119,8 @@ export function registerAdminRoutes(app: Express) {
     const list = (Array.isArray(keys) ? keys : String(keys || "").split(/[\n,]/)).map((k) => k.trim()).filter(Boolean);
     writeEnv(envVar, list.join(","));
     const count = setPool(provider, list);
+    forgetConnectorStatuses();   // the GitHub connector reads this pool
+
     res.json({ ok: true, provider, keys: count });
   });
 
@@ -128,6 +135,9 @@ export function registerAdminRoutes(app: Express) {
     if (!envVar) return res.status(400).json({ error: "unknown config key" });
     writeEnv(envVar, String(value || ""));
     if (envVar.startsWith("SMTP_") || envVar === "SAM_OWNER_EMAIL") resetMailer();   // pick up the new email config
+    // Connector status is memoised for 30s; without this, pasting a Slack token and watching the
+    // row still say "not connected" reads as the paste having failed.
+    forgetConnectorStatuses();
     res.json({ ok: true, key });
   });
 

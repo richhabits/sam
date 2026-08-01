@@ -394,6 +394,38 @@ button { font-family: inherit; cursor: pointer; }
 .drawer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .drawer-list li { display: flex; gap: 10px; font-size: 14px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
 
+/* ── CONNECTED — the services SAM reads (ConnectorsPane). Tokens only, so every skin and both
+   themes get it for free; the states borrow the same three colours the Doctor's checks use. ── */
+.drawer.cx { width: min(460px, 94vw); }
+.cx-head-acts { display: flex; align-items: center; gap: var(--space-2); }
+.cx-back { background: none; border: none; color: var(--accent-text); font-size: var(--fs-md); font-weight: 700; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
+.cx-back:hover { background: var(--accent-soft); }
+.cx-list, .cx-rows { display: flex; flex-direction: column; gap: var(--space-3); }
+.cx-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); background: var(--bg); }
+.cx-card.on { background: var(--surface); box-shadow: var(--elev-1); }
+.cx-card-head { display: flex; align-items: center; gap: var(--space-2); }
+.cx-name { font-size: var(--fs-body); font-weight: 700; }
+.cx-state { margin-left: auto; font-size: var(--fs-caption); color: var(--muted); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-state.ok { color: var(--c-ok); } .cx-state.bad { color: var(--c-err); }
+.cx-lists { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3); }
+.cx-open { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); transition: transform .12s var(--ease-spring), border-color .12s ease; }
+.cx-open:hover { border-color: var(--accent); }
+.cx-open:active { transform: scale(.96); }
+.cx-open-name { font-size: var(--fs-md); font-weight: 650; }
+.cx-open-hint { font-size: var(--fs-caption); color: var(--muted); }
+.cx-off { margin-top: var(--space-2); }
+.cx-off-note { font-size: var(--fs-sm); color: var(--text); }
+.cx-off-how { font-size: var(--fs-caption); color: var(--muted); margin-top: var(--space-1); line-height: 1.5; }
+.cx-off-how a { color: var(--accent-text); word-break: break-word; }
+.cx-row { display: flex; align-items: center; gap: var(--space-2); }
+.cx-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); transition: transform .12s var(--ease-spring), border-color .12s ease; }
+.cx-row-main:hover { border-color: var(--accent); }
+.cx-row-main:active { transform: scale(.98); }
+.cx-row-title { font-size: var(--fs-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.cx-row-sub { font-size: var(--fs-caption); color: var(--muted); }
+.cx-err { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--c-err); background: var(--c-err-bg); border-radius: var(--radius-sm); padding: var(--space-3); }
+.cx-empty { font-size: var(--fs-sm); color: var(--muted); padding: var(--space-3); }
+
 .d-msg { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 
 /* "What SAM remembers about you" — grouped learned memory, each item deletable */

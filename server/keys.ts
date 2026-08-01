@@ -11,6 +11,11 @@ function secretVal(name: string): string | undefined {
   return process.env[name] || undefined;
 }
 
+// Secrets that are NOT model keys — a Slack bot token, a Vercel token — need the same
+// Safe-first-then-env order, and there is no reason for each caller to re-derive it (the yard's
+// deploy token already re-derived it once, and a third copy is how the order drifts).
+export function readSecret(name: string): string | null { return secretVal(name) ?? null; }
+
 interface KeyState { key: string; uses: number; failures: number; cooldownUntil: number; }
 
 class KeyPool {

@@ -58,6 +58,7 @@ import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { mintPairingCode, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
 import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
+import { list as connectorList, normalize as normalizeConnectorError, statuses as connectorStatuses } from "./connectors.ts";
 import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
@@ -1558,6 +1559,28 @@ app.get("/api/github/issues", async (req, res) => {
     const repo = typeof req.query.repo === "string" && /^[\w.-]+\/[\w.-]+$/.test(req.query.repo) ? req.query.repo : undefined;
     res.json({ issues: await ghIssues(repo, Number(req.query.limit) || 30) });
   } catch (e: any) { ghFail(res, e); }
+});
+
+// CONNECTORS — every service SAM reads (GitHub, Slack, Notion, Linear, Vercel) behind one shape.
+// Read-only, same trust as the GitHub routes above: the global middleware already requires a
+// passkey or a paired session, so a paired phone sees its own workspaces and nothing can write.
+app.get("/api/connectors", async (req, res) => {
+  try {
+    res.json({ connectors: await connectorStatuses({ refresh: req.query.refresh === "1" }) });
+  } catch (e: any) {
+    res.status(502).json({ error: e?.message || "could not check connectors" });
+  }
+});
+
+app.get("/api/connectors/:id/:kind", async (req, res) => {
+  try {
+    const param = typeof req.query.param === "string" && req.query.param ? req.query.param : undefined;
+    res.json({ rows: await connectorList(req.params.id, req.params.kind, { param, limit: Number(req.query.limit) || 30 }) });
+  } catch (e: any) {
+    const err = normalizeConnectorError(e);
+    // needsToken separates "connect this" from "this is down" — only one is fixable by pasting.
+    res.status(err.status).json({ error: err.message, needsToken: err.status === 401 });
+  }
 });
 
 app.get("/api/asks", (req, res) => {

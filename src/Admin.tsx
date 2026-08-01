@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import Icon, { type IconName } from "./Icon";
-import { getAdminConfig, saveKeys, saveConfig, getAllowed, setAllow, testEmail, getPhoneLink, enablePhone, regeneratePhone, disablePhone, getMcpPresets, configureMcp, removeMcp, getSigningStatus, genAndroidKeystore } from "./lib/api";
 import QRCode from "qrcode";
+import { useEffect, useState } from "react";
+import Icon, { type IconName } from "./Icon";
+import { configureMcp, disablePhone, enablePhone, genAndroidKeystore, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, regeneratePhone, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
 import { enablePush, pushEnabled } from "./lib/push";
 import { useEscape } from "./lib/useOverlay";
 
@@ -25,7 +25,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   const [saveError, setSaveError] = useState<{ id: string; msg: string } | null>(null);
   const [allowed, setAllowed] = useState<string[]>([]);
   const [showMore, setShowMore] = useState(false);
-  const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: "" });
+  const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", vercel: "", linearTeam: "" });
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
   const [apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
@@ -138,7 +138,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
     if (integrations.twitter) await saveConfig("twitter", integrations.twitter.trim());
     if (integrations.linear) await saveConfig("linear", integrations.linear.trim());
     if (integrations.linearTeam) await saveConfig("linearTeam", integrations.linearTeam.trim());
-    setIntegrations({ notion: "", slack: "", discord: "", twitter: "", linear: "", linearTeam: integrations.linearTeam });
+    if (integrations.vercel) await saveConfig("vercel", integrations.vercel.trim());
+    setIntegrations({ notion: "", slack: "", discord: "", twitter: "", linear: "", vercel: "", linearTeam: integrations.linearTeam });
     flash("integrations");
     refresh();
   }
@@ -286,6 +287,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <input className="admin-input" placeholder={`X (Twitter) Bearer Token ${cfg?.twitter ? "(Saved)" : ""}`} value={integrations.twitter} onChange={(e) => setIntegrations(i => ({...i, twitter: e.target.value}))} />
             <input className="admin-input" placeholder={`Linear API Key ${cfg?.linear ? "(Saved)" : ""}`} value={integrations.linear} onChange={(e) => setIntegrations(i => ({...i, linear: e.target.value}))} />
             <input className="admin-input" placeholder="Linear Team ID" value={integrations.linearTeam} onChange={(e) => setIntegrations(i => ({...i, linearTeam: e.target.value}))} />
+            {/* The yard already deployed with this one; there was just nowhere to paste it. */}
+            <input className="admin-input" placeholder={`Vercel Token ${cfg?.vercel ? "(Saved)" : ""}`} value={integrations.vercel} onChange={(e) => setIntegrations(i => ({...i, vercel: e.target.value}))} />
             <button type="button" className="admin-save" onClick={saveIntegrations} style={{width:"auto", alignSelf:"flex-start"}}>{saved === "integrations" ? "Saved ✓" : "Save Integrations"}</button>
           </div>
         </div>

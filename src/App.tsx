@@ -33,6 +33,7 @@ const StandingPane = lazy(() => import("./StandingPane"));
 const ChimePane = lazy(() => import("./ChimePane"));
 const CameraPane = lazy(() => import("./CameraPane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
+const ConnectorsPane = lazy(() => import("./ConnectorsPane"));
 const TasksView = lazy(() => import("./TasksView"));
 
 interface Profile { name: string; about?: string; language?: string }
@@ -347,6 +348,7 @@ export default function App() {
   const [chimeOpen, setChimeOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -511,7 +513,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); setConnectorsOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1286,6 +1288,7 @@ export default function App() {
               <button type="button" className="pop-opt" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}><Icon name="clock" size={16} /><span className="pop-opt-name">Alarms &amp; Timers</span><span className="pop-opt-sub">Rings anytime</span></button>
               <button type="button" className="pop-opt" onClick={() => { setCameraOpen(true); setSettingsOpen(false); }}><Icon name="camera" size={16} /><span className="pop-opt-name">Cameras</span><span className="pop-opt-sub">Local only</span></button>
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setConnectorsOpen(true); setSettingsOpen(false); }}><Icon name="link" size={16} /><span className="pop-opt-name">Connected</span><span className="pop-opt-sub">Read-only</span></button>
             </div>
             <div className="pop-title">Help</div>
             <div className="pop-group">
@@ -1965,6 +1968,7 @@ export default function App() {
           { icon: "pulse", label: "Open the Scope (live activity)", run: () => openLocalView("/api/scope/view") },
           { icon: "sliders", label: "Open the Console (status)", run: () => openLocalView("/api/console") },
           { icon: "grid", label: "What SAM can do", run: () => setToolsOpen(true) },
+          { icon: "link", label: "Connected services (GitHub, Slack, Notion…)", run: () => setConnectorsOpen(true) },
           { icon: "clock", label: "Chat history", run: () => setHistoryOpen(true) },
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
@@ -2044,6 +2048,14 @@ export default function App() {
         {chimeOpen && <ChimePane onClose={() => setChimeOpen(false)} />}
         {cameraOpen && <CameraPane onClose={() => setCameraOpen(false)} />}
         {doctorOpen && <DoctorPane onClose={() => setDoctorOpen(false)} />}
+        {connectorsOpen && (
+          // Picking a row drops its name in the composer — the same act the phone's + sheet
+          // performs, so naming a repo or a channel means the same thing on both.
+          <ConnectorsPane
+            onClose={() => setConnectorsOpen(false)}
+            onPick={(t) => { setConnectorsOpen(false); setInput((v) => (v ? `${v} ${t}` : t)); inputRef.current?.focus(); }}
+          />
+        )}
       </Suspense>
 
       {toolsOpen && (
