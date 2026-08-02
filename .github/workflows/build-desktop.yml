@@ -51,6 +51,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The Pocket's tests live in the SAME vitest run (mobile/lib/*.test.ts) but its tsconfig
+      # extends expo/tsconfig.base, which only resolves inside mobile/node_modules. Without this
+      # they don't fail loudly as "missing deps" — they fail as TSCONFIG_ERROR transform errors,
+      # which reads like broken test code. Cheap here (11 deps, ubuntu runner), and the
+      # alternative — excluding mobile/ from the root config — would silently stop running the
+      # phone's scrubber tests, which are the ones covering redaction of key-shaped strings.
+      - run: npm ci --prefix mobile
       - name: Test + type-check
         run: |
           npm test
