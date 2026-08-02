@@ -10,6 +10,7 @@ on:
     paths:
       - "docs/**"
       - "scripts/gen-landing.mjs"
+      - "scripts/gen-privacy.mjs"
       - "scripts/generate-stats.ts"
       - "server/tools.ts"
       - "server/agents.ts"
@@ -40,6 +41,11 @@ jobs:
           node-version: 22
       - name: Generate landing from live code
         run: node scripts/gen-landing.mjs
+      # App Store Connect will not accept a submission without a privacy policy URL, and the
+      # only thing this site served was raw markdown. Rendered from PRIVACY.md every deploy so
+      # the page Apple is pointed at can never drift from the policy in the repo.
+      - name: Render the privacy policy
+        run: node scripts/gen-privacy.mjs
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

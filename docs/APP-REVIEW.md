@@ -58,7 +58,24 @@ only in the generated `ios/` directory, which is gitignored and regenerated).
 App Store Connect nutrition label: **Data Not Collected**. This is literally true — the app has no
 analytics, no crash reporting, no account, and no server of ours to send anything to.
 
-## 4. "What does it do / how do we test it?"
+## 4. Privacy policy URL — required field
+
+**https://richhabits.github.io/sam/privacy.html**
+
+App Store Connect will not take a submission without one. Until now the site served only the raw
+markdown (`/sam/PRIVACY.md` — a 200, but unstyled plain text). That page is generated from
+`docs/PRIVACY.md` on every Pages deploy, so it cannot drift from the policy in the repo, and it's
+linked from the landing page footer.
+
+## 5. Export compliance — `ITSAppUsesNonExemptEncryption: false`
+
+Set in `mobile/app.json`. Without it App Store Connect asks the export-compliance question on
+**every single upload** and holds the build until it's answered.
+
+`false` is the correct answer here: SAM uses only exempt cryptography — the OS's own TLS, and the
+iOS keychain via `expo-secure-store`. It ships no encryption of its own.
+
+## 6. "What does it do / how do we test it?"
 
 Reviewers cannot test the app without a server, and an app that shows a connection screen and
 nothing else reads as broken. Give them one in the review notes, or expect a rejection for
@@ -71,7 +88,25 @@ nothing else reads as broken. Give them one in the review notes, or expect a rej
 
 Have that instance actually running before submitting.
 
-## 5. Camera and photo library
+## 7. The app icon — a judgement call, left to you
+
+Not a rejection risk. It passes the hard checks: 1024×1024 generated, **no alpha channel** (an
+icon with transparency is refused at upload, before review sees it). Two things are worth knowing
+before you submit, because the icon is the first thing a reviewer and a customer see:
+
+- **It isn't the SAM brandmark.** `public/icon.svg` — the flat terracotta rounded-square robot —
+  is what the desktop app and the website use. The phone ships a different, AI-rendered character
+  on a teal-grey background with the word "SAM" painted on it. Two different faces for one
+  product.
+- **It's upscaled.** The source (`mobile/assets/icon.png`) is 512×512 and Expo enlarges it to the
+  1024 Apple requires, so the store listing shows a softened image.
+- Apple's HIG also advises against words inside an icon; this one has them.
+
+The fix is to render `public/icon.svg` at 1024 with the gradient full-bleed (no rounded corners
+baked in — iOS applies its own mask, and baked corners leave transparency). I did not do it
+unasked: an app icon is identity, not a defect.
+
+## 8. Camera and photo library
 
 Both described in `Info.plist`, both used only when the user attaches an image to a message, and
 the image goes to the user's own server. No upload to us — because there is no us.
