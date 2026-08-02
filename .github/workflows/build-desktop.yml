@@ -321,13 +321,18 @@ jobs:
                 && git add Casks/sam.rb && git commit -m "sam ${V}" && git push && echo "✓ Homebrew cask bumped to ${V}"
             } || echo "⚠ tap push skipped (repo/token issue)"
           else
-            # Deliberately a WARNING annotation, not an "ℹ️" line buried at the bottom of a log
-            # nobody opens on a green run. This step silently no-op'd for six months and the cask
-            # sat at v1.5.0 while releases went to v3.1.1 — `brew install --cask` served an ancient
-            # build to anyone who used it, and every release looked completely successful.
-            # A skipped publish step has to be visible on the run summary or it is indistinguishable
-            # from a working one.
-            echo "::warning title=Homebrew cask NOT bumped::HOMEBREW_TAP_TOKEN is not set, so richhabits/homebrew-tap still points at whatever version it last had — NOT ${TAG}. Anyone running 'brew install --cask richhabits/tap/sam' gets the stale build. Add a PAT with write access to the tap, or bump Casks/sam.rb by hand."
+            # No token, and that is now FINE — the tap updates itself. richhabits/homebrew-tap
+            # carries .github/workflows/bump-cask.yml, which checks this repo's latest release
+            # hourly and rewrites Casks/sam.rb using the SHA256SUMS.txt the release publishes.
+            # A workflow living in the repo it writes to needs no cross-repo PAT at all, so there
+            # is nothing to provision, rotate, or forget.
+            #
+            # That matters because this step was an "ℹ️" nobody read: it silently no-op'd for six
+            # months while the cask sat at v1.5.0 and releases went to v3.1.1 — brew served an
+            # ancient build and every release still looked green. The token path is kept because
+            # it publishes IMMEDIATELY rather than within the hour, but it is now an optimisation
+            # rather than the only thing standing between users and a stale install.
+            echo "::notice title=Homebrew cask left to the tap::HOMEBREW_TAP_TOKEN is not set, so this run did not push the cask. richhabits/homebrew-tap will pick ${TAG} up within the hour via its own bump-cask workflow. Set the PAT only if you want the cask to land the moment the release does."
           fi
 
   # PHASE 1 — clean-machine install test: run the ACTUAL one-paste installers from scratch on fresh
