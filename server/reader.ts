@@ -71,8 +71,11 @@ export function distill(html: string): Distilled | null {
     .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m, inner) => `\n- ${inlineText(inner)}`)
     .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m, inner) => `\n\n> ${inlineText(inner)}\n\n`)
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|section|tr|h[1-6])>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "");   // strip whatever tags remain
+    .replace(/<\/(p|div|section|tr|h[1-6])>/gi, "\n\n");
+  // Strip whatever tags remain — to a fixpoint, for the same reason inlineText does. This is the
+  // LAST line of defence in the chain: a single pass here could still assemble a tag out of the
+  // fragments the conversions above leave behind.
+  md = stripTags(md);
 
   md = decode(md)
     .replace(/[ \t]+/g, " ")
