@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { instantForWall } from "./flipit.ts";
 
 // The Chime resolves its vault file at module load, and SAM_CHIME gates the tick.
 // So each test points VAULT_DIR at a fresh scratch dir, sets the flag ON, and
@@ -105,8 +106,13 @@ describe("the Chime — fireDue", () => {
   it("reschedules a recurring alarm: fires, skips within the window, fires again next occurrence", () => {
     const a = C.setAlarm("daily brief", { recur: "daily 09:00" });
 
-    const day20 = new Date(2026, 6, 20, 9, 0, 0);   // local 09:00
-    const day21 = new Date(2026, 6, 21, 9, 0, 0);
+    // "daily 09:00" names a WALL-CLOCK time in the scheduler's zone (see server/scheduler.ts's
+    // header and flipit.ts's desk), NOT the host's. Building these with `new Date(y, m, d, 9)`
+    // asked for 09:00 in whatever zone the machine happens to be in, which is the same instant
+    // only while the host IS on London time — so this passed all through BST here and failed the
+    // moment it ran on a UTC runner. Ask for the instant the product actually means.
+    const day20 = new Date(instantForWall(2026, 7, 20, 9));
+    const day21 = new Date(instantForWall(2026, 7, 21, 9));
 
     // first occurrence fires
     expect(C.fireDue(day20, () => undefined, silent).map((c) => c.id)).toContain(a.id);
