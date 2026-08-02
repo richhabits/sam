@@ -1157,7 +1157,12 @@ async function git(cmd: string, timeout = 8000): Promise<string> {
 app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), events: securityEvents() }));
 
 // ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
-app.get("/api/proactive", (_req, res) => res.json({ items: takePending(), nudges: listNudges() }));
+// Reading this DRAINS it (takePending), so an unauthenticated caller doesn't just read your
+// briefings — it eats them, and you never see them.
+app.get("/api/proactive", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your briefings");
+  res.json({ items: takePending(), nudges: listNudges() });
+});
 
 // ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
 app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
@@ -1166,7 +1171,10 @@ app.post("/api/autopilot", (req, res) => { if (!isLoopback(req)) return res.stat
 // ── Autonomy consent (v1.8) — the "What can SAM do on its own?" pane + the autonomy log.
 // Reading is fine remotely; CHANGING what SAM may do autonomously is a security setting → loopback-only
 // (a phone on a scoped token must never be able to grant SAM new autonomy).
-app.get("/api/consent", (_req, res) => res.json({ behaviors: consentState() }));
+app.get("/api/consent", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "what SAM may do on its own");
+  res.json({ behaviors: consentState() });
+});
 app.post("/api/consent", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   const ok = setConsent(String(req.body?.behavior || "") as any, !!req.body?.on);
@@ -1176,7 +1184,12 @@ app.post("/api/consent/disable-all", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   consentDisableAll(); res.json({ behaviors: consentState() });
 });
-app.get("/api/autonomy-log", (req, res) => res.json({ entries: readAutonomyLog(Number(req.query.limit) || 100) }));
+// The most revealing of these: a running account of what SAM did and what it asked you to
+// approve, in prose, naming the people and things involved.
+app.get("/api/autonomy-log", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "what SAM has been doing");
+  res.json({ entries: readAutonomyLog(Number(req.query.limit) || 100) });
+});
 app.post("/api/autonomy-log/clear", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
   clearAutonomyLog(); res.json({ ok: true });
@@ -1194,7 +1207,8 @@ registerWorkflowsRoutes(app);
 // ── Measurement (v2.0) — "Your SAM" stats (local) + opt-in anonymous telemetry ──
 // Analytics is 100% on-device. The dashboard also reports how many preferences SAM has learned and the
 // honest "0 data left your device" (unless the user opted into telemetry).
-app.get("/api/analytics", (_req, res) => {
+app.get("/api/analytics", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your usage");
   const s = analyticsSummary(new Date().toISOString());
   res.json({ ...s, preferencesLearned: listPreferences().length, telemetry: { enabled: telemetryEnabled(), decided: telemetryDecided() } });
 });
@@ -1231,7 +1245,10 @@ app.post("/api/billing/checkout", (req, res) => res.json(billingCheckout(String(
 // ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
 // Nothing here is ever transmitted (see preferences.ts privacy invariant). Learning is OFF unless the
 // user enabled the "learn-preferences" consent behaviour.
-app.get("/api/preferences", (_req, res) => res.json({ preferences: listPreferences(), learning: consentEnabled("learn-preferences") }));
+app.get("/api/preferences", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "what SAM has learned about you");
+  res.json({ preferences: listPreferences(), learning: consentEnabled("learn-preferences") });
+});
 app.post("/api/preferences/learn", (req, res) => {
   if (!consentEnabled("learn-preferences")) return res.json({ learned: false, reason: "learning is off — enable it in “What can SAM do on its own?”" });
   const { key, value } = req.body || {};
@@ -1312,7 +1329,11 @@ app.post("/api/p2p/broadcast", async (req, res) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true, uptime: process.uptime(), routing: peekMetrics(8), cache: cacheStats() }));
 
 // ── THE LIFE INDEX (Phase 3) — the settings screen drives these ──
-app.get("/api/life-index", (_req, res) => res.json({ ...lifeIndexStats(), folders: listFolders() }));
+// Returns the absolute paths of the folders you watch — a map of your disk.
+app.get("/api/life-index", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "the folders you watch");
+  res.json({ ...lifeIndexStats(), folders: listFolders() });
+});
 app.post("/api/life-index", async (req, res) => {
   const { path } = req.body as { path?: string };
   if (!path?.trim()) return res.status(400).json({ error: "path required" });
@@ -1469,7 +1490,10 @@ app.get("/api/packs/community", async (_req, res) => {
 });
 
 // ── SHARE MOMENTS (v1.5) — subtle, opt-in, dismissible-forever. No telemetry (local counters). ──
-app.get("/api/moments", (_req, res) => res.json({ moment: nextMoment(), stats: momentStats() }));
+app.get("/api/moments", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your moments");
+  res.json({ moment: nextMoment(), stats: momentStats() });
+});
 app.post("/api/moments/dismiss", (req, res) => { const id = (req.body as any)?.id; if (id) dismissMoment(String(id)); res.json({ ok: true }); });
 
 // ── ROLLBACK (v1.5) — if an update breaks something, get the previous release's installer. ──
@@ -1567,9 +1591,11 @@ function canApprove(req: any): boolean {
 function canReadPrivate(req: any): boolean {
   return isTrustedLocal(req) || isPairedSession(req);
 }
+// "…can only be read from…" rather than "…are readable…": the noun varies from "your notes" to
+// "what SAM has been doing", and only this phrasing stays grammatical across all of them.
 function denyRead(res: any, what = "connected services") {
   res.status(401).json({
-    error: `this device isn't paired with SAM — ${what} are readable only from the app or a paired device`,
+    error: `this device isn't paired with SAM — ${what} can only be read from the app or a paired device`,
     locked: true,
   });
 }

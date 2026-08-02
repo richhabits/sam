@@ -32,7 +32,8 @@ describe("why the global gate was not enough", () => {
 describe("every workspace read is guarded at the route", () => {
   // Source-scanned rather than mocked: the risk is a NEW route being added without the guard,
   // and only reading the file catches that.
-  const routes = [...src.matchAll(/app\.get\("(\/api\/(?:connectors|github|vault)[^"]*)",[^\n]*\n([^\n]*)/g)];
+  const GUARDED = "connectors|github|vault|autonomy-log|analytics|preferences|life-index|proactive|moments|consent";
+  const routes = [...src.matchAll(new RegExp(`app\\.get\\("(/api/(?:${GUARDED})[^"]*)",[^\\n]*\\n([^\\n]*)`, "g"))];
 
   it("finds the routes at all — a refactor that moves them must fail here, not pass silently", () => {
     const paths = routes.map((m) => m[1]);
@@ -44,7 +45,15 @@ describe("every workspace read is guarded at the route", () => {
     expect(paths).toContain("/api/vault/log");
     expect(paths).toContain("/api/vault/graph");
     expect(paths).toContain("/api/vault/stats");
-    expect(paths.length).toBeGreaterThanOrEqual(8);
+    // The second sweep: routes that read the operator rather than their files. The autonomy log
+    // is the sharpest of them — it recounts, in prose, what SAM did and who it involved — and
+    // /api/proactive DRAINS on read, so an unguarded caller ate the briefings rather than copying
+    // them. Neither is a credential, which is exactly why both sat open.
+    expect(paths).toContain("/api/autonomy-log");
+    expect(paths).toContain("/api/proactive");
+    expect(paths).toContain("/api/preferences");
+    expect(paths).toContain("/api/life-index");
+    expect(paths.length).toBeGreaterThanOrEqual(14);
   });
 
   it("checks canReadPrivate on the first line of every one of them", () => {
