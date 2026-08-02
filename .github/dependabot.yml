@@ -1,7 +1,16 @@
 version: 2
-# Monthly + GROUPED updates: one PR for all npm bumps and one for all actions bumps,
-# instead of a flood of individual PRs that each trigger a full CI run. Keeps deps
-# current without munching Actions minutes on a private repo.
+# Monthly + GROUPED updates: a few PRs instead of a flood that each trigger a full CI run.
+# Keeps deps current without munching Actions minutes.
+#
+# MAJORS ARE KEPT SEPARATE, and that split is load-bearing rather than tidiness. A single
+# `patterns: ["*"]` group put every bump in one PR — and August's landed as 21 packages
+# including express 4→5, react 18→19, typescript 5.9→7.0 and better-sqlite3 12→13. It
+# segfaulted CI (exit 139 on macOS and Linux, a native-module crash), so it could never be
+# merged, and because the group was all-or-nothing it took the security patches down with it:
+# the @hono/node-server advisory sat unmergeable behind eight major upgrades for a month.
+#
+# Split this way, the minor/patch PR stays boring and mergeable — which is exactly the PR
+# security fixes arrive in — while majors get their own PR to be taken one at a time.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
@@ -10,8 +19,12 @@ updates:
     open-pull-requests-limit: 3
     labels: ["dependencies"]
     groups:
-      npm-all:
+      npm-minor-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-major:
+        patterns: ["*"]
+        update-types: ["major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -20,5 +33,9 @@ updates:
     open-pull-requests-limit: 3
     labels: ["dependencies"]
     groups:
-      actions-all:
+      actions-minor-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      actions-major:
+        patterns: ["*"]
+        update-types: ["major"]

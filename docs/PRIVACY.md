@@ -35,7 +35,7 @@ To know whether people actually use and keep SAM, there's an **opt-in** anonymou
 |---|---|---|
 | `schema` | `sam-telemetry/1` | version of the format |
 | `anonId` | random 32-hex | count distinct installs (nothing else) |
-| `version` | `2.0.0` | which release is in use |
+| `version` | `3.1.1` | which release is in use |
 | `os` | `darwin` | platform mix |
 | `dau` | `true` | were you active today (retention curve) |
 | `retentionBucket` | `d7` | how long you've kept SAM (d1/d7/d30/d30+) |
