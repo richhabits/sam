@@ -27,6 +27,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The Pocket's tests (mobile/lib/*.test.ts) run inside the SAME `npm test` below, but their
+      # tsconfig extends expo/tsconfig.base, which only resolves inside mobile/node_modules. Without
+      # this they fail as TSCONFIG_ERROR transform errors — which reads like broken test code, not a
+      # missing install. `cross-platform` doesn't need it: that job never runs the full suite.
+      - run: npm ci --prefix mobile
       # Lint gate — Biome. Fails the build on ERROR-level rules only (warnings are advisory and
       # don't block). Keeps the codebase born-clean without churning the intentional dense style.
       - run: npm run lint
