@@ -155,6 +155,27 @@ describe("sessionTokenFromRequest — C2, the native-app carrier", () => {
     expect(P.sessionTokenFromRequest({ headers: { authorization: "bearer xyz789" } })).toBe("xyz789");
   });
 
+  it("does not blow up on a pathological Authorization header", () => {
+    // The old parser was /^Bearer\s+(.+)$/ — `\s+` and `(.+)` both match whitespace, so the engine
+    // re-tries every split point and the work goes quadratic on a header ANY local caller can set.
+    // 200k spaces took long enough to matter; the one-pass version returns immediately. Generous
+    // bound so this fails on a reintroduced backtracking regex, not on a slow CI box.
+    const evil = `Bearer ${" ".repeat(200_000)}`;
+    const started = performance.now();
+    expect(P.sessionTokenFromRequest({ headers: { authorization: evil } })).toBe("");
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it("trims the token and ignores a tab-separated scheme", () => {
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "Bearer\tabc123" } })).toBe("abc123");
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "Bearer   abc123  " } })).toBe("abc123");
+  });
+
+  it("refuses a scheme that merely starts with the word", () => {
+    // "BearerX token" must not read as Bearer — the prefix test requires the separator.
+    expect(P.sessionTokenFromRequest({ headers: { authorization: "BearerX abc123" } })).toBe("");
+  });
+
   it("prefers the cookie over Authorization when both are present", () => {
     expect(P.sessionTokenFromRequest({ headers: { cookie: "sam_session=fromcookie", authorization: "Bearer frombearer" } })).toBe("fromcookie");
   });
