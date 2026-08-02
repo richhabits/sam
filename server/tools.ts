@@ -55,6 +55,7 @@ const require = createRequire(import.meta.url);
 import type { Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { renderVideo, titleCard } from "./render.ts";
+import { buildDeck, fallbackSections, outlineMarkdown, parseSections, saveDeck, sectionCount, type Section } from "./slides.ts";
 import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
 import { fetchLocation, nowText } from "./context.ts";
 import { grabRepos, loadSocials } from "./world.ts";
@@ -1182,6 +1183,36 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Rendering a video${i?.title ? ` — “${i.title}”` : ""}`,
     preview: (i) => `Render MP4 ${i?.html ? "from custom HTML" : `title card: “${i?.title ?? "SAM"}”`} · ${(Number(i?.durationMs ?? 4000) / 1000).toFixed(1)}s @ ${i?.fps ?? 30}fps → ${i?.out ?? "~/Desktop"}`,
     run: (i) => renderVideoTool(i) },
+
+  // 🎞️ a prompt becomes a deck. Free lane on purpose: an outline is a cheap job and a deck is
+  // exactly the sort of thing people regenerate five times before they like it (Doctrine #3).
+  { name: "make_slides", safe: true,
+    description: "Build a complete SLIDE DECK from a topic and save it as one self-contained HTML file (opens offline, prints to PDF, dark+light). Returns the whole outline in chat so you can judge it without opening it. input: {topic, slides? (total, 4–30, default 8), audience?}.",
+    params: "{topic, slides?, audience?}",
+    args: {
+      topic: { type: "string", required: true, desc: "what the deck is about" },
+      slides: { type: "number", desc: "total slides including title/agenda/closing (4–30, default 8)" },
+      audience: { type: "string", desc: "who it's for — changes the framing, e.g. 'investors', 'the ops team'" },
+    },
+    activity: (i) => `Building a deck on “${String(i?.topic ?? i ?? "").slice(0, 40)}”`,
+    run: async (i) => {
+      const topic = String(i?.topic ?? i ?? "").trim();
+      if (!topic) return "What should the deck be about?";
+      const audience = i?.audience ? String(i.audience).trim() : undefined;
+      const want = sectionCount(i?.slides);
+      const sys = "You are a presentation strategist. You return ONLY an outline, no preamble and no commentary. Each section is a markdown heading (## Section title) followed by 2–4 bullets starting with '-'. A bullet is one short line a person can read from the back of a room — a claim, a number, a consequence — never a paragraph and never a sentence fragment ending in a colon. Titles are specific and say something; 'Overview' and 'Introduction' are banned. The FINAL section is the close: the decision, the ask, or the next move.";
+      // Truncated hard: a 40k-char "topic" is a paste accident, and the outline it produces would be
+      // worse than the one from the first 600 characters anyway.
+      const brief = `TOPIC: ${topic.slice(0, 600)}\n${audience ? `AUDIENCE: ${audience.slice(0, 120)}\n` : ""}Write exactly ${want} sections.`;
+      let sections: Section[] = [];
+      try { sections = parseSections((await runModel("free", sys, brief))?.text || ""); }
+      catch { /* no brain reachable (offline, no keys, provider down) — the skeleton below still ships a real deck */ }
+      if (!sections.length) sections = fallbackSections(topic, want);
+      try {
+        const deck = buildDeck({ topic, sections, audience });
+        return outlineMarkdown(deck, saveDeck(deck));
+      } catch (e: any) { return `Couldn't build that deck: ${e?.message || e}`; }
+    } },
 
   // ── 📓 NOTEBOOKS (NotebookLM, but yours & free) + 🔎 deep research + 🛰️ 24/7 agent ──
   { name: "notebook_add", safe: true, description: "Add a source to a notebook (creates it if new) so SAM can answer grounded questions about it. input: {notebook, url? | file? | text?, title?}. Sources: a web page URL, a file path (pdf/docx/txt/md/csv), or pasted text.", params: "{notebook, url?, file?, text?, title?}",
