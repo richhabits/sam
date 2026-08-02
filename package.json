@@ -133,7 +133,8 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSCameraUsageDescription": "SAM uses the camera when you ask it to look, scan, or recognise people \u2014 all processed on your machine.",
-        "NSMicrophoneUsageDescription": "SAM uses the microphone for voice chat and dictation \u2014 processed on your machine."
+        "NSMicrophoneUsageDescription": "SAM uses the microphone for voice chat and dictation \u2014 processed on your machine.",
+        "NSLocalNetworkUsageDescription": "Only if you switch on P2P (SAM_P2P=1): SAM finds the other machines you run it on, over your own network. Off by default, and it never leaves your network."
       }
     },
     "win": {
