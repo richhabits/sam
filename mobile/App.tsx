@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   useColorScheme,
+  useWindowDimensions,
   View,
   Image,
 } from 'react-native';
@@ -19,6 +20,7 @@ import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
 import { iosDark, iosLight, metrics, type as iosType } from './lib/ios';
+import { contentColumn, layoutFor } from './lib/layout';
 import { Segmented } from './ui';
 import ChatScreen from './ChatScreen';
 import TasksScreen from './TasksScreen';
@@ -37,6 +39,14 @@ export default function App() {
   const t = scheme === 'dark' ? dark : light;
   const ios = scheme === 'dark' ? iosDark : iosLight;
   const s = useMemo(() => makeStyles(t), [t]);
+
+  // app.json has always claimed supportsTablet, and nothing ever read the window size — so on an
+  // iPad every screen stretched instead of adapting. Keyed on the WINDOW rather than the device
+  // because iPadOS hands the app a phone-shaped sliver in Slide Over and about half the screen in
+  // Split View, both of which should lay out like a phone. See lib/layout.ts.
+  const { width } = useWindowDimensions();
+  const layout = useMemo(() => layoutFor(width), [width]);
+  const column = useMemo(() => contentColumn(layout), [layout]);
 
   const [paired, setPaired] = useState<boolean | null>(null); // null = still checking on boot
   const [surface, setSurface] = useState<Surface>('agent');
@@ -135,7 +145,10 @@ export default function App() {
   if (!paired) {
     return (
       <SafeAreaView style={s.screen}>
-        <ScrollView contentContainerStyle={s.pairScroll} keyboardShouldPersistTaps="handled">
+        {/* The pairing form is the worst offender on a big screen: a single text input stretched
+            across a 12.9" iPad reads as a bug rather than a layout. Capped and centred like
+            everything else. */}
+        <ScrollView contentContainerStyle={[s.pairScroll, column]} keyboardShouldPersistTaps="handled">
           <View style={s.halo} pointerEvents="none" />
           <View style={s.brandRow}>
             <Image source={require('./assets/sam-mark.png')} style={s.mark} />
@@ -258,13 +271,20 @@ export default function App() {
         </>
       ) : null}
 
-      {surface === 'agent' ? (
-        <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
-      ) : surface === 'tasks' ? (
-        <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
-      ) : (
-        <SettingsScreen ios={ios} onForgotten={() => setPaired(false)} />
-      )}
+      {/* One centred column around ALL THREE surfaces rather than inside each of them: chat,
+          tasks and settings then share a single definition of "how wide should this be", and a
+          fourth surface added later inherits it instead of being the one that stretches. flex:1
+          is required here — a maxWidth child of a flex column collapses to its content height
+          without it, and the chat would render as a strip at the top of the screen. */}
+      <View style={[{ flex: 1 }, column]}>
+        {surface === 'agent' ? (
+          <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
+        ) : surface === 'tasks' ? (
+          <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
+        ) : (
+          <SettingsScreen ios={ios} onForgotten={() => setPaired(false)} />
+        )}
+      </View>
 
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </SafeAreaView>
