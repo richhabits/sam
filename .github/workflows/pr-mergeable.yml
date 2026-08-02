@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────
+#  Is this PR actually mergeable?
+#
+#  A conflicting PR does not report "conflict" — it reports NOTHING. GitHub builds the
+#  `pull_request` event from the MERGE commit, so when that commit can't be created every
+#  `pull_request` workflow is skipped silently: no test, no cross-platform, no gitleaks.
+#  The PR sits there looking calm with two green checks on it.
+#
+#  That happened here on #44. It read as an Actions quota problem for the best part of an
+#  hour, because the only checks present (PR Labeler, Dependabot auto-merge) are the two
+#  `pull_request_target` ones — and `pull_request_target` runs from the BASE branch, so it
+#  needs no merge commit and keeps running exactly when everything else has stopped.
+#
+#  Which is precisely why the detector has to live on that same event. This job is the one
+#  thing guaranteed to run on a conflicting PR, so it turns an absence of signal into a red
+#  check that says what is wrong.
+#
+#  SAFETY: `pull_request_target` runs with the base repo's token and secrets. This job never
+#  checks out, builds, or executes PR code — it asks the API one question. Do not add a
+#  checkout of `github.event.pull_request.head.sha` here.
+# ─────────────────────────────────────────────────────────────
+name: PR mergeable
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-mergeable-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conflict-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail loudly if the branch conflicts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # GitHub computes mergeability asynchronously and returns null while it's thinking.
+          # Poll rather than trust the first answer, or this reports "unknown" on every fast PR.
+          STATE=""
+          for i in $(seq 1 12); do
+            STATE="$(gh api "repos/$REPO/pulls/$PR" -q '.mergeable // "null"')"
+            [ "$STATE" != "null" ] && break
+            echo "mergeability still computing (attempt $i)…"
+            sleep 5
+          done
+
+          if [ "$STATE" = "false" ]; then
+            echo "::error title=This PR conflicts with its base::The merge commit cannot be created, so GitHub is SKIPPING every pull_request workflow — test, cross-platform and gitleaks are not absent because they passed, they never ran. Rebase or merge the base branch, push, and the real checks will appear."
+            exit 1
+          fi
+
+          if [ "$STATE" = "null" ]; then
+            echo "::warning title=Mergeability unknown::GitHub did not finish computing it in 60s. If the required checks never appear on this PR, suspect a conflict first."
+            exit 0
+          fi
+
+          echo "✓ mergeable — the pull_request workflows can run for real"

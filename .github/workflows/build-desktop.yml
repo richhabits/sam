@@ -321,7 +321,13 @@ jobs:
                 && git add Casks/sam.rb && git commit -m "sam ${V}" && git push && echo "✓ Homebrew cask bumped to ${V}"
             } || echo "⚠ tap push skipped (repo/token issue)"
           else
-            echo "ℹ️ Homebrew tap auto-bump skipped (HOMEBREW_TAP_TOKEN not set)"
+            # Deliberately a WARNING annotation, not an "ℹ️" line buried at the bottom of a log
+            # nobody opens on a green run. This step silently no-op'd for six months and the cask
+            # sat at v1.5.0 while releases went to v3.1.1 — `brew install --cask` served an ancient
+            # build to anyone who used it, and every release looked completely successful.
+            # A skipped publish step has to be visible on the run summary or it is indistinguishable
+            # from a working one.
+            echo "::warning title=Homebrew cask NOT bumped::HOMEBREW_TAP_TOKEN is not set, so richhabits/homebrew-tap still points at whatever version it last had — NOT ${TAG}. Anyone running 'brew install --cask richhabits/tap/sam' gets the stale build. Add a PAT with write access to the tap, or bump Casks/sam.rb by hand."
           fi
 
   # PHASE 1 — clean-machine install test: run the ACTUAL one-paste installers from scratch on fresh

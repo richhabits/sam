@@ -16,8 +16,12 @@
 export interface DistillLink { href: string; text: string }
 export interface Distilled { title: string; markdown: string; links: DistillLink[] }
 
+// `&amp;` is decoded LAST, and the order is the whole point. Decoding it first turns the literal
+// text `&amp;lt;` into `&lt;`, which the very next replace then turns into `<` — a tag character
+// conjured out of text that never contained one. Unescaping ampersands only after every other
+// entity is resolved means nothing this produces can be re-read as an entity.
 const decode = (s: string) =>
-  s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+  s.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
 // Inner text of an element with tags removed (used for heading/link/list-item text).
 const inlineText = (h: string) => decode(h.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();

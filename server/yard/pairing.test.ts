@@ -30,6 +30,18 @@ describe("the code", () => {
     const seen = new Set(Array.from({ length: 50 }, () => makeCode()));
     expect(seen.size).toBeGreaterThan(40);
   });
+
+  it("covers the whole six-digit range, including above the fold point", () => {
+    // `% 1_000_000` over a full 32-bit draw is biased: 2^32 isn't a multiple of a million, so the
+    // 967,296 lowest codes get an extra chance. Rejection sampling fixes it, and the property that
+    // must survive is that the TOP of the range — the part a naive fold under-weights — still
+    // appears. A statistical bias test would be flaky; this is deterministic enough at 4k draws
+    // (P(no code ≥ 967296 in 4000 uniform draws) ≈ 10^-58) and fails outright if the fix is ever
+    // replaced by a plain modulo that also truncates the range.
+    const codes = Array.from({ length: 4000 }, () => Number(makeCode()));
+    expect(codes.every((c) => c >= 0 && c <= 999_999)).toBe(true);
+    expect(codes.some((c) => c >= 967_296)).toBe(true);
+  });
 });
 
 describe("asking to pair", () => {

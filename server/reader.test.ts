@@ -44,6 +44,15 @@ describe("distill → markdown", () => {
     const d = distill(page(`<article><p>${prose} Tom &amp; Jerry &lt;3 &quot;quotes&quot;</p></article>`));
     expect(d!.markdown).toContain('Tom & Jerry <3 "quotes"');
   });
+
+  it("decodes each entity ONCE — an escaped ampersand cannot become a tag", () => {
+    // `&amp;lt;` is the literal text "&lt;", not a less-than sign. Decoding `&amp;` before `&lt;`
+    // resolved it twice and conjured a `<` out of text that never contained one. Ampersands are
+    // decoded last now, so nothing this produces can be re-read as an entity.
+    const d = distill(page(`<article><p>${prose} literal &amp;lt;script&amp;gt; stays text</p></article>`));
+    expect(d!.markdown).toContain("literal &lt;script&gt; stays text");
+    expect(d!.markdown).not.toContain("<script>");
+  });
 });
 
 describe("distill → null (fall back to the plain cleaner)", () => {

@@ -105,8 +105,12 @@ export function sessionTokenFromRequest(req: { headers?: { cookie?: string; auth
   const fromCookie = sessionTokenFromCookie(req.headers?.cookie);
   if (fromCookie) return fromCookie;
   const auth = req.headers?.authorization || "";
-  const m = auth.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1] : "";
+  // Not `/^Bearer\s+(.+)$/`. That regex backtracks: `\s+` and `(.+)` both match whitespace, so an
+  // Authorization header of "Bearer" followed by a few hundred thousand spaces makes the engine
+  // re-try every split point — quadratic work on a header any local caller can set. This does the
+  // same job in one pass: a fixed, anchored prefix test, then a slice.
+  if (!/^Bearer[ \t]/i.test(auth)) return "";
+  return auth.slice("Bearer".length).trim();
 }
 
 // The same "id" listSessions()/getGrants() use, derived from a raw cookie token — so a

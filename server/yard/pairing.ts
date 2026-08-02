@@ -66,8 +66,17 @@ function sweep(now: number): void {
 
 // Six digits, read aloud or compared at a glance. Generated from real randomness rather
 // than a counter so it cannot be predicted and pre-approved.
+//
+// Rejection sampling, not a bare `% 1_000_000`. 2^32 is not a multiple of a million, so folding
+// the whole 32-bit range into six digits hands the first 967,296 codes an extra chance — every
+// code below 967296 comes up about 0.0225% more often than the rest. Tiny, and still nowhere near
+// guessable, but this is a credential: a biased draw is the kind of thing that is free to fix now
+// and quoted back at you later. Redrawing costs one extra read ~1 time in 4,400.
+const CODE_LIMIT = 4_294_000_000;   // largest whole multiple of 1e6 below 2^32
 export function makeCode(): string {
-  return String(randomBytes(4).readUInt32BE(0) % 1_000_000).padStart(6, "0");
+  let n = randomBytes(4).readUInt32BE(0);
+  while (n >= CODE_LIMIT) n = randomBytes(4).readUInt32BE(0);
+  return String(n % 1_000_000).padStart(6, "0");
 }
 
 export function requestPairing(label: string, now = Date.now()): PairRequest | null {
