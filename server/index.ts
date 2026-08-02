@@ -1819,18 +1819,23 @@ app.get("/api/yard/projects/:slug/file", (req, res) => {
 // The preview itself. Under /api like every other route (the house contract, and it is
 // right — one place to reason about the surface). An iframe loads it perfectly well, and
 // every asset the page pulls in resolves through the same confinement.
-// Express 4 wildcard: `*` with the remainder in params[0]. The `*splat` named form is
-// Express 5, and on 4 it silently matches nothing — every asset a page asked for 404'd
-// while the front page still loaded, which looks like a broken project rather than a
-// broken route.
-app.get("/api/yard/preview/:slug/*", servePreview);
+// Express 5 wildcard: named (`*splat`), remainder in params.splat as an ARRAY of segments.
+// The old bare `*` is a hard error on 5 — path-to-regexp v8 refuses to parse it ("Missing
+// parameter name"), which takes the whole server down at boot rather than 404ing quietly.
+// Worth remembering the other direction too: on Express 4 the named form silently matched
+// nothing, so every asset a page asked for 404'd while the front page still loaded.
+app.get("/api/yard/preview/:slug/*splat", servePreview);
 app.get("/api/yard/preview/:slug", servePreview);
 function servePreview(req: any, res: any) {
   // Flagged as a known gap since A1: this was isLoopback-only with no session path at
   // all, so a paired phone could enqueue and watch a task but never see its own preview
   // or files. Same trust as the rest of the yard's reads now.
   if (!isYardReadTrusted(req)) { res.status(403).send("loopback or a paired device only"); return; }
-  const rel = String(req.params[0] ?? req.params.splat ?? "");
+  // params.splat is an array of segments on Express 5, one joined string on 4 — String() on the
+  // array would give "a,b" and resolvePreview would never find the file.
+  const rel = Array.isArray(req.params.splat)
+    ? req.params.splat.map(String).join("/")
+    : String(req.params[0] ?? req.params.splat ?? "");
   const r = resolvePreview(String(req.params.slug), rel);
   if (!r.ok) { res.status(r.status).send(r.reason); return; }
   res.type(r.type);
@@ -2081,7 +2086,8 @@ app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: c
 const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dist"); // decodes spaces in the install path
 if (existsSync(DIST)) {
   app.use(express.static(DIST));
-  app.get("*", (req, res, next) => {
+  // The SPA fallback. `"*"` alone is unparseable on Express 5; it has to be a path.
+  app.get("/*splat", (req, res, next) => {
     if (req.path.startsWith("/api/")) return next();
     res.sendFile(join(DIST, "index.html"));
   });
