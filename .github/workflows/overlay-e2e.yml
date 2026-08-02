@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build                       # produces dist-electron/main.js
       - run: npm i --no-save @playwright/test@^1.61   # e2e-only dep; keeps the app lockfile clean
