@@ -26,7 +26,7 @@ export function creativeTargetUrl(targetPath: string): string | null {
 
 export function registerCreativeRoutes(app: Express) {
   // ── SAM Creative Space (Proxy to Muapi) ──────────────────────
-  app.all("/api/creative/*", async (req, res) => {
+  app.all("/api/creative/*splat", async (req, res) => {
     // ONLY the muapi key — no OpenAI fallback: an OpenAI key isn't valid at muapi anyway,
     // so the old fallback just leaked the user's OpenAI credential to a third party.
     const apiKey = process.env.MUAPI_API_KEY;
@@ -35,7 +35,14 @@ export function registerCreativeRoutes(app: Express) {
     // Sanitize the wildcard path so it can only address muapi's own API surface — no
     // "..", scheme, host, credentials or backslashes that could redirect the request
     // elsewhere (SSRF). Only plain path segments are allowed.
-    const targetPath = String((req.params as unknown as Record<string, string | undefined>)["0"] ?? "");
+    // Express 5 names its wildcards and hands back the SEGMENTS as an array, where Express 4 gave
+    // one pre-joined string in params[0]. String(["a","b"]) is "a,b", not "a/b" — so joining is not
+    // cosmetic here: a comma-mangled path would fail creativeTargetUrl() and every nested creative
+    // call would 400. Both shapes read, so this is correct on either major.
+    const splat = (req.params as unknown as Record<string, unknown>).splat;
+    const targetPath = Array.isArray(splat)
+      ? splat.map(String).join("/")
+      : String(splat ?? (req.params as unknown as Record<string, string | undefined>)["0"] ?? "");
     const targetUrl = creativeTargetUrl(targetPath);
     if (targetUrl === null) {
       return res.status(400).json({ error: "Invalid creative path" });
