@@ -121,6 +121,7 @@
   .logo .dot{color:var(--ember)}
   .brand small{color:var(--ash); font-size:12.5px; letter-spacing:.02em}
   .ghlink{font-family:var(--mono); font-size:13px; color:var(--ash); border:1px solid var(--line); padding:8px 14px; border-radius:9px; transition:all .18s}
+  .navlinks{display:inline-flex; gap:10px; align-items:center}
   .ghlink:hover{color:var(--paper); border-color:var(--ember); background:var(--ember-soft)}
 
   /* ── hero ── */
@@ -272,7 +273,14 @@
         <span class="logo">S<span class="dot">.</span>A<span class="dot">.</span>M</span>
         <small>Smart Artificial Mind</small>
       </div>
-      <a class="ghlink" href="https://github.com/richhabits/sam" target="_blank" rel="noopener">★ github.com/richhabits/sam</a>
+      <!-- Privacy sits in the HEADER, not just the footer. "nothing about you leaves your machine"
+           is the product's central claim, and a claim that can only be verified by scrolling to the
+           bottom is a claim people take on trust instead of reading. It is also the URL App Store
+           Connect requires, so it should be the easy one to find. -->
+      <span class="navlinks">
+        <a class="ghlink" href="./privacy.html">privacy</a>
+        <a class="ghlink" href="https://github.com/richhabits/sam" target="_blank" rel="noopener">★ github.com/richhabits/sam</a>
+      </span>
     </div>
 
     <!-- HERO -->
