@@ -11,10 +11,24 @@ import {
   View,
 } from 'react-native';
 import AddSheet from './AddSheet';
+import { api } from './lib/api';
 import { streamChat, type Turn } from './lib/chat';
 import { sendWithAttachments, type Attachment } from './lib/attach';
 import { loadThread, saveThread } from './lib/history';
 import { parseMarkdown } from './lib/markdown';
+import {
+  activeReferences,
+  applyMention,
+  buildReferencedMessage,
+  findMention,
+  matchTasks,
+  mentionLabel,
+  removeMention,
+  taskContext,
+  taskTitle,
+  type RecentTask,
+  type TaskReference,
+} from './lib/mentions';
 import { fs, radius, space, type Theme } from './lib/theme';
 import { metrics, type as iosType, type IOS } from './lib/ios';
 
@@ -25,6 +39,10 @@ import { metrics, type as iosType, type IOS } from './lib/ios';
 // Answers stream token-by-token through lib/chat.ts; the route badge under SAM's reply is the
 // one thing a generic chat client would never show and the thing SAM is actually about —
 // which tier answered, and whether it cost anything.
+//
+// Typing `@` opens the same task history the Tasks surface shows (/api/yard), and picking one
+// attaches its context to the next message — the phone's version of `@` in an editor. The
+// parsing lives in lib/mentions.ts; everything below is fetching and pixels.
 
 type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean };
 
@@ -89,6 +107,18 @@ export default function ChatScreen({
   const [composerKey, setComposerKey] = useState(0);
   // Attachments ride along with the NEXT message and are cleared once it is sent.
   const [attached, setAttached] = useState<Attachment[]>([]);
+  // @-references do the same, and are tracked as objects rather than parsed back out of the
+  // text: the box holds a human-readable label, the reference holds the context that label
+  // stands for, and the two are reconciled at send time by activeReferences().
+  const [refs, setRefs] = useState<TaskReference[]>([]);
+  const [caret, setCaret] = useState(0);
+  const [yard, setYard] = useState<{ on: boolean; recent: RecentTask[] } | null>(null);
+  const [yardError, setYardError] = useState('');
+  // The @ a dismissal belongs to, by position. Storing the position rather than a bare boolean
+  // is what makes "no, not now" apply to THIS mention only — delete it, or start another one
+  // further along, and the picker is allowed back.
+  const [dismissed, setDismissed] = useState<number | null>(null);
+  const loadingYard = useRef(false);
 
   // Keep the newest turn in view as tokens arrive, not just when a message is added.
   useEffect(() => {
@@ -114,6 +144,77 @@ export default function ChatScreen({
     if (settled.length) void saveThread(settled.map(({ role, text, route }) => ({ role, text, route })));
   }, [msgs, busy]);
 
+  const mention = useMemo(() => findMention(draft, caret), [draft, caret]);
+  const picking = !!mention && dismissed !== mention.start;
+  // Only chips for references whose token is still in the box — a backspaced label must not
+  // leave a chip behind claiming context that is no longer being sent.
+  const liveRefs = useMemo(() => activeReferences(draft, refs), [draft, refs]);
+
+  // The task list is fetched the first time an @ appears, not on mount: most messages contain
+  // no @ at all, and a chat screen has no business hitting the yard to open.
+  const loadYard = useCallback(async () => {
+    if (loadingYard.current) return;
+    loadingYard.current = true;
+    try {
+      const y: any = await api('/api/yard');
+      setYard({ on: !!y?.on, recent: Array.isArray(y?.recent) ? y.recent : [] });
+      setYardError('');
+    } catch (e: any) {
+      // Revoked from the Mac is a pairing problem everywhere in this app, never a feature that
+      // quietly does nothing.
+      if (e?.status === 401) return onNeedsPairing();
+      setYardError(e?.message || "Couldn't reach SAM.");
+    } finally {
+      loadingYard.current = false;
+    }
+  }, [onNeedsPairing]);
+
+  useEffect(() => {
+    // Not retried while an error is on screen — the picker offers the retry instead, so an
+    // unreachable Mac costs one request per tap rather than one per keystroke.
+    if (picking && !yard && !yardError) void loadYard();
+  }, [picking, yard, yardError, loadYard]);
+
+  const pick = useCallback(
+    async (task: RecentTask) => {
+      if (!mention) return;
+      const label = mentionLabel(task);
+      const applied = applyMention(draft, mention, label, caret);
+      setDraft(applied.text);
+      setCaret(applied.cursor);
+      setDismissed(null);
+      // Resolve the context NOW, with the summary row as the answer if the detail call fails.
+      // Doing it at send time instead would mean a reference silently becoming nothing at the
+      // exact moment it was needed, and doing it without a fallback would mean losing the pick
+      // because the Mac went to sleep between tapping and sending.
+      setRefs((prev) => [...prev.filter((r) => r.id !== task.id), { id: task.id, label, context: taskContext(task) }]);
+      try {
+        const detail: any = await api(`/api/yard/job/${encodeURIComponent(task.id)}`);
+        setRefs((prev) => prev.map((r) => (r.id === task.id ? { ...r, context: taskContext(task, detail) } : r)));
+      } catch {
+        /* the summary above is already a usable reference — keep it */
+      }
+    },
+    [mention, draft, caret],
+  );
+
+  const onDraft = useCallback(
+    (v: string) => {
+      // Move the caret by the size of the edit rather than waiting for onSelectionChange. RN
+      // fires the two events separately, so judging the new text against the OLD caret makes
+      // the very first "@" of a message miss — and with the caret still at its initial 0, miss
+      // permanently. onSelectionChange corrects this the moment it lands; this just means the
+      // picker never owes its appearance to event ordering.
+      setCaret((c) => Math.max(0, Math.min(v.length, c + (v.length - draft.length))));
+      setDraft(v);
+      // A dismissal dies with the @ it dismissed. Without this, deleting the @ and typing a new
+      // one at the same offset would find the picker still switched off, with nothing on screen
+      // to explain why.
+      if (!findMention(v, v.length)) setDismissed(null);
+    },
+    [draft],
+  );
+
   const send = useCallback(async () => {
     const message = draft.trim();
     const attachments = attached;
@@ -121,12 +222,20 @@ export default function ChatScreen({
     // something attached is still sendable.
     if ((!message && !attachments.length) || busy) return;
 
+    // What the model gets and what the bubble shows are deliberately different: the operator
+    // sees the sentence they typed, SAM also gets the referenced tasks' context in front of it.
+    // Showing them the log they didn't write would make @ feel like a paste, not a reference.
+    const outbound = buildReferencedMessage(message, activeReferences(message, refs));
+
     // History is what's on screen BEFORE this turn — the server appends the new message itself.
     const history: Turn[] = msgs
       .filter((m) => !m.pending && m.text)
       .map((m) => ({ role: m.role, text: m.text }));
 
     setDraft('');
+    setCaret(0);
+    setRefs([]);
+    setDismissed(null);
     // Emptying `draft` is not enough on its own. With an autocorrect suggestion still open,
     // iOS applies the pending correction to the NATIVE field after React has emptied it —
     // and since React's own value never changed, a controlled TextInput has nothing to
@@ -159,7 +268,7 @@ export default function ChatScreen({
       if (attachments.length) {
         // /api/stream ignores `attachments`; /api/command reads them and runs vision. One
         // request, one finished answer — faking a stream over a completed reply is theatre.
-        const r = await sendWithAttachments(message, attachments, history);
+        const r = await sendWithAttachments(outbound, attachments, history);
         patch((m) => ({
           ...m,
           text: r.text || '(no answer)',
@@ -169,7 +278,7 @@ export default function ChatScreen({
         return;
       }
       await streamChat(
-        message,
+        outbound,
         history,
         {
           onRoute: (e) => {
@@ -196,7 +305,7 @@ export default function ChatScreen({
       setBusy(false);
       abort.current = null;
     }
-  }, [draft, busy, msgs, onNeedsPairing, tier, attached]);
+  }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
@@ -253,6 +362,25 @@ export default function ChatScreen({
         </View>
       ) : null}
 
+      {/* What is riding along with the next message, and how to take it back off. Same chip as
+          an attachment because it is the same idea — something added to the box, not typed. */}
+      {liveRefs.length ? (
+        <View style={s.tierBar}>
+          {liveRefs.map((r) => (
+            <Pressable
+              key={r.id}
+              onPress={() => {
+                setRefs((prev) => prev.filter((x) => x.id !== r.id));
+                setDraft((d) => removeMention(d, r.label));
+              }}
+              style={[s.tierChip, { backgroundColor: ios.fill }]}
+            >
+              <Text style={[s.tierText, { color: ios.tint }]}>@{r.label.slice(0, 22)}  ✕</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       <View style={s.tierBar}>
         {(['auto', 'free', 'turbo'] as const).map((k) => (
           <Pressable
@@ -266,6 +394,64 @@ export default function ChatScreen({
           </Pressable>
         ))}
       </View>
+
+      {/* THE @ PICKER — recent tasks, right above the keyboard. Never a modal: the operator is
+          mid-sentence, and a sheet that takes the screen would lose the sentence. */}
+      {picking ? (
+        <View style={s.picker}>
+          <View style={s.pickerHead}>
+            <Text style={s.pickerTitle}>RECENT TASKS</Text>
+            {/* Typing a space closes this on its own, but a control that says so is the
+                difference between "it went away" and "I put it away". */}
+            <Pressable onPress={() => setDismissed(mention!.start)} hitSlop={10}>
+              <Text style={[s.pickerAction, { color: ios.tint }]}>Dismiss</Text>
+            </Pressable>
+          </View>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 176 }}>
+            {yardError ? (
+              <Pressable onPress={() => setYardError('')} style={s.pickerRow}>
+                <Text style={[s.pickerRowTitle, { color: ios.destructive }]} numberOfLines={2}>
+                  {yardError}
+                </Text>
+                <Text style={s.pickerRowSub}>Tap to try again.</Text>
+              </Pressable>
+            ) : !yard ? (
+              <ActivityIndicator color={ios.tint} style={{ marginVertical: 18 }} />
+            ) : !yard.on ? (
+              <View style={s.pickerRow}>
+                <Text style={s.pickerRowSub}>
+                  The yard is off. Turn it on from SAM on your Mac and past tasks appear here.
+                </Text>
+              </View>
+            ) : (
+              (() => {
+                const hits = matchTasks(yard.recent, mention!.query);
+                if (!hits.length) {
+                  return (
+                    <View style={s.pickerRow}>
+                      <Text style={s.pickerRowSub}>
+                        {yard.recent.length ? 'No task matches that.' : 'Nothing has run yet.'}
+                      </Text>
+                    </View>
+                  );
+                }
+                return hits.map((t, i) => (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => void pick(t)}
+                    style={({ pressed }) => [s.pickerRow, pressed && { backgroundColor: ios.cardPressed }, i === hits.length - 1 && { borderBottomWidth: 0 }]}
+                  >
+                    <Text style={s.pickerRowTitle} numberOfLines={1}>{taskTitle(t)}</Text>
+                    <Text style={s.pickerRowSub} numberOfLines={1}>
+                      {[t.state, t.createdAt ? new Date(t.createdAt).toLocaleString() : null].filter(Boolean).join(' · ')}
+                    </Text>
+                  </Pressable>
+                ));
+              })()
+            )}
+          </ScrollView>
+        </View>
+      ) : null}
 
       <AddSheet
         ios={ios}
@@ -297,7 +483,10 @@ export default function ChatScreen({
           ref={input}
           style={s.input}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={onDraft}
+          // The caret, not the end of the string, is what decides whether an @ is live —
+          // otherwise going back to add a reference mid-sentence does nothing at all.
+          onSelectionChange={(e) => setCaret(e.nativeEvent.selection.end)}
           placeholder="Message SAM"
           placeholderTextColor={ios.secondaryLabel}
           multiline
@@ -386,7 +575,36 @@ function makeStyles(ios: IOS) {
     },
     plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     plusText: { fontSize: 26, color: ios.tint, lineHeight: 30, fontWeight: '300' },
-    tierBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6 },
+    tierBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
+    // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
+    // conversation stays visible above it, which is the point of not making this a sheet.
+    picker: {
+      marginHorizontal: metrics.margin,
+      marginBottom: 6,
+      backgroundColor: ios.card,
+      borderRadius: metrics.radius,
+      borderWidth: metrics.hairline,
+      borderColor: ios.separator,
+      overflow: 'hidden',
+    },
+    pickerHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
+    pickerTitle: { ...iosType.caption, color: ios.secondaryLabel, letterSpacing: 0.6 },
+    pickerAction: { ...iosType.footnote, fontWeight: '600' },
+    pickerRow: {
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      borderBottomWidth: metrics.hairline,
+      borderBottomColor: ios.separator,
+    },
+    pickerRowTitle: { ...iosType.body, color: ios.label },
+    pickerRowSub: { ...iosType.caption, color: ios.secondaryLabel, marginTop: 1 },
     tierChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     tierText: { ...iosType.caption, fontWeight: '600' },
     sendBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
