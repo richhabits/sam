@@ -17,7 +17,8 @@
         },
         "NSCameraUsageDescription": "SAM uses the camera when you attach a photo to a message — the image is sent to your own SAM on your machine, nowhere else.",
         "NSPhotoLibraryUsageDescription": "SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else.",
-        "NSLocalNetworkUsageDescription": "SAM talks to the SAM running on your own computer, usually over your home network. Nothing is sent anywhere else."
+        "NSLocalNetworkUsageDescription": "SAM talks to the SAM running on your own computer, usually over your home network. Nothing is sent anywhere else.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,

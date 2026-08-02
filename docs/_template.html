@@ -423,7 +423,12 @@
   <div class="shell">
     <footer>
       <span class="mono">© 2026 HECTIC · Smart Artificial Mind · proprietary</span>
-      <span class="mono"><a href="https://github.com/richhabits/sam" target="_blank" rel="noopener"><a href="https://github.com/richhabits/sam/blob/main/docs/PLATFORMS.md">platforms</a> · <a href="https://github.com/richhabits/sam/blob/main/docs/SIGNING.md">signing</a> · github.com/richhabits/sam →</a></span>
+      <!-- These were NESTED anchors — an <a> inside an <a>, which is invalid and which browsers
+           silently repair by closing the outer one early, so the trailing link landed wherever the
+           parser decided. Flattened. "privacy" is first because App Store Connect requires a
+           reachable privacy policy URL and this is it: docs/privacy.html, rendered from
+           PRIVACY.md on every deploy. -->
+      <span class="mono"><a href="./privacy.html">privacy</a> · <a href="https://github.com/richhabits/sam/blob/main/docs/PLATFORMS.md">platforms</a> · <a href="https://github.com/richhabits/sam/blob/main/docs/SIGNING.md">signing</a> · <a href="https://github.com/richhabits/sam" target="_blank" rel="noopener">github.com/richhabits/sam →</a></span>
     </footer>
   </div>
 </div>
