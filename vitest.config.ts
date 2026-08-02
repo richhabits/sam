@@ -10,7 +10,11 @@ export default defineConfig({
     // because vitest kills its workers rather than letting per-worker exit handlers fire.
     globalSetup: ["./server/test-teardown.ts"],
     // e2e/ holds Playwright Electron specs (run via `npx playwright test`, not vitest).
-    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**"],
+    // .claude/worktrees holds live git worktrees for background agents, each a FULL copy of the
+    // repo. Without this, running the suite while an agent is working collects its half-written
+    // tests as if they were yours — and they fail for reasons that have nothing to do with your
+    // change (no node_modules in the worktree, work in progress), which is the worst kind of red.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**", ".claude/worktrees/**"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],
