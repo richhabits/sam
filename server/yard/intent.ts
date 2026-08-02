@@ -65,7 +65,9 @@ function mentionedArtefact(text: string): string | null {
 // Turn "build me a booking site for the stud services" into something worth calling a
 // project. Strips the request wrapper and keeps the subject.
 export function nameFrom(text: string): string {
-  let s = String(text || "")
+  // Same bound as read(): this only ever keeps the subject of the first phrase, and the wrapper
+  // patterns it strips backtrack on long whitespace runs. A project name is never 2,000 characters.
+  let s = String(text || "").slice(0, 2_000)
     .replace(/^\s*(please\s+)?(can you|could you|i want you to|i'd like you to|i need you to)\s+/i, "")
     .replace(MAKE, "")
     .replace(/^\s*(me\s+)?(a|an|the)\s+/i, "")
@@ -101,8 +103,15 @@ export function boundToProject(text: string, known: { slug: string; name: string
   return null;
 }
 
+// What the classifier will look at. Every pattern below is a wrapper phrase near the START of a
+// sentence — "can you build me…", "how's job 3 going" — so nothing past the first couple of lines
+// ever decides an intent. Bounding the input is therefore free, and it removes the polynomial
+// backtracking these alternation-plus-\s+ patterns are prone to: a pathological 200KB message
+// cannot cost more than a 2KB one when only 2KB is ever matched against.
+const MAX_CLASSIFY = 2_000;
+
 export function read(message: string, known: { slug: string; name: string }[] = []): Reading {
-  const text = String(message || "").trim();
+  const text = String(message || "").trim().slice(0, MAX_CLASSIFY);
   if (!text) return { intent: "CHAT", confidence: 1 };
 
   // ── asking how work is going ──
