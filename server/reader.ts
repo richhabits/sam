@@ -23,8 +23,19 @@ export interface Distilled { title: string; markdown: string; links: DistillLink
 const decode = (s: string) =>
   s.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
+// Strip tags to a FIXPOINT, not in one pass. A single `.replace(/<[^>]+>/g, "")` over
+// `<scr<script>ipt>` removes the inner tag and leaves `<script>` behind — the removal is what
+// assembles it. Repeating until the string stops changing cannot leave a constructed tag, and it
+// always terminates because every pass that changes anything strictly shortens the string.
+const stripTags = (h: string) => {
+  let prev: string;
+  let s = h;
+  do { prev = s; s = s.replace(/<[^>]+>/g, ""); } while (s !== prev);
+  return s;
+};
+
 // Inner text of an element with tags removed (used for heading/link/list-item text).
-const inlineText = (h: string) => decode(h.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+const inlineText = (h: string) => decode(stripTags(h)).replace(/\s+/g, " ").trim();
 
 /** HTML → clean markdown + title + links, or null when there's too little content to be worth it
  *  (JS-rendered pages, near-empty shells) — the caller then falls back to the plain cleaner. */

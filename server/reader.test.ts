@@ -65,3 +65,13 @@ describe("distill → null (fall back to the plain cleaner)", () => {
     expect(distill(page(`<div id="root"></div><script>renderApp()</script>`))).toBeNull();
   });
 });
+
+describe("tag stripping is a fixpoint, not one pass", () => {
+  it("cannot be made to ASSEMBLE a tag by removing one", () => {
+    // A single .replace(/<[^>]+>/g,"") over `<scr<script>ipt>` deletes the inner tag and leaves
+    // `<script>` — the removal is what builds it. Repeating until stable cannot.
+    const d = distill(page(`<article><h2>a<scr<script>ipt>b</h2><p>${prose}</p></article>`));
+    expect(d!.markdown).not.toContain("<script>");
+    expect(d!.markdown).not.toMatch(/<[a-z]/i);
+  });
+});
