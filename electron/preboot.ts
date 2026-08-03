@@ -53,6 +53,19 @@ if (app.isPackaged) {
   try { fs.mkdirSync(process.env.VAULT_DIR, { recursive: true }); } catch { /* vault dir may be on an unmounted volume — the app reports it properly later */ }
   // better-sqlite3 gets bundled (external is ignored), so point it directly at its native binary,
   // which electron-builder unpacks outside the asar. Skips `bindings`' failing in-asar search.
-  const nb = path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
-  if (fs.existsSync(nb)) process.env.SAM_SQLITE_BINDING = nb;
+  //
+  // BOTH LAYOUTS, because v13 moved the binary and this probe failing is silent. v12 built to
+  // build/Release/better_sqlite3.node; v13 ships prebuilds/<platform>-<arch>.node. When the probe
+  // misses, SAM_SQLITE_BINDING is simply never set, db.ts falls back to letting the library find
+  // its own binding, and the library looks INSIDE the read-only asar — so the packaged app dies on
+  // launch with "Cannot find module .../app.asar/build/Release/better_sqlite3.node" while every
+  // test, typecheck and lint stays green, because none of them run the packaged app. v3.2.0 was
+  // published exactly that way on mac-arm64 and Windows before the smoke test caught it.
+  const pkg = path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "better-sqlite3");
+  for (const candidate of [
+    path.join(pkg, "prebuilds", `${process.platform}-${process.arch}.node`),   // v13+
+    path.join(pkg, "build", "Release", "better_sqlite3.node"),                 // v12 and electron-rebuild
+  ]) {
+    if (fs.existsSync(candidate)) { process.env.SAM_SQLITE_BINDING = candidate; break; }
+  }
 }
