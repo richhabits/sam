@@ -60,3 +60,19 @@ export function layoutFor(width: number): Layout {
 export function contentColumn(l: Layout): { width: '100%'; maxWidth: number; alignSelf: 'center' } {
   return { width: '100%', maxWidth: l.contentMaxWidth, alignSelf: 'center' };
 }
+
+/**
+ * For a SHORT screen inside a tall window — the pairing form is the only one — centre it
+ * vertically instead of leaving it pinned to the top.
+ *
+ * Capping the width stopped the iPad stretching, but it did not make the iPad look designed: a
+ * phone-sized card sat against the top edge with two thirds of a 13-inch screen empty under it,
+ * which reads as an iPhone app in a box. That is the same impression Apple rejects builds for,
+ * and it is a scroll-container property rather than anything about the content.
+ *
+ * Only when there is room. On a phone the form is taller than the window and `justifyContent`
+ * would fight the scroll, so compact keeps its top alignment and scrolls normally.
+ */
+export function centreWhenRoomy(l: Layout): { flexGrow?: 1; justifyContent?: 'center' } {
+  return l.isRegular ? { flexGrow: 1, justifyContent: 'center' } : {};
+}
