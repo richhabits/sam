@@ -291,7 +291,7 @@ export default function App() {
           without it, and the chat would render as a strip at the top of the screen. */}
       <View style={[{ flex: 1 }, column]}>
         {surface === 'agent' ? (
-          <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
+          <ChatScreen ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
         ) : surface === 'tasks' ? (
           <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
         ) : (

@@ -24,6 +24,9 @@ export function parseInline(line: string): Segment[] {
   const re = /(`[^`]+`)|(\*\*[^*]+\*\*)/g;
   let last = 0;
   let m: RegExpExecArray | null;
+  // re.exec advances lastIndex, so splitting the assignment out either loses the result or
+  // re-runs the match. The assign-and-test IS the loop; the alternative is worse.
+  // biome-ignore lint/suspicious/noAssignInExpressions: idiomatic RegExp.exec loop.
   while ((m = re.exec(line))) {
     if (m.index > last) out.push({ kind: 'text', text: line.slice(last, m.index) });
     if (m[1]) out.push({ kind: 'code', text: m[1].slice(1, -1) });

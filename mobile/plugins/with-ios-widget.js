@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 
 // Why this plugin exists
@@ -82,7 +82,7 @@ function deploymentTarget(proj) {
   for (const key of Object.keys(section)) {
     const value = section[key];
     if (!value || typeof value !== 'object') continue;
-    const raw = value.buildSettings && value.buildSettings.IPHONEOS_DEPLOYMENT_TARGET;
+    const raw = value.buildSettings?.IPHONEOS_DEPLOYMENT_TARGET;
     const n = Number(String(raw ?? '').replace(/"/g, ''));
     if (!Number.isFinite(n) || n <= 0) continue;
     if (lowest === null || n < lowest) lowest = n;
@@ -94,7 +94,7 @@ function addWidgetTarget(config) {
   return withXcodeProject(config, (cfg) => {
     const proj = cfg.modResults;
     const appName = cfg.modRequest.projectName;
-    const bundleId = cfg.ios && cfg.ios.bundleIdentifier;
+    const bundleId = cfg.ios?.bundleIdentifier;
     if (!bundleId) {
       throw new Error('[with-ios-widget] ios.bundleIdentifier is not set — the widget cannot be named.');
     }

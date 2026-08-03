@@ -22,7 +22,7 @@ afterEach(() => {
 /** One canned HTTP response for the next fetch, whatever the URL. */
 function stubFetch(body: unknown, status = 200) {
   const calls: string[] = [];
-  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+  vi.stubGlobal("fetch", (url: string, _init?: RequestInit) => {
     calls.push(String(url));
     return Promise.resolve({ ok: status < 400, status, json: async () => body } as Response);
   });

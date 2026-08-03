@@ -391,7 +391,7 @@ function columnStats(name: string, index: number, cells: string[]): ColumnStats 
       if (+m[1] > 12) dayEvidence++;
       if (+m[2] > 12) monthEvidence++;
     }
-    const dayFirst = monthEvidence > dayEvidence ? false : true;
+    const dayFirst = monthEvidence <= dayEvidence;
     s.dateAmbiguous = slashSeen > 0 && dayEvidence === 0 && monthEvidence === 0;
     const ts = dates.map((d) => toDate(d, dayFirst)).filter((n): n is number => n !== null);
     if (ts.length) {
