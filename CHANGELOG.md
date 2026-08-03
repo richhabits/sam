@@ -2,6 +2,60 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.2.0] - 2026-08-03 — "The Deliverable"
+
+SAM hands you something now. Ask for a deck and get a deck; point it at a spreadsheet and get
+what's wrong with the data rather than the data back. And the phone stops being a viewer.
+
+### Added
+- **Slide decks.** Ask for one and SAM writes the whole thing — structure, content, a
+  presentable HTML file saved to your vault. It opens offline and prints to PDF, because the
+  deck is a single self-contained file with nothing loaded from anywhere. No charts for exactly
+  that reason: charting libraries come from a CDN, and a deck that needs the internet to render
+  is not a file you can rely on in a room.
+- **Spreadsheets and CSVs, read properly.** `analyse_data` profiles a file instead of dumping
+  it: what each column actually is, and then the things that are wrong with it — duplicate rows,
+  columns that are 90% empty, one column holding two kinds of value because someone typed "N/A"
+  into a number field, values sitting miles outside the rest. Those findings are the point; the
+  table is the evidence. Bounded (8 MB / 50k rows) and it tells you when it truncated, because
+  stats over a silently clipped sample are worse than no stats.
+- **Home and Lock Screen widgets** on the phone. Quick actions that open SAM ready to go. A
+  widget link pre-fills what you're about to say — it does not send it, because any app on your
+  phone can open a URL and none of them should be able to put words in SAM's ear.
+- **`@` a past task on the phone.** Type `@`, pick something SAM did earlier, and its context
+  rides along with your next message.
+
+### Changed
+- **The Pocket works on iPad.** It claimed to since the day it shipped and nothing in it ever
+  looked at the window size, so on a 12.9" screen it stretched rather than adapted — chat set to
+  a thousand-point line, a pairing form running the full width. It now lays out for the window
+  it is actually in, which is the honest test: an iPad in Slide Over is a phone-shaped sliver and
+  should look like one.
+- **The app icon is SAM's own mark**, drawn at full resolution instead of a different picture
+  scaled up.
+- **`brew install --cask richhabits/tap/sam` tracks releases again.** The cask had been stuck at
+  v1.5.0 for six months while the step meant to bump it skipped in silence. The tap updates
+  itself now — nothing to provision, nothing to forget.
+
+### Fixed
+- **Seven more read routes were open to any program on your machine.** The 3.1.1 sweep stopped at
+  files; these read *you* — a running account of what SAM did and what it asked you to approve,
+  what it has learned about you, the folders you watch, your usage. `/api/proactive` was the
+  worst of them: reading it *drained* it, so anything that asked ate your briefings instead of
+  copying them. None of it is a credential, which is exactly why it was passed over twice.
+- Several smaller ones found by turning the security scanner up rather than waiting: a biased
+  draw in a pairing code, a regex an attacker could make crawl, HTML entities decoded twice so
+  that text could become a tag, a spreadsheet cell able to break the table it was rendered into.
+- **Zero known vulnerabilities**, including a high-severity denial of service in a build
+  dependency.
+
+### Internal
+- Node 20 reached end of life in April; everything moved to Node 22, which also unblocked eleven
+  major dependency upgrades that had been stuck behind it — Express 5, React 19, TypeScript 7.
+- Two failures that had been hiding themselves: a pull request with a conflict reported *nothing*
+  rather than "conflict" (every check silently skipped), and a release step that silently
+  published nothing. Both are loud now.
+
 ## [3.1.1] - 2026-08-01 — "One Bar"
 
 A security fix. SAM held writing to a high bar and quietly let reading through.
