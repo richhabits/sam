@@ -7,10 +7,16 @@
 #  in package.json, so we do that rebuild explicitly here).
 #
 #  Triggers:
-#   • Publish a GitHub Release (or push a v* tag) → builds + attaches
-#     the installers to that release (auto-update picks them up).
+#   • Publish a GitHub Release → builds, PROVES THE APP STARTS, then attaches
+#     the installers (auto-update picks them up). Note there is no `push: tags`
+#     trigger despite what this header used to claim — a tag alone builds nothing.
 #   • Run manually (workflow_dispatch) → builds + uploads artifacts you
 #     can download from the run, without touching a release.
+#
+#  ORDER MATTERS, and it is the whole point of this file: package → smoke test →
+#  notarization check → publish. Packaging used to carry `--publish always`, so the
+#  installers were uploaded BEFORE anything checked the app could launch. v3.2.0 went
+#  out that way and died before its first window on two platforms.
 #
 #  Code signing is OPTIONAL — set these repo secrets to ship signed
 #  (unsigned still builds fine, users just click through Gatekeeper):
@@ -106,7 +112,16 @@ jobs:
       # Signs + notarizes AUTOMATICALLY when the Apple secrets are present, otherwise builds unsigned.
       # No workflow edits needed — add the repo secrets (CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
       # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) and the very next release signs itself.
-      - name: Package + publish (${{ matrix.platform }} ${{ matrix.arch }})
+      # PACKAGE ONLY — never publish here. This step used to carry `--publish always`, which meant
+      # electron-builder uploaded the installers BEFORE anything had checked the app could start.
+      # v3.2.0 shipped exactly that way: the packaging succeeded, the installers went to the
+      # release, and the smoke test then failed because better-sqlite3 13 had moved its native
+      # binary and the packaged app died before its first window. The release was public, marked
+      # latest, and serving an auto-update feed for the fifteen minutes it took to notice.
+      #
+      # Uploading is now a separate step AFTER the smoke test and the notarization check, so a
+      # build that does not start cannot reach a release at all.
+      - name: Package (${{ matrix.platform }} ${{ matrix.arch }})
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,7 +133,6 @@ jobs:
           WIN_SIGN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_SIGN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
-          PUBLISH=${{ (github.event_name == 'release' || inputs.publish) && 'always' || 'never' }}
           if [ "${{ matrix.platform }}" = "mac" ] && [ -n "$SIGN_CSC_LINK" ]; then
             export CSC_LINK="$SIGN_CSC_LINK" CSC_KEY_PASSWORD="$SIGN_CSC_KEY_PASSWORD"
             echo "🔏 macOS: signing + notarizing (Developer ID cert + notarization creds present)"
@@ -130,7 +144,7 @@ jobs:
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             echo "ℹ️ ${{ matrix.platform }}: unsigned build (no signing secrets set)"
           fi
-          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish "$PUBLISH"
+          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
 
       # RUNTIME PROOF (no false claims): actually launch the packaged app on THIS platform and
       # confirm the embedded server boots + responds. This exercises the real risks — the native
@@ -189,6 +203,47 @@ jobs:
           # stapled dmg only helps FULLY-OFFLINE first-open. Warn, don't fail. (True dmg staple = v1.5.x.)
           echo "🔎 Stapler validate (dmg):"; if xcrun stapler validate "$DMG"; then echo "✅ dmg stapled — clean even offline."; else echo "⚠️ dmg not stapled (app IS notarized → clean online; offline-open staple is a follow-up)."; fi
           echo "✅ signed + notarized (app) — ships with zero Gatekeeper warning."
+
+      # PUBLISH — the last thing that happens, and only once the app has been PROVEN to start.
+      # Everything above is local: package, boot it, check notarization stuck. Only then do the
+      # bytes leave the runner. This is the step whose absence let v3.2.0 reach users.
+      #
+      # electron-builder is not used to upload, because re-invoking it to publish would re-run the
+      # build. The installers and the update feeds are already sitting in dist-app; they just need
+      # attaching to the release.
+      - name: Publish to the release
+        if: ${{ github.event_name == 'release' || inputs.publish }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          # workflow_dispatch has no release payload — derive the tag the same way the version does.
+          [ -n "$TAG" ] || TAG="v$(node -p "require('./package.json').version")"
+          echo "publishing $TAG from $(pwd)/dist-app"
+
+          # THE UPDATE FEEDS ARE NOT OPTIONAL. electron-updater reads latest*.yml; without them a
+          # release installs fine by hand and then never offers anyone an update again — which is
+          # silent, and is precisely how the cask sat at v1.5.0 for six months. If `--publish never`
+          # ever stops emitting them, fail here rather than ship a release that quietly strands
+          # every existing install.
+          shopt -s nullglob
+          feeds=(dist-app/latest*.yml)
+          if [ ${#feeds[@]} -eq 0 ]; then
+            echo "::error title=No update feed::electron-builder produced no latest*.yml under dist-app, so auto-update would silently stop working for everyone already on SAM. Refusing to publish."
+            ls -la dist-app || true
+            exit 1
+          fi
+
+          assets=(dist-app/*.dmg dist-app/*.zip dist-app/*.exe dist-app/*.AppImage dist-app/*.deb dist-app/*.blockmap "${feeds[@]}")
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error title=Nothing to publish::no installers found under dist-app."; exit 1
+          fi
+          printf 'uploading: %s\n' "${assets[@]}"
+          gh release upload "$TAG" "${assets[@]}" -R "$REPO" --clobber
+          echo "✅ ${{ matrix.platform }}-${{ matrix.arch }} published to $TAG — after it was proven to boot."
 
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
