@@ -2,7 +2,29 @@
 
 All notable changes to SAM. Newest first.
 
-## [3.2.2] - 2026-08-03 — "Proof Before Publish"
+## [3.2.3] - 2026-08-03 — "Proof Before Publish"
+
+Nothing changes in the app. This is 3.2.2 with its Windows download named correctly.
+
+### Fixed
+- **Windows: the installer was published under the wrong name.** electron-builder writes that
+  file with spaces in it, and GitHub turns spaces into dots when a file is attached to a
+  release — so the download arrived as `SAM.Setup.3.2.2.exe` while the update feed, and the
+  one-paste installer, both looked for `SAM-Setup-3.2.2.exe`. Nothing errored: the release
+  looked complete, and then every Windows update quietly failed and the install script reported
+  no installer found. 3.2.2 has been withdrawn. The file is now named without spaces, so there
+  is nothing left to rewrite.
+
+### Changed
+- **A build is published only after it has been proven to start** (this is what 3.2.2 was for).
+  Packaging used to upload the installers as part of building them, with the check that boots
+  the app running afterwards — a report rather than a gate. 3.2.0 is what that cost. The order
+  is now build → boot it → check the signature stuck → upload.
+- The upload step now also refuses to publish if the update feed points at a file that is not
+  actually attached, which is exactly the fault above. Both of these failures were invisible
+  from the outside: the download works, and only the *next* thing quietly stops working.
+
+## [3.2.2] - 2026-08-03 — "Proof Before Publish" (withdrawn — Windows download was misnamed; see 3.2.3)
 
 Nothing changes in the app. This release exists to prove the release process itself.
 
