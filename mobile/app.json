@@ -55,7 +55,8 @@
     "plugins": [
       "expo-secure-store",
       "expo-notifications",
-      "./plugins/with-space-safe-pods"
+      "./plugins/with-space-safe-pods",
+      "./plugins/with-ios-widget"
     ]
   }
 }
