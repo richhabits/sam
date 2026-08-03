@@ -357,3 +357,24 @@ describe("renderReport", () => {
     expect(md).toMatch(/- `amount`/);
   });
 });
+
+describe("a spreadsheet cell cannot break the table it is rendered into", () => {
+  it("escapes backslashes BEFORE pipes, so an already-escaped pipe stays inside its cell", async () => {
+    // CodeQL caught this as incomplete sanitisation and it is a real defect: escaping `|` first
+    // turns a cell containing `\|` into `\\|` — an escaped backslash followed by a LIVE pipe,
+    // which ends the cell early and shunts the rest of the row into the wrong column.
+    const csv = 'name,note\nrow1,"a \\| b"\nrow2,"plain"';
+    const md = renderReport(profileTable(parseCsv(csv)));
+    const rows = md.split("\n").filter((l) => l.trim().startsWith("|"));
+    // Every rendered row must have the same number of unescaped pipes as the header.
+    const live = (l: string) => (l.match(/(?<!\\)\|/g) || []).length;
+    const counts = new Set(rows.map(live));
+    expect(counts.size, `ragged table rows: ${[...counts].join(",")}`).toBe(1);
+  });
+
+  it("flattens CR as well as LF — a Windows export must not split a row", () => {
+    const csv = 'name,note\nrow1,"line1\r\nline2"';
+    const md = renderReport(profileTable(parseCsv(csv)));
+    for (const line of md.split("\n")) expect(line).not.toMatch(/\r/);
+  });
+});

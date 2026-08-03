@@ -448,7 +448,7 @@ function findings(p: TableProfile): string[] {
   if (!p.rows) return ["No data rows — the file has a header (or a single line) and nothing under it."];
 
   if (p.duplicateRows) {
-    out.push(`**${p.duplicateRows} duplicate row${p.duplicateRows === 1 ? "" : "s"}** (${pct(p.duplicateRows / p.rows)} of the file) — identical across every column.${p.duplicateExample ? ` First repeat: \`${p.duplicateExample}\`.` : ""} Worth checking the export didn't run twice before you count anything.`);
+    out.push(`**${p.duplicateRows} duplicate row${p.duplicateRows === 1 ? "" : "s"}** (${pct(p.duplicateRows / p.rows)} of the file) — identical across every column.${p.duplicateExample ? ` First repeat: \`${inlineValue(p.duplicateExample)}\`.` : ""} Worth checking the export didn't run twice before you count anything.`);
   }
   if (p.ragged.short || p.ragged.long) {
     const bits = [p.ragged.short ? `${p.ragged.short} row(s) had FEWER fields than the header (padded with blanks)` : "", p.ragged.long ? `${p.ragged.long} had MORE (the extras were dropped)` : ""].filter(Boolean);
@@ -474,7 +474,7 @@ function findings(p: TableProfile): string[] {
   }
 
   const constant = p.cols.filter((c) => c.constant && c.filled === p.rows);
-  if (constant.length) out.push(`**No variation** in ${constant.map((c) => `\`${c.name}\` (always "${c.top[0]?.value}")`).join(", ")} — carries no information for this slice, so it can't explain anything.`);
+  if (constant.length) out.push(`**No variation** in ${constant.map((c) => `\`${c.name}\` (always "${inlineValue(c.top[0]?.value)}")`).join(", ")} — carries no information for this slice, so it can't explain anything.`);
 
   const keys = p.cols.filter((c) => c.unique && p.rows > 1);
   if (keys.length) out.push(`Unique in every row: ${keys.map((c) => `\`${c.name}\``).join(", ")} — looks like the identifier${keys.length === 1 ? "" : "s"}, so joins on ${keys.length === 1 ? "it" : "them"} should be safe.`);
@@ -519,8 +519,21 @@ function fmtBytes(b: number): string {
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
   return `${(b / 1024 / 1024).toFixed(1)} MB`;
 }
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+// Escape the BACKSLASH first, then the pipe. The other order takes a cell that already contains
+// `\|` and produces `\\|` — an escaped backslash followed by a LIVE pipe, which ends the cell
+// early and shunts the rest of the row into the wrong column. Every value here comes out of
+// someone's spreadsheet, so it is exactly the kind of thing a real export contains.
+// \r as well as \n: a CSV written on Windows carries CR, and a bare CR inside a table row breaks
+// the row as completely as a newline does.
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
 const clipStr = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+// A value going into PROSE rather than a table cell. Same hazard, different shape: a CR or LF
+// out of a quoted CSV field breaks the markdown line it is embedded in, and a backtick closes
+// the surrounding code span early so the rest of the finding renders as code. cell() cannot be
+// reused here — it escapes pipes for a table, which is meaningless in a sentence.
+const inlineValue = (s: unknown, n = 40) =>
+  clipStr(String(s ?? "").replace(/[\r\n]+/g, " ").replace(/`/g, "'"), n);
 
 function summaryOf(c: ColumnStats): string {
   if (!c.filled) return "—";
