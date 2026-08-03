@@ -21,7 +21,7 @@ import { parsePairLink } from './lib/pairlink';
 import { parseQuickLink } from './lib/quicklink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
 import { iosDark, iosLight, metrics, type as iosType } from './lib/ios';
-import { contentColumn, layoutFor } from './lib/layout';
+import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { Segmented } from './ui';
 import ChatScreen from './ChatScreen';
 import TasksScreen from './TasksScreen';
@@ -177,10 +177,15 @@ export default function App() {
         {/* The pairing form is the worst offender on a big screen: a single text input stretched
             across a 12.9" iPad reads as a bug rather than a layout. Capped and centred like
             everything else. */}
-        <ScrollView contentContainerStyle={[s.pairScroll, column]} keyboardShouldPersistTaps="handled">
-          <View style={s.halo} pointerEvents="none" />
+        <ScrollView contentContainerStyle={[s.pairScroll, centreWhenRoomy(layout), column]} keyboardShouldPersistTaps="handled">
+          {/* The halo is a soft wash that bleeds off the TOP of the screen, drawn to sit behind a
+              brand row pinned up there. Once the content centres itself on a big window the brand
+              row moves down and the halo is left stranded at the top as an unexplained pink blob —
+              decoration that has lost the thing it was decorating reads as a rendering bug. It
+              belongs to the phone layout, so it stays on the phone layout. */}
+          {layout.isRegular ? null : <View style={s.halo} pointerEvents="none" />}
           <View style={s.brandRow}>
-            <Image source={require('./assets/sam-mark.png')} style={s.mark} />
+            <Image source={require('./assets/sam-mark.png')} style={[s.mark, { width: layout.markSize, height: layout.markSize }]} />
             <View>
               <Text style={s.brand}>S.A.M.</Text>
               <Text style={s.brandSub}>Smart Artificial Mind</Text>

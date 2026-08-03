@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentColumn, layoutFor, READABLE_MAX, REGULAR_WIDTH } from './layout';
+import { centreWhenRoomy, contentColumn, layoutFor, READABLE_MAX, REGULAR_WIDTH } from './layout';
 
 // There is no iPad in this loop, so the iPad behaviour is pinned here instead of eyeballed.
 // The widths below are the real ones — if a case regresses, it regresses against an actual
@@ -79,5 +79,20 @@ describe('the content column', () => {
   it('gives an iPad more gutter and a bigger mark than a phone', () => {
     expect(layoutFor(IPAD_11_PORTRAIT).gutter).toBeGreaterThan(layoutFor(IPHONE_SE).gutter);
     expect(layoutFor(IPAD_11_PORTRAIT).markSize).toBeGreaterThan(layoutFor(IPHONE_SE).markSize);
+  });
+});
+
+describe('using the space, not just capping it', () => {
+  it('centres a short screen vertically once the window is tall enough', () => {
+    // Capping the width stopped the iPad stretching; it did not stop the card sitting against
+    // the top edge with two thirds of the screen empty under it, which is what an iPhone app in
+    // a box looks like.
+    expect(centreWhenRoomy(layoutFor(IPAD_11_PORTRAIT))).toEqual({ flexGrow: 1, justifyContent: 'center' });
+  });
+
+  it('leaves a phone alone — there the form is taller than the window', () => {
+    // justifyContent on a scroll container whose content overflows fights the scroll.
+    expect(centreWhenRoomy(layoutFor(IPHONE_SE))).toEqual({});
+    expect(centreWhenRoomy(layoutFor(SLIDE_OVER))).toEqual({});
   });
 });
