@@ -2,7 +2,27 @@
 
 All notable changes to SAM. Newest first.
 
-## [3.2.0] - 2026-08-03 — "The Deliverable"
+## [3.2.1] - 2026-08-03 — "It Actually Starts"
+
+3.2.0 did not launch. Please use this one.
+
+### Fixed
+- **The packaged app crashed on startup.** better-sqlite3 13 moved its native binary from
+  `build/Release/better_sqlite3.node` to `prebuilds/<platform>-<arch>.node`, and the code that
+  points the app at that binary still looked only at the old location. Missing it is silent: the
+  app then let the library find its own copy, the library looked inside the read-only archive
+  where no such file can live, and the whole thing died before the first window. Confirmed on
+  Apple Silicon and Windows.
+
+  Nothing in the test suite could have caught it — the tests, the type check and the linter all
+  passed, because none of them run the packaged app. What caught it was the smoke test that
+  boots the real build, after the installers had already been uploaded. 3.2.0 has been withdrawn.
+
+  Both layouts are now checked, and a test asserts that the installed library still keeps its
+  binary somewhere the app looks — so the next version that moves it fails in a second instead of
+  in a release.
+
+## [3.2.0] - 2026-08-03 — "The Deliverable" (withdrawn — did not launch; see 3.2.1)
 
 SAM hands you something now. Ask for a deck and get a deck; point it at a spreadsheet and get
 what's wrong with the data rather than the data back. And the phone stops being a viewer.
