@@ -64,10 +64,26 @@ export default function App() {
     // Restore BOTH halves of the pairing, not just the token: a device that paired with a SAM
     // on some other address then reopened the app used to be shown the hardcoded loopback
     // default, so a re-pair after a revoke silently pointed at the wrong machine.
+    //
+    // WRAPPED, because `paired` starts as null and null renders a bare spinner. If either read
+    // rejects, nothing ever sets it and the app sits on that spinner for as long as you care to
+    // look at it — no error, no way forward, indistinguishable from "slow". Caught running the
+    // Release build on a simulator, where the keychain is unavailable to an unsigned binary and
+    // getItemAsync throws: the app launched, spun, and stayed spinning.
+    //
+    // A keychain read can also fail on a real device — first unlock after boot, a restore from
+    // backup, or an OS that simply says no. None of those should cost the operator the app. So
+    // treat a failed read as "not paired", which is the truthful answer (we could not read a
+    // token, so we do not have one) and lands on the pairing screen, which is recoverable.
     (async () => {
-      const [token, saved] = await Promise.all([getToken(), getHost()]);
-      if (saved) setHostInput(saved);
-      setPaired(!!token);
+      try {
+        const [token, saved] = await Promise.all([getToken(), getHost()]);
+        if (saved) setHostInput(saved);
+        setPaired(!!token);
+      } catch (e: any) {
+        setPaired(false);
+        setError(e?.message ? `Couldn't read this device's pairing: ${e.message}` : "Couldn't read this device's pairing.");
+      }
     })();
   }, []);
 
