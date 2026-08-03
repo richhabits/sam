@@ -87,11 +87,14 @@ export default function ChatScreen({
   ios,
   onNeedsPairing,
   resetKey = 0,
+  prompt = null,
 }: {
   t: Theme;
   ios: IOS;
   onNeedsPairing: () => void;
   resetKey?: number;
+  /** Text handed in by a `sam://ask?text=…` link — a widget tap, a Shortcut, a QR code. */
+  prompt?: string | null;
 }) {
   const s = useMemo(() => makeStyles(ios), [ios]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -99,6 +102,17 @@ export default function ChatScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const scroller = useRef<ScrollView>(null);
+
+  // A quick-action link PRE-FILLS the composer; it does not send. The parser only accepts our own
+  // scheme and bounds the text, but "any app on this phone can open a URL" is still the threat
+  // model — and a link that sends on arrival lets one of them put words in SAM's ear without the
+  // operator ever seeing them. One tap to a prepared prompt keeps the whole point of a widget
+  // while leaving the decision where it belongs. Appended, so it can't silently eat a draft
+  // already in progress.
+  useEffect(() => {
+    if (!prompt) return;
+    setDraft((d) => (d.trim() ? `${d.trim()} ${prompt}` : prompt));
+  }, [prompt]);
   const abort = useRef<AbortController | null>(null);
   const input = useRef<TextInput>(null);
   const [sheet, setSheet] = useState(false);

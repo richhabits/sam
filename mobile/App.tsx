@@ -18,6 +18,7 @@ import { claim, getHost, getToken } from './lib/api';
 import { clearThread } from './lib/history';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
+import { parseQuickLink } from './lib/quicklink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
 import { iosDark, iosLight, metrics, type as iosType } from './lib/ios';
 import { contentColumn, layoutFor } from './lib/layout';
@@ -50,6 +51,8 @@ export default function App() {
 
   const [paired, setPaired] = useState<boolean | null>(null); // null = still checking on boot
   const [surface, setSurface] = useState<Surface>('agent');
+  // Text a sam://ask?text=… link arrived with, handed to the chat surface to pre-fill.
+  const [prompt, setPrompt] = useState<string | null>(null);
   const [host, setHostInput] = useState('http://127.0.0.1:8787');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -111,6 +114,16 @@ export default function App() {
     (url: string | null) => {
       if (!url || handledUrls.current.has(url)) return;
       handledUrls.current.add(url);
+      // A quick action from a widget, a Shortcut or a QR code. Checked BEFORE pairing bails out,
+      // because the two are different links with different parsers and a quick action must not
+      // fall through the pairing branch's `return`.
+      const quick = parseQuickLink(url);
+      if (quick) {
+        setSurface(quick.action === 'tasks' ? 'tasks' : 'agent');
+        setPrompt(quick.text);
+        return;
+      }
+
       const link = parsePairLink(url);
       if (!link) return;
       const target = link.host || host;
@@ -278,7 +291,7 @@ export default function App() {
           without it, and the chat would render as a strip at the top of the screen. */}
       <View style={[{ flex: 1 }, column]}>
         {surface === 'agent' ? (
-          <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} />
+          <ChatScreen t={t} ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
         ) : surface === 'tasks' ? (
           <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
         ) : (
