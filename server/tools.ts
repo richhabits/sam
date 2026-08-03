@@ -83,6 +83,7 @@ import { championWithConfidence } from "./colosseum-significance.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
+import { CAPS as SHEET_CAPS, parseCsv, profileTable, readTable, renderReport, SheetError } from "./sheets.ts";
 import { fetchClean } from "./webintel.ts";
 import { extract } from "./webintel-extract.ts";
 import { extractMany } from "./webintel-research.ts";
@@ -380,6 +381,43 @@ async function listDir(path: string): Promise<string> {
     return rows.join("\n") || "(empty)";
   } catch (e: any) { return `Could not list ${path}: ${e?.message}`; }
 }
+// analyse_data — profile a CSV instead of dumping it. read_file on a 20k-row export gives the
+// model (and the user) a wall of numbers nobody reads; this gives the shape of the data and, more
+// importantly, what's WRONG with it. All the work is in sheets.ts; this is just the plumbing.
+// Takes a path OR the CSV text inline. Path wins when both are given — it's the fresher source,
+// and a model that pastes a snippet alongside a path meant the file.
+async function analyseData(i: any): Promise<string> {
+  const question = i?.question ? String(i.question).trim() : undefined;
+  const path = i?.path ? String(i.path).trim() : typeof i === "string" && !/[\n,]/.test(i) ? i.trim() : "";
+  const inline = typeof i?.csv === "string" ? i.csv : typeof i === "string" ? i : "";
+
+  if (path) {
+    try {
+      const f = await readTable(path);
+      const prof = profileTable(parseCsv(f.text), { source: basename(f.path), bytesRead: f.bytesRead, totalBytes: f.totalBytes, truncatedBytes: f.truncatedBytes });
+      return renderReport(prof, { question });
+    } catch (e: any) {
+      if (e instanceof SheetError) return e.message;
+      return `Could not read ${path}: ${e?.message || e}`;
+    }
+  }
+  if (inline.trim()) {
+    // Inline text has already been through the model's context, so it can't be enormous — but cap
+    // it anyway rather than trusting that, and cut at a line break so the last row isn't half-read.
+    let text = inline;
+    let truncatedBytes = false;
+    if (Buffer.byteLength(text, "utf8") > SHEET_CAPS.maxBytes) {
+      text = text.slice(0, SHEET_CAPS.maxBytes);
+      const nl = text.lastIndexOf("\n");
+      if (nl > 0) text = text.slice(0, nl);
+      truncatedBytes = true;
+    }
+    const prof = profileTable(parseCsv(text), { source: "the pasted data", bytesRead: Buffer.byteLength(text, "utf8"), truncatedBytes });
+    return renderReport(prof, { question });
+  }
+  return `Point me at some data — either a file ({"path":"~/Downloads/sales.csv"}) or the rows themselves ({"csv":"name,amount\\n…"}).`;
+}
+
 // Human-readable byte size (portable, no deps) — 1234 → "1.2 KB".
 function humanSize(bytes: number): string {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -1348,6 +1386,9 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Checking disk space for ${i?.path ?? i ?? "~"}`, run: (i) => diskSpace(i?.path ?? i ?? "~") },
   { name: "find_files", safe: true, description: "Find files by name in a folder (case-insensitive substring match), newest-modified first — great for 'where's that invoice pdf'. input: { query, path? } (path supports ~; defaults to home).", params: "query, path?",
     activity: (i) => `Searching for "${i?.query ?? i}" in ${i?.path ?? "~"}`, run: (i) => findFiles(i?.query ?? i, i?.path ?? "~") },
+  { name: "analyse_data", safe: true, description: "Analyse a spreadsheet / CSV: what each column holds (type, range, mean/median, top values) and the problems in it — duplicate rows, empty or mostly-empty columns, one column holding mixed types, numeric outliers. Use this instead of read_file for .csv/.tsv. input: { path?, csv?, question? } — a file path (supports ~) OR the CSV text inline.", params: "{path?, csv?, question?}",
+    args: { path: { type: "string", desc: "path to a .csv/.tsv/.txt table (supports ~)" }, csv: { type: "string", desc: "the delimited text itself, when you already have the rows" }, question: { type: "string", desc: "what the user wants to know — columns it names get called out" } },
+    activity: (i) => `Analysing ${i?.path ? basename(String(i.path)) : "the data"}`, run: analyseData },
   { name: "screenshot", safe: true, description: "Take a screenshot of the screen, saved to the Desktop.", params: "(none)",
     activity: () => `Taking a screenshot`, run: screenshot },
   { name: "clipboard_get", safe: true, description: "Read the current clipboard text.", params: "(none)",
