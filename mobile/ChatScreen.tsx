@@ -29,7 +29,6 @@ import {
   type RecentTask,
   type TaskReference,
 } from './lib/mentions';
-import { fs, radius, space, type Theme } from './lib/theme';
 import { metrics, type as iosType, type IOS } from './lib/ios';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
@@ -52,26 +51,31 @@ const GREETING =
 /** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
  *  lazy port looks like. Blocks re-parse on every token, which is cheap and keeps a code fence
  *  from flashing as prose before its closing ``` arrives. */
-function Rendered({ text, t, s }: { text: string; t: Theme; s: any }) {
+function Rendered({ text, s }: { text: string; s: any }) {
   return (
     <>
       {parseMarkdown(text).map((b, i) =>
         b.kind === 'codeblock' ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
           <View key={i} style={s.codeblock}>
             <Text style={s.codeblockText}>{b.text}</Text>
           </View>
         ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
           <Text key={i} style={s.samText}>
             {b.segments.map((seg, j) =>
               seg.kind === 'bold' ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
                 <Text key={j} style={{ fontWeight: '700' }}>
                   {seg.text}
                 </Text>
               ) : seg.kind === 'code' ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
                 <Text key={j} style={s.inlineCode}>
                   {seg.text}
                 </Text>
               ) : (
+                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
                 <Text key={j}>{seg.text}</Text>
               ),
             )}
@@ -83,13 +87,11 @@ function Rendered({ text, t, s }: { text: string; t: Theme; s: any }) {
 }
 
 export default function ChatScreen({
-  t,
   ios,
   onNeedsPairing,
   resetKey = 0,
   prompt = null,
 }: {
-  t: Theme;
   ios: IOS;
   onNeedsPairing: () => void;
   resetKey?: number;
@@ -134,6 +136,7 @@ export default function ChatScreen({
   const loadingYard = useRef(false);
 
   // Keep the newest turn in view as tokens arrive, not just when a message is added.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: msgs is a TRIGGER, not an input — the body never reads it, and dropping it stops the scroll following the stream.
   useEffect(() => {
     const id = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
     return () => clearTimeout(id);
@@ -145,6 +148,7 @@ export default function ChatScreen({
   // Restore the thread on launch. Losing every conversation on app switch is the most
   // "unfinished" thing a chat client can do, and SAM's pitch is a memory that compounds.
   // resetKey changes when "New chat" fires, which re-runs this against a cleared store.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is a TRIGGER, not an input — the body never reads it, and dropping it means "New chat" never reloads the cleared thread.
   useEffect(() => {
     loadThread().then((turns) => setMsgs(turns.map((x) => ({ ...x }))));
   }, [resetKey]);
@@ -341,16 +345,18 @@ export default function ChatScreen({
         ) : (
           msgs.map((m, i) =>
             m.role === 'user' ? (
+              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
               <View key={i} style={s.bubbleUser}>
                 <Text style={s.userText}>{m.text}</Text>
               </View>
             ) : (
+              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
               <View key={i} style={s.samWrap}>
                 <View style={s.bubbleSam}>
                   {m.pending && !m.text ? (
                     <ActivityIndicator color={ios.tint} />
                   ) : (
-                    <Rendered text={m.text} t={t} s={s} />
+                    <Rendered text={m.text} s={s} />
                   )}
                 </View>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
@@ -365,6 +371,7 @@ export default function ChatScreen({
         <View style={s.tierBar}>
           {attached.map((a, i) => (
             <Pressable
+              // biome-ignore lint/suspicious/noArrayIndexKey: removal is BY index (see onPress), so the index is the identity this list actually uses.
               key={i}
               onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
               style={[s.tierChip, { backgroundColor: ios.fill }]}

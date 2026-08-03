@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────
+#  Do the advertised numbers still match the code?
+#
+#  This check already exists inside ci.yml, and it caught a real drift — two branches each
+#  added a tool, each regenerated stats against a 186-tool main, each landed 187, and the
+#  merged tree had 188. Neither PR was wrong; the combination was, and no per-PR check can
+#  see that because the count is a property of the MERGED tree.
+#
+#  So why a second copy? Because ci.yml carries `paths-ignore` for `docs/**` and `**/*.md`
+#  — and the files this gate compares are README.md, docs/stats.json and
+#  docs/repo-description.txt. Every one of them is ignored. The fix commit for that very
+#  drift therefore did not trigger CI at all, and main sat with a red run against it until
+#  someone dispatched a build by hand. The gate could not verify its own repair.
+#
+#  This one has NO path filter, on purpose. It is cheap — install and one script — and it
+#  is the only thing standing between a docs-only commit and an unverified main.
+#
+#  ci.yml keeps its copy: that is the one wired into branch protection through `test`, so
+#  PRs stay gated. This one guarantees the check can never be SKIPPED. Deliberate overlap.
+# ─────────────────────────────────────────────────────────────
+name: Stats drift
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stats-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Advertised numbers match the registries
+        run: |
+          npm run stats
+          if ! git diff --quiet -- README.md docs/stats.json docs/repo-description.txt; then
+            echo "::error title=Advertised numbers are stale::Run 'npm run stats' and commit the result. This usually means a tool, agent or skill was added — or that two branches each regenerated against the same older count and the merge left the total wrong."
+            git --no-pager diff -- README.md docs/stats.json docs/repo-description.txt
+            exit 1
+          fi
+          echo "✓ advertised numbers match the code"
