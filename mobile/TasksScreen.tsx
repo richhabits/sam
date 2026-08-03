@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { metrics, type, type IOS } from './lib/ios';
+import { taskTitle } from './lib/mentions';
 import { Row, Screen, Section } from './ui';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
@@ -33,23 +34,9 @@ type Yard = {
   meter?: { todayTokens?: number; weekTokens?: number };
 };
 
-// Same naming the desk uses (src/TasksView.tsx titleFor) — a job should not be called one
-// thing on the Mac and another on the phone.
-function titleFor(j: Job): string {
-  const p = j.payload || {};
-  switch (j.kind) {
-    case 'project.build':
-      return `Build: ${p.name || j.project || j.id}`;
-    case 'project.create':
-      return `Create: ${p.name || j.id}`;
-    case 'project.edit':
-      return `Edit ${p.slug || j.project || 'project'}`;
-    case 'project.deploy':
-      return `Deploy ${p.slug || j.project || j.id}`;
-    default:
-      return j.project ? `${j.kind} · ${j.project}` : j.kind;
-  }
-}
+// The naming lives in lib/mentions.ts (taskTitle) because the @ picker needs the SAME string —
+// a job called "Build: mainline" in this list and something else in a reference is how two
+// screens start disagreeing about what happened.
 
 export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeedsPairing: () => void }) {
   const [yard, setYard] = useState<Yard | null>(null);
@@ -128,7 +115,7 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
                 <Row
                   key={j.id}
                   ios={ios}
-                  title={titleFor(j)}
+                  title={taskTitle(j)}
                   subtitle={`${new Date(j.createdAt).toLocaleString()}${j.costTokens ? ` · ${j.costTokens} tokens` : ''}${
                     j.lastError ? ` · ${j.lastError}` : ''
                   }`}
