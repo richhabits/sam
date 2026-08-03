@@ -2,6 +2,23 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.2.2] - 2026-08-03 — "Proof Before Publish"
+
+Nothing changes in the app. This release exists to prove the release process itself.
+
+### Changed
+- **A build is now published only after it has been proven to start.** Packaging used to upload
+  the installers as part of building them, and the check that boots the packaged app ran
+  afterwards — which made it a report, not a gate. 3.2.0 is what that cost: it reached the
+  releases page, and the auto-update feed, before anything discovered it died on launch.
+
+  The order is now build → boot it → check the signature stuck → *then* upload. Uploading is a
+  separate step that only runs if the two before it passed, so a build that does not start
+  cannot reach a release at all.
+
+  The upload also refuses to run if the update metadata is missing. That failure is invisible
+  from the outside — the download works, and then nobody is ever offered another version again.
+
 ## [3.2.1] - 2026-08-03 — "It Actually Starts"
 
 3.2.0 did not launch. Please use this one.
