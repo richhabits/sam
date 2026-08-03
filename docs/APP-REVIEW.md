@@ -123,3 +123,31 @@ the image goes to the user's own server. No upload to us — because there is no
    (Keys → Apple Push Notifications service), then wire it server-side.
 3. **`ios.buildNumber`** is `1`. Increment it for every upload — App Store Connect rejects a
    duplicate build number even when the version string changes.
+
+## 9. Building it locally — sign ad-hoc, do not disable signing
+
+`CODE_SIGNING_ALLOWED=NO` builds and launches the app, but it is NOT a faithful test:
+
+- **The widget extension will not launch.** The system starts extensions, and it refuses an
+  unsigned `.appex` — the log says `launch failed` followed by
+  `Watchdog provision violated for getPlaceholders`, which reads like a bug in the widget and
+  is not one. Ad-hoc signing makes it launch cleanly; both messages disappear.
+- **The keychain is unavailable**, so `expo-secure-store` throws
+  `KeyChainException: A required entitlement isn't present` and nothing about pairing can be
+  tested.
+
+Use this instead:
+
+```
+xcodebuild -workspace SAM.xcworkspace -scheme SAM -configuration Release \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
+  -derivedDataPath /tmp/sam-sign \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES
+```
+
+Release, not Debug — Debug expects Metro on :8081, Release embeds the bundle.
+
+Ad-hoc still does NOT give you the keychain: `SAM.entitlements` carries only `aps-environment`,
+and the keychain access group arrives with the `application-identifier` that a provisioning
+profile injects. So the paired experience — chat, `@` references, a widget you can actually tap —
+needs a real development team, which is the same blocker as TestFlight.
