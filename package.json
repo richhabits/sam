@@ -1,6 +1,6 @@
 {
   "name": "sam",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
@@ -139,6 +139,9 @@
     },
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "linux": {
       "target": [

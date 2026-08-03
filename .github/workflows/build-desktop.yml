@@ -243,7 +243,27 @@ jobs:
           fi
           printf 'uploading: %s\n' "${assets[@]}"
           gh release upload "$TAG" "${assets[@]}" -R "$REPO" --clobber
-          echo "✅ ${{ matrix.platform }}-${{ matrix.arch }} published to $TAG — after it was proven to boot."
+
+          # THE FEED MUST POINT AT FILES THAT EXIST. GitHub rewrites characters it dislikes in an
+          # asset name — spaces become dots — so a file called "SAM Setup 3.2.2.exe" on disk lands
+          # as "SAM.Setup.3.2.2.exe", while latest.yml still names "SAM-Setup-3.2.2.exe". Nothing
+          # fails: the upload succeeds, the release looks complete, and every Windows auto-update
+          # then 404s while the one-paste installer reports no installer found. v3.2.2 shipped
+          # exactly that way. Compare what the feed promises against what is actually attached.
+          published="$(gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name')"
+          missing=0
+          for feed in "${feeds[@]}"; do
+            while read -r want; do
+              [ -n "$want" ] || continue
+              if ! printf '%s\n' "$published" | grep -Fxq "$want"; then
+                echo "::error title=Update feed points at a missing asset::$(basename "$feed") references '$want', which is not attached to $TAG. Auto-update would 404 for everyone on this platform."
+                missing=1
+              fi
+            done < <(grep -oE '^[[:space:]]*(-[[:space:]]+)?(url|path):[[:space:]]*\S+' "$feed" | sed -E 's/.*:[[:space:]]*//' | sort -u)
+          done
+          [ "$missing" -eq 0 ] || { echo "attached assets were:"; printf '%s\n' "$published"; exit 1; }
+
+          echo "✅ ${{ matrix.platform }}-${{ matrix.arch }} published to $TAG — proven to boot, and the feed resolves."
 
       - name: Upload installers as artifacts (manual runs)
         if: github.event_name == 'workflow_dispatch'
