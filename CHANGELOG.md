@@ -2,6 +2,36 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.2.4] - 2026-08-06 — "Zero Known"
+
+Nothing changes in the app. This is 3.2.3 with four dependency advisories patched.
+
+### Security
+- **Four advisories published after 3.2.3 shipped, three of them in the production tree.**
+  Nothing in this repo changed to cause them; the advisories are new.
+
+  | | package | what |
+  |---|---|---|
+  | high | `ip-address` | leading-zero octets decoded as decimal where resolvers read octal — an SSRF and trust-boundary bypass |
+  | high | `fast-uri` | host confusion via a backslash authority introducer |
+  | moderate | `hono` | ReDoS in the CORS middleware |
+  | moderate | `undici` | response desynchronisation via the retry interceptor |
+
+  Lockfile only — no dependency was added, removed, or changed in `package.json`.
+
+  The `ip-address` one names the exact class of attack SAM's own SSRF guard exists to stop, so
+  it is worth being clear that it is **not** in that path: it arrives via
+  `@modelcontextprotocol/sdk` → `express-rate-limit`, and SAM only ever constructs an MCP client
+  over `StdioClientTransport` — it never runs an MCP server, so that middleware never executes.
+  `server/url-guard.ts` does its own resolution and does not reference the package at all. That
+  reasoning holds until a dependency changes shape underneath us, which is why these get patched
+  rather than argued with.
+
+### Note
+- The iPhone app fixes landed since 3.2.3 (the launch hang, the iPad layout, one brandmark
+  everywhere) are **not in this release** — the Pocket has not shipped yet. They are in the tree,
+  not in your hands.
+
 ## [3.2.3] - 2026-08-03 — "Proof Before Publish"
 
 Nothing changes in the app. This is 3.2.2 with its Windows download named correctly.
