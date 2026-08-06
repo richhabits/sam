@@ -38,9 +38,13 @@ if ! command -v node >/dev/null 2>&1; then
   fi
   ok "Node installed"
 fi
+# 22.19 is not a taste — undici (a direct dependency) refuses to load below it, and the failure
+# is a bare "webidl.util.markAsUncloneable is not a function" from deep inside node_modules that
+# reads like a corrupt install rather than an old runtime. Check the minor, not just the major.
 NODE_MAJOR=$(node -v | sed 's/v\([0-9]*\).*/\1/')
-if [ "$NODE_MAJOR" -lt 20 ]; then
-  warn "Node $(node -v) is too old — SAM needs Node 20+."
+NODE_MINOR=$(node -v | sed 's/v[0-9]*\.\([0-9]*\).*/\1/')
+if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 19 ]; }; then
+  warn "Node $(node -v) is too old — SAM needs Node 22.19+."
   echo "     → Update at https://nodejs.org — then run ./setup.sh again."
   exit 1
 fi
