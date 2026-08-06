@@ -4,7 +4,8 @@ All notable changes to SAM. Newest first.
 
 ## [3.2.4] - 2026-08-06 — "Zero Known"
 
-Nothing changes in the app. This is 3.2.3 with four dependency advisories patched.
+Nothing changes in the app. This is 3.2.3 with four dependency advisories patched — plus an
+honest correction to which Node versions SAM actually runs on.
 
 ### Security
 - **Four advisories published after 3.2.3 shipped, three of them in the production tree.**
@@ -26,6 +27,25 @@ Nothing changes in the app. This is 3.2.3 with four dependency advisories patche
   `server/url-guard.ts` does its own resolution and does not reference the package at all. That
   reasoning holds until a dependency changes shape underneath us, which is why these get patched
   rather than argued with.
+
+### Changed
+- **Running from source now requires Node 22.19+, and says so.** This is not a new restriction —
+  it has been true since `undici` went to 8.x, which refuses to load below 22.19. What was wrong
+  was everything that described it: `engines` advertised `^20.19.0 || >=22.12.0`, `.nvmrc` and
+  `.node-version` both pinned `20`, the README asked for "20.19+ or 22.12+", and `setup.sh`
+  waved through anything `>= 20` with "SAM needs Node 20+".
+
+  So a person who followed our own instructions exactly got a working install and a broken app:
+  five modules — the URL guard and all four web-intel paths — throw
+  `webidl.util.markAsUncloneable is not a function` on import, deep inside `node_modules`, which
+  reads like a corrupt install rather than an old runtime. CI never caught it because CI has only
+  ever run Node 22.
+
+  All five now state 22.19, and `setup.sh` checks the **minor** version rather than just the
+  major — `22.12` was permitted by the old text and is not good enough.
+
+  **If you use the packaged app, this changes nothing for you** — it bundles its own Node 22
+  (Electron 43). This only affects running from source.
 
 ### Note
 - The iPhone app fixes landed since 3.2.3 (the launch hang, the iPad layout, one brandmark

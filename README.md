@@ -111,7 +111,7 @@ The builds are currently **unsigned** (the one-time "unverified app" warning is 
 
 ### 🛠️ Or run from source (Mac · Windows · Linux)
 
-**Prerequisites:** [Node.js 20.19+ or 22.12+](https://nodejs.org) — *or skip this: `./setup.sh` installs it for you.*
+**Prerequisites:** [Node.js 22.19+](https://nodejs.org) — *or skip this: `./setup.sh` installs it for you.*
 
 Paste these into Terminal **exactly as-is** (they're clean — no comments to trip up zsh):
 
