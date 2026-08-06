@@ -5,15 +5,48 @@
 #  advertised numbers; if the committed copies differ, blocks the push and leaves
 #  the freshly-generated files in the working tree to review + commit.
 #  Activated via `core.hooksPath .githooks` (set by the package.json "prepare" script).
+#
+#  THIS GATE FAILS CLOSED. It used to `exit 0` whenever it could not run, on the
+#  reasoning that "CI will still gate" — which is true right up until the day CI
+#  cannot run either, which is exactly the day you need the local gate. It also hid
+#  the reason in /dev/null, so the one line it printed could not be acted on.
+#  To push anyway, say so explicitly:  SAM_SKIP_STATS_GATE=1 git push
 # ─────────────────────────────────────────────────────────────
-command -v npm >/dev/null 2>&1 || exit 0   # no npm here (odd env) → don't block the push
 
-# Regenerate advertised stats. If the generator itself is broken, don't hard-block —
-# CI still gates on it; a local tooling glitch shouldn't trap your push.
-npm run --silent stats >/dev/null 2>&1 || {
-  echo "pre-push: 'npm run stats' failed to run — skipping the drift check (CI will still gate)."
+if [ -n "$SAM_SKIP_STATS_GATE" ]; then
+  echo "pre-push: stats drift gate skipped (SAM_SKIP_STATS_GATE is set)."
   exit 0
+fi
+
+blocked() {
+  echo ""
+  echo "✗ push blocked — the stats drift gate could not run."
+  echo "  $1"
+  echo ""
+  echo "  Push anyway (you are choosing to skip the check):"
+  echo ""
+  echo "    SAM_SKIP_STATS_GATE=1 git push"
+  echo ""
+  exit 1
 }
+
+command -v npm >/dev/null 2>&1 || blocked "No npm on PATH, so the generator cannot be run."
+
+# The generator loads server/tools.ts, which reaches undici — and undici 8.x does not
+# merely warn on an old runtime, it SEGFAULTS (exit 139) on Node 20. A segfault with
+# stdout swallowed is indistinguishable from "the script is broken", which is how this
+# went unnoticed. Check the runtime first and name it.
+NODE_V=$(node -v 2>/dev/null) || blocked "No node on PATH."
+NODE_MAJOR=$(echo "$NODE_V" | sed 's/v\([0-9]*\).*/\1/')
+NODE_MINOR=$(echo "$NODE_V" | sed 's/v[0-9]*\.\([0-9]*\).*/\1/')
+if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 19 ]; }; then
+  blocked "Node $NODE_V is below the 22.19 this repo requires — the generator segfaults there.
+  Switch to a supported Node (\`nvm use\`, or the version in .nvmrc) and push again."
+fi
+
+# Keep the generator's own output — if it fails, the reason is the useful part.
+STATS_ERR=$(npm run --silent stats 2>&1 >/dev/null </dev/null) || blocked "\`npm run stats\` failed on Node $NODE_V:
+  ${STATS_ERR:-(no output — exit $?)}"
 
 if ! git diff --quiet -- docs/stats.json docs/repo-description.txt README.md; then
   echo ""
