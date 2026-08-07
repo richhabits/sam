@@ -73,7 +73,15 @@ export function nameFrom(text: string): string {
     .replace(/^\s*(me\s+)?(a|an|the)\s+/i, "")
     .replace(/[?!.]+\s*$/, "")
     .trim();
-  s = s.replace(/\s+/g, " ").slice(0, 60).trim();
+  // Cut on a word boundary. A hard slice produced names like "…stud services, on-bra",
+  // which was invisible while the name only labelled a job and became something the
+  // operator reads the moment a plan is shown for confirmation.
+  s = s.replace(/\s+/g, " ").trim();
+  if (s.length > 60) {
+    const cut = s.slice(0, 60);
+    const lastSpace = cut.lastIndexOf(" ");
+    s = (lastSpace > 24 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—-]+$/, "");
+  }
   return s || "new project";
 }
 

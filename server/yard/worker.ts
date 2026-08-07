@@ -25,6 +25,7 @@ import { handleUnattended } from "../ask.ts";
 import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 import { applyEdits } from "./edits.ts";
+import { normaliseSpec, specSummary } from "./spec.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
@@ -252,9 +253,15 @@ HANDLERS["project.build"] = async (ctx) => {
   const name = String(ctx.payload?.name || "").trim();
   if (!name) throw Object.assign(new Error("a build needs a name"), { kind: "permanent" as FailureKind });
 
+  // A confirmed plan travels in the payload. It is normalised again here rather than
+  // trusted: it arrives over the same HTTP surface as everything else, and a plan that
+  // reached the job by some other route must not be able to write whatever it likes.
+  const plan = ctx.payload?.plan ? normaliseSpec(ctx.payload.plan, name, name) : null;
+
   ctx.step(`creating "${name}"`);
-  const m = await createProject(name, { spec: String(ctx.payload?.spec || name) });
+  const m = await createProject(name, { spec: plan ? plan.summary : String(ctx.payload?.spec || name) });
   ctx.log(`created ${m.slug} at ${projectPath(m.slug)}`);
+  if (plan) ctx.log(`plan: ${plan.kind} · ${plan.pages.length} page${plan.pages.length === 1 ? "" : "s"} · ${plan.stack.host}`);
   ctx.checkStop();
 
   // A plain page, written directly rather than shelled out for. It is deliberately not a
@@ -264,8 +271,16 @@ HANDLERS["project.build"] = async (ctx) => {
   const dir = projectPath(m.slug);
   const title = m.name.replace(/[<>&]/g, "");
   writeFileSync(join(dir, "index.html"), page(title));
-  writeFileSync(join(dir, "README.md"), `# ${title}\n\n${m.spec}\n\nBuilt by SAM. Open index.html.\n`);
-  ctx.log("wrote index.html and README.md");
+  // The plan is written into the project so the thing on disk carries what it was meant
+  // to be. A build whose brief lives only in a chat log cannot be picked up later.
+  writeFileSync(
+    join(dir, "README.md"),
+    plan
+      ? `# ${title}\n\n${specSummary(plan)}\n\nBuilt by SAM. Open index.html.\n`
+      : `# ${title}\n\n${m.spec}\n\nBuilt by SAM. Open index.html.\n`,
+  );
+  if (plan) writeFileSync(join(dir, "sam.plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  ctx.log(`wrote index.html and README.md${plan ? " and sam.plan.json" : ""}`);
 
   ctx.step("checkpointing");
   const cp = await checkpoint(m.slug, `Scaffold ${m.slug}`);

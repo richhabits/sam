@@ -14,6 +14,7 @@ import type { Reading } from "./intent.ts";
 import type { JobStore, Job } from "./store.ts";
 import { isClaimForfeit } from "./state.ts";
 import { JobLog } from "./worker.ts";
+import { buildSpec, specSummary } from "./spec.ts";
 
 function describe(job: Job, now: number): string {
   const spent = job.costBudget ? ` · ${job.costTokens}/${job.costBudget} tokens` : job.costTokens ? ` · ${job.costTokens} tokens` : "";
@@ -52,6 +53,22 @@ export async function answerRouted(r: Reading, store: JobStore, now = Date.now()
 
   if (r.intent === "BUILD_NEW") {
     const name = r.name || "new project";
+
+    // THE GLASS — plan before building. A spec is one cheap free-tier call and it is shown
+    // for confirmation instead of started, so the guesses a build would otherwise make in
+    // private are argued with first, while changing them is still free. Flag-gated: with
+    // the glass off, the original behaviour below is untouched rather than merely similar.
+    if (process.env.SAM_GLASS === "1") {
+      const spec = await buildSpec(String(r.name || name), name);
+      return [
+        `Here's the plan for **${name}**:`,
+        "",
+        specSummary(spec),
+        "",
+        `Say **build it** to start, or tell me what to change first — nothing is written until you do.`,
+      ].join("\n");
+    }
+
     // ONE job that does the whole first iteration — make the project, put a real page in
     // it, checkpoint. Queued rather than awaited: the point of the spine is that this
     // sentence comes back immediately and the building happens elsewhere.

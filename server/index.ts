@@ -63,8 +63,9 @@ import { desk as flipitDesk } from "./flipit.ts";
 import { JobStore } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
 import { supervisor } from "./yard/supervisor.ts";
-import { routeOrNull as yardRoute } from "./yard/intent.ts";
+import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
+import { buildSpec, specSummary } from "./yard/spec.ts";
 import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
@@ -1755,6 +1756,20 @@ function attributeRemote(req: any, capability: AttrCapability, detail: string): 
   const label = listSessions().find((d) => d.id === id)?.label ?? "unknown device";
   logAttribution({ deviceId: id, deviceLabel: label, capability, detail });
 }
+// THE GLASS — the plan, before anything is built. Deliberately NOT a job: a plan is one
+// cheap free-tier call and the person is waiting to look at it, so making it a queued job
+// would add a poll loop to something that takes a second. It writes nothing and starts
+// nothing — confirming is a separate, explicit enqueue of `project.build` carrying the
+// plan, which is what keeps "show me" and "do it" different actions.
+app.post("/api/yard/spec", async (req, res) => {
+  if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to plan a build here" }); return; }
+  if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
+  const request = String(req.body?.request || "").trim();
+  if (!request) { res.status(400).json({ error: "a plan needs something to plan" }); return; }
+  const name = String(req.body?.name || "").trim() || nameFrom(request);
+  const spec = await buildSpec(request, name);
+  res.json({ spec, summary: specSummary(spec) });
+});
 app.post("/api/yard/enqueue", (req, res) => {
   if (!isYardTrusted(req)) { res.status(403).json({ error: "this browser is not paired with the yard — pair it from the SAM app to start and stop work here" }); return; }
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
