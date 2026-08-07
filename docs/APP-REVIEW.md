@@ -115,9 +115,27 @@ the image goes to the user's own server. No upload to us — because there is no
 
 ## Owner steps — none of this can be automated
 
-1. **Apple Distribution certificate.** This machine has only an *Apple Development* identity
-   (`security find-identity -v -p codesigning`). TestFlight needs *Apple Distribution* plus a
-   provisioning profile, or an EAS build that manages signing in the cloud.
+1. ~~**Apple Distribution certificate.**~~ **DONE 2026-08-07.** Signing is fully in place:
+
+   | thing | value |
+   |---|---|
+   | Team | `CC9Q9BH5NT` (Hectic Radio Ltd) |
+   | Signing certificate | `D65YUFZXJN` — valid to **2027-08-05** |
+   | Bundle ID (app) | `com.hectic.sam.mobile` → `6MZZZTG5XH` |
+   | Bundle ID (widget) | `com.hectic.sam.mobile.widget` → `5FNX7BNXR3` |
+   | Profile (app) | `SAM Mobile App Store` → `AMS8645UA4` |
+   | Profile (widget) | `SAM Mobile Widget App Store` → `L4C4TW6R74` |
+
+   ⚠️ **The keychain holds TWO certs named `iPhone Distribution: Hectic Radio Ltd`.** The one
+   `security find-certificate -c` returns first **expired 2026-06-28 and has no private key**.
+   Match by SHA1 against `security find-identity -v -p codesigning`
+   (`BB18D7CF…`, serial `1F07DD5190…`) — the name alone will point you at the dead one and the
+   build will fail for a reason that looks nothing like the cause.
+
+   What is still **not** done: the **App Store Connect app record**. It cannot be created from the
+   API — `POST /v1/apps` returns `403 The resource 'apps' does not allow 'CREATE'`. It must be
+   made in the ASC web UI (Apps → ➕ → New App), bundle `com.hectic.sam.mobile`, SKU
+   `sam-ios-001`. Nothing can be uploaded to TestFlight until that record exists.
 2. **APNs key.** `mobile/lib/notify.ts` handles local notifications and is wired for remote push,
    but remote push is inert until an APNs key exists. Create one in the Apple Developer portal
    (Keys → Apple Push Notifications service), then wire it server-side.
