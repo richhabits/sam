@@ -26,6 +26,7 @@ import { createProject, checkpoint, restore, projectPath, projectsRoot, isManage
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 import { applyEdits } from "./edits.ts";
 import { normaliseSpec, specSummary } from "./spec.ts";
+import { buildUntilGreen, describeOutcome } from "./loop.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
@@ -318,6 +319,58 @@ function page(title: string): string {
 `;
 }
 
+// ── Building until it actually works ────────────────────────────────────────
+// The difference between a builder and a code generator: this one runs what it wrote,
+// reads what broke, and fixes that — bounded, checkpointed first, and honest when it
+// runs out of attempts. The loop itself lives in loop.ts with every outside call
+// injected; this handler is the wiring that gives it the job's log, meter and stop.
+HANDLERS["project.loop"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  const goal = String(ctx.payload?.goal || ctx.payload?.what || "").trim();
+  if (!slug || !isManagedProject(slug)) throw Object.assign(new Error(`"${slug}" is not a managed project`), { kind: "permanent" as FailureKind });
+  if (!goal) throw Object.assign(new Error("a build loop needs to say what it is building towards"), { kind: "permanent" as FailureKind });
+
+  const dir = projectPath(slug);
+
+  // The way back exists before the first byte, so an iteration that makes things worse
+  // costs nothing to abandon.
+  ctx.step("checkpointing the way back");
+  const before = await checkpoint(slug, `before: ${goal.slice(0, 80)}`);
+  ctx.log(before ? `checkpointed first: ${before.sha.slice(0, 8)}` : "already clean — the last checkpoint is the way back");
+  ctx.checkStop();
+
+  // Free tier by default, and the configured default when there is one — the same pattern
+  // the spec and the playbook use. It is not only consistency: hardcoding "free" sent the
+  // first drive of this loop to a cloud provider on a machine explicitly set to run local,
+  // which is how a test spends an allowance nobody meant to spend.
+  const tier = (process.env.DEFAULT_TIER as Tier) || "free";
+
+  const outcome = await buildUntilGreen(dir, goal, {
+    propose: async (system, prompt) => {
+      const r = await runModel(tier, system, prompt, "code");
+      ctx.log(`proposal from ${r.provider}`);
+      return r.text;
+    },
+    log: ctx.log,
+    step: ctx.step,
+    spend: ctx.spend,
+    checkStop: ctx.checkStop,
+  });
+
+  if (outcome.diffs.length) {
+    ctx.step("checkpointing the result");
+    const after = await checkpoint(slug, `${outcome.ok ? "built" : "attempted"}: ${goal.slice(0, 80)}`);
+    if (after) ctx.log(`checkpoint ${after.sha.slice(0, 8)}`);
+  }
+
+  // A loop that ran out of attempts FAILS the job. Returning a cheerful summary for a
+  // build that does not work is the exact failure this whole movement is designed
+  // against — the operator finds out in production instead of here.
+  const said = describeOutcome(outcome);
+  if (!outcome.ok) throw Object.assign(new Error(said), { kind: "permanent" as FailureKind });
+  return said;
+};
+
 // ── Editing something that already exists ───────────────────────────────────
 // The dangerous one, so it is built back-to-front: the way back exists BEFORE any
 // change is attempted. Checkpoint, then read, then propose, then write, then
@@ -393,12 +446,15 @@ HANDLERS["project.edit"] = async (ctx) => {
     ...offered.map((f) => `--- ${f.path} ---\n${f.content}`),
   ].join("\n");
 
-  // Free tier, vault-routed, exactly like everything else SAM does. Metered against the
-  // job's own ceiling so one runaway edit cannot spend the allowance of the queue.
+  // Free tier by default, the configured default when there is one, vault-routed exactly
+  // like everything else SAM does. Metered against the job's own ceiling so one runaway
+  // edit cannot spend the allowance of the queue — and metered against the tier actually
+  // used, since a meter told "free" while the call went elsewhere is worse than no meter.
   ctx.step("asking for a proposal");
   const sys = patchMode ? EDIT_SYSTEM_PATCH : EDIT_SYSTEM;
-  ctx.spend(estimate(sys) + estimate(prompt), "free");
-  const r = await runModel("free", sys, prompt, "code");
+  const editTier = (process.env.DEFAULT_TIER as Tier) || "free";
+  ctx.spend(estimate(sys) + estimate(prompt), editTier);
+  const r = await runModel(editTier, sys, prompt, "code");
   ctx.spend(estimate(r.text));
   ctx.log(`proposal from ${r.provider}`);
   ctx.checkStop();
