@@ -45,8 +45,17 @@ import { metrics, type as iosType, type IOS } from './lib/ios';
 
 type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean };
 
-const GREETING =
-  "I'm SAM — your own assistant, running on your machine.\n\nAsk me anything, or give me something to do. I'll tell you which brain answered and what it cost.";
+// The opening screen's starting points. Kept SHORT — these are prompts to edit, not menu items,
+// and a chip you cannot read at a glance is a chip nobody taps. Each one names something SAM
+// actually does rather than describing an assistant in general: the whole pitch is that this one
+// runs on your own machine and can act, so the openers should sound like that and nothing else.
+const STARTERS = [
+  'What can you do?',
+  'Summarise my day',
+  'Build me a one-page site',
+  'What did you run today?',
+  'Find a file on my Mac',
+];
 
 /** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
  *  lazy port looks like. Blocks re-parse on every token, which is cheap and keeps a code fence
@@ -339,8 +348,34 @@ export default function ChatScreen({
         keyboardShouldPersistTaps="handled"
       >
         {msgs.length === 0 ? (
-          <View style={s.bubbleSam}>
-            <Text style={s.samText}>{GREETING}</Text>
+          // THE OPENING. This used to be one paragraph in a bubble above an empty screen —
+          // truthful, and completely inert: nothing to tap, no idea what SAM is for, and on a
+          // tall phone most of the display was blank. An assistant's first screen should invite
+          // a first message, not describe itself and stop.
+          //
+          // So: a short question, then things you can actually press. Tapping one fills the
+          // composer rather than sending — you can edit it first, and nothing is spent by
+          // curiosity. The starters name what SAM uniquely is (on your machine, free-first,
+          // does things) rather than being generic assistant filler.
+          <View style={s.opening}>
+            <Text style={s.openingTitle}>What should SAM do?</Text>
+            <Text style={s.openingSub}>
+              Running on your own machine. Ask anything, or pick somewhere to start.
+            </Text>
+            <View style={s.starters}>
+              {STARTERS.map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setDraft(t)}
+                  style={({ pressed }) => [
+                    s.starter,
+                    { backgroundColor: ios.fill, borderColor: ios.separator, opacity: pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <Text style={[s.starterText, { color: ios.label }]}>{t}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         ) : (
           msgs.map((m, i) =>
@@ -560,6 +595,14 @@ function makeStyles(ios: IOS) {
       paddingVertical: 8,
     },
     samText: { ...iosType.body, color: ios.label, lineHeight: 22 },
+    // The opening sits a little down the screen rather than jammed under the nav bar: on a tall
+    // phone, content pinned to the top with nothing beneath it is exactly what read as unfinished.
+    opening: { paddingTop: 40, paddingHorizontal: 4 },
+    openingTitle: { ...iosType.title2, color: ios.label, fontWeight: '700', marginBottom: 6 },
+    openingSub: { ...iosType.subhead, color: ios.secondaryLabel, lineHeight: 20, marginBottom: 18 },
+    starters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    starter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
+    starterText: { ...iosType.subhead },
     inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tint },
     codeblock: {
       backgroundColor: ios.groupedBg,
