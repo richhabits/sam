@@ -95,9 +95,14 @@ export default function App() {
 
   // Ask for notification permission only once this phone is actually paired. Asking on first
   // launch — before SAM has anything to tell you — is the prompt everyone denies.
+  //
+  // The demo is NOT paired for this purpose, whatever `paired` says. It sets that flag to get
+  // the surfaces to render, which used to trip this prompt the instant anyone opened the demo —
+  // asking to send notifications from a SAM that does not exist, which is the same mistake this
+  // effect already existed to avoid. Caught by running it, not by reading it.
   useEffect(() => {
-    if (paired) ensurePermission();
-  }, [paired]);
+    if (paired && !demo) ensurePermission();
+  }, [paired, demo]);
 
   const doClaim = useCallback(
     async (withHost = host, withCode = code) => {
