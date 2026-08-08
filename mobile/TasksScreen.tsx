@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { api } from './lib/api';
-import { metrics, type, type IOS } from './lib/ios';
+import { type IOS, metrics, stateTone, type } from './lib/ios';
 import { taskTitle } from './lib/mentions';
 import { Row, Screen, Section } from './ui';
 
@@ -56,14 +56,7 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
     load();
   }, [load]);
 
-  const tone = (state: Job['state']) =>
-    state === 'done'
-      ? ios.green
-      : state === 'failed'
-        ? ios.destructive
-        : state === 'running'
-          ? ios.tint
-          : ios.secondaryLabel;
+  const tone = (state: Job['state']) => stateTone(state, ios);
 
   if (!yard && !error) {
     return (

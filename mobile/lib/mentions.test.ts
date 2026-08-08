@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   activeReferences,
   applyMention,
@@ -6,10 +6,11 @@ import {
   findMention,
   matchTasks,
   mentionLabel,
+  type RecentTask,
   removeMention,
   taskContext,
   taskTitle,
-  type RecentTask,
+  taskWhen,
 } from './mentions';
 
 const job = (over: Partial<RecentTask> = {}): RecentTask => ({
@@ -202,5 +203,46 @@ describe('activeReferences / buildReferencedMessage', () => {
     const out = buildReferencedMessage('compare these', [ref, { ...ref, id: 'job_def', context: 'Task "Deploy cafe"' }]);
     expect(out).toContain('Referenced tasks (context');
     expect(out).toContain('\n---\n');
+  });
+});
+
+describe('taskWhen', () => {
+  const now = Date.UTC(2026, 7, 8, 12, 0, 0);
+  const at = (ms: number) => taskWhen(now - ms, now);
+  const SEC = 1000;
+  const MIN = 60 * SEC;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+
+  it('says "just now" under a minute', () => {
+    expect(at(0)).toBe('just now');
+    expect(at(59 * SEC)).toBe('just now');
+  });
+
+  it('rounds down rather than ageing a job it has not seen age', () => {
+    expect(at(MIN)).toBe('1m ago');
+    expect(at(119 * SEC)).toBe('1m ago');
+    expect(at(90 * MIN)).toBe('1h ago');
+    expect(at(47 * HOUR)).toBe('1d ago');
+  });
+
+  it('steps up at each boundary exactly once', () => {
+    expect(at(60 * MIN)).toBe('1h ago');
+    expect(at(24 * HOUR)).toBe('1d ago');
+    expect(at(6 * DAY)).toBe('6d ago');
+  });
+
+  it('falls back to a date once "days ago" stops being useful', () => {
+    expect(at(7 * DAY)).toBe(new Date(now - 7 * DAY).toLocaleDateString());
+  });
+
+  it('never reads as the future when the phone and the Mac disagree on the clock', () => {
+    expect(taskWhen(now + 4 * MIN, now)).toBe('just now');
+  });
+
+  it('says nothing at all when there is no timestamp', () => {
+    expect(taskWhen(undefined, now)).toBe('');
+    expect(taskWhen(null, now)).toBe('');
+    expect(taskWhen(Number.NaN, now)).toBe('');
   });
 });

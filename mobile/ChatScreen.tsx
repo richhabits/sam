@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,9 +13,10 @@ import {
 } from 'react-native';
 import AddSheet from './AddSheet';
 import { api } from './lib/api';
+import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
-import { sendWithAttachments, type Attachment } from './lib/attach';
 import { loadThread, saveThread } from './lib/history';
+import { type IOS, type as iosType, metrics, stateTone } from './lib/ios';
 import { parseMarkdown } from './lib/markdown';
 import {
   activeReferences,
@@ -23,13 +25,13 @@ import {
   findMention,
   matchTasks,
   mentionLabel,
+  type RecentTask,
   removeMention,
+  type TaskReference,
   taskContext,
   taskTitle,
-  type RecentTask,
-  type TaskReference,
+  taskWhen,
 } from './lib/mentions';
-import { metrics, type as iosType, type IOS } from './lib/ios';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -55,6 +57,17 @@ const STARTERS = [
   'Build me a one-page site',
   'What did you run today?',
   'Find a file on my Mac',
+];
+
+// WHICH BRAIN ANSWERS. The words 'free' and 'turbo' are meaningless on their own — they only
+// become a choice once someone says what each one costs you. So every option carries its
+// consequence in a line, and the sheet shows that line rather than making the name do the work.
+// 'auto' is first and is the default because it is the answer for anyone who has no opinion,
+// which is almost everyone almost all of the time.
+const BRAINS = [
+  { key: 'auto' as const, name: 'Auto', why: 'SAM picks. Free when free will do, paid when it will not.' },
+  { key: 'free' as const, name: 'Free', why: 'Only models that cost nothing. Slower, and sometimes it declines.' },
+  { key: 'turbo' as const, name: 'Turbo', why: 'The best model available. Uses paid credit when it has to.' },
 ];
 
 /** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
@@ -127,6 +140,7 @@ export default function ChatScreen({
   const input = useRef<TextInput>(null);
   const [sheet, setSheet] = useState(false);
   const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
+  const [brainPicker, setBrainPicker] = useState(false);
   // Bumped on every send to remount the composer — see the note in send().
   const [composerKey, setComposerKey] = useState(0);
   // Attachments ride along with the NEXT message and are cleared once it is sent.
@@ -176,8 +190,9 @@ export default function ChatScreen({
   // leave a chip behind claiming context that is no longer being sent.
   const liveRefs = useMemo(() => activeReferences(draft, refs), [draft, refs]);
 
-  // The task list is fetched the first time an @ appears, not on mount: most messages contain
-  // no @ at all, and a chat screen has no business hitting the yard to open.
+  // The task list is fetched when something on screen actually wants it: the first `@`, or an
+  // empty thread, whose opening screen offers recent work to pick up. Never on every mount —
+  // once a conversation exists, neither surface is visible and the yard goes unasked.
   const loadYard = useCallback(async () => {
     if (loadingYard.current) return;
     loadingYard.current = true;
@@ -197,9 +212,28 @@ export default function ChatScreen({
 
   useEffect(() => {
     // Not retried while an error is on screen — the picker offers the retry instead, so an
-    // unreachable Mac costs one request per tap rather than one per keystroke.
-    if (picking && !yard && !yardError) void loadYard();
-  }, [picking, yard, yardError, loadYard]);
+    // unreachable Mac costs one request per tap rather than one per keystroke. The opening
+    // screen offers no retry on purpose: recent work is a bonus there, and a failure it cannot
+    // explain should leave the invitation clean rather than put an error where a welcome goes.
+    if ((picking || msgs.length === 0) && !yard && !yardError) void loadYard();
+  }, [picking, msgs.length, yard, yardError, loadYard]);
+
+  // Resolve a task's context NOW, with the summary row as the answer if the detail call fails.
+  // Doing it at send time instead would mean a reference silently becoming nothing at the exact
+  // moment it was needed, and doing it without a fallback would mean losing the pick because the
+  // Mac went to sleep between tapping and sending.
+  //
+  // Shared by both ways in — typing `@` and tapping a card on the opening screen. They differ only
+  // in how the token reaches the box; what a reference IS should not depend on which one you used.
+  const attachReference = useCallback(async (task: RecentTask, label: string) => {
+    setRefs((prev) => [...prev.filter((r) => r.id !== task.id), { id: task.id, label, context: taskContext(task) }]);
+    try {
+      const detail: any = await api(`/api/yard/job/${encodeURIComponent(task.id)}`);
+      setRefs((prev) => prev.map((r) => (r.id === task.id ? { ...r, context: taskContext(task, detail) } : r)));
+    } catch {
+      /* the summary above is already a usable reference — keep it */
+    }
+  }, []);
 
   const pick = useCallback(
     async (task: RecentTask) => {
@@ -209,19 +243,27 @@ export default function ChatScreen({
       setDraft(applied.text);
       setCaret(applied.cursor);
       setDismissed(null);
-      // Resolve the context NOW, with the summary row as the answer if the detail call fails.
-      // Doing it at send time instead would mean a reference silently becoming nothing at the
-      // exact moment it was needed, and doing it without a fallback would mean losing the pick
-      // because the Mac went to sleep between tapping and sending.
-      setRefs((prev) => [...prev.filter((r) => r.id !== task.id), { id: task.id, label, context: taskContext(task) }]);
-      try {
-        const detail: any = await api(`/api/yard/job/${encodeURIComponent(task.id)}`);
-        setRefs((prev) => prev.map((r) => (r.id === task.id ? { ...r, context: taskContext(task, detail) } : r)));
-      } catch {
-        /* the summary above is already a usable reference — keep it */
-      }
+      await attachReference(task, label);
     },
-    [mention, draft, caret],
+    [mention, draft, caret, attachReference],
+  );
+
+  // PICKING UP A PIECE OF WORK from the opening screen. Same reference the `@` picker builds, but
+  // there is no mention to replace — the box is empty — so the token is appended rather than
+  // spliced. Appended, not assigned, for the same reason the `sam://ask` link appends: a card tap
+  // must not eat something already typed.
+  const resume = useCallback(
+    async (task: RecentTask) => {
+      const label = mentionLabel(task);
+      setDraft((d) => {
+        const head = d.trim();
+        const next = head ? `${head} @${label} ` : `@${label} `;
+        setCaret(next.length);
+        return next;
+      });
+      await attachReference(task, label);
+    },
+    [attachReference],
   );
 
   const onDraft = useCallback(
@@ -376,6 +418,43 @@ export default function ChatScreen({
                 </Pressable>
               ))}
             </View>
+
+            {/* PICK UP WHERE YOU LEFT OFF. The starters above are for someone with nothing in
+                flight; this is for everyone else, and after the first week that is everyone.
+                Returning to a blank screen and being asked "what should SAM do?" ignores the
+                obvious answer — the thing you were already doing.
+
+                Deliberately quiet about failure: if the yard is off, unreachable, or has never
+                run anything, the whole block is simply absent. An opening screen is the wrong
+                place to explain an outage, and the starters above still work without it. */}
+            {yard?.on && yard.recent.length ? (
+              <View style={s.resume}>
+                <Text style={[s.resumeHead, { color: ios.secondaryLabel }]}>PICK UP WHERE YOU LEFT OFF</Text>
+                {yard.recent.slice(0, 3).map((t) => (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => void resume(t)}
+                    style={({ pressed }) => [
+                      s.resumeCard,
+                      { backgroundColor: ios.card, borderColor: ios.separator },
+                      pressed && { backgroundColor: ios.cardPressed },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.resumeTitle, { color: ios.label }]} numberOfLines={1}>
+                        {taskTitle(t)}
+                      </Text>
+                      <Text style={[s.resumeSub, { color: ios.secondaryLabel }]} numberOfLines={1}>
+                        {[t.state, taskWhen(t.createdAt)].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    {/* Same colour language as the Tasks list (TasksScreen tone()) — a job must
+                        not read as green in one place and grey in another. */}
+                    <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : (
           msgs.map((m, i) =>
@@ -403,15 +482,15 @@ export default function ChatScreen({
       </ScrollView>
 
       {attached.length ? (
-        <View style={s.tierBar}>
+        <View style={s.chipBar}>
           {attached.map((a, i) => (
             <Pressable
               // biome-ignore lint/suspicious/noArrayIndexKey: removal is BY index (see onPress), so the index is the identity this list actually uses.
               key={i}
               onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
-              style={[s.tierChip, { backgroundColor: ios.fill }]}
+              style={[s.chip, { backgroundColor: ios.fill }]}
             >
-              <Text style={[s.tierText, { color: ios.tint }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
+              <Text style={[s.chipText, { color: ios.tint }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
             </Pressable>
           ))}
         </View>
@@ -420,7 +499,7 @@ export default function ChatScreen({
       {/* What is riding along with the next message, and how to take it back off. Same chip as
           an attachment because it is the same idea — something added to the box, not typed. */}
       {liveRefs.length ? (
-        <View style={s.tierBar}>
+        <View style={s.chipBar}>
           {liveRefs.map((r) => (
             <Pressable
               key={r.id}
@@ -428,27 +507,53 @@ export default function ChatScreen({
                 setRefs((prev) => prev.filter((x) => x.id !== r.id));
                 setDraft((d) => removeMention(d, r.label));
               }}
-              style={[s.tierChip, { backgroundColor: ios.fill }]}
+              style={[s.chip, { backgroundColor: ios.fill }]}
             >
-              <Text style={[s.tierText, { color: ios.tint }]}>@{r.label.slice(0, 22)}  ✕</Text>
+              <Text style={[s.chipText, { color: ios.tint }]}>@{r.label.slice(0, 22)}  ✕</Text>
             </Pressable>
           ))}
         </View>
       ) : null}
 
-      <View style={s.tierBar}>
-        {(['auto', 'free', 'turbo'] as const).map((k) => (
-          <Pressable
-            key={k}
-            onPress={() => setTier(k)}
-            style={[s.tierChip, tier === k && { backgroundColor: ios.fill }]}
+      {/* WHICH BRAIN. This was three bare chips — Auto / Free only / Turbo — sitting loose under
+          the composer with nothing saying what they were or what picking one would do. Three
+          words, no label, no consequence stated: the single most muddled thing on the screen.
+
+          Now it is one control INSIDE the composer showing the current choice, and the sheet it
+          opens explains each option in a line. The explanation is the point: "free" and "turbo"
+          mean nothing until someone says one costs nothing and the other spends credit. */}
+      <Modal visible={brainPicker} transparent animationType="fade" onRequestClose={() => setBrainPicker(false)}>
+        <Pressable style={s.brainScrim} onPress={() => setBrainPicker(false)}>
+          {/* Claims the touch so a tap that lands on the sheet itself — the gap beside a row, the
+              title — does not fall through to the scrim behind it and dismiss what you are reading.
+              The responder prop rather than a Pressable with an empty handler: same effect, and it
+              says "stop here" instead of "there is a button here that does nothing". */}
+          <View
+            style={[s.brainSheet, { backgroundColor: ios.card }]}
+            onStartShouldSetResponder={() => true}
           >
-            <Text style={[s.tierText, { color: tier === k ? ios.tint : ios.secondaryLabel }]}>
-              {k === 'auto' ? 'Auto' : k === 'free' ? 'Free only' : 'Turbo'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+            <Text style={[s.brainTitle, { color: ios.label }]}>Which brain answers</Text>
+            {BRAINS.map((b, i) => (
+              <Pressable
+                key={b.key}
+                onPress={() => { setTier(b.key); setBrainPicker(false); }}
+                style={({ pressed }) => [
+                  s.brainRow,
+                  { borderBottomColor: ios.separator },
+                  i === BRAINS.length - 1 && { borderBottomWidth: 0 },
+                  pressed && { backgroundColor: ios.cardPressed },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.brainRowTitle, { color: ios.label }]}>{b.name}</Text>
+                  <Text style={[s.brainRowSub, { color: ios.secondaryLabel }]}>{b.why}</Text>
+                </View>
+                {tier === b.key ? <Text style={[s.brainTick, { color: ios.tint }]}>✓</Text> : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* THE @ PICKER — recent tasks, right above the keyboard. Never a modal: the operator is
           mid-sentence, and a sheet that takes the screen would lose the sentence. */}
@@ -523,6 +628,17 @@ export default function ChatScreen({
           hitSlop={6}
         >
           <Text style={s.plusText}>+</Text>
+        </Pressable>
+        {/* Inside the composer, beside the thing it affects — a setting that lives somewhere else
+            is a setting nobody connects to the message they are about to send. */}
+        <Pressable
+          onPress={() => setBrainPicker(true)}
+          style={({ pressed }) => [s.brainPill, { backgroundColor: ios.fill, opacity: pressed ? 0.6 : 1 }]}
+          hitSlop={6}
+        >
+          <Text style={[s.brainPillText, { color: tier === 'auto' ? ios.secondaryLabel : ios.tint }]}>
+            {BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'} ▾
+          </Text>
         </Pressable>
         <TextInput
           key={composerKey}
@@ -638,7 +754,7 @@ function makeStyles(ios: IOS) {
     },
     plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     plusText: { fontSize: 26, color: ios.tint, lineHeight: 30, fontWeight: '300' },
-    tierBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
+    chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
     // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
     // conversation stays visible above it, which is the point of not making this a sheet.
     picker: {
@@ -668,8 +784,52 @@ function makeStyles(ios: IOS) {
     },
     pickerRowTitle: { ...iosType.body, color: ios.label },
     pickerRowSub: { ...iosType.caption, color: ios.secondaryLabel, marginTop: 1 },
-    tierChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-    tierText: { ...iosType.caption, fontWeight: '600' },
+    chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    chipText: { ...iosType.caption, fontWeight: '600' },
+    resume: { marginTop: 28, gap: 8 },
+    resumeHead: { ...iosType.caption, fontWeight: '700', letterSpacing: 0.6, marginBottom: 2 },
+    // A card, not a list row: this sits in open space on the opening screen rather than inside a
+    // grouped table, so it needs its own edge to read as a thing you can press.
+    resumeCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: metrics.radius,
+      borderWidth: metrics.hairline,
+    },
+    resumeTitle: { ...iosType.body, fontWeight: '600' },
+    resumeSub: { ...iosType.caption, marginTop: 2 },
+    resumeDot: { width: 8, height: 8, borderRadius: 4 },
+    // The brain pill sits in the composer row, so it is sized to the 32pt controls either side of
+    // it rather than to its own text — a control that changes height when the label changes from
+    // 'Auto' to 'Turbo' makes the whole row twitch.
+    brainPill: { height: 32, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 16 },
+    brainPillText: { ...iosType.caption, fontWeight: '600' },
+    brainScrim: { flex: 1, backgroundColor: ios.scrim, justifyContent: 'flex-end' },
+    brainSheet: {
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
+      paddingTop: 14,
+      paddingBottom: 34,
+      paddingHorizontal: 16,
+      // Its own top edge, so the sheet is bounded by something it owns rather than relying on
+      // the scrim to out-contrast it. In dark that difference is card-grey against near-black.
+      borderTopWidth: metrics.hairline,
+      borderTopColor: ios.separator,
+    },
+    brainTitle: { ...iosType.footnote, fontWeight: '700', marginBottom: 6 },
+    brainRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: metrics.hairline,
+    },
+    brainRowTitle: { ...iosType.body, fontWeight: '600' },
+    brainRowSub: { ...iosType.caption, marginTop: 2 },
+    brainTick: { ...iosType.body, fontWeight: '700' },
     sendBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   });
 }

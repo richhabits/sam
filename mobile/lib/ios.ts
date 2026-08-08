@@ -24,6 +24,11 @@ export type IOS = {
   destructive: string;
   green: string;
   fill: string; // segmented-control track
+  // What dims the screen behind a sheet. NOT a constant: 40% black over #F2F2F7 reads as an
+  // obvious dimming, and the same 40% over a black background is very nearly nothing — the
+  // sheet then has to carry the whole separation on its own edge. Dark goes heavier so that
+  // "the thing behind is out of play" is legible in both.
+  scrim: string;
 };
 
 export const iosLight: IOS = {
@@ -40,6 +45,7 @@ export const iosLight: IOS = {
   destructive: '#FF3B30',
   green: '#34C759',
   fill: 'rgba(118,118,128,0.12)',
+  scrim: 'rgba(0,0,0,0.4)',
 };
 
 export const iosDark: IOS = {
@@ -56,6 +62,7 @@ export const iosDark: IOS = {
   destructive: '#FF453A',
   green: '#30D158',
   fill: 'rgba(118,118,128,0.24)',
+  scrim: 'rgba(0,0,0,0.6)',
 };
 
 // The iOS type ramp, by role rather than by number — so a row's title is `body` because it is
@@ -82,3 +89,20 @@ export const metrics = {
   // obviously separates a native list from a hand-rolled one.
   separatorInset: 16,
 };
+
+/** What colour a job's state reads as. Lives here rather than in either screen because it is
+ *  now used by both the Tasks list and the Agent screen's "pick up where you left off" cards,
+ *  and a job that is green in one list and grey in the other is a job the operator has to
+ *  re-learn. Unknown states fall back to the muted tone rather than inventing a meaning. */
+export function stateTone(state: string | null | undefined, ios: IOS): string {
+  switch (state) {
+    case 'done':
+      return ios.green;
+    case 'failed':
+      return ios.destructive;
+    case 'running':
+      return ios.tint;
+    default:
+      return ios.secondaryLabel;
+  }
+}
