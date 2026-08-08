@@ -1,5 +1,6 @@
 import { fetch as streamingFetch } from 'expo/fetch';
 import { getHost, getToken, ApiError } from './api';
+import { isDemo, demoStream } from './demo';
 import { parseFrames, type StreamEvent } from './sse';
 
 export { parseFrames, type StreamEvent } from './sse';
@@ -38,6 +39,14 @@ export async function streamChat(
   // the router). "free" pins it to the no-cost tier; "turbo" is the router's fast path.
   tier?: 'free' | 'turbo',
 ): Promise<string> {
+  // The demo streams too — token by token, on a timer. An answer that lands in one lump would
+  // demonstrate the wrong thing, since the streaming IS what using SAM feels like.
+  if (isDemo()) {
+    const text = await demoStream(message, (soFar) => handlers.onToken?.(soFar), signal);
+    handlers.onDone?.(text);
+    return text;
+  }
+
   const [host, token] = await Promise.all([getHost(), getToken()]);
   if (!host || !token) throw new ApiError(401, 'not paired');
 

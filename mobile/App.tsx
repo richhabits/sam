@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { claim, getHost, getToken } from './lib/api';
+import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
@@ -59,6 +60,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     // Restore BOTH halves of the pairing, not just the token: a device that paired with a SAM
@@ -77,9 +79,13 @@ export default function App() {
     // token, so we do not have one) and lands on the pairing screen, which is recoverable.
     (async () => {
       try {
-        const [token, saved] = await Promise.all([getToken(), getHost()]);
+        // The demo flag is restored HERE, in the same breath as the token, because every
+        // transport reads it synchronously — restoring it later would let the first render's
+        // requests go to the network before the flag arrived.
+        const [token, saved, inDemo] = await Promise.all([getToken(), getHost(), loadDemo()]);
         if (saved) setHostInput(saved);
-        setPaired(!!token);
+        setDemo(inDemo);
+        setPaired(!!token || inDemo);
       } catch (e: any) {
         setPaired(false);
         setError(e?.message ? `Couldn't read this device's pairing: ${e.message}` : "Couldn't read this device's pairing.");
@@ -160,6 +166,23 @@ export default function App() {
   const onNeedsPairing = useCallback(() => {
     setPaired(false);
     setError('This device was unpaired. Pair it again to carry on.');
+  }, []);
+
+  const doEnterDemo = useCallback(async () => {
+    await enterDemo();
+    setDemo(true);
+    setError('');
+    setSurface('agent');
+    setPaired(true);   // the surfaces render; every transport answers from the demo instead
+  }, []);
+
+  // Leaving hands the phone back to the pairing screen with nothing kept — the demo never held
+  // a token, so there is nothing to revoke, only a flag to drop.
+  const doLeaveDemo = useCallback(async () => {
+    await leaveDemo();
+    setDemo(false);
+    setPaired(false);
+    setResetKey((k) => k + 1);   // drop the chat thread with it
   }, []);
 
   if (paired === null) {
@@ -243,6 +266,26 @@ export default function App() {
               network.
             </Text>
           </View>
+
+          {/* Without a Mac running SAM there is nothing to pair with, and a pairing form on its
+              own tells you nothing about what you would be pairing with. The demo is fixed data
+              and a scripted reply — labelled as such on every screen it reaches. */}
+          <View style={s.card}>
+            <Text style={s.title}>No SAM yet?</Text>
+            <Text style={s.sub}>
+              Have a look around with sample data — the same screens, answering from a fixed
+              script. Nothing is sent anywhere, and you can leave it at any time.
+            </Text>
+            <Pressable
+              onPress={() => doEnterDemo()}
+              style={({ pressed }) => [
+                s.secondary,
+                { borderColor: t.borderStrong, transform: [{ scale: pressed ? 0.96 : 1 }] },
+              ]}
+            >
+              <Text style={[s.primaryText, { color: t.text }]}>Explore the demo</Text>
+            </Pressable>
+          </View>
         </ScrollView>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </SafeAreaView>
@@ -272,6 +315,17 @@ export default function App() {
           <Text style={[iosType.title2, { color: ios.tint, lineHeight: 24 }]}>•••</Text>
         </Pressable>
       </View>
+
+      {/* Not dismissible, and it names the way out. A demo mistaken for a live connection is
+          worse than no demo: someone would read the sample jobs as their own. */}
+      {demo ? (
+        <View style={[s.demoBar, { backgroundColor: t.accent }]}>
+          <Text style={s.demoBarText}>Demo · sample data, not connected to a SAM</Text>
+          <Pressable onPress={doLeaveDemo} hitSlop={8}>
+            <Text style={s.demoBarLink}>Leave</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Tapping anywhere else dismisses — a menu you can only close by hitting the same
           3 pixels again is the kind of thing that only feels fine to whoever built it. */}
@@ -438,6 +492,18 @@ const makeStyles = (t: Theme) =>
     codeInput: { fontFamily: 'Menlo', fontSize: fs.md, letterSpacing: 0.5 },
     primary: { marginTop: space[3], borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
     primaryText: { color: t.onAccent, fontSize: fs.base, fontWeight: '700' },
+    // Outlined rather than filled: the demo is the lesser of the two doors on this screen, and
+    // should not compete with Pair for the eye.
+    secondary: {
+      marginTop: space[3], borderRadius: radius.md, paddingVertical: 14,
+      alignItems: 'center', borderWidth: 1, backgroundColor: 'transparent',
+    },
+    demoBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: space[3], paddingVertical: 7, paddingHorizontal: space[4],
+    },
+    demoBarText: { color: t.onAccent, fontSize: fs.caption, fontWeight: '700' },
+    demoBarLink: { color: t.onAccent, fontSize: fs.caption, fontWeight: '700', textDecorationLine: 'underline' },
     error: {
       color: t.danger,
       fontSize: fs.sm,

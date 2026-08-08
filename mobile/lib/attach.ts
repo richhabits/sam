@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { getHost, getToken, ApiError } from './api';
+import { isDemo } from './demo';
 
 // ATTACHMENTS — the camera, the photo library, and files.
 //
@@ -82,6 +83,17 @@ export async function sendWithAttachments(
   attachments: Attachment[],
   history: { role: 'user' | 'sam'; text: string }[],
 ): Promise<{ text: string; tier?: string; provider?: string }> {
+  // Attachments in the demo answer without pretending to have read the file — saying so is the
+  // honest demonstration, and silently ignoring an attached photo would look like a bug.
+  if (isDemo()) {
+    const what = attachments.length === 1 ? 'that attachment' : `those ${attachments.length} attachments`;
+    return {
+      text: `In the demo I can't actually read ${what} — nothing here leaves the phone or reaches a model. Paired with SAM on your Mac, a photo or a document goes to your own machine, is read there, and the answer comes back here.`,
+      tier: 'demo',
+      provider: 'demo',
+    };
+  }
+
   const [host, token] = await Promise.all([getHost(), getToken()]);
   if (!host || !token) throw new ApiError(401, 'not paired');
 

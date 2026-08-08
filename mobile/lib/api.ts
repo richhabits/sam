@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { isDemo, demoApi } from "./demo";
 
 // How this device names itself in SAM's device registry — the operator's revoke list. RN's
 // User-Agent is a bare CFNetwork/Darwin string with no device in it, so without this every
@@ -61,6 +62,9 @@ export async function claim(host: string, code: string): Promise<void> {
  *  sessionTokenFromRequest() reads server-side, so it's authorized exactly like a paired
  *  browser's cookie, nothing more. */
 export async function api(path: string, init: RequestInit = {}): Promise<any> {
+  // The demo answers here rather than in each screen, so no surface has to know it is in one —
+  // and so a screen added later cannot forget to handle it and quietly hit the network.
+  if (isDemo()) return demoApi(path);
   const host = await getHost();
   const token = await getToken();
   if (!host || !token) throw new ApiError(401, "not paired");
