@@ -177,14 +177,18 @@ function addWidgetTarget(config) {
       ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: '""',
       CLANG_ENABLE_MODULES: 'YES',
       CODE_SIGN_STYLE: 'Automatic',
-      CURRENT_PROJECT_VERSION: '1',
+      // Taken from the app's own version, never a literal. App Store validation rejects an
+      // embedded extension whose CFBundleVersion/ShortVersionString differ from its container,
+      // and these were hardcoded "1"/"1.0" while the app moved to 1.0.0 build 3 — so every
+      // prebuild rebuilt the mismatch, and the upload would only fail at the very last step.
+      CURRENT_PROJECT_VERSION: `${cfg.ios?.buildNumber ?? '1'}`,
       // The plist in widget/ is complete and hand-owned; letting Xcode synthesise a second one
       // and merge them is how NSExtension keys end up half-present.
       GENERATE_INFOPLIST_FILE: 'NO',
       INFOPLIST_FILE: `${TARGET}/${PLIST}`,
       IPHONEOS_DEPLOYMENT_TARGET: deployment,
       LD_RUNPATH_SEARCH_PATHS: '"$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"',
-      MARKETING_VERSION: '1.0',
+      MARKETING_VERSION: `${cfg.version ?? '1.0.0'}`,
       MTL_FAST_MATH: 'YES',
       PRODUCT_BUNDLE_IDENTIFIER: `"${bundleId}${BUNDLE_SUFFIX}"`,
       PRODUCT_NAME: '"$(TARGET_NAME)"',
