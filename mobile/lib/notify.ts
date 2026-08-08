@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { safeBody } from './scrub';
 
 // SAM reaching your pocket. Two things arrive here:

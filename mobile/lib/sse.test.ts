@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseFrames } from './sse';
 
 // The SSE reader's only hard part is that chunk boundaries are arbitrary. These pin the

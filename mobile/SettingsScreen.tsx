@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
+import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { type, type IOS } from './lib/ios';
 import { Row, Screen, Section } from './ui';
 
 // Settings, as iOS does settings: grouped inset sections with headers and footers, not one

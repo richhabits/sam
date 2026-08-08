@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,22 +13,20 @@ import {
   useColorScheme,
   useWindowDimensions,
   View,
-  Image,
 } from 'react-native';
-import * as Linking from 'expo-linking';
+import ChatScreen from './ChatScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
+import { iosDark, iosLight, type as iosType, metrics } from './lib/ios';
+import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { parseQuickLink } from './lib/quicklink';
 import { dark, fs, light, radius, space, type Theme } from './lib/theme';
-import { iosDark, iosLight, metrics, type as iosType } from './lib/ios';
-import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
-import { Segmented } from './ui';
-import ChatScreen from './ChatScreen';
-import TasksScreen from './TasksScreen';
 import SettingsScreen from './SettingsScreen';
+import TasksScreen from './TasksScreen';
+import { Segmented } from './ui';
 
 // THE POCKET — SAM, in your hand.
 //

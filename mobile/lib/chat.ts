@@ -1,6 +1,6 @@
 import { fetch as streamingFetch } from 'expo/fetch';
-import { getHost, getToken, ApiError } from './api';
-import { isDemo, demoStream } from './demo';
+import { ApiError, getHost, getToken } from './api';
+import { demoStream, isDemo } from './demo';
 import { parseFrames, type StreamEvent } from './sse';
 
 export { parseFrames, type StreamEvent } from './sse';

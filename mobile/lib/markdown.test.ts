@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseInline, parseMarkdown } from './markdown';
 import { bound } from './thread';
 
