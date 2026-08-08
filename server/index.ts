@@ -234,14 +234,32 @@ app.post("/api/pair/claim", (req, res) => {
   if (!token) { res.status(400).json({ error: "That code was already used or has expired (they last 15 minutes)." }); return; }
   res.json({ token });
 });
-// Mint a fresh pairing code (privileged) — the desktop app calls this to pair a new browser/phone.
+// Mint a fresh pairing code — the desktop app calls this to pair a new browser/phone.
+//
+// GUARDED HERE, EXPLICITLY, and not left to the middleware. These two routes said "(privileged)"
+// in a comment and enforced nothing: they leaned on the global mutation gate, which deliberately
+// steps aside for an off-machine caller (passkeyRequiredForMutation → "deferred to the remote-token
+// gate") — and that gate is registered BELOW them, so it never ran for these paths. With
+// SAM_REMOTE=1 the result was inverted: loopback got 401 while anyone on the network could POST
+// here, receive a valid code, claim it, and hold a fully paired session. Found by probing the LAN
+// address after enabling remote mode, 2026-08-08.
+//
+// A remote device must never mint its own invitation — that is the bootstrap of trust, so it
+// belongs to the machine SAM runs on. isTrustedLocal is loopback AND the passkey (or a pairing
+// token a browser already holds), which is exactly "the desktop app, or a tab the operator
+// already approved". A paired phone is deliberately NOT enough: inviting further devices is a
+// power above being invited.
 app.post("/api/pair/new", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "pairing codes are minted from SAM on this machine only" }); return; }
   const code = mintPairingCode(Date.now());
   const host = (req.headers.host || `localhost:${PORT}`).split(",")[0];
   res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 900 });
 });
-// Revoke every paired session (privileged). The desktop app keeps working (it uses the passkey).
-app.post("/api/pair/revoke-all", (_req, res) => {
+// Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is
+// a one-request denial of service that logs every device out, and it was reachable exactly as
+// freely as minting was. Takes `req` now — it could not check what it never looked at.
+app.post("/api/pair/revoke-all", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "sessions are revoked from SAM on this machine only" }); return; }
   const n = revokeAllSessions();
   res.setHeader("Set-Cookie", clearSessionCookieHeader());
   res.json({ revoked: n });
@@ -268,6 +286,12 @@ app.get("/api/pair/activity", (req, res) => {
 // mutation gate: the desktop passkey, or any already-paired session). A paired device can
 // already nuke every session via revoke-all; this is the same power, finer-grained.
 app.post("/api/pair/devices/:id/revoke", (req, res) => {
+  // Stated as the trust this route always intended — a paired device may revoke, a stranger may
+  // not — but now CHECKED here instead of assumed from the general gate. That gate hands an
+  // off-machine caller to the remote-token gate, which is registered below this line and so never
+  // saw it: with SAM_REMOTE=1 this was reachable unauthenticated, the same shape as the hole in
+  // /api/pair/new. Revoking someone else's device is not a read.
+  if (!isTrustedLocal(req) && !isPairedSession(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   const targetId = String(req.params.id);
   const ok = revokeSessionById(targetId);
   if (ok) attributeRemote(req, "revoke-device", targetId === sessionIdFromToken(sessionTokenFromRequest(req)) ? "revoked itself" : "revoked another device");
