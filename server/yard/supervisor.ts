@@ -32,6 +32,22 @@ const MAX_BACKOFF_MS = 30_000;
 // Returning null rather than guessing means the yard stays down AND says so.
 export function workerEntry(): { cmd: string; args: string[] } | null {
   const cwd = process.cwd();
+
+  // SOURCE FIRST when this is a checkout, because `dist/` goes stale silently and nothing
+  // else notices. A worker built before the last edit still starts, still claims jobs, and
+  // still reports success — while running code nobody has written for hours. That cost a
+  // whole debugging session: a build loop ran the PREVIOUS bundle, so a feature's writes
+  // never happened and its model routing ignored DEFAULT_TIER, both looking like new bugs
+  // in current code that was in fact never executed.
+  //
+  // A checkout is the pair (worker.ts, node_modules/.bin/tsx): a packaged SAM ships neither,
+  // so it falls through to the bundle exactly as before. Preferring source costs a tsx
+  // compile at spawn; being wrong about which code is running costs an afternoon.
+  const sources = [join(HERE, "worker.ts"), join(ROOT, "server", "yard", "worker.ts"), join(cwd, "server", "yard", "worker.ts")];
+  const source = sources.find((s) => existsSync(s));
+  const tsx = [join(ROOT, "node_modules", ".bin", "tsx"), join(cwd, "node_modules", ".bin", "tsx")].find((t) => existsSync(t));
+  if (source && tsx) return { cmd: tsx, args: [source] };
+
   const bundles = [
     join(HERE, "yard-worker.mjs"),               // bundled: sits beside server.mjs
     join(HERE, "dist", "yard-worker.mjs"),
@@ -40,11 +56,9 @@ export function workerEntry(): { cmd: string; args: string[] } | null {
   ];
   for (const b of bundles) if (existsSync(b)) return { cmd: process.execPath, args: [b] };
 
-  const sources = [join(HERE, "worker.ts"), join(ROOT, "server", "yard", "worker.ts"), join(cwd, "server", "yard", "worker.ts")];
-  const source = sources.find((s) => existsSync(s));
-  if (!source) return null;
-  const tsx = [join(ROOT, "node_modules", ".bin", "tsx"), join(cwd, "node_modules", ".bin", "tsx")].find((t) => existsSync(t));
-  return tsx ? { cmd: tsx, args: [source] } : null;
+  // A checkout with no tsx installed still has its source — better a bundle-less run than
+  // no yard, so this is the last resort rather than an error.
+  return source ? { cmd: process.execPath, args: [source] } : null;
 }
 
 export class Supervisor {

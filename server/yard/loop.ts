@@ -257,7 +257,12 @@ export async function buildUntilGreen(dir: string, goal: string, deps: LoopDeps,
       ...offered.map((f) => `--- ${f.path} ---\n${f.content}`),
     ].join("\n");
 
-    deps.spend(estimate(SYSTEM) + estimate(prompt), "free");
+    // No tier here. This fires BEFORE the model has run, so any tier named at this point is
+    // a guess — and because the job row keeps the FIRST tier it is given, a guess here is
+    // the one that sticks and the truth never lands. It said "free" for work that ran wholly
+    // on-device, which is exactly the local-vs-cloud distinction the row exists to answer.
+    // Whoever actually runs the model reports what it was; see propose() in worker.ts.
+    deps.spend(estimate(SYSTEM) + estimate(prompt));
     const raw = await deps.propose(SYSTEM, prompt);
     deps.spend(estimate(raw));
     deps.checkStop();

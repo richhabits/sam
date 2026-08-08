@@ -352,6 +352,11 @@ HANDLERS["project.loop"] = async (ctx) => {
   const outcome = await buildUntilGreen(dir, goal, {
     propose: async (system, prompt) => {
       const r = await runModel(tier, system, prompt, "code");
+      // The tier the PROVIDER actually served, not the one asked for — a "free" request that
+      // falls through to a local model really did stay on this machine, and the job row is
+      // where anyone checks whether their code left it. Reported here because this is the
+      // only place that knows; 0 tokens because the loop already counts them.
+      ctx.spend(0, r.tier);
       ctx.log(`proposal from ${r.provider}`);
       return r.text;
     },

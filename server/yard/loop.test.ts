@@ -217,3 +217,32 @@ describe("the loop", () => {
     expect(read("project.sam.json")).toBe('{"slug":"real"}');
   });
 });
+
+// The job row keeps the FIRST tier anyone gives it, so a tier named before the model runs is
+// the one that sticks and the truth never lands. This loop used to pass "free" on the way IN
+// — stamping cloud attribution onto work that ran wholly on-device. Whoever actually runs the
+// model is the only party that knows what served it, so the loop must name no tier at all.
+describe("the loop never invents a tier", () => {
+  const pkg = (scripts: Record<string, string>) => write("package.json", JSON.stringify({ scripts }));
+
+  it("reports spend without claiming which tier served it", async () => {
+    pkg({ test: "x" });
+    mkdirSync(join(dir, "node_modules"));
+    // fail once so the model is actually consulted, then pass.
+    exec.run.mockResolvedValueOnce(fail("boom")).mockResolvedValue(ok);
+
+    const spends: Array<{ tokens: number; tier?: string }> = [];
+    const logs: string[] = [];
+    await buildUntilGreen(dir, "fix it", {
+      propose: async () => JSON.stringify({ files: [{ path: "a.txt", content: "fixed" }] }),
+      log: (l: string) => logs.push(l),
+      step: () => undefined,
+      spend: (tokens: number, tier?: string) => { spends.push({ tokens, tier }); },
+      checkStop: () => undefined,
+    });
+
+    expect(spends.length).toBeGreaterThan(0);          // it did report spend
+    expect(spends.every((s) => s.tier === undefined)).toBe(true);
+    expect(spends.some((s) => s.tier === "free")).toBe(false);   // the exact bug
+  });
+});

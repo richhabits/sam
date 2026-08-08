@@ -18,6 +18,19 @@ describe("finding the worker", () => {
     // either the node binary running this test, or a local tool that is really there
     expect(entry.cmd === process.execPath || existsSync(entry.cmd)).toBe(true);
   });
+
+  // A checkout must run ITS OWN source. dist/ goes stale silently: a worker bundled before
+  // the last edit still starts, still claims jobs and still reports success while running
+  // code nobody wrote today. That happened — a build loop ran the previous bundle, so a
+  // feature's writes never occurred and DEFAULT_TIER was ignored, both of which read as
+  // fresh bugs in code that had never actually executed.
+  it("prefers this checkout's source over any built bundle", () => {
+    const entry = workerEntry()!;
+    // This repo has both (dist/yard-worker.mjs is built by `npm run build:server`), so the
+    // choice is a real one here, not a default.
+    expect(entry.args[0]).toMatch(/worker\.ts$/);
+    expect(entry.args[0]).not.toMatch(/yard-worker\.mjs$/);
+  });
 });
 
 describe("recognising the entrypoint", () => {
