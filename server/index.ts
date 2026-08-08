@@ -66,6 +66,7 @@ import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { buildSpec, specSummary } from "./yard/spec.ts";
+import { withSelect, wantsSelect, loadDiffs } from "./yard/glass.ts";
 import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
@@ -1813,6 +1814,15 @@ app.post("/api/yard/raise-budget", (req, res) => {
 // ── What the yard has built ─────────────────────────────────────────────────
 // Reading, so the same bar as every other panel — this is what lets the builder view
 // work in a browser tab alongside the desktop app.
+// THE GLASS — what a job actually changed. The loop records a diff per write; this is
+// where they are read back, so an auto-applied change stays inspectable afterwards
+// rather than being something you have to take on trust.
+app.get("/api/yard/job/:id/diffs", (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  const job = yardStore().get(String(req.params.id));
+  if (!job) { res.status(404).json({ error: "no such job" }); return; }
+  res.json({ diffs: loadDiffs(job.logPath) });
+});
 app.get("/api/yard/projects", (req, res) => {
   if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json({ projects: listProjects(), root: projectsRoot() });
@@ -1872,6 +1882,15 @@ function servePreview(req: any, res: any) {
     "Content-Security-Policy",
     "sandbox allow-scripts; default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'",
   );
+  // THE GLASS — select mode. Opt-in per request, and only ever for HTML: a preview opened
+  // normally is byte-for-byte the file on disk, so the page that ships is never the page
+  // with SAM's picker in it. The injected script lives under the same `sandbox` CSP set
+  // above — opaque origin, connect-src 'none' — so it can read the document it is in and
+  // reach nothing of SAM's. postMessage is its only way out, by design.
+  if (wantsSelect(req.query) && r.type.startsWith("text/html")) {
+    res.send(withSelect(readFileSync(r.path, "utf8")));
+    return;
+  }
   res.send(readFileSync(r.path));
 }
 

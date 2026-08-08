@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { getYardProjects, getYardProject, getYardProjectFile, yardPreviewUrl, command, getYard } from "./lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getYardProjects, getYardProject, getYardProjectFile, yardPreviewUrl, command, getYard, getYardJobDiffs } from "./lib/api";
 import PairPrompt from "./PairPrompt";
 
 // 🏗 THE YARD — what SAM has built. A full view, like the money desk, opened with ?app=yard.
@@ -29,7 +29,23 @@ const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing:
 const bytes = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const when = (iso: string) => { try { return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } };
 
-type Tab = "preview" | "files" | "history" | "brief";
+type Tab = "preview" | "files" | "diffs" | "history" | "brief";
+type Device = "phone" | "tablet" | "desktop";
+
+// What the preview posts back when you point at something. Anything can postMessage to a
+// window, so a message without this marker — or from a window that is not the frame on
+// screen — is noise from somewhere else and is ignored.
+const GLASS_SOURCE = "sam-glass";
+type Picked = { selector: string; tag: string; text: string };
+
+type FileDiff = {
+  path: string; kind: "added" | "removed" | "modified"; truncated: boolean;
+  addedLines: number; removedLines: number;
+  hunks: { at: number; removed: string[]; added: string[] }[];
+};
+
+const DEVICE_WIDTH: Record<Device, number | string> = { phone: 390, tablet: 834, desktop: "100%" };
+const DEVICE_HEIGHT: Record<Device, number> = { phone: 700, tablet: 900, desktop: 620 };
 
 export default function YardView() {
   const [projects, setProjects] = useState<Project[] | null>(null);
@@ -38,7 +54,14 @@ export default function YardView() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [tab, setTab] = useState<Tab>("preview");
   const [openFile, setOpenFile] = useState<{ path: string; text: string } | null>(null);
-  const [device, setDevice] = useState<"phone" | "desktop">("desktop");
+  const [device, setDevice] = useState<Device>("desktop");
+  // THE GLASS — pointing at the page instead of describing it. Off by default: in select
+  // mode a click means "this is what I mean" rather than "follow this link", which is not
+  // what you want when you are simply looking at the thing.
+  const [pointing, setPointing] = useState(false);
+  const [picked, setPicked] = useState<Picked | null>(null);
+  const [diffs, setDiffs] = useState<FileDiff[] | null>(null);
+  const frame = useRef<HTMLIFrameElement | null>(null);
   const [nonce, setNonce] = useState(0);   // forces the preview to re-fetch after a rebuild
   // The builder half: say what to change, watch it happen, see the page update.
   const [split, setSplit] = useState(true);
@@ -65,6 +88,44 @@ export default function YardView() {
     getYardProject(slug).then(setDetail).catch(() => setDetail(null));
   }, [slug]);
 
+  // What the preview says when you point at something. The preview is served in an
+  // OPAQUE origin (its CSP sandboxes it), so its messages have no useful origin to check
+  // against — the identity that matters is that the message came from the frame on
+  // screen, which is what is checked here.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (!frame.current || e.source !== frame.current.contentWindow) return;
+      const d = e.data;
+      if (!d || typeof d !== "object" || d.source !== GLASS_SOURCE) return;
+      const sel = String(d.selector || "");
+      if (!sel) return;
+      setPicked({ selector: sel, tag: String(d.tag || ""), text: String(d.text || "") });
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  // Pointing at something only makes sense while the picker is being served. Turning it
+  // off clears what was picked, so the composer can never quietly carry a selector for a
+  // page you are no longer pointing at.
+  useEffect(() => { if (!pointing) setPicked(null); }, [pointing]);
+
+  // The diffs of the most recent job for this project. Loaded on demand rather than with
+  // the project, because it is the one tab that is usually not being looked at.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `nonce` is not read in here — it is a deliberate re-run trigger. It bumps when a build lands, and that is exactly when these diffs are stale.
+  useEffect(() => {
+    if (tab !== "diffs" || !slug) return;
+    setDiffs(null);
+    getYard()
+      .then(async (y: any) => {
+        const mine = (y?.recent ?? []).filter((j: any) => j?.project === slug);
+        if (!mine.length) { setDiffs([]); return; }
+        const r: any = await getYardJobDiffs(mine[0].id);
+        setDiffs(r?.diffs ?? []);
+      })
+      .catch(() => setDiffs([]));
+  }, [tab, slug, nonce]);
+
   // Send a change scoped to THIS project, so the request never has to name it and can
   // never be pointed at the wrong one by a loose phrase.
   const ask = async () => {
@@ -73,7 +134,12 @@ export default function YardView() {
     setAsking(""); setBusy(true);
     setSaid((s) => [...s, { who: "you", text }]);
     try {
-      const named = m?.name && text.toLowerCase().includes(m.name.toLowerCase()) ? text : `${text} — on the ${m?.name ?? slug}`;
+      // A picked element makes the request name the thing exactly instead of describing
+      // it — the difference between steering a build and negotiating with one.
+      const aimed = picked
+        ? `${text} — change the element matching the CSS selector \`${picked.selector}\`${picked.text ? ` (currently reads "${picked.text}")` : ""}`
+        : text;
+      const named = m?.name && aimed.toLowerCase().includes(m.name.toLowerCase()) ? aimed : `${aimed} — on the ${m?.name ?? slug}`;
       const r: any = await command(named);
       setSaid((s) => [...s, { who: "sam", text: String(r?.reply ?? r?.text ?? "…").split("\n")[0] }]);
     } catch {
@@ -234,6 +300,7 @@ export default function YardView() {
             <div style={{ display: "flex", gap: 4, background: "var(--ink-2)", border: "1px solid var(--line)", borderRadius: 12, padding: 4 }}>
               <button type="button" style={tabBtn("preview")} onClick={() => setTab("preview")}>Preview</button>
               <button type="button" style={tabBtn("files")} onClick={() => setTab("files")}>Files</button>
+              <button type="button" style={tabBtn("diffs")} onClick={() => setTab("diffs")}>Diffs</button>
               <button type="button" style={tabBtn("history")} onClick={() => setTab("history")}>History</button>
               <button type="button" style={tabBtn("brief")} onClick={() => setTab("brief")}>Brief</button>
             </div>
@@ -242,29 +309,112 @@ export default function YardView() {
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
                   <span style={{ ...lbl, margin: 0 }}>The page as it actually renders</span>
-                  <span style={{ display: "flex", gap: 6 }}>
-                    {(["phone", "desktop"] as const).map((d) => (
+                  <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(["phone", "tablet", "desktop"] as const).map((d) => (
                       <button key={d} type="button" onClick={() => setDevice(d)}
                         style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 999, cursor: "pointer", fontWeight: 700,
                           border: `1px solid ${device === d ? "var(--accent)" : "var(--line)"}`,
                           background: device === d ? "var(--accent-soft)" : "transparent",
                           color: device === d ? "var(--accent)" : "var(--ash)" }}>{d}</button>
                     ))}
+                    <button type="button" onClick={() => setPointing((v) => !v)}
+                      title="Click something in the page to aim your next change at it"
+                      style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 999, cursor: "pointer", fontWeight: 700,
+                        border: `1px solid ${pointing ? "var(--gold)" : "var(--line)"}`,
+                        background: pointing ? "rgba(216,178,106,.14)" : "transparent",
+                        color: pointing ? "var(--gold)" : "var(--ash)" }}>{pointing ? "pointing" : "point"}</button>
                     <button type="button" onClick={() => setNonce((n) => n + 1)}
                       style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "transparent", color: "var(--ash)", cursor: "pointer" }}>reload</button>
                   </span>
                 </div>
+
+                {/* What you are aiming at. Shown here rather than only in the composer,
+                    because it is a property of the PAGE — and it must be obvious that a
+                    change is about to be aimed somewhere specific. */}
+                {pointing && (
+                  <div style={{ marginBottom: 10, fontSize: 12.5, color: picked ? "var(--gold)" : "var(--ash)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    {picked ? (
+                      <>
+                        <span>aiming at <code style={{ fontFamily: "ui-monospace,Menlo,monospace" }}>{picked.selector}</code>{picked.text ? ` — “${picked.text}”` : ""}</span>
+                        <button type="button" onClick={() => setPicked(null)}
+                          style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: "1px solid var(--line)", background: "transparent", color: "var(--ash)", cursor: "pointer" }}>clear</button>
+                      </>
+                    ) : <span>click anything in the page below to aim your next change at it</span>}
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "center", background: "var(--ink-2)", borderRadius: 12, padding: 12, border: "1px solid var(--line)" }}>
                   <iframe
-                    key={`${slug}-${nonce}`}
+                    ref={frame}
+                    key={`${slug}-${nonce}-${pointing ? "point" : "look"}`}
                     title={`${m?.name ?? slug} preview`}
-                    src={`${yardPreviewUrl(slug)}?v=${nonce}`}
+                    // select=1 asks the server to inject the picker. It is opt-in per
+                    // request, so what ships is never the page with SAM's script in it.
+                    src={`${yardPreviewUrl(slug)}?v=${nonce}${pointing ? "&select=1" : ""}`}
                     // The preview renders a page SAM's model wrote, so it is treated as
                     // untrusted: sandboxed, and pointed only at its own project's files.
                     sandbox="allow-scripts"
-                    style={{ width: device === "phone" ? 390 : "100%", height: device === "phone" ? 700 : 620, border: "none", borderRadius: 8, background: "#fff" }}
+                    style={{ width: DEVICE_WIDTH[device], maxWidth: "100%", height: DEVICE_HEIGHT[device], border: "none", borderRadius: 8, background: "#fff" }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* ── DIFFS ────────────────────────────────────────────────────
+                The build loop applies its own edits, which is the right default —
+                asking permission per line is what makes a builder tiring. What it
+                owes you in return is a record: exactly what changed, from the last
+                job that changed anything on this project. */}
+            {tab === "diffs" && (
+              <div style={card}>
+                <div style={lbl}>What the last build changed</div>
+                {diffs === null ? (
+                  <div style={{ color: "var(--ash)", fontSize: 13 }}>Looking…</div>
+                ) : !diffs.length ? (
+                  <div style={{ color: "var(--ash)", fontSize: 13, lineHeight: 1.6 }}>
+                    No recorded changes yet. Diffs are kept for build-loop jobs — a change made
+                    another way still checkpoints, so History is the way back for those.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {diffs.map((d) => (
+                      <div key={d.path} style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 10px", background: "var(--ink-2)", fontSize: 12.5, flexWrap: "wrap" }}>
+                          <span style={{ fontFamily: "ui-monospace,Menlo,monospace" }}>{d.path}</span>
+                          <span style={{ color: "var(--ash)" }}>
+                            {d.kind === "added" ? "new file" : d.kind === "removed" ? "emptied" : (
+                              <>
+                                <span style={{ color: "var(--live)" }}>+{d.addedLines}</span>{" "}
+                                <span style={{ color: "var(--c-err)" }}>−{d.removedLines}</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        {d.truncated ? (
+                          <div style={{ padding: "8px 10px", fontSize: 12.5, color: "var(--ash)" }}>Too large to show line by line ({d.addedLines} lines).</div>
+                        ) : (
+                          <div style={{ padding: "6px 0", fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, overflowX: "auto" }}>
+                            {d.hunks.map((h) => (
+                              <div key={`${d.path}-${h.at}`} style={{ padding: "4px 0" }}>
+                                <div style={{ color: "var(--ash)", padding: "0 10px 2px" }}>line {h.at + 1}</div>
+                                {/* The position IS the identity here: a hunk is a fixed,
+                                    never-reordered list in which two lines can legitimately
+                                    be byte-identical (two blank lines, two closing braces). */}
+                                {h.removed.map((l, i) => (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: static, never-reordered list where duplicate lines are expected
+                                  <div key={`r${h.at}-${i}`} style={{ padding: "0 10px", whiteSpace: "pre", color: "var(--c-err)", background: "rgba(239,68,68,.07)" }}>− {l}</div>
+                                ))}
+                                {h.added.map((l, i) => (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: static, never-reordered list where duplicate lines are expected
+                                  <div key={`a${h.at}-${i}`} style={{ padding: "0 10px", whiteSpace: "pre", color: "var(--live)", background: "rgba(95,208,138,.07)" }}>+ {l}</div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

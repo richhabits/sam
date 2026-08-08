@@ -27,6 +27,7 @@ import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts
 import { applyEdits } from "./edits.ts";
 import { normaliseSpec, specSummary } from "./spec.ts";
 import { buildUntilGreen, describeOutcome } from "./loop.ts";
+import { saveDiffs } from "./glass.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
@@ -115,6 +116,9 @@ export interface JobContext {
   id: string;
   payload: any;
   project: string | null;
+  // Where this job's log lives. Handlers that produce an artefact worth keeping (the
+  // build loop's diffs) put it beside the log rather than inventing their own home.
+  logPath: string | null;
   log: (line: string) => void;
   // tier is optional and recorded once (first call that supplies it wins) — A6's free-
   // vs-paid split reads it straight off the job row, real attribution, never invented.
@@ -356,6 +360,11 @@ HANDLERS["project.loop"] = async (ctx) => {
     spend: ctx.spend,
     checkStop: ctx.checkStop,
   });
+
+  // Kept beside the job's log so the glass can show what changed long after the job's own
+  // memory is gone. Written whether or not the loop succeeded — a failed build's diffs are
+  // the more interesting ones, because they are what you undo.
+  saveDiffs(ctx.logPath, outcome.diffs);
 
   if (outcome.diffs.length) {
     ctx.step("checkpointing the result");
@@ -608,6 +617,7 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
 
   const ctx: JobContext = {
     id: job.id, payload: job.payload, project: job.project,
+    logPath: job.logPath,
     log: (line) => log.write(line),
     spend: (tokens, tier) => {
       if (tier) store.setTier(job.id, tier);

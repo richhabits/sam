@@ -288,6 +288,12 @@ export const getYard = () => fetch("/api/yard").then(async (r) => {
   return r.json();
 });
 export const getYardJob = (id: string) => fetch(`/api/yard/job/${encodeURIComponent(id)}`).then((r) => r.json());
+// What a job actually changed. An auto-applied edit stays inspectable afterwards rather
+// than being something you have to take on trust.
+export const getYardJobDiffs = (id: string) =>
+  fetch(`/api/yard/job/${encodeURIComponent(id)}/diffs`)
+    .then((r) => (r.ok ? r.json() : { diffs: [] }))
+    .catch(() => ({ diffs: [] }));
 export const enqueueYardJob = async (kind: string, payload: any = {}, opts: { budget?: number; project?: string } = {}) => {
   const pair = pairToken();
   const r = await fetch("/api/yard/enqueue", {
