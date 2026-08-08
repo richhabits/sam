@@ -4,7 +4,7 @@ const { withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 
 // Why this plugin exists
 // ──────────────────────
-// This repo lives at "/Volumes/ROMEO HQ/SAM" — a path with a SPACE in it. Several CocoaPods
+// This repo lives at "/Volumes/Work Drive/SAM" — a path with a SPACE in it. Several CocoaPods
 // script phases interpolate their path into a shell command without quoting it, e.g.
 // expo-constants ships:
 //
@@ -13,7 +13,7 @@ const { withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 // Xcode expands $PODS_TARGET_SRCROOT inside those double quotes, hands the result to
 // `bash -c`, and bash word-splits it at the space. The build then dies with:
 //
-//     No such file or directory: /Volumes/ROMEO
+//     No such file or directory: /Volumes/Work
 //
 // which reads like a missing file and is actually a quoting bug. It cost a full debugging
 // session on PIING before, for the same reason on the same drive, so it is fixed HERE, in
@@ -47,8 +47,8 @@ const PATCH = `    ${MARKER}
 //     `"$NODE_BINARY" --print "…react-native-xcode.sh"`
 //
 // The backticks run whatever that prints AS A COMMAND, unquoted — so the printed path
-// "/Volumes/ROMEO HQ/…/react-native-xcode.sh" splits and the shell tries to execute
-// "/Volumes/ROMEO". Same fix: capture it, then invoke it quoted. Matched on the escaped text
+// "/Volumes/Work HQ/…/react-native-xcode.sh" splits and the shell tries to execute
+// "/Volumes/Work". Same fix: capture it, then invoke it quoted. Matched on the escaped text
 // exactly as the pbxproj stores it.
 const RN_BACKTICK =
   '`\\"$NODE_BINARY\\" --print \\"require(\'path\').dirname(require.resolve(\'react-native/package.json\')) + \'/scripts/react-native-xcode.sh\'\\"`';
@@ -68,7 +68,7 @@ function patchAppProject(config) {
       patched++;
     }
     // Fail loudly rather than build a binary that dies later with a baffling
-    // "/Volumes/ROMEO: No such file or directory" — if the template's wording changed, the
+    // "/Volumes/Work: No such file or directory" — if the template's wording changed, the
     // quoting needs re-deriving, and silence here would just reproduce the original bug.
     if (patched === 0) {
       throw new Error(

@@ -4,11 +4,11 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 # This repo lives on a path with a SPACE in it
 
-`/Volumes/ROMEO HQ/SAM` — and several CocoaPods / React-Native script phases interpolate their
+`/Volumes/Work Drive/SAM` — and several CocoaPods / React-Native script phases interpolate their
 path into a shell command **unquoted**. The build then dies with:
 
 ```
-No such file or directory: /Volumes/ROMEO
+No such file or directory: /Volumes/Work
 ```
 
 which reads like a missing file and is really a quoting bug. It has now cost two debugging
