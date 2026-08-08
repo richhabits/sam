@@ -109,6 +109,28 @@ const SELECT_SCRIPT = `\n<script>${SELECT_JS}</script>\n`;
 // page rather than on us.
 export const SELECT_SCRIPT_SRC = `script-src 'self' 'sha256-${createHash("sha256").update(SELECT_JS).digest("base64")}'`;
 
+// The whole preview policy, built here rather than written inline at the route, because the
+// bug this fixes was a DISAGREEMENT between the body and the header: the page carried an
+// inline script the policy did not admit, and nothing in the codebase held those two facts
+// close enough together to notice. They are one function now, and a test can hold it to the
+// only invariant that matters — a select-mode policy must admit what select mode injects.
+//
+// `sandbox` is what makes the rest safe: an opaque origin whatever loads the page, framed or
+// opened directly, so a model-written page cannot reach SAM's API with the browser's
+// authority. `connect-src 'none'` leaves postMessage as the picker's only way out.
+export function previewCsp(select: boolean): string {
+  return [
+    "sandbox allow-scripts",
+    "default-src 'self'",
+    ...(select ? [SELECT_SCRIPT_SRC] : []),
+    "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "connect-src 'none'",
+    "frame-ancestors 'self'",
+  ].join("; ");
+}
+
 // Injected before </body> so the page's own scripts have already defined whatever they
 // define. A document with no </body> (a fragment, or malformed output from a model) gets
 // it appended — the alternative is silently doing nothing on exactly the pages most

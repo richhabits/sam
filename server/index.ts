@@ -66,7 +66,7 @@ import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { buildSpec, specSummary } from "./yard/spec.ts";
-import { withSelect, wantsSelect, loadDiffs, SELECT_SCRIPT_SRC } from "./yard/glass.ts";
+import { withSelect, wantsSelect, loadDiffs, previewCsp } from "./yard/glass.ts";
 import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
@@ -1884,10 +1884,7 @@ function servePreview(req: any, res: any) {
   // script has to be named in it — `default-src 'self'` forbids inline script, so a picker
   // that is merely present in the page is a picker the browser refuses to run.
   const select = wantsSelect(req.query) && r.type.startsWith("text/html");
-  res.setHeader(
-    "Content-Security-Policy",
-    `sandbox allow-scripts; default-src 'self';${select ? ` ${SELECT_SCRIPT_SRC};` : ""} img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'`,
-  );
+  res.setHeader("Content-Security-Policy", previewCsp(select));
   // The picker still lives under the same sandbox — opaque origin, connect-src 'none' — so
   // it can read the document it is in and reach nothing of SAM's. The one extra grant is
   // permission to execute itself, by hash. postMessage remains its only way out, by design.
