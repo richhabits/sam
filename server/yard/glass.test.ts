@@ -2,8 +2,34 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withSelect, wantsSelect, saveDiffs, loadDiffs, diffPathFor, GLASS_SOURCE } from "./glass.ts";
+import { createHash } from "node:crypto";
+import { withSelect, wantsSelect, saveDiffs, loadDiffs, diffPathFor, GLASS_SOURCE, SELECT_SCRIPT_SRC } from "./glass.ts";
 import { diffFiles } from "./diff.ts";
+
+// Caught live, in a browser, after the unit tests were green: the picker was injected
+// perfectly and then refused by the preview's own `default-src 'self'`, which forbids
+// inline script. Being in the page is not the same as being allowed to run, and only one
+// of those had a test. This is the one that would have failed.
+describe("the picker is allowed to run, not merely present", () => {
+  const scriptIn = (html: string) => {
+    const m = html.match(/<script>([\s\S]*?)<\/script>/);
+    if (!m) throw new Error("no script was injected");
+    return m[1];
+  };
+
+  it("names the injected script in the policy by its own hash", () => {
+    const hash = createHash("sha256").update(scriptIn(withSelect("<body></body>"))).digest("base64");
+    expect(SELECT_SCRIPT_SRC).toContain(`'sha256-${hash}'`);
+  });
+
+  it("keeps 'self' for scripts, so naming script-src does not newly break a page's own ./app.js", () => {
+    expect(SELECT_SCRIPT_SRC).toMatch(/^script-src 'self' 'sha256-/);
+  });
+
+  it("does not reach for 'unsafe-inline' — the hash is the whole point", () => {
+    expect(SELECT_SCRIPT_SRC).not.toContain("unsafe-inline");
+  });
+});
 
 describe("select mode is opt-in", () => {
   it("is off unless explicitly asked for", () => {

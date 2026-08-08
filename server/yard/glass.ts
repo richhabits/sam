@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import type { FileDiff } from "./diff.ts";
 
 // The marker the parent checks for. Anything can postMessage to a window, so the glass
@@ -33,8 +34,7 @@ export const GLASS_SOURCE = "sam-glass";
 // Kept deliberately small and dependency-free: it is injected into someone else's page,
 // so it must not need a build step, must not leak globals beyond one namespaced object,
 // and must not change how the page looks until the operator hovers.
-const SELECT_SCRIPT = `
-<script>(function(){
+const SELECT_JS = `(function(){
   if (window.__samGlass) return;
   window.__samGlass = true;
 
@@ -93,8 +93,21 @@ const SELECT_SCRIPT = `
       text: (el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 80)
     }, "*");
   }, true);
-})();</script>
-`;
+})();`;
+
+const SELECT_SCRIPT = `\n<script>${SELECT_JS}</script>\n`;
+
+// The preview's CSP is `default-src 'self'` with no script-src, which forbids INLINE script
+// — so the picker was injected and then silently refused to run. It is not enough to be in
+// the page; the policy has to name it. A sha256 of the exact script body does that without
+// weakening anything else: no 'unsafe-inline', no per-request nonce to keep in step, and a
+// policy that stops matching the moment the script is edited. Sent only on select responses.
+//
+// script-src also has to repeat 'self', because naming script-src at all stops default-src
+// applying to scripts — omitting it would newly break a previewed page that loads its own
+// ./app.js, in select mode only, which is the sort of difference that gets blamed on the
+// page rather than on us.
+export const SELECT_SCRIPT_SRC = `script-src 'self' 'sha256-${createHash("sha256").update(SELECT_JS).digest("base64")}'`;
 
 // Injected before </body> so the page's own scripts have already defined whatever they
 // define. A document with no </body> (a fragment, or malformed output from a model) gets

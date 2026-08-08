@@ -66,7 +66,7 @@ import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { buildSpec, specSummary } from "./yard/spec.ts";
-import { withSelect, wantsSelect, loadDiffs } from "./yard/glass.ts";
+import { withSelect, wantsSelect, loadDiffs, SELECT_SCRIPT_SRC } from "./yard/glass.ts";
 import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
@@ -1878,16 +1878,20 @@ function servePreview(req: any, res: any) {
   // framed or opened directly — so it can render and run its own scripts and reach
   // nothing of SAM's. Relying on the iframe's sandbox attribute alone would protect the
   // framed case and leave the direct one wide open.
-  res.setHeader(
-    "Content-Security-Policy",
-    "sandbox allow-scripts; default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'",
-  );
   // THE GLASS — select mode. Opt-in per request, and only ever for HTML: a preview opened
   // normally is byte-for-byte the file on disk, so the page that ships is never the page
-  // with SAM's picker in it. The injected script lives under the same `sandbox` CSP set
-  // above — opaque origin, connect-src 'none' — so it can read the document it is in and
-  // reach nothing of SAM's. postMessage is its only way out, by design.
-  if (wantsSelect(req.query) && r.type.startsWith("text/html")) {
+  // with SAM's picker in it. Decided BEFORE the policy is written, because the injected
+  // script has to be named in it — `default-src 'self'` forbids inline script, so a picker
+  // that is merely present in the page is a picker the browser refuses to run.
+  const select = wantsSelect(req.query) && r.type.startsWith("text/html");
+  res.setHeader(
+    "Content-Security-Policy",
+    `sandbox allow-scripts; default-src 'self';${select ? ` ${SELECT_SCRIPT_SRC};` : ""} img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'`,
+  );
+  // The picker still lives under the same sandbox — opaque origin, connect-src 'none' — so
+  // it can read the document it is in and reach nothing of SAM's. The one extra grant is
+  // permission to execute itself, by hash. postMessage remains its only way out, by design.
+  if (select) {
     res.send(withSelect(readFileSync(r.path, "utf8")));
     return;
   }
