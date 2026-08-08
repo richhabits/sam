@@ -90,7 +90,9 @@ export function projectFiles(slug: string, limit = 200): FileEntry[] {
     for (const e of entries) {
       if (out.length >= limit) return;
       if (e === ".git" || e === "node_modules" || e === ".DS_Store") continue;
-      const r = rel ? join(rel, e) : e;
+      // "/" always — see the note in tree.ts. These become URL segments in the preview and the
+      // Files tab, and a backslash is not a path separator in a URL.
+      const r = rel ? `${rel}/${e}` : e;
       try {
         const st = statSync(join(root, r));
         if (st.isDirectory()) walk(r, depth + 1);

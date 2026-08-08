@@ -37,7 +37,10 @@ export function readEditable(dir: string, protectedPaths: Set<string> = new Set(
     try { entries = readdirSync(join(dir, rel)); } catch { return; }
     for (const e of entries) {
       if (SKIP_DIRS.has(e) || e.startsWith(".")) continue;
-      const r = rel ? join(rel, e) : e;
+      // "/" always — see the note in tree.ts. This path is offered to the model and then
+      // matched against what it proposes, so a Windows separator here means an edit that
+      // silently matches nothing.
+      const r = rel ? `${rel}/${e}` : e;
       if (protectedPaths.has(r)) continue;
       let isDir = false;
       try { isDir = statSync(join(dir, r)).isDirectory(); } catch { continue; }

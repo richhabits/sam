@@ -93,7 +93,12 @@ export function indexProject(dir: string, opts: { maxFiles?: number } = {}): Ind
     for (const e of entries.sort()) {
       if (out.length >= max) return;
       if (SKIP_DIRS.has(e) || e.startsWith(".")) continue;
-      const r = rel ? join(rel, e) : e;
+      // "/" always, never join(): this string is the file's IDENTITY, not a filesystem path.
+      // It goes into the model's prompt, comes back in its proposals, and is matched against
+      // the offered files — so on Windows join() made it "src\app.ts" everywhere a project was
+      // described, while every prompt, test and stored diff says "src/app.ts". Node accepts "/"
+      // on Windows for the actual reads below, so nothing is lost by fixing it here.
+      const r = rel ? `${rel}/${e}` : e;
       let st: ReturnType<typeof statSync>;
       try { st = statSync(join(dir, r)); } catch { continue; }
       if (st.isDirectory()) { walk(r); continue; }
