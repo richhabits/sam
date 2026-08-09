@@ -256,7 +256,7 @@ export default function App() {
           <Section
             ios={ios}
             header="Pair this phone"
-            footer="On your Mac, open SAM and choose Pair a device. Tap the link it shows and this phone pairs itself — or enter the code by hand."
+            footer="On your Mac, open SAM → Dashboard → Pair a phone, and copy the address and code it shows. A code is one-time and lasts 15 minutes."
           >
             <Field
               ios={ios}
