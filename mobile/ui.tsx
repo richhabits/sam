@@ -1,5 +1,16 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { type IOS, metrics, type } from './lib/ios';
 
 // The four native primitives every screen here is built from. Written once so a row in
@@ -181,6 +192,113 @@ export function Row({
 
   if (!onPress) return body(false);
   return <Pressable onPress={onPress}>{({ pressed }) => body(pressed)}</Pressable>;
+}
+
+/**
+ * A text field that lives INSIDE a grouped section, the way Settings.app edits a value: a
+ * leading label in the row's own type, the field filling the rest, the same 44pt floor and
+ * hairline as every other row. Not a bordered box on a page — a bordered input with its own
+ * radius and its own background is the single loudest "this is a web form" tell there is, and
+ * it is what the pairing screen used to be built from.
+ */
+export function Field({
+  ios,
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  mono,
+  last,
+  ...input
+}: {
+  ios: IOS;
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  mono?: boolean;
+  last?: boolean;
+} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
+  return (
+    <View>
+      <View style={s.row}>
+        <Text style={[type.body, { color: ios.label, width: 96 }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <TextInput
+          style={[
+            type.body,
+            { flex: 1, color: ios.label, padding: 0 },
+            // Monospace only where the content is a machine string being compared character by
+            // character against a screen across the room.
+            mono && { fontFamily: 'Menlo', fontSize: 15, letterSpacing: 0.5 },
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={ios.tertiaryLabel}
+          accessibilityLabel={label}
+          {...input}
+        />
+      </View>
+      {!last ? (
+        <View
+          style={{
+            height: metrics.hairline,
+            backgroundColor: ios.separator,
+            marginLeft: metrics.separatorInset,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * The centred, tinted row Settings.app uses for the one thing a section is FOR — "Sign Out",
+ * "Erase All Content". It is a row, not a button: no fill, no radius of its own, no shadow. The
+ * section around it already supplies the shape, which is why native forms never accumulate the
+ * stack of rounded rectangles a web form does.
+ */
+export function ActionRow({
+  ios,
+  title,
+  onPress,
+  disabled,
+  destructive,
+  busy,
+  last,
+}: {
+  ios: IOS;
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  busy?: boolean;
+  last?: boolean;
+}) {
+  const tone = disabled ? ios.tertiaryLabel : destructive ? ios.destructiveText : ios.tintText;
+  const body = (pressed: boolean) => (
+    <View style={{ backgroundColor: pressed && !disabled ? ios.cardPressed : 'transparent' }}>
+      <View style={[s.row, { justifyContent: 'center' }]}>
+        {busy ? <ActivityIndicator color={ios.tint} style={{ marginRight: 8 }} /> : null}
+        <Text style={[type.body, { color: tone, fontWeight: '600' }]}>{title}</Text>
+      </View>
+      {!last ? (
+        <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.separatorInset }} />
+      ) : null}
+    </View>
+  );
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled, busy: !!busy }}
+    >
+      {({ pressed }) => body(pressed)}
+    </Pressable>
+  );
 }
 
 /** iOS segmented control: a filled track with a raised selected pill. */
