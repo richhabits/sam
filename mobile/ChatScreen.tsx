@@ -492,6 +492,8 @@ export default function ChatScreen({
               key={i}
               onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
               style={[s.chip, { backgroundColor: ios.fill }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove attachment ${a.name || 'attachment'}`}
             >
               <Text style={[s.chipText, { color: ios.tintText }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
             </Pressable>
@@ -511,6 +513,8 @@ export default function ChatScreen({
                 setDraft((d) => removeMention(d, r.label));
               }}
               style={[s.chip, { backgroundColor: ios.fill }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove reference ${r.label}`}
             >
               <Text style={[s.chipText, { color: ios.tintText }]}>@{r.label.slice(0, 22)}  ✕</Text>
             </Pressable>
@@ -632,6 +636,9 @@ export default function ChatScreen({
           onPress={() => setSheet(true)}
           style={({ pressed }) => [s.plus, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
           hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Attach"
+          accessibilityHint="Photos, files and capabilities"
         >
           <Text style={s.plusText}>+</Text>
         </Pressable>
@@ -641,6 +648,10 @@ export default function ChatScreen({
           onPress={() => setBrainPicker(true)}
           style={({ pressed }) => [s.brainPill, { backgroundColor: ios.fill, opacity: pressed ? 0.6 : 1 }]}
           hitSlop={6}
+          accessibilityRole="button"
+          // The pill's own text is "Auto ▾", which read aloud is a word and a punctuation mark.
+          accessibilityLabel={`Brain: ${BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'}`}
+          accessibilityHint="Choose which brain answers the next message"
         >
           <Text style={[s.brainPillText, { color: tier === 'auto' ? ios.secondaryLabel : ios.tintText }]}>
             {BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'} ▾
@@ -678,10 +689,14 @@ export default function ChatScreen({
             s.sendBtn,
             {
               backgroundColor: busy ? ios.fill : draft.trim() || attached.length ? ios.tintFill : ios.fill,
-              
               transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
+          accessibilityRole="button"
+          // One control, two jobs. "Up arrow" is what VoiceOver read before, which is the shape
+          // of the glyph rather than the name of the action.
+          accessibilityLabel={busy ? 'Stop' : 'Send'}
+          accessibilityState={{ disabled: !busy && !draft.trim() && !attached.length }}
         >
           <Text style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
             {busy ? '■' : '↑'}

@@ -174,7 +174,11 @@ export function Row({
           </Text>
         ) : null}
         {accessory}
-        {chevron ? <Text style={[type.body, { color: ios.tertiaryLabel, marginLeft: 6 }]}>›</Text> : null}
+        {chevron ? (
+          <Text style={[type.body, { color: ios.tertiaryLabel, marginLeft: 6 }]} accessible={false}>
+            ›
+          </Text>
+        ) : null}
       </View>
       {!last ? (
         <View
@@ -191,7 +195,18 @@ export function Row({
   );
 
   if (!onPress) return body(false);
-  return <Pressable onPress={onPress}>{({ pressed }) => body(pressed)}</Pressable>;
+  // A row that navigates IS a button, and until now VoiceOver announced it as plain text with a
+  // "›" on the end. The value and subtitle are folded into the label because a row is one idea
+  // — "Today, 3110 tokens" — not three separate stops for a swipe.
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={[title, value, subtitle].filter(Boolean).join(', ')}
+    >
+      {({ pressed }) => body(pressed)}
+    </Pressable>
+  );
 }
 
 /**
@@ -321,6 +336,9 @@ export function Segmented<T extends string>({
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
+            accessibilityRole="tab"
+            accessibilityLabel={o.label}
+            accessibilityState={{ selected: on }}
             style={[
               s.segItem,
               on && {

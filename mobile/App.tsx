@@ -220,6 +220,7 @@ export default function App() {
               source={require('./assets/sam-mark.png')}
               style={[s.mark, { width: layout.markSize, height: layout.markSize }]}
               accessibilityIgnoresInvertColors
+              accessible={false}
             />
             <View>
               <Text style={[iosType.largeTitle, { color: ios.label }]}>SAM</Text>
@@ -294,7 +295,9 @@ export default function App() {
       {/* A 44pt nav bar with a hairline, the way every native app draws one — the mark is
           the leading item, the segmented control is the title view, ••• is the trailing action. */}
       <View style={[s.navbar, { backgroundColor: ios.card, borderBottomColor: ios.separator }]}>
-        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} />
+        {/* Decoration beside a labelled control. VoiceOver reading "SAM" before the Agent /
+            Tasks selector on every focus is noise, not identity. */}
+        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
 
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
           <Segmented
@@ -308,7 +311,15 @@ export default function App() {
           />
         </View>
 
-        <Pressable onPress={() => setMenu((v) => !v)} hitSlop={10} style={{ minWidth: 28, alignItems: 'flex-end' }}>
+        <Pressable
+          onPress={() => setMenu((v) => !v)}
+          hitSlop={10}
+          style={{ minWidth: 28, alignItems: 'flex-end' }}
+          accessibilityRole="button"
+          accessibilityLabel="More"
+          accessibilityHint="Settings, and leaving the demo"
+          accessibilityState={{ expanded: menu }}
+        >
           <Text style={[iosType.title2, { color: ios.tintText, lineHeight: 24 }]}>•••</Text>
         </Pressable>
       </View>

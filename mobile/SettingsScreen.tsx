@@ -84,7 +84,14 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
         <Row
           ios={ios}
           title="Sound"
-          accessory={<Switch value={sound} onValueChange={toggleSound} trackColor={{ true: ios.green, false: undefined }} />}
+          accessory={
+            <Switch
+              value={sound}
+              onValueChange={toggleSound}
+              trackColor={{ true: ios.green, false: undefined }}
+              accessibilityLabel="Sound"
+            />
+          }
         />
         <Row
           ios={ios}
