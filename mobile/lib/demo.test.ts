@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // expo-secure-store is the Keychain — a native module with no Node implementation. The demo
 // flag is the only thing these tests need from it, so it becomes a plain in-memory map.
@@ -9,7 +9,7 @@ vi.mock('expo-secure-store', () => ({
   deleteItemAsync: async (k: string) => { store.delete(k); },
 }));
 
-import { isDemo, enterDemo, leaveDemo, loadDemo, demoApi, demoAnswer, demoStream } from './demo';
+import { demoAnswer, demoApi, demoStream, enterDemo, isDemo, leaveDemo, loadDemo } from './demo';
 
 beforeEach(async () => {
   store.clear();

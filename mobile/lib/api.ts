@@ -1,6 +1,6 @@
-import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { isDemo, demoApi } from "./demo";
+import { Platform } from "react-native";
+import { demoApi, isDemo } from "./demo";
 
 // How this device names itself in SAM's device registry — the operator's revoke list. RN's
 // User-Agent is a bare CFNetwork/Darwin string with no device in it, so without this every

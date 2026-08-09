@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { metrics, type, type IOS } from './lib/ios';
+import { type IOS, metrics, type } from './lib/ios';
 
 // The four native primitives every screen here is built from. Written once so a row in
 // Settings and a row in the + sheet are the SAME row — inconsistency between hand-built

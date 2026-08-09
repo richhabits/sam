@@ -1,6 +1,6 @@
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { getHost, getToken, ApiError } from './api';
+import * as ImagePicker from 'expo-image-picker';
+import { ApiError, getHost, getToken } from './api';
 import { isDemo } from './demo';
 
 // ATTACHMENTS — the camera, the photo library, and files.

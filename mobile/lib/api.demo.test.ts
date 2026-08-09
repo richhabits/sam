@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The point of this file: prove the demo is AIRTIGHT. A reviewer opening the app with no SAM
 // anywhere must not generate a single request — not a failed one, not a timing-out one. If a

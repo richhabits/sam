@@ -114,6 +114,28 @@ export function taskTitle(t: Pick<RecentTask, 'id' | 'kind' | 'payload' | 'proje
   }
 }
 
+/**
+ * How long ago a job ran, for surfaces about recency rather than record. `toLocaleString()` is
+ * right in the Tasks list — that is a log, and "which run was it" needs a date. On a "pick up
+ * where you left off" card the question is only "how stale is this", and `8/8/2026, 9:51:42 PM`
+ * answers it with a mental subtraction plus six characters of second-precision nobody wanted.
+ *
+ * Rounds DOWN throughout, so a card never claims a job is older than it is. `now` is a parameter
+ * because a clock read inside a formatter cannot be tested.
+ */
+export function taskWhen(createdAt: number | null | undefined, now: number = Date.now()): string {
+  if (!createdAt || !Number.isFinite(createdAt)) return '';
+  const secs = Math.floor((now - createdAt) / 1000);
+  // A clock skewed a little between the phone and the Mac must not read "in 4 minutes".
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days < 7 ? `${days}d ago` : new Date(createdAt).toLocaleDateString();
+}
+
 /** The title, made safe to live inside a message: no newlines (they would split the token
  *  across lines) and no second `@` (it would start a new mention inside this one). */
 export function mentionLabel(t: RecentTask): string {

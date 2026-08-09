@@ -154,7 +154,7 @@ export default function AddSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
+      <Pressable style={{ flex: 1, backgroundColor: ios.scrim }} onPress={onClose} />
       <View
         style={{
           position: 'absolute',
@@ -165,6 +165,11 @@ export default function AddSheet({
           backgroundColor: ios.groupedBg,
           borderTopLeftRadius: 12,
           borderTopRightRadius: 12,
+          // A top edge of its own. In dark this sheet is groupedBg — pure black — over a dimmed
+          // black screen, so without a hairline it has no boundary at all and reads as the page
+          // rather than as something laid over it.
+          borderTopWidth: metrics.hairline,
+          borderTopColor: ios.separator,
           paddingBottom: 34,
         }}
       >
