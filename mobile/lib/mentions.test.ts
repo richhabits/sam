@@ -9,6 +9,7 @@ import {
   type RecentTask,
   removeMention,
   taskContext,
+  taskGlyph,
   taskTitle,
   taskWhen,
 } from './mentions';
@@ -124,6 +125,39 @@ describe('taskTitle / mentionLabel', () => {
 
   it('falls back to the id rather than producing an empty label', () => {
     expect(mentionLabel(job({ kind: '@@', payload: {}, project: null }))).toBe('job_abc');
+  });
+});
+
+describe('taskGlyph', () => {
+  it('gives each kind of work its own mark', () => {
+    const kinds = ['project.build', 'project.create', 'project.edit', 'project.deploy', 'project.checkpoint', 'project.restore'];
+    const glyphs = kinds.map(taskGlyph);
+    expect(new Set(glyphs).size).toBe(kinds.length);
+  });
+
+  // The point of the family fallback: a kind nobody has taught this function still lands
+  // somewhere better than the generic bullet if its prefix is one we know.
+  it('falls back by family before giving up', () => {
+    expect(taskGlyph('notebook.append')).toBe(taskGlyph('notebook.anything'));
+    expect(taskGlyph('notebook.append')).not.toBe(taskGlyph('standing.watch'));
+    expect(taskGlyph('standing.watch')).not.toBe(taskGlyph('something.else'));
+  });
+
+  it('always returns a mark, even for a job with no kind at all', () => {
+    for (const k of [null, undefined, '', 'run', 'project.build']) {
+      expect(taskGlyph(k).length).toBeGreaterThan(0);
+    }
+  });
+
+  // U+FE0E is what stops iOS drawing several of these as colour emoji. Losing it is invisible
+  // in a diff and very visible on a phone, so it is asserted rather than trusted. Built from a
+  // code point rather than pasted, because an invisible character in a test literal is exactly
+  // the thing an editor or a formatter eats without anyone noticing.
+  it('keeps the text-presentation selector on the glyphs that need it', () => {
+    const textPresentation = String.fromCharCode(0xfe0e);
+    for (const k of ['project.build', 'project.create', 'project.edit', 'project.checkpoint']) {
+      expect(taskGlyph(k)).toContain(textPresentation);
+    }
   });
 });
 

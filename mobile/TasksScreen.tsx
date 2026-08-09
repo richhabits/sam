@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { type IOS, metrics, stateTone, type } from './lib/ios';
-import { taskTitle } from './lib/mentions';
+import { taskGlyph, taskTitle } from './lib/mentions';
 import { Row, Screen, Section } from './ui';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
@@ -36,7 +36,9 @@ type Yard = {
 
 // The naming lives in lib/mentions.ts (taskTitle) because the @ picker needs the SAME string —
 // a job called "Build: mainline" in this list and something else in a reference is how two
-// screens start disagreeing about what happened.
+// screens start disagreeing about what happened. taskGlyph is there for the same reason: the
+// leading tile says what KIND of job a row is, and state stays where it already was, in the
+// coloured word on the right.
 
 export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeedsPairing: () => void }) {
   const [yard, setYard] = useState<Yard | null>(null);
@@ -109,6 +111,7 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
                   key={j.id}
                   ios={ios}
                   title={taskTitle(j)}
+                  glyph={taskGlyph(j.kind)}
                   subtitle={`${new Date(j.createdAt).toLocaleString()}${j.costTokens ? ` · ${j.costTokens} tokens` : ''}${
                     j.lastError ? ` · ${j.lastError}` : ''
                   }`}

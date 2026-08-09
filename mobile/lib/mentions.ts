@@ -115,6 +115,42 @@ export function taskTitle(t: Pick<RecentTask, 'id' | 'kind' | 'payload' | 'proje
 }
 
 /**
+ * A glyph for what KIND of work a job is — build, deploy, edit — so a list of them can be
+ * scanned rather than read. State is not encoded here: it already has a colour and a word of
+ * its own, and a row that says "failed" twice in two alphabets is not clearer for it.
+ *
+ * Monochrome on purpose. These sit in a neutral square and are drawn in SAM's terracotta, which
+ * is the one brand colour the chrome is allowed (lib/ios.ts) — a Settings-style row of red,
+ * blue and green squares would import another product's palette wholesale.
+ *
+ * U+FE0E is the text-presentation selector. Without it iOS renders several of these as colour
+ * emoji, which is exactly the thing above. Kinds come from the desk's titleFor
+ * (src/TasksView.tsx) so the two surfaces agree about what a job is.
+ */
+export function taskGlyph(kind: string | null | undefined): string {
+  switch (kind) {
+    case 'project.build':
+      return '⚒︎'; // hammer and pick
+    case 'project.create':
+      return '✚︎'; // heavy greek cross
+    case 'project.edit':
+      return '✎︎'; // lower-left pencil
+    case 'project.deploy':
+      return '↑'; // upwards arrow — ship it
+    case 'project.checkpoint':
+      return '⚑︎'; // black flag
+    case 'project.restore':
+      return '↺'; // anticlockwise open circle arrow
+    default:
+      // Group by family before giving up, so a kind nobody has taught this function still gets
+      // something better than a bullet if its prefix is one we know.
+      if (kind?.startsWith('notebook.')) return '≡'; // identical to — stacked lines
+      if (kind?.startsWith('standing.')) return '◉'; // fisheye — a standing eye on something
+      return '▸'; // small right-pointing triangle
+  }
+}
+
+/**
  * How long ago a job ran, for surfaces about recency rather than record. `toLocaleString()` is
  * right in the Tasks list — that is a log, and "which run was it" needs a date. On a "pick up
  * where you left off" card the question is only "how stale is this", and `8/8/2026, 9:51:42 PM`
