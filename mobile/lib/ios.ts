@@ -20,9 +20,39 @@ export type IOS = {
   tertiaryLabel: string;
   tint: string; // SAM's terracotta — the ONE brand colour in the chrome
   tintPressed: string;
-  onTint: string;
-  destructive: string;
+  // THREE TERRACOTTAS, BECAUSE ONE CANNOT DO THREE JOBS AT AA.
+  //
+  // `tint` is correct for what tintColor is actually for: indicators, glyph fills, the things
+  // that carry no text. It is NOT safe as small text, and it is NOT safe under white text.
+  // Measured, with the WCAG 2.1 relative-luminance formula:
+  //
+  //   white on #D9531F ............. 4.03:1  FAILS AA normal (needs 4.5)
+  //   white on #F0824E ............. 2.62:1  FAILS AA normal AND AA large (needs 3.0)
+  //   #D9531F text on #FFFFFF ...... 4.03:1  FAILS
+  //   #D9531F text on #F2F2F7 ...... 3.61:1  FAILS
+  //   #F0824E text on #1C1C1E ...... 6.49:1  passes
+  //   #F0824E text on #000000 ...... 8.01:1  passes
+  //
+  // So light mode was failing in both directions and dark mode was failing only under white
+  // ink. The user's own chat bubble — the most repeated text in the app — was the worst case
+  // at 2.62:1. The desk already learned this and split `--accent` from `--accent-text`
+  // (styles.css:14); this is the same split, arrived at the same way, with the numbers kept.
+  tintText: string; // tint used as TEXT. Darkened in light; dark already passes, so unchanged.
+  tintFill: string; // a tinted SURFACE that carries onTint at AA
+  onTint: string; // ink on tintFill — INVERTS by appearance, see below
+  destructive: string; // a FILL or a large glyph — see the *Text pair below before using as type
   green: string;
+  // stateTone() returns a colour that TasksScreen and the resume cards render as a WORD
+  // ("done", "failed") at 13pt. Apple's system green is built to be a fill — a checkmark, a
+  // toggle, a dot — and measured as text on a white card it is 2.22:1, on groupedBg 1.99:1.
+  // That is not a near miss, it is roughly half of AA and the worst number in the palette.
+  // Red is better and still short: 3.55:1 and 3.18:1.
+  //
+  // Dark mode needs no correction (green 8.42:1 / 10.39:1, red 4.99:1 / 6.16:1) because the
+  // same hues sit on near-black. So these two are light-only darkenings, hue and saturation
+  // held, and in dark they are simply the system colours again.
+  destructiveText: string;
+  greenText: string;
   fill: string; // segmented-control track
   // What dims the screen behind a sheet. NOT a constant: 40% black over #F2F2F7 reads as an
   // obvious dimming, and the same 40% over a black background is very nearly nothing — the
@@ -41,9 +71,17 @@ export const iosLight: IOS = {
   tertiaryLabel: 'rgba(60,60,67,0.3)',
   tint: '#D9531F',
   tintPressed: '#B8441A',
+  // Same hue (16.8°) and saturation as tint, lightness pulled down until both grounds pass:
+  // 5.05:1 on card, 4.53:1 on groupedBg. Six lightness points darker than tint and, side by
+  // side with it on the same screen, not a colour anyone reads as different.
+  tintText: '#BE491B',
+  // Three points darker than tint — the least that carries white at AA (4.52:1).
+  tintFill: '#CB4E1D',
   onTint: '#FFFFFF',
   destructive: '#FF3B30',
   green: '#34C759',
+  destructiveText: '#DE0C00', // 5.05:1 on card, 4.53:1 on groupedBg
+  greenText: '#217F39', // 5.05:1 on card, 4.52:1 on groupedBg
   fill: 'rgba(118,118,128,0.12)',
   scrim: 'rgba(0,0,0,0.4)',
 };
@@ -58,9 +96,20 @@ export const iosDark: IOS = {
   tertiaryLabel: 'rgba(235,235,245,0.3)',
   tint: '#F0824E',
   tintPressed: '#E0713D',
-  onTint: '#FFFFFF',
+  // Dark tint is already 6.49:1 on card and 8.01:1 on groupedBg, so text needs no correction.
+  tintText: '#F0824E',
+  // NOT darkened. Dark-mode accents are lightened on purpose so they read against black;
+  // dragging this one down to carry white ink would need a 19-point drop and would leave the
+  // dark bubble DARKER than the light one, which is backwards. The fill keeps its brightness
+  // and the INK inverts instead — #1C1C1E on #F0824E is 6.49:1, a wider margin than light
+  // mode gets. That is the same move Emergent makes on its auth button, whose ink token is
+  // maximum-contrast monochrome inverted from the surface rather than a fixed white.
+  tintFill: '#F0824E',
+  onTint: '#1C1C1E',
   destructive: '#FF453A',
   green: '#30D158',
+  destructiveText: '#FF453A', // already 4.99:1 on card, 6.16:1 on groupedBg
+  greenText: '#30D158', // already 8.42:1 on card, 10.39:1 on groupedBg
   fill: 'rgba(118,118,128,0.24)',
   scrim: 'rgba(0,0,0,0.6)',
 };
@@ -102,6 +151,31 @@ export function stateTone(state: string | null | undefined, ios: IOS): string {
       return ios.destructive;
     case 'running':
       return ios.tint;
+    default:
+      return ios.secondaryLabel;
+  }
+}
+
+/**
+ * The same meanings, in the darker inks that survive being read as WORDS.
+ *
+ * There are two callers and they are not doing the same thing: TasksScreen prints the state as
+ * 13pt text, and the opening screen's resume cards paint it as a 8pt dot. A dot has no reading
+ * threshold to meet — it is a coloured shape, and Apple's system green is exactly the right
+ * green for it. Text at 13pt on a white card needs 4.5:1, which that green misses by half.
+ *
+ * Collapsing both into one function was the original mistake, and it was invisible in tests:
+ * the text values passed contrast and the dots quietly went muddy, which only a screenshot
+ * shows. Same split as tint / tintText, for the same reason.
+ */
+export function stateToneText(state: string | null | undefined, ios: IOS): string {
+  switch (state) {
+    case 'done':
+      return ios.greenText;
+    case 'failed':
+      return ios.destructiveText;
+    case 'running':
+      return ios.tintText;
     default:
       return ios.secondaryLabel;
   }

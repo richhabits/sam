@@ -317,7 +317,7 @@ export default function App() {
         </View>
 
         <Pressable onPress={() => setMenu((v) => !v)} hitSlop={10} style={{ minWidth: 28, alignItems: 'flex-end' }}>
-          <Text style={[iosType.title2, { color: ios.tint, lineHeight: 24 }]}>•••</Text>
+          <Text style={[iosType.title2, { color: ios.tintText, lineHeight: 24 }]}>•••</Text>
         </Pressable>
       </View>
 

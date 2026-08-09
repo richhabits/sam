@@ -106,7 +106,7 @@ export function Glyph({ ios, glyph, style }: { ios: IOS; glyph: string; style?: 
       {/* 17pt is what SF Symbols sit at in a 29pt Settings tile. At 15 these marks — which are
           typographic characters, not symbols, and so already sit small in their em box — read
           as lost in the middle of the square. */}
-      <Text allowFontScaling={false} style={{ fontSize: 17, color: ios.tint }}>
+      <Text allowFontScaling={false} style={{ fontSize: 17, color: ios.tintText }}>
         {glyph}
       </Text>
     </View>

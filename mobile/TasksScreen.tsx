@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { api } from './lib/api';
-import { type IOS, metrics, stateTone, type } from './lib/ios';
+import { type IOS, metrics, stateToneText, type } from './lib/ios';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import { Row, Screen, Section } from './ui';
 
@@ -58,7 +58,8 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
     load();
   }, [load]);
 
-  const tone = (state: Job['state']) => stateTone(state, ios);
+  // The accessory is a WORD, so it takes the text ink rather than the dot fill.
+  const tone = (state: Job['state']) => stateToneText(state, ios);
 
   if (!yard && !error) {
     return (
