@@ -135,6 +135,85 @@ describe('taskGlyph', () => {
     expect(new Set(glyphs).size).toBe(kinds.length);
   });
 
+  // THE TEST THAT SHOULD HAVE EXISTED FIRST.
+  //
+  // taskGlyph knew six kinds; server/yard/worker.ts registers ten. The four it missed included
+  // project.loop, the commonest job there is and one that sits in the demo fixtures — so every
+  // screenshot of the Tasks list showed the fallback triangle next to it. Nothing failed,
+  // because nothing was checking the two lists against each other.
+  //
+  // This list is the server's, copied deliberately rather than imported: mobile/ does not build
+  // against server/, and a hand-copied list that a test enforces is honest, where a silent
+  // divergence is not. If a handler is added there and not here, this test is where it surfaces.
+  const YARD_KINDS = [
+    'project.build',
+    'project.create',
+    'project.edit',
+    'project.deploy',
+    'project.checkpoint',
+    'project.restore',
+    'project.loop',
+    'playbook.run',
+    'run',
+    'sleep',
+  ];
+
+  it('has a real mark for every kind the yard can actually dispatch — no fallbacks', () => {
+    const FALLBACK = taskGlyph('something.nobody.registered');
+    for (const kind of YARD_KINDS) {
+      expect(taskGlyph(kind), `${kind} fell through to the generic mark`).not.toBe(FALLBACK);
+    }
+  });
+
+  it('gives all ten of them distinct marks, so the list can be scanned', () => {
+    const glyphs = YARD_KINDS.map(taskGlyph);
+    expect(new Set(glyphs).size).toBe(YARD_KINDS.length);
+  });
+
+  // ↺ and ⟳ are the same arrow in opposite directions and sit on adjacent rows in a real yard
+  // list. If they ever collapse to the same character the list silently stops distinguishing
+  // "put it back" from "keep going".
+  it('keeps restore and loop pointing opposite ways', () => {
+    expect(taskGlyph('project.restore')).not.toBe(taskGlyph('project.loop'));
+  });
+
+  // NO GLYPH MAY DEFAULT TO COLOUR EMOJI.
+  //
+  // These ranges are the ones Unicode gives Emoji_Presentation by default, so iOS draws them
+  // full-colour and they ignore tintText completely. `sleep` shipped as ⏱ (U+23F1) and rendered
+  // as a photographic stopwatch sitting in a column of terracotta marks — measured at chroma 3
+  // against 120–154 for every neighbour. Nothing failed; it just looked wrong, and only on a
+  // device.
+  //
+  // U+FE0E is not a reliable rescue inside these ranges on iOS, so the rule is to stay out of
+  // them entirely rather than to decorate a bad choice with a selector.
+  const EMOJI_DEFAULT_RANGES: [number, number][] = [
+    [0x231a, 0x23ff], [0x25fd, 0x25fe], [0x2614, 0x2615], [0x2648, 0x2653],
+    [0x267f, 0x267f], [0x2693, 0x2693], [0x26a1, 0x26a1], [0x26aa, 0x26ab],
+    [0x26bd, 0x26be], [0x26c4, 0x26c5], [0x26ce, 0x26ce], [0x26d4, 0x26d4],
+    [0x26ea, 0x26ea], [0x26f2, 0x26f3], [0x26f5, 0x26f5], [0x26fa, 0x26fa],
+    [0x26fd, 0x26fd], [0x2705, 0x2705], [0x270a, 0x270b], [0x2728, 0x2728],
+    [0x274c, 0x274c], [0x274e, 0x274e], [0x2753, 0x2755], [0x2757, 0x2757],
+    [0x2795, 0x2797], [0x27b0, 0x27b0], [0x27bf, 0x27bf], [0x2b1b, 0x2b1c],
+    [0x2b50, 0x2b50], [0x2b55, 0x2b55],
+  ];
+
+  it('never picks a character that iOS draws as a colour emoji', () => {
+    for (const kind of [...YARD_KINDS, 'notebook.x', 'standing.x', 'nothing.known']) {
+      for (const ch of taskGlyph(kind)) {
+        const cp = ch.codePointAt(0) ?? 0;
+        if (cp === 0xfe0e) continue;
+        expect(cp, `${kind} uses U+${cp.toString(16)}, which is in an emoji plane`).toBeLessThan(0x1f000);
+        for (const [lo, hi] of EMOJI_DEFAULT_RANGES) {
+          expect(
+            cp >= lo && cp <= hi,
+            `${kind} uses U+${cp.toString(16).toUpperCase()}, inside emoji-presentation range U+${lo.toString(16).toUpperCase()}–U+${hi.toString(16).toUpperCase()}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
   // The point of the family fallback: a kind nobody has taught this function still lands
   // somewhere better than the generic bullet if its prefix is one we know.
   it('falls back by family before giving up', () => {

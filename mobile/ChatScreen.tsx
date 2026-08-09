@@ -451,9 +451,15 @@ export default function ChatScreen({
                         {[t.state, taskWhen(t.createdAt)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
-                    {/* Same colour language as the Tasks list (TasksScreen tone()) — a job must
-                        not read as green in one place and grey in another. */}
-                    <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
+                    {/* Same language as the Tasks list — a job must not read as green in one
+                        place and grey in another. Running is a SPINNER on both surfaces rather
+                        than a coloured dot: the tint stopped being a status (see stateTone),
+                        and a static dot cannot tell you whether a job is working or wedged. */}
+                    {t.state === 'running' ? (
+                      <ActivityIndicator size="small" color={ios.secondaryLabel} />
+                    ) : (
+                      <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
+                    )}
                   </Pressable>
                 ))}
               </View>

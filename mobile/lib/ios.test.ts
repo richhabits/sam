@@ -90,14 +90,16 @@ describe.each(APPEARANCES)('%s appearance', (_name, ios) => {
     expect(contrast(ios.onTint, ios.tintFill)).toBeGreaterThanOrEqual(AA);
   });
 
-  // TasksScreen prints these as 13pt words, so every one is held to the body threshold.
+  // TasksScreen prints these as 13pt words. done and failed carry meaning in their colour and
+  // are held to the body threshold. running and queued deliberately do NOT — they return the
+  // muted tone, which is Apple's secondaryLabel and carries the same documented deviation as
+  // every other use of it. Running's liveness is a spinner, not a hue; see stateToneText.
   it('every colour stateToneText can return is legible as the word it actually renders', () => {
     for (const ground of [ios.groupedBg, ios.card] as const) {
       for (const state of ['done', 'failed', 'running', 'queued']) {
         const tone = stateToneText(state, ios);
-        expect(contrast(flatten(tone, ground), ground), `${state} on ${ground}`).toBeGreaterThanOrEqual(
-          state === 'queued' ? AA_LARGE : AA,
-        );
+        const floor = state === 'done' || state === 'failed' ? AA : AA_LARGE;
+        expect(contrast(flatten(tone, ground), ground), `${state} on ${ground}`).toBeGreaterThanOrEqual(floor);
       }
     }
   });
@@ -106,10 +108,20 @@ describe.each(APPEARANCES)('%s appearance', (_name, ios) => {
   // cards; a dot has no reading threshold, and darkening it to satisfy one made it muddy —
   // which passed every contrast assertion and was only visible in a screenshot. Pinning it to
   // the system colours means the next person to "fix" the contrast here has to read the note.
-  it('keeps stateTone on the vivid system colours, because it paints a dot and not a word', () => {
+  it('keeps the OUTCOME dots on the vivid system colours, because they paint a dot not a word', () => {
     expect(stateTone('done', ios)).toBe(ios.green);
     expect(stateTone('failed', ios)).toBe(ios.destructive);
-    expect(stateTone('running', ios)).toBe(ios.tint);
+  });
+
+  // THE TINT IS NOT A STATUS. It used to be returned for 'running', which made the one
+  // permitted chrome colour mean brand AND "act here" AND "the yard is busy" simultaneously.
+  // Both surfaces now carry running with motion instead — an activity indicator — so neither
+  // function may hand back the tint for it.
+  it('never spends the brand colour on a status', () => {
+    for (const state of ['done', 'failed', 'running', 'queued', 'cancelled']) {
+      expect(stateTone(state, ios), `stateTone(${state})`).not.toBe(ios.tint);
+      expect(stateToneText(state, ios), `stateToneText(${state})`).not.toBe(ios.tintText);
+    }
   });
 
   // The separator is the one thing that SHOULD be nearly invisible — a hairline that passed a
