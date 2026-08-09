@@ -1,5 +1,16 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { type IOS, metrics, type } from './lib/ios';
 
 // The four native primitives every screen here is built from. Written once so a row in
@@ -11,11 +22,16 @@ export function Screen({
   ios,
   title,
   right,
+  refreshControl,
   children,
 }: {
   ios: IOS;
   title?: string;
   right?: ReactNode;
+  /** Pull-to-refresh. Lives on Screen because Screen owns the ScrollView — a caller that wants
+   *  the gesture cannot reach the scroll view otherwise, which is how a list ends up with a
+   *  hand-rolled "Refresh" button instead of the gesture every iOS user already tries. */
+  refreshControl?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -23,6 +39,7 @@ export function Screen({
       style={{ flex: 1, backgroundColor: ios.groupedBg }}
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
+      refreshControl={refreshControl as never}
     >
       {title ? (
         <View style={s.titleRow}>
@@ -106,7 +123,7 @@ export function Glyph({ ios, glyph, style }: { ios: IOS; glyph: string; style?: 
       {/* 17pt is what SF Symbols sit at in a 29pt Settings tile. At 15 these marks — which are
           typographic characters, not symbols, and so already sit small in their em box — read
           as lost in the middle of the square. */}
-      <Text allowFontScaling={false} style={{ fontSize: 17, color: ios.tint }}>
+      <Text allowFontScaling={false} style={{ fontSize: 17, color: ios.tintText }}>
         {glyph}
       </Text>
     </View>
@@ -145,25 +162,41 @@ export function Row({
       <View style={s.row}>
         {glyph ? <Glyph ios={ios} glyph={glyph} style={{ marginRight: GLYPH_GAP }} /> : null}
         <View style={{ flex: 1 }}>
+          {/* TWO LINES, NOT ONE.
+              Both of these were numberOfLines={1}. A title truncates rarely; a subtitle is
+              "Upload to the host — the host refused the token" and truncated at exactly the
+              point the sentence starts being useful. At accessibility text sizes it lost
+              almost everything. Two lines is still a bounded row — the list stays scannable —
+              but the failure now fits, and the row grows with the type instead of clipping it
+              because metrics.rowMinHeight is a MINIMUM. */}
           <Text
             style={[type.body, { color: destructive ? ios.destructive : ios.label }]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={[type.footnote, { color: ios.secondaryLabel, marginTop: 2 }]} numberOfLines={1}>
+            <Text style={[type.footnote, { color: ios.secondaryLabel, marginTop: 2 }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
         </View>
         {value ? (
-          <Text style={[type.body, { color: ios.secondaryLabel, marginLeft: 8 }]} numberOfLines={1}>
+          // flexShrink so a long value yields to the title rather than pushing it out of the
+          // row; at AX sizes "18400 tokens" would otherwise take the whole width.
+          <Text
+            style={[type.body, { color: ios.secondaryLabel, marginLeft: 8, flexShrink: 1 }]}
+            numberOfLines={1}
+          >
             {value}
           </Text>
         ) : null}
         {accessory}
-        {chevron ? <Text style={[type.body, { color: ios.tertiaryLabel, marginLeft: 6 }]}>›</Text> : null}
+        {chevron ? (
+          <Text style={[type.body, { color: ios.tertiaryLabel, marginLeft: 6 }]} accessible={false}>
+            ›
+          </Text>
+        ) : null}
       </View>
       {!last ? (
         <View
@@ -180,7 +213,127 @@ export function Row({
   );
 
   if (!onPress) return body(false);
-  return <Pressable onPress={onPress}>{({ pressed }) => body(pressed)}</Pressable>;
+  // A row that navigates IS a button, and until now VoiceOver announced it as plain text with a
+  // "›" on the end. The value and subtitle are folded into the label because a row is one idea
+  // — "Today, 3110 tokens" — not three separate stops for a swipe.
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={[title, value, subtitle].filter(Boolean).join(', ')}
+    >
+      {({ pressed }) => body(pressed)}
+    </Pressable>
+  );
+}
+
+/**
+ * A text field that lives INSIDE a grouped section, the way Settings.app edits a value: a
+ * leading label in the row's own type, the field filling the rest, the same 44pt floor and
+ * hairline as every other row. Not a bordered box on a page — a bordered input with its own
+ * radius and its own background is the single loudest "this is a web form" tell there is, and
+ * it is what the pairing screen used to be built from.
+ */
+export function Field({
+  ios,
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  mono,
+  last,
+  ...input
+}: {
+  ios: IOS;
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  mono?: boolean;
+  last?: boolean;
+} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
+  return (
+    <View>
+      <View style={s.row}>
+        {/* minWidth so the labels still line up, but a long word at AX sizes is allowed to
+            take the room it needs instead of truncating to "Addr…". */}
+        <Text style={[type.body, { color: ios.label, minWidth: 96, flexShrink: 0 }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <TextInput
+          style={[
+            type.body,
+            { flex: 1, color: ios.label, padding: 0 },
+            // Monospace only where the content is a machine string being compared character by
+            // character against a screen across the room.
+            mono && { fontFamily: 'Menlo', fontSize: 15, letterSpacing: 0.5 },
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={ios.tertiaryLabel}
+          accessibilityLabel={label}
+          {...input}
+        />
+      </View>
+      {!last ? (
+        <View
+          style={{
+            height: metrics.hairline,
+            backgroundColor: ios.separator,
+            marginLeft: metrics.separatorInset,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * The centred, tinted row Settings.app uses for the one thing a section is FOR — "Sign Out",
+ * "Erase All Content". It is a row, not a button: no fill, no radius of its own, no shadow. The
+ * section around it already supplies the shape, which is why native forms never accumulate the
+ * stack of rounded rectangles a web form does.
+ */
+export function ActionRow({
+  ios,
+  title,
+  onPress,
+  disabled,
+  destructive,
+  busy,
+  last,
+}: {
+  ios: IOS;
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  busy?: boolean;
+  last?: boolean;
+}) {
+  const tone = disabled ? ios.tertiaryLabel : destructive ? ios.destructiveText : ios.tintText;
+  const body = (pressed: boolean) => (
+    <View style={{ backgroundColor: pressed && !disabled ? ios.cardPressed : 'transparent' }}>
+      <View style={[s.row, { justifyContent: 'center' }]}>
+        {busy ? <ActivityIndicator color={ios.tint} style={{ marginRight: 8 }} /> : null}
+        <Text style={[type.body, { color: tone, fontWeight: '600' }]}>{title}</Text>
+      </View>
+      {!last ? (
+        <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.separatorInset }} />
+      ) : null}
+    </View>
+  );
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled, busy: !!busy }}
+    >
+      {({ pressed }) => body(pressed)}
+    </Pressable>
+  );
 }
 
 /** iOS segmented control: a filled track with a raised selected pill. */
@@ -203,6 +356,9 @@ export function Segmented<T extends string>({
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
+            accessibilityRole="tab"
+            accessibilityLabel={o.label}
+            accessibilityState={{ selected: on }}
             style={[
               s.segItem,
               on && {

@@ -492,8 +492,10 @@ export default function ChatScreen({
               key={i}
               onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
               style={[s.chip, { backgroundColor: ios.fill }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove attachment ${a.name || 'attachment'}`}
             >
-              <Text style={[s.chipText, { color: ios.tint }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
+              <Text style={[s.chipText, { color: ios.tintText }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
             </Pressable>
           ))}
         </View>
@@ -511,8 +513,10 @@ export default function ChatScreen({
                 setDraft((d) => removeMention(d, r.label));
               }}
               style={[s.chip, { backgroundColor: ios.fill }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove reference ${r.label}`}
             >
-              <Text style={[s.chipText, { color: ios.tint }]}>@{r.label.slice(0, 22)}  ✕</Text>
+              <Text style={[s.chipText, { color: ios.tintText }]}>@{r.label.slice(0, 22)}  ✕</Text>
             </Pressable>
           ))}
         </View>
@@ -551,7 +555,7 @@ export default function ChatScreen({
                   <Text style={[s.brainRowTitle, { color: ios.label }]}>{b.name}</Text>
                   <Text style={[s.brainRowSub, { color: ios.secondaryLabel }]}>{b.why}</Text>
                 </View>
-                {tier === b.key ? <Text style={[s.brainTick, { color: ios.tint }]}>✓</Text> : null}
+                {tier === b.key ? <Text style={[s.brainTick, { color: ios.tintText }]}>✓</Text> : null}
               </Pressable>
             ))}
           </View>
@@ -567,7 +571,7 @@ export default function ChatScreen({
             {/* Typing a space closes this on its own, but a control that says so is the
                 difference between "it went away" and "I put it away". */}
             <Pressable onPress={() => setDismissed(mention!.start)} hitSlop={10}>
-              <Text style={[s.pickerAction, { color: ios.tint }]}>Dismiss</Text>
+              <Text style={[s.pickerAction, { color: ios.tintText }]}>Dismiss</Text>
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 176 }}>
@@ -632,8 +636,11 @@ export default function ChatScreen({
           onPress={() => setSheet(true)}
           style={({ pressed }) => [s.plus, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
           hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Attach"
+          accessibilityHint="Photos, files and capabilities"
         >
-          <Text style={s.plusText}>+</Text>
+          <Text style={s.plusText} allowFontScaling={false}>+</Text>
         </Pressable>
         {/* Inside the composer, beside the thing it affects — a setting that lives somewhere else
             is a setting nobody connects to the message they are about to send. */}
@@ -641,8 +648,12 @@ export default function ChatScreen({
           onPress={() => setBrainPicker(true)}
           style={({ pressed }) => [s.brainPill, { backgroundColor: ios.fill, opacity: pressed ? 0.6 : 1 }]}
           hitSlop={6}
+          accessibilityRole="button"
+          // The pill's own text is "Auto ▾", which read aloud is a word and a punctuation mark.
+          accessibilityLabel={`Brain: ${BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'}`}
+          accessibilityHint="Choose which brain answers the next message"
         >
-          <Text style={[s.brainPillText, { color: tier === 'auto' ? ios.secondaryLabel : ios.tint }]}>
+          <Text style={[s.brainPillText, { color: tier === 'auto' ? ios.secondaryLabel : ios.tintText }]}>
             {BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'} ▾
           </Text>
         </Pressable>
@@ -677,13 +688,24 @@ export default function ChatScreen({
           style={({ pressed }) => [
             s.sendBtn,
             {
-              backgroundColor: busy ? ios.fill : draft.trim() || attached.length ? ios.tint : ios.fill,
-              
+              backgroundColor: busy ? ios.fill : draft.trim() || attached.length ? ios.tintFill : ios.fill,
               transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
+          accessibilityRole="button"
+          // One control, two jobs. "Up arrow" is what VoiceOver read before, which is the shape
+          // of the glyph rather than the name of the action.
+          accessibilityLabel={busy ? 'Stop' : 'Send'}
+          accessibilityState={{ disabled: !busy && !draft.trim() && !attached.length }}
         >
-          <Text style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
+          {/* allowFontScaling={false} on the GLYPH only. The circle is a fixed 32pt hit
+              target by design and a growing character inside it clips; the control's meaning
+              travels in its accessibilityLabel, which Dynamic Type does not touch. Same call
+              the Glyph tile in ui.tsx already documents. */}
+          <Text
+            allowFontScaling={false}
+            style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}
+          >
             {busy ? '■' : '↑'}
           </Text>
         </Pressable>
@@ -699,7 +721,7 @@ function makeStyles(ios: IOS) {
     bubbleUser: {
       alignSelf: 'flex-end',
       maxWidth: '78%',
-      backgroundColor: ios.tint,
+      backgroundColor: ios.tintFill,
       borderRadius: 18,
       borderBottomRightRadius: 4,
       paddingHorizontal: 14,
@@ -725,7 +747,7 @@ function makeStyles(ios: IOS) {
     starters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     starter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
     starterText: { ...iosType.subhead },
-    inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tint },
+    inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tintText },
     codeblock: {
       backgroundColor: ios.groupedBg,
       borderRadius: 8,
@@ -759,7 +781,7 @@ function makeStyles(ios: IOS) {
       paddingBottom: 8,
     },
     plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-    plusText: { fontSize: 26, color: ios.tint, lineHeight: 30, fontWeight: '300' },
+    plusText: { fontSize: 26, color: ios.tintText, lineHeight: 30, fontWeight: '300' },
     chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
     // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
     // conversation stays visible above it, which is the point of not making this a sheet.
@@ -815,7 +837,9 @@ function makeStyles(ios: IOS) {
     // The brain pill sits in the composer row, so it is sized to the 32pt controls either side of
     // it rather than to its own text — a control that changes height when the label changes from
     // 'Auto' to 'Turbo' makes the whole row twitch.
-    brainPill: { height: 32, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 16 },
+    // minHeight, not height: this one carries a WORD ("Auto", "Free only"), so it has to be
+    // allowed to grow with the type the way metrics.rowMinHeight lets a row grow.
+    brainPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
     brainPillText: { ...iosType.caption, fontWeight: '600' },
     brainScrim: { flex: 1, backgroundColor: ios.scrim, justifyContent: 'flex-end' },
     brainSheet: {

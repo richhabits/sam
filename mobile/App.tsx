@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Image,
   Pressable,
@@ -9,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useColorScheme,
   useWindowDimensions,
   View,
@@ -18,15 +18,14 @@ import ChatScreen from './ChatScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
-import { iosDark, iosLight, type as iosType, metrics } from './lib/ios';
+import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
 import { parseQuickLink } from './lib/quicklink';
-import { dark, fs, light, radius, space, type Theme } from './lib/theme';
 import SettingsScreen from './SettingsScreen';
 import TasksScreen from './TasksScreen';
-import { Segmented } from './ui';
+import { ActionRow, Field, Row, Section, Segmented } from './ui';
 
 // THE POCKET — SAM, in your hand.
 //
@@ -38,9 +37,32 @@ type Surface = 'agent' | 'tasks' | 'settings';
 
 export default function App() {
   const scheme = useColorScheme();
-  const t = scheme === 'dark' ? dark : light;
-  const ios = scheme === 'dark' ? iosDark : iosLight;
-  const s = useMemo(() => makeStyles(t), [t]);
+
+  // Increase Contrast (Settings ▸ Accessibility ▸ Display & Text Size). iOS darkens its own
+  // label colours when this is on; SAM hardcodes those hexes, so without this it took Apple's
+  // values and dropped Apple's adaptation — see lib/ios.ts. Live, because the event fires and
+  // a user who turns it on while the app is open should not have to relaunch.
+  const [darkerColors, setDarkerColors] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    // Optional-called: the API is iOS-only and absent on older runtimes, and a missing
+    // accessibility read must never be the thing that stops the app rendering.
+    AccessibilityInfo.isDarkerSystemColorsEnabled?.()
+      .then((v) => alive && setDarkerColors(!!v))
+      .catch(() => {
+        /* An unreadable accessibility setting means the default palette, never a dead app. */
+      });
+    const sub = AccessibilityInfo.addEventListener('darkerSystemColorsChanged', (v) =>
+      setDarkerColors(!!v),
+    );
+    return () => {
+      alive = false;
+      sub?.remove();
+    };
+  }, []);
+
+  const ios = useMemo(() => paletteFor(scheme, darkerColors), [scheme, darkerColors]);
+  const s = useMemo(() => makeStyles(ios), [ios]);
 
   // app.json has always claimed supportsTablet, and nothing ever read the window size — so on an
   // iPad every screen stretched instead of adapting. Keyed on the WINDOW rather than the device
@@ -193,104 +215,100 @@ export default function App() {
   if (paired === null) {
     return (
       <SafeAreaView style={s.center}>
-        <ActivityIndicator color={t.accent} />
+        <ActivityIndicator color={ios.tint} />
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </SafeAreaView>
     );
   }
 
   if (!paired) {
+    // THE FIRST SCREEN, AND UNTIL NOW THE ONLY ONE STILL DRAWN IN THE ABANDONED SYSTEM.
+    //
+    // This was 22pt shadowed cards, a 460pt pink halo bleeding off the top, uppercase
+    // letter-spaced micro-labels and bordered inputs — every item lib/ios.ts's header names as
+    // the "website in a phone frame" failure, on the one screen a reviewer opens cold and every
+    // real user passes through before anything else. The native grammar started AFTER pairing,
+    // which is exactly backwards.
+    //
+    // It is now the same grouped-inset vocabulary as Tasks and Settings: a large title, headers
+    // and footers carrying the explanation, fields as rows, and the two doors as tinted action
+    // rows. Pair leads; the demo keeps its own section rather than being demoted to fine print,
+    // because a reviewer with no Mac to pair with needs one obvious tap to working content.
     return (
-      <SafeAreaView style={s.screen}>
-        {/* The pairing form is the worst offender on a big screen: a single text input stretched
-            across a 12.9" iPad reads as a bug rather than a layout. Capped and centred like
-            everything else. */}
-        <ScrollView contentContainerStyle={[s.pairScroll, centreWhenRoomy(layout), column]} keyboardShouldPersistTaps="handled">
-          {/* The halo is a soft wash that bleeds off the TOP of the screen, drawn to sit behind a
-              brand row pinned up there. Once the content centres itself on a big window the brand
-              row moves down and the halo is left stranded at the top as an unexplained pink blob —
-              decoration that has lost the thing it was decorating reads as a rendering bug. It
-              belongs to the phone layout, so it stays on the phone layout. */}
-          {layout.isRegular ? null : <View style={s.halo} pointerEvents="none" />}
+      <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
+        <ScrollView
+          contentContainerStyle={[{ paddingBottom: 40 }, centreWhenRoomy(layout), column]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={s.brandRow}>
-            <Image source={require('./assets/sam-mark.png')} style={[s.mark, { width: layout.markSize, height: layout.markSize }]} />
+            <Image
+              source={require('./assets/sam-mark.png')}
+              style={[s.mark, { width: layout.markSize, height: layout.markSize }]}
+              accessibilityIgnoresInvertColors
+              accessible={false}
+            />
             <View>
-              <Text style={s.brand}>S.A.M.</Text>
-              <Text style={s.brandSub}>Smart Artificial Mind</Text>
+              <Text style={[iosType.largeTitle, { color: ios.label }]}>SAM</Text>
+              <Text style={[iosType.subhead, { color: ios.secondaryLabel }]}>Smart Artificial Mind</Text>
             </View>
           </View>
 
-          <View style={s.card}>
-            <Text style={s.title}>Pair this phone</Text>
-            <Text style={s.sub}>
-              On your Mac, open SAM and choose <Text style={s.strong}>Pair a device</Text>. Tap the
-              link it shows and this phone pairs itself — or enter the code by hand below.
-            </Text>
-
-            <Text style={s.label}>SAM ADDRESS</Text>
-            <TextInput
-              style={s.input}
+          <Section
+            ios={ios}
+            header="Pair this phone"
+            footer="On your Mac, open SAM and choose Pair a device. Tap the link it shows and this phone pairs itself — or enter the code by hand."
+          >
+            <Field
+              ios={ios}
+              label="Address"
               value={host}
               onChangeText={setHostInput}
+              placeholder="http://100.x.y.z:8787"
+              keyboardType="url"
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="url"
-              placeholder="http://100.x.y.z:8787"
-              placeholderTextColor={t.muted}
             />
-
-            <Text style={s.label}>PAIRING CODE</Text>
-            <TextInput
-              style={[s.input, s.codeInput]}
+            <Field
+              ios={ios}
+              label="Code"
               value={code}
               onChangeText={setCode}
+              // The real thing is 32 hex characters, so the placeholder is 32 hex characters.
+              placeholder="78736a8389fc6172fa17425ae40e908f"
               autoCapitalize="none"
               autoCorrect={false}
-              // The real thing is 32 hex characters, so the placeholder shows 32 hex characters.
-              placeholder="78736a8389fc6172fa17425ae40e908f"
-              placeholderTextColor={t.muted}
+              mono
+              last
             />
+          </Section>
 
-            {error ? <Text style={s.error}>{error}</Text> : null}
-
-            <Pressable
+          {/* An outage gets a destructive ROW rather than a tinted panel of its own: the section
+              is already the container, and a second boxed shape inside it is the web habit. */}
+          <Section
+            ios={ios}
+            footer="The code is exchanged for a token kept in this phone's Keychain. Nothing leaves your network."
+          >
+            {error ? <Row ios={ios} title={error} destructive /> : null}
+            <ActionRow
+              ios={ios}
+              title={busy ? 'Pairing…' : 'Pair with your Mac'}
               onPress={() => doClaim()}
-              disabled={busy || !host || !code}
-              style={({ pressed }) => [
-                s.primary,
-                {
-                  backgroundColor: busy || !host || !code ? t.borderStrong : t.accent,
-                  transform: [{ scale: pressed ? 0.96 : 1 }],
-                },
-              ]}
-            >
-              <Text style={s.primaryText}>{busy ? 'Pairing…' : 'Pair'}</Text>
-            </Pressable>
-            <Text style={s.note}>
-              The code is exchanged for a token kept in this phone's Keychain. Nothing leaves your
-              network.
-            </Text>
-          </View>
+              disabled={!host || !code}
+              busy={busy}
+              last
+            />
+          </Section>
 
           {/* Without a Mac running SAM there is nothing to pair with, and a pairing form on its
               own tells you nothing about what you would be pairing with. The demo is fixed data
               and a scripted reply — labelled as such on every screen it reaches. */}
-          <View style={s.card}>
-            <Text style={s.title}>No SAM yet?</Text>
-            <Text style={s.sub}>
-              Have a look around with sample data — the same screens, answering from a fixed
-              script. Nothing is sent anywhere, and you can leave it at any time.
-            </Text>
-            <Pressable
-              onPress={() => doEnterDemo()}
-              style={({ pressed }) => [
-                s.secondary,
-                { borderColor: t.borderStrong, transform: [{ scale: pressed ? 0.96 : 1 }] },
-              ]}
-            >
-              <Text style={[s.primaryText, { color: t.text }]}>Explore the demo</Text>
-            </Pressable>
-          </View>
+          <Section
+            ios={ios}
+            header="No SAM yet?"
+            footer="The same screens, answering from a fixed script. Nothing is sent anywhere, and you can leave at any time."
+          >
+            <ActionRow ios={ios} title="Explore the demo" onPress={() => doEnterDemo()} last />
+          </Section>
         </ScrollView>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </SafeAreaView>
@@ -302,7 +320,9 @@ export default function App() {
       {/* A 44pt nav bar with a hairline, the way every native app draws one — the mark is
           the leading item, the segmented control is the title view, ••• is the trailing action. */}
       <View style={[s.navbar, { backgroundColor: ios.card, borderBottomColor: ios.separator }]}>
-        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} />
+        {/* Decoration beside a labelled control. VoiceOver reading "SAM" before the Agent /
+            Tasks selector on every focus is noise, not identity. */}
+        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
 
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
           <Segmented
@@ -316,15 +336,23 @@ export default function App() {
           />
         </View>
 
-        <Pressable onPress={() => setMenu((v) => !v)} hitSlop={10} style={{ minWidth: 28, alignItems: 'flex-end' }}>
-          <Text style={[iosType.title2, { color: ios.tint, lineHeight: 24 }]}>•••</Text>
+        <Pressable
+          onPress={() => setMenu((v) => !v)}
+          hitSlop={10}
+          style={{ minWidth: 28, alignItems: 'flex-end' }}
+          accessibilityRole="button"
+          accessibilityLabel="More"
+          accessibilityHint="Settings, and leaving the demo"
+          accessibilityState={{ expanded: menu }}
+        >
+          <Text style={[iosType.title2, { color: ios.tintText, lineHeight: 24 }]}>•••</Text>
         </Pressable>
       </View>
 
       {/* Not dismissible, and it names the way out. A demo mistaken for a live connection is
           worse than no demo: someone would read the sample jobs as their own. */}
       {demo ? (
-        <View style={[s.demoBar, { backgroundColor: t.accent }]}>
+        <View style={[s.demoBar, { backgroundColor: ios.tintFill }]}>
           <Text style={s.demoBarText}>Demo · sample data, not connected to a SAM</Text>
           <Pressable onPress={doLeaveDemo} hitSlop={8}>
             <Text style={s.demoBarLink}>Leave</Text>
@@ -384,139 +412,58 @@ export default function App() {
   );
 }
 
-const makeStyles = (t: Theme) =>
+const makeStyles = (ios: IOS) =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: t.bg },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
+    screen: { flex: 1 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: ios.groupedBg },
 
     navbar: {
       flexDirection: 'row',
       alignItems: 'center',
-      height: 44,
+      minHeight: metrics.rowMinHeight,
       paddingHorizontal: metrics.margin,
       borderBottomWidth: metrics.hairline,
     },
     markSmall: { width: 28, height: 28, borderRadius: 6 },
-    markGlyphSmall: { color: t.onAccent, fontSize: fs.sm, lineHeight: 16 },
-    // The desk's own Agent/Tasks toggle, pill-shaped for a thumb.
-    segment: {
-      flex: 1,
-      flexDirection: 'row',
-      backgroundColor: t.accentSoft,
-      borderRadius: radius.pill,
-      padding: 3,
-    },
-    segBtn: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: radius.pill },
-    segText: { fontSize: fs.md, fontWeight: '700' },
-    iconBtn: { width: 30, alignItems: 'center' },
-    iconGlyph: { fontSize: fs.base, fontWeight: '800' },
     scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
     menu: {
       position: 'absolute',
       top: 52,
-      right: space[3],
+      right: 12,
       zIndex: 2,
       minWidth: 180,
-      backgroundColor: t.surface,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: t.border,
+      borderRadius: metrics.radius,
+      borderWidth: metrics.hairline,
+      borderColor: ios.separator,
       overflow: 'hidden',
       shadowColor: '#000',
       shadowOpacity: 0.18,
       shadowRadius: 20,
       shadowOffset: { width: 0, height: 8 },
     },
-    menuRow: { paddingHorizontal: space[4], paddingVertical: 14 },
-    menuText: { color: t.text, fontSize: fs.body, fontWeight: '600' },
-    menuSep: { height: 1, backgroundColor: t.border },
+    menuRow: { paddingHorizontal: metrics.margin, paddingVertical: 14 },
 
-    pairScroll: { padding: space[5], paddingTop: space[6], gap: space[3] },
-    card: {
-      backgroundColor: t.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: t.border,
-      padding: space[5],
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 4 },
-    },
-    // A soft terracotta bloom behind the card — the phone's echo of the radial accent wash the
-    // desk HUD sits on (--accent-soft in src/styles.css).
-    halo: {
-      position: 'absolute',
-      top: -260,
-      left: -120,
-      right: -120,
-      height: 460,
-      borderRadius: 999,
-      backgroundColor: t.accentSoft,
-      opacity: 0.9,
-    },
-    brandRow: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginBottom: space[2] },
-    mark: {
-      width: 38,
-      height: 38,
-      borderRadius: radius.md,
-      backgroundColor: t.accent,
+    // The brand row sits above the first section rather than inside a card, which is where iOS
+    // puts an app's identity on a sign-in screen.
+    brandRow: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: t.accent,
-      shadowOpacity: 0.35,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
+      gap: 12,
+      paddingHorizontal: metrics.margin,
+      paddingTop: 12,
+      paddingBottom: 4,
     },
-    markGlyph: { color: t.onAccent, fontSize: fs.base, lineHeight: 20 },
-    brand: { fontSize: fs.lg, fontWeight: '800', letterSpacing: 1.5, color: t.text },
-    brandSub: { fontSize: fs.caption, color: t.muted, letterSpacing: 0.3, marginTop: 1 },
-    title: { fontSize: fs['2xl'], fontWeight: '700', color: t.text, letterSpacing: -0.5 },
-    sub: { fontSize: fs.body, color: t.muted, lineHeight: 22, marginTop: space[2] },
-    strong: { color: t.text, fontWeight: '600' },
-    label: {
-      fontSize: fs.micro,
-      fontWeight: '700',
-      letterSpacing: 1,
-      color: t.muted,
-      marginTop: space[4],
-      marginBottom: space[2],
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: t.borderStrong,
-      backgroundColor: t.bg,
-      color: t.text,
-      borderRadius: radius.md,
-      paddingHorizontal: space[3],
-      paddingVertical: space[3],
-      fontSize: fs.base,
-    },
-    // Monospace, because it's a 32-character hex string being checked character by character
-    // against a screen across the room.
-    codeInput: { fontFamily: 'Menlo', fontSize: fs.md, letterSpacing: 0.5 },
-    primary: { marginTop: space[3], borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-    primaryText: { color: t.onAccent, fontSize: fs.base, fontWeight: '700' },
-    // Outlined rather than filled: the demo is the lesser of the two doors on this screen, and
-    // should not compete with Pair for the eye.
-    secondary: {
-      marginTop: space[3], borderRadius: radius.md, paddingVertical: 14,
-      alignItems: 'center', borderWidth: 1, backgroundColor: 'transparent',
-    },
+    mark: { borderRadius: metrics.radius },
+
     demoBar: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: space[3], paddingVertical: 7, paddingHorizontal: space[4],
+      gap: 12, paddingVertical: 7, paddingHorizontal: metrics.margin,
     },
-    demoBarText: { color: t.onAccent, fontSize: fs.caption, fontWeight: '700' },
-    demoBarLink: { color: t.onAccent, fontSize: fs.caption, fontWeight: '700', textDecorationLine: 'underline' },
-    error: {
-      color: t.danger,
-      fontSize: fs.sm,
-      marginTop: space[3],
-      backgroundColor: 'rgba(239,68,68,.10)',
-      borderRadius: radius.sm,
-      padding: space[3],
-      overflow: 'hidden',
-    },
-    note: { fontSize: fs.caption, color: t.muted, marginTop: space[4], lineHeight: 18 },
+    // flexShrink so the sentence WRAPS instead of sliding off both edges of the screen at
+    // accessibility text sizes — caught at accessibility-extra-large, where the band read
+    // "emo · sample data, not connected to a SAM" with "Leave" cut in half. The band is the
+    // one piece of chrome that must stay legible at every size, because it is the thing
+    // stopping sample jobs being mistaken for real ones.
+    demoBarText: { ...iosType.caption, color: ios.onTint, fontWeight: '700', flexShrink: 1 },
+    demoBarLink: { ...iosType.caption, color: ios.onTint, fontWeight: '700', textDecorationLine: 'underline', flexShrink: 0 },
   });

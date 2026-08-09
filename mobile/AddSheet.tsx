@@ -179,14 +179,14 @@ export default function AddSheet({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            height: 44,
+            minHeight: 44,   // a nav bar holding scaling text has to be a floor, not a ceiling
             paddingHorizontal: metrics.margin,
             borderBottomWidth: metrics.hairline,
             borderBottomColor: ios.separator,
           }}
         >
           <Pressable onPress={here ? back : onClose} hitSlop={10} style={{ minWidth: 70 }}>
-            <Text style={[type.body, { color: ios.tint }]}>{here ? '‹ Back' : 'Cancel'}</Text>
+            <Text style={[type.body, { color: ios.tintText }]}>{here ? '‹ Back' : 'Cancel'}</Text>
           </Pressable>
           <Text style={[type.headline, { color: ios.label, flex: 1, textAlign: 'center' }]} numberOfLines={1}>
             {here ? here.label : 'Add to SAM'}
