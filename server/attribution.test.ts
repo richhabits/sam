@@ -63,12 +63,19 @@ describe("logAttribution / readAttribution — the single view", () => {
     expect(A.readAttribution({ limit: 3 })).toHaveLength(3);
   });
 
+  // 30s, where every other case here runs in single-digit milliseconds. Not flake-papering:
+  // logAttribution re-reads, re-serialises and atomically rewrites the WHOLE file on every
+  // call, which is right for an audit log written once per privileged action and crash-safe,
+  // and quadratic when a test drives 1005 of them back to back. ~1.9s on a dev Mac, over the
+  // 5s default on a shared CI runner — it went red on an unrelated PR, which is the real cost.
+  // The number is deliberately far above the honest worst case rather than just above it, so
+  // it still fails loudly if that write path ever genuinely regresses.
   it("caps stored history at 1000 entries, oldest dropped first", () => {
     for (let i = 0; i < 1005; i++) A.logAttribution({ ...AT("2026-01-01T00:00:00.000Z"), detail: `entry ${i}` });
     const all = A.readAttribution({ limit: 2000 });
     expect(all).toHaveLength(1000);
     expect(all[all.length - 1].detail).toBe("entry 5");   // the first 5 were dropped
-  });
+  }, 30_000);
 
   it("truncates an overlong detail — never a covert channel for real content", () => {
     A.logAttribution({ deviceId: "d1", deviceLabel: "x", capability: "assign-task", detail: "y".repeat(1000) });
