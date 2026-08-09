@@ -22,11 +22,16 @@ export function Screen({
   ios,
   title,
   right,
+  refreshControl,
   children,
 }: {
   ios: IOS;
   title?: string;
   right?: ReactNode;
+  /** Pull-to-refresh. Lives on Screen because Screen owns the ScrollView — a caller that wants
+   *  the gesture cannot reach the scroll view otherwise, which is how a list ends up with a
+   *  hand-rolled "Refresh" button instead of the gesture every iOS user already tries. */
+  refreshControl?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -34,6 +39,7 @@ export function Screen({
       style={{ flex: 1, backgroundColor: ios.groupedBg }}
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
+      refreshControl={refreshControl as never}
     >
       {title ? (
         <View style={s.titleRow}>
