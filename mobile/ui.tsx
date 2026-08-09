@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { type IOS, metrics, type } from './lib/ios';
 
 // The four native primitives every screen here is built from. Written once so a row in
@@ -81,6 +81,39 @@ export function Section({
 }
 
 /**
+ * The Settings-app leading tile: one glyph in a rounded square, ahead of a row's text. Lives
+ * here rather than in TasksScreen because the same job now shows up in three places — the
+ * Tasks list, the opening screen's resume cards and the @ picker — and a build that is a
+ * hammer in one of them and nothing in the other two is worse than no glyph at all.
+ *
+ * Fixed 29pt, so the glyph does NOT scale with Dynamic Type: a growing character in a fixed
+ * square clips, and this is decoration for scanning, not information. The title beside it
+ * carries the meaning and scales normally. Hidden from VoiceOver for the same reason — "▸"
+ * read aloud before every row is noise, and the title already says "Build: mainline".
+ */
+export const GLYPH_SIZE = 29;
+export const GLYPH_GAP = 12;
+
+/** The tile carries no outer margin: two of its three callers are flex containers with a `gap`
+ *  of their own, and a baked-in margin would silently double it in those. Row passes the gap. */
+export function Glyph({ ios, glyph, style }: { ios: IOS; glyph: string; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View
+      style={[s.glyph, { backgroundColor: ios.fill }, style]}
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+    >
+      {/* 17pt is what SF Symbols sit at in a 29pt Settings tile. At 15 these marks — which are
+          typographic characters, not symbols, and so already sit small in their em box — read
+          as lost in the middle of the square. */}
+      <Text allowFontScaling={false} style={{ fontSize: 17, color: ios.tint }}>
+        {glyph}
+      </Text>
+    </View>
+  );
+}
+
+/**
  * One list row. `last` suppresses the separator; everything else is Apple's geometry —
  * 44pt minimum height, separator inset to the text, chevron only when it navigates.
  */
@@ -89,6 +122,7 @@ export function Row({
   title,
   subtitle,
   value,
+  glyph,
   onPress,
   chevron,
   destructive,
@@ -99,6 +133,7 @@ export function Row({
   title: string;
   subtitle?: string;
   value?: string;
+  glyph?: string;
   onPress?: () => void;
   chevron?: boolean;
   destructive?: boolean;
@@ -108,6 +143,7 @@ export function Row({
   const body = (pressed: boolean) => (
     <View style={{ backgroundColor: pressed ? ios.cardPressed : 'transparent' }}>
       <View style={s.row}>
+        {glyph ? <Glyph ios={ios} glyph={glyph} style={{ marginRight: GLYPH_GAP }} /> : null}
         <View style={{ flex: 1 }}>
           <Text
             style={[type.body, { color: destructive ? ios.destructive : ios.label }]}
@@ -134,7 +170,9 @@ export function Row({
           style={{
             height: metrics.hairline,
             backgroundColor: ios.separator,
-            marginLeft: metrics.separatorInset,
+            // Level with the TEXT, which a leading tile pushes right — the separator running
+            // under the icon instead of starting after it is the tell of a hand-rolled list.
+            marginLeft: glyph ? metrics.margin + GLYPH_SIZE + GLYPH_GAP : metrics.separatorInset,
           }}
         />
       ) : null}
@@ -204,6 +242,13 @@ const s = StyleSheet.create({
     minHeight: metrics.rowMinHeight,
     paddingHorizontal: metrics.margin,
     paddingVertical: 11,
+  },
+  glyph: {
+    width: GLYPH_SIZE,
+    height: GLYPH_SIZE,
+    borderRadius: 7, // iOS 26's squircle-ish tile, not a circle and not a hard square
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   segTrack: { flexDirection: 'row', borderRadius: 9, padding: 2 },
   segItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 7 },

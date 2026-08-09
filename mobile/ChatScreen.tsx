@@ -29,9 +29,11 @@ import {
   removeMention,
   type TaskReference,
   taskContext,
+  taskGlyph,
   taskTitle,
   taskWhen,
 } from './lib/mentions';
+import { Glyph } from './ui';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -440,6 +442,7 @@ export default function ChatScreen({
                       pressed && { backgroundColor: ios.cardPressed },
                     ]}
                   >
+                    <Glyph ios={ios} glyph={taskGlyph(t.kind)} />
                     <View style={{ flex: 1 }}>
                       <Text style={[s.resumeTitle, { color: ios.label }]} numberOfLines={1}>
                         {taskTitle(t)}
@@ -599,12 +602,15 @@ export default function ChatScreen({
                   <Pressable
                     key={t.id}
                     onPress={() => void pick(t)}
-                    style={({ pressed }) => [s.pickerRow, pressed && { backgroundColor: ios.cardPressed }, i === hits.length - 1 && { borderBottomWidth: 0 }]}
+                    style={({ pressed }) => [s.pickerRow, s.pickerHit, pressed && { backgroundColor: ios.cardPressed }, i === hits.length - 1 && { borderBottomWidth: 0 }]}
                   >
-                    <Text style={s.pickerRowTitle} numberOfLines={1}>{taskTitle(t)}</Text>
-                    <Text style={s.pickerRowSub} numberOfLines={1}>
-                      {[t.state, t.createdAt ? new Date(t.createdAt).toLocaleString() : null].filter(Boolean).join(' · ')}
-                    </Text>
+                    <Glyph ios={ios} glyph={taskGlyph(t.kind)} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.pickerRowTitle} numberOfLines={1}>{taskTitle(t)}</Text>
+                      <Text style={s.pickerRowSub} numberOfLines={1}>
+                        {[t.state, t.createdAt ? new Date(t.createdAt).toLocaleString() : null].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
                   </Pressable>
                 ));
               })()
@@ -782,6 +788,10 @@ function makeStyles(ios: IOS) {
       borderBottomWidth: metrics.hairline,
       borderBottomColor: ios.separator,
     },
+    // Only the rows that are actually a job lay out sideways. The picker's other rows — the
+    // error, "nothing has run yet" — are a single line of text and would be pushed off the
+    // right edge by a flex row they never asked to be in.
+    pickerHit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     pickerRowTitle: { ...iosType.body, color: ios.label },
     pickerRowSub: { ...iosType.caption, color: ios.secondaryLabel, marginTop: 1 },
     chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
