@@ -640,7 +640,7 @@ export default function ChatScreen({
           accessibilityLabel="Attach"
           accessibilityHint="Photos, files and capabilities"
         >
-          <Text style={s.plusText}>+</Text>
+          <Text style={s.plusText} allowFontScaling={false}>+</Text>
         </Pressable>
         {/* Inside the composer, beside the thing it affects — a setting that lives somewhere else
             is a setting nobody connects to the message they are about to send. */}
@@ -698,7 +698,14 @@ export default function ChatScreen({
           accessibilityLabel={busy ? 'Stop' : 'Send'}
           accessibilityState={{ disabled: !busy && !draft.trim() && !attached.length }}
         >
-          <Text style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}>
+          {/* allowFontScaling={false} on the GLYPH only. The circle is a fixed 32pt hit
+              target by design and a growing character inside it clips; the control's meaning
+              travels in its accessibilityLabel, which Dynamic Type does not touch. Same call
+              the Glyph tile in ui.tsx already documents. */}
+          <Text
+            allowFontScaling={false}
+            style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}
+          >
             {busy ? '■' : '↑'}
           </Text>
         </Pressable>
@@ -830,7 +837,9 @@ function makeStyles(ios: IOS) {
     // The brain pill sits in the composer row, so it is sized to the 32pt controls either side of
     // it rather than to its own text — a control that changes height when the label changes from
     // 'Auto' to 'Turbo' makes the whole row twitch.
-    brainPill: { height: 32, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 16 },
+    // minHeight, not height: this one carries a WORD ("Auto", "Free only"), so it has to be
+    // allowed to grow with the type the way metrics.rowMinHeight lets a row grow.
+    brainPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
     brainPillText: { ...iosType.caption, fontWeight: '600' },
     brainScrim: { flex: 1, backgroundColor: ios.scrim, justifyContent: 'flex-end' },
     brainSheet: {

@@ -179,7 +179,7 @@ export default function AddSheet({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            height: 44,
+            minHeight: 44,   // a nav bar holding scaling text has to be a floor, not a ceiling
             paddingHorizontal: metrics.margin,
             borderBottomWidth: metrics.hairline,
             borderBottomColor: ios.separator,

@@ -162,20 +162,32 @@ export function Row({
       <View style={s.row}>
         {glyph ? <Glyph ios={ios} glyph={glyph} style={{ marginRight: GLYPH_GAP }} /> : null}
         <View style={{ flex: 1 }}>
+          {/* TWO LINES, NOT ONE.
+              Both of these were numberOfLines={1}. A title truncates rarely; a subtitle is
+              "Upload to the host — the host refused the token" and truncated at exactly the
+              point the sentence starts being useful. At accessibility text sizes it lost
+              almost everything. Two lines is still a bounded row — the list stays scannable —
+              but the failure now fits, and the row grows with the type instead of clipping it
+              because metrics.rowMinHeight is a MINIMUM. */}
           <Text
             style={[type.body, { color: destructive ? ios.destructive : ios.label }]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={[type.footnote, { color: ios.secondaryLabel, marginTop: 2 }]} numberOfLines={1}>
+            <Text style={[type.footnote, { color: ios.secondaryLabel, marginTop: 2 }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
         </View>
         {value ? (
-          <Text style={[type.body, { color: ios.secondaryLabel, marginLeft: 8 }]} numberOfLines={1}>
+          // flexShrink so a long value yields to the title rather than pushing it out of the
+          // row; at AX sizes "18400 tokens" would otherwise take the whole width.
+          <Text
+            style={[type.body, { color: ios.secondaryLabel, marginLeft: 8, flexShrink: 1 }]}
+            numberOfLines={1}
+          >
             {value}
           </Text>
         ) : null}
@@ -243,7 +255,9 @@ export function Field({
   return (
     <View>
       <View style={s.row}>
-        <Text style={[type.body, { color: ios.label, width: 96 }]} numberOfLines={1}>
+        {/* minWidth so the labels still line up, but a long word at AX sizes is allowed to
+            take the room it needs instead of truncating to "Addr…". */}
+        <Text style={[type.body, { color: ios.label, minWidth: 96, flexShrink: 0 }]} numberOfLines={1}>
           {label}
         </Text>
         <TextInput

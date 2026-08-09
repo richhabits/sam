@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { type IOS, iosDark, iosLight, stateTone, stateToneText } from './ios';
+import {
+  type IOS,
+  iosDark,
+  iosDarkHighContrast,
+  iosLight,
+  iosLightHighContrast,
+  paletteFor,
+  stateTone,
+  stateToneText,
+} from './ios';
 
 // THE PALETTE HAS TO PROVE ITSELF NOW.
 //
@@ -30,6 +39,8 @@ const AA_LARGE = 3;
 const APPEARANCES: [string, IOS][] = [
   ['light', iosLight],
   ['dark', iosDark],
+  ['light + Increase Contrast', iosLightHighContrast],
+  ['dark + Increase Contrast', iosDarkHighContrast],
 ];
 
 describe('contrast — the formula itself', () => {
@@ -55,17 +66,15 @@ describe.each(APPEARANCES)('%s appearance', (_name, ios) => {
   // AA_LARGE HERE IS A DELIBERATE DEVIATION, NOT A LOWERED BAR.
   //
   // secondaryLabel is Apple's own light-mode value, rgba(60,60,67,0.6), and over #FFFFFF it
-  // measures 3.29:1 — under AA. Darkening it to pass would need alpha ~0.72, and even that
-  // only reaches 4.23:1 on groupedBg. It would also put SAM's secondary text at a different
-  // weight from every Settings.app row beside it, which is the exact fidelity ios.ts exists
-  // to hold.
+  // measures 3.44:1 — under AA. Darkening the BASE palette to pass would put SAM's secondary
+  // text at a different weight from every Settings.app row beside it, which is the exact
+  // fidelity ios.ts exists to hold. So the base palettes stay as Apple ships them, and this
+  // assertion holds them only to the large threshold on purpose.
   //
-  // The real defect is subtler and is NOT fixed here: iOS ships these as dynamic system
-  // colours that the OS darkens when the user turns on Increase Contrast. SAM hardcodes the
-  // hex, so it takes Apple's value and drops Apple's adaptation. The honest fix is to consume
-  // the dynamic colours (or mirror them behind an Increase Contrast check), not to invent a
-  // darker constant — and that is its own change.
-  it('keeps secondary text at least legible, and records that it is Apple-faithful rather than AA', () => {
+  // The gap is closed where iOS itself closes it: the Increase Contrast palettes, asserted in
+  // their own block below and wired live in App.tsx via isDarkerSystemColorsEnabled. A user who
+  // has asked the OS for more contrast now gets it; a user who has not gets Settings.app.
+  it('keeps secondary text at least legible, with the AA case carried by the Increase Contrast palette', () => {
     for (const ground of [ios.groupedBg, ios.card] as const) {
       expect(contrast(flatten(ios.secondaryLabel, ground), ground)).toBeGreaterThanOrEqual(AA_LARGE);
     }
@@ -112,6 +121,56 @@ describe.each(APPEARANCES)('%s appearance', (_name, ios) => {
   it('never returns the same tone for two states that mean different things', () => {
     const tones = ['done', 'failed', 'running'].map((s) => stateTone(s, ios));
     expect(new Set(tones).size).toBe(3);
+  });
+});
+
+describe('Increase Contrast — the adaptation the hardcoded hexes were dropping', () => {
+  // The exact gap the base palette is allowed to have, closed by the palette the OS asks for.
+  it('closes the light-mode secondary-text failure that base mode is documented as carrying', () => {
+    for (const ground of [iosLight.groupedBg, iosLight.card] as const) {
+      expect(contrast(flatten(iosLight.secondaryLabel, ground), ground)).toBeLessThan(AA);
+      expect(contrast(flatten(iosLightHighContrast.secondaryLabel, ground), ground)).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
+  it('holds dark mode to AA too, where the base palette already passed', () => {
+    for (const ground of [iosDark.groupedBg, iosDark.card] as const) {
+      expect(contrast(flatten(iosDarkHighContrast.secondaryLabel, ground), ground)).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
+  it('never makes anything FAINTER than the palette it replaces', () => {
+    for (const [base, hc] of [
+      [iosLight, iosLightHighContrast],
+      [iosDark, iosDarkHighContrast],
+    ] as const) {
+      for (const key of ['secondaryLabel', 'tertiaryLabel'] as const) {
+        const ground = base.card;
+        expect(
+          contrast(flatten(hc[key], ground), ground),
+          `${key} must not soften under Increase Contrast`,
+        ).toBeGreaterThanOrEqual(contrast(flatten(base[key], ground), ground));
+      }
+    }
+  });
+
+  // The base palettes are Apple's documented values and that fidelity is the whole thesis of
+  // ios.ts. Increase Contrast is a SECOND palette, never an edit to the first.
+  it('leaves the documented Apple palette untouched', () => {
+    expect(iosLight.label).toBe('#000000');
+    expect(iosLight.secondaryLabel).toBe('rgba(60,60,67,0.6)');
+    expect(iosDark.secondaryLabel).toBe('rgba(235,235,245,0.6)');
+  });
+
+  it('paletteFor picks the right one of the four, and treats anything not "dark" as light', () => {
+    expect(paletteFor('light', false)).toBe(iosLight);
+    expect(paletteFor('dark', false)).toBe(iosDark);
+    expect(paletteFor('light', true)).toBe(iosLightHighContrast);
+    expect(paletteFor('dark', true)).toBe(iosDarkHighContrast);
+    // RN hands over 'unspecified' and null; neither should crash or pick dark by accident.
+    expect(paletteFor(null)).toBe(iosLight);
+    expect(paletteFor(undefined)).toBe(iosLight);
+    expect(paletteFor('unspecified')).toBe(iosLight);
   });
 });
 

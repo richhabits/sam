@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Image,
   Pressable,
@@ -17,7 +18,7 @@ import ChatScreen from './ChatScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
-import { type IOS, iosDark, iosLight, type as iosType, metrics } from './lib/ios';
+import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
@@ -36,7 +37,31 @@ type Surface = 'agent' | 'tasks' | 'settings';
 
 export default function App() {
   const scheme = useColorScheme();
-  const ios = scheme === 'dark' ? iosDark : iosLight;
+
+  // Increase Contrast (Settings ▸ Accessibility ▸ Display & Text Size). iOS darkens its own
+  // label colours when this is on; SAM hardcodes those hexes, so without this it took Apple's
+  // values and dropped Apple's adaptation — see lib/ios.ts. Live, because the event fires and
+  // a user who turns it on while the app is open should not have to relaunch.
+  const [darkerColors, setDarkerColors] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    // Optional-called: the API is iOS-only and absent on older runtimes, and a missing
+    // accessibility read must never be the thing that stops the app rendering.
+    AccessibilityInfo.isDarkerSystemColorsEnabled?.()
+      .then((v) => alive && setDarkerColors(!!v))
+      .catch(() => {
+        /* An unreadable accessibility setting means the default palette, never a dead app. */
+      });
+    const sub = AccessibilityInfo.addEventListener('darkerSystemColorsChanged', (v) =>
+      setDarkerColors(!!v),
+    );
+    return () => {
+      alive = false;
+      sub?.remove();
+    };
+  }, []);
+
+  const ios = useMemo(() => paletteFor(scheme, darkerColors), [scheme, darkerColors]);
   const s = useMemo(() => makeStyles(ios), [ios]);
 
   // app.json has always claimed supportsTablet, and nothing ever read the window size — so on an
@@ -434,6 +459,11 @@ const makeStyles = (ios: IOS) =>
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
       gap: 12, paddingVertical: 7, paddingHorizontal: metrics.margin,
     },
-    demoBarText: { ...iosType.caption, color: ios.onTint, fontWeight: '700' },
-    demoBarLink: { ...iosType.caption, color: ios.onTint, fontWeight: '700', textDecorationLine: 'underline' },
+    // flexShrink so the sentence WRAPS instead of sliding off both edges of the screen at
+    // accessibility text sizes — caught at accessibility-extra-large, where the band read
+    // "emo · sample data, not connected to a SAM" with "Leave" cut in half. The band is the
+    // one piece of chrome that must stay legible at every size, because it is the thing
+    // stopping sample jobs being mistaken for real ones.
+    demoBarText: { ...iosType.caption, color: ios.onTint, fontWeight: '700', flexShrink: 1 },
+    demoBarLink: { ...iosType.caption, color: ios.onTint, fontWeight: '700', textDecorationLine: 'underline', flexShrink: 0 },
   });

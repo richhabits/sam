@@ -139,6 +139,57 @@ export const metrics = {
   separatorInset: 16,
 };
 
+// INCREASE CONTRAST — the adaptation SAM was dropping by hardcoding Apple's hexes.
+//
+// iOS ships label colours as DYNAMIC colours: when someone turns on Settings ▸ Accessibility ▸
+// Display & Text Size ▸ Increase Contrast, the system darkens them everywhere. SAM copied the
+// values as constants, which bought exact fidelity with Settings.app and silently threw away
+// the adaptation that comes with them. So a user who had explicitly asked the OS for more
+// contrast got none from this app.
+//
+// Measured, light mode secondaryLabel — rgba(60,60,67,0.6), used for every task timestamp and
+// every Section footer:
+//
+//   on #FFFFFF card ...... 3.44:1   under AA
+//   on #F2F2F7 grouped ... 3.29:1   under AA
+//
+// Dark mode needs no correction: the same token measures 5.94:1 and 6.36:1 against near-black,
+// so only the light variant moves. Alpha 0.73 is the least that clears 4.5:1 on BOTH grounds
+// (4.85:1 and 4.60:1) — arrived at the same way the tint split was, by searching for the
+// smallest change that passes rather than picking a number that looks darker.
+//
+// The base palettes stay EXACTLY as Apple documents them. This is a second palette that the
+// OS asks for, not a correction to the first.
+export const iosLightHighContrast: IOS = {
+  ...iosLight,
+  secondaryLabel: 'rgba(60,60,67,0.73)',
+  tertiaryLabel: 'rgba(60,60,67,0.5)',
+};
+
+export const iosDarkHighContrast: IOS = {
+  ...iosDark,
+  // secondaryLabel already passes; tertiary is placeholder and chevron ink, and Increase
+  // Contrast is exactly the setting that says "stop making things faint at me".
+  tertiaryLabel: 'rgba(235,235,245,0.5)',
+};
+
+/**
+ * The palette for the appearance AND the accessibility setting, in one place, so no screen has
+ * to remember there are four. `darkerSystemColors` comes from
+ * AccessibilityInfo.isDarkerSystemColorsEnabled() and its darkerSystemColorsChanged event —
+ * both iOS-only, both live, so toggling the setting re-themes the running app.
+ */
+export function paletteFor(
+  // Widened deliberately: RN's ColorSchemeName includes 'unspecified', and anything that is not
+  // literally 'dark' means light — which is also the correct answer for null on first frame.
+  scheme: string | null | undefined,
+  darkerSystemColors = false,
+): IOS {
+  const dark = scheme === 'dark';
+  if (darkerSystemColors) return dark ? iosDarkHighContrast : iosLightHighContrast;
+  return dark ? iosDark : iosLight;
+}
+
 /** What colour a job's state reads as. Lives here rather than in either screen because it is
  *  now used by both the Tasks list and the Agent screen's "pick up where you left off" cards,
  *  and a job that is green in one list and grey in the other is a job the operator has to
