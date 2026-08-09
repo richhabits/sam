@@ -15,6 +15,7 @@ import AddSheet from './AddSheet';
 import { api } from './lib/api';
 import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
+import { consentCopy, loadConsent, needsConsent, type SpendConsent, setConsent } from './lib/consent';
 import { loadThread, saveThread } from './lib/history';
 import { type IOS, type as iosType, metrics, stateTone } from './lib/ios';
 import { parseMarkdown } from './lib/markdown';
@@ -142,6 +143,16 @@ export default function ChatScreen({
   const input = useRef<TextInput>(null);
   const [sheet, setSheet] = useState(false);
   const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
+  // Whether SAM may reach for a paid brain without asking. Restored on mount, because a grant
+  // the operator already gave should not be asked for again every launch.
+  const [consent, setConsentState] = useState<SpendConsent>('ask');
+  const [askingConsent, setAskingConsent] = useState(false);
+  // A one-shot bypass rather than a state flag: "Allow once" calls send() immediately, and a
+  // state update would not have landed by the time the gate re-reads it.
+  const allowOnce = useRef(false);
+  useEffect(() => {
+    loadConsent().then(setConsentState);
+  }, []);
   const [brainPicker, setBrainPicker] = useState(false);
   // Bumped on every send to remount the composer — see the note in send().
   const [composerKey, setComposerKey] = useState(0);
@@ -292,6 +303,15 @@ export default function ChatScreen({
     // something attached is still sendable.
     if ((!message && !attachments.length) || busy) return;
 
+    // THE MOMENT BEFORE IT SPENDS. Nothing is sent, nothing is cleared, the draft stays exactly
+    // where it is — the card replaces the send rather than interrupting one. See lib/consent.ts
+    // for why `auto` deliberately does not trip this.
+    if (!allowOnce.current && needsConsent(tier, consent)) {
+      setAskingConsent(true);
+      return;
+    }
+    allowOnce.current = false;
+
     // What the model gets and what the bubble shows are deliberately different: the operator
     // sees the sentence they typed, SAM also gets the referenced tasks' context in front of it.
     // Showing them the log they didn't write would make @ feel like a paste, not a reference.
@@ -375,7 +395,7 @@ export default function ChatScreen({
       setBusy(false);
       abort.current = null;
     }
-  }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs]);
+  }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs, consent]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
@@ -637,6 +657,60 @@ export default function ChatScreen({
         onAttach={(a) => setAttached((prev) => [...prev, a])}
       />
 
+      {/* THE CONSENT CARD — inline, above the composer, beside the message it is about.
+          Not a modal: a modal takes the screen away from the sentence you just wrote, and the
+          decision is about that sentence. Emergent puts the same thing in the thread for the
+          same reason. Three actions, in Apple's order of increasing commitment, with the
+          declining one first and unemphasised. */}
+      {askingConsent ? (
+        <View style={[s.consent, { backgroundColor: ios.card, borderColor: ios.separator }]}>
+          <Text style={[iosType.headline, { color: ios.label }]}>{consentCopy().title}</Text>
+          <Text style={[iosType.footnote, { color: ios.secondaryLabel, marginTop: 4 }]}>
+            {consentCopy().body}
+          </Text>
+          <View style={s.consentRow}>
+            <Pressable
+              onPress={() => {
+                setAskingConsent(false);
+                setTier('auto');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Not this time, use Auto"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.secondaryLabel, fontWeight: '600' }]}>
+                Use Auto instead
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                allowOnce.current = true;
+                setAskingConsent(false);
+                send();
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Just this once</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setConsentState('always');
+                setConsent('always');
+                allowOnce.current = true;
+                setAskingConsent(false);
+                send();
+              }}
+              accessibilityRole="button"
+              accessibilityHint="SAM will not ask again before using a paid brain"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Always allow</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <View style={s.composer}>
         <Pressable
           onPress={() => setSheet(true)}
@@ -788,6 +862,17 @@ function makeStyles(ios: IOS) {
     },
     plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     plusText: { fontSize: 26, color: ios.tintText, lineHeight: 30, fontWeight: '300' },
+    consent: {
+      marginHorizontal: metrics.margin,
+      marginBottom: 8,
+      padding: 14,
+      borderRadius: metrics.radius,
+      borderWidth: metrics.hairline,
+    },
+    // Wraps, because three labels at accessibility text sizes will not sit on one line and the
+    // declining option must never be the one that falls off the edge.
+    consentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 12 },
+    consentBtn: { paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
     chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
     // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
     // conversation stays visible above it, which is the point of not making this a sheet.
