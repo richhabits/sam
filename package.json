@@ -114,7 +114,9 @@
       "!docs/**",
       "!.github/**",
       "!community/**",
-      "!gateway/**"
+      "!gateway/**",
+      "!mobile/**",
+      "!graphify-out/**"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**",

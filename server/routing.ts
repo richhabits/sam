@@ -19,7 +19,12 @@ import { TOOLS } from "./tools.ts";
 import type { Skill } from "./skills.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CACHE_PATH = join(__dirname, "..", "vault", "routing_cache.json");
+// Was join(__dirname, ...) with no VAULT_DIR fallback — in the packaged app __dirname resolves
+// inside the read-only app.asar, so mkdirSync/writeFileSync below threw on every call, silently
+// swallowed by the try/catch a few lines down. The ">50% token cut, <1ms load, zero network
+// calls on subsequent boots" this cache exists for never actually happened in the packaged app —
+// it re-embedded the full tool+skill catalogue from scratch on every single boot instead.
+const CACHE_PATH = join(process.env.VAULT_DIR || join(__dirname, "..", "vault"), "routing_cache.json");
 
 // Always-available core so the model is never stranded without essentials.
 const CORE = ["web_search", "web_fetch", "run_command", "get_datetime", "read_file", "list_dir"];

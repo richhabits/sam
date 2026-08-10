@@ -1949,7 +1949,11 @@ export default function App() {
             </div>
             <label className={`import-drop ${importDrag ? "over" : ""}`}
               onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); if (!importDrag) setImportDrag(true); } }}
-              onDragLeave={(e) => { if (e.currentTarget === e.target) setImportDrag(false); }}
+              // Was `e.currentTarget === e.target`, which stops being true the moment the pointer
+              // crosses any child element (the icon/title/sub-text below) — dragging over this
+              // label and away without dropping left it visually "armed" until the modal closed.
+              // The app-level dropzone above already gets this right: relatedTarget + .contains().
+              onDragLeave={(e) => { const rt = e.relatedTarget as Node | null; if (!rt || !e.currentTarget.contains(rt)) setImportDrag(false); }}
               onDrop={(e) => { e.preventDefault(); setImportDrag(false); readImportFile(e.dataTransfer.files?.[0]); }}>
               <input type="file" accept=".json,.txt,.md,.csv" style={{ display: "none" }} onChange={(e) => readImportFile(e.target.files?.[0])} />
               <div className="import-drop-icon"><Icon name="folder" size={28} /></div>

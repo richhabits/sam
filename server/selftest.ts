@@ -40,7 +40,11 @@ export async function runSelftest(tools: { name: string }[]): Promise<SelftestRe
   let vaultOk = false;
   let vaultInfo = "Not checked";
   try {
-    const root = join(process.cwd(), "vault");
+    // Was join(process.cwd(), "vault") — the wrong path in a packaged app (see doctor's probe in
+    // index.ts, which already gets this right). A diagnostic meant to catch exactly the vault
+    // writability class of bug (latch.ts, routing.ts, tools.ts's brands.json all hit variants of
+    // it) checking the wrong path either false-fails or false-passes — it can't do its one job.
+    const root = process.env.VAULT_DIR || join(process.cwd(), "vault");
     if (existsSync(root)) {
       const testFile = join(root, ".selftest");
       writeFileSync(testFile, "test");

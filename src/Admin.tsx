@@ -132,13 +132,21 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   }
 
   async function saveIntegrations() {
-    if (integrations.notion) await saveConfig("notion", integrations.notion.trim());
-    if (integrations.slack) await saveConfig("slack", integrations.slack.trim());
-    if (integrations.discord) await saveConfig("discord", integrations.discord.trim());
-    if (integrations.twitter) await saveConfig("twitter", integrations.twitter.trim());
-    if (integrations.linear) await saveConfig("linear", integrations.linear.trim());
-    if (integrations.linearTeam) await saveConfig("linearTeam", integrations.linearTeam.trim());
-    if (integrations.vercel) await saveConfig("vercel", integrations.vercel.trim());
+    // Missed in the same "don't flash Saved on a server error" pass that fixed saveProvider/
+    // saveEleven/saveEmail (see their AUDIT FIX comments) — this one still ignored every
+    // response and always flashed "Saved ✓", so a rejected Notion/Slack/Discord/Twitter/
+    // Linear/Vercel key looked identical to a stored one.
+    const fields: [string, string][] = [
+      ["notion", integrations.notion], ["slack", integrations.slack], ["discord", integrations.discord],
+      ["twitter", integrations.twitter], ["linear", integrations.linear],
+      ["linearTeam", integrations.linearTeam], ["vercel", integrations.vercel],
+    ];
+    for (const [key, val] of fields) {
+      if (!val) continue;
+      const r = await saveConfig(key, val.trim());
+      if (r?.error) { setSaveError({ id: "integrations", msg: String(r.error) }); return; }
+    }
+    setSaveError(null);
     setIntegrations({ notion: "", slack: "", discord: "", twitter: "", linear: "", vercel: "", linearTeam: integrations.linearTeam });
     flash("integrations");
     refresh();

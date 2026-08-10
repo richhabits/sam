@@ -2201,8 +2201,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 /* — Frame polish: the chat surfaces you touch most. — */
 .send { width: 42px; height: 42px; border-radius: 13px; }               /* fuller tap target (Apple ≥44 feel) */
 .icon-btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
-.row.user .bubble { box-shadow: 0 2px 10px rgba(0,0,0,.05); }           /* softer, more premium lift */
-.composer-inner { box-shadow: 0 12px 44px rgba(0,0,0,.07); }            /* deeper resting float */
+/* Both were hardcoded rgba(0,0,0,...) — invisible against a near-black --bg, same bug class the
+   popover/drawer/composer-inner fix addressed earlier in this file. This later block, same
+   specificity, was winning the cascade and silently undoing that fix for exactly these two
+   elements. Theme-aware tokens instead — var(--shadow) already IS "softer", --shadow-glass
+   already IS "deeper" (it's --shadow-lg plus the rim), so this just stops re-flattening them. */
+.row.user .bubble { box-shadow: var(--shadow); }                        /* softer, more premium lift */
+.composer-inner { box-shadow: var(--shadow-glass); }                    /* deeper resting float */
 .who { letter-spacing: .015em; }
 
 /* Routine binder inside a workflow card — bind a phrase → runs the workflow ahead of the brain */

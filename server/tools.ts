@@ -2656,12 +2656,16 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         const fs = await import("node:fs/promises");
-        const brandsPath = resolve(process.cwd(), "vault", "brands.json");
+        // Was resolve(process.cwd(), "vault", ...) — process.cwd() in a packaged Electron app is
+        // whatever launched it, not the writable per-user vault dir; projects.ts reads brands.json
+        // from VAULT_DIR (already defined above, just never used here), so a save here landed
+        // somewhere the rest of the app never looks — the project silently vanished on next load.
+        const brandsPath = join(VAULT_DIR, "brands.json");
         let brands: any[] = [];
         try { brands = JSON.parse(await fs.readFile(brandsPath, "utf8")); } catch { brands = [...PROJECTS]; }
         if (brands.find((p: any) => p.id === i.id)) return `Project '${i.id}' already exists. Use update_project to change it.`;
         brands.push({ id: i.id, name: i.name, domain: i.domain, status: i.status || "concept", branch: "ops", summary: i.summary });
-        await fs.mkdir(resolve(process.cwd(), "vault"), { recursive: true });
+        await fs.mkdir(VAULT_DIR, { recursive: true });
         await fs.writeFile(brandsPath, JSON.stringify(brands, null, 2), "utf8");
         return `Added project '${i.name}'. Restart SAM for it to appear in the project context.`;
       } catch (e: any) { return `Failed: ${e.message}`; }
@@ -2671,7 +2675,11 @@ export const TOOLS: Tool[] = [
     run: async (i) => {
       try {
         const fs = await import("node:fs/promises");
-        const brandsPath = resolve(process.cwd(), "vault", "brands.json");
+        // Was resolve(process.cwd(), "vault", ...) — process.cwd() in a packaged Electron app is
+        // whatever launched it, not the writable per-user vault dir; projects.ts reads brands.json
+        // from VAULT_DIR (already defined above, just never used here), so a save here landed
+        // somewhere the rest of the app never looks — the project silently vanished on next load.
+        const brandsPath = join(VAULT_DIR, "brands.json");
         let brands: any[] = [];
         try { brands = JSON.parse(await fs.readFile(brandsPath, "utf8")); } catch { brands = [...PROJECTS]; }
         const idx = brands.findIndex((p: any) => p.id === i.id);
@@ -2679,7 +2687,7 @@ export const TOOLS: Tool[] = [
         if (i.status) brands[idx].status = i.status;
         if (i.summary) brands[idx].summary = i.summary;
         if (i.domain) brands[idx].domain = i.domain;
-        await fs.mkdir(resolve(process.cwd(), "vault"), { recursive: true });
+        await fs.mkdir(VAULT_DIR, { recursive: true });
         await fs.writeFile(brandsPath, JSON.stringify(brands, null, 2), "utf8");
         return `Updated project '${i.id}'.`;
       } catch (e: any) { return `Failed: ${e.message}`; }
