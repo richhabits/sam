@@ -13,6 +13,7 @@
 
 import Database from "better-sqlite3";
 import { mkdirSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -22,7 +23,24 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export function yardDir(): string {
-  return process.env.YARD_DIR || join(ROOT, "yard");
+  if (process.env.YARD_DIR) return process.env.YARD_DIR;
+  // A PACKAGED APP'S MODULES LIVE INSIDE app.asar, WHICH IS A READ-ONLY ARCHIVE.
+  //
+  // ROOT is derived from this module's own path, which is right for a checkout and wrong for
+  // the desktop build: there it resolves to a directory inside the asar that cannot be created
+  // or written. Everything under yardDir() — jobs.db, paired.json, worker.lock, logs/ — then
+  // fails to open, and /api/yard answers 500 to a phone that is correctly paired. The yard has
+  // therefore only ever worked when the server ran from a checkout, which is why the launchd
+  // daemon could serve it and SAM.app never could.
+  //
+  // managed.ts's yardRoot() already had the right instinct — it anchors the projects tree on a
+  // writable home directory rather than on the module. This does the same for the yard's own
+  // state, and ONLY when packaged, so a checkout keeps using its repo-local yard/ and no
+  // existing jobs move.
+  if (ROOT.includes("app.asar")) {
+    return join(process.env.SAMYARD_DIR || join(homedir(), "SAMYard"), "state");
+  }
+  return join(ROOT, "yard");
 }
 
 // A step the job itself declared as it ran — never a model guessing after the fact.
