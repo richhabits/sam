@@ -4,6 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "expo": "~57.0.9",
+    "expo-application": "~57.0.2",
     "expo-clipboard": "~57.0.1",
     "expo-device": "~57.0.1",
     "expo-document-picker": "~57.0.1",
