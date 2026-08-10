@@ -187,6 +187,15 @@ jobs:
             if curl -s -m3 http://127.0.0.1:8787/api/status -o /dev/null; then UP=1; break; fi
             sleep 3
           done
+          # Wait for the yard to open its store BEFORE killing the app. The worker is spawned
+          # asynchronously — the first version of this check ran in the same millisecond as the
+          # "worker starting" line and failed a build whose yard was perfectly healthy. Poll for
+          # the artefact instead of guessing at a delay.
+          DB=0
+          for i in $(seq 1 20); do
+            if [ -f "$SAMYARD_DIR/state/jobs.db" ]; then DB=1; break; fi
+            sleep 2
+          done
           echo "----- app boot log -----"; tail -25 smoke.log 2>/dev/null
           taskkill //F //IM SAM.exe >/dev/null 2>&1; pkill -f 'SAM' >/dev/null 2>&1; true
           if [ "$UP" != "1" ]; then
@@ -201,7 +210,7 @@ jobs:
             exit 1
           fi
           # And prove the yard actually opened its store, rather than merely not crashing.
-          if [ ! -f "$SAMYARD_DIR/state/jobs.db" ]; then
+          if [ "$DB" != "1" ]; then
             echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: the yard never created its database at $SAMYARD_DIR/state/jobs.db"
             find "$SAMYARD_DIR" 2>/dev/null | head -10
             exit 1
