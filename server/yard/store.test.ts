@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
-import { JobStore } from "./store.ts";
-import {
-  canTransition, assertTransition, isClaimForfeit, isRetryable, backoffMs,
-  overBudget, isTerminal, HEARTBEAT_GRACE_MS, MAX_ATTEMPTS,
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {assertTransition, backoffMs,
+  canTransition, HEARTBEAT_GRACE_MS, isClaimForfeit, isRetryable, isTerminal, MAX_ATTEMPTS,
+  overBudget, 
 } from "./state.ts";
+import { isPackagedPath, JobStore } from "./store.ts";
 
 // Same 17-column shape as pre-A3's COLUMNS in store.ts, minus steps_json — a hand-built
 // stand-in for a jobs.db that predates the migration, since there's no fixture on disk.
@@ -403,5 +403,38 @@ describe("meter (A6 — today/this-week totals + tier split)", () => {
   it("a quiet day is a real zero, not a missing field", () => {
     const m = s.meter(NOW);
     expect(m).toEqual({ todayTokens: 0, weekTokens: 0, byTier: {} });
+  });
+});
+
+// THE DETECTION THAT WAS FALSE IN EXACTLY THE CASE IT WAS WRITTEN FOR.
+//
+// yardDir() decided "am I packaged?" by asking whether ROOT contained "app.asar". ROOT is
+// join(dirname(module), "..", ".."), and join NORMALISES — so for the bundled layouts a packaged
+// app actually runs, the `..` segments eat the `app.asar` component and the answer came back
+// false. The yard then resolved inside the read-only .app bundle. CI never saw it because the
+// app under dist-app/ sits in a writable workspace, so the database was created INSIDE the .app
+// and everything looked healthy.
+describe("isPackagedPath — asked of the module, not of the normalised root", () => {
+  const RES = "/Applications/SAM.app/Contents/Resources";
+
+  it("is true for every layout a packaged app actually runs", () => {
+    expect(isPackagedPath(`${RES}/app.asar/dist/server.mjs`)).toBe(true);
+    expect(isPackagedPath(`${RES}/app.asar/dist-electron/src-abc123.js`)).toBe(true);
+    expect(isPackagedPath(`${RES}/app.asar/server/yard/store.ts`)).toBe(true);
+  });
+
+  it("is false for a checkout", () => {
+    expect(isPackagedPath("/Volumes/ROMEO HQ/SAM/server/yard/store.ts")).toBe(false);
+    expect(isPackagedPath("/Users/someone/sam/dist/server.mjs")).toBe(false);
+  });
+
+  // The regression itself, stated as arithmetic: this is what the old check computed, and why
+  // it was wrong for the two bundled layouts.
+  it("would have been false for the bundled layouts had it been asked of ROOT", () => {
+    const rootOf = (m: string) => join(dirname(m), "..", "..");
+    expect(rootOf(`${RES}/app.asar/dist/server.mjs`).includes("app.asar")).toBe(false);
+    expect(rootOf(`${RES}/app.asar/dist-electron/src-abc123.js`).includes("app.asar")).toBe(false);
+    // …and true only for the unbundled source layout, which is the one a packaged app never uses.
+    expect(rootOf(`${RES}/app.asar/server/yard/store.ts`).includes("app.asar")).toBe(true);
   });
 });
