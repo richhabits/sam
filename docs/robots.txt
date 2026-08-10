@@ -1,0 +1,7 @@
+# SAM — https://richhabits.github.io/sam/
+User-agent: *
+Allow: /
+# _template.html is the page shell the others are generated from, not a page.
+Disallow: /sam/_template.html
+
+Sitemap: https://richhabits.github.io/sam/sitemap.xml
