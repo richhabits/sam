@@ -2,6 +2,28 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.3.2] - 2026-08-10 — "Ask the Module, Not the Root"
+
+The yard fix in 3.3.0 never fired. The detection was false in exactly the case it was written for.
+
+### Fixed
+- **`yardDir()` decided "am I packaged?" by asking whether `ROOT` contained `app.asar`** — and
+  `ROOT` is `join(dirname(module), "..", "..")`, where `join` normalises. For the bundled layouts
+  a packaged app actually runs, the `..` segments eat the `app.asar` component:
+
+  | module | ROOT | contains `app.asar`? |
+  |---|---|---|
+  | `app.asar/server/yard/store.ts` | `…/Resources/app.asar` | yes |
+  | `app.asar/dist/server.mjs` | `…/Resources` | **no** |
+  | `app.asar/dist-electron/x.js` | `…/Resources` | **no** |
+
+  Only the first is true, and it is the one layout a packaged app never uses. So the yard went
+  on resolving to `SAM.app/Contents/Resources/yard` — inside the read-only bundle.
+
+  It looked healthy in CI, because the app under `dist-app/` sits in a writable workspace and the
+  database was quietly created *inside* the `.app`. It fails in `/Applications`, which is the only
+  place a user has one. The question is now asked of the module path, before normalisation.
+
 ## [3.3.1] - 2026-08-10 — "The Other Half of the Yard Fix"
 
 3.3.0 made the yard's *path* writable from a packaged app. It could still not open its

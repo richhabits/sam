@@ -28,7 +28,33 @@ import {
   overBudget,
 } from "./state.ts";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const MODULE = fileURLToPath(import.meta.url);
+const ROOT = join(dirname(MODULE), "..", "..");
+
+/**
+ * Is this module running from inside a packaged app bundle?
+ *
+ * Asked of the MODULE path, never of ROOT, and that distinction is the entire bug this function
+ * exists to record. ROOT is `join(dirname(module), "..", "..")`, and join() NORMALISES — so for
+ * bundled code two levels deep, the `app.asar` segment is the thing the `..` eats:
+ *
+ *   app.asar/server/yard/store.ts  → ROOT = …/Resources/app.asar   ✅ contains "app.asar"
+ *   app.asar/dist/server.mjs       → ROOT = …/Resources            ❌ does not
+ *   app.asar/dist-electron/x.js    → ROOT = …/Resources            ❌ does not
+ *
+ * A packaged app only ever runs the bundled layouts, so the check that was written against ROOT
+ * was false in exactly the case it was written for, and the yard went on resolving to
+ * `…/SAM.app/Contents/Resources/yard` — inside the read-only bundle. It looked fine in CI, where
+ * the app under `dist-app/` sits in a writable workspace and the database was quietly created
+ * INSIDE the .app; it fails in /Applications, which is the only place a user has one.
+ *
+ * Exported so the three layouts above can be asserted directly, because a runtime that only
+ * exists inside a DMG is not otherwise reachable from a test.
+ */
+export function isPackagedPath(modulePath: string): boolean {
+  return modulePath.includes("app.asar");
+}
+
 export function yardDir(): string {
   if (process.env.YARD_DIR) return process.env.YARD_DIR;
   // A PACKAGED APP'S MODULES LIVE INSIDE app.asar, WHICH IS A READ-ONLY ARCHIVE.
@@ -44,7 +70,7 @@ export function yardDir(): string {
   // writable home directory rather than on the module. This does the same for the yard's own
   // state, and ONLY when packaged, so a checkout keeps using its repo-local yard/ and no
   // existing jobs move.
-  if (ROOT.includes("app.asar")) {
+  if (isPackagedPath(MODULE)) {
     return join(process.env.SAMYARD_DIR || join(homedir(), "SAMYard"), "state");
   }
   return join(ROOT, "yard");
