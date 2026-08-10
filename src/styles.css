@@ -27,6 +27,12 @@
      --shadow-accent, so the send button glowed terracotta under a cyan/green/purple accent.
      Derived from --accent, so every skin now gets its own glow with no per-skin override. */
   --shadow-accent: 0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent);
+  /* Glass rim: the light catching the top edge of a translucent surface. Every "glass" panel
+     (popover, drawer, composer, pinned bar) already had blur + a see-through fill, but their
+     lift still came from a plain black box-shadow — invisible once --bg goes near-black, which
+     is why dark mode read as flat cutouts rather than panes of glass floating above content. */
+  --glass-rim: rgba(255,255,255,.55);
+  --shadow-glass: var(--shadow-lg), inset 0 1px 0 var(--glass-rim);
   --accent-2: #F0824E;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   /* Ink for text/icons sitting ON --accent. White by default (correct for the warm-accent
@@ -84,6 +90,9 @@ button, a, .pop-opt, .icon-btn, .dl-btn, select, input, textarea, .chip, [role="
   --accent-text: #F9A87A; --accent-soft: #2B1A10; --user-bubble: #221C16;
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.4);
   --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(240,130,78,.08);
+  /* A near-black shadow on a near-black --bg is invisible, so dark glass needs its lift from a
+     hairline highlight instead — a sliver of light along the top edge, not a shadow underneath. */
+  --glass-rim: rgba(255,255,255,.08);
 }
 :root[data-theme="dark"] .app { background: radial-gradient(1200px 520px at 50% -10%, rgba(240,130,78,.08), transparent 60%), var(--bg); }
 
@@ -130,7 +139,7 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Header ─────────────────────────────────── */
 .bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 22px; border-bottom: 1px solid var(--border);
+  padding: 15px 24px; border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   backdrop-filter: saturate(1.6) blur(20px); -webkit-backdrop-filter: saturate(1.6) blur(20px);
   position: relative; z-index: 20;
@@ -138,7 +147,18 @@ button { font-family: inherit; cursor: pointer; }
 .brandmark { display: flex; align-items: baseline; gap: 10px; }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 0 3px var(--accent-soft); }
 .tag { font-size: 13px; color: var(--muted); white-space: nowrap; letter-spacing: -.01em; }
-.bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.bar-right { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+/* Clusters within the toolbar — a hairline between groups instead of one undifferentiated row
+   of ~13 same-weight pills. Wrapping happens per-group (each is a flex item of .bar-right), so a
+   narrow window drops a whole cluster to the next line rather than splitting mid-group. */
+.bar-group { display: flex; align-items: center; gap: 10px; padding: 0 16px; position: relative; }
+.bar-group:first-child { padding-left: 0; }
+.bar-group:last-child { padding-right: 0; }
+.bar-group:empty { display: none; padding: 0; }
+.bar-group + .bar-group::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 22px; background: color-mix(in srgb, var(--border-strong) 70%, transparent);
+}
 
 .biz { display: flex; align-items: center; gap: 8px; }
 .biz-label { font-size: 13px; color: var(--muted); }
@@ -152,21 +172,38 @@ button { font-family: inherit; cursor: pointer; }
 .icon-btn {
   font: inherit; font-size: 14px; color: var(--text);
   background: var(--bg); border: 1px solid var(--border-strong);
-  border-radius: 10px; padding: 6px 12px; line-height: 1;
+  /* Was 6px 12px — the tightest padding in the header while also carrying its most inconsistent
+     icon sizes (14/15/16/18px mixed). Standardizing icons to 16px alone still reads cramped
+     without more room around them; both had to move together. */
+  border-radius: 10px; padding: 8px 15px; line-height: 1;
 }
 .icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
 
 /* settings popover */
 .pop-scrim { position: fixed; inset: 0; z-index: 59; background: transparent; }
 .popover {
-  position: fixed; top: 58px; right: 16px; width: 304px;
+  /* 304px was cramped for 5 tabs + a 4-up quality grid + preference rows — everything inside
+     had to shrink to fit (12px tab labels, 12px quality labels, tight gaps), which is what
+     actually read as "cheap", independent of the glass work above. Widened so nothing inside
+     has to fight for space. */
+  position: fixed; top: 58px; right: 16px; width: 380px;
   max-height: calc(100vh - 84px); overflow-y: auto; overscroll-behavior: contain;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 16px; box-shadow: 0 16px 48px rgba(28,25,23,.20), 0 2px 8px rgba(28,25,23,.10);
+  /* Glass was the wrong call for this one panel, tried twice: first at 72% fill it let "9 live"
+     and "Select a task…" show through legibly enough to collide with the controls drawn over
+     them; bumped to 94%+blur(46px) to mush that away, but this popover is pinned top-right,
+     which is exactly where the always-on Quick Actions sidebar (.ctx) lives underneath it —
+     so instead of stray text, what bled through was ANOTHER STACK OF BUTTONS ("Open Studio",
+     "Look (camera)", "Markets"…), and any amount of that showing through a menu that is
+     itself a stack of buttons reads as broken, not glassy — you can't tell which layer a
+     click will hit. Translucency only works over content that isn't more controls. This one
+     goes fully opaque; .drawer/.composer-inner/.pinned-bar keep their glass, none of them
+     sit over another button list. */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: var(--shadow-glass);
   padding: 8px 10px 12px; z-index: 60;
   animation: pop-in .16s cubic-bezier(.2,.8,.2,1);
 }
-@media (prefers-color-scheme: dark) { .popover { box-shadow: 0 16px 50px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
 /* Settings popover — Apple-style grouped list: consistent row footprint, selection shown by a
    subtle fill + checkmark (not a per-row border that makes some rows float), calm rhythm. */
@@ -293,7 +330,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* left history drawer */
 .drawer-wrap.left { justify-content: flex-start; }
-.drawer.drawer-l { border-left: none; border-right: 1px solid var(--border); box-shadow: 8px 0 30px rgba(28,25,23,.12); }
+.drawer.drawer-l { border-left: none; border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent); box-shadow: var(--shadow-glass); }
 .convo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .convo-list li { display: flex; align-items: center; border-radius: 10px; }
 .convo-list li.active { background: var(--accent-soft); }
@@ -338,7 +375,7 @@ button { font-family: inherit; cursor: pointer; }
 .pinned-bar {
   position: sticky; top: 16px; z-index: 10; margin: 0 auto 16px; max-width: 760px; width: calc(100% - 48px);
   background: color-mix(in srgb, var(--surface) 95%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 14px; box-shadow: var(--shadow-glass); padding: 12px 16px;
   animation: rowIn .28s cubic-bezier(.2,.7,.2,1) both;
 }
 .pb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -360,9 +397,9 @@ button { font-family: inherit; cursor: pointer; }
   backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
   border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
   border-radius: 28px; padding: 10px 10px 10px 20px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-glass);
 }
-.composer-inner:focus-within { box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 0 0 2px var(--accent-soft); border-color: transparent; }
+.composer-inner:focus-within { box-shadow: var(--shadow-glass), 0 0 0 2px var(--accent-soft); border-color: transparent; }
 .composer textarea {
   flex: 1; border: none; outline: none; resize: none; background: none;
   font: inherit; font-size: 16px; color: var(--text); line-height: 1.5;
@@ -382,7 +419,16 @@ button { font-family: inherit; cursor: pointer; }
 .drawer-wrap { position: fixed; inset: 0; background: rgba(28,25,23,.38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); z-index: 40; display: flex; justify-content: flex-end; animation: scrim-in .18s ease; }
 @media (prefers-color-scheme: dark) { .drawer-wrap { background: rgba(0,0,0,.5); } }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
-.drawer { width: min(400px, 92vw); height: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 30px rgba(28,25,23,.12); padding: 20px; overflow-y: auto; animation: drawer-in .24s cubic-bezier(.2,.8,.2,1); }
+/* Same reasoning as .popover: this was the other floating-chrome surface (Dashboard, Admin) left
+   fully opaque with no blur while .bar/.composer-inner/.popover all got real glass. A denser
+   sheet than the popover, so a higher fill keeps its tables/stat-tiles legible. */
+.drawer { width: min(400px, 92vw); height: 100%;
+  /* Same correction as .popover: Dashboard/Admin are dense (stat tiles, tables, activity feed),
+     so this needs to read as a barely-tinted pane, not a see-through one. */
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(40px) saturate(1.6); -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border-left: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: var(--shadow-glass); padding: 20px; overflow-y: auto; animation: drawer-in .24s cubic-bezier(.2,.8,.2,1); }
 .drawer-wrap.left .drawer, .drawer.drawer-l { animation: drawer-in-left .24s cubic-bezier(.2,.8,.2,1); }
 @keyframes drawer-in { from { transform: translateX(24px); opacity: .4; } to { transform: none; opacity: 1; } }
 @keyframes drawer-in-left { from { transform: translateX(-24px); opacity: .4; } to { transform: none; opacity: 1; } }
@@ -720,7 +766,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* ── Business / Personal mind toggle ── */
 .mode-toggle { display: inline-flex; background: var(--user-bubble); border: 1px solid var(--border); border-radius: 10px; padding: 2px; gap: 2px; }
-.mode-toggle button { border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 8px; letter-spacing: -0.01em; }
+.mode-toggle button { border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; padding: 8px 13px; border-radius: 8px; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 6px; }
 .mode-toggle button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .mode-toggle button:not(.on):hover { color: var(--text); }
 
@@ -836,6 +882,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --accent: #29C6F6; --accent-text: #64D9FF; --accent-soft: #0A2436;
   --user-bubble: #0E1E2E;
   --on-accent: #04222F; /* white on #29C6F6 is 2.00:1 — unreadable. This ink is 8.24:1. */
+  --glass-rim: rgba(255,255,255,.08);
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(41,198,246,.06);
   --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 14px 44px rgba(41,198,246,.10);
   --shadow-accent: 0 4px 18px rgba(41,198,246,.35);
@@ -858,6 +905,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --user-bubble: #221C16;
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.4);
   --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(240,130,78,.08);
+  --glass-rim: rgba(255,255,255,.08);
 }
 :root[data-skin="ember"] .app { background: radial-gradient(1200px 520px at 50% -10%, rgba(240,130,78,.08), transparent 60%), var(--bg); }
 
@@ -869,6 +917,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --user-bubble: #121212;
   --on-accent: #052012; /* white on #4ADE80 is 1.74:1 — the worst in the set. This ink is 9.86:1. */
   --accent-2: #7CEBA5;  /* was inheriting :root's terracotta — a green button with an orange half. */
+  --glass-rim: rgba(255,255,255,.08);
   --shadow: none; --shadow-lg: 0 10px 40px rgba(0,0,0,.7);
   --radius: 12px;
 }
@@ -880,6 +929,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --border: #1E1836; --border-strong: #2E264A;
   --accent: #A78BFA; --accent-text: #C4B5FD; --accent-soft: #1A1430;
   --user-bubble: #16112A;
+  --glass-rim: rgba(255,255,255,.08);
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(167,139,250,.06);
   --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 14px 44px rgba(167,139,250,.10);
   --shadow-accent: 0 4px 18px rgba(167,139,250,.30);
@@ -900,6 +950,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --accent: #88C0D0; --accent-text: #A3D4E0; --accent-soft: #29343F;
   --user-bubble: #3B4252;
   --on-accent: #1B2430; /* white on #88C0D0 is 2.00:1. This ink is 7.82:1. */
+  --glass-rim: rgba(255,255,255,.10);
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
   --shadow-lg: 0 2px 8px rgba(0,0,0,.4), 0 16px 48px rgba(136,192,208,.08);
   --accent-2: #A3D4E0; --ring: 0 0 0 3.5px rgba(136,192,208,.22);
@@ -1757,8 +1808,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dash-sec { display: flex; align-items: center; gap: 8px; }
 
 /* Settings popover — lighter frame. The group border plus a border on every row read as a stack
-   of boxes; one hairline between rows is enough, which is what a native settings list does. */
-.pop-group { border-color: var(--border); background: var(--surface); }
+   of boxes; one hairline between rows is enough, which is what a native settings list does.
+   background was a later override back to fully opaque --surface, which sat as a flat black
+   patch inside the now-glass .popover — a translucent wash (mixed from --text, so it inverts
+   correctly on light skins too) reads as "raised on the glass" instead. */
+.pop-group { border-color: color-mix(in srgb, var(--border) 70%, transparent); background: color-mix(in srgb, var(--text) 5%, transparent); }
 .pop-group .pop-opt { padding: 11px 30px 11px 12px; min-height: 42px; }
 .pop-group .pop-opt + .pop-opt { border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
 .pop-opt .ic { color: var(--muted); opacity: .85; }
@@ -1800,11 +1854,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pop-opt.on { background: none; }
 .pop-opt.on .pop-opt-name { color: var(--text); }
 
-/* Settings tabs — same shape as the Control Centre's, so the two panels feel like one app. */
-.pop-tabs { display: flex; gap: 2px; margin: 2px 0 12px; padding: 3px;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
-.pop-tabs button { flex: 1; padding: 6px 3px; appearance: none; border: 0; border-radius: 7px;
-  background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+/* Settings tabs — same shape as the Control Centre's, so the two panels feel like one app.
+   Bumped padding/font with the wider popover — 12px labels in a 6px-padded strip were the
+   densest text in the whole panel. */
+.pop-tabs { display: flex; gap: 3px; margin: 4px 0 16px; padding: 4px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 11px; }
+.pop-tabs button { flex: 1; padding: 8px 4px; appearance: none; border: 0; border-radius: 8px;
+  background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: background .12s ease, color .12s ease; }
 .pop-tabs button:hover { color: var(--text); }
 .pop-tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.06); }

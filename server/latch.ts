@@ -20,7 +20,20 @@ import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const LATCH_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "vault", ".locks");
+// Packaged app: this module bundles into dist-electron/main.js INSIDE the read-only app.asar, so a
+// path built from this file's own location (dirname(import.meta.url), "..", "vault") lands at
+// .../app.asar/vault/.locks — a real, existing FILE (the archive itself), not a directory. mkdirSync
+// on that throws ENOTDIR, and unlike env-file.ts's writeEnv (which has DOTENV_CONFIG_PATH as an
+// escape hatch), claim() had no override — so it failed on every latched write in the packaged app:
+// new API keys, phone access, anything routed through writeEnv. preboot.ts already solved this
+// exact problem for the vault itself (VAULT_DIR, set before this module ever loads); reuse it.
+// Resolved at CALL time, not module load, so it can't capture a stale value — same reasoning as
+// env-file.ts's envPathNow().
+function latchDir(): string {
+  return process.env.VAULT_DIR
+    ? join(process.env.VAULT_DIR, ".locks")
+    : join(dirname(fileURLToPath(import.meta.url)), "..", "vault", ".locks");
+}
 
 // A lock older than this whose owner process is still alive is "stale by age" — reported, but only
 // an EXPLICIT takeover reclaims it (we never steal from a process that might genuinely be mid-write).
@@ -49,7 +62,7 @@ export class LatchHeld extends Error {
 
 function latchPath(resource: string): string {
   // The resource name becomes a filename, so keep it to a safe slug (no traversal).
-  return join(LATCH_DIR, `${resource.replace(/[^A-Za-z0-9_.-]/g, "_")}.lock`);
+  return join(latchDir(), `${resource.replace(/[^A-Za-z0-9_.-]/g, "_")}.lock`);
 }
 
 // process.kill(pid, 0) doesn't send a signal — it just probes existence. ESRCH = no such process
@@ -80,7 +93,7 @@ export interface AcquireOpts {
  * callers wins. Default (no takeover) refuses any held lock and reports whether it's stale.
  */
 export function claim(resource: string, opts: AcquireOpts = {}): LatchHandle {
-  mkdirSync(LATCH_DIR, { recursive: true });
+  mkdirSync(latchDir(), { recursive: true });
   const path = latchPath(resource);
   const now = opts.now ?? Date.now();
   const info: LatchInfo = {
@@ -128,10 +141,10 @@ export function latchStatus(resource: string): (LatchInfo & { stale: boolean }) 
 export function staleLatches(now = Date.now()): string[] {
   const stale: string[] = [];
   let files: string[];
-  try { files = readdirSync(LATCH_DIR); } catch { return stale; }
+  try { files = readdirSync(latchDir()); } catch { return stale; }
   for (const f of files) {
     if (!f.endsWith(".lock")) continue;
-    const held = readLatch(join(LATCH_DIR, f));
+    const held = readLatch(join(latchDir(), f));
     if (!held || isStale(held, now)) stale.push(f.replace(/\.lock$/, ""));
   }
   return stale;
@@ -142,7 +155,7 @@ export function staleLatches(now = Date.now()): string[] {
 export function sweepStaleLatches(now = Date.now()): string[] {
   const cleared: string[] = [];
   for (const name of staleLatches(now)) {
-    try { unlinkSync(join(LATCH_DIR, `${name}.lock`)); cleared.push(name); } catch { /* already gone — fine */ }
+    try { unlinkSync(join(latchDir(), `${name}.lock`)); cleared.push(name); } catch { /* already gone — fine */ }
   }
   return cleared;
 }

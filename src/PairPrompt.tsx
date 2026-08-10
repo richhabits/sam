@@ -119,7 +119,7 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
     return (
       <div style={{ ...box, textAlign: "center", display: "block" }}>
         <div style={{ fontSize: 12.5, opacity: .85, marginBottom: 6 }}>
-          Open the SAM app → Control Centre → Automations, and approve this number:
+          In the SAM app on this Mac, open <b>Dashboard → Automations</b> and approve this number:
         </div>
         <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: ".24em", fontVariantNumeric: "tabular-nums" }}>{req.code}</div>
         <div style={{ fontSize: 11.5, opacity: .6, marginTop: 6 }}>waiting for the app to approve — expires in five minutes</div>
@@ -130,8 +130,8 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
   return (
     <div style={box}>
       <span style={{ fontSize: 13, lineHeight: 1.5 }}>
-        <b>This browser isn't paired with SAM.</b>{" "}
-        Some panels — the money desk, cameras, the yard — will stay empty until it is.
+        <b>This browser tab isn't paired with SAM yet.</b>{" "}
+        Chat and brains already work fine — pairing only unlocks the money desk, cameras, and the yard.
         {err && <span style={{ color: "#EF4444" }}> {err}</span>}
       </span>
       <button type="button" onClick={start}

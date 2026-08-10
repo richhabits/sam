@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld("samDesktop", {
   // within the project>", re-validated and confined server-side in main.ts — this bridge
   // just carries the string, it enforces nothing itself.
   revealInFinder: (relPath: string) => ipcRenderer.invoke("reveal-in-finder", relPath),
+  // Phone access flips the server's LAN bind at listen()-time, so it only takes effect on a
+  // fresh process — see server/routes.people.ts. This lets Settings restart SAM FOR you
+  // instead of telling you to quit and reopen it yourself.
+  relaunch: () => ipcRenderer.send("relaunch-app"),
 });
 
 // ── OVERLAY BRIDGE (Phase 4) — the lightweight ⌥Space palette talks to the main

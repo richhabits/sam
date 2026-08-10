@@ -137,7 +137,8 @@ function refreshTrayMenu() {
   tray.setContextMenu(menu);
 }
 function createTray() {
-  const icon = nativeImage.createEmpty();
+  const icon = nativeImage.createFromPath(path.join(__dirname, "../resources/tray/trayTemplate.png"));
+  icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip('SAM');
   refreshTrayMenu();
@@ -282,6 +283,16 @@ app.whenReady().then(() => {
     if (!isWithin(root, target)) return false;
     shell.showItemInFolder(target);
     return true;
+  });
+
+  // Phone access (server/routes.people.ts) only takes effect on a fresh process — the LAN bind
+  // decision is made once at listen()-time. app.quit() (not the abrupt exit()) so the existing
+  // before-quit handler still gets to persist the session summary; relaunch() queues the new
+  // instance before that quit actually happens.
+  ipcMain.on("relaunch-app", () => {
+    app.relaunch();
+    isQuitting = true;
+    app.quit();
   });
 
   ipcMain.on("open-studio", () => {

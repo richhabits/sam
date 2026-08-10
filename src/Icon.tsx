@@ -33,7 +33,9 @@ const P: Record<IconName, React.ReactNode> = {
   home: <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19Z" />,
   key: <><circle cx="8" cy="12" r="4" /><path d="M12 12h9M18 12v3M15 12v2" /></>,
   chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
-  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
+  // A hex-nut, not a starburst — the old glyph (small circle + 8 thin rays) was a smaller copy
+  // of "sun" (circle + 8 thin rays) and read as a dark-mode toggle, not Settings.
+  settings: <><path d="M12 4 18.93 8 18.93 16 12 20 5.07 16 5.07 8Z" /><circle cx="12" cy="12" r="3" /></>,
   team: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M21 20a5 5 0 0 0-4-4.9" /></>,
   ninja: <><path d="M3 12a9 9 0 0 1 18 0" /><rect x="3" y="11" width="18" height="5" rx="2.5" /><path d="M8 13.5h3M14 13.5h2" /></>,
   eye: <><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" /><circle cx="12" cy="12" r="2.5" /></>,

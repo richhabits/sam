@@ -116,7 +116,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       <aside className="drawer dash" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">SAM · Control Centre</div>
+            <div className="drawer-title">SAM · Dashboard</div>
             <div className="drawer-sub">Everything SAM is running, at a glance.</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>

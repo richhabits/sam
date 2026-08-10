@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -337,6 +337,17 @@ export default function App() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminFocus, setAdminFocus] = useState<"phone" | undefined>(undefined);
+  // "Turn on phone access" restarts SAM (the LAN bind only takes on a fresh process) — this is
+  // the other half: land back on the QR that restart was for, instead of the chat welcome screen.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("sam.reopenAdminPhone") === "1") {
+        localStorage.removeItem("sam.reopenAdminPhone");
+        setAdminFocus("phone");
+        setAdminOpen(true);
+      }
+    } catch { /* storage full/disabled — same restart, just lands on the welcome screen */ }
+  }, []);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [autonomyOpen, setAutonomyOpen] = useState(false);
@@ -351,6 +362,20 @@ export default function App() {
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dashOpen, setDashOpen] = useState(false);
+  // A browser asking to pair otherwise has no way to tell you it's waiting short of you
+  // stumbling into Dashboard → Automations on your own — this badge is the whole difference
+  // between "approve this number" being findable and being a scavenger hunt. Only the app
+  // itself is ever told who's pending (yardPairPending refuses browsers that ask), so this
+  // poll is a no-op — always empty — anywhere except the real desktop app.
+  const [pairPendingCount, setPairPendingCount] = useState(0);
+  useEffect(() => {
+    if (dashOpen) return; // Dashboard itself already polls + shows the list; avoid a double poll.
+    let alive = true;
+    const poll = () => yardPairPending().then((r: any) => { if (alive) setPairPendingCount(Array.isArray(r?.pending) ? r.pending.length : 0); }).catch(() => {/* not the app — nothing to show */});
+    poll();
+    const iv = setInterval(poll, 4000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [dashOpen]);
   const [palette, setPalette] = useState(false);
   const [pq, setPq] = useState("");        // palette query
   const [pi, setPi] = useState(0);         // palette highlighted index
@@ -1167,61 +1192,76 @@ export default function App() {
           <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
-          <div className="mode-toggle surface-toggle" role="tablist" title="Agent: the conversation · Tasks: every job SAM has run">
-            <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={14} /> Agent</button>
-            <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={14} /> Tasks</button>
+          {/* Grouped into clusters with a hairline between them, instead of ~13 same-weight pills
+             in one undifferentiated row — that flat wall was both the "looks cheap" complaint and
+             the reason it wrapped raggedly (one button alone on row 2 wherever width ran out).
+             Wrapping now happens per-group, so a narrow window drops a whole cluster to the next
+             line together rather than splitting it mid-group. Nothing here changes handlers or
+             moves a control into a menu — same buttons, organized. */}
+          <div className="bar-group">
+            <div className="mode-toggle surface-toggle" role="tablist" title="Agent: the conversation · Tasks: every job SAM has run">
+              <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={16} /> Agent</button>
+              <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={16} /> Tasks</button>
+            </div>
           </div>
-          {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={15} /> Add to Dock</button>}
-          {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
-          <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" /> Voice</button>
-          <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" /> Studio</button>
-          
-          <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
-            <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}><Icon name="briefcase" /> Business</button>
-            <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="home" /> Personal</button>
+          <div className="bar-group">
+            {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={16} /> Add to Dock</button>}
+            {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
+            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" size={16} /> Voice</button>
+            <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" size={16} /> Studio</button>
           </div>
-          {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
-          <PersonaPicker
-            value={persona}
-            options={PERSONA_OPTS}
-            onPick={(id) => {
-              setPersona(id);
-              const p = PERSONA_OPTS.find((x) => x.id === id);
-              sysNote(`${p?.emoji ?? ""} SAM is now your ${p?.label ?? "SAM"} — same memory, ${p?.blurb ?? ""}.`);
-            }}
-          />
-          {mode === "business" && (
-            <label className="biz">
-              <span className="biz-label">Brand</span>
-              <select value={brand} onChange={(e) => setBrand(e.target.value)}>
-                <option value="">All my businesses</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
-          )}
-          {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
-            <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now"><Icon name="ban" size={14} /> Stop</button>
-          )}
-          {(() => {
-            const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
-            return (
-              <button
-                type="button"
-                className={"key-cta" + (n === 0 ? " needs" : "")}
-                // First run (no keys yet) → the 4-brain wizard, which is the gentler on-ramp.
-                // Once you HAVE keys, this button reads as "manage my keys", so it must open the
-                // full panel: the wizard lists 4 of 43 providers, so anyone hunting for a specific
-                // brain (GLM, Kimi) hit a dead end here and had no way through to the real list.
-                onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
-                title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
-                <Icon name="key" /> {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
-              </button>
-            );
-          })()}
-          <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" /> Dashboard</button>
-          <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={14} /> FLIP IT</button>
-          <UpdateButton />
-          <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
+          <div className="bar-group">
+            <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
+              <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}><Icon name="briefcase" size={16} /> Business</button>
+              <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="home" size={16} /> Personal</button>
+            </div>
+            {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
+            <PersonaPicker
+              value={persona}
+              options={PERSONA_OPTS}
+              onPick={(id) => {
+                setPersona(id);
+                const p = PERSONA_OPTS.find((x) => x.id === id);
+                sysNote(`${p?.emoji ?? ""} SAM is now your ${p?.label ?? "SAM"} — same memory, ${p?.blurb ?? ""}.`);
+              }}
+            />
+            {mode === "business" && (
+              <label className="biz">
+                <span className="biz-label">Brand</span>
+                <select value={brand} onChange={(e) => setBrand(e.target.value)}>
+                  <option value="">All my businesses</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+            )}
+            {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
+              <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now"><Icon name="ban" size={16} /> Stop</button>
+            )}
+          </div>
+          <div className="bar-group">
+            {(() => {
+              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
+              return (
+                <button
+                  type="button"
+                  className={"key-cta" + (n === 0 ? " needs" : "")}
+                  // First run (no keys yet) → the 4-brain wizard, which is the gentler on-ramp.
+                  // Once you HAVE keys, this button reads as "manage my keys", so it must open the
+                  // full panel: the wizard lists 4 of 43 providers, so anyone hunting for a specific
+                  // brain (GLM, Kimi) hit a dead end here and had no way through to the real list.
+                  onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
+                  title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
+                  <Icon name="key" size={16} /> {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
+                </button>
+              );
+            })()}
+            <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" size={16} /> Dashboard</button>
+            <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={16} /> FLIP IT</button>
+          </div>
+          <div className="bar-group">
+            <UpdateButton />
+            <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
+          </div>
         </div>
         {settingsOpen && createPortal(<>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: popover scrim; click-outside close, Esc handled elsewhere */}
@@ -1306,7 +1346,7 @@ export default function App() {
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><Icon name="phone" size={16} /><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">QR code</span></button>
             </div>
-            <div className="pop-sub-label"><Icon name="people" size={14} /> Who's using SAM · <b>{profile.name}</b></div>
+            <div className="pop-sub-label"><Icon name="people" size={16} /> Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
               <button type="button" key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
             ))}

@@ -2,6 +2,56 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.3.4] - 2026-08-11 — "Glass Over Buttons Is Not Glass"
+
+### Fixed
+- **Phone pairing silently failed on every attempt** — `server/latch.ts` computed its lock
+  directory from its own bundled module location. In the packaged app that module lives inside
+  `app.asar` (read-only), so `LATCH_DIR` resolved to `app.asar/vault/.locks` — a path through a
+  *file* (the archive itself), and `mkdirSync` on it threw `ENOTDIR` on every call. This wasn't
+  phone-pairing-specific: `writeEnv` (new API keys, any settings write routed through the shared
+  latch) hit the same wall. `env-file.ts` had already solved this exact problem for `.env`
+  (`DOTENV_CONFIG_PATH`, set by `preboot.ts` before this module loads) — `latch.ts` just never
+  got the same treatment. Now resolves against `VAULT_DIR` when set.
+- **"Turn on phone access" required a manual quit-and-reopen** — the LAN bind only takes effect
+  on a fresh process, so the button told you to restart SAM yourself and navigate back. Added an
+  `app.relaunch()` IPC bridge (`electron/preload.ts` + `main.ts`) so the button restarts SAM for
+  you and returns you straight to the QR screen (`sam.reopenAdminPhone` flag, read once on boot).
+- **Settings gear icon was a near-duplicate of the "sun" icon** (small circle + 8 thin rays vs.
+  the sun's larger circle + 8 thin rays) — read as a dark-mode toggle, not Settings. Replaced with
+  a hex-nut glyph.
+- **The Settings popover's glass read as broken, not premium** — first pass matched the header's
+  numbers (72% fill, 28px blur), but the header sits over empty space while this popover sits
+  over the always-on Quick Actions sidebar: background *buttons* ("Open Studio", "Look camera")
+  bled through and visually merged with the popover's own controls — indistinguishable which
+  layer a click would hit. Floating chrome over more chrome doesn't get glass; reverted this one
+  panel to fully opaque. `.drawer`/`.composer-inner`/`.pinned-bar` (which sit over plain content)
+  keep real glass, now with a dark-mode-specific highlight rim — a pure-black box-shadow is
+  invisible on a near-black background, which is why dark mode read as flat cutouts with no lift.
+- **Header was ~13 same-weight pills in one row, wrapping raggedly** and icons were sized
+  inconsistently (14/15/16/18px mixed in the same row). Grouped into clusters with hairline
+  dividers (wraps per-group now, not mid-group), standardized every header icon to 16px, and
+  gave buttons real padding instead of the tightest values in the app.
+- **Pairing instructions said "Control Centre"**, a name that appears nowhere as a clickable
+  label — the real button says "Dashboard". Fixed the copy and added a live pending-pairing
+  badge so approving a browser doesn't require already knowing which tab it's under.
+
+## [3.3.3] - 2026-08-10 — "The Build Directory Lied"
+
+Three icon defects in one grep: the packaged app's Dock icon, the Windows/Linux icon, and the
+macOS menu-bar tray icon were all unset or wrong.
+
+### Fixed
+- **Menu-bar tray icon was `nativeImage.createEmpty()`** — a blank icon in the menu bar. Replaced
+  with a real template image (mascot silhouette, eyes knocked out as alpha holes) at 18px/36px.
+- **The template image first shipped under `build/icons/`, which never reached the packaged app**
+  — electron-builder always excludes its `directories.buildResources` (default `build`) from the
+  app bundle regardless of the `files` glob, even though `build/icon-mac.png` (used only at
+  *build* time, for the `.icns`) worked fine. Moved the runtime tray assets to `resources/tray/`.
+- **`build.mac.icon` / `build.win.icon` / `build.linux.icon`** were unset, so packaged builds got
+  electron's default icon. Wired to `build/icon-mac.png` (824px art in a 1024 canvas, radius 185px,
+  matching macOS's Dock icon grid) and `build/icon.png` (full-bleed, for Windows/Linux).
+
 ## [3.3.2] - 2026-08-10 — "Ask the Module, Not the Root"
 
 The yard fix in 3.3.0 never fired. The detection was false in exactly the case it was written for.

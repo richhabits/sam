@@ -394,9 +394,19 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <div style={{ marginTop: 12 }}>
               <div className="admin-note" style={{ marginBottom: 10, lineHeight: 1.5 }}>Turn on phone access — SAM opens to your Wi-Fi with a private token, and you scan a QR to connect. {phoneMsg && <b style={{ color: "var(--accent-text)" }}>{phoneMsg}</b>}</div>
               <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
-                setPhoneMsg("Turning on…");
+                const sd = (window as any).samDesktop;
+                setPhoneMsg(sd?.relaunch ? "Turning on — restarting SAM…" : "Turning on…");
                 const r = await enablePhone().catch(() => ({ ok: false }));
-                setPhoneMsg(r.ok ? "✓ Enabled — restart SAM (quit & reopen), then come back here for the QR." : "Couldn't enable — try again.");
+                if (!r.ok) { setPhoneMsg("Couldn't enable — try again."); return; }
+                if (sd?.relaunch) {
+                  // The LAN bind only takes effect on a fresh process (see enablePhone's own
+                  // comment). Mark where to land after the restart SAM is about to do for you,
+                  // so you come back to this exact QR instead of the chat welcome screen.
+                  try { localStorage.setItem("sam.reopenAdminPhone", "1"); } catch { /* storage full/disabled — you'll just land on the welcome screen instead */ }
+                  sd.relaunch();
+                } else {
+                  setPhoneMsg("✓ Enabled — restart SAM (quit & reopen), then come back here for the QR.");
+                }
               }}>Turn on phone access</button>
             </div>
           )}
