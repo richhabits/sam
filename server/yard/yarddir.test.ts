@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { basename } from "node:path";
 import { yardDir } from "./store.ts";
 
 // Its own file on purpose: these mutate YARD_DIR, and store.test.ts opens real databases
@@ -27,8 +28,11 @@ describe("yardDir — packaging safety", () => {
     expect(yardDir()).not.toContain("app.asar");
   });
 
+  // basename, not endsWith("/yard"): path.join uses a backslash on Windows, so the string form
+  // of this assertion passed on macOS and failed the cross-platform job. The claim being made is
+  // about the last path SEGMENT, so test that rather than a separator.
   it("keeps a checkout on its repo-local yard, so existing jobs do not move", () => {
     delete process.env.YARD_DIR;
-    expect(yardDir().endsWith("/yard")).toBe(true);
+    expect(basename(yardDir())).toBe("yard");
   });
 });
