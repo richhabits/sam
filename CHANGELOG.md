@@ -2,6 +2,65 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.3.0] - 2026-08-10 — "The Pocket Connects"
+
+The release where the phone app stops being a demo of itself. Two things in SAM had never
+actually worked end-to-end — pairing a phone, and the yard when SAM runs as an app rather than
+from a checkout — and both failed in ways that looked like the user's fault.
+
+### Fixed
+- **The yard could never work from the packaged app, and said only "500".** `yardDir()` derives
+  from its own module path, which inside SAM.app resolves to a directory *inside `app.asar`* — a
+  read-only archive. Every file the yard owns (`jobs.db`, `paired.json`, `worker.lock`, `logs/`)
+  therefore failed to open, and `/api/yard` answered a bare 500 to a phone that was correctly
+  paired. The yard has only ever worked when the server ran from a checkout, which is exactly why
+  the launchd daemon could serve it and SAM.app never could. Packaged builds now keep their state
+  under `~/SAMYard`; a checkout keeps its repo-local `yard/`, so no existing job moves.
+
+  The status endpoint no longer answers with a shrug either: it returns 200 with the path it
+  could not read, because the endpoint that exists to report the yard's health is the last place
+  that should hide a failure.
+
+- **You could not pair a phone at all.** `POST /api/pair/new` mints the code, and nothing in the
+  app had ever called it — the desk pointed at a button that was never built. There is now a
+  "+ Pair a phone" button that calls it.
+
+- **A refusal from before pairing outlived the pairing that fixed it**, so the phone stayed
+  locked out of a SAM it had just been granted.
+
+- **The desk offered a pairing that could not work** when a second SAM already held the port. It
+  now says so instead.
+
+### Security
+- **Anyone on the network could mint a pairing code** under `SAM_REMOTE=1` and claim a full
+  session. The cause was middleware ordering, not a missing check. Remote mode is off by default.
+
+### Added — the Pocket
+- **It asks before it spends.** A paid brain now needs consent, and the grant can be taken back
+  from Settings — it used to be a one-way door, which is not a permission.
+- **A demo, so the app is not dead without a Mac** — sample data, labelled as such on every
+  screen it reaches.
+- **Settings that contains settings**: spending, appearance, version, help, and an icon on every
+  row.
+- **A task list you can filter.** The Running / Queued / Failed / Done counts became the control
+  that opens the rows behind them.
+- **A job says what it DID**, folded from its own step list, instead of printing a timestamp.
+
+### Changed
+- **The tint stopped being a status.** Terracotta meant "running" in one place and "this is a
+  link" in another; colour now carries one meaning, and running is carried by motion.
+- **The palette was failing AA on the most repeated text in the app.** Fixed, including under
+  Increase Contrast, which the app now honours.
+- **Four different logos were shipping as SAM.** One mascot now, everywhere.
+- VoiceOver was reading parts of the app out as punctuation.
+
+### Build
+- **`build:mac:signed` packaged whatever was already in `dist/`.** Every other target runs
+  preflight and a build first; the one script that produces a shippable, auto-updating release
+  went straight to `electron-builder`. A release cut that way carries the last build someone
+  happened to run — possibly predating the fix it was cut for — while reporting the new version
+  number. It now builds first, and refuses to upload an unnotarized build as a release.
+
 ## [3.2.4] - 2026-08-06 — "Zero Known"
 
 Nothing changes in the app. This is 3.2.3 with four dependency advisories patched — plus an
