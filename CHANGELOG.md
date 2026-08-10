@@ -24,6 +24,14 @@ The yard fix in 3.3.0 never fired. The detection was false in exactly the case i
   database was quietly created *inside* the `.app`. It fails in `/Applications`, which is the only
   place a user has one. The question is now asked of the module path, before normalisation.
 
+- **The packaged app's yard had no worker at all** — `the yard · no worker entrypoint —
+  staying down`. The electron main bundle lives in `app.asar/dist-electron` while the worker is
+  built to `app.asar/dist`, so the two are siblings and every candidate path missed by exactly one
+  level: `ROOT` is `join(HERE, "..", "..")`, which from `dist-electron` normalises past `app.asar`
+  to `Resources`, a directory with no `dist/` in it. The store opened, the API answered, and no
+  job would ever have run. It stayed hidden because a checkout working directory made the
+  supervisor prefer the source worker long before it reached that list.
+
 - **The yard worker could never start on Windows.** npm writes three launchers into
   `node_modules/.bin` — `tsx` (a POSIX shell script), `tsx.cmd` and `tsx.ps1`. The supervisor
   took the first that existed on every platform, but Windows cannot execute a shell script, so it

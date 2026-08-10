@@ -61,6 +61,14 @@ export function workerEntry(): { cmd: string; args: string[] } | null {
   const bundles = [
     join(HERE, "yard-worker.mjs"),               // bundled: sits beside server.mjs
     join(HERE, "dist", "yard-worker.mjs"),
+    // PACKAGED: the electron main bundle lives in app.asar/dist-electron while the worker is
+    // built to app.asar/dist, so the two are SIBLINGS and every other candidate here misses by
+    // exactly one level. ROOT is join(HERE, "..", "..") — from dist-electron that normalises
+    // past app.asar to Resources, which does not contain dist/ at all. The result was
+    // "the yard · no worker entrypoint — staying down" in the packaged app: the store opened,
+    // the API answered, and no job ever ran. It stayed hidden because a checkout-cwd made the
+    // supervisor prefer the source worker long before it reached this list.
+    join(HERE, "..", "dist", "yard-worker.mjs"),
     join(ROOT, "dist", "yard-worker.mjs"),       // from source
     join(cwd, "dist", "yard-worker.mjs"),
   ];
