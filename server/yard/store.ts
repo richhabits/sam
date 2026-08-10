@@ -11,14 +11,21 @@
 //  the database is the only thing that can settle it honestly.
 // ─────────────────────────────────────────────────────────────
 
-import Database from "better-sqlite3";
-import { mkdirSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type Database from "better-sqlite3";
+import { openDb } from "../db.ts";
 import {
-  type JobState, type FailureKind, assertTransition, isClaimForfeit,
-  isRetryable, backoffMs, overBudget, HEARTBEAT_GRACE_MS,
+  assertTransition,
+  backoffMs,
+  type FailureKind,
+  HEARTBEAT_GRACE_MS,
+  isClaimForfeit,
+  isRetryable,
+  type JobState,
+  overBudget,
 } from "./state.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -118,7 +125,17 @@ export class JobStore {
   constructor(file?: string) {
     const path = file ?? join(yardDir(), "jobs.db");
     if (path !== ":memory:") { const d = dirname(path); if (!existsSync(d)) mkdirSync(d, { recursive: true }); }
-    this.db = new Database(path);
+    // openDb, NOT `new Database` — and the difference is the whole of whether the yard works
+    // from SAM.app. In a packaged build the electron bundler ignores `external`, so
+    // better-sqlite3 is bundled and its own resolver looks for the native binary INSIDE the
+    // read-only app.asar. preboot.ts finds the real one under app.asar.unpacked and puts the
+    // path in SAM_SQLITE_BINDING; openDb is the one place that passes it. This line constructed
+    // the database directly and so ignored all of that, and the packaged app died with
+    // "Cannot find module .../app.asar/build/Release/better_sqlite3.node" the moment the yard
+    // was switched on — while every test, typecheck and lint stayed green, because none of them
+    // run the packaged app. That is the same failure v3.2.0 shipped, in the one file that had
+    // not been moved onto the shared opener.
+    this.db = openDb(path);
     // WAL lets the reader (server) and the writer (worker) coexist without either
     // stalling the other; busy_timeout covers the brief overlaps that remain.
     if (path !== ":memory:") this.db.pragma("journal_mode = WAL");
