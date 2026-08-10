@@ -45,7 +45,17 @@ export function workerEntry(): { cmd: string; args: string[] } | null {
   // compile at spawn; being wrong about which code is running costs an afternoon.
   const sources = [join(HERE, "worker.ts"), join(ROOT, "server", "yard", "worker.ts"), join(cwd, "server", "yard", "worker.ts")];
   const source = sources.find((s) => existsSync(s));
-  const tsx = [join(ROOT, "node_modules", ".bin", "tsx"), join(cwd, "node_modules", ".bin", "tsx")].find((t) => existsSync(t));
+  // ON WINDOWS THE EXTENSIONLESS `.bin/tsx` IS NOT SPAWNABLE.
+  //
+  // npm writes three files into node_modules/.bin: `tsx` (a POSIX shell script), `tsx.cmd` and
+  // `tsx.ps1`. existsSync finds the first on every platform, but CreateProcess cannot execute a
+  // shell script, so Windows got `spawn ...\.bin\tsx ENOENT` — the yard worker never started,
+  // and because the supervisor backs off rather than throwing, it looked like a yard that was
+  // simply idle. Ask for the launcher this platform can actually run.
+  const tsxNames = process.platform === "win32" ? ["tsx.cmd", "tsx.exe", "tsx"] : ["tsx"];
+  const tsx = [ROOT, cwd]
+    .flatMap((base) => tsxNames.map((name) => join(base, "node_modules", ".bin", name)))
+    .find((t) => existsSync(t));
   if (source && tsx) return { cmd: tsx, args: [source] };
 
   const bundles = [
