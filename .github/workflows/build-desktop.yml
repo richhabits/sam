@@ -221,6 +221,14 @@ jobs:
             grep -iE "uncaughtException|Cannot find module.*better_sqlite3" "$LOG" | head -5
             exit 1
           fi
+          # A yard with no worker is not a working yard: the store opens, the API answers, and no
+          # job ever runs. The supervisor says so plainly and then backs off, so this line is the
+          # only evidence — and it sat in a green build's log until it was asserted on.
+          if grep -qi "no worker entrypoint" "$LOG"; then
+            echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: the yard could not find its worker bundle — jobs would queue forever."
+            grep -i "yard" "$LOG" | head -5
+            exit 1
+          fi
           # And prove the yard actually opened its store, rather than merely not crashing.
           if [ "$DB" != "1" ]; then
             echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: the yard never created its database at $SAMYARD_DIR/state/jobs.db"
