@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, Text, View } from 'react-native';
 import { api } from './lib/api';
+import { applyFilter, type Filter, taskFilters, windowNote } from './lib/filters';
 import { elapsed, type JobStep, runLine } from './lib/fold';
 import { type IOS, metrics, stateToneText, type } from './lib/ios';
 import { taskGlyph, taskTitle } from './lib/mentions';
-import { Row, Screen, Section } from './ui';
+import { Chips, Row, Screen, Section } from './ui';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
 //
@@ -52,6 +53,7 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
   const [error, setError] = useState('');
 
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
   // Ticks only while something is actually running — see the effect below.
   const [now, setNow] = useState(() => Date.now());
 
@@ -101,6 +103,9 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
     setRefreshing(false);
   }, [load]);
 
+  const chips = taskFilters(yard?.recent ?? [], filter);
+  const rows = applyFilter(yard?.recent ?? [], filter);
+
   if (!yard && !error) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: ios.groupedBg }}>
@@ -129,13 +134,48 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
 
       {yard?.on ? (
         <>
-          <Section ios={ios} header="Now">
-            <Row ios={ios} title="Running" value={String(yard.running)} />
-            <Row ios={ios} title="Queued" value={String(yard.queued)} />
-            <Row ios={ios} title="Failed" value={String(yard.failed)} />
-            <Row ios={ios} title="Done" value={String(yard.done)} last />
+          {/* THE STRIP REPLACES THE "NOW" SECTION THAT USED TO LEAD THIS SCREEN.
+              Running / Queued / Failed / Done were four rows of numbers you could read but not
+              act on — "Failed 3" with no way to reach those three. Chips carry the same counts
+              and open the rows behind them, so one control does what two were half-doing. It
+              sits outside the Section because a full-bleed horizontal scroll inside an inset
+              card would clip its own ends.
+
+              It leads, and Cost moved BELOW the list, because a filter has to touch the thing
+              it filters. Rendered under Cost it read as part of Cost — the eye groups by
+              proximity before it reads a header, so the control looked like it belonged to the
+              token meter it happened to sit beneath. */}
+          {rows.length || filter !== 'all' ? (
+            <View style={{ marginTop: 2, marginBottom: 12 }}>
+              <Chips ios={ios} options={chips} value={filter} onChange={setFilter} label="Filter tasks" />
+            </View>
+          ) : null}
+
+          <Section ios={ios} footer={windowNote(yard.recent ?? [], yard) || undefined}>
+            {!yard.recent?.length ? (
+              <Row ios={ios} title="Nothing has run yet" last />
+            ) : !rows.length ? (
+              // Reachable because the selected chip survives its own count hitting zero. Naming
+              // the filter is the difference between "this is empty" and "this is broken".
+              <Row ios={ios} title={`No ${filter} tasks in the last ${yard.recent.length}`} last />
+            ) : (
+              rows.map((j, i) => (
+                <Row
+                  key={j.id}
+                  ios={ios}
+                  title={taskTitle(j)}
+                  glyph={taskGlyph(j.kind)}
+                  subtitle={subtitleFor(j, now)}
+                  accessory={<StateAccessory ios={ios} state={j.state} />}
+                  last={i === rows.length - 1}
+                />
+              ))
+            )}
           </Section>
 
+          {/* Below the list on purpose. It is the answer to "what did this cost", which is a
+              question you ask after reading what ran — not the reason anyone opens a screen
+              called Tasks. */}
           {yard.meter ? (
             <Section
               ios={ios}
@@ -146,24 +186,6 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
               <Row ios={ios} title="This week" value={`${yard.meter.weekTokens ?? 0} tokens`} last />
             </Section>
           ) : null}
-
-          <Section ios={ios} header="Recent">
-            {!yard.recent?.length ? (
-              <Row ios={ios} title="Nothing has run yet" last />
-            ) : (
-              yard.recent.map((j, i) => (
-                <Row
-                  key={j.id}
-                  ios={ios}
-                  title={taskTitle(j)}
-                  glyph={taskGlyph(j.kind)}
-                  subtitle={subtitleFor(j, now)}
-                  accessory={<StateAccessory ios={ios} state={j.state} />}
-                  last={i === yard.recent.length - 1}
-                />
-              ))
-            )}
-          </Section>
         </>
       ) : null}
 
