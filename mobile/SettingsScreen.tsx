@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Switch, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
+import { GLYPHS } from './lib/glyphs';
 import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
 import { ActionRow, Row, Screen, Section } from './ui';
@@ -19,9 +20,12 @@ import { ActionRow, Row, Screen, Section } from './ui';
 // without reading the list. ui.tsx has had that primitive since the Tasks list needed it — a
 // 29pt tile with the separator inset past it — and this screen simply never used it.
 //
-// The marks stay monochrome typographic characters, in the tint, for the reason lib/mentions.ts
-// records: anything inside Unicode's emoji-presentation ranges is drawn full-colour by iOS and
-// ignores the tint entirely, which is how a settings list ends up looking like a sticker sheet.
+// The marks come from lib/glyphs.ts and are named by MEANING, not by shape, so this screen and
+// the + sheet cannot drift into showing the same idea two different ways. They stay monochrome
+// typographic characters because anything inside Unicode's emoji-presentation ranges is drawn
+// full-colour by iOS and ignores the tint — which is how a settings list ends up looking like a
+// sticker sheet. That rule is now enforced by a test over the whole vocabulary rather than by
+// checking each new mark by hand, which is what happened when these eight were added.
 
 type Device = { id: string; label: string; lastSeen: number };
 
@@ -88,7 +92,7 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
       >
         <Row
           ios={ios}
-          glyph="◈"
+          glyph={GLYPHS.spending}
           title="Paid brains"
           value={consent === 'always' ? 'Allowed' : 'Ask every time'}
           last={consent !== 'always'}
@@ -107,7 +111,7 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
       </Section>
 
       <Section ios={ios} header="Connection" footer={error || undefined}>
-        <Row ios={ios} glyph="⇄" title="SAM" value={host.replace(/^https?:\/\//, '') || '—'} last />
+        <Row ios={ios} glyph={GLYPHS.connection} title="SAM" value={host.replace(/^https?:\/\//, '') || '—'} last />
       </Section>
 
       <Section
@@ -120,13 +124,13 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
             <ActivityIndicator color={ios.tint} />
           </View>
         ) : devices.length === 0 ? (
-          <Row ios={ios} glyph="▣" title="No devices" last />
+          <Row ios={ios} glyph={GLYPHS.device} title="No devices" last />
         ) : (
           devices.map((d, i) => (
             <Row
               key={d.id}
               ios={ios}
-              glyph="▣"
+              glyph={GLYPHS.device}
               title={d.label}
               subtitle={new Date(d.lastSeen).toLocaleString()}
               last={i === devices.length - 1}
@@ -148,7 +152,7 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
       >
         <Row
           ios={ios}
-          glyph="♪"
+          glyph={GLYPHS.sound}
           title="Sound"
           accessory={
             <Switch
@@ -161,7 +165,7 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
         />
         <Row
           ios={ios}
-          glyph="✱"
+          glyph={GLYPHS.test}
           title="Send a test notification"
           onPress={() => notify('SAM', 'Test notification — this is what a task finishing looks like.')}
           last
@@ -173,11 +177,11 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
           setting and breaks the Increase Contrast palettes lib/ios.ts derives from it. Saying
           so is better than a control that lies, or than silence where people look for one. */}
       <Section ios={ios} header="About" footer="SAM follows your system appearance, so it changes with iOS rather than fighting it.">
-        <Row ios={ios} glyph="◐" title="Appearance" value="Follows system" />
-        <Row ios={ios} glyph="ⓘ" title="Version" value={`${version} (${build})`} />
+        <Row ios={ios} glyph={GLYPHS.appearance} title="Appearance" value="Follows system" />
+        <Row ios={ios} glyph={GLYPHS.info} title="Version" value={`${version} (${build})`} />
         <Row
           ios={ios}
-          glyph="?"
+          glyph={GLYPHS.help}
           title="Help and source"
           onPress={() => void Linking.openURL('https://richhabits.github.io/sam/')}
           chevron

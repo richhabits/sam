@@ -1,3 +1,4 @@
+import { GLYPHS } from './glyphs';
 // @-REFERENCES — pointing SAM at a task you already ran.
 //
 // The pocket's answer to the thing every modern editor has: type `@`, pick something you did
@@ -130,17 +131,17 @@ export function taskTitle(t: Pick<RecentTask, 'id' | 'kind' | 'payload' | 'proje
 export function taskGlyph(kind: string | null | undefined): string {
   switch (kind) {
     case 'project.build':
-      return '⚒︎'; // hammer and pick
+      return GLYPHS.build; // hammer and pick
     case 'project.create':
-      return '✚︎'; // heavy greek cross
+      return GLYPHS.create; // heavy greek cross
     case 'project.edit':
-      return '✎︎'; // lower-left pencil
+      return GLYPHS.edit; // lower-left pencil
     case 'project.deploy':
-      return '↑'; // upwards arrow — ship it
+      return GLYPHS.deploy; // upwards arrow — ship it
     case 'project.checkpoint':
-      return '⚑︎'; // black flag
+      return GLYPHS.checkpoint; // black flag
     case 'project.restore':
-      return '↺'; // anticlockwise open circle arrow — back to a mark
+      return GLYPHS.restore; // anticlockwise open circle arrow — back to a mark
     // THE FOUR THAT USED TO BE BULLETS.
     //
     // server/yard/worker.ts registers ten handlers and this function knew six of them, so a
@@ -149,28 +150,28 @@ export function taskGlyph(kind: string | null | undefined): string {
     // ever taken of this list showed it. A glyph map that misses the commonest kind is worse
     // than no glyph map, because it looks deliberate.
     case 'project.loop':
-      return '⟳'; // clockwise gapped circle arrow — keep going round. Deliberately the
+      return GLYPHS.loop; // clockwise gapped circle arrow — keep going round. Deliberately the
     // opposite rotation to restore's ↺, since those are the two that could be confused.
     case 'run':
-      return '❯'; // a shell prompt, which is what a run job is
+      return GLYPHS.run; // a shell prompt, which is what a run job is
     case 'playbook.run':
-      return '⇉'; // paired rightwards arrows — a scripted sequence, not a single command
+      return GLYPHS.playbookRun; // paired rightwards arrows — a scripted sequence, not a single command
     case 'sleep':
       // NOT ⏱ (U+23F1). That sits in U+231A–U+23FF, which Unicode gives emoji presentation by
       // DEFAULT, so iOS drew a full-colour stopwatch that ignored the tint entirely — measured
       // at chroma 3 against 120–154 for every other mark in the column. U+FE0E does not
       // reliably rescue that range on iOS either, so the answer is a character that was never
       // an emoji: a geometric quadrant circle, which still reads as elapsing time.
-      return '◷'; // U+25F7, white circle with upper right quadrant
+      return GLYPHS.sleep; // U+25F7, white circle with upper right quadrant
     default:
       // Group by family before giving up, so a kind nobody has taught this function still gets
       // something better than a bullet if its prefix is one we know. Neither of these families
       // is registered in server/yard/worker.ts today — they exist in the demo fixtures and are
       // kept as forward cover, which is exactly what a family fallback is for.
-      if (kind?.startsWith('notebook.')) return '≡'; // identical to — stacked lines
-      if (kind?.startsWith('standing.')) return '◉'; // fisheye — a standing eye on something
-      if (kind?.startsWith('project.')) return '⚒︎'; // an unknown project job is still a build
-      return '▸'; // small right-pointing triangle
+      if (kind?.startsWith('notebook.')) return GLYPHS.notebook; // identical to — stacked lines
+      if (kind?.startsWith('standing.')) return GLYPHS.standing; // fisheye — a standing eye on something
+      if (kind?.startsWith('project.')) return GLYPHS.build; // an unknown project job is still a build
+      return GLYPHS.unknown; // small right-pointing triangle
   }
 }
 

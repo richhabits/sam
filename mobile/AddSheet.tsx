@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { type Attachment, pickFile, pickPhoto, takePhoto } from './lib/attach';
+import { GLYPHS } from './lib/glyphs';
 import { type IOS, metrics, type } from './lib/ios';
 import { Row, Section } from './ui';
 
@@ -44,12 +45,12 @@ type Level =
 type ConnectorList = { kind: string; label: string; hint: string; param?: string; drill?: string };
 type Connector = { id: string; label: string; connected: boolean; needsToken: boolean; detail?: string; error?: string; note: string; lists: ConnectorList[] };
 
-const CATALOGUE: { kind: Native; label: string; hint: string }[] = [
-  { kind: 'skills', label: 'Skills', hint: 'What SAM is good at' },
-  { kind: 'playbooks', label: 'Playbooks', hint: 'Saved runs you can fire' },
-  { kind: 'schedules', label: 'Scheduled', hint: 'Things SAM does on a timer' },
-  { kind: 'projects', label: 'Projects', hint: 'What SAM is building' },
-  { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach' },
+const CATALOGUE: { kind: Native; label: string; hint: string; glyph: string }[] = [
+  { kind: 'skills', label: 'Skills', hint: 'What SAM is good at', glyph: GLYPHS.skills },
+  { kind: 'playbooks', label: 'Playbooks', hint: 'Saved runs you can fire', glyph: GLYPHS.playbooks },
+  { kind: 'schedules', label: 'Scheduled', hint: 'Things SAM does on a timer', glyph: GLYPHS.scheduled },
+  { kind: 'projects', label: 'Projects', hint: 'What SAM is building', glyph: GLYPHS.projects },
+  { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach', glyph: GLYPHS.tools },
 ];
 
 /** SAM's own endpoints each name their own array; normalise to one row so the list stays dumb. */
@@ -200,6 +201,7 @@ export default function AddSheet({
             <Section ios={ios} header="Attach" footer="Photos and files ride along with your next message. SAM looks at images on your machine.">
               <Row
                 ios={ios}
+                glyph={GLYPHS.camera}
                 title="Camera"
                 onPress={async () => {
                   const a = await takePhoto();
@@ -208,6 +210,7 @@ export default function AddSheet({
               />
               <Row
                 ios={ios}
+                glyph={GLYPHS.photos}
                 title="Photos"
                 onPress={async () => {
                   const a = await pickPhoto();
@@ -216,6 +219,7 @@ export default function AddSheet({
               />
               <Row
                 ios={ios}
+                glyph={GLYPHS.files}
                 title="Files"
                 last
                 onPress={async () => {
@@ -230,6 +234,7 @@ export default function AddSheet({
                 <Row
                   key={c.kind}
                   ios={ios}
+                  glyph={c.glyph}
                   title={c.label}
                   subtitle={c.hint}
                   chevron
@@ -249,6 +254,7 @@ export default function AddSheet({
                   <Row
                     key={`${c.id}/${l.kind}`}
                     ios={ios}
+                    glyph={GLYPHS.connector}
                     title={l.label}
                     subtitle={l.hint}
                     chevron
