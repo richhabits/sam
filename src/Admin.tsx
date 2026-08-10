@@ -380,7 +380,10 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                     const r = await regeneratePhone().catch(() => ({ ok: false }));
                     if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
                   }}><Icon name="refresh" size={14} /> New token</button>
-                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--c-err, #c00)", color: "var(--c-err, #c00)" }} onClick={async () => {
+                  {/* Was styled like a destructive/logout action (red border+text, same as a delete
+                     button elsewhere) for what's actually a reversible toggle — flip it back on
+                     any time, nothing is lost. Matches "New token" right next to it instead. */}
+                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
                     if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
                     const r = await disablePhone().catch(() => ({ ok: false }));
                     if (r.ok) { setPhone({ remoteOn: false, lan: phone.lan, url: null }); setPhoneQR(""); setPhoneMsg("🔴 Phone access off — restart SAM to fully close the LAN."); }
