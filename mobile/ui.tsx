@@ -384,6 +384,76 @@ export function Segmented<T extends string>({
   );
 }
 
+/**
+ * A HORIZONTAL FILTER STRIP, WHERE THE COUNT AND THE FILTER ARE THE SAME CONTROL.
+ *
+ * Distinct from Segmented, which is a mutually-exclusive VIEW switch across a fixed, small set
+ * that must all fit on screen at once. This is for an open-ended set that scrolls, where each
+ * option also has to report how much is behind it.
+ *
+ * The pattern is Manus's, and the reason to borrow it is that SAM had the two halves separated:
+ * a "Now" section listing Running / Queued / Failed / Done as four dead numbers, and an
+ * unfilterable list under it. You could read "Failed 3" and have no way to see which three. A
+ * count you cannot act on is a worse version of a count you can.
+ *
+ * Counts are the CALLER'S problem and must describe what the chip actually reveals — the yard's
+ * totals are all-time while the list is the last 20 jobs, so a chip reading "Done 847" that
+ * opens 12 rows would be a lie in the one place a number is supposed to be checkable.
+ */
+export function Chips<T extends string>({
+  ios,
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  ios: IOS;
+  options: { key: T; label: string; count?: number }[];
+  value: T;
+  onChange: (k: T) => void;
+  /** VoiceOver name for the strip itself, e.g. "Filter tasks". */
+  label?: string;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // Bleed the padding into the scroll content, not the view: inset on the ScrollView itself
+      // clips the first and last chip mid-scroll instead of letting them run under the edge.
+      contentContainerStyle={{ paddingHorizontal: metrics.margin, gap: 8, paddingVertical: 2 }}
+      accessibilityRole="tablist"
+      accessibilityLabel={label}
+    >
+      {options.map((o) => {
+        const on = o.key === value;
+        return (
+          <Pressable
+            key={o.key}
+            onPress={() => onChange(o.key)}
+            accessibilityRole="tab"
+            // Spoken, not read off the chip: "Failed, 3" beats "Failed 3" run together, and the
+            // count is meaningless to a screen reader without the noun attached to it.
+            accessibilityLabel={o.count === undefined ? o.label : `${o.label}, ${o.count}`}
+            accessibilityState={{ selected: on }}
+            style={[s.chip, { backgroundColor: on ? ios.tint : ios.fill }]}
+          >
+            <Text
+              // Chips must not scale without bound — a strip of 17pt chips at the largest
+              // accessibility size is a single chip and a horizontal scroll to reach a filter.
+              // Capped, not frozen: it still grows, and the list it filters scales normally.
+              maxFontSizeMultiplier={1.4}
+              style={[type.subhead, { fontWeight: '600', color: on ? ios.onTint : ios.label }]}
+            >
+              {o.label}
+              {o.count === undefined ? '' : ` ${o.count}`}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 const s = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
@@ -405,6 +475,14 @@ const s = StyleSheet.create({
     borderRadius: 7, // iOS 26's squircle-ish tile, not a circle and not a hard square
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // 32pt tall at the default text size and fully rounded, which is the iOS capsule. minHeight
+  // rather than height so a chip grows with Dynamic Type instead of clipping its own label.
+  chip: {
+    minHeight: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 16,
   },
   segTrack: { flexDirection: 'row', borderRadius: 9, padding: 2 },
   segItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 7 },
