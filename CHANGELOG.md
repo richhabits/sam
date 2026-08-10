@@ -24,6 +24,20 @@ The yard fix in 3.3.0 never fired. The detection was false in exactly the case i
   database was quietly created *inside* the `.app`. It fails in `/Applications`, which is the only
   place a user has one. The question is now asked of the module path, before normalisation.
 
+- **The yard worker could never start on Windows.** npm writes three launchers into
+  `node_modules/.bin` — `tsx` (a POSIX shell script), `tsx.cmd` and `tsx.ps1`. The supervisor
+  took the first that existed on every platform, but Windows cannot execute a shell script, so it
+  got `spawn ...\.bin\tsx ENOENT`. Because the supervisor backs off rather than throwing, this
+  looked like a yard that was merely idle. It now asks for the launcher the platform can run.
+
+### Changed
+- **The release smoke test runs the app from outside the checkout.** The supervisor deliberately
+  prefers the source worker plus `tsx` when it can find them, so a checkout never runs a stale
+  bundle — but on a runner the app's working directory *is* the checkout, so the packaged app
+  took that developer path. The smoke test was therefore exercising the repo's TypeScript worker
+  rather than the `yard-worker.mjs` a user actually gets, which is why it passed on mac and
+  failed on Windows for a reason no user would ever hit.
+
 ## [3.3.1] - 2026-08-10 — "The Other Half of the Yard Fix"
 
 3.3.0 made the yard's *path* writable from a packaged app. It could still not open its
