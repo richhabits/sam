@@ -21,16 +21,46 @@ import { readFileSync } from "node:fs";
 const run = (c) => execSync(c, { stdio: "inherit" });
 const quiet = (c) => { try { return execSync(c, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); } catch { return ""; } };
 
+// THIS SCRIPT USED TO PACKAGE WHATEVER WAS ALREADY IN dist/.
+//
+// Every other target runs `preflight && npm run build && electron-builder`. This one — the ONLY
+// one that produces a shippable, auto-updating release — went straight to electron-builder, so
+// it packaged whatever dist/ happened to hold. A release built that way carries the last build
+// someone happened to run, which may predate the very fix it is being cut for, and nothing
+// anywhere says so: the app starts, serves an old bundle, and reports the new version number.
+// That has already cost a session once (see the stale-bundle hunt in the yard work).
+//
+// Both steps are now here, in the same order the other targets use. The path check matters just
+// as much: node-gyp and electron-builder cannot pack an asar from a directory whose path
+// contains a space, and they fail deep inside with a cryptic offset error rather than saying so
+// — and the canonical checkout lives on a volume called "ROMEO HQ".
+run(`node scripts/preflight-build.mjs`);
+run(`npm run build`);
+
 const { APPLE_ID, APPLE_TEAM_ID, APPLE_APP_SPECIFIC_PASSWORD } = process.env;
 const missing = [
   !APPLE_ID && "APPLE_ID",
   !APPLE_TEAM_ID && "APPLE_TEAM_ID",
   !APPLE_APP_SPECIFIC_PASSWORD && "APPLE_APP_SPECIFIC_PASSWORD",
 ].filter(Boolean);
-if (missing.length) {
+
+// Notarization is what stops Gatekeeper telling a downloader that Apple "cannot check it for
+// malicious software". Skipping it is a real, visible downgrade for anyone who does not build
+// the app themselves, so it must be asked for out loud rather than inferred from a missing
+// variable — otherwise the first person to lose their credentials silently ships a DMG that
+// nobody else can open.
+const skipNotarize = process.argv.includes("--skip-notarize");
+if (missing.length && !skipNotarize) {
   console.error(`\n✗ Signed build needs these in .env (or Settings → 🍎 Signed releases): ${missing.join(", ")}`);
+  console.error("  Signed but NOT notarized (fine for your own machine, Gatekeeper-blocked for anyone");
+  console.error("  who downloads it): npm run build:mac:signed -- --skip-notarize");
   console.error("  Plain unsigned build still works: npm run build:mac\n");
   process.exit(1);
+}
+if (skipNotarize) {
+  console.warn("\n⚠️  --skip-notarize: this build is SIGNED but NOT NOTARIZED.");
+  console.warn("   It will run on this Mac. Anyone who DOWNLOADS it gets Gatekeeper's");
+  console.warn("   \"Apple cannot check it for malicious software\" — do not publish it as a release.\n");
 }
 const identity = quiet(`security find-identity -v -p codesigning | grep "Developer ID Application" | head -1`);
 if (!identity) {
@@ -40,9 +70,17 @@ if (!identity) {
 }
 console.log(`\n🔏 signing as: ${identity.replace(/^\s*\d+\)\s*[A-F0-9]+\s*/, "")}`);
 
-// Build (signed + notarized). electron-builder picks the Keychain identity automatically;
-// notarization uses the APPLE_* env vars above.
-run(`npx electron-builder --mac --config.mac.notarize=true`);
+// Build (signed, and notarized unless explicitly skipped). electron-builder picks the Keychain
+// identity automatically; notarization uses the APPLE_* env vars above.
+run(`npx electron-builder --mac --config.mac.notarize=${skipNotarize ? "false" : "true"}`);
+
+// An unnotarized build must never become a release: electron-updater would hand every installed
+// SAM a DMG that Gatekeeper refuses, which is worse than not updating at all.
+if (skipNotarize && process.argv.includes("--upload")) {
+  console.error("\n✗ Refusing to upload an unnotarized build as a release.");
+  console.error("  Set APPLE_ID / APPLE_TEAM_ID / APPLE_APP_SPECIFIC_PASSWORD and build again.\n");
+  process.exit(1);
+}
 
 if (process.argv.includes("--upload")) {
   const version = JSON.parse(readFileSync("package.json", "utf8")).version;
