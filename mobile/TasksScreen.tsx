@@ -101,9 +101,6 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
     setRefreshing(false);
   }, [load]);
 
-  // The accessory is a WORD, so it takes the text ink rather than the dot fill.
-  const tone = (state: Job['state']) => stateToneText(state, ios);
-
   if (!yard && !error) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: ios.groupedBg }}>
@@ -161,11 +158,7 @@ export default function TasksScreen({ ios, onNeedsPairing }: { ios: IOS; onNeeds
                   title={taskTitle(j)}
                   glyph={taskGlyph(j.kind)}
                   subtitle={subtitleFor(j, now)}
-                  accessory={
-                    <Text style={[type.footnote, { color: tone(j.state), fontWeight: '600', marginLeft: 8 }]}>
-                      {j.state}
-                    </Text>
-                  }
+                  accessory={<StateAccessory ios={ios} state={j.state} />}
                   last={i === yard.recent.length - 1}
                 />
               ))
@@ -206,4 +199,31 @@ function subtitleFor(j: Job, now: number): string {
     if (j.costTokens) parts.push(`${j.costTokens} tokens`);
   }
   return parts.join(' · ');
+}
+
+/**
+ * THE NO-REFLOW STATUS SLOT.
+ *
+ * A fixed 20pt box ahead of the state word, holding an activity indicator while a job runs and
+ * nothing at all once it stops. Fixed, because the alternative is a row that jumps sideways the
+ * moment a job finishes — and this list now polls every five seconds, so that would happen
+ * under the reader's eyes. Manus reserves exactly this footprint for exactly this reason.
+ *
+ * The spinner is also where "running" went after it stopped being terracotta. Motion carries
+ * liveness better than colour: a coloured word reads the same whether a job is working or
+ * wedged, and a spinner that is turning does not. iOS uses an activity indicator for this
+ * everywhere, so it costs nothing against the 4.2 argument either.
+ *
+ * The word stays, and stays the accessible one — VoiceOver reads "running", not "spinner".
+ */
+function StateAccessory({ ios, state }: { ios: IOS; state: Job['state'] }) {
+  const running = state === 'running';
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+      <View style={{ width: 20, alignItems: 'center' }}>
+        {running ? <ActivityIndicator size="small" color={ios.secondaryLabel} /> : null}
+      </View>
+      <Text style={[type.footnote, { color: stateToneText(state, ios), fontWeight: '600' }]}>{state}</Text>
+    </View>
+  );
 }

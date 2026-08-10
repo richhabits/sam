@@ -15,6 +15,7 @@ import AddSheet from './AddSheet';
 import { api } from './lib/api';
 import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
+import { consentCopy, loadConsent, needsConsent, type SpendConsent, setConsent } from './lib/consent';
 import { loadThread, saveThread } from './lib/history';
 import { type IOS, type as iosType, metrics, stateTone } from './lib/ios';
 import { parseMarkdown } from './lib/markdown';
@@ -142,6 +143,16 @@ export default function ChatScreen({
   const input = useRef<TextInput>(null);
   const [sheet, setSheet] = useState(false);
   const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
+  // Whether SAM may reach for a paid brain without asking. Restored on mount, because a grant
+  // the operator already gave should not be asked for again every launch.
+  const [consent, setConsentState] = useState<SpendConsent>('ask');
+  const [askingConsent, setAskingConsent] = useState(false);
+  // A one-shot bypass rather than a state flag: "Allow once" calls send() immediately, and a
+  // state update would not have landed by the time the gate re-reads it.
+  const allowOnce = useRef(false);
+  useEffect(() => {
+    loadConsent().then(setConsentState);
+  }, []);
   const [brainPicker, setBrainPicker] = useState(false);
   // Bumped on every send to remount the composer — see the note in send().
   const [composerKey, setComposerKey] = useState(0);
@@ -212,12 +223,28 @@ export default function ChatScreen({
     }
   }, [onNeedsPairing]);
 
+  // A failed fetch used to be remembered for the life of this screen, and the two surfaces
+  // that want the yard have opposite needs. The PICKER fires on every keystroke, so it must
+  // not retry while an error stands — that is what `!yardError` is for. The OPENING SCREEN
+  // renders once per empty thread, and treating its one failure as permanent meant a phone
+  // that failed a fetch before it was paired never showed recent work again, however
+  // successfully it paired afterwards. Romeo hit exactly that: paired, real jobs in the yard,
+  // and an opening screen that stayed blank because of a refusal from minutes earlier.
+  //
+  // So the opening screen gets its own single attempt, and the ref is cleared whenever a
+  // conversation exists — meaning every NEW chat is a fresh try rather than one per app launch.
+  const openingTried = useRef(false);
   useEffect(() => {
-    // Not retried while an error is on screen — the picker offers the retry instead, so an
-    // unreachable Mac costs one request per tap rather than one per keystroke. The opening
-    // screen offers no retry on purpose: recent work is a bonus there, and a failure it cannot
-    // explain should leave the invitation clean rather than put an error where a welcome goes.
-    if ((picking || msgs.length === 0) && !yard && !yardError) void loadYard();
+    if (msgs.length > 0) openingTried.current = false;
+  }, [msgs.length]);
+
+  useEffect(() => {
+    if (picking && !yard && !yardError) void loadYard();
+    if (msgs.length === 0 && !yard && !openingTried.current) {
+      openingTried.current = true;
+      setYardError('');   // a stale refusal must not outlive the pairing that fixed it
+      void loadYard();
+    }
   }, [picking, msgs.length, yard, yardError, loadYard]);
 
   // Resolve a task's context NOW, with the summary row as the answer if the detail call fails.
@@ -291,6 +318,15 @@ export default function ChatScreen({
     // An attachment on its own is a complete thought ("what is this?"), so an empty box with
     // something attached is still sendable.
     if ((!message && !attachments.length) || busy) return;
+
+    // THE MOMENT BEFORE IT SPENDS. Nothing is sent, nothing is cleared, the draft stays exactly
+    // where it is — the card replaces the send rather than interrupting one. See lib/consent.ts
+    // for why `auto` deliberately does not trip this.
+    if (!allowOnce.current && needsConsent(tier, consent)) {
+      setAskingConsent(true);
+      return;
+    }
+    allowOnce.current = false;
 
     // What the model gets and what the bubble shows are deliberately different: the operator
     // sees the sentence they typed, SAM also gets the referenced tasks' context in front of it.
@@ -375,7 +411,7 @@ export default function ChatScreen({
       setBusy(false);
       abort.current = null;
     }
-  }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs]);
+  }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs, consent]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
@@ -451,9 +487,15 @@ export default function ChatScreen({
                         {[t.state, taskWhen(t.createdAt)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
-                    {/* Same colour language as the Tasks list (TasksScreen tone()) — a job must
-                        not read as green in one place and grey in another. */}
-                    <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
+                    {/* Same language as the Tasks list — a job must not read as green in one
+                        place and grey in another. Running is a SPINNER on both surfaces rather
+                        than a coloured dot: the tint stopped being a status (see stateTone),
+                        and a static dot cannot tell you whether a job is working or wedged. */}
+                    {t.state === 'running' ? (
+                      <ActivityIndicator size="small" color={ios.secondaryLabel} />
+                    ) : (
+                      <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
+                    )}
                   </Pressable>
                 ))}
               </View>
@@ -631,6 +673,60 @@ export default function ChatScreen({
         onAttach={(a) => setAttached((prev) => [...prev, a])}
       />
 
+      {/* THE CONSENT CARD — inline, above the composer, beside the message it is about.
+          Not a modal: a modal takes the screen away from the sentence you just wrote, and the
+          decision is about that sentence. Emergent puts the same thing in the thread for the
+          same reason. Three actions, in Apple's order of increasing commitment, with the
+          declining one first and unemphasised. */}
+      {askingConsent ? (
+        <View style={[s.consent, { backgroundColor: ios.card, borderColor: ios.separator }]}>
+          <Text style={[iosType.headline, { color: ios.label }]}>{consentCopy().title}</Text>
+          <Text style={[iosType.footnote, { color: ios.secondaryLabel, marginTop: 4 }]}>
+            {consentCopy().body}
+          </Text>
+          <View style={s.consentRow}>
+            <Pressable
+              onPress={() => {
+                setAskingConsent(false);
+                setTier('auto');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Not this time, use Auto"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.secondaryLabel, fontWeight: '600' }]}>
+                Use Auto instead
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                allowOnce.current = true;
+                setAskingConsent(false);
+                send();
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Just this once</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setConsentState('always');
+                setConsent('always');
+                allowOnce.current = true;
+                setAskingConsent(false);
+                send();
+              }}
+              accessibilityRole="button"
+              accessibilityHint="SAM will not ask again before using a paid brain"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Always allow</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <View style={s.composer}>
         <Pressable
           onPress={() => setSheet(true)}
@@ -782,6 +878,17 @@ function makeStyles(ios: IOS) {
     },
     plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     plusText: { fontSize: 26, color: ios.tintText, lineHeight: 30, fontWeight: '300' },
+    consent: {
+      marginHorizontal: metrics.margin,
+      marginBottom: 8,
+      padding: 14,
+      borderRadius: metrics.radius,
+      borderWidth: metrics.hairline,
+    },
+    // Wraps, because three labels at accessibility text sizes will not sit on one line and the
+    // declining option must never be the one that falls off the edge.
+    consentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 12 },
+    consentBtn: { paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
     chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
     // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
     // conversation stays visible above it, which is the point of not making this a sheet.

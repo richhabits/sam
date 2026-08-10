@@ -27,6 +27,31 @@ export function useNeedsPairing(): boolean | null {
 
 type Tone = "banner" | "card";
 
+/**
+ * THE DESKTOP APP CAN NEVER FIX ITSELF BY PAIRING, AND USED TO BE TOLD TO TRY.
+ *
+ * SAM's server is EMBEDDED in the app (electron/main.ts imports server/index.ts) and preboot
+ * mints the per-launch passkey into that one process, which preload then hands the renderer.
+ * That only holds while the app IS the server. It binds port 8787 once, at launch, and never
+ * retries — so if something else already holds the port (the launchd keepalive's daemon, a dev
+ * `npx tsx server/index.ts`, a stale copy) the app loses the race and spends the whole session
+ * talking to a server that minted a DIFFERENT secret it has no way to learn.
+ *
+ * Every privileged route then refuses it, and this component appeared and offered pairing —
+ * which cannot work either, because approval is itself a privileged action performed by the
+ * app that is currently locked out. Romeo lost an afternoon to that loop on 2026-08-09: a
+ * six-digit code that could never be approved, "Update failed: not paired", and an empty yard,
+ * with nothing anywhere saying the app had lost a port race twenty-two hours earlier.
+ *
+ * So: say it. The fix is thirty seconds and it is not pairing.
+ */
+function lostThePortRace(): boolean {
+  const d = (globalThis as unknown as { samDesktop?: { isNative?: boolean } }).samDesktop;
+  // Only the packaged app exposes this bridge. A browser tab genuinely does need to pair, and
+  // must keep getting the normal flow.
+  return !!d?.isNative;
+}
+
 export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; onPaired?: () => void }) {
   const [req, setReq] = useState<{ id: string; code: string } | null>(null);
   const [done, setDone] = useState(false);
@@ -60,6 +85,25 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
       .then((r: any) => (r?.id ? setReq(r) : setErr("Couldn't start pairing.")))
       .catch(() => setErr("Couldn't reach SAM to start pairing."));
   };
+
+  // AFTER the hooks, never before: an early return above them would change hook order
+  // between renders and React would throw.
+  if (lostThePortRace()) {
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: "rgba(240,130,78,.10)", border: "1px solid rgba(240,130,78,.45)", lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Another SAM already had this port.</div>
+        <div style={{ fontSize: 12.5, opacity: 0.85 }}>
+          This window is talking to a SAM server it did not start, so it cannot prove who it is —
+          updates, pairing and the yard will all refuse it. Pairing will not help: approving a
+          pairing is itself something only the serving app can do.
+        </div>
+        <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 6 }}>
+          <b>Quit SAM completely and open it again.</b> It takes the port on launch and everything
+          works. Your chats are on disk and survive the restart.
+        </div>
+      </div>
+    );
+  }
 
   const banner = tone === "banner";
   const box: React.CSSProperties = banner

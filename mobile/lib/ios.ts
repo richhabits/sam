@@ -200,8 +200,9 @@ export function stateTone(state: string | null | undefined, ios: IOS): string {
       return ios.green;
     case 'failed':
       return ios.destructive;
+    // NOT the tint. See the note on stateToneText — running is carried by motion, not colour.
     case 'running':
-      return ios.tint;
+      return ios.secondaryLabel;
     default:
       return ios.secondaryLabel;
   }
@@ -218,6 +219,21 @@ export function stateTone(state: string | null | undefined, ios: IOS): string {
  * Collapsing both into one function was the original mistake, and it was invisible in tests:
  * the text values passed contrast and the dots quietly went muddy, which only a screenshot
  * shows. Same split as tint / tintText, for the same reason.
+ *
+ * RUNNING IS NOT TINTED, AND THAT IS THE POINT.
+ *
+ * It used to return the terracotta, which meant the one brand colour in the chrome was doing
+ * three jobs at once: it was the brand, it was "you can act here", and it was a status. A
+ * Tasks list with three jobs running painted it three times down a column, and a tint that
+ * appears wherever the yard happens to be busy stops being a signal about anything.
+ *
+ * Linear's In Progress is an amber ring precisely so its indigo keeps meaning "act here", and
+ * Manus keeps a status scale entirely separate from its brand blue. SAM cannot borrow either
+ * answer, because it has exactly one permitted chrome colour and adding an amber would be
+ * adding a second. So running is carried by MOTION instead — a system activity indicator in
+ * the row, which is what iOS uses for this everywhere — and its text drops to the muted tone.
+ * Motion says "alive" more honestly than a colour does anyway: a coloured word looks identical
+ * whether the job is working or wedged.
  */
 export function stateToneText(state: string | null | undefined, ios: IOS): string {
   switch (state) {
@@ -225,8 +241,6 @@ export function stateToneText(state: string | null | undefined, ios: IOS): strin
       return ios.greenText;
     case 'failed':
       return ios.destructiveText;
-    case 'running':
-      return ios.tintText;
     default:
       return ios.secondaryLabel;
   }

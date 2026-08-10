@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
   pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
-  getPairedDevices, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant,
+  getPairedDevices, pairNew, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant,
   getDeviceActivity, type ActivityEntry } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
@@ -32,6 +32,21 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   // isn't authenticated enough to see the list" — not "no devices are paired".
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [devicesRefused, setDevicesRefused] = useState(false);
+  // The pairing code currently on offer, if the operator has asked for one.
+  const [pairCode, setPairCode] = useState<{ code: string; url: string } | null>(null);
+  const [pairErr, setPairErr] = useState("");
+  const mintPair = useCallback(() => {
+    setPairErr("");
+    pairNew()
+      .then((r) => {
+        if (!r?.url) { setPairErr(r?.error || "Couldn't mint a code."); return; }
+        // The phone's field wants the CODE, not the URL — the Pocket posts it to
+        // /api/pair/claim. Showing only the link is what sent people hunting for a number.
+        const code = new URL(r.url).searchParams.get("code") || "";
+        setPairCode({ code, url: r.url });
+      })
+      .catch(() => setPairErr("Couldn't reach SAM to mint a code."));
+  }, []);
   const refreshDevices = useCallback(() => {
     getPairedDevices().then((r) => { setDevices(r.devices || []); setDevicesRefused(!!r.refused); }).catch(() => {/* the next poll re-reads */});
   }, []);
@@ -325,10 +340,40 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                 </button>
               )}
             </div>
+            {/* PAIR A PHONE. This is the affordance that never existed: /api/pair/new has been
+                in the server the whole time with no caller, so the only route was a line
+                printed to stdout on boot — once, fifteen minutes, and only when no session
+                existed. Anyone who missed it had no way back except restarting SAM. */}
+            {!devicesRefused && (
+              <div style={{ marginBottom: 10 }}>
+                {pairCode ? (
+                  <div className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 12 }}>
+                    <div style={{ fontSize: 12, opacity: 0.75 }}>
+                      In the SAM app on your phone, enter this address and code:
+                    </div>
+                    <div style={{ fontSize: 13, fontFamily: "ui-monospace, Menlo, monospace" }}>{new URL(pairCode.url).origin}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", wordBreak: "break-all" }}>
+                      {pairCode.code}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <button type="button" className="mini" onClick={() => navigator.clipboard?.writeText(pairCode.code)}>Copy code</button>
+                      <button type="button" className="mini" onClick={mintPair}>New code</button>
+                      {/* Fifteen, from the server's own claimCode window — the browser flow's
+                          five-minute number is a DIFFERENT code space, and saying five here is
+                          how someone ends up typing one into the other. */}
+                      <span style={{ fontSize: 11, opacity: 0.6 }}>one-time · valid 15 minutes</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="mini" onClick={mintPair}>+ Pair a phone</button>
+                )}
+                {pairErr ? <div className="dash-empty" style={{ color: "var(--c-err)" }}>{pairErr}</div> : null}
+              </div>
+            )}
             {devicesRefused ? (
               <div className="dash-empty">This browser isn't paired enough to see the device list.</div>
             ) : devices.length === 0 ? (
-              <div className="dash-empty">No devices paired yet — open the pairing link SAM printed on start.</div>
+              <div className="dash-empty">No devices paired yet — use “Pair a phone” above.</div>
             ) : (
               <div className="dash-lanes">
                 {devices.map((d) => (

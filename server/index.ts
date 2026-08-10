@@ -60,7 +60,7 @@ import { logAttribution, readAttribution, type Capability as AttrCapability } fr
 import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
 import { list as connectorList, normalize as normalizeConnectorError, statuses as connectorStatuses } from "./connectors.ts";
 import { desk as flipitDesk } from "./flipit.ts";
-import { JobStore } from "./yard/store.ts";
+import { JobStore, yardDir } from "./yard/store.ts";
 import { JobLog } from "./yard/worker.ts";
 import { supervisor } from "./yard/supervisor.ts";
 import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
@@ -1745,9 +1745,23 @@ app.get("/api/flipit", (req, res) => {
 app.get("/api/yard", (req, res) => {
   if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   if (process.env.SAM_YARD !== "1") { res.json({ on: false }); return; }
-  const store = yardStore();
-  store.reapAbandoned();
-  res.json({ on: true, worker: supervisor.status(), ...store.summary(), meter: store.meter(), recent: store.list(undefined, 20) });
+  // A STATUS ENDPOINT MUST NOT DIE SILENTLY.
+  //
+  // This threw a bare 500 whenever the store could not open — which is exactly what a packaged
+  // build did, because yardDir() resolved inside app.asar (see server/yard/store.ts). The phone
+  // showed "request failed (500)" and nothing anywhere said why, so the cause took a whole
+  // session to find. The endpoint that exists to report the yard's health is the last place
+  // that should answer with a shrug.
+  try {
+    const store = yardStore();
+    store.reapAbandoned();
+    res.json({ on: true, worker: supervisor.status(), ...store.summary(), meter: store.meter(), recent: store.list(undefined, 20) });
+  } catch (e: any) {
+    logSecurity("warn", "yard-unavailable", `The yard is on but its store could not be read at ${yardDir()}: ${e?.message || e}`, req.socket.remoteAddress || "");
+    // 200 with an explanation, not 500: the yard being unreadable is a state the caller can
+    // render, and the path is the single most useful fact for whoever has to fix it.
+    res.json({ on: true, unavailable: true, error: `The yard is on but unreadable at ${yardDir()} — ${e?.message || e}`, queued: 0, running: 0, done: 0, failed: 0, cancelled: 0, recent: [] });
+  }
 });
 app.get("/api/yard/job/:id", (req, res) => {
   if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }

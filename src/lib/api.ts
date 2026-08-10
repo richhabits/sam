@@ -358,6 +358,19 @@ export const getPairedDevices = () => fetch("/api/pair/devices").then(async (r) 
 });
 export const revokeDevice = (id: string) => post(`/api/pair/devices/${encodeURIComponent(id)}/revoke`, {});
 export const revokeAllDevices = () => post("/api/pair/revoke-all", {});
+// Mint a pairing code for a phone. The endpoint has existed since the Pairing shipped and
+// NOTHING has ever called it — its only references in the repo were its own definition and its
+// guard test. So the one way to pair a phone was a line the server printed to stdout on boot,
+// once, valid fifteen minutes, and only when no session existed yet. The Pocket's own pairing
+// screen meanwhile told people to "open SAM and choose Pair a device", which was never built.
+//
+// Reachable from HERE and only here for a good reason: /api/pair/new is isTrustedLocal, meaning
+// loopback AND the per-launch passkey. The desktop renderer is the one caller that holds it
+// (electron/preload.ts → the fetch shim in main.tsx attaches X-SAM-Token to every /api call), so
+// inviting a device stays a power of the machine SAM runs on rather than of anything that can
+// reach the port.
+export const pairNew = (): Promise<{ url?: string; expiresInSec?: number; error?: string }> =>
+  post("/api/pair/new", {});
 // B3 — capability tiers. Loopback-only server-side (grants can't be self-elevated from a
 // remote device) — this call will 403 from anywhere but the Mac itself, by design.
 export const setDeviceGrants = (id: string, grants: Partial<Record<Grant, boolean>>) =>
