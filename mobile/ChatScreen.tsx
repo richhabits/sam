@@ -223,12 +223,28 @@ export default function ChatScreen({
     }
   }, [onNeedsPairing]);
 
+  // A failed fetch used to be remembered for the life of this screen, and the two surfaces
+  // that want the yard have opposite needs. The PICKER fires on every keystroke, so it must
+  // not retry while an error stands — that is what `!yardError` is for. The OPENING SCREEN
+  // renders once per empty thread, and treating its one failure as permanent meant a phone
+  // that failed a fetch before it was paired never showed recent work again, however
+  // successfully it paired afterwards. Romeo hit exactly that: paired, real jobs in the yard,
+  // and an opening screen that stayed blank because of a refusal from minutes earlier.
+  //
+  // So the opening screen gets its own single attempt, and the ref is cleared whenever a
+  // conversation exists — meaning every NEW chat is a fresh try rather than one per app launch.
+  const openingTried = useRef(false);
   useEffect(() => {
-    // Not retried while an error is on screen — the picker offers the retry instead, so an
-    // unreachable Mac costs one request per tap rather than one per keystroke. The opening
-    // screen offers no retry on purpose: recent work is a bonus there, and a failure it cannot
-    // explain should leave the invitation clean rather than put an error where a welcome goes.
-    if ((picking || msgs.length === 0) && !yard && !yardError) void loadYard();
+    if (msgs.length > 0) openingTried.current = false;
+  }, [msgs.length]);
+
+  useEffect(() => {
+    if (picking && !yard && !yardError) void loadYard();
+    if (msgs.length === 0 && !yard && !openingTried.current) {
+      openingTried.current = true;
+      setYardError('');   // a stale refusal must not outlive the pairing that fixed it
+      void loadYard();
+    }
   }, [picking, msgs.length, yard, yardError, loadYard]);
 
   // Resolve a task's context NOW, with the summary row as the answer if the detail call fails.
