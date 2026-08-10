@@ -135,3 +135,6 @@ docs/strips/
 # Electron-ABI build of better-sqlite3 for `npm run dev:hud` (node ABI stays in
 # node_modules/better-sqlite3/build/Release). Local dev artifact — never committed.
 /build/Release/
+
+# graphify: generated knowledge graph (5MB+, absolute machine paths inside)
+graphify-out/
