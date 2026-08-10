@@ -373,8 +373,21 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera</div>
                 <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
+                {/* Redacted on screen (screenshot/screen-share safety — same reasoning as a masked
+                   password field), but that left NO way to get the link onto a phone except
+                   camera-scanning the QR. If the QR can't be scanned (blocked LAN, no camera
+                   access, router client-isolation), there was no fallback at all. Copy grabs the
+                   real un-redacted phone.url already held in state — same trust boundary as
+                   scanning the QR, just a different transport (AirDrop/Messages/typing it in). */}
                 <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => {
+                    if (!phone.url) return;
+                    navigator.clipboard?.writeText(phone.url).then(
+                      () => setPhoneMsg("📋 Link copied — paste it into Messages/AirDrop/Notes to send to your phone."),
+                      () => setPhoneMsg("Couldn't copy — your browser blocked clipboard access."),
+                    );
+                  }}><Icon name="copy" size={14} /> Copy link</button>
                   <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
                     if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
                     const r = await regeneratePhone().catch(() => ({ ok: false }));
