@@ -2,6 +2,34 @@
 
 All notable changes to SAM. Newest first.
 
+## [3.3.1] - 2026-08-10 — "The Other Half of the Yard Fix"
+
+3.3.0 made the yard's *path* writable from a packaged app. It could still not open its
+*database*, so the fix did not actually work — found by running the shipped 3.3.0 DMG rather
+than by any test.
+
+### Fixed
+- **The packaged app died the moment the yard was switched on**, with
+  `Cannot find module .../app.asar/build/Release/better_sqlite3.node`. In a packaged build the
+  Electron bundler ignores `external`, so better-sqlite3 is bundled and its own resolver hunts
+  for the native binary *inside* the read-only asar. `electron/preboot.ts` already finds the real
+  one under `app.asar.unpacked` and publishes it as `SAM_SQLITE_BINDING`, and `server/db.ts`
+  exists precisely to pass it — but `server/yard/store.ts` called `new Database(path)` directly
+  and so skipped all of it. It was the only file in the codebase still doing that.
+
+  This is the same failure v3.2.0 shipped. It stays invisible to tests, typecheck and lint,
+  because none of them run the packaged app.
+
+### Changed
+- **The release smoke test now turns the yard ON.** It booted the app with the yard off, so it
+  never opened a database — and SQLite is the thing that breaks in a packaged build. 3.3.0 passed
+  that step green. It now also fails if the boot log contains an `uncaughtException` (the app can
+  answer `/api/status` with its database layer dead, which is exactly how 3.3.0 looked healthy),
+  and asserts the yard actually created `jobs.db`.
+- **A test now forbids opening a database anywhere except `openDb()`**, and forbids
+  value-importing better-sqlite3 outside `server/db.ts`. Both rules were checked against the
+  file that shipped in 3.3.0 and both fail on it.
+
 ## [3.3.0] - 2026-08-10 — "The Pocket Connects"
 
 The release where the phone app stops being a demo of itself. Two things in SAM had never

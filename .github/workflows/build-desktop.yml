@@ -168,6 +168,19 @@ jobs:
           fi
           echo "Launching: $APP"
           if [ -z "$APP" ]; then echo "❌ could not locate the packaged binary under dist-app:"; find dist-app -maxdepth 2 -type d; exit 1; fi
+          # SAM_YARD=1 IS THE WHOLE POINT OF THIS LINE.
+          #
+          # This smoke test booted the app with the yard OFF, so it never opened a database — and
+          # SQLite is exactly what breaks in a packaged build, because the bundler ignores
+          # `external` and better-sqlite3 then hunts for its native binary inside the read-only
+          # app.asar. v3.3.0 passed this step green and shipped an app that died with
+          # "Cannot find module .../app.asar/build/Release/better_sqlite3.node" the moment anyone
+          # switched the yard on. A smoke test that never touches the database cannot see the one
+          # failure that has now sunk two releases.
+          #
+          # SAMYARD_DIR keeps it in the workspace so the runner's home stays clean.
+          export SAM_YARD=1
+          export SAMYARD_DIR="$PWD/smoke-yard"
           "$APP" > smoke.log 2>&1 &
           UP=0
           for i in $(seq 1 30); do
@@ -176,11 +189,24 @@ jobs:
           done
           echo "----- app boot log -----"; tail -25 smoke.log 2>/dev/null
           taskkill //F //IM SAM.exe >/dev/null 2>&1; pkill -f 'SAM' >/dev/null 2>&1; true
-          if [ "$UP" = "1" ]; then
-            echo "✅ ${{ matrix.platform }}-${{ matrix.arch }}: packaged app booted and the server responded."
-          else
+          if [ "$UP" != "1" ]; then
             echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: server did NOT respond — see log above."; exit 1
           fi
+          # A responding server is not proof of a healthy one: preboot.ts catches uncaughtException
+          # and logs it rather than exiting, so the app can answer /api/status while its database
+          # layer is dead. That is precisely how v3.3.0 looked green here.
+          if grep -qiE "uncaughtException|Cannot find module.*better_sqlite3" smoke.log; then
+            echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: the app booted but threw on startup:"
+            grep -iE "uncaughtException|Cannot find module.*better_sqlite3" smoke.log | head -5
+            exit 1
+          fi
+          # And prove the yard actually opened its store, rather than merely not crashing.
+          if [ ! -f "$SAMYARD_DIR/state/jobs.db" ]; then
+            echo "❌ ${{ matrix.platform }}-${{ matrix.arch }}: the yard never created its database at $SAMYARD_DIR/state/jobs.db"
+            find "$SAMYARD_DIR" 2>/dev/null | head -10
+            exit 1
+          fi
+          echo "✅ ${{ matrix.platform }}-${{ matrix.arch }}: packaged app booted, server responded, and the yard opened its database."
 
       # PHASE 5 — prove notarization actually STUCK when signing is configured. If the Apple secrets are
       # present but Gatekeeper/stapler reject the build, fail the release loudly (a silently-broken
