@@ -52,6 +52,29 @@ const FlipItView = lazy(() => import("./FlipItView"));
 const YardView = lazy(() => import("./YardView"));
 const whichApp = new URLSearchParams(location.search).get("app");
 
+// The same last-net idea, for asynchronous failures rather than render ones. The API carriers now
+// THROW on a refused request instead of resolving with the server's error body — which is the whole
+// point, since resolving made a refusal look like a result — but a call site that neither awaits nor
+// catches would turn that into a rejection nobody sees. A silent rejection is the failure this work
+// exists to end, so it gets said out loud. Deliberately a plain banner and not a toast: this fires
+// for the cases nobody wrote handling for, which is exactly when it must not be dismissible noise.
+window.addEventListener("unhandledrejection", (ev) => {
+  const e = ev.reason as { message?: string; locked?: boolean; status?: number } | undefined;
+  if (!e?.message) return;                       // not ours — leave it for the console
+  const bar = document.getElementById("sam-async-error") || (() => {
+    const d = document.createElement("div");
+    d.id = "sam-async-error";
+    d.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:10px 14px;font:13px/1.4 system-ui;background:#3a1512;color:#ffd9d2;border-top:1px solid #7a2b22;cursor:pointer";
+    d.title = "Click to dismiss";
+    d.onclick = () => d.remove();
+    document.body.appendChild(d);
+    return d;
+  })();
+  bar.textContent = e.locked
+    ? `SAM refused that: ${e.message} — pair this device and try again.`
+    : `That didn't go through: ${e.message}`;
+});
+
 // A top-level boundary is the last safety net: a render error anywhere below shows a plain
 // recoverable message instead of a blank white window with no way back.
 const rootFallback = (

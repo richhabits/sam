@@ -351,7 +351,15 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               <Icon name="phone" /> Paired devices ({devices.length})
               {devices.length > 1 && (
                 <button type="button" className="dash-sec-link" style={{ color: "var(--c-err)" }}
-                  onClick={() => { if (window.confirm(`Revoke all ${devices.length} paired devices? Each will need to re-pair.`)) revokeAllDevices().then(refreshDevices).catch(() => {/* the next poll re-reads */}); }}>
+                  onClick={() => {
+                    if (!window.confirm(`Revoke all ${devices.length} paired devices? Each will need to re-pair.`)) return;
+                    setPairErr("");
+                    // A refused revoke used to be swallowed here, on the reasoning that "the next
+                    // poll re-reads". True of the LIST — and the operator, who had just confirmed a
+                    // destructive security action, was told nothing at all. They walk away believing
+                    // every device is cut off while all of them are still paired.
+                    revokeAllDevices().then(refreshDevices).catch((e: any) => setPairErr(e?.message || "Couldn't revoke the devices — they are still paired."));
+                  }}>
                   Revoke all
                 </button>
               )}
@@ -406,7 +414,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                           {activityDevice === d.id ? "Showing activity ✕" : "Activity"}
                         </button>
                         <button type="button" className="mini" style={{ color: "var(--c-err)", opacity: 0.8 }}
-                          onClick={() => revokeDevice(d.id).then(refreshDevices).catch(() => {/* the next poll re-reads */})}>
+                          onClick={() => { setPairErr(""); revokeDevice(d.id).then(refreshDevices).catch((e: any) => setPairErr(e?.message || `Couldn't revoke ${d.label || "that device"} — it is still paired.`)); }}>
                           Revoke
                         </button>
                       </span>

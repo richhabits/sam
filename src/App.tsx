@@ -1255,7 +1255,17 @@ export default function App() {
                 </button>
               );
             })()}
-            <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title="SAM control centre"><Icon name="chart" size={16} /> Dashboard</button>
+            {/* The badge the poll above has always been computing and nothing ever displayed —
+                so a browser waiting to pair announced itself to no one, which is precisely the
+                scavenger hunt that comment describes preventing. Rendered now. */}
+            <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title={pairPendingCount > 0 ? `${pairPendingCount} device${pairPendingCount === 1 ? "" : "s"} waiting to pair` : "SAM control centre"}>
+              <Icon name="chart" size={16} /> Dashboard
+              {pairPendingCount > 0 && (
+                // role="status" so a screen reader announces a device arriving, rather than a bare
+                // number appearing silently next to a button.
+                <span role="status" aria-label={`${pairPendingCount} waiting to pair`} style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--c-err)", color: "#fff" }}>{pairPendingCount}</span>
+              )}
+            </button>
             <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={16} /> FLIP IT</button>
           </div>
           <div className="bar-group">

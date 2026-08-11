@@ -87,36 +87,36 @@ export async function streamCommand(message: string, projectId: string | undefin
 }
 
 // Standing authorizations
-export const getAllowed = () => fetch("/api/allow").then((r) => r.json());
+export const getAllowed = () => get("/api/allow");
 export const setAllow = (tool: string, on: boolean) =>
-  fetch("/api/allow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool, on }) }).then((r) => r.json());
+  post("/api/allow", { tool, on });
 
-export const getProjects = () => fetch("/api/projects").then((r) => r.json());
-export const getLog = () => fetch("/api/vault/log").then((r) => r.json());
-export const getStatus = () => fetch("/api/status").then((r) => r.json());
+export const getProjects = () => get("/api/projects");
+export const getLog = () => get("/api/vault/log");
+export const getStatus = () => get("/api/status");
 export const getQuotes = (symbols: string) =>
-  fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`).then((r) => r.json());
+  get(`/api/quotes?symbols=${encodeURIComponent(symbols)}`);
 export const runArena = (prompt?: string) =>
-  fetch("/api/arena", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) }).then((r) => r.json());
-export const getArena = () => fetch("/api/arena").then((r) => r.json());
-export const clearArena = () => fetch("/api/arena", { method: "DELETE" }).then((r) => r.json());
-export const getTools = () => fetch("/api/tools").then((r) => r.json());
+  post("/api/arena", { prompt });
+export const getArena = () => get("/api/arena");
+export const clearArena = () => del("/api/arena");
+export const getTools = () => get("/api/tools");
 
 // Admin — manage provider API keys (rolling pools) + config from the app.
-export const getAdminConfig = () => fetch("/api/admin/config").then((r) => r.json());
+export const getAdminConfig = () => get("/api/admin/config");
 export const saveKeys = (provider: string, keys: string) =>
-  fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, keys }) }).then((r) => r.json());
+  post("/api/admin/keys", { provider, keys });
 export const saveConfig = (key: string, value: string) =>
-  fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) }).then((r) => r.json());
-export const getMcpPresets = () => fetch("/api/mcp/presets").then((r) => r.json());
-export const configureMcp = (id: string, env: Record<string,string>) => fetch("/api/mcp/configure", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, env }) }).then((r) => r.json());
-export const removeMcp = (id: string) => fetch("/api/mcp/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((r) => r.json());
-export const getPhoneLink = () => fetch("/api/phone-link").then((r) => r.json());
-export const regeneratePhone = () => fetch("/api/phone-regenerate", { method: "POST" }).then((r) => r.json());
-export const disablePhone = () => fetch("/api/phone-disable", { method: "POST" }).then((r) => r.json());
-export const enablePhone = () => fetch("/api/phone-enable", { method: "POST" }).then((r) => r.json());
+  post("/api/admin/config", { key, value });
+export const getMcpPresets = () => get("/api/mcp/presets");
+export const configureMcp = (id: string, env: Record<string,string>) => post("/api/mcp/configure", { id, env });
+export const removeMcp = (id: string) => post("/api/mcp/remove", { id });
+export const getPhoneLink = () => get("/api/phone-link");
+export const regeneratePhone = () => post("/api/phone-regenerate");
+export const disablePhone = () => post("/api/phone-disable");
+export const enablePhone = () => post("/api/phone-enable");
 export const testEmail = (): Promise<{ ok: boolean; error?: string }> =>
-  fetch("/api/admin/test-email", { method: "POST" }).then((r) => r.json());
+  post("/api/admin/test-email");
 
 // Self-update — SAM checks the repo and can pull the latest (evolve, for free).
 export async function checkUpdate(): Promise<{ behind: boolean; current?: string; latest?: string; url?: string }> {
@@ -160,19 +160,19 @@ export async function streamTeam(message: string, projectId: string | undefined,
     for (const p of parts) { const line = p.trim(); if (!line.startsWith("data:")) continue; try { onEvent(JSON.parse(line.slice(5).trim())); } catch { /* corrupt stored value — treat as absent and use the default */ } }
   }
 }
-export const getRoster = () => fetch("/api/team/roster").then((r) => r.json());
+export const getRoster = () => get("/api/team/roster");
 
 // Autopilot — SAM lifts the silly work autonomously (serious actions still ask).
-export const getAutopilot = () => fetch("/api/autopilot").then((r) => r.json());
-export const setAutopilotMode = (on: boolean) => fetch("/api/autopilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) }).then((r) => r.json());
+export const getAutopilot = () => get("/api/autopilot");
+export const setAutopilotMode = (on: boolean) => post("/api/autopilot", { on });
 
 // Elon Mode — ruthless autopilot: bypasses ALL ask-first gates. Deletes go to a 30-day trash bin;
 // outward actions (send/post/pay) are NOT recoverable. Dangerous — gated behind a confirm in the UI.
-export const setElonMode = (on: boolean) => fetch("/api/admin/elon-mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) }).then((r) => r.json());
+export const setElonMode = (on: boolean) => post("/api/admin/elon-mode", { on });
 
 // Import a pasted ChatGPT/Claude/Gemini history → extract durable facts into SAM's memory.
 export const importContext = (name: string, externalContext: string) =>
-  fetch("/api/admin/import-context", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, externalContext }) }).then((r) => r.json());
+  post("/api/admin/import-context", { name, externalContext });
 
 // ── The Continuous Swarm ──
 export interface SwarmAgent { id: string; specialistId: string; name: string; emoji: string; task: string; status: "pending" | "running" | "paused" | "done" | "error"; output?: string; pendingActivity?: string; pendingTool?: string; pendingPreview?: string; }
@@ -213,79 +213,99 @@ export async function removeSchedule(id: string) { return api<{ok: boolean}>(`/a
 export async function toggleSchedule(id: string) { return api<Schedule>(`/api/schedules/${id}/toggle`, { method: "POST" }); }
 
 // People SAM knows by sight (face memory).
-export const getPeople = () => fetch("/api/people").then((r) => r.json());
+export const getPeople = () => get("/api/people");
 
 // ── 📓 Notebooks (NotebookLM) ──
-export const listNotebooks = () => fetch("/api/notebooks").then((r) => r.json());
-export const createNotebook = (title: string) => fetch("/api/notebooks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) }).then((r) => r.json());
-export const notebookSources = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/sources`).then((r) => r.json());
-export const addNotebookSource = (id: string, body: { url?: string; file?: string; text?: string; title?: string }) => fetch(`/api/notebooks/${encodeURIComponent(id)}/source`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
-export const askNotebook = (id: string, question: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) }).then((r) => r.json());
-export const notebookAudio = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}/audio`, { method: "POST" }).then((r) => r.json());
-export const deleteNotebook = (id: string) => fetch(`/api/notebooks/${encodeURIComponent(id)}`, { method: "DELETE" }).then((r) => r.json());
+export const listNotebooks = () => get("/api/notebooks");
+export const createNotebook = (title: string) => post("/api/notebooks", { title });
+export const notebookSources = (id: string) => get(`/api/notebooks/${encodeURIComponent(id)}/sources`);
+export const addNotebookSource = (id: string, body: { url?: string; file?: string; text?: string; title?: string }) => post(`/api/notebooks/${encodeURIComponent(id)}/source`, body);
+export const askNotebook = (id: string, question: string) => post(`/api/notebooks/${encodeURIComponent(id)}/ask`, { question });
+export const notebookAudio = (id: string) => post(`/api/notebooks/${encodeURIComponent(id)}/audio`);
+export const deleteNotebook = (id: string) => del(`/api/notebooks/${encodeURIComponent(id)}`);
 
 // 🚀 Sign & ship
-export const getSigningStatus = () => fetch("/api/signing/status").then((r) => r.json());
-export const genAndroidKeystore = () => fetch("/api/signing/android-keystore", { method: "POST" }).then((r) => r.json());
+export const getSigningStatus = () => get("/api/signing/status");
+export const genAndroidKeystore = () => post("/api/signing/android-keystore");
 
-// ── v1.8 — autonomy consent, learning, workflows ──
-const post = (url: string, body?: any) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
-export const getConsent = () => fetch("/api/consent").then((r) => r.json());
+// ── THE TWO CHECKED CARRIERS ──
+//
+// `.then((r) => r.json())` does not fail on a failed request. fetch only rejects on a network
+// error, so a 401/403/500 resolves happily with the server's error body, and the caller reads it
+// as data. 47 mutating helpers were built that way, which means the UI reported success for
+// actions the server had REFUSED: "Disable all consents" said done while consent stayed on;
+// revokeDevice said revoked while the device stayed paired; safeLock said locked while the vault
+// stayed open. That is SAM's #1 historical failure class — an operation that succeeds while
+// changing nothing — reached through the one path nothing was checking.
+//
+// apiError() (above) already existed to prevent exactly this, and reached 3 of 58 helpers. These
+// two carriers put every one of them behind it. They THROW, matching api()'s existing contract,
+// so a refusal cannot be mistaken for a result by anything downstream.
+async function checked(url: string, init?: RequestInit): Promise<any> {
+  const res = await fetch(url, init);
+  if (!res.ok) throw await apiError(res);
+  return res.json().catch(() => ({}));   // 204/empty body is a success, not a parse failure
+}
+export const get = (url: string) => checked(url);
+export const del = (url: string) => checked(url, { method: "DELETE" });
+const post = (url: string, body?: any) =>
+  checked(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+export const getConsent = () => get("/api/consent");
 export const setConsent = (behavior: string, on: boolean) => post("/api/consent", { behavior, on });
 export const consentDisableAll = () => post("/api/consent/disable-all");
-export const getAutonomyLog = () => fetch("/api/autonomy-log").then((r) => r.json());
+export const getAutonomyLog = () => get("/api/autonomy-log");
 export const clearAutonomyLog = () => post("/api/autonomy-log/clear");
-export const getSuggestions = () => fetch("/api/suggestions").then((r) => r.json());
-export const getPreferences = () => fetch("/api/preferences").then((r) => r.json());
+export const getSuggestions = () => get("/api/suggestions");
+export const getPreferences = () => get("/api/preferences");
 export const forgetPreference = (key: string) => post("/api/preferences/forget", { key });
 export const resetPreferences = () => post("/api/preferences/reset");
-export const getWorkflows = () => fetch("/api/workflows").then((r) => r.json());
+export const getWorkflows = () => get("/api/workflows");
 // ── Routines — bind a spoken/typed phrase to a saved workflow (fires ahead of the brain) ──
-export const getRoutines = () => fetch("/api/routines").then((r) => r.json());
+export const getRoutines = () => get("/api/routines");
 export const bindRoutine = (workflowId: string, phrases: string[]) => post("/api/routines/bind", { workflowId, phrases });
 export const unbindRoutine = (workflowId: string) => post("/api/routines/unbind", { workflowId });
 export const installStarterWorkflows = () => post("/api/workflows/install-starters");
 export const runWorkflowApi = (id: string) => post(`/api/workflows/${id}/run`);
-export const deleteWorkflowApi = (id: string) => fetch(`/api/workflows/${id}`, { method: "DELETE" }).then((r) => r.json());
+export const deleteWorkflowApi = (id: string) => del(`/api/workflows/${id}`);
 
 // ── the Safe — encrypted secret store (all routes loopback + Handshake gated; token attached by the
 //    fetch shim). Responses never contain a secret VALUE — names, counts, and typed error kinds only. ──
-export const getSafeStatus = () => fetch("/api/safe/status").then((r) => r.json());
-export const getSafeMigratePreview = () => fetch("/api/safe/migrate/preview").then((r) => r.json());
+export const getSafeStatus = () => get("/api/safe/status");
+export const getSafeMigratePreview = () => get("/api/safe/migrate/preview");
 export const safeSetup = (passphrase: string | undefined, useKeychain: boolean) => post("/api/safe/setup", { passphrase: passphrase || undefined, useKeychain });
 export const safeUnlock = (passphrase?: string) => post("/api/safe/unlock", { passphrase: passphrase || undefined });
 export const safeMigrate = () => post("/api/safe/migrate");
 export const safeLock = () => post("/api/safe/lock");
 
 // ── v2.0 — measurement (local analytics + opt-in telemetry) ──
-export const getAnalytics = () => fetch("/api/analytics").then((r) => r.json());
+export const getAnalytics = () => get("/api/analytics");
 export const resetAnalytics = () => post("/api/analytics/reset");
-export const getTelemetry = () => fetch("/api/telemetry").then((r) => r.json());
+export const getTelemetry = () => get("/api/telemetry");
 export const setTelemetry = (on: boolean) => post("/api/telemetry", { on });
-export const getTelemetryPreview = () => fetch("/api/telemetry/preview").then((r) => r.json());
+export const getTelemetryPreview = () => get("/api/telemetry/preview");
 
-export const getDoctor = () => fetch("/api/doctor").then((r) => r.json());
+export const getDoctor = () => get("/api/doctor");
 // A refused read is NOT an absent rig. Reported separately so the desk can say which,
 // rather than telling you FLIP IT is not installed while it sits there on disk.
 export const getFlipit = () => fetch("/api/flipit").then(async (r) => {
   if (r.status === 403) return { present: false, refused: true };
   return r.json();
 });
-export const getStanding = () => fetch("/api/standing").then((r) => r.json());
+export const getStanding = () => get("/api/standing");
 export const standingArm = (specialistId: string, task: string, cron: string) => post("/api/standing/arm", { specialistId, task, cron });
 export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });
 export const standingRearm = (id: string) => post("/api/standing/rearm", { id });
 export const standingRemove = (id: string) => post("/api/standing/remove", { id });
 
 // ── the Chime — alarms + named timers ──
-export const getChimes = () => fetch("/api/chimes").then((r) => r.json());
+export const getChimes = () => get("/api/chimes");
 export const setChimeTimer = (label: string, afterMs: number) => post("/api/chime", { kind: "timer", label, afterMs });
 export const setChimeAlarm = (label: string, at: string, recur?: string) => post("/api/chime", { kind: "alarm", label, at, recur });
 export const cancelChimeApi = (id: string) => post("/api/chime/cancel", { id });
 export const snoozeChimeApi = (id: string, ms?: number) => post("/api/chime/snooze", { id, ms });
 
 // ── the Watch — local-only cameras ──
-export const getCameras = () => fetch("/api/cameras").then((r) => r.json());
+export const getCameras = () => get("/api/cameras");
 export const addCameraApi = (c: { name: string; location?: string; kind: "snapshot" | "rtsp" | "ring"; url?: string }) => post("/api/cameras", c);
 export const removeCameraApi = (id: string) => post("/api/cameras/remove", { id });
 
@@ -296,7 +316,7 @@ export const getYard = () => fetch("/api/yard").then(async (r) => {
   if (r.status === 403) return { on: false, refused: true, recent: [] };
   return r.json();
 });
-export const getYardJob = (id: string) => fetch(`/api/yard/job/${encodeURIComponent(id)}`).then((r) => r.json());
+export const getYardJob = (id: string) => get(`/api/yard/job/${encodeURIComponent(id)}`);
 // What a job actually changed. An auto-applied edit stays inspectable afterwards rather
 // than being something you have to take on trust.
 export const getYardJobDiffs = (id: string) =>
@@ -331,7 +351,7 @@ export const getPlaybooks = () => fetch("/api/playbooks").then(async (r) => {
   if (r.status === 403) return { playbooks: [], refused: true };
   return r.json();
 });
-export const getPlaybook = (id: string) => fetch(`/api/playbooks/${encodeURIComponent(id)}`).then((r) => r.json());
+export const getPlaybook = (id: string) => get(`/api/playbooks/${encodeURIComponent(id)}`);
 export const savePlaybook = (input: { id?: string; name: string; template: string }) => yardPost("/api/playbooks", input);
 export const deletePlaybook = (id: string) => yardPost(`/api/playbooks/${encodeURIComponent(id)}`, null, "DELETE");
 export const importPlaybook = (text: string, filename?: string) => yardPost("/api/playbooks/import", { text, filename });
@@ -349,9 +369,9 @@ export const setPairToken = (t: string) => { try { localStorage.setItem(PAIR_KEY
 export const clearPairToken = () => { try { localStorage.removeItem(PAIR_KEY); } catch { /* nothing to clear */ } };
 
 // Ungated on purpose — a browser must be able to learn that pairing is what it needs.
-export const pairStatus = () => fetch("/api/pair/status").then((r) => r.json());
+export const pairStatus = () => get("/api/pair/status");
 export const requestYardPairing = (label: string) => post("/api/yard/pair/request", { label });
-export const collectYardPairing = (id: string) => fetch(`/api/yard/pair/collect?id=${encodeURIComponent(id)}`).then((r) => r.json());
+export const collectYardPairing = (id: string) => get(`/api/yard/pair/collect?id=${encodeURIComponent(id)}`);
 export const yardPairPending = () => fetch("/api/yard/pair/pending").then((r) => (r.ok ? r.json() : { pending: [], paired: [], notApp: true }));
 export const approveYardPairing = (id: string, code: string) => post("/api/yard/pair/approve", { id, code });
 export const denyYardPairing = (id: string) => post("/api/yard/pair/deny", { id });
@@ -430,9 +450,9 @@ export const getYardProjects = () => fetch("/api/yard/projects").then(async (r) 
   if (r.status === 403) return { projects: [], refused: true };
   return r.json();
 });
-export const getYardProject = (slug: string) => fetch(`/api/yard/projects/${encodeURIComponent(slug)}`).then((r) => r.json());
+export const getYardProject = (slug: string) => get(`/api/yard/projects/${encodeURIComponent(slug)}`);
 export const getYardProjectFile = (slug: string, path: string) =>
-  fetch(`/api/yard/projects/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`).then((r) => r.json());
+  get(`/api/yard/projects/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`);
 export const yardPreviewUrl = (slug: string) => `/api/yard/preview/${encodeURIComponent(slug)}/`;
 // A5 — one specific file's URL (image preview, download). Encode each path SEGMENT, not
 // the whole path — encoding "/" itself would break the route's wildcard match.
@@ -454,8 +474,7 @@ export interface ConnectorStatus {
 export interface ConnectorRow { id: string; title: string; sub?: string; url?: string }
 
 export const getConnectors = (refresh = false) =>
-  fetch(`/api/connectors${refresh ? "?refresh=1" : ""}`)
-    .then((r) => r.json())
+  get(`/api/connectors${refresh ? "?refresh=1" : ""}`)
     .then((j) => (j?.connectors || []) as ConnectorStatus[]);
 
 // Surfaces the server's own sentence — "that Slack token was rejected" and "Slack did not answer
