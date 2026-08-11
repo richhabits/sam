@@ -22,6 +22,7 @@ import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
 import { parsePairLink } from './lib/pairlink';
+import { normalizeHost, pairedDespiteError } from './lib/pairstate';
 import { parseQuickLink } from './lib/quicklink';
 import SettingsScreen from './SettingsScreen';
 import TasksScreen from './TasksScreen';
@@ -105,10 +106,17 @@ export default function App() {
         // transport reads it synchronously — restoring it later would let the first render's
         // requests go to the network before the flag arrived.
         const [token, saved, inDemo] = await Promise.all([getToken(), getHost(), loadDemo()]);
+        // A pairing that COMPLETED while this read was in flight wins — see `claimed`. Launching
+        // from a QR banner starts both at once; this read asks a keychain that can take its time
+        // (first unlock after a reboot), the claim writes a token in ~20ms, and the answer that
+        // arrives late is the one from before the write. Writing it in anyway is how a paired
+        // phone showed the pairing form with "This phone is paired" on its own lock screen.
+        if (claimed.current) return;
         if (saved) setHostInput(saved);
         setDemo(inDemo);
         setPaired(!!token || inDemo);
       } catch (e: any) {
+        if (claimed.current) return;
         setPaired(false);
         setError(e?.message ? `Couldn't read this device's pairing: ${e.message}` : "Couldn't read this device's pairing.");
       }
@@ -126,12 +134,20 @@ export default function App() {
     if (paired && !demo) ensurePermission();
   }, [paired, demo]);
 
+  // Set the moment a claim actually succeeds, and never cleared. Read by the boot effect above,
+  // which starts at the same instant and must not answer over the top of it with a stale
+  // keychain read. A ref rather than state on purpose: the boot effect needs the CURRENT value
+  // when its promise settles, not the one captured when it was created.
+  const claimed = useRef(false);
+
   const doClaim = useCallback(
     async (withHost = host, withCode = code) => {
       setError('');
       setBusy(true);
+      const base = normalizeHost(withHost);
       try {
         await claim(withHost, withCode);
+        claimed.current = true;
         setPaired(true);
         setSurface('agent');
         // Confirm the channel at the one moment the operator is watching for it. Pairing is
@@ -143,6 +159,28 @@ export default function App() {
           await notify('SAM', 'This phone is paired. Notifications will reach you here.');
         }
       } catch (e: any) {
+        // "That code was already used" is precisely what the server says when the FIRST claim of
+        // this code SUCCEEDED — so the error is evidence of a pairing, not of a failure, and
+        // showing it red is how the operator ends up staring at the pairing form holding a
+        // working token. Ask the keychain who is right before believing the server: a stored
+        // token for THIS host means this phone is paired and should simply go through.
+        //
+        // Host-matched deliberately. A bare "we hold some token" would wave through a phone
+        // re-pairing to a DIFFERENT Mac on the strength of its old machine's token, which is the
+        // silent wrong-machine failure the boot read above already had to be fixed for.
+        try {
+          const [storedToken, storedHost] = await Promise.all([getToken(), getHost()]);
+          if (pairedDespiteError({ targetHost: base, storedHost, storedToken })) {
+            claimed.current = true;
+            setPaired(true);
+            setSurface('agent');
+            return;
+          }
+        } catch {
+          // Keychain unreadable — we cannot claim to know better than the server, so fall
+          // through and show its error. Never swallow: an unreadable keychain that silently
+          // reported success would be a phone that looks paired and can authenticate nothing.
+        }
         setError(e?.message || 'pairing failed');
       } finally {
         setBusy(false);
@@ -157,7 +195,13 @@ export default function App() {
   // the app, and the 'url' listener fires for the same one. Without this guard the first claim
   // consumed the code, the second got "already used", and a pairing that had actually SUCCEEDED
   // showed the operator a red error.
+  //
+  // Keyed on the CODE as well as the raw URL, because the two deliveries are not required to be
+  // byte-identical — a trailing slash or a re-encoded query is enough for a string-keyed guard
+  // to see two different URLs and let the second claim through. The code is the thing that is
+  // actually single-use, so it is the thing to key on.
   const handledUrls = useRef<Set<string>>(new Set());
+  const handledCodes = useRef<Set<string>>(new Set());
 
   const handleUrl = useCallback(
     (url: string | null) => {
@@ -175,6 +219,8 @@ export default function App() {
 
       const link = parsePairLink(url);
       if (!link) return;
+      if (handledCodes.current.has(link.code)) return;
+      handledCodes.current.add(link.code);
       const target = link.host || host;
       setHostInput(target);
       setCode(link.code);

@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { demoApi, isDemo } from "./demo";
+import { normalizeHost } from "./pairstate";
 
 // How this device names itself in SAM's device registry — the operator's revoke list. RN's
 // User-Agent is a bare CFNetwork/Darwin string with no device in it, so without this every
@@ -46,7 +47,9 @@ export class ApiError extends Error {
  *  /pair?code=… in a browser (see POST /api/pair/claim in server/index.ts). Stores the host
  *  too, so every call after this one knows where to go without asking again. */
 export async function claim(host: string, code: string): Promise<void> {
-  const base = host.trim().replace(/\/+$/, "");
+  // Shared with the "did we already pair?" check in App.tsx — one rule for what counts as the
+  // same machine, so the host stored here and the host compared against later cannot drift.
+  const base = normalizeHost(host);
   const res = await fetch(`${base}/api/pair/claim`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-SAM-Client": CLIENT_HINT },
