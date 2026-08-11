@@ -48,6 +48,32 @@ const SHAPES: RegExp[] = [
   /\b[A-Fa-f0-9]{40,}\b/g,                       // long hex: session ids, sha-style secrets
 ];
 
+// The shapes above, MINUS the bare long-hex one. A 40-char hex run is the right call when the job
+// is "never write a secret to a log" — over-redacting a log costs nothing. It is the wrong call
+// when the job is "should this request leave the machine", because a git SHA is exactly 40 hex
+// characters, so every github.com/…/commit/<sha> URL would be refused as an exfiltration attempt.
+// Blocking real work to stop an imagined attack is its own failure, so egress judges only shapes
+// that carry a provider prefix and cannot plausibly be anything else.
+const PREFIXED_SHAPES = SHAPES.slice(0, -1);
+
+/** Does this text carry something that is UNAMBIGUOUSLY a credential — a known secret value from
+ *  this machine's environment, or a provider-prefixed key? Used for egress decisions, where a
+ *  false positive breaks ordinary browsing rather than merely muddying a log line. */
+export function carriesKnownCredential(text: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const s = String(text ?? "");
+  if (!s) return false;
+  for (const name of sensitiveEnvNames(env)) {
+    const v = env[name];
+    if (!v) continue;
+    for (const part of v.split(",")) {
+      const p = part.trim();
+      if (p.length >= 8 && s.includes(p)) return true;
+    }
+  }
+  if (URL_CREDENTIAL.test(s)) { URL_CREDENTIAL.lastIndex = 0; return true; }
+  return PREFIXED_SHAPES.some((re) => { re.lastIndex = 0; const hit = re.test(s); re.lastIndex = 0; return hit; });
+}
+
 // Credentials carried INSIDE a URL — postgres://user:pw@host, https://user:pw@hook. Neither half
 // of the scrub caught these: the password has no recognisable shape, and by-reference only knows
 // variables whose NAME ends in _TOKEN/_KEY/_SECRET, which DATABASE_URL does not. So a connection

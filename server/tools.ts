@@ -315,9 +315,42 @@ async function runCommand(cmd: string): Promise<string> {
 
 // ── FILES ────────────────────────────────────────────────────
 const safePath = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
+
+// Files that are ONLY ever credentials. read_file is safe:true, and safe:true means the agent loop
+// never asks — see agent.ts, where the gate is `!tool.safe && !mayAutoRun(...)`, so the whole tier
+// system simply does not apply to it. Combined with web_fetch (also safe:true, also never asks,
+// and whose SSRF guard blocks INTERNAL targets rather than egress), that was a two-step, entirely
+// silent exfiltration path: read ~/.ssh/id_rsa, then GET it to an attacker's host, no prompt at
+// any point. The only thing standing in the way was the UNTRUSTED fence persuading the model not
+// to comply — a behavioural control doing a mechanism's job.
+//
+// This is a refusal, not a capability removal: `run_command` can still cat any of these, and it is
+// DANGEROUS, so a human sees the exact command and approves it. The power stays; the SILENCE goes.
+const CREDENTIAL_PATH = [
+  /(^|\/)\.ssh\//i,                                   // private keys, authorized_keys, known_hosts
+  /(^|\/)\.aws\/(credentials|config)$/i,
+  /(^|\/)\.gnupg\//i,
+  /(^|\/)\.(netrc|npmrc|pypirc)$/i,
+  /(^|\/)\.docker\/config\.json$/i,
+  /(^|\/)\.kube\/config$/i,
+  /(^|\/)\.config\/gh\/hosts\.yml$/i,
+  /(^|\/)\.env(\.[\w.-]+)?$/i,                        // .env, .env.local, .env.production
+  /\.(pem|key|p12|pfx|p8|keystore|jks)$/i,            // private key / keystore material
+  /(^|\/)Library\/Keychains\//i,
+  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)(\.pub)?$/i,
+];
+export function isCredentialPath(p: string): boolean {
+  return CREDENTIAL_PATH.some((re) => re.test(p));
+}
 async function readFileTool(path: string): Promise<string> {
   try {
     const sp = safePath(path);
+    // Checked on the RESOLVED path, so "~/x/../.ssh/id_rsa" and a symlink-free relative walk both
+    // land on the same string this matches against.
+    if (isCredentialPath(sp)) {
+      logSecurity("alert", "blocked-credential-read", `Refused an unattended read of a credential file: ${sp}`, "agent");
+      return `Blocked: ${path} holds credentials, and read_file runs without asking you first. If you want SAM to see it, ask for the shell command instead (\`cat ${path}\`) — that one shows you the exact command and waits for your approval.`;
+    }
     const ext = extname(sp).toLowerCase();
     
     if (ext === ".pdf") {

@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { Agent } from "undici";
+import { carriesKnownCredential } from "./scrub.ts";
 
 // Guard for OUTBOUND fetches of URLs SAM did not choose itself.
 //
@@ -86,6 +87,24 @@ export async function checkOutboundUrl(raw: string, resolve: Resolver = dnsResol
     return { ok: false, reason: `blocked host ${host}` };
   }
   if (isPrivateAddress(host)) return { ok: false, reason: `private address ${host}` };
+
+  // EGRESS, not ingress. Everything above asks "is this host safe to reach"; this asks "is this
+  // request carrying something out". web_fetch and open_url are safe:true, which in agent.ts means
+  // they never ask the operator — so a model that has been talked into it by injected content can
+  // put a secret in a query string and send it anywhere public, silently, and no gate above would
+  // notice, because evil.com is a perfectly ordinary public host.
+  //
+  // Reuses the Scrub's knowledge instead of inventing a second notion of "looks like a secret" —
+  // but the STRICT half of it (carriesKnownCredential): a known secret value from this machine's
+  // env, a provider-prefixed key, or a password embedded in the URL. Deliberately not the Scrub's
+  // bare long-hex rule, which is right for logs and wrong here — a git SHA is 40 hex characters,
+  // so it would refuse every github.com/…/commit/<sha> as an exfiltration attempt. Checked on the
+  // decoded URL so percent-encoding cannot hide the payload.
+  let decoded = raw;
+  try { decoded = decodeURIComponent(raw); } catch { /* malformed escape — judge the raw form */ }
+  if (carriesKnownCredential(decoded)) {
+    return { ok: false, reason: "the URL carries a credential — refusing to send it off this machine" };
+  }
 
   // A bare name still has to be resolved — see the note above. A literal IP host IS its own address.
   let address = host;

@@ -18,6 +18,7 @@ import { join, dirname } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Tool } from "./tools.ts";
+import { markUntrusted } from "./agent.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = join(process.env.VAULT_DIR || join(ROOT, "vault"), "mcp.json");
@@ -67,6 +68,11 @@ export async function loadMcpTools(): Promise<Tool[]> {
       const { tools } = await client.listTools();
       for (const t of tools) {
         const name = `mcp_${label}_${t.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 60);
+        // Everything an MCP server returns is third-party text — an issue body, a customer name,
+        // a chat message — authored by someone who is not the operator. Fence it like web_fetch.
+        // Marked HERE, at the one place these names come into existence, because the static
+        // UNTRUSTED_SOURCE set cannot list a name that does not exist until a server advertises it.
+        markUntrusted(name);
         const props = Object.keys((t.inputSchema as any)?.properties || {});
         out.push({
           name,
