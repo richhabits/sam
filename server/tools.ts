@@ -412,7 +412,12 @@ async function listDir(path: string): Promise<string> {
     const rows = await Promise.all(items.slice(0, 200).map(async (n) => {
       try { const s = await stat(resolve(dir, n)); return `${s.isDirectory() ? "📁" : "📄"} ${n}`; } catch { return `   ${n}`; }
     }));
-    return rows.join("\n") || "(empty)";
+    if (!rows.length) return "(empty)";
+    // Say when the list was cut. Every other walk in this file reports its cap ("scan capped at
+    // 5000 — folder is larger"); this one silently returned the first 200 of 900, so both the model
+    // and the operator read a partial listing as the whole folder.
+    const more = items.length > rows.length ? `\n…and ${items.length - rows.length} more (showing the first ${rows.length})` : "";
+    return rows.join("\n") + more;
   } catch (e: any) { return `Could not list ${path}: ${e?.message}`; }
 }
 // analyse_data — profile a CSV instead of dumping it. read_file on a 20k-row export gives the
@@ -560,9 +565,19 @@ async function findDuplicates(path: string): Promise<string> {
     if (scanned === 0) return `📂 ${path} — empty (no readable files).`;
 
     // Pass 2 — for each colliding size, hash the contents and group truly-identical files.
-    const groups: { size: number; files: string[] }[] = [];
+    const groups: { size: number; files: string[]; sizeOnly?: boolean }[] = [];
     for (const [size, files] of bySize) {
       if (files.length < 2) continue;   // unique size → can't be a duplicate, skip hashing
+      // Files above this are compared by size alone rather than hashed. readFile pulls the WHOLE
+      // file into memory to hash it, so two 4 GB videos of equal size — the single likeliest pair
+      // in a Downloads or Movies folder — meant an 8 GB allocation inside a "read-only, safe" tool.
+      // Bounded rather than streamed on purpose: streaming every candidate would make a scan of a
+      // media folder take minutes, and this tool exists to be a quick answer.
+      const HASH_MAX = 256 * 1024 * 1024;
+      if (size > HASH_MAX) {
+        groups.push({ size, files, sizeOnly: true });
+        continue;
+      }
       const byHash = new Map<string, string[]>();
       for (const f of files) {
         let hash: string;
@@ -587,7 +602,11 @@ async function findDuplicates(path: string): Promise<string> {
     const top = groups.slice(0, 5).map((g) => {
       const names = g.files.slice(0, 4).map((f) => `    ${f.replace(homedir(), "~")}`).join("\n");
       const more = g.files.length > 4 ? `\n    …and ${g.files.length - 4} more` : "";
-      return `  • ${g.files.length} copies × ${humanSize(g.size)} (reclaim ${humanSize(g.size * (g.files.length - 1))}):\n${names}${more}`;
+      // sizeOnly groups were never hashed, so say "same size" rather than "copies" — claiming
+      // identical contents on a size match alone would be exactly the kind of confident-and-wrong
+      // answer that gets a file deleted.
+      const what = g.sizeOnly ? `${g.files.length} files of the same size (too large to hash — verify before deleting)` : `${g.files.length} copies`;
+      return `  • ${what} × ${humanSize(g.size)} (reclaim ${humanSize(g.size * (g.files.length - 1))}):\n${names}${more}`;
     }).join("\n");
 
     return [
@@ -863,6 +882,12 @@ async function getWeather(place: string): Promise<string> {
 }
 async function openUrl(url: string): Promise<string> {
   if (!/^https?:\/\//.test(url)) url = "https://" + url;
+  // The SAME guard web_fetch has, which this was missing — and the omission mattered MORE here,
+  // not less. web_fetch retrieves a page into SAM; open_url hands the URL to the operator's real
+  // browser, carrying their real cookies. Unguarded and safe:true (so it never asks), a model
+  // talked into it by injected content could aim the browser at http://192.168.1.1/admin?… or at
+  // SAM's own loopback API, and the request would arrive already authenticated as the operator.
+  await assertPublicUrl(url);
   await sh(openCmd(url)); return `Opened ${url} in your browser.`;
 }
 async function searchFiles(q: string): Promise<string> {
@@ -1040,7 +1065,8 @@ async function readEmails(): Promise<string> {
     set s to sender of m
     set sub to subject of m
     set b to content of m
-    set out to out & s & " | " & sub & " | " & (text 1 thru (if length of b > 100 then 100 else length of b) of b) & "\\n"
+    if length of b > 100 then set b to text 1 thru 100 of b
+    set out to out & s & " | " & sub & " | " & b & "\\n"
   end repeat
   return out
 end tell`);
@@ -1048,24 +1074,43 @@ end tell`);
   } catch (e: any) { return `Couldn't read Mail: ${e?.message}`; }
 }
 
+// Recent Notes. Two things in the original were not AppleScript at all, so this tool raised a
+// SYNTAX error on every single call since the day it was written — and the catch below turned that
+// into "Couldn't read Notes: …", which reads like a missing permission. It was never a permission.
+//
+//   `sort notes by modification date descending`  — Notes has no `sort` command; the compiler
+//        stops on the plural class name.
+//   `text 1 thru (if length of b > 300 then 300 else length of b) of b`  — AppleScript has no
+//        inline conditional. `if` is a statement, never an expression.
+//
+// Ordering now happens in TypeScript, where sorting is a solved problem: AppleScript emits a
+// sortable ISO timestamp per note and JS does the rest. The window bounds the work on a large
+// library rather than reading every note to find eight.
+const NOTE_SEP = "␞";   // record separator — cannot occur in note text
 async function readAppleNotes(): Promise<string> {
   try {
-    const out = await osa(`tell application "Notes"
+    const raw = await osa(`tell application "Notes"
   set out to ""
-  set myNotes to sort notes by modification date descending
-  set limit to 8
-  set c to 0
-  repeat with n in myNotes
+  set cutoff to (current date) - (90 * days)
+  repeat with n in (notes whose modification date is greater than cutoff)
     if name of container of n is not "Recently Deleted" then
-      set c to c + 1
-      if c > limit then exit repeat
+      set d to modification date of n
+      set iso to (year of d as string) & "-" & text -2 thru -1 of ("0" & (month of d as integer)) & "-" & text -2 thru -1 of ("0" & (day of d)) & " " & text -2 thru -1 of ("0" & (hours of d)) & ":" & text -2 thru -1 of ("0" & (minutes of d))
       set b to plaintext of n
-      set out to out & "== " & (name of n) & " ==\\n" & (text 1 thru (if length of b > 300 then 300 else length of b) of b) & "\\n\\n"
+      if length of b > 300 then set b to text 1 thru 300 of b
+      set out to out & iso & "${NOTE_SEP}" & (name of n) & "${NOTE_SEP}" & b & "${NOTE_SEP}${NOTE_SEP}"
     end if
   end repeat
   return out
 end tell`);
-    return clip(out.trim()) || "No notes found.";
+    const notes = raw.split(`${NOTE_SEP}${NOTE_SEP}`)
+      .map((r) => r.split(NOTE_SEP))
+      .filter((p) => p.length >= 3)
+      .map(([when, title, body]) => ({ when: when.trim(), title: title.trim(), body: body.trim() }))
+      .sort((a, b) => b.when.localeCompare(a.when))   // ISO-ish strings sort chronologically as text
+      .slice(0, 8);
+    if (!notes.length) return "No notes modified in the last 90 days.";
+    return clip(notes.map((n) => `== ${n.title} == (${n.when})\n${n.body}`).join("\n\n"));
   } catch (e: any) { return `Couldn't read Notes: ${e?.message}`; }
 }
 
