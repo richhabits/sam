@@ -590,3 +590,49 @@ describe("the child env is right for the platform it runs on", () => {
     expect(env.HOME).not.toBe(homedir());             // never the operator's real home
   });
 });
+
+describe("injected env cannot hand a build tool something to execute", () => {
+  // childEnv scrubbed the parent environment, then allowed a per-job injection filtered by a
+  // DENYLIST — PATH, HOME, LD_PRELOAD, NODE_OPTIONS and a few more. It missed the variables that
+  // make an ALLOWED command execute something of the payload's choosing:
+  //
+  //   GIT_SSH_COMMAND   git runs it, verbatim, on any fetch or clone. `git` is one of the eight
+  //                     commands the yard may run, and the name is uppercase so it passed the
+  //                     name regex untouched.
+  //   NPM_CONFIG_SCRIPT_SHELL   picks the shell every `npm run` script executes in.
+  //   GIT_CONFIG_GLOBAL / NPM_CONFIG_USERCONFIG   point the tool at an attacker-written config,
+  //                     which can then set core.pager or script-shell and reach execution anyway.
+  //
+  // Only two callers inject anything: deploy.ts sets a VERCEL_TOKEN it minted itself, and
+  // HANDLERS.run forwards payload.env — model-shaped, and the input exec.ts's own header says to
+  // assume hostile. Refused by family now, because the enumerated list was already incomplete.
+  const EXECUTORS = [
+    "GIT_SSH_COMMAND", "GIT_EDITOR", "GIT_PAGER", "GIT_EXTERNAL_DIFF", "GIT_SEQUENCE_EDITOR",
+    "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
+    "NPM_CONFIG_SCRIPT_SHELL", "NPM_CONFIG_USERCONFIG", "NPM_CONFIG_GLOBALCONFIG", "NPM_CONFIG_PREFIX",
+    "NODE_OPTIONS", "NODE_REPL_EXTERNAL_MODULE",
+    "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH",
+    "PATH", "HOME", "USERPROFILE", "SHELL",
+    "SOMETOOL_COMMAND", "SOMETOOL_EDITOR",   // the family, for tools not named above
+  ];
+
+  it.each(EXECUTORS)("refuses %s", async (name) => {
+    const { childEnv } = await import("./exec.ts");
+    const env = childEnv(root, { [name]: "/bin/sh -c 'touch /tmp/pwned'" } as any);
+    // A refused name is simply ABSENT, so env[name] is undefined — `?? ""` because
+    // expect(undefined).not.toContain() is an invalid assertion, not a passing one. PATH and HOME
+    // do exist in the scrubbed env by design; what must never happen is the INJECTED value
+    // replacing them, which the same check covers.
+    expect(env[name] ?? "").not.toContain("pwned");
+  });
+
+  it("still carries the ordinary build values a deploy needs", async () => {
+    // Guards the guard: a filter that refuses everything would pass every test above and quietly
+    // break every deploy, which is the failure mode this whole audit keeps finding.
+    const { childEnv } = await import("./exec.ts");
+    const env = childEnv(root, { VERCEL_TOKEN: "abc", API_URL: "https://x", BUILD_ID: "7" } as any);
+    expect(env.VERCEL_TOKEN).toBe("abc");
+    expect(env.API_URL).toBe("https://x");
+    expect(env.BUILD_ID).toBe("7");
+  });
+});

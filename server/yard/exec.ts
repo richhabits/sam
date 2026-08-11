@@ -326,12 +326,40 @@ export function childEnv(projectRoot: string, injected: Record<string, string> =
   // smuggle in something like LD_PRELOAD or NODE_OPTIONS.
   for (const [k, v] of Object.entries(injected)) {
     if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(k)) continue;
-    // AUDIT FIX: also block LD_LIBRARY_PATH / DYLD_LIBRARY_PATH — like LD_PRELOAD, they redirect the
-    // dynamic loader to attacker-controlled shared libraries.
-    if (["PATH", "HOME", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "NODE_OPTIONS"].includes(k)) continue;
+    if (isExecutableEnvName(k)) continue;
     safe[k] = String(v);
   }
   return safe;
+}
+
+// Environment variables whose VALUE a build tool will execute, or which point a build tool at
+// code or config that it will then execute. Refused by FAMILY rather than by instance, because
+// the enumerated form was already incomplete in a way that mattered:
+//
+//   GIT_SSH_COMMAND       git runs this as a command on any fetch/clone — and `git` is one of the
+//                         eight commands the yard is allowed to run. Uppercase, so it sailed
+//                         through the name regex, and it was not on the list.
+//   GIT_EDITOR/PAGER/…    likewise executed by git.
+//   GIT_CONFIG_GLOBAL     redirects git at an attacker-written config, which can set core.pager
+//                         or core.sshCommand and reach execution the long way round.
+//   NPM_CONFIG_SCRIPT_SHELL   npm reads NPM_CONFIG_* as config; this one picks the shell that
+//                         runs every `npm run` script.
+//   NPM_CONFIG_USERCONFIG same trick as GIT_CONFIG_GLOBAL, one layer over.
+//
+// Only two callers inject anything: deploy.ts sets a single VERCEL_TOKEN it minted itself, and
+// HANDLERS.run forwards `payload.env` — which is model-shaped, and therefore the one that has to
+// be assumed hostile. This file's own header says it: "a model will eventually ask for something
+// ruinous without meaning to."
+const EXEC_ENV_FAMILIES = [
+  /^(PATH|HOME|USERPROFILE|SHELL)$/,           // where things are found, and who we are
+  /^(LD_|DYLD_)/,                              // dynamic loader redirection
+  /^NODE_/,                                    // NODE_OPTIONS, NODE_REPL_EXTERNAL_MODULE, …
+  /^NPM_CONFIG_/,                              // npm config override, incl. SCRIPT_SHELL
+  /^GIT_/,                                     // git executes several of these outright
+  /_(COMMAND|EDITOR|PAGER|SHELL|USERCONFIG|GLOBALCONFIG)$/,   // the general shape, for tools not named above
+];
+export function isExecutableEnvName(name: string): boolean {
+  return EXEC_ENV_FAMILIES.some((re) => re.test(name));
 }
 
 export interface ExecResult { code: number; stdout: string; stderr: string; truncated: boolean }
