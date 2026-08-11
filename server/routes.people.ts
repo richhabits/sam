@@ -13,6 +13,17 @@ import { writeFileAtomic } from "./atomic.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The first non-internal IPv4 interface — i.e. an address another device on the LAN can
+// actually reach. Exported (not local to registerPeopleRoutes) because /api/pair/new in
+// index.ts needs the exact same thing and must never fall back to req.headers.host: a request
+// from the desktop app's OWN renderer to its own embedded server has Host: localhost, which is
+// correct for that request and useless for a URL about to be handed to a different device.
+export function lanIP(): string | null {
+  const nets = os.networkInterfaces();
+  const n = Object.values(nets).flat().find((x) => x && x.family === "IPv4" && !x.internal);
+  return n?.address || null;
+}
+
 // PEOPLE SAM knows by sight, push subscriptions, MCP presets and Android signing.
 //
 // `port` is INJECTED rather than read from a shared module: it is needed once, to build the
@@ -69,11 +80,6 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
 
   // 📱 Phone link — loopback-only. Returns the scan-me URL (with token) so Settings can show a
   // QR the phone camera reads → lands authenticated. Only reveals the token to a local request.
-  function lanIP(): string | null {
-    const nets = os.networkInterfaces();
-    const n = Object.values(nets).flat().find((x) => x && x.family === "IPv4" && !x.internal);
-    return n?.address || null;
-  }
   app.get("/api/phone-link", (req, res) => {
     if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
     const remoteOn = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;

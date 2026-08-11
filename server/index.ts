@@ -88,7 +88,7 @@ import { startKeeper } from "./keeper.ts";
 import { renderConsole } from "./console-view.ts";
 import { renderScope, scopeData } from "./scope-view.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
-import { registerPeopleRoutes } from "./routes.people.ts";
+import { registerPeopleRoutes, lanIP } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
@@ -252,7 +252,12 @@ app.post("/api/pair/claim", (req, res) => {
 app.post("/api/pair/new", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "pairing codes are minted from SAM on this machine only" }); return; }
   const code = mintPairingCode(Date.now());
-  const host = (req.headers.host || `localhost:${PORT}`).split(",")[0];
+  // Was req.headers.host — correct for the request that hit this handler (the desktop app's own
+  // renderer, calling its own embedded server, legitimately sees Host: localhost) and wrong for
+  // the URL this response hands to a DIFFERENT device: a phone pointed at "localhost" is pointed
+  // at itself. lanIP() (server/routes.people.ts) is the same fix /api/phone-link already needed
+  // for the same reason.
+  const host = `${lanIP() || "localhost"}:${PORT}`;
   res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 900 });
 });
 // Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is

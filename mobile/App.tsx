@@ -256,7 +256,13 @@ export default function App() {
           <Section
             ios={ios}
             header="Pair this phone"
-            footer="On your Mac, open SAM → Dashboard → Pair a phone, and copy the address and code it shows. A code is one-time and lasts 15 minutes."
+            // The Mac side (Dashboard → Pair a phone) has shown a scannable QR since 2026-08-11 —
+            // this screen never said so, so the only path anyone could find was typing 32 hex
+            // characters by hand. Scanning needs no button here: point iOS's own Camera app at
+            // the QR on the Mac, tap the banner it offers, and the sam:// link it opens is
+            // already handled by handleUrl()/doClaim() above — this footer is the only thing
+            // that was actually missing.
+            footer="Point your phone's Camera app at the QR code on your Mac (SAM → Dashboard → Pair a phone) and tap the banner it shows — that's it. No camera in this screen; iOS's own Camera app reads it. Prefer typing? Copy the address and code shown there instead. A code is one-time and lasts 15 minutes."
           >
             <Field
               ios={ios}
