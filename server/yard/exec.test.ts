@@ -553,6 +553,28 @@ describe("running on Windows", () => {
     expect(joined).toMatch(/AppData/);
     expect(joined).toMatch(/\.ssh/);
   });
+
+  it("denies THIS install's own source, wherever it actually lives", async () => {
+    // The list named join(homedir(), "sam") — a GUESS about where SAM is, and false on any
+    // machine that put it elsewhere (this one runs from an external volume). The deny list would
+    // then protect a stale clone at ~/sam while leaving the live tree reachable: point
+    // SAMYARD_DIR inside ~/sam and the yard refuses; point it inside the real checkout and it did
+    // not. samOwnRoot() derives it from this module's own location instead.
+    const { denyList, samOwnRoot, hitsDenyList, planExec } = await import("./exec.ts");
+    expect(denyList()).toContain(samOwnRoot());
+    expect(hitsDenyList(join(samOwnRoot(), "server", "index.ts"))).toBeTruthy();
+    // …and a project rooted inside it is refused outright, not merely confined.
+    const r = planExec(join(samOwnRoot(), "yardproj"), "npm", ["install"], { handshake: true });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rule).toBe("deny");
+  });
+
+  it("still allows an ordinary project outside the denied trees", async () => {
+    // Guards the guard: a deny list that refuses everything would pass the test above and make
+    // the yard useless.
+    const { planExec } = await import("./exec.ts");
+    expect(planExec(root, "npm", ["install"], { handshake: true }).ok).toBe(true);
+  });
 });
 
 describe("the child env is right for the platform it runs on", () => {

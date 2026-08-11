@@ -31,6 +31,7 @@ import { execFile } from "node:child_process";
 import { realpathSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { resolve, sep, dirname, isAbsolute, join } from "node:path";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 // Authorisation for the yard is enforced where work is CREATED, not where it runs.
 // Every yard route demands the Handshake passkey unconditionally — see isYardTrusted in
 // the server — so a job can only exist because something holding the per-launch secret
@@ -51,11 +52,24 @@ export const ALLOWED_COMMANDS = ["npm", "npx", "node", "git", "vercel", "railway
 
 // Never reachable, whatever a payload says and however it is spelled. Checked after
 // resolution, so a symlink or a `..` walk lands here too.
+// Where THIS SAM actually lives, derived rather than guessed. exec.ts sits at
+// <root>/server/yard/, so two levels up is the install — wherever it happens to be.
+export function samOwnRoot(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+}
+
 export function denyList(): string[] {
   const home = os.homedir();
   return [
     join(home, "flip-it"),        // the money rig, mid-experiment — radioactive
-    join(home, "sam"),            // SAM's own source
+    // SAM's own source, BOTH ways. join(home, "sam") is the standard install and was the only
+    // entry — a guess about where SAM is, which is false on any machine that put it elsewhere
+    // (this one runs from an external volume). The deny list would then have protected a clone
+    // while leaving the live tree reachable: point SAMYARD_DIR inside ~/sam and the yard refuses,
+    // point it inside the real checkout and it did not. Derive it, and keep the guess as well so a
+    // stale copy at ~/sam stays off limits too.
+    samOwnRoot(),
+    join(home, "sam"),
     join(home, "sam-signing"),    // code-signing material
     join(home, "sam-backups"),
     join(home, ".ssh"),
