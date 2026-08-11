@@ -1,6 +1,5 @@
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 import { safeBody } from './scrub';
 
 // SAM reaching your pocket. Two things arrive here:
@@ -74,15 +73,11 @@ export async function notify(title: string, body: string, data?: Record<string, 
   });
 }
 
-/** The device's APNs/FCM token, for when the operator wires a real push transport. Returns
- *  null on a simulator (no APNs registration) rather than throwing — that's the normal case
- *  during development, not an error worth surfacing. */
-export async function devicePushToken(): Promise<string | null> {
-  if (Platform.OS === 'web') return null;
-  try {
-    const { data } = await Notifications.getDevicePushTokenAsync();
-    return typeof data === 'string' ? data : null;
-  } catch {
-    return null;
-  }
-}
+// devicePushToken() lived here — an APNs/FCM token getter with NO caller anywhere in the app,
+// since the day it was written. Removed 2026-08-11 rather than left as scaffolding: an exported
+// function that fetches a push token is read as evidence that push works, and it does not. The
+// server's B4 push is Web Push / VAPID, which a native app cannot consume at all (see AGENTS.md),
+// so this was a door onto a road that was never built. Notifications here are LOCAL only.
+//
+// When a real transport lands it needs an APNs key from the operator's Apple account, and the
+// three lines this deleted are the least of that work.

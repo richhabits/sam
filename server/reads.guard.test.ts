@@ -38,6 +38,17 @@ const PRIVATE_READS = [
   "/api/swarms",
   "/api/forged",
   "/api/suggestions",
+  // Second sweep: configuration rather than content, but each one answers a question an
+  // attacker on this machine asks first — how far can SAM act unattended (/allow, /autopilot),
+  // what is installed and broken (/doctor), what other machines does it reach (/p2p/peers).
+  "/api/allow",
+  "/api/autopilot",
+  "/api/doctor",
+  "/api/billing",
+  "/api/p2p/peers",
+  // The telemetry preview BUILDS the real payload from live analytics — a panel whose entire
+  // purpose is proving nothing leaves the device was handing it to any local caller.
+  "/api/telemetry/preview",
 ];
 
 describe("reads carrying the operator's own content refuse an uncredentialed caller", () => {

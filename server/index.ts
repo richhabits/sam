@@ -169,10 +169,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// SECURITY · the Handshake — loopback position is not authorization. OPT-IN via SAM_REQUIRE_CONTROL_TOKEN:
-// off by default so nothing changes. When on, loopback position alone is NOT enough — mutating /api
-// calls must carry the per-launch secret the legit frontend holds (a random local process can't).
-// Remote mode has its own token, so this only guards the local channel. See control-token.ts.
+// SECURITY · the Handshake — loopback position is not authorization. ON by default since v3.0.0;
+// SAM_REQUIRE_CONTROL_TOKEN=0 is the documented opt-OUT (see handshakeEnforced in handshake.ts).
+// Mutating /api calls must carry the per-launch secret the legit frontend holds, which a random
+// local process cannot read. Remote mode has its own token, so this guards the local channel.
+//
+// This comment said "OPT-IN … off by default so nothing changes" until 2026-08-11 — true when the
+// Handshake shipped behind a flag, false since it was turned on, and left sitting above the code
+// that enforces it. A stale default in a security comment is worse than no comment: the next
+// person to touch this reads "off by default", believes a gate is inert, and reasons from there.
+//
+// NOTE the deliberate asymmetry this creates: passkeyRequiredForMutation returns false for GET, so
+// nothing here guards reads. Sensitive GETs carry their own check — canReadPrivate for the
+// shell/file-adjacent panels, canReadOwnContent for the operator's own content. A new GET that
+// returns anything personal and adds no guard of its own is unguarded, full stop.
 app.use((req, res, next) => {
   if (!passkeyRequiredForMutation(req, { enforced: handshakeEnforced(), remote: process.env.SAM_REMOTE === "1" || process.env.SAM_MESH === "1" })) return next();
   // A mutating call is authorised by EITHER the Electron preload passkey OR a paired session —
@@ -1144,7 +1154,12 @@ app.post("/api/confirm", async (req, res) => {
 app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, tier: toolTier(t.name, t.safe), description: t.description, allowed: isAllowed(t.name) }))));
 
 // ── STANDING AUTHORIZATIONS ("yes, always allow X") ──────────
-app.get("/api/allow", (_req, res) => res.json({ allowed: listAllowed() }));
+// The standing authorizations — which tools SAM may run WITHOUT asking. Reading this is reading
+// the operator's blast radius, and it is the natural first question of anything looking for one.
+app.get("/api/allow", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "what SAM is allowed to do on its own");
+  res.json({ allowed: listAllowed() });
+});
 app.post("/api/allow", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "Standing authorizations can only be changed on this computer, not remotely." });
   const { tool, on } = req.body as { tool: string; on: boolean };
@@ -1234,7 +1249,12 @@ app.get("/api/proactive", (req, res) => {
 });
 
 // ── Autopilot — lift the silly work (serious/outward actions still always ask) ──
-app.get("/api/autopilot", (_req, res) => res.json({ on: autopilotOn() }));
+// Paired with /api/allow above: together they say whether SAM acts unattended and how far it may
+// go. The POST already refuses a remote caller; the GET answered anyone.
+app.get("/api/autopilot", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "whether Autopilot is on");
+  res.json({ on: autopilotOn() });
+});
 app.post("/api/autopilot", (req, res) => { if (!isLoopback(req)) return res.status(403).json({ error: "Autopilot can only be toggled on this computer, not remotely." }); setAutopilot(!!req.body?.on); res.json({ on: autopilotOn() }); });
 
 // ── Autonomy consent (v1.8) — the "What can SAM do on its own?" pane + the autonomy log.
@@ -1295,10 +1315,19 @@ app.post("/api/telemetry", (req, res) => {
   res.json({ enabled: telemetryEnabled(), decided: true });
 });
 // Exactly what WOULD be sent, so the user can inspect it before deciding (transparency, no dark pattern).
-app.get("/api/telemetry/preview", (_req, res) => res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." }));
+// "Show me exactly what would be sent" — so it BUILDS the payload out of real analytics. The
+// honesty surface for telemetry was itself readable by anyone, which is the joke writing itself:
+// a panel proving nothing leaves the device, leaking it to any local caller.
+app.get("/api/telemetry/preview", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "what telemetry would send");
+  res.json({ payload: buildPayload(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString()), note: "null means telemetry is off — nothing is sent." });
+});
 
 // ── Doctor (v2.1) — "SAM isn't working" self-heal. Gathers the live world, returns exact fixes. ──
-app.get("/api/doctor", async (_req, res) => {
+app.get("/api/doctor", async (req, res) => {
+  // Doctor's whole job is to enumerate this machine's configuration and what is wrong with it —
+  // which is a reconnaissance report for anyone who is not the operator.
+  if (!canReadOwnContent(req)) return denyRead(res, "SAM's diagnostics");
   const st = providersStatus();
   const hasCloudKeys = Array.isArray(st?.providers) && st.providers.some((p: any) => (p?.keys ?? 0) > 0);
   const ollamaConfigured = !!st?.local?.ollama;
@@ -1311,7 +1340,10 @@ app.get("/api/doctor", async (_req, res) => {
 });
 
 // ── Billing (v2.0) — OFF by default. NEVER gates core (coreGated is always false). ──
-app.get("/api/billing", (_req, res) => res.json(billingStatus()));
+app.get("/api/billing", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "your billing");
+  res.json(billingStatus());
+});
 app.post("/api/billing/checkout", (req, res) => res.json(billingCheckout(String(req.body?.plan || "") as Plan)));
 
 // ── Preference memory (v1.8) — "What SAM has learned about you". Local, inspectable, deletable.
@@ -1398,7 +1430,12 @@ registerStudioRoutes(app);
 app.post("/api/schedules/:id/toggle", (req, res) => res.json(toggleSchedule(req.params.id)));
 
 // ── P2P Network — expose peer list to frontend ──
-app.get("/api/p2p/peers", (_req, res) => res.json({ self: getNodeId(), peers: getActivePeers() }));
+// This machine's node id and every peer it is talking to — a map of the operator's other
+// machines, handed over without asking who wanted it.
+app.get("/api/p2p/peers", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "your connected machines");
+  res.json({ self: getNodeId(), peers: getActivePeers() });
+});
 app.post("/api/p2p/broadcast", async (req, res) => {
   const { message, project } = req.body || {};
   if (!message?.trim()) return res.status(400).json({ error: "empty" });
