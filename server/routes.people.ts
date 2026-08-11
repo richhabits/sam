@@ -13,15 +13,45 @@ import { writeFileAtomic } from "./atomic.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The first non-internal IPv4 interface — i.e. an address another device on the LAN can
-// actually reach. Exported (not local to registerPeopleRoutes) because /api/pair/new in
-// index.ts needs the exact same thing and must never fall back to req.headers.host: a request
-// from the desktop app's OWN renderer to its own embedded server has Host: localhost, which is
-// correct for that request and useless for a URL about to be handed to a different device.
-export function lanIP(): string | null {
-  const nets = os.networkInterfaces();
-  const n = Object.values(nets).flat().find((x) => x && x.family === "IPv4" && !x.internal);
-  return n?.address || null;
+// The address another device on the LAN can actually reach SAM at. Exported (not local to
+// registerPeopleRoutes) because /api/pair/new in index.ts needs the exact same thing and must
+// never fall back to req.headers.host: a request from the desktop app's OWN renderer to its own
+// embedded server has Host: localhost, which is correct for that request and useless for a URL
+// about to be handed to a different device.
+//
+// "Non-internal" is NOT the same as "reachable", which is what the first cut of this assumed
+// when it took whichever address the OS happened to list first. Two ways that picks a dead one:
+//   • 169.254.x.x — the address a port invents for itself when DHCP never answered. A Mac with
+//     an unplugged Ethernet port or a dongle sitting idle advertises one permanently. It is
+//     flagged non-internal, it looks exactly like a LAN IP inside a QR code, and it routes
+//     nowhere. This is what the phone was being handed.
+//   • VPN / virtual / peer-to-peer adapters (utun, vmnet, docker…) — real addresses on networks
+//     the phone is not on.
+// So: reject self-assigned outright, and rank the rest by whether a phone on your Wi-Fi could
+// plausibly be on the same network, most-likely first.
+
+// Adapters that carry an address but not your LAN. `bridge` is deliberately absent — bridge100
+// is macOS Internet Sharing, where the phone genuinely IS on the other end.
+const VIRTUAL_IFACE = /^(utun|ipsec|ppp|awdl|llw|anpi|ap\d|vmnet|vboxnet|docker|veth|tap\d|tun\d|zt|wg)/i;
+const isSelfAssigned = (a: string) => a.startsWith("169.254.");
+// RFC1918 — the ranges a home/office router hands out, so the phone is on one of them.
+const isPrivate = (a: string) =>
+  a.startsWith("10.") || a.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(a);
+
+// `nets` is injectable so the ranking is testable without a machine that happens to have the
+// awkward interfaces plugged in.
+export function lanIP(nets: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces()): string | null {
+  let best: { address: string; score: number } | null = null;
+  for (const [name, addrs] of Object.entries(nets)) {
+    for (const a of addrs || []) {
+      if (a.family !== "IPv4" || a.internal || isSelfAssigned(a.address)) continue;
+      // Physical-vs-virtual dominates: a real NIC with a public address still beats a VPN's
+      // private one, because the phone is on the Wi-Fi, not inside the tunnel.
+      const score = (VIRTUAL_IFACE.test(name) ? 0 : 2) + (isPrivate(a.address) ? 1 : 0);
+      if (!best || score > best.score) best = { address: a.address, score };   // > keeps OS order on ties
+    }
+  }
+  return best?.address || null;
 }
 
 // PEOPLE SAM knows by sight, push subscriptions, MCP presets and Android signing.

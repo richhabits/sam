@@ -251,14 +251,20 @@ app.post("/api/pair/claim", (req, res) => {
 // power above being invited.
 app.post("/api/pair/new", (req, res) => {
   if (!isTrustedLocal(req)) { res.status(403).json({ error: "pairing codes are minted from SAM on this machine only" }); return; }
-  const code = mintPairingCode(Date.now());
   // Was req.headers.host — correct for the request that hit this handler (the desktop app's own
   // renderer, calling its own embedded server, legitimately sees Host: localhost) and wrong for
   // the URL this response hands to a DIFFERENT device: a phone pointed at "localhost" is pointed
   // at itself. lanIP() (server/routes.people.ts) is the same fix /api/phone-link already needed
   // for the same reason.
-  const host = `${lanIP() || "localhost"}:${PORT}`;
-  res.json({ url: `http://${host}/pair?code=${code}`, expiresInSec: 900 });
+  //
+  // Checked BEFORE minting, and fatal rather than falling back to "localhost": that fallback was
+  // the silent failure underneath the visible one — with no LAN address it printed a QR that
+  // looked completely normal, burned a single-use code, and could not possibly connect. If SAM
+  // cannot say where it is, it says so.
+  const ip = lanIP();
+  if (!ip) { res.status(503).json({ error: "This Mac has no network address a phone could reach — connect it to the same Wi-Fi as your phone and try again." }); return; }
+  const code = mintPairingCode(Date.now());
+  res.json({ url: `http://${ip}:${PORT}/pair?code=${code}`, expiresInSec: 900 });
 });
 // Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is
 // a one-request denial of service that logs every device out, and it was reachable exactly as

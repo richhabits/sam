@@ -14,7 +14,11 @@ export default defineConfig({
     // repo. Without this, running the suite while an agent is working collects its half-written
     // tests as if they were yours — and they fail for reasons that have nothing to do with your
     // change (no node_modules in the worktree, work in progress), which is the worst kind of red.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**", ".claude/worktrees/**"],
+    // "._*" is macOS's AppleDouble sidecar: when the repo lives on a non-native volume (an
+    // external exFAT drive), writing foo.test.ts also drops a binary ._foo.test.ts beside it.
+    // It is gitignored, so it is invisible in `git status` — but it matches the test glob, and
+    // vitest reports it as a failed suite with a parse error on a file you did not write.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**", ".claude/worktrees/**", "**/._*"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],
