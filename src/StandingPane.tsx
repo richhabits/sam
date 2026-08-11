@@ -34,8 +34,11 @@ export default function StandingPane({ onClose }: { onClose: () => void }) {
     setErr("");
     if (!spec || !task.trim()) { setErr("Pick a specialist and give it a task."); return; }
     setBusy(true);
+    // The catch keeps the SERVER's sentence. A refusal now arrives as a throw rather than an
+    // { error } body, and the old blanket "Couldn't arm that agent" threw away the one detail that
+    // said WHY — an invalid cron and an unpaired device are different problems with different fixes.
     try { const r = await standingArm(spec, task.trim(), cron); if (r?.error) setErr(r.error); else { setTask(""); load(); } }
-    catch { setErr("Couldn't arm that agent."); } finally { setBusy(false); }
+    catch (e: any) { setErr(e?.message || "Couldn't arm that agent."); } finally { setBusy(false); }
   };
   const act = async (fn: (id: string) => Promise<any>, id: string) => { await fn(id).catch(() => undefined); load(); };
   const nameOf = (id: string) => crew.find((c) => c.id === id);

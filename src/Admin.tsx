@@ -91,19 +91,28 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   async function saveProvider(id: string) {
     const value = (drafts[id] || "").trim();
     if (!value) return;
-    // The response used to be ignored, so a 400 still flashed "saved" and the user believed a
-    // key was stored that never was. Check it, and say so when it fails.
+    // The response used to be ignored, so a 400 still flashed "saved" and the user believed a key
+    // was stored that never was. Checking `r.error` fixed that — until api.ts began THROWING on a
+    // non-OK response, which made the check unreachable: the rejection went past it to the global
+    // handler, and this row's own inline message never appeared. Catch it here so the error lands
+    // where the key was typed, next to the field, rather than in a banner at the foot of the app.
     const spec = PROVIDERS.find((p) => p.id === id);
-    const r = spec?.configStyle ? await saveConfig(id, value) : await saveKeys(id, value);
-    if (r?.error) { setSaveError({ id, msg: String(r.error) }); return; }
+    try {
+      const r = spec?.configStyle ? await saveConfig(id, value) : await saveKeys(id, value);
+      if (r?.error) { setSaveError({ id, msg: String(r.error) }); return; }
+    } catch (e: any) { setSaveError({ id, msg: e?.message || "SAM refused that — the key was not saved." }); return; }
     setSaveError(null);
     setDrafts((d) => ({ ...d, [id]: "" }));
     flash(id); refresh();
   }
   async function saveEleven() {
     // AUDIT FIX: check each save's result — don't flash "Saved ✓" when the server refused.
-    if (eleven.trim()) { const r = await saveConfig("elevenlabs", eleven.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
-    if (voice.trim()) { const r = await saveConfig("elevenVoice", voice.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
+    // Wrapped for the same reason as saveProvider: a refusal now throws, so the checks alone
+    // would let it past this function entirely and lose the inline message.
+    try {
+      if (eleven.trim()) { const r = await saveConfig("elevenlabs", eleven.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
+      if (voice.trim()) { const r = await saveConfig("elevenVoice", voice.trim()); if (r?.error) { setSaveError({ id: "elevenlabs", msg: String(r.error) }); return; } }
+    } catch (e: any) { setSaveError({ id: "elevenlabs", msg: e?.message || "SAM refused that — nothing was saved." }); return; }
     setSaveError(null); setEleven(""); flash("elevenlabs"); refresh();
   }
   async function setService(v: string) { await saveConfig("musicService", v); refresh(); }
@@ -115,11 +124,15 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
       ["smtpHost", email.smtpHost], ["smtpPort", email.smtpPort], ["smtpUser", email.smtpUser],
       ["smtpPass", email.smtpPass], ["smtpFrom", email.smtpFrom], ["ownerEmail", email.ownerEmail],
     ];
-    for (const [key, val] of fields) {
-      if (!val) continue;
-      const r = await saveConfig(key, val.trim());
-      if (r?.error) { setSaveError({ id: "email", msg: String(r.error) }); return; }
-    }
+    // Stops at the first failure, whether it arrives as an { error } body or as a throw — half a
+    // mail configuration saved is worse than none, and "Saved ✓" over it would be worse again.
+    try {
+      for (const [key, val] of fields) {
+        if (!val) continue;
+        const r = await saveConfig(key, val.trim());
+        if (r?.error) { setSaveError({ id: "email", msg: String(r.error) }); return; }
+      }
+    } catch (e: any) { setSaveError({ id: "email", msg: e?.message || "SAM refused that — the settings were not saved." }); return; }
     setSaveError(null);
     setEmail((e) => ({ ...e, smtpPass: "" }));
     flash("email"); refresh();
@@ -489,7 +502,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button type="button" className="admin-save" style={{ width: "auto" }} disabled={signing?.android?.hasKeystore} onClick={async () => {
               setSigningMsg("Generating keystore…");
-              const r = await genAndroidKeystore().catch(() => ({ ok: false, error: "failed" }));
+              const r = await genAndroidKeystore().catch((e: any) => ({ ok: false, error: e?.message || "failed" }));
               setSigningMsg(r.ok ? `✅ Keystore created (vault/signing/). Password saved — keep it safe.` : `⚠️ ${r.error || "couldn't create"}`);
               getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
             }}>{signing?.android?.hasKeystore ? "Keystore ready ✓" : "Generate Android keystore"}</button>

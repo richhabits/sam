@@ -45,7 +45,10 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
     if (!active || !adding.trim()) return;
     setBusy("Adding source…");
     const body = addMode === "url" ? { url: adding.trim() } : { text: adding.trim(), title: "Pasted note" };
-    const r = await addNotebookSource(active, body).catch(() => ({ ok: false, error: "failed" }));
+    // Keeps the server's own sentence. A refusal arrives as a throw now, and mapping every failure
+    // to the word "failed" tells the operator nothing they can act on — "that URL didn't fetch" and
+    // "this device isn't paired" want different responses from them.
+    const r = await addNotebookSource(active, body).catch((e: any) => ({ ok: false, error: e?.message || "failed" }));
     setBusy("");
     if (r.ok) { setAdding(""); notebookSources(active).then((x) => setSources(x.sources || [])); refresh(); }
     else setBusy(r.error || "Couldn't add that source");
