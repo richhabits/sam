@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -272,7 +272,11 @@ export default function App() {
     // Distinguish "no quotes" from "couldn't reach them" — an empty panel used to mean both.
     getQuotes(list.join(",")).then((r) => setQuotes(r.quotes || [])).catch(() => showToast("Couldn't load quotes just now.")).finally(() => setQuotesLoading(false));
   };
-  useEffect(() => { localStorage.setItem("sam.watchlist", JSON.stringify(watchlist)); }, [watchlist]);
+  // Wrapped like every other write in this file. localStorage.setItem THROWS in private browsing
+  // and when the quota is full — and this one was bare, so the throw escaped a useEffect and hit
+  // the root ErrorBoundary: the whole app replaced by "SAM hit a display error", because a
+  // watchlist could not be saved.
+  useEffect(() => { try { localStorage.setItem("sam.watchlist", JSON.stringify(watchlist)); } catch { /* storage full or disabled — the list just won't persist */ } }, [watchlist]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh markets quotes on open; triggered by marketsOpen
   useEffect(() => { if (marketsOpen) loadQuotes(); }, [marketsOpen]);   // refresh on open
   const addTicker = () => {
@@ -391,6 +395,8 @@ export default function App() {
   const findRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState("");
   const showToast = (msg: string) => { setToast(msg); window.setTimeout(() => setToast((t) => (t === msg ? "" : t)), 1900); };
+  // Said once per session, not once per keystroke — the persist effect below runs on every change.
+  const warnedStorageRef = useRef(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [roster, setRoster] = useState<{ id: string; name: string; emoji: string; modeledOn: string; brief: string }[]>([]);
   const [rosterSearch, setRosterSearch] = useState("");
@@ -523,8 +529,32 @@ export default function App() {
   }, [messages]);
   // Debounced persist — coalesce rapid changes into one stringify+write (was a
   // multi-ms synchronous JSON.stringify of up to 50 convos on every completed turn).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showToast is re-created every render, so listing it would re-run this effect on every render and defeat the debounce this effect exists for. It is only ever called on the once-per-session storage warning.
   useEffect(() => {
-    const t = setTimeout(() => { try { localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, 50), activeId, brand, quality })); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }, 400);
+    const t = setTimeout(() => {
+      // SHRINK, THEN SAY SO. The old catch swallowed a quota failure and the comment claimed it
+      // "fell back to the in-memory default" — there is no fallback. Writes simply stopped, so a
+      // heavy user's chats stayed perfect until the reload that silently threw them away. 50 whole
+      // conversations INCLUDING every message is easily past the ~5MB localStorage quota.
+      //
+      // Try fewer rather than give up: the newest chats are the ones worth keeping, and 10 saved
+      // beats 50 lost. Only if even ten will not fit does it say anything — once, because a toast
+      // on every keystroke would be its own kind of broken.
+      for (const keep of [50, 20, 10, 5]) {
+        try {
+          localStorage.setItem(LS, JSON.stringify({ convos: convos.slice(0, keep), activeId, brand, quality }));
+          if (keep < 50 && !warnedStorageRef.current) {
+            warnedStorageRef.current = true;
+            showToast(`Storage is nearly full — SAM is keeping your ${keep} most recent chats.`);
+          }
+          return;
+        } catch { /* too big at this size — try a smaller slice */ }
+      }
+      if (!warnedStorageRef.current) {
+        warnedStorageRef.current = true;
+        showToast("Couldn't save your chat history — this browser's storage is full or disabled.");
+      }
+    }, 400);
     return () => clearTimeout(t);
   }, [convos, activeId, brand, quality]);
 
@@ -577,12 +607,21 @@ export default function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: wake-listener lifecycle keyed to wakeOn; stable callbacks intentionally excluded
   useEffect(() => {
     if (!wakeOn) { try { localStorage.setItem("sam.wake", "0"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ }; return; }
+    // `cancelled` closes an async-cleanup race that leaks the MICROPHONE. startWakeListener is a
+    // promise; if this effect tore down before it resolved (toggle wake off and on again quickly,
+    // or unmount during startup), `stop` was still null, so the cleanup below stopped nothing —
+    // and the listener then started and ran forever, holding the mic with no handle to release it.
     let stop: (() => void) | null = null;
-    startWakeListener(() => setVoiceMode(true)).then((s) => (stop = s)).catch(() => {
+    let cancelled = false;
+    startWakeListener(() => setVoiceMode(true)).then((s) => {
+      if (cancelled) s?.();        // we already tore down — stop it the moment it exists
+      else stop = s;
+    }).catch(() => {
+      if (cancelled) return;
       setWakeOn(false); showToast("🎤 Couldn't access the mic — turned wake off");
     });
     try { localStorage.setItem("sam.wake", "1"); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ }
-    return () => { stop?.(); };
+    return () => { cancelled = true; stop?.(); };
   }, [wakeOn]);
 
   function finishOnboarding() {
@@ -593,7 +632,11 @@ export default function App() {
     // Optional free Groq key — if pasted, save it silently (SAM still works fine without it).
     // A key pasted during onboarding that silently fails to save is the worst version of this
     // bug: the user believes SAM is set up and it is not. Say so, and keep them moving.
-    if (onboardKey.trim()) fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "groq", keys: onboardKey.trim() }) }).catch(() => showToast("Couldn't save that key — add it later in Settings."));
+    // saveKeys(), not a raw fetch. This was the one call in the file that went around api.ts, so it
+    // caught a NETWORK error and nothing else: a 401/403/500 resolved happily and the toast never
+    // fired. The comment directly above says a key that silently fails to save is the worst version
+    // of this bug — and that is exactly what the refused case did.
+    if (onboardKey.trim()) saveKeys("groq", onboardKey.trim()).catch(() => showToast("Couldn't save that key — add it later in Settings."));
     // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
     // no config. So instead of shoving the keys panel in a brand-new user's face, we greet them and
     // drop them straight into a working chat. Keys are an OPTIONAL speed/ability boost (the 🔑 button
