@@ -308,6 +308,33 @@ app.post("/api/pair/devices/:id/revoke", (req, res) => {
   if (ok) attributeRemote(req, "revoke-device", targetId === sessionIdFromToken(sessionTokenFromRequest(req)) ? "revoked itself" : "revoked another device");
   ok ? res.json({ ok: true }) : res.status(404).json({ error: "no such device" });
 });
+// Hand back your OWN pairing. The phone's "Forget this device" wiped the token from its
+// keychain and left the session alive on the Mac for its full 30-day rolling life — a control
+// that reads as "remove this device's access" and removed the operator's ability to SEE the
+// device rather than the access itself. The credential outlived the button that claimed to
+// destroy it, and the only place left to notice was the Mac's own device list.
+//
+// A separate route from /devices/:id/revoke rather than the phone looking up its own id: the id
+// is derived server-side from the caller's own token, so this route CANNOT name another device.
+// That is strictly less power than the revoke-one it sits beside, which is the point — the
+// common case (a phone retiring itself) should not go through the route that can retire anyone.
+//
+// Not isTrustedLocal: revoking yourself is the one privileged act that must work FROM the
+// device being revoked, which by definition is not on the Mac.
+app.post("/api/pair/forget", (req, res) => {
+  const token = sessionTokenFromRequest(req);
+  if (!isPairedSession(req)) { res.status(403).json({ error: "only a paired device can hand back its own pairing" }); return; }
+  const id = sessionIdFromToken(token);
+  const ok = revokeSessionById(id);
+  attributeRemote(req, "revoke-device", "handed back its own pairing");
+  // ok:false here would mean a session that authenticated a request a microsecond ago is not in
+  // the table. Report it rather than returning a cheerful 200 — a "forget" that forgot nothing
+  // is exactly the failure this route was added to end, and it must not be reintroduced here.
+  if (!ok) { res.status(500).json({ error: "this device's session could not be found to revoke — check the device list on your Mac" }); return; }
+  res.setHeader("Set-Cookie", clearSessionCookieHeader());
+  res.json({ ok: true });
+});
+
 // B3 — setting a device's capability tier. Deliberately isTrustedLocal, NOT the general
 // Handshake mutation gate every other pairing-management route uses (which a mere paired
 // session already satisfies): "grants are set on the Mac, never self-elevated from the

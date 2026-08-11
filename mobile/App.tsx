@@ -455,7 +455,17 @@ export default function App() {
         ) : surface === 'tasks' ? (
           <TasksScreen ios={ios} onNeedsPairing={onNeedsPairing} />
         ) : (
-          <SettingsScreen ios={ios} onForgotten={() => setPaired(false)} />
+          <SettingsScreen
+            ios={ios}
+            onForgotten={(note) => {
+              // `claimed` has to come back down with it: it exists to stop a stale boot read
+              // overwriting a pairing, and leaving it set after the operator deliberately gave
+              // that pairing up would make the NEXT pairing screen unable to correct itself.
+              claimed.current = false;
+              setError(note || '');
+              setPaired(false);
+            }}
+          />
         )}
       </View>
 

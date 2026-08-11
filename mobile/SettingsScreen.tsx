@@ -29,7 +29,7 @@ import { ActionRow, Row, Screen, Section } from './ui';
 
 type Device = { id: string; label: string; lastSeen: number };
 
-export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgotten: () => void }) {
+export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgotten: (note?: string) => void }) {
   const [host, setHost] = useState('');
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [sound, setSound] = useState(true);
@@ -191,15 +191,23 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
 
       <Section
         ios={ios}
-        footer="Forgetting removes this phone's token from its Keychain. Nothing on your Mac changes — revoke there to close the session properly."
+        footer="Removes this phone's token from its Keychain and closes its session on your Mac, so this device can't reach SAM again until you pair it afresh."
       >
         <ActionRow
           ios={ios}
           title="Forget this device"
           destructive
           onPress={async () => {
-            await forgetDevice();
-            onForgotten();
+            const { revokedOnMac } = await forgetDevice();
+            // The one thing that must never be silent. The token is gone from this phone either
+            // way, so the row always "worked" from here — but if the Mac was not reached, a live
+            // session for this device is still sitting in its list, and the operator is the only
+            // one who can close it. Saying nothing would leave them believing they had.
+            onForgotten(
+              revokedOnMac
+                ? undefined
+                : "Removed from this phone — but your Mac could not be reached, so its session is still open there. Open SAM on your Mac and revoke this device from the paired list.",
+            );
           }}
           last
         />

@@ -71,6 +71,31 @@ describe("minting and revoking are loopback-and-passkey only", () => {
   });
 });
 
+describe("handing back your own pairing", () => {
+  // The phone's "Forget this device" deleted its own keychain token and left the session alive
+  // on the Mac for its full 30 days — a destructive-looking control that destroyed nothing on
+  // the machine that actually holds the access. This route is the missing half.
+  it("is refused to anyone not already paired", () => {
+    expect(handler("/api/pair/forget")).toContain("isPairedSession(req)");
+  });
+
+  it("takes no device id — it can only ever revoke the caller", () => {
+    // The id is derived from the caller's own token server-side. If this route ever learns to
+    // read one off the request, it becomes revoke-anyone reachable from any paired device.
+    expect(handler("/api/pair/forget")).toContain("sessionIdFromToken");
+    expect(handler("/api/pair/forget")).not.toContain("req.params");
+    expect(handler("/api/pair/forget")).not.toContain("req.body");
+  });
+
+  it("does not report success when nothing was revoked", () => {
+    // The exact failure it exists to end must not reappear inside it: a 200 for a forget that
+    // forgot nothing would be indistinguishable from the bug, and worse for being deliberate.
+    const h = handler("/api/pair/forget");
+    expect(h).toContain("if (!ok)");
+    expect(h).toContain("500");
+  });
+});
+
 describe("no future pairing mutation may ship unguarded", () => {
   it("every POST /api/pair/* except the claim on-ramp checks who is asking", () => {
     const routes = [...src.matchAll(/app\.post\("(\/api\/pair\/[^"]*)"/g)].map((m) => m[1]);

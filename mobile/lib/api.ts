@@ -29,10 +29,27 @@ export async function getToken(): Promise<string | null> {
 async function setToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
-/** Forget this device's pairing entirely (the mobile-side half of "revoke" — the server
- *  side is whatever the operator does from /api/pair/devices/:id/revoke on the Mac). */
-export async function forgetDevice(): Promise<void> {
+/** Hand this device's pairing back — BOTH halves. Deleting the local token alone (which is all
+ *  this used to do) leaves the session alive on the Mac for its full 30-day life: the operator
+ *  taps a destructive-looking row, the phone can no longer authenticate, and the credential it
+ *  was authenticating with is still sitting in the Mac's device list. That is the access nobody
+ *  removed.
+ *
+ *  Returns whether the Mac was actually told. The local token is wiped either way — stranding
+ *  the operator on a phone they cannot un-pair because their Mac is asleep would be a worse
+ *  trap than the one this fixes — but the caller MUST surface a false, because "forgotten here
+ *  only" and "forgotten everywhere" are different facts about who can still reach your machine. */
+export async function forgetDevice(): Promise<{ revokedOnMac: boolean }> {
+  let revokedOnMac = false;
+  try {
+    await api("/api/pair/forget", { method: "POST" });
+    revokedOnMac = true;
+  } catch {
+    // Mac unreachable, already revoked there, or the session was gone. Not fatal to the local
+    // wipe below, and never silently swallowed: it is returned and shown.
+  }
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+  return { revokedOnMac };
 }
 
 export class ApiError extends Error {
