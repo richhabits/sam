@@ -253,11 +253,15 @@ jobs:
           # online user, which is every install-time scenario). A silently-broken notarization fails loudly.
           echo "🔎 Gatekeeper assessment:"; spctl -a -vv --type exec "$APP" 2>&1 | tee /tmp/spctl.txt || true
           grep -qiE "source=Notarized Developer ID|accepted" /tmp/spctl.txt || { echo "❌ Gatekeeper did NOT accept the app — notarization didn't stick."; exit 1; }
-          # SOFT CHECK: electron-builder notarizes+staples the .app but not the .dmg WRAPPER (the dmg
-          # itself is never submitted to notary). The app is notarized, so it opens clean online; a
-          # stapled dmg only helps FULLY-OFFLINE first-open. Warn, don't fail. (True dmg staple = v1.5.x.)
-          echo "🔎 Stapler validate (dmg):"; if xcrun stapler validate "$DMG"; then echo "✅ dmg stapled — clean even offline."; else echo "⚠️ dmg not stapled (app IS notarized → clean online; offline-open staple is a follow-up)."; fi
-          echo "✅ signed + notarized (app) — ships with zero Gatekeeper warning."
+          # HARD GATE (was a warning until 3.4.0): the dmg WRAPPER must carry its own stapled ticket.
+          # electron-builder notarizes the .app and never submits the disk image, so the file people
+          # actually download used to arrive without one — proven by hand on the 3.4.0 build, where
+          # the app validated and `stapler validate` on the dmg said "does not have a ticket stapled
+          # to it". scripts/staple-dmg.mjs now submits and staples it, so an unstapled dmg means that
+          # hook silently did nothing, and this must fail rather than warn about a known gap forever.
+          echo "🔎 Stapler validate (dmg):"
+          xcrun stapler validate "$DMG" || { echo "❌ dmg has no stapled ticket — scripts/staple-dmg.mjs did not run or failed. First open would need the network and would fail offline."; exit 1; }
+          echo "✅ signed + notarized, app AND dmg stapled — opens clean, even offline."
 
       # PUBLISH — the last thing that happens, and only once the app has been PROVEN to start.
       # Everything above is local: package, boot it, check notarization stuck. Only then do the
