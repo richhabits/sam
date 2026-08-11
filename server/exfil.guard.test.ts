@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { markUntrusted, fenceToolResult } from "./agent.ts";
-import { carriesKnownCredential } from "./scrub.ts";
+import { carriesKnownCredential, redactKnownCredentials } from "./scrub.ts";
 import { isCredentialPath } from "./tools.ts";
 
 // THE SILENT EXFILTRATION CHAIN.
@@ -72,6 +72,32 @@ describe("step 2 — sending it out", () => {
       "https://news.ycombinator.com/item?id=12345&p=2",
       "https://example.com/search?q=how+to+use+sk-learn",   // "sk-" but not key-shaped
     ]) expect(carriesKnownCredential(u, {} as any), u).toBe(false);
+  });
+});
+
+describe("the other safe readers — step 1 has more than one door", () => {
+  // read_file was the obvious one. These run without asking too, so sealing only read_file would
+  // have moved the problem rather than fixed it.
+  it("github_read_file refuses the same paths — a committed .env is still a .env", () => {
+    for (const p of [".env", "deploy/id_rsa", "certs/server.pem", "config/.env.production"])
+      expect(isCredentialPath(p), p).toBe(true);
+    for (const p of ["src/index.ts", "README.md", "docs/env-setup.md"])
+      expect(isCredentialPath(p), p).toBe(false);
+  });
+
+  it("clipboard output has unambiguous credentials redacted, and nothing else touched", () => {
+    // The clipboard is where a password manager's output sits for a few seconds after a copy.
+    const KEY = `sk-ant-api03-${"a".repeat(40)}`;
+    expect(redactKnownCredentials(`my key is ${KEY} ok`, {} as any)).not.toContain(KEY);
+    // …but it is also usually the thing the operator wants pasted, so ordinary text survives
+    // verbatim, and so does a git SHA.
+    expect(redactKnownCredentials("Buy milk and call mum", {} as any)).toBe("Buy milk and call mum");
+    const sha = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678";
+    expect(redactKnownCredentials(`commit ${sha}`, {} as any)).toBe(`commit ${sha}`);
+  });
+
+  it("keeps a prefix when it redacts, so the line stays diagnosable", () => {
+    expect(redactKnownCredentials(`x sk-ant-api03-${"a".repeat(40)}`, {} as any)).toContain("sk-a[redacted]");
   });
 });
 

@@ -56,6 +56,32 @@ const SHAPES: RegExp[] = [
 // that carry a provider prefix and cannot plausibly be anything else.
 const PREFIXED_SHAPES = SHAPES.slice(0, -1);
 
+/** Redact only the unambiguous credentials, leaving everything else exactly as written. For the
+ *  output of tools that run WITHOUT asking (see agent.ts: a `safe: true` tool skips the tier
+ *  system entirely) — the clipboard, Notes — where the content is arbitrary and cannot be judged
+ *  by its path the way a file read can. Deliberately gentler than scrub(): this text is going to
+ *  the model to be worked with, not to a log, so over-redaction costs real answers. */
+export function redactKnownCredentials(text: unknown, env: NodeJS.ProcessEnv = process.env): string {
+  let s = typeof text === "string" ? text : String(text ?? "");
+  if (!s) return s;
+  for (const name of sensitiveEnvNames(env)) {
+    const v = env[name];
+    if (!v) continue;
+    for (const part of v.split(",")) {
+      const p = part.trim();
+      if (p.length >= 8) s = s.split(p).join(`${p.slice(0, 3)}${REDACTED}`);
+    }
+  }
+  s = s.replace(URL_CREDENTIAL, (_m, scheme, user) => `${scheme}${user}:${REDACTED}@`);
+  for (const re of PREFIXED_SHAPES) {
+    s = s.replace(re, (m) => {
+      const keep = /^Bearer/i.test(m) ? "Bearer " : m.slice(0, Math.min(4, m.length));
+      return `${keep}${REDACTED}`;
+    });
+  }
+  return s;
+}
+
 /** Does this text carry something that is UNAMBIGUOUSLY a credential — a known secret value from
  *  this machine's environment, or a provider-prefixed key? Used for egress decisions, where a
  *  false positive breaks ordinary browsing rather than merely muddying a log line. */

@@ -54,6 +54,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 import type { Page } from "playwright-core";
 import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
+import { redactKnownCredentials } from "./scrub.ts";
 import { renderVideo, titleCard } from "./render.ts";
 import { buildDeck, fallbackSections, outlineMarkdown, parseSections, saveDeck, sectionCount, type Section } from "./slides.ts";
 import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
@@ -821,9 +822,13 @@ async function screenshot(): Promise<string> {
 }
 async function clipboardGet(): Promise<string> {
   try {
-    if (IS_MAC) { const { stdout } = await sh("pbpaste"); return clip(stdout, 4000); }
-    if (OS === "windows") { const { stdout } = await sh("powershell -command Get-Clipboard"); return clip(stdout, 4000); }
-    const { stdout } = await sh("xclip -selection clipboard -o"); return clip(stdout, 4000);
+    // Redacted on the way out. The clipboard is where a password manager's output lives for the
+    // few seconds after a copy, and this tool is safe:true — it reads without asking. Only the
+    // unambiguous credentials go (redactKnownCredentials, not the full scrub): the clipboard is
+    // usually the thing the operator actually wants pasted, so over-redaction breaks the tool.
+    if (IS_MAC) { const { stdout } = await sh("pbpaste"); return clip(redactKnownCredentials(stdout), 4000); }
+    if (OS === "windows") { const { stdout } = await sh("powershell -command Get-Clipboard"); return clip(redactKnownCredentials(stdout), 4000); }
+    const { stdout } = await sh("xclip -selection clipboard -o"); return clip(redactKnownCredentials(stdout), 4000);
   } catch { return notSupported("read clipboard"); }
 }
 async function clipboardSet(text: string): Promise<string> {
@@ -864,10 +869,15 @@ async function searchFiles(q: string): Promise<string> {
   try {
     // Mac: fast Spotlight index (name + content). Windows/Linux: Node-native walk (no shell), matching
     // by filename first, then by content — works identically everywhere, no grep/mdfind dependency.
-    if (IS_MAC) { const { stdout } = await sh(`mdfind ${shq(q)} | head -30`, { timeout: 20000 }); const r = clip(stdout.trim()); if (r) return r; }
+    // Credential paths are dropped from the results. This returns PATHS, not contents, so it is
+    // not a leak of the secrets themselves — it is a map straight to them, produced by a tool that
+    // never asks (safe:true). "Where do they keep their keys" should not be a free question.
+    const keep = (s: string) => s.split("\n").filter((l) => l.trim() && !isCredentialPath(l.trim())).join("\n");
+    if (IS_MAC) { const { stdout } = await sh(`mdfind ${shq(q)} | head -30`, { timeout: 20000 }); const r = clip(keep(stdout.trim())); if (r) return r; }
     const home = homedir();
     let hits = await findByName(home, q, 30);
     if (!hits.length) hits = await findByContent(home, q, 30);
+    hits = hits.filter((h) => !isCredentialPath(h));
     return hits.length ? clip(hits.join("\n")) : "No files found.";
   } catch (e: any) { return `Search failed: ${e?.message}`; }
 }
@@ -1921,7 +1931,11 @@ export const TOOLS: Tool[] = [
     run: (i) => gh(`issue list -R ${shq(i.repo ?? i)} --limit ${Math.min(Number(i?.limit) || 20, 50)}`) },
   { name: "github_read_file", safe: true, description: "Read a file from a repo. input: {repo, path}.", params: "{repo, path}",
     activity: (i) => `Reading ${i.path} from ${i.repo}`,
-    run: (i) => gh(`api ${shq(`repos/${i.repo}/contents/${i.path}`)} -H ${shq("Accept: application/vnd.github.raw")}`) },
+    // Same refusal as read_file, for the same reason — this one also runs without asking, and a
+    // committed .env or deploy key is exactly the file most worth not fetching unattended.
+    run: (i) => isCredentialPath(String(i?.path || ""))
+      ? Promise.resolve(`Blocked: ${i.path} holds credentials, and github_read_file runs without asking you first. Open it on GitHub, or ask for the shell command — that one waits for your approval.`)
+      : gh(`api ${shq(`repos/${i.repo}/contents/${i.path}`)} -H ${shq("Accept: application/vnd.github.raw")}`) },
   { name: "github_create_issue", safe: false, description: "Open a new issue on a repo. input: {repo, title, body?}.", params: "{repo, title, body?}",
     activity: (i) => `Opening a GitHub issue on ${i.repo}: “${i.title}”`,
     preview: (i) => `Create a GitHub issue on ${i.repo}\nTitle: ${i.title}\n${i.body || ""}`.slice(0, 300),
