@@ -236,10 +236,24 @@ export class JobStore {
     this.db.prepare("UPDATE jobs SET tier=? WHERE id=? AND tier IS NULL").run(tier, id);
   }
 
+  // The only columns a state transition may carry with it — the union of what the eight callers
+  // actually set. Anything else is a mistake worth failing loudly on rather than writing.
+  private static readonly PATCHABLE = new Set([
+    "last_error", "failure_kind", "run_after", "heartbeat_at", "started_at", "steps_json", "cost_budget",
+  ]);
+
   private transition(id: string, to: JobState, patch: Record<string, any> = {}, now = Date.now()): Job {
     const job = this.get(id);
     if (!job) throw new Error(`the yard: no job ${id}`);
     assertTransition(job.state, to);
+    // Every key is checked against the columns this function is allowed to set. The keys are
+    // interpolated straight into SQL, and all eight call sites pass literals — so this is not
+    // reachable today. It is safe by CONVENTION rather than by construction, and the convention
+    // holds only until someone forwards a patch from outside this file. Making it structural costs
+    // one line; discovering it later costs considerably more.
+    for (const k of Object.keys(patch)) {
+      if (!JobStore.PATCHABLE.has(k)) throw new Error(`the yard: refusing to set unknown column "${k}"`);
+    }
     const sets = ["state=@state", ...Object.keys(patch).map((k) => `${k}=@${k}`)];
     if (["done", "failed", "cancelled"].includes(to)) sets.push("finished_at=@finished_at");
     this.db.prepare(`UPDATE jobs SET ${sets.join(", ")} WHERE id=@id`)

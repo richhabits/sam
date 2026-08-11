@@ -284,7 +284,7 @@ describe("a dropped pinpoint edit is reported, not silently swallowed", () => {
     readProposal(
       JSON.stringify({ edits: [{ path: "b.js", find: "let a = 1;", replace: "let a = 2;" }] }),
       twice,
-      (p, why) => skips.push(why),
+      (_p, why) => skips.push(why),
     );
     expect(skips[0]).toMatch(/matches 2 places/);
   });
@@ -294,7 +294,7 @@ describe("a dropped pinpoint edit is reported, not silently swallowed", () => {
     const out = readProposal(
       JSON.stringify({ edits: [{ path: "a.js", find: "const x = 1;", replace: "const x = 2;" }] }),
       offered,
-      (p, why) => skips.push(why),
+      (_p, why) => skips.push(why),
     );
     expect(out).toEqual([{ path: "a.js", content: "const x = 2;\n" }]);
     expect(skips).toEqual([]);

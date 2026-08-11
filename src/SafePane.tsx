@@ -52,8 +52,12 @@ export default function SafePane({ onClose }: { onClose: () => void }) {
 
   const run = async (fn: () => Promise<any>, ok?: (r: any) => void) => {
     setBusy(true); setErr(""); setNote("");
+    // A logical refusal comes back 200 with { ok:false, error } and is translated by say().
+    // Anything else now THROWS (api.ts checks the status), and flattening that to "Couldn't reach
+    // the Safe" told the operator their machine was unreachable when the Safe had in fact refused
+    // them — two problems with entirely different fixes, given one sentence.
     try { const r = await fn(); if (r && r.ok === false) setErr(say(r.error)); else ok?.(r); }
-    catch { setErr("Couldn't reach the Safe."); }
+    catch (e: any) { setErr(e?.locked ? "This device isn't paired with SAM — the Safe is opened on the machine itself." : say(e?.message) || "Couldn't reach the Safe."); }
     finally { setBusy(false); await load(); }
   };
 

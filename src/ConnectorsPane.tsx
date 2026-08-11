@@ -28,7 +28,12 @@ export default function ConnectorsPane({ onClose, onPick }: { onClose: () => voi
 
   const load = useCallback((refresh = false) => {
     setConns(null);
-    getConnectors(refresh).then(setConns).catch(() => setConns([]));
+    // An empty array renders as "no connectors are set up" — a claim, not an absence of one. A
+    // refusal (this pane is canReadPrivate) is a different fact and gets said, so nobody goes
+    // looking for a Slack token they already added. Same distinction the row-level catch below
+    // already drew; the list-level one had not.
+    getConnectors(refresh).then((c) => { setConns(c); setErr(""); })
+      .catch((e: any) => { setConns([]); setErr(e?.locked ? "This browser isn't paired with SAM — pair it to see your connected services." : e?.message || "Couldn't read your connectors."); });
   }, []);
   useEffect(() => { load(); }, [load]);
 

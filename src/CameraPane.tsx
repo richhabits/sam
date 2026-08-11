@@ -29,7 +29,11 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);   // forces snapshot <img> refresh
 
-  const load = () => getCameras().then((d) => { setCams(d.cameras || []); setOn(d.on !== false); setWhy(d.why || ""); }).catch(() => setErr("Couldn't load cameras."));
+  // Keeps the server's own sentence. /api/cameras is loopback+Handshake, so a refusal here means
+  // "not on this device" — which "Couldn't load cameras" reads as an outage, sending the operator
+  // to check a camera rather than to open SAM on the Mac.
+  const load = () => getCameras().then((d) => { setCams(d.cameras || []); setOn(d.on !== false); setWhy(d.why || ""); })
+    .catch((e: any) => setErr(e?.locked ? "Cameras are managed on the computer SAM runs on." : e?.message || "Couldn't load cameras."));
   // biome-ignore lint/correctness/useExhaustiveDependencies: load + tick on mount; load is stable
   useEffect(() => { load(); const t = setInterval(() => setTick((n) => n + 1), 5000); return () => clearInterval(t); }, []);
 
@@ -38,9 +42,11 @@ export default function CameraPane({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setErr("Give the camera a name."); return; }
     setBusy(true);
     try {
+      // cameras.ts refuses a non-local URL with a specific reason ("no public host ever"), and
+      // that reason is the whole value of the message — it arrives as a throw now, not a body.
       const r = await addCameraApi({ name: name.trim(), location: location.trim() || undefined, kind, url: url.trim() || undefined });
       if (r?.error) setErr(r.error); else { setName(""); setLocation(""); setUrl(""); load(); }
-    } catch { setErr("Couldn't add that camera."); } finally { setBusy(false); }
+    } catch (e: any) { setErr(e?.message || "Couldn't add that camera."); } finally { setBusy(false); }
   };
   const del = async (id: string) => { await removeCameraApi(id).catch(() => undefined); load(); };
 
