@@ -1800,7 +1800,11 @@ export const TOOLS: Tool[] = [
       } catch (err: any) { return `Failed to create event: ${err.message}`; }
     } },
 
-  { name: "create_note", safe: true, description: "Create a new note. input: {title, body}.", params: "{title, body}", args: { title: { type: "string", required: true }, body: { type: "string", required: true } },
+  // safe:false to match append_note. These write to the SAME resource — the operator's Notes —
+  // and creating a whole note is at least as much of a write as appending to one, yet appending
+  // asked and creating did not. Same resource, opposite gate, no reason for the difference.
+  { name: "create_note", safe: false, description: "Create a new note. input: {title, body}.", params: "{title, body}", args: { title: { type: "string", required: true }, body: { type: "string", required: true } },
+    preview: (i) => `Create a note in Notes: “${String(i?.title ?? "").slice(0, 60)}” (${String(i?.body ?? "").length} chars)`,
     activity: (i) => `Creating Note: ${i.title}`,
     run: async (i) => {
       try {
@@ -1935,7 +1939,18 @@ export const TOOLS: Tool[] = [
   },
   { name: "quick_note", safe: true, description: "Jot a quick note into SAM's vault. input: text.", params: "text",
     activity: () => `Saving a note`,
-    run: async (i) => { const p = safePath("./vault/notes/quick.md"); mkdirSync(dirname(p), { recursive: true }); await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" }); return `📝 Noted to your vault.`; } },
+    // Was safePath("./vault/notes/quick.md") — a CWD-relative path, in a file that already defines
+    // VAULT_DIR two hundred lines up and where every other module resolves the vault from its own
+    // location. In the packaged app cwd is "/" (measured, not guessed), so this resolved to
+    // /vault/notes/quick.md and mkdirSync failed with EACCES — every time. It only ever worked in
+    // dev, where cwd happens to be the repo root, which is exactly why it looked fine.
+    // It also ignored VAULT_DIR, so it missed the real vault even when it could write.
+    run: async (i) => {
+      const p = join(VAULT_DIR, "notes", "quick.md");
+      mkdirSync(dirname(p), { recursive: true });
+      await writeFile(p, `[${nowText()}] ${String(i.text ?? i)}\n`, { flag: "a" });
+      return `📝 Noted to your vault.`;
+    } },
   { name: "crypto_price", safe: true, description: "Get a crypto price. input: coin (bitcoin, ethereum…).", params: "coin",
     activity: (i) => `Checking ${i.coin ?? i} price`,
     run: async (i) => { try { const coin = String(i.coin ?? i).toLowerCase(); const d: any = await (await tfetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coin)}&vs_currencies=usd,gbp`)).json(); const p = d?.[coin]; return p ? `🪙 ${coin}: $${p.usd} · £${p.gbp}` : `Couldn't find "${coin}".`; } catch (e: any) { return `Crypto lookup failed: ${e?.message}`; } } },
@@ -2064,7 +2079,21 @@ export const TOOLS: Tool[] = [
     run: (i) => { const to = encodeURIComponent(i.to ?? i); const from = i.from ? `&origin=${encodeURIComponent(i.from)}` : ""; return openUrl(`https://www.google.com/maps/dir/?api=1&destination=${to}${from}`).then(() => `Opened directions to ${i.to ?? i}`); } },
   { name: "backup_vault", safe: true, description: "Back up SAM's memory vault to a timestamped folder on the Desktop.", params: "(none)",
     activity: () => `Backing up your SAM memory`,
-    run: async () => { const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12); const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`); try { await cp(safePath("./vault"), dest, { recursive: true }); return `Backed up your vault to ${dest}`; } catch (e: any) { return `Backup failed: ${e?.message}`; } } },
+    // Same CWD-relative bug as quick_note, and worse here: in the packaged app cwd is "/", so this
+    // copied "/vault" — which does not exist — and the operator's BACKUP tool has reported
+    // "Backup failed: ENOENT" for its whole life. A backup that never ran is the one failure you
+    // find out about at the worst possible moment, so it also verifies the copy landed rather than
+    // trusting cp to have done something.
+    run: async () => {
+      const stamp = nowText().replace(/[^0-9]/g, "").slice(0, 12);
+      const dest = safePath(`~/Desktop/sam-vault-backup-${stamp}`);
+      try {
+        if (!existsSync(VAULT_DIR)) return `Nothing to back up yet — no vault at ${VAULT_DIR}.`;
+        await cp(VAULT_DIR, dest, { recursive: true });
+        if (!existsSync(dest)) return `Backup failed: nothing was written to ${dest}.`;
+        return `Backed up your vault to ${dest}`;
+      } catch (e: any) { return `Backup failed: ${e?.message}`; }
+    } },
   // ── People SAM knows by sight ──
   { name: "remember_person", safe: true, description: "Remember a person by sight. input: {name, look, relation?} — look = short description of their appearance.", params: "{name, look, relation?}",
     activity: (i) => `Remembering ${i.name}`,
