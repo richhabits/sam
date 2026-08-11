@@ -1087,30 +1087,41 @@ end tell`);
 // sortable ISO timestamp per note and JS does the rest. The window bounds the work on a large
 // library rather than reading every note to find eight.
 const NOTE_SEP = "␞";   // record separator — cannot occur in note text
+const NOTE_LIMIT = 8;
 async function readAppleNotes(): Promise<string> {
   try {
-    const raw = await osa(`tell application "Notes"
+    // PASS 1 — metadata for every note in ONE Apple Event per property. Measured on a real 366-note
+    // library: 0.3s per bulk property, ~5s for the whole pass. The two shapes that do NOT work, both
+    // found by running them rather than reasoning about them:
+    //   `notes whose modification date > cutoff` then `container of n`  → -1728, and a folder-level
+    //        `whose` loop instead simply never returned (killed at 60s).
+    //   `modification date of ns` where ns is a LIST variable            → -1728. It has to be
+    //        `of every note`, which is the bulk form the app answers in one event.
+    const meta = await osa(`tell application "Notes"
+  set ids to id of every note
+  set nms to name of every note
+  set dts to modification date of every note
+  set cts to name of container of every note
   set out to ""
-  set cutoff to (current date) - (90 * days)
-  repeat with n in (notes whose modification date is greater than cutoff)
-    if name of container of n is not "Recently Deleted" then
-      set d to modification date of n
-      set iso to (year of d as string) & "-" & text -2 thru -1 of ("0" & (month of d as integer)) & "-" & text -2 thru -1 of ("0" & (day of d)) & " " & text -2 thru -1 of ("0" & (hours of d)) & ":" & text -2 thru -1 of ("0" & (minutes of d))
-      set b to plaintext of n
-      if length of b > 300 then set b to text 1 thru 300 of b
-      set out to out & iso & "${NOTE_SEP}" & (name of n) & "${NOTE_SEP}" & b & "${NOTE_SEP}${NOTE_SEP}"
-    end if
+  repeat with i from 1 to count of ids
+    set d to item i of dts
+    set iso to (year of d as string) & "-" & text -2 thru -1 of ("0" & (month of d as integer)) & "-" & text -2 thru -1 of ("0" & (day of d)) & " " & text -2 thru -1 of ("0" & (hours of d)) & ":" & text -2 thru -1 of ("0" & (minutes of d))
+    set out to out & (item i of ids) & "${NOTE_SEP}" & iso & "${NOTE_SEP}" & (item i of cts) & "${NOTE_SEP}" & (item i of nms) & linefeed
   end repeat
   return out
 end tell`);
-    const notes = raw.split(`${NOTE_SEP}${NOTE_SEP}`)
-      .map((r) => r.split(NOTE_SEP))
-      .filter((p) => p.length >= 3)
-      .map(([when, title, body]) => ({ when: when.trim(), title: title.trim(), body: body.trim() }))
-      .sort((a, b) => b.when.localeCompare(a.when))   // ISO-ish strings sort chronologically as text
-      .slice(0, 8);
-    if (!notes.length) return "No notes modified in the last 90 days.";
-    return clip(notes.map((n) => `== ${n.title} == (${n.when})\n${n.body}`).join("\n\n"));
+    const rows = meta.split("\n")
+      .map((l) => l.split(NOTE_SEP))
+      .filter((p) => p.length >= 4)
+      .map(([id, when, folder, title]) => ({ id, when: when.trim(), folder: folder.trim(), title: title.trim() }))
+      .filter((n) => n.folder !== "Recently Deleted")
+      .sort((a, b) => b.when.localeCompare(a.when))   // "YYYY-MM-DD HH:MM" sorts chronologically as text
+      .slice(0, NOTE_LIMIT);
+    if (!rows.length) return "No notes found.";
+    // PASS 2 — bodies for the winners only, so a large library costs eight fetches, not hundreds.
+    const bodies = await Promise.all(rows.map((n) =>
+      osa(`tell application "Notes" to return plaintext of note id ${JSON.stringify(n.id)}`).catch(() => "")));
+    return clip(rows.map((n, i) => `== ${n.title} == (${n.when})\n${(bodies[i] || "").trim().slice(0, 300)}`).join("\n\n"));
   } catch (e: any) { return `Couldn't read Notes: ${e?.message}`; }
 }
 
