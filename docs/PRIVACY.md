@@ -1,23 +1,37 @@
 # SAM Privacy
 
-Short version: **SAM runs on your machine. By default, nothing about you leaves it — ever.** No account,
-no tracking, no phone-home. This document is exact about what that means, and about the one thing that is
-optional and off by default.
+Short version: **SAM stores everything on your machine and phones home to nobody.** No account, no
+tracking, no analytics. The one thing that does leave — a request you send to a cloud model you
+configured — is spelled out plainly below rather than buried. This document is exact.
 
-## What stays on your device, always
+## What SAM stores, and where
 
-Everything by default:
+All of it, locally, always:
 
-- **Your content** — prompts, messages, files, the life index, memory, vault — never leaves the device.
-  In offline mode (a local Ollama model), nothing leaves at all.
+- **Your content** — prompts, messages, files, the life index, memory, vault — is stored only on this
+  device. SAM never uploads it, backs it up, syncs it, or sends it anywhere of its own accord.
 - **What SAM learns about you** — preferences, patterns — is stored locally, inspectable and deletable in
   "What SAM has learned about you". It is never sent to any AI provider or gateway, and never used as
   training data. (Enforced by a test that locks the module off the wire.)
 - **Your usage stats** — the "Your SAM" dashboard (tasks run, tools used, retention days, hours saved) is
   computed and stored **locally**. It's a feature for you, not surveillance of you.
 
-When you send a request to a cloud model *you* configured, only that request goes to that provider under
-their terms — the same as using their API directly. Local/offline mode sends nothing.
+## What leaves, when you ask a cloud model
+
+Be clear-eyed about this one, because it is the only routine exception and a vague promise here would be
+worse than none.
+
+Choose a cloud brain, and your request goes to that provider under their terms — the same as using their
+API directly. **That request is not only what you typed.** To answer you, SAM may first read a file, a
+web page, an email or your clipboard, and the result becomes part of the conversation sent to the model.
+So a file you asked SAM about does leave the device, to that provider, for that request.
+
+What never rides along, even then: your stored memory and vault, the life index, learned preferences, and
+usage stats. Only the conversation in play is sent.
+
+**Offline mode sends nothing at all.** Point SAM at a local Ollama model and there is no exception left —
+no request, no content, nothing on the wire. That is the mode to use for anything you would not hand to a
+third party, and it is the mode this claim is measured against.
 
 ## The one optional thing: anonymous telemetry (OFF by default)
 

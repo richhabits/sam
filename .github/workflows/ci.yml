@@ -41,6 +41,13 @@ jobs:
       - name: The Warden — security gate
         run: npx vitest run server/warden.test.ts
       - run: npm test
+      # The coverage ratchet, which until now ran NOWHERE. vitest.config.ts has always carried
+      # thresholds described as a floor "so coverage can never REGRESS" — but no workflow invoked
+      # them, so the only thing standing between main and a coverage collapse was somebody choosing
+      # to run `npm run test:coverage` by hand. A gate nobody calls is not a gate. Exits 1 when the
+      # floor is breached (verified, not assumed).
+      - name: Coverage ratchet — coverage may never regress
+        run: npm run test:coverage
       # Type-check — `vite build` uses esbuild which strips types WITHOUT checking them,
       # so type errors slip through the build. This catches them.
       - run: npx tsc --noEmit

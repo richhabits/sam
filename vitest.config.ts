@@ -24,7 +24,13 @@ export default defineConfig({
       reporter: ["text-summary"],
       // Ratchet-only floor — set just below the current baseline so coverage can never REGRESS.
       // Raise these numbers as tests are added; never lower them. Run via `npm run test:coverage`.
-      thresholds: { statements: 22, branches: 18, functions: 18, lines: 24 },
+      //
+      // These sat at 22/18/18/24 while actual coverage was 57/52/52/61 — the floor was less than
+      // HALF the ceiling, so coverage could have fallen by half and still passed. A ratchet that
+      // stops ratcheting is worse than none: it reads as protection on every run while protecting
+      // nothing. Re-set 2026-08-11 to ~2 points under the real baseline, which is the margin that
+      // absorbs an ordinary refactor without absorbing a regression.
+      thresholds: { statements: 55, branches: 50, functions: 50, lines: 59 },
     },
   },
 });
