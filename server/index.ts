@@ -1218,7 +1218,12 @@ async function git(cmd: string, timeout = 8000): Promise<string> {
   return stdout.trim();
 }
 // ── Security watchdog: what SAM has flagged/blocked (Jeeves on the door) ──
-app.get("/api/security", (_req, res) => res.json({ status: securityStatus(), events: securityEvents() }));
+// The block log — every Host header refused, every bad token, and the IP it came from. Answering
+// this to anyone told an attacker on this machine whether they had been noticed yet.
+app.get("/api/security", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "what SAM has blocked");
+  res.json({ status: securityStatus(), events: securityEvents() });
+});
 
 // ── Proactive: brief / nudges SAM wants to show you (drained when read) ──
 // Reading this DRAINS it (takePending), so an unauthenticated caller doesn't just read your
@@ -1260,7 +1265,10 @@ app.post("/api/autonomy-log/clear", (req, res) => {
 });
 // Current suggestion cards — evaluates triggers against the live world (due reminders now; file-watch
 // wiring surfaces here as the life index reports new files). Data only — nothing runs from this call.
-app.get("/api/suggestions", (_req, res) => {
+app.get("/api/suggestions", (req, res) => {
+  // Nudge text is the operator's own reminders — /api/proactive next door has always required
+  // this, and these are the same words arriving by a different route.
+  if (!canReadOwnContent(req)) return denyRead(res, "your reminders");
   const dueReminders = listNudges().filter((n) => n.due && new Date(n.due).getTime() <= Date.now()).map((n) => ({ id: n.id, text: n.text }));
   res.json({ cards: evaluateTriggers({ now: new Date().toISOString(), dueReminders }) });
 });
@@ -1347,7 +1355,10 @@ app.post("/api/team", (req, res) => runSquad("team", req, res));
 app.post("/api/ninjas", (req, res) => runSquad("ninjas", req, res));
 
 // ── The Continuous Swarm (Background Agents) ──
-app.get("/api/swarms", (_req, res) => res.json(loadSwarms()));
+app.get("/api/swarms", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "your swarms");
+  res.json(loadSwarms());
+});
 app.post("/api/swarms", async (req, res) => {
   const { goal, projectId, tier, user } = req.body;
   if (!goal) return res.status(400).json({ error: "missing goal" });
@@ -1369,7 +1380,12 @@ app.post("/api/swarms/approve", async (req, res) => {
 // A7: each schedule carries its computed nextRun + stale status, straight off the same
 // zone-correct math the scheduler itself fires from — the UI can never show a next-run
 // time that disagrees with what will actually happen.
-app.get("/api/schedules", (_req, res) => res.json(listSchedules().map((s) => ({ ...s, ...scheduleStatus(s) }))));
+// The sharpest of these: a schedule row carries the operator's `command` VERBATIM, so this was
+// "what this person has their machine do while they are not watching", readable with nothing.
+app.get("/api/schedules", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "your schedules");
+  res.json(listSchedules().map((s) => ({ ...s, ...scheduleStatus(s) })));
+});
 app.post("/api/schedules", (req, res) => {
   const { command, cron } = req.body;
   if (!command || !cron) return res.status(400).json({ error: "missing command or cron" });
@@ -1413,7 +1429,10 @@ app.post("/api/life-index/reindex", async (_req, res) => { const reports = await
 app.post("/api/life-index/watch", (req, res) => { const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
 
 // ── THE FORGE (Phase 5) — settings screen: review, enable/disable, delete SAM-forged tools ──
-app.get("/api/forged", (_req, res) => res.json({ ...forgedStats(), tools: listForged() }));
+app.get("/api/forged", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "the tools SAM has forged for you");
+  res.json({ ...forgedStats(), tools: listForged() });
+});
 app.post("/api/forged/:name/enable", (req, res) => {
   const on = !!(req.body as any)?.enabled;
   res.json({ ok: setForgedEnabled(req.params.name, on), ...forgedStats() });
@@ -1654,6 +1673,23 @@ function canApprove(req: any): boolean {
 // behind it without needing a second, identical function.
 function canReadPrivate(req: any): boolean {
   return isTrustedLocal(req) || isPairedSession(req);
+}
+// One tier down: reads that carry the operator's OWN content — what they automate, what SAM has
+// built for them, what it flagged — but not the shell/file/camera-adjacent panels canReadPrivate
+// keeps to the app and paired devices.
+//
+// These shipped answering EVERYONE, because the Handshake deliberately only gates mutations
+// (passkeyRequiredForMutation returns false for GET), and a GET with no guard of its own has no
+// guard at all. That is precisely the caller the Handshake exists to stop — another app on this
+// Mac, or a supply-chained dependency, which passes isLoopback while knowing no secret. It could
+// read the operator's schedule of commands without presenting anything.
+//
+// The remote clause is not a loophole and is load-bearing: req.remoteScope is set ONLY by the
+// remote gate above, after a timing-safe check of a 256-bit token the operator minted. Omitting
+// it would "close" this by locking out the operator's own phone browser — no gain against a
+// local process holding no credential at all, which is the whole threat here.
+function canReadOwnContent(req: any): boolean {
+  return canReadPrivate(req) || !!(req as any).remoteScope;
 }
 // "…can only be read from…" rather than "…are readable…": the noun varies from "your notes" to
 // "what SAM has been doing", and only this phrasing stays grammatical across all of them.

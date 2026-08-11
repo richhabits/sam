@@ -128,7 +128,16 @@ export async function runUpdate(): Promise<{ ok: boolean; output?: string; error
 
 // Security watchdog status (Jeeves on the door).
 export async function getSecurity(): Promise<{ status: any; events: any[] }> {
-  try { const r = await fetch("/api/security"); return await r.json(); } catch { return { status: { clear: true, headline: "—" }, events: [] }; }
+  try {
+    const r = await fetch("/api/security");
+    // A refusal from the read guard is perfectly good JSON, so `await r.json()` hands back
+    // {error, locked} and the caller's `d.status` is undefined — the shield renders its
+    // all-clear icon and "Checking…" forever, which is the panel claiming safety it never
+    // established. Shape the refusal like a result and SAY it, rather than letting an
+    // unpaired tab read reassurance into silence.
+    if (!r.ok) return { status: { clear: null, headline: "Pair this device to see what SAM has blocked" }, events: [] };
+    return await r.json();
+  } catch { return { status: { clear: true, headline: "—" }, events: [] }; }
 }
 
 // Proactive — briefs & nudges SAM wants to show you (drained on read).
