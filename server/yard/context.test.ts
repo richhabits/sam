@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { selectContext, admissible, score, keywords, type ProjectFile } from "./context.ts";
+import { selectContext, admissible, score, keywords, readEditable, type ProjectFile } from "./context.ts";
+import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const f = (path: string, content: string): ProjectFile => ({ path, content, bytes: Buffer.byteLength(content) });
 
@@ -169,5 +172,43 @@ describe("documentation is only in scope when it is asked for", () => {
     }
     expect(isDocumentation("index.html")).toBe(false);
     expect(isDocumentation("src/readme-parser.ts")).toBe(false);
+  });
+});
+
+describe("the walker does not follow symlinks out of the project or round in circles", () => {
+  // readEditable used statSync, which FOLLOWS a link and reports what it points at — so a
+  // symlink was walked into as though it were an ordinary directory. Both of these were
+  // measured before the fix, not imagined:
+  //   docs -> elsewhere   read that directory's files into the model's context: content from
+  //                       outside the project, and off the machine once a cloud brain answers.
+  //   sub/loop -> root    produced sub/loop/sub/loop/… — sixteen copies of one file, which then
+  //                       eat the twelve-file budget with duplicates of the same thing.
+  const mk = () => mkdtempSync(join(tmpdir(), "yard-ctx-"));
+
+  it("does not read a directory symlinked in from outside", () => {
+    const proj = mk(), outside = mk();
+    writeFileSync(join(outside, "notes.md"), "content from outside the project");
+    writeFileSync(join(proj, "own.md"), "mine");
+    symlinkSync(outside, join(proj, "docs"));
+    const paths = readEditable(proj).map((f) => f.path);
+    expect(paths).toEqual(["own.md"]);
+  });
+
+  it("does not loop on a symlink pointing back at the project", () => {
+    const proj = mk();
+    writeFileSync(join(proj, "index.html"), "<h1>hi</h1>");
+    mkdirSync(join(proj, "sub"));
+    writeFileSync(join(proj, "sub", "real.css"), "body{}");
+    symlinkSync(proj, join(proj, "sub", "loop"));
+    const paths = readEditable(proj).map((f) => f.path).sort();
+    expect(paths).toEqual(["index.html", "sub/real.css"]);
+  });
+
+  it("still walks ordinary nested directories (guards the guard)", () => {
+    // A walker that refused everything would pass both tests above and offer the model nothing.
+    const proj = mk();
+    mkdirSync(join(proj, "a", "b"), { recursive: true });
+    writeFileSync(join(proj, "a", "b", "deep.js"), "export {};");
+    expect(readEditable(proj).map((f) => f.path)).toEqual(["a/b/deep.js"]);
   });
 });

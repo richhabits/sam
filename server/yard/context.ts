@@ -16,7 +16,7 @@
 //  genuinely new files, which are how a project grows).
 // ─────────────────────────────────────────────────────────────
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 
 export const EDITABLE = /\.(html?|css|js|mjs|ts|tsx|jsx|json|md|txt|svg)$/i;
@@ -30,9 +30,14 @@ export interface ProjectFile { path: string; content: string; bytes: number }
 
 // Every editable file, whole. Nothing is cut short here; the decision about what will
 // fit is made afterwards, where it can be reported.
+// Deep enough for any real project layout, shallow enough that a pathological tree cannot
+// walk for ever even if something slips past the symlink check.
+const MAX_DEPTH = 12;
+
 export function readEditable(dir: string, protectedPaths: Set<string> = new Set()): ProjectFile[] {
   const out: ProjectFile[] = [];
-  const walk = (rel: string) => {
+  const walk = (rel: string, depth = 0) => {
+    if (depth > MAX_DEPTH) return;
     let entries: string[];
     try { entries = readdirSync(join(dir, rel)); } catch { return; }
     for (const e of entries) {
@@ -42,9 +47,20 @@ export function readEditable(dir: string, protectedPaths: Set<string> = new Set(
       // silently matches nothing.
       const r = rel ? `${rel}/${e}` : e;
       if (protectedPaths.has(r)) continue;
-      let isDir = false;
-      try { isDir = statSync(join(dir, r)).isDirectory(); } catch { continue; }
-      if (isDir) { walk(r); continue; }
+      // lstat, NOT stat: stat follows the link and reports what it points AT, so a symlink
+      // was walked into as if it were an ordinary directory. Two things that actually happened
+      // when tested:
+      //   docs -> /somewhere/else   read that directory's files into the model's context —
+      //                             content from outside the project, and off the machine
+      //                             entirely once a cloud brain answers.
+      //   sub/loop -> the project   produced sub/loop/sub/loop/… , sixteen copies of the same
+      //                             file, which then eat the twelve-file budget with duplicates.
+      // A project's own files are real files. A symlink here is either an escape or a cycle, so
+      // neither is followed.
+      let st: ReturnType<typeof lstatSync>;
+      try { st = lstatSync(join(dir, r)); } catch { continue; }
+      if (st.isSymbolicLink()) continue;
+      if (st.isDirectory()) { walk(r, depth + 1); continue; }
       if (!EDITABLE.test(e)) continue;
       try {
         const content = readFileSync(join(dir, r), "utf8");
