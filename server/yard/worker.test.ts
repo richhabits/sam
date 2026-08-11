@@ -357,3 +357,43 @@ describe("playbook.run", () => {
     expect(j.payload).toMatchObject({ playbookId: "pb_1", playbookName: "Ship it", playbookVersion: 3 });
   });
 });
+
+// ── the lock is decided by the filesystem, not by a gap between two calls ──
+describe("claimLock is atomic", () => {
+  // The old shape checked existsSync, then wrote unconditionally. Two workers starting together
+  // both found no lock, both wrote, and both returned true — the double flight the lock exists to
+  // prevent (interleaved logs, double spend). Exclusive create ("wx") closes that gap; the stale
+  // takeover path confirms its write instead of assuming it.
+  it("refuses when a DIFFERENT live process holds a fresh lock", async () => {
+    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
+    const fs = require("node:fs");
+    fs.mkdirSync(require("node:path").dirname(lockPath()), { recursive: true });
+    // process.ppid is a real, living pid that is not ours — exactly the situation the lock is for.
+    fs.writeFileSync(lockPath(), JSON.stringify({ pid: process.ppid, at: Date.now() }));
+    expect(claimLock()).toBe(false);
+    try { fs.unlinkSync(lockPath()); } catch { /* already gone */ }
+    releaseLock();
+  });
+
+  it("lets the SAME process re-claim its own lock", async () => {
+    // Deliberate, and the reason two claimLock() calls in one process both return true: a worker
+    // renewing its own claim must not lock itself out. It also means the create race this fix
+    // closes cannot be reproduced in-process — two genuine workers are two pids, and the window
+    // was between existsSync and writeFileSync. `wx` removes the window rather than narrowing it.
+    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
+    try { require("node:fs").unlinkSync(lockPath()); } catch { /* no lock yet */ }
+    expect(claimLock()).toBe(true);
+    expect(claimLock()).toBe(true);
+    releaseLock();
+  });
+
+  it("takes over a lock whose holder is long gone", async () => {
+    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
+    const fs = require("node:fs");
+    fs.mkdirSync(require("node:path").dirname(lockPath()), { recursive: true });
+    // A dead pid, written an hour ago: nothing should defer to that for ever.
+    fs.writeFileSync(lockPath(), JSON.stringify({ pid: 999999, at: Date.now() - 3600_000 }));
+    expect(claimLock()).toBe(true);
+    releaseLock();
+  });
+});

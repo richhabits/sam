@@ -47,15 +47,31 @@ export function claimLock(now = Date.now()): boolean {
   const dir = yardDir();
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const p = lockPath();
-  if (existsSync(p)) {
-    try {
-      const held = JSON.parse(readFileSync(p, "utf8"));
-      const fresh = now - Number(held.at || 0) < LOCK_STALE_MS;
-      if (fresh && held.pid !== process.pid && pidAlive(Number(held.pid))) return false;
-    } catch { /* unreadable lock is a dead lock — take it */ }
-  }
-  writeFileSync(p, JSON.stringify({ pid: process.pid, at: now }));
-  return true;
+  const mine = JSON.stringify({ pid: process.pid, at: now });
+
+  // EXCLUSIVE CREATE, not check-then-write. The old shape was:
+  //     if (existsSync(p)) { …decide… }
+  //     writeFileSync(p, mine); return true;
+  // Two workers starting together both found no lock, both wrote, and both returned true —
+  // the exact double flight this lock exists to prevent, and the one the comment above
+  // describes: interleaved logs and double spend. `wx` fails if the file exists, so the
+  // create is decided by the filesystem instead of by a gap between two calls.
+  try {
+    writeFileSync(p, mine, { flag: "wx" });
+    return true;
+  } catch { /* someone holds it — fall through and judge whether they still deserve to */ }
+
+  try {
+    const held = JSON.parse(readFileSync(p, "utf8"));
+    const fresh = now - Number(held.at || 0) < LOCK_STALE_MS;
+    if (fresh && held.pid !== process.pid && pidAlive(Number(held.pid))) return false;
+  } catch { /* unreadable lock is a dead lock — take it */ }
+
+  // Taking over a stale lock. Two workers can still decide that at the same instant, so the
+  // write is CONFIRMED rather than assumed: whoever's pid is on disk afterwards is the holder,
+  // and the loser backs off instead of both proceeding on a claim neither checked.
+  writeFileSync(p, mine);
+  try { return JSON.parse(readFileSync(p, "utf8")).pid === process.pid; } catch { return false; }
 }
 export function refreshLock(now = Date.now()) {
   try { writeFileSync(lockPath(), JSON.stringify({ pid: process.pid, at: now })); } catch { /* best effort */ }
