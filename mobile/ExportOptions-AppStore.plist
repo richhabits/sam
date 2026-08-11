@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for an App Store Connect build, used by:
+
+      xcodebuild -exportArchive \
+        -archivePath  <the .xcarchive> \
+        -exportPath   <output dir> \
+        -exportOptionsPlist mobile/ExportOptions-AppStore.plist
+
+  IN mobile/, NOT IN mobile/ios/, on purpose. The previous copy lived in ios/ — which is
+  generated and gitignored — so `expo prebuild` deleted it and there was no version of it
+  anywhere to restore. Same trap mobile/AGENTS.md already documents for the CocoaPods
+  quoting fix: nothing hand-written survives in ios/. Here it is tracked, and xcodebuild
+  takes the path as an argument, so nothing needs it to sit beside the project.
+
+  Only needed for the command-line export. Uploading from Xcode's Organizer
+  (Window → Organizer → Distribute App) does not read this file.
+-->
+<plist version="1.0">
+<dict>
+  <!-- Renamed from "app-store" in Xcode 15; this project builds under Xcode 26. -->
+  <key>method</key>
+  <string>app-store-connect</string>
+
+  <key>teamID</key>
+  <string>CC9Q9BH5NT</string>
+
+  <!-- FALSE deliberately. Left true, Xcode rewrites the version and build number during
+       export "helpfully" — which is how a build you believed was 5 arrives at App Store
+       Connect as something else, or collides with one already uploaded. The build number
+       comes from mobile/app.json (expo.ios.buildNumber) and nothing else gets a vote.
+       Build 4 was already uploaded twice; that collision is the reason this key is here. -->
+  <key>manageAppVersionAndBuildNumber</key>
+  <false/>
+
+  <!-- dSYMs go up with the build, or every TestFlight crash report comes back as
+       unsymbolicated addresses and tells you nothing about where it broke. -->
+  <key>uploadSymbols</key>
+  <true/>
+  <key>stripSwiftSymbols</key>
+  <true/>
+
+  <key>signingStyle</key>
+  <string>automatic</string>
+
+  <!-- "export" writes a signed .ipa locally instead of uploading. Deliberate: pushing a
+       build to Apple is an account-level publish, and belongs to whoever owns the account.
+       Change to "upload" only if you want the export step itself to submit. -->
+  <key>destination</key>
+  <string>export</string>
+</dict>
+</plist>
