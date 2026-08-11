@@ -50,9 +50,20 @@ LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
 # Releasing to TestFlight
 
-The build number lives in `app.json` (`expo.ios.buildNumber`) and nowhere else. App Store
-Connect refuses a duplicate, so bump it before every archive — a rejected upload is the only
-thing that tells you otherwise, after the wait.
+**Xcode owns the build number on this path, not `app.json`.** Organizer's Distribute step
+writes its own `ExportOptions.plist` with `manageAppVersionAndBuildNumber` set to TRUE, so it
+asks App Store Connect what is already up there and bumps past it during export. An archive
+stamped `(5)` was uploaded as **7** on 2026-08-11 — the two earlier archives labelled `(4)`
+had themselves gone up as 5 and 6, which is why nothing ever visibly collided.
+
+So `expo.ios.buildNumber` is a floor, not the truth, and it drifts every upload. After
+distributing, read the real number out of `DistributionSummary.plist` in the export folder and
+write it back to `app.json`, or the two keep diverging. Bumping it by hand before archiving is
+harmless but buys nothing here.
+
+Note also that `expo run:ios` does NOT sync `app.json` into the native `Info.plist` — a
+simulator build keeps whatever number the last `prebuild` wrote. Irrelevant for the simulator,
+and worth knowing before you trust a number you read off a device.
 
 `ExportOptions-AppStore.plist` is in **`mobile/`**, not `mobile/ios/`, for the reason above:
 the copy that lived in `ios/` was destroyed by a `prebuild` with no tracked version to

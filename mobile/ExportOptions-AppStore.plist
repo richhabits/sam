@@ -26,11 +26,15 @@
   <key>teamID</key>
   <string>CC9Q9BH5NT</string>
 
-  <!-- FALSE deliberately. Left true, Xcode rewrites the version and build number during
-       export "helpfully" — which is how a build you believed was 5 arrives at App Store
-       Connect as something else, or collides with one already uploaded. The build number
-       comes from mobile/app.json (expo.ios.buildNumber) and nothing else gets a vote.
-       Build 4 was already uploaded twice; that collision is the reason this key is here. -->
+  <!-- FALSE here so a command-line export is DETERMINISTIC: the build that lands is the
+       number in mobile/app.json and nothing rewrites it in flight.
+
+       Know that this DIFFERS from Xcode Organizer, which is the normal route for this app.
+       Organizer writes its own options with this key set to TRUE, asks App Store Connect
+       what is already up there, and bumps past it — an archive stamped (5) was uploaded as
+       7 on 2026-08-11. Neither setting is wrong; they answer different questions. If you
+       ever switch to exporting from here, expect the number to stop moving on its own, and
+       bump app.json yourself. -->
   <key>manageAppVersionAndBuildNumber</key>
   <false/>
 
