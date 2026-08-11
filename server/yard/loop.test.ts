@@ -246,3 +246,57 @@ describe("the loop never invents a tier", () => {
     expect(spends.some((s) => s.tier === "free")).toBe(false);   // the exact bug
   });
 });
+
+describe("a dropped pinpoint edit is reported, not silently swallowed", () => {
+  // Both refusal paths in readProposal used to `continue` in silence. A model mis-quoting
+  // whitespace in `find` is the commonest way an edit fails, and the loop would then rebuild
+  // unchanged code, hit the same error, and spend another bounded attempt on a proposal that
+  // never landed — with nothing in the log saying so.
+  const offered = [{ path: "a.js", content: "const x = 1;\n" }];
+
+  it("says WHY when the passage is not in the file", () => {
+    const skips: string[] = [];
+    const out = readProposal(
+      JSON.stringify({ edits: [{ path: "a.js", find: "const x = 999;", replace: "const x = 2;" }] }),
+      offered,
+      (p, why) => skips.push(`${p}: ${why}`),
+    );
+    expect(out).toBeNull();                       // nothing usable came back…
+    expect(skips).toHaveLength(1);                // …and the reason was reported
+    expect(skips[0]).toContain("a.js");
+    expect(skips[0]).toMatch(/not found/);
+  });
+
+  it("says WHY when the edit names a file that was never shown", () => {
+    const skips: string[] = [];
+    readProposal(
+      JSON.stringify({ edits: [{ path: "ghost.js", find: "a", replace: "b" }] }),
+      offered,
+      (p, why) => skips.push(`${p}: ${why}`),
+    );
+    expect(skips[0]).toContain("ghost.js");
+    expect(skips[0]).toMatch(/shown/);
+  });
+
+  it("reports an ambiguous edit rather than guessing which match to take", () => {
+    const twice = [{ path: "b.js", content: "let a = 1;\nlet a = 1;\n" }];
+    const skips: string[] = [];
+    readProposal(
+      JSON.stringify({ edits: [{ path: "b.js", find: "let a = 1;", replace: "let a = 2;" }] }),
+      twice,
+      (p, why) => skips.push(why),
+    );
+    expect(skips[0]).toMatch(/matches 2 places/);
+  });
+
+  it("stays silent when every edit applies", () => {
+    const skips: string[] = [];
+    const out = readProposal(
+      JSON.stringify({ edits: [{ path: "a.js", find: "const x = 1;", replace: "const x = 2;" }] }),
+      offered,
+      (p, why) => skips.push(why),
+    );
+    expect(out).toEqual([{ path: "a.js", content: "const x = 2;\n" }]);
+    expect(skips).toEqual([]);
+  });
+});

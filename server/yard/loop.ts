@@ -114,7 +114,18 @@ const estimate = (s: string) => Math.ceil(String(s || "").length / 4);
 
 // Parse a proposal into writable content. Shares the shape `project.edit` already uses —
 // pinpoint edits preferred, whole files allowed — so a model that can do one can do both.
-export function readProposal(text: string, offered: { path: string; content: string }[]): { path: string; content: string }[] | null {
+// `onSkip` reports an edit that was DROPPED, which used to happen in silence. A model
+// mis-quoting whitespace in `find` is the single most common way a pinpoint edit fails, and both
+// refusal paths below simply `continue`d: the loop then rebuilt unchanged code, hit the same
+// error, and spent another bounded attempt and another slice of the operator's tokens on a
+// proposal that never landed — with nothing in the log saying so. The caller already prints
+// `admissible`'s refusals in exactly this shape; these were the ones that never reached it.
+// Optional so the existing call sites and tests are unaffected.
+export function readProposal(
+  text: string,
+  offered: { path: string; content: string }[],
+  onSkip: (path: string, why: string) => void = () => {},
+): { path: string; content: string }[] | null {
   let parsed: any;
   try { parsed = JSON.parse(String(text || "").match(/\{[\s\S]*\}/)?.[0] || text); }
   catch { return null; }
@@ -131,9 +142,12 @@ export function readProposal(text: string, offered: { path: string; content: str
     }
     for (const [path, blocks] of byPath) {
       const src = offered.find((f) => f.path === path);
-      if (!src) continue;                       // a pinpoint edit can only touch a file that was shown
+      if (!src) { onSkip(path, "a pinpoint edit can only touch a file that was shown"); continue; }
       const applied = applyEdits(src.content, blocks);
-      if (!applied.ok) continue;                // all-or-nothing per file — never half-placed
+      // All-or-nothing per file — never half-placed. Said out loud now, because "not found — the
+      // passage to change is not in the file" is the one message that tells the operator (and the
+      // next iteration) that the model quoted the file wrongly rather than that the fix was wrong.
+      if (!applied.ok) { onSkip(path, applied.failures.map((f) => f.why).join("; ")); continue; }
       out.push({ path, content: applied.content });
       done.add(path);
     }
@@ -267,7 +281,7 @@ export async function buildUntilGreen(dir: string, goal: string, deps: LoopDeps,
     deps.spend(estimate(raw));
     deps.checkStop();
 
-    const proposal = readProposal(raw, offered);
+    const proposal = readProposal(raw, offered, (path, why) => deps.log(`left ${path} alone — ${why}`));
     if (!proposal) {
       deps.log("the proposal could not be used — nothing was written");
       attempts.push({ iteration: i, ok: false, wrote: [], diffs: [], error, note: "" });
