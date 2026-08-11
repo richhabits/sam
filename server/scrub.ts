@@ -48,6 +48,15 @@ const SHAPES: RegExp[] = [
   /\b[A-Fa-f0-9]{40,}\b/g,                       // long hex: session ids, sha-style secrets
 ];
 
+// Credentials carried INSIDE a URL — postgres://user:pw@host, https://user:pw@hook. Neither half
+// of the scrub caught these: the password has no recognisable shape, and by-reference only knows
+// variables whose NAME ends in _TOKEN/_KEY/_SECRET, which DATABASE_URL does not. So a connection
+// string reached the Black Box, the Trail and the yard's job logs verbatim — the exact "on disk
+// in plain text for ever" this file exists to prevent, arriving by the one door it did not watch.
+// Handled apart from SHAPES because only the password is replaced; the host and user stay
+// readable, or the log stops being diagnosable at the moment it matters most.
+const URL_CREDENTIAL = /([a-z][a-z0-9+.-]*:\/\/)([^\s:/@]+):([^\s@/]{3,})@/gi;
+
 // Redact a string. Values first (a known secret is redacted even if it looks like
 // nothing), then shapes.
 export function scrub(text: unknown, env: NodeJS.ProcessEnv = process.env): string {
@@ -66,6 +75,10 @@ export function scrub(text: unknown, env: NodeJS.ProcessEnv = process.env): stri
       s = s.split(p).join(`${p.slice(0, 3)}${REDACTED}`);
     }
   }
+
+  // Before the shapes: a password inside a URL is replaced in place, keeping scheme, user and
+  // host so the line still says WHICH service and WHOSE account it was.
+  s = s.replace(URL_CREDENTIAL, (_m, scheme, user) => `${scheme}${user}:${REDACTED}@`);
 
   // BY SHAPE, with the prefix kept so a log still says WHICH kind of thing was there —
   // "vcp_[redacted]" is diagnosable; a bare "[redacted]" is not.

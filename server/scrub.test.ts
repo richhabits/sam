@@ -43,6 +43,44 @@ describe("by shape — credentials SAM has never seen", () => {
   });
 });
 
+describe("credentials carried inside a URL", () => {
+  // The gap both halves missed: the password has no recognisable shape, and by-reference only
+  // knows variables whose NAME ends in _TOKEN/_KEY/_SECRET — which DATABASE_URL does not. So a
+  // connection string went to the Black Box, the Trail and the yard's job logs verbatim.
+  it("redacts the password in a connection string", () => {
+    const out = scrub("postgres://admin:hunter2SuperSecret@db.internal:5432/sam", {} as any);
+    expect(out).not.toContain("hunter2SuperSecret");
+    expect(out).toContain("[redacted]");
+  });
+
+  it("keeps the scheme, the user and the host — a scrubbed log must stay diagnosable", () => {
+    const out = scrub("postgres://admin:hunter2SuperSecret@db.internal:5432/sam", {} as any);
+    expect(out).toBe("postgres://admin:[redacted]@db.internal:5432/sam");
+  });
+
+  it("catches any scheme, not a hardcoded list of them", () => {
+    for (const s of ["mysql", "mongodb+srv", "amqp", "redis", "https"]) {
+      expect(scrub(`${s}://u:sekrit123@h/x`, {} as any)).not.toContain("sekrit123");
+    }
+  });
+
+  it("redacts every occurrence, not just the first", () => {
+    const out = scrub("redis://a:firstpw123@h1 and redis://b:secondpw123@h2", {} as any);
+    expect(out).not.toMatch(/firstpw123|secondpw123/);
+  });
+
+  it("leaves ordinary URLs alone — over-redaction blinds the log too", () => {
+    // SAM's own pairing and health URLs go through this on every log line. A port is not a
+    // password, and turning "http://172.20.10.3:8787" into noise would hide the one detail
+    // that made the LAN-address bug findable.
+    for (const u of [
+      "http://172.20.10.3:8787/api/health",
+      "http://localhost:8787/pair?code=abc",
+      "https://docs.example.com/a:b",
+    ]) expect(scrub(u, {} as any)).toBe(u);
+  });
+});
+
 describe("by reference — the ones SAM actually holds", () => {
   const env = { SOME_TOKEN: "not-a-recognisable-shape-at-all-9182", PLAIN: "ordinary" } as any;
 

@@ -28,6 +28,11 @@ const CREDENTIALS = [
   'xoxb-1234567890-abcdefghij',
   'Bearer abcdefghijklmnopqrstuvwxyz0123',
   'a'.repeat(40), // long hex — this is the shape OUR OWN session token would take
+  // Not a shape at all — a password inside a URL. It is in this list because the list IS the
+  // drift check: the two scrubbers are only pinned on examples that appear here, so a rule added
+  // to one side without an example here ages quietly, which is exactly what happened when
+  // URL_CREDENTIAL landed on the server and the lock screen kept printing connection strings.
+  'postgres://admin:hunter2SuperSecret@db.internal:5432/sam',
 ];
 
 describe('the phone scrubber matches the server scrubber, shape for shape', () => {

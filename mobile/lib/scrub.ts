@@ -31,10 +31,17 @@ const SHAPES: RegExp[] = [
   /\b[A-Fa-f0-9]{40,}\b/g, // long hex: session ids, sha-style secrets — incl. OUR OWN bearer token
 ];
 
+// A password carried inside a URL — postgres://user:pw@host. Its own rule rather than a member
+// of SHAPES because only the password is replaced: the scheme, user and host stay readable, or a
+// lock-screen line stops saying which service it was about. Twin of URL_CREDENTIAL in
+// server/scrub.ts; the test next door pins the two against each other.
+const URL_CREDENTIAL = /([a-z][a-z0-9+.-]*:\/\/)([^\s:/@]+):([^\s@/]{3,})@/gi;
+
 /** Redact anything credential-shaped, keeping a short prefix so the line stays diagnosable. */
 export function scrub(text: unknown): string {
   let s = typeof text === 'string' ? text : String(text ?? '');
   if (!s) return s;
+  s = s.replace(URL_CREDENTIAL, (_m, scheme, user) => `${scheme}${user}:${REDACTED}@`);
   for (const re of SHAPES) {
     s = s.replace(re, (m) => {
       const keep = /^Bearer/i.test(m) ? 'Bearer ' : m.slice(0, Math.min(4, m.length));
