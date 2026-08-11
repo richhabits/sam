@@ -63,6 +63,31 @@ describe("reads carrying the operator's own content refuse an uncredentialed cal
   });
 });
 
+describe("a guarded fact must not ship through an unguarded route", () => {
+  // The failure this catches is not a missing guard — it is a guard that IS there, next to a
+  // second route handing out the same answer. Two were found this way:
+  //   /api/allow refused the standing authorisations while /api/tools shipped `allowed` per tool
+  //   /api/vault/stats refused the vault path while /api/status embedded vaultStats() whole
+  // Both routes stay open (a catalogue and a status bar render before anyone pairs); the private
+  // FIELDS are now conditional on the same guard their dedicated route uses.
+  it("/api/tools only includes `allowed` for a credentialed caller", () => {
+    const h = get("/api/tools");
+    expect(h).toContain("canReadOwnContent(req)");
+    expect(h).toMatch(/\?\s*\{\s*allowed:/);      // conditional, not unconditional
+  });
+
+  it("/api/status only includes the vault path and black box for a credentialed caller", () => {
+    const h = get("/api/status");
+    expect(h).toContain("canReadOwnContent(req)");
+    for (const field of ["vault: vaultStats()", "issues: issuesSummary()", "pulse: pulseSummary()"]) {
+      expect(h).toContain(field);
+    }
+    // …and all of them behind the same ternary, not sitting in the unconditional object.
+    const conditional = h.slice(h.indexOf("...(mine ?"));
+    for (const field of ["vault:", "issues:", "pulse:", "memory:", "docs:"]) expect(conditional).toContain(field);
+  });
+});
+
 describe("the guard itself", () => {
   const guard = src.slice(src.indexOf("function canReadOwnContent"), src.indexOf("function canReadOwnContent") + 240);
 

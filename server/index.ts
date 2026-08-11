@@ -1169,7 +1169,18 @@ app.post("/api/confirm", async (req, res) => {
 });
 
 // What can SAM actually do? (for the UI / transparency)
-app.get("/api/tools", (_req, res) => res.json(TOOLS.map((t) => ({ name: t.name, safe: t.safe, tier: toolTier(t.name, t.safe), description: t.description, allowed: isAllowed(t.name) }))));
+// The CATALOGUE stays open — names, descriptions and tiers are the same for every install and the
+// UI lists them before anyone has paired. `allowed` is not catalogue: it is the operator's own
+// standing authorisations, the identical fact /api/allow next door refuses to uncredentialed
+// callers. Guarding one route and shipping the same answer transposed through another is not a
+// guard, so the flag is omitted rather than the whole route being locked.
+app.get("/api/tools", (req, res) => {
+  const mine = canReadOwnContent(req);
+  res.json(TOOLS.map((t) => ({
+    name: t.name, safe: t.safe, tier: toolTier(t.name, t.safe), description: t.description,
+    ...(mine ? { allowed: isAllowed(t.name) } : {}),
+  })));
+});
 
 // ── STANDING AUTHORIZATIONS ("yes, always allow X") ──────────
 // The standing authorizations — which tools SAM may run WITHOUT asking. Reading this is reading
@@ -1489,7 +1500,15 @@ app.get("/api/forged", (req, res) => {
   res.json({ ...forgedStats(), tools: listForged() });
 });
 app.post("/api/forged/:name/enable", (req, res) => {
+  // ENABLING is loopback-only; disabling is not. Turning a forged tool on makes code SAM WROTE
+  // ITSELF executable — new capability, granted at the machine, exactly like /api/allow,
+  // /api/autopilot and /api/consent next door, and for the identical stated reason: a device must
+  // not be able to grant itself power. This sat on the general mutation gate instead, which a
+  // paired phone satisfies, so a phone could arm generated code. The Cell sandboxes what runs and
+  // scanCode screens it, but a denylist plus a sandbox is a second line, not a reason to skip the
+  // first. Turning one OFF only ever reduces capability, so it stays reachable from anywhere.
   const on = !!(req.body as any)?.enabled;
+  if (on && !isLoopback(req)) return res.status(403).json({ error: "A forged tool is armed on the computer SAM runs on, not remotely." });
   res.json({ ok: setForgedEnabled(req.params.name, on), ...forgedStats() });
 });
 app.delete("/api/forged/:name", (req, res) => res.json({ ok: deleteForged(req.params.name), ...forgedStats() }));
@@ -1645,7 +1664,11 @@ app.get("/api/rollback", async (req, res) => {
 // BENCH ONLY — drain the model-call metrics recorded since the last drain. Registered only in
 // bench mode so it's never exposed in a real install. scripts/bench.ts drains between tasks.
 if (BENCH_MODE) app.get("/api/bench/drain", (_req, res) => res.json({ calls: drainMetrics() }));
-app.get("/api/ios/status", (_req, res) => {
+app.get("/api/ios/status", (req, res) => {
+  // Returns an absolute path on the operator's disk. /api/life-index is guarded with the note that
+  // it "returns the absolute paths of the folders you watch — a map of your disk"; this is the same
+  // kind of answer arriving through a smaller door.
+  if (!canReadOwnContent(req)) return denyRead(res, "your iOS drop folder");
   res.json({ folder: dropFolderPath(), enabled: true });
 });
 
@@ -1672,7 +1695,13 @@ app.get("/api/update-check", async (_req, res) => {
     res.json(sourceUpdateStatus(SAM_VERSION, local, remote));
   } catch { res.json({ behind: false, current: SAM_VERSION || undefined }); }   // no git/remote → still report the version
 });
-app.post("/api/update", async (_req, res) => {
+app.post("/api/update", async (req, res) => {
+  // Loopback-only, to match /api/update-channel directly above — which is loopback-only for
+  // choosing stable-vs-beta. This route PULLS AND REPLACES SAM'S OWN CODE, so the more
+  // consequential of the two was the more loosely held: it sat on the general mutation gate, which
+  // a paired phone satisfies. Updating the software running on the operator's machine is a decision
+  // for the machine, like every other capability change in this file.
+  if (!isLoopback(req)) return res.status(403).json({ error: "SAM updates itself on the computer it runs on, not remotely." });
   try {
     // Refuse gracefully on a dirty tree — never silently overwrite the user's local edits.
     const dirty = (await git("status --porcelain")).trim();
@@ -1790,8 +1819,13 @@ app.get("/api/github/issues", async (req, res) => {
 });
 
 // CONNECTORS — every service SAM reads (GitHub, Slack, Notion, Linear, Vercel) behind one shape.
-// Read-only, same trust as the GitHub routes above: the global middleware already requires a
-// passkey or a paired session, so a paired phone sees its own workspaces and nothing can write.
+// Read-only, same trust as the GitHub routes above: canReadPrivate, checked per route.
+//
+// This comment used to say "the global middleware already requires a passkey or a paired session".
+// It does not, for a GET — that is the exact claim the note above canReadPrivate was written to
+// correct, after curling this route with no credential and getting the operator's GitHub account
+// back. The code was fixed; the sentence that caused it was left sitting here, one screen below its
+// own retraction. A disproven claim left in place will be believed again by the next reader.
 app.get("/api/connectors", async (req, res) => {
   if (!canReadPrivate(req)) return denyRead(res);
   try {
@@ -2102,7 +2136,15 @@ app.post("/api/playbooks/:id/run", (req, res) => {
   // template body is unchanged, so this never bumps the version.
   savePlaybook({ id: pb.id, name: pb.name, template: pb.template, lastValues: merged });
   const prompt = renderTemplate(pb.template, merged);
+  // Grant-checked and attributed like every other way of starting work. This route enqueued a job
+  // from a remote device while calling NEITHER — so a phone could start a run that appeared in no
+  // attribution log, which is precisely the promise B5 makes ("every remote action logged with
+  // device identity and capability used"). One-tap is a UI affordance, not a different trust bar:
+  // a playbook run is an enqueue, and /api/yard/enqueue three hundred lines up does both.
+  const needs = missingGrant(req, "playbook.run", null);
+  if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
   const job = yardStore().enqueue("playbook.run", { prompt, playbookId: pb.id, playbookName: pb.name, playbookVersion: pb.version });
+  attributeRemote(req, "assign-task", `playbook · ${pb.name}`);
   res.json({ job, prompt });
 });
 
@@ -2260,7 +2302,14 @@ app.get("/api/scope/view", (req, res) => {
   res.type("html").send(renderScope());
 });
 
-app.get("/api/status", (_req, res) =>
+// Liveness stays open — the status bar renders before anyone has paired, and counts of skills and
+// tools are the same on every install. The rest is not liveness: vaultStats() returns the vault's
+// absolute PATH, and /api/vault/stats next door refuses that exact call to an uncredentialed
+// reader. Shipping the same object through a route that does not check is not a smaller hole than
+// the one being guarded — it is the same hole with a different name. (Identical shape to the
+// `allowed` flag /api/tools was handing out while /api/allow refused it.)
+app.get("/api/status", (req, res) => {
+  const mine = canReadOwnContent(req);
   res.json({
     skills: SKILLS.length,
     projects: PROJECTS.length,
@@ -2268,15 +2317,17 @@ app.get("/api/status", (_req, res) =>
     platform: process.platform,
     defaultTier: process.env.DEFAULT_TIER || "free",
     voice: { elevenlabs: !!process.env.ELEVENLABS_API_KEY },
-    memory: memoryStats(),
-    docs: docsStats(),
     models: providersStatus(),
     capacity: capacityReport(),
-    vault: vaultStats(),
-    issues: issuesSummary(),   // local error capture (the black box) — strictly on-device
-    pulse: pulseSummary(),     // runtime metrics — strictly on-device
-  })
-);
+    ...(mine ? {
+      memory: memoryStats(),
+      docs: docsStats(),
+      vault: vaultStats(),      // includes the vault's absolute path
+      issues: issuesSummary(),  // local error capture (the black box) — strictly on-device
+      pulse: pulseSummary(),    // runtime metrics — strictly on-device
+    } : {}),
+  });
+});
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
 app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
@@ -2360,9 +2411,17 @@ app.listen(Number(PORT), HOST, () => {
   if (MESH) {
     console.log(`  🔒 mesh access  · open http://${MESH_IP}:${PORT}/?token=YOUR_TOKEN on any device joined to the mesh (works off Wi-Fi, over cellular)\n`);
   } else if (REMOTE) {
-    const nets = os.networkInterfaces();
-    const lan = Object.values(nets).flat().find((n) => n && n.family === "IPv4" && !n.internal)?.address;
+    // lanIP(), not a third hand-rolled copy of "first non-internal IPv4". That expression is the
+    // bug fixed earlier in this file's own history: it answers "what does the OS list first",
+    // which on a Mac with an idle Ethernet port or dongle is a self-assigned 169.254.x.x — an
+    // address that looks like a LAN IP and routes nowhere.
+    //
+    // /api/pair/new was fixed to use lanIP(); THIS line was not, and it is the more visible of the
+    // two — it is what a first-time operator reads off the console to point their phone at. The
+    // same wrong answer, printed in the one place someone is definitely looking.
+    const lan = lanIP();
     if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);
+    else console.log(`  ⚠️ phone access is on, but this Mac has no network address a phone could reach — connect it to the same Wi-Fi as your phone.\n`);
   }
 }).on("error", (e: any) => {
   // Port already taken — almost always another SAM (or a stale one) already serving on it. Don't
