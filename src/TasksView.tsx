@@ -107,11 +107,23 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   const refresh = useCallback(() => {
     getYard().then((r: any) => {
       setOn(!!r.on);
-      setRefused(!!r.refused);
+      setRefused(false);
       setJobs(r.recent || []);
       setMeter(r.meter || null);
       setNow(Date.now());
-    }).catch(() => { /* transient fetch failure — the next poll tries again */ });
+    }).catch((e: any) => {
+      // A REFUSAL IS NOT A TRANSIENT FAILURE. /api/yard answers an untrusted browser with 403 and
+      // no `refused` field, so `setRefused(!!r.refused)` could never once be true — the
+      // "pair this browser" panel below has been unreachable since it was written. The refusal
+      // instead fell through to "the yard is off", which is a different and wrong thing to say.
+      //
+      // It got worse when api.ts started throwing on a non-OK response (correctly — that change
+      // is what stopped 47 refused actions reporting success): the throw landed in this catch,
+      // `on` stayed null, and the screen showed "Looking…" forever. A spinner that never resolves
+      // is the least useful of the three possible answers.
+      if (e?.locked || e?.status === 401 || e?.status === 403) { setRefused(true); setOn(false); return; }
+      /* genuinely transient — the next poll tries again */
+    });
   }, []);
 
   useEffect(() => {
@@ -554,7 +566,11 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
-    getPlaybooks().then((r: any) => { setRefused(!!r.refused); setPlaybooks(r.playbooks || []); }).catch(() => { /* transient — the sheet just shows what it last had */ });
+    // Same shape as the yard refresh above: /api/playbooks answers an untrusted browser with 403,
+    // never with a `refused` field, so this sheet's own "pair this browser" state was unreachable
+    // and a refusal read as an empty playbook list — "you have none" rather than "I can't see them".
+    getPlaybooks().then((r: any) => { setRefused(false); setPlaybooks(r.playbooks || []); })
+      .catch((e: any) => { if (e?.locked || e?.status === 401 || e?.status === 403) setRefused(true); });
   }, []);
   useEffect(() => { load(); }, [load]);
 

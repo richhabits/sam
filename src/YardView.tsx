@@ -74,12 +74,18 @@ export default function YardView() {
   useEffect(() => {
     getYardProjects()
       .then((r) => {
-        setRefused(!!r?.refused);
+        setRefused(false);
         const list: Project[] = r?.projects ?? [];
         setProjects(list);
         setSlug((s) => s || list[0]?.slug || "");
       })
-      .catch(() => setProjects([]));
+      // Same as Tasks and the device list: /api/yard/projects refuses with a 403, never with a
+      // `refused` field, so this view answered "no projects" to a browser that simply was not
+      // allowed to look. An empty list and a closed door should not render as the same sentence.
+      .catch((e: any) => {
+        setProjects([]);
+        if (e?.locked || e?.status === 401 || e?.status === 403) setRefused(true);
+      });
   }, []);
 
   useEffect(() => {

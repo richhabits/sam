@@ -258,7 +258,15 @@ export default function FlipItView() {
     alive.current = true;
     document.title = "FLIP IT · SAM";
     const pull = () => {
-      getFlipit().then((r) => { if (alive.current) { setD(r); setErr(false); } }).catch(() => { if (alive.current) setErr(true); });
+      getFlipit().then((r) => { if (alive.current) { setD(r); setErr(false); } }).catch((e: any) => {
+        if (!alive.current) return;
+        // The "refused is not absent" panel below reads d.refused — which /api/flipit never sends.
+        // It answers an untrusted browser with a 403, so that panel was unreachable and the view
+        // fell through to "not set up": the exact wrong turn its own comment warns about, sending
+        // you to look for a missing install instead of a closed door.
+        if (e?.locked || e?.status === 401 || e?.status === 403) { setD({ refused: true } as any); setErr(false); return; }
+        setErr(true);
+      });
     };
     // The FIRST read always happens. Only the repeat is skipped while hidden — a tab
     // opened in the background is still a tab you'll look at, and it must not be sitting

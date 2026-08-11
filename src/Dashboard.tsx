@@ -64,7 +64,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       .catch(() => setPairErr("Couldn't reach SAM to mint a code."));
   }, []);
   const refreshDevices = useCallback(() => {
-    getPairedDevices().then((r) => { setDevices(r.devices || []); setDevicesRefused(!!r.refused); }).catch(() => {/* the next poll re-reads */});
+    // A refusal arrives as a 403, never as a `refused` field on a success — so this flag could
+    // never be true and the "this browser isn't paired enough" message below was unreachable.
+    // The refusal instead rendered as an EMPTY device list, i.e. "no devices are paired", which is
+    // a claim about the operator's security posture that nobody checked. Devices may well be
+    // paired; this browser simply cannot see them.
+    getPairedDevices().then((r) => { setDevices(r.devices || []); setDevicesRefused(false); })
+      .catch((e: any) => { if (e?.locked || e?.status === 401 || e?.status === 403) setDevicesRefused(true); });
   }, []);
   // B5 — the single view: "what did the phone do yesterday." Default window is the server's
   // own default (24h, literally yesterday); scoping to one device is a click away.
