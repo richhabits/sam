@@ -650,7 +650,25 @@ startProactive(async () => {
   // Run the three independent lookups in PARALLEL — they don't depend on each other,
   // so this is ~max(latency) instead of the sum (saves 1-3s on the brief).
   const { toolByName } = await import("./tools.ts");
-  const runTool = (n: string, i: any) => { const t = toolByName(n); return t ? t.run(i).catch(() => "") : Promise.resolve(""); };
+  // FENCED, like every other route from a tool into a prompt. This one called t.run() directly and
+  // interpolated the raw string below, so it bypassed fenceToolResult entirely — and read_emails
+  // and read_calendar are BOTH in UNTRUSTED_SOURCE, for the obvious reason that mail and invites
+  // arrive from anyone.
+  //
+  // That made the morning brief the softest target in SAM: it fires on a TIMER with nobody
+  // watching, its input is written by whoever chose to email you, and the result went into
+  // runAgent (below) as ordinary operator text under a "## Latest Emails" heading — indistinguishable
+  // from instruction. Dangerous tools would still land as an Ask, but every safe:true tool
+  // auto-runs, which is the whole read-then-send shape.
+  //
+  // It has been dormant only because read_emails raised an AppleScript syntax error on every call
+  // and fed "Couldn't read Mail: …" into the brief instead. Fixing that (same audit, tools.ts)
+  // would have armed this on the next morning tick.
+  const { fenceToolResult } = await import("./agent.ts");
+  const runTool = (n: string, i: any) => {
+    const t = toolByName(n);
+    return t ? t.run(i).then((r) => fenceToolResult(n, r)).catch(() => "") : Promise.resolve("");
+  };
   const [calendarData, emailData, weatherData] = await Promise.all([
     runTool("read_calendar", {}),
     runTool("read_emails", {}),
