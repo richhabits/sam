@@ -124,7 +124,7 @@ const estimate = (s: string) => Math.ceil(String(s || "").length / 4);
 export function readProposal(
   text: string,
   offered: { path: string; content: string }[],
-  onSkip: (path: string, why: string) => void = () => {},
+  onSkip: (path: string, why: string) => void = () => { /* callers that don't report skips */ },
 ): { path: string; content: string }[] | null {
   let parsed: any;
   try { parsed = JSON.parse(String(text || "").match(/\{[\s\S]*\}/)?.[0] || text); }
