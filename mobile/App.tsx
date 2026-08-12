@@ -308,7 +308,11 @@ export default function App() {
             // the QR on the Mac, tap the banner it offers, and the sam:// link it opens is
             // already handled by handleUrl()/doClaim() above — this footer is the only thing
             // that was actually missing.
-            footer="Point your phone's Camera app at the QR code on your Mac (SAM → Dashboard → Pair a phone) and tap the banner it shows — that's it. No camera in this screen; iOS's own Camera app reads it. Prefer typing? Copy the address and code shown there instead. A code is one-time and lasts 15 minutes."
+            // The path has to match the Mac exactly or it is worse than no instruction: "Dashboard
+            // → Pair a phone" sent people to a screen whose tabs are Overview / Brains /
+            // Automations / People / Activity, with the button two levels down inside Automations.
+            // It is its own Devices tab now, and this says so.
+            footer="Point your phone's Camera app at the QR code on your Mac (SAM → Dashboard → Devices → Pair a phone) and tap the banner it shows — that's it. No camera in this screen; iOS's own Camera app reads it. Prefer typing? Copy the address and code shown there instead. A code is one-time and lasts 15 minutes."
           >
             <Field
               ios={ios}

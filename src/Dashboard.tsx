@@ -119,7 +119,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
 
   // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
   // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
-  const [tab, setTab] = useState<"overview" | "brains" | "auto" | "people" | "activity">("overview");
+  const [tab, setTab] = useState<"overview" | "brains" | "auto" | "devices" | "people" | "activity">("overview");
   const [showAllLanes, setShowAllLanes] = useState(false);
   const providers = s?.models?.providers || [];
   const freeLive = providers.filter((p: any) => p.tier === "free" && p.keys > 0);
@@ -150,6 +150,11 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               <button type="button" role="tab" aria-selected={tab === "overview"} className={tab === "overview" ? "on" : ""} onClick={() => setTab("overview")}>Overview</button>
               <button type="button" role="tab" aria-selected={tab === "brains"} className={tab === "brains" ? "on" : ""} onClick={() => setTab("brains")}>Brains</button>
               <button type="button" role="tab" aria-selected={tab === "auto"} className={tab === "auto" ? "on" : ""} onClick={() => setTab("auto")}>Automations</button>
+              {/* Devices was inside Automations, which is where nobody looked for it — pairing a
+                  phone is not an automation. Found the hard way: the Pocket's own pairing screen
+                  tells you to go to "Dashboard → Pair a phone", and following that instruction
+                  landed on Overview, then People, then Settings, and never on the button. */}
+              <button type="button" role="tab" aria-selected={tab === "devices"} className={tab === "devices" ? "on" : ""} onClick={() => setTab("devices")}>Devices</button>
               <button type="button" role="tab" aria-selected={tab === "people"} className={tab === "people" ? "on" : ""} onClick={() => setTab("people")}>People</button>
               <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "on" : ""} onClick={() => setTab("activity")}>Activity</button>
             </div>
@@ -350,9 +355,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               </div>
             </>)}
 
-            {/* B2 — the device registry. Alongside the yard tile per the brief: this is
-                who can reach it, the yard tile above is what it's doing. Shown whenever
-                the Pairing itself is reachable, independent of whether the yard is on. */}
+            </>)}
+            {tab === "devices" && (<>
+            {/* B2 — the device registry: who can reach this SAM. It used to sit under
+                Automations beside the yard tile, on the reasoning that one is "what it's doing"
+                and the other "who can reach it". That reads well in a code comment and not at
+                all in a menu — pairing a phone is not an automation, and the button was
+                unfindable. It has its own tab now. */}
             <div className="dash-sec">
               <Icon name="phone" /> Paired devices ({devices.length})
               {devices.length > 1 && (
@@ -398,7 +407,14 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                     </div>
                   </div>
                 ) : (
-                  <button type="button" className="mini" onClick={mintPair}>+ Pair a phone</button>
+                  <>
+                    <button type="button" className="mini" onClick={mintPair}>+ Pair a phone</button>
+                    {/* The other half of the same signpost as Settings → Devices. Two ways in,
+                        each stated plainly, so neither is discovered by failing at the other. */}
+                    <div className="dash-empty" style={{ marginTop: 6 }}>
+                      For the SAM <b>app</b> on iPhone. To open SAM in your phone's <b>browser</b> instead, use Settings → Devices.
+                    </div>
+                  </>
                 )}
                 {pairErr ? <div className="dash-empty" style={{ color: "var(--c-err)" }}>{pairErr}</div> : null}
               </div>
@@ -478,6 +494,8 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
               </>
             )}
 
+            </>)}
+            {tab === "auto" && (<>
             {/* swarm monitor */}
             <div className="dash-sec"><Icon name="team" /> Swarms ({swarms.filter(sw => sw.status === "running" || sw.status === "paused" || sw.status === "planning").length} active)</div>
             {swarms.length === 0 ? <div className="dash-empty">No swarms yet — use /swarm &lt;goal&gt; to launch one.</div> : (

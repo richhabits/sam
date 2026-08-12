@@ -1397,7 +1397,7 @@ export default function App() {
             </div>
             <div className="pop-title">Devices</div>
             <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><Icon name="phone" size={16} /><span className="pop-opt-name">Use SAM on your phone</span><span className="pop-opt-sub">QR code</span></button>
+              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><Icon name="phone" size={16} /><span className="pop-opt-name">Open SAM in your phone's browser</span><span className="pop-opt-sub">QR code</span></button>
             </div>
             <div className="pop-sub-label"><Icon name="people" size={16} /> Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (

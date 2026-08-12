@@ -387,7 +387,12 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         <div className="admin-cat" id="admin-phone"><Icon name="phone" /> Phone &amp; devices</div>
 
         <div className="admin-row">
-          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Use SAM on your phone {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi</span></div>
+          {/* NAMED FOR WHICH ONE IT IS. There are two ways to reach SAM from a phone and they
+              are not interchangeable: this QR carries a remote-access token and opens SAM in the
+              phone's BROWSER, while the SAM app pairs with a one-time code from Dashboard →
+              Devices. Both were called "phone" in different corners of the UI, so scanning this
+              one expecting the app to pair is a dead end that looks like a broken app. */}
+          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Open SAM in your phone's browser {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi — for the SAM <b>app</b>, use Dashboard → Devices → Pair a phone</span></div>
           {phone.remoteOn && phoneQR ? (
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
               <img src={phoneQR} alt="Scan to open SAM on your phone" style={{ width: 160, height: 160, borderRadius: 12, background: "#fff", padding: 6 }} />
