@@ -253,6 +253,14 @@ jobs:
           # online user, which is every install-time scenario). A silently-broken notarization fails loudly.
           echo "🔎 Gatekeeper assessment:"; spctl -a -vv --type exec "$APP" 2>&1 | tee /tmp/spctl.txt || true
           grep -qiE "source=Notarized Developer ID|accepted" /tmp/spctl.txt || { echo "❌ Gatekeeper did NOT accept the app — notarization didn't stick."; exit 1; }
+          # spctl ALONE IS NOT ENOUGH, and this build proved it. A runner is online, so spctl can ask
+          # Apple and answer "Notarized Developer ID" for an app carrying no ticket of its own — which
+          # is exactly what happened when the afterSign hook wrongly decided a signed app was unsigned
+          # and skipped it (the app was notarized only as a side effect of submitting the dmg, whose
+          # contents Apple notarizes too). The user who drags that app out of the dmg and opens it
+          # offline is the one who finds out. Only a stapled ticket proves it locally.
+          echo "🔎 Stapler validate (app):"
+          xcrun stapler validate "$APP" || { echo "❌ the .app has no stapled ticket — afterSign skipped or failed to notarize it. Check the 'notarize ·' lines in the Package step."; exit 1; }
           # HARD GATE (was a warning until 3.4.0): the dmg WRAPPER must carry its own stapled ticket.
           # electron-builder notarizes the .app and never submits the disk image, so the file people
           # actually download used to arrive without one — proven by hand on the 3.4.0 build, where

@@ -16,5 +16,8 @@ export interface NotaryCredentials {
 export declare function profileName(): string;
 /** Resolved credentials, or null when neither the keychain nor the environment supplies them. */
 export declare function notaryCredentials(): NotaryCredentials | null;
+/** codesign's report with stdout and stderr merged — it writes to stderr and exits 0. */
+export declare function codesignOutput(appPath: string): string;
+export declare function developerIdFromCodesignOutput(text: string): boolean;
 export declare function isDeveloperIdSigned(appPath: string): boolean;
 export declare function skipRequested(): boolean;

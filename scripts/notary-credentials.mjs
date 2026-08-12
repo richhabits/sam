@@ -13,7 +13,7 @@
 //  every CI macOS build, and "main is red because of the release tooling" is its own outage.
 // ─────────────────────────────────────────────────────────────
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 // Read when ASKED, not when imported. A module-level constant freezes the name at import time,
 // which is invisible locally (the env is set before node starts) and wrong anywhere the
@@ -57,18 +57,31 @@ export function notaryCredentials() {
   return null;
 }
 
+/** Everything codesign says about a path, BOTH streams merged.
+ *
+ *  `codesign -dvv` writes its entire report to STDERR and exits 0 on a signed binary. Reading only
+ *  stdout therefore returns "" for a perfectly signed app — and the first version of this file did
+ *  exactly that, via execFileSync, whose return value is stdout alone. The stderr fallback sat in a
+ *  catch block that a zero exit never reaches. CI signed the app with a real Developer ID, this
+ *  said "not signed", and notarization was skipped under a green tick. spawnSync is used because it
+ *  hands back both streams instead of making success and failure read from different places. */
+export function codesignOutput(appPath) {
+  const r = spawnSync("codesign", ["-dvv", appPath], { encoding: "utf8", timeout: 60_000 });
+  return `${r.stdout || ""}${r.stderr || ""}`;
+}
+
+/** Does codesign's report describe a Developer ID signature? Split out from the command so the
+ *  parsing can be tested without a signed app to hand. Apple's own binaries are signed too — by
+ *  "Software Signing" — and those are NOT Developer ID and cannot be notarized by us. */
+export function developerIdFromCodesignOutput(text) {
+  return /Authority=Developer ID Application/.test(String(text || ""));
+}
+
 /** Was this .app signed with a real Developer ID? Notarization is only possible — and only
  *  MEANINGFUL — if it was. CI deliberately produces unsigned builds when the cert secret is
  *  absent, and those must skip cleanly rather than fail. */
 export function isDeveloperIdSigned(appPath) {
-  try {
-    const out = execFileSync("codesign", ["-dvv", appPath], { stdio: ["ignore", "pipe", "pipe"], timeout: 60_000 });
-    return /Authority=Developer ID Application/.test(String(out));
-  } catch (err) {
-    // codesign writes its detail to stderr and exits non-zero when unsigned; read it rather than
-    // assuming, so a signed-but-oddly-reported app is not mistaken for an unsigned one.
-    return /Authority=Developer ID Application/.test(String(err?.stderr || ""));
-  }
+  return developerIdFromCodesignOutput(codesignOutput(appPath));
 }
 
 export const skipRequested = () => process.env.SAM_SKIP_NOTARIZE === "1";
