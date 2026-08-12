@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import { demoApi, isDemo } from "./demo";
+import { demoApi, isDemo, leaveDemo } from "./demo";
 import { normalizeHost } from "./pairstate";
 
 // How this device names itself in SAM's device registry — the operator's revoke list. RN's
@@ -49,6 +49,7 @@ export async function forgetDevice(): Promise<{ revokedOnMac: boolean }> {
     // wipe below, and never silently swallowed: it is returned and shown.
   }
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await leaveDemo();
   return { revokedOnMac };
 }
 
@@ -67,15 +68,30 @@ export async function claim(host: string, code: string): Promise<void> {
   // Shared with the "did we already pair?" check in App.tsx — one rule for what counts as the
   // same machine, so the host stored here and the host compared against later cannot drift.
   const base = normalizeHost(host);
-  const res = await fetch(`${base}/api/pair/claim`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-SAM-Client": CLIENT_HINT },
-    body: JSON.stringify({ code: code.trim() }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/pair/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-SAM-Client": CLIENT_HINT },
+      body: JSON.stringify({ code: code.trim() }),
+      signal: initSignal(init.signal, controller.signal),
+    });
+  } catch (e: any) {
+    clearTimeout(timer);
+    throw new ApiError(0, e?.name === "AbortError" ? "connection timed out" : e?.message || "network request failed");
+  }
+  clearTimeout(timer);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, body?.error || `pairing failed (${res.status})`);
   await setHost(base);
   await setToken(body.token);
+}
+
+function initSignal(userSignal?: AbortSignal | null, timeoutSignal?: AbortSignal): AbortSignal | undefined {
+  if (userSignal) return userSignal;
+  return timeoutSignal;
 }
 
 /** Every authenticated call after pairing goes through this — same Bearer-token carrier
@@ -88,10 +104,20 @@ export async function api(path: string, init: RequestInit = {}): Promise<any> {
   const host = await getHost();
   const token = await getToken();
   if (!host || !token) throw new ApiError(401, "not paired");
-  const res = await fetch(`${host}${path}`, {
-    ...init,
-    headers: { ...(init.headers || {}), Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  let res: Response;
+  try {
+    res = await fetch(`${host}${path}`, {
+      ...init,
+      signal: initSignal(init.signal, controller.signal),
+      headers: { ...(init.headers || {}), Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    clearTimeout(timer);
+    throw new ApiError(0, e?.name === "AbortError" ? "connection timed out" : e?.message || "network request failed");
+  }
+  clearTimeout(timer);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, body?.error || `request failed (${res.status})`);
   return body;
