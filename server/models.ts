@@ -725,10 +725,23 @@ export function localStaysOnDevice(tier: Tier): boolean { return tier === "local
  * to stop a small model emitting its deliberation was dark exactly where it was needed. That is how
  * raw planning text reached a user's screen on 2026-08-12.
  *
- * Widening it is a behaviour change on the hot path (constrained decoding over the whole tool
- * registry has its own latency and quality cost, unmeasured here), so the zero-key half is OFF
- * until someone proves it live: SAM_GRAMMAR_ZEROKEY=1. The Curtain — which does not depend on the
- * constraint reaching anything — is what guarantees the user never sees scaffolding meanwhile.
+ * MEASURED 2026-08-12, llama3.2:3b, and the zero-key half STAYS OFF on the evidence. The schema is
+ * accepted (33 KB, 189 oneOf branches, honored 4/4 — Ollama compiles it fine) and a constrained turn
+ * finishes FASTER in isolation, 6.0s → 2.6s median. That number is a trap: it is faster because it
+ * emits a tool CALL instead of an answer, and a call is not a cheap answer, it is another round trip.
+ * End to end through runAgentStream, tier "free", no keys:
+ *
+ *   "what makes you different from a cloud assistant?"  off 33.0s / 0 steps, correct
+ *                                                        ON 44.2s / 4 steps — went off and PAINTED AN
+ *                                                        IMAGE, then answered about generated PNGs
+ *   "what is the time right now?"                        off 23.0s / 2 steps · ON 25.4s / 4 steps
+ *   "write me a haiku"                                   tie — the fast path skips the loop entirely
+ *
+ * With 188 tool branches against a single {respond} branch, the grammar makes a tool call the easy
+ * thing to fall into, and a 3B model falls into it every time. The constraint fixes the SHAPE of a
+ * turn while wrecking the CHOICE of it. Re-measure per model before flipping this — it is a property
+ * of the brain, not of the code. The Curtain does not depend on the constraint reaching anything,
+ * which is why it, and not this, is what guarantees the user never sees scaffolding.
  */
 export async function grammarReaches(tier: Tier): Promise<boolean> {
   if (tier === "local") return true;

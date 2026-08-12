@@ -48,7 +48,11 @@ const PROTOCOL_SHAPE = /\{\s*["']?(?:tool|tools|input|respond)["']?\s*:/i;
 // perfectly good answer to "what can you do?", and that answer must not be eaten. `plain[\s-]text`
 // is hyphen-tolerant because the real brain wrote "a plain-text answer" and the un-hyphenated
 // pattern sailed straight past it.
-const META_NOUN = /\b(?:tool call|function call|the tools?|a tool|tools? first|available tools?|json (?:object|format|response|only)|the schema|the format (?:above|specified|requested|below)|(?:only |in |using )?plain[\s-]text|out of scope|in scope|missing piece|the system prompt|my instructions|the user'?s? (?:request|question|query)|next step|step \d)\b/i;
+// "(?:a|an|one|another)( single| specific| particular)? tool" rather than a bare "a tool": the brain
+// wrote "I'll use a single tool to get the current time" and the one adjective was enough to miss.
+// Deliberately NOT "the <anything> tool" — that would swallow "I'll get you the best tool for the
+// job", which is an answer about tools, not a plan to call one.
+const META_NOUN = /\b(?:tool call|function call|the tools?|(?:a|an|one|another)(?: single| specific| particular)? tools?|tools? first|available tools?|json (?:object|format|response|only)|the schema|the format (?:above|specified|requested|below)|(?:only |in |using )?plain[\s-]text|out of scope|in scope|missing piece|the system prompt|my instructions|the user'?s? (?:request|question|query)|next step|step \d)\b/i;
 
 // SAM naming its own toolbox as a THING it owns and consults — "an error in my internal tool
 // catalog", "the tool registry". This vocabulary has no user-facing reading at all: an answer says
@@ -61,7 +65,12 @@ const SELF_MACHINERY = /\btools?\s+(?:catalog(?:ue)?|registry|inventory|schema|d
 
 // SAM announcing what SAM is about to do. On its own this is ordinary assistant voice ("I'll check
 // the weather"), so it is never enough by itself.
-const PLAN_FRAME = /\b(?:I(?:'|’)?ll|I will|I need to|I should|I must|I have to|let me|I(?:'|’)?m going to|I am going to|first,? I|before (?:I|answering)|to answer (?:this|that|the)|in order to)\b/i;
+//
+// "I can"/"I could" earn their place from a live miss: the brain wrote "Since the result is already
+// known, I can simply provide the current time in plain text:" and sailed through, because the frame
+// list knew "I'll" but not "I can". The tell was never the verb — it is the pairing with machinery
+// vocabulary, and the verb list was just too short to reach it.
+const PLAN_FRAME = /\b(?:I(?:'|’)?ll|I will|I need to|I should|I must|I have to|I can|I could|let me|I(?:'|’)?m going to|I am going to|first,? I|before (?:I|answering)|to answer (?:this|that|the)|in order to)\b/i;
 
 // The verbs that turn a tool NAME into a plan to CALL it. "web_search, read_file" in a list is an
 // answer; "by running a list_dir tool first" is a stage direction.

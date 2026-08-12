@@ -62,6 +62,27 @@ describe("isStageDirection — the tells", () => {
     expect(isStageDirection("Since there are no available tools to provide a contrast, I'll give a plain-text answer", NAMES)).toBe(true);
   });
 
+  // Fifth live sample, from the ZEROKEY benchmark. The frame list knew "I'll" but not "I can", so
+  // this walked straight through a rule whose other half ("plain text") matched perfectly.
+  it("catches a plan frame built on 'I can' rather than 'I'll' (fifth live sample)", () => {
+    expect(isStageDirection("Since the result is already known, I can simply provide the current time in plain text", NAMES)).toBe(true);
+  });
+
+  it("'I can' alone is still ordinary voice — the pairing is what makes it a tell", () => {
+    expect(isStageDirection("I can help you with that tomorrow", NAMES)).toBe(false);
+    expect(isStageDirection("I can see three files in that folder", NAMES)).toBe(false);
+  });
+
+  // Sixth live sample: an intermediate step's preamble, which streams to the user before the tool
+  // even runs. One adjective ("a SINGLE tool") was enough to miss a bare "a tool".
+  it("catches a plan naming 'a single tool' (sixth live sample)", () => {
+    expect(isStageDirection("Since this request requires real-time information, I'll use a single tool to get the current time", NAMES)).toBe(true);
+  });
+
+  it("does NOT swallow an answer that is genuinely ABOUT a tool", () => {
+    expect(isStageDirection("I'll get you the best tool for that job", NAMES)).toBe(false);
+  });
+
   it("still allows the honest 'I don't have a tool for that' — an answer, not scaffolding", () => {
     expect(isStageDirection("I don't have a tool for ordering pizza", NAMES)).toBe(false);
     expect(isStageDirection("There's no tool for that on this Mac", NAMES)).toBe(false);
