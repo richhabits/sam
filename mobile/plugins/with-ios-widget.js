@@ -177,6 +177,13 @@ function addWidgetTarget(config) {
       ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: '""',
       CLANG_ENABLE_MODULES: 'YES',
       CODE_SIGN_STYLE: 'Automatic',
+      // Automatic signing without a team is only half a setting. Xcode.app fills the gap from
+      // whoever is signed in, so archiving from the GUI works and hides this; xcodebuild has no
+      // such account to consult and stops dead with "Signing for SAMWidget requires a development
+      // team". The app target gets its team from Expo's own ios.appleTeamId, and this target was
+      // simply never told. Read from config for the same reason the versions below are —
+      // a literal here is a second place for the team to be wrong.
+      ...(cfg.ios?.appleTeamId ? { DEVELOPMENT_TEAM: `${cfg.ios.appleTeamId}` } : {}),
       // Taken from the app's own version, never a literal. App Store validation rejects an
       // embedded extension whose CFBundleVersion/ShortVersionString differ from its container,
       // and these were hardcoded "1"/"1.0" while the app moved to 1.0.0 build 3 — so every

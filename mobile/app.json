@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hectic.sam.mobile",
+      "appleTeamId": "CC9Q9BH5NT",
       "buildNumber": "7",
       "infoPlist": {
         "NSAppTransportSecurity": {

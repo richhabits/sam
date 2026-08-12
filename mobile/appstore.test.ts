@@ -81,3 +81,26 @@ describe("submission metadata", () => {
     expect(String(app.ios.buildNumber)).toMatch(/^\d+$/);
   });
 });
+
+describe("signing the widget, which only fails away from Xcode.app", () => {
+  // Archiving from the command line died on "Signing for SAMWidget requires a development team".
+  // The widget target set CODE_SIGN_STYLE=Automatic and no DEVELOPMENT_TEAM, which Xcode.app
+  // papers over using whoever is signed in — so the GUI archives cleanly and nothing reveals the
+  // gap until something without an Apple account tries to build it. CI is exactly that something.
+  const widgetPlugin = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "plugins", "with-ios-widget.js"),
+    "utf8",
+  );
+
+  it("declares the team once, in config", () => {
+    expect(app.ios.appleTeamId).toMatch(/^[A-Z0-9]{10}$/);
+  });
+
+  it("hands that team to the widget target rather than restating it", () => {
+    // A literal team id here would be a second place for it to be wrong, exactly as a literal
+    // version was before CURRENT_PROJECT_VERSION started reading the app's own.
+    expect(widgetPlugin).toContain("DEVELOPMENT_TEAM");
+    expect(widgetPlugin).toContain("cfg.ios?.appleTeamId");
+    expect(widgetPlugin).not.toContain(`DEVELOPMENT_TEAM: "${app.ios.appleTeamId}"`);
+  });
+});
