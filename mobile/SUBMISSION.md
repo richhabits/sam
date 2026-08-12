@@ -61,17 +61,34 @@ without answering the question, which itself causes a round trip.
 - **Support URL** (required): `https://github.com/richhabits/sam/issues`
 - **Marketing URL** (optional): `https://richhabits.github.io/sam/`
 
-## 4. Screenshots — the one real blocker left
+## 4. Screenshots
 
-App Store Connect will not accept a submission without them, and because `supportsTablet` is true
-you need **both** sets:
+Captured and committed under `mobile/screenshots/`, at exactly the sizes App Store Connect wants.
+Because `supportsTablet` is true, **both** sets are required, and both are here:
 
-- **iPhone** — the 6.9″ class (ASC lists the exact accepted pixel sizes next to the upload well)
-- **iPad** — the 13″ class
+| Set | Size | Shots |
+|---|---|---|
+| `screenshots/iphone-6.9/` | 1320 × 2868 | agent, tasks, chat, settings |
+| `screenshots/ipad-13/` | 2064 × 2752 | pairing, agent, tasks, settings |
 
-Simulator screenshots are acceptable to Apple. The demo mode is the easiest way to capture clean
-ones, since it fills every screen with presentable fixed content and no personal data. Worth
-capturing: chat mid-conversation, tasks, an attachment, and settings.
+Taken from a Release build on iPhone 17 Pro Max and iPad Pro 13-inch simulators, which Apple
+accepts. The iPhone set carries a clean 9:41 status bar; the iPad status-bar override did not take,
+so those show the real clock — cosmetic, and not something Apple requires.
+
+**Read this before uploading them.** Every shot is in demo mode, so all of them carry the orange
+`Demo · sample data, not connected to a SAM` banner, and `iphone-6.9/03-chat.png` shows a reply
+that opens *"This is a demo, so I'm answering from a short script rather than a model."* That is
+exactly right for a reviewer and weak as a store listing — the first thing a browsing customer
+reads should not be that the app is a script.
+
+Two honest options:
+1. **Ship these.** Accurate, no personal data, zero risk of leaking anything. The banner is odd
+   marketing but nobody is misled.
+2. **Recapture while paired** to the SAM on your Mac, which removes the banner and shows real
+   answers. Better looking, but every screenshot then contains whatever is genuinely on your
+   machine, so it needs a careful read before upload.
+
+Worth doing option 2 for the chat shot at least, and keeping these as the fallback.
 
 ## 5. Draft metadata
 
