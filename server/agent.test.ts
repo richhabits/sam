@@ -13,9 +13,12 @@ vi.mock("./models.ts", () => ({
   streamModel: vi.fn(async (_t: string, _s: string, _p: string, onChunk?: (c: string) => void) => {
     const text = replies.shift() ?? "done"; onChunk?.(text); return { text, provider: "test", tier: "local" };
   }),
+  // The Grammar reaches the brain whenever the LOCAL brain is the one generating (see models.ts).
+  grammarReaches: vi.fn(async (tier: string) => tier === "local"),
 }));
 
 import { runAgent, runAgentStream, resumeAgent, parseToolCall, UNTRUSTED_SOURCE } from "./agent.ts";
+import { CURTAIN_FALLBACK } from "./curtain.ts";
 import { _reset as resetIssues, listIssues } from "./issues.ts";
 
 beforeEach(() => { replies.length = 0; });
@@ -233,13 +236,19 @@ describe("the Grammar STREAM is default-ON, with a prose fallback when the brain
     expect(ev.find((e) => e.type === "done")?.text).toBe("The capital of France is Paris.");
   });
 
-  it("the =0 kill-switch turns it fully off", async () => {
+  it("the =0 kill-switch turns the STREAM decoder off — and the envelope still never reaches the user", async () => {
     process.env.SAM_GRAMMAR_STREAM = "0";
-    replies.push('{"respond":"Paris."}');                                  // off → not decoded; JSON detected as tool-mode
+    replies.push('{"respond":"Paris."}');                                  // off → not decoded live; detected as tool-mode
     const ev = await collect("capital of France?");
-    // With the streamer off and a {"…"} reply, the tool-mode buffer holds the JSON back (no raw leak),
-    // and since it's not a valid tool call it's released whole at the end — never decoded to "Paris.".
-    expect(ev.filter((e) => e.type === "token").map((e) => e.t).join("")).toContain('"respond"');
+    const streamed = ev.filter((e) => e.type === "token").map((e) => e.t).join("");
+    // THIS ASSERTION USED TO REQUIRE THE LEAK. It read `toContain('"respond"')` — the tool-mode
+    // buffer held the JSON back from the live stream, then released it WHOLE at the end, so with the
+    // decoder off the user was shown `{"respond":"Paris."}` as their answer. That is the same class
+    // of bug as the one reported on 2026-08-12: SAM's protocol rendered as prose. The Curtain
+    // suppresses the envelope on the way out, and `forUser` unwraps it rather than dropping it, so
+    // the kill-switch now costs the LIVE decoding it names and nothing else.
+    expect(streamed).not.toContain('"respond"');
+    expect(ev.find((e) => e.type === "done")?.text).toBe("Paris.");        // the answer still arrives, whole
     delete process.env.SAM_GRAMMAR_STREAM;
   });
 });
@@ -262,5 +271,92 @@ describe("the Grammar — a constrained local turn is a tool call or a {respond}
     expect(r.trace.length).toBe(1);                         // the tool ran
     expect(r.kind).toBe("final");
     expect(r.text).toBe("Done — it is noon.");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+//  THE CURTAIN on the emit path — the bug this was written for.
+//
+//  Reported 2026-08-12 from a paired phone against a real SAM (local llama3.2:3b, no cloud keys):
+//  the model's deliberation about which tool to call was rendered to the user as the answer. These
+//  feed that exact text through the paths a user actually receives — the SSE stream and the
+//  non-streaming loop — and assert the scaffolding is not in what they see.
+// ─────────────────────────────────────────────────────────────
+describe("the Curtain — scaffolding never reaches the user, whichever brain answered", () => {
+  const LEAK =
+    "Since we're out of scope in this moment and there's a missing piece to be found by running a " +
+    "list_dir tool first — I'll give a clear, immediate answer using only plain text: Assistant apps " +
+    "aren't available on Macs due to macOS security measures; SAM is an AI designed specifically for Mac.";
+  const ASKED = "In three short bullets, what makes you different from a cloud assistant?";
+
+  const stream = async (msg: string) => {
+    const ev: { type: string; [k: string]: any }[] = [];
+    await runAgentStream("SYS", msg, "local", undefined, (e) => ev.push(e as any));
+    return {
+      tokens: ev.filter((e) => e.type === "token").map((e) => e.t).join(""),
+      done: ev.find((e) => e.type === "done")?.text ?? "",
+    };
+  };
+  const assertClean = (text: string, label: string) => {
+    expect(text, `${label}: names a tool`).not.toContain("list_dir");
+    expect(text, `${label}: leaks the scope deliberation`).not.toMatch(/out of scope|missing piece/i);
+    expect(text, `${label}: leaks the format instruction`).not.toMatch(/plain text/i);
+  };
+
+  it("STREAM: the emitted tokens and the done text both exclude the tool deliberation", async () => {
+    replies.push(LEAK);
+    const { tokens, done } = await stream(ASKED);
+    assertClean(done, "done");
+    assertClean(tokens, "tokens");                       // the live stream too — the user READS these as they land
+    expect(done).toContain("macOS security measures");   // the answer that was hiding behind it survived
+  });
+
+  it("STREAM: caught even when the Grammar WAS honored (the preamble was inside {respond})", async () => {
+    replies.push(JSON.stringify({ respond: LEAK }));
+    const { tokens, done } = await stream(ASKED);
+    assertClean(done, "done");
+    assertClean(tokens, "tokens");
+    expect(done).toContain("macOS security measures");
+  });
+
+  it("LOOP (non-streaming): the final answer excludes it too", async () => {
+    replies.push(LEAK);
+    const r = await runAgent("SYS", ASKED, "local");
+    expect(r.kind).toBe("final");
+    assertClean(r.text!, "final");
+    expect(r.text).toContain("macOS security measures");
+  });
+
+  it("a turn that was ALL deliberation degrades to a plain answer, not to exposed internals", async () => {
+    resetIssues();
+    replies.push("I'll need to run list_dir first. Let me check the available tools before answering.");
+    const r = await runAgent("SYS", ASKED, "local");
+    expect(r.text).toBe(CURTAIN_FALLBACK);
+    assertClean(r.text!, "fallback");
+    // NO SILENT FAILURES: a brain that produced no answer is a real failure and gets recorded.
+    expect(listIssues().some((i) => /stage direction/i.test(i.message))).toBe(true);
+  });
+
+  it("leaves an ordinary answer completely untouched", async () => {
+    const clean = "SAM runs on your Mac. Nothing leaves the machine. It's free.";
+    replies.push(clean);
+    const { tokens, done } = await stream(ASKED);
+    expect(done).toBe(clean);
+    expect(tokens).toBe(clean);
+  });
+
+  it("SAM_CURTAIN=0 is the kill-switch — and it turns off the STREAM too, not just the done text", async () => {
+    process.env.SAM_CURTAIN = "0";
+    replies.push(LEAK);
+    const r = await runAgent("SYS", ASKED, "local");
+    expect(r.text).toContain("list_dir");                // off → the raw text, exactly as before
+
+    // Found by running it: the switch used to reach `forUser` only, so the raw text came back in
+    // `done` while the live stream was still being trimmed — half-off in both directions at once.
+    replies.push(LEAK);
+    const { tokens, done } = await stream(ASKED);
+    expect(tokens).toContain("list_dir");
+    expect(done).toContain("list_dir");
+    delete process.env.SAM_CURTAIN;
   });
 });

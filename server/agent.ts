@@ -9,15 +9,69 @@
 //  — or plain text when it's ready to answer the user.
 // ─────────────────────────────────────────────────────────────
 
-import { runModel, streamModel, type Tier } from "./models.ts";
+import { grammarReaches, runModel, streamModel, type Tier } from "./models.ts";
 import { compressToolOutput } from "./compress.ts";
 import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 import { mayAutoRun } from "./authz.ts";
 import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
 import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
+import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
 
 const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token limits
+
+// Every tool SAM currently owns, read at CALL time — the registry grows after boot (MCP servers,
+// forged tools), so a snapshot taken at import would stop recognising the newest names. Rebuilt only
+// when the registry actually changes size, so the Curtain gets the SAME array each turn and can
+// keep its compiled name patterns instead of recompiling them for every segment of every answer.
+let namesCache: string[] = [];
+let namesLen = -1;
+function registeredNames(): string[] {
+  if (TOOLS.length !== namesLen) { namesCache = TOOLS.map((t) => t.name); namesLen = TOOLS.length; }
+  return namesCache;
+}
+
+/**
+ * THE CURTAIN, applied at the boundary. Every exit that hands a final answer to a caller goes
+ * through here, so the guarantee is "no answer leaves this module wearing its scaffolding" rather
+ * than "we remembered at each of six return statements". On by default; SAM_CURTAIN=0 is the
+ * kill-switch, matching the Parser and the Grammar.
+ *
+ * A turn that was ALL stage direction has no answer inside it. That is a real failure of the brain,
+ * so it is recorded (by size only — never the text, which may carry the user's own words) and the
+ * user is told plainly instead of being shown the machinery. NO SILENT FAILURES.
+ */
+function forUser(raw: string | undefined): string {
+  // Last-chance unwrap: a brain may volunteer the constrained envelope even when the Grammar didn't
+  // ask for it (or asked and we're not reading its answer through the unwrap). Showing "Paris." beats
+  // showing {"respond":"Paris."}, and beats suppressing it as protocol — which is what the Curtain
+  // would otherwise, correctly, do to it.
+  const text = unwrapRespond(raw ?? "") ?? raw ?? "";
+  if (process.env.SAM_CURTAIN === "0") return text;
+  const shown = curtain(text, registeredNames());
+  if (shown) return shown;
+  if (!text.trim()) return text;   // the brain said nothing at all — a different failure, not ours to dress up
+  capture(new Error("curtain: answer was all stage direction"), { curtain: "suppressed", chars: text.length });
+  return CURTAIN_FALLBACK;
+}
+
+/**
+ * The stream side of the same Curtain, honouring the same kill-switch. `done` carrying clean text is
+ * not enough on its own: the clients render tokens the instant they arrive, so the user READS the
+ * scaffolding as it types itself out, and only then watches it be replaced. The gate holds the
+ * opening back until it can be judged, then passes everything through.
+ *
+ * SAM_CURTAIN=0 has to reach here too, or the switch would half-work — the raw text in `done` and a
+ * trimmed live stream, which is neither behaviour anyone asked for. (Caught by running it: the
+ * kill-switch left the stream gated.)
+ */
+function streamCurtain(): { push(chunk: string): string; flush(): string } {
+  const gate = process.env.SAM_CURTAIN === "0" ? null : stageGate(registeredNames());
+  return {
+    push: (chunk: string) => (gate ? gate.push(chunk) : chunk),
+    flush: () => (gate ? gate.flush() : ""),
+  };
+}
 
 // The fence markers, named once so trimming and fencing cannot drift apart on the literal text.
 const FENCE_OPEN = "«UNTRUSTED";
@@ -257,7 +311,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     // cloud brains vary, the Parser guards them; an older Ollama that rejects the schema degrades
     // gracefully (runModelInner retries unconstrained). A constrained final answer comes back as
     // {"respond":"..."} and is unwrapped below.
-    const grammarOn = process.env.SAM_GRAMMAR !== "0" && tier === "local";
+    const grammarOn = process.env.SAM_GRAMMAR !== "0" && await grammarReaches(tier);
     let res = await runModel(tier, system, prompt + CONTINUE, "deep", grammarOn ? { format: replySchema(TOOLS) } : undefined);
 
     // PARALLEL BATCH (Phase 6): the model asked for several INDEPENDENT read-only lookups at once.
@@ -282,7 +336,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
       if (repaired) { call = repaired; res = fix; }
     }
 
-    if (!call) return { kind: "final", text: grammarOn ? (unwrapRespond(res.text) ?? res.text) : res.text, trace, provider: res.provider };
+    if (!call) return { kind: "final", text: forUser(grammarOn ? (unwrapRespond(res.text) ?? res.text) : res.text), trace, provider: res.provider };
 
     const tool = toolByName(call.tool);
     if (!tool) {
@@ -332,7 +386,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
   }
   // ran out of steps — ask the model to wrap up with what it has
   const wrap = await runModel(tier, system, prompt + `\n\nWrap up now: give the user your best final answer in plain words.`);
-  return { kind: "final", text: wrap.text, trace, provider: wrap.provider };
+  return { kind: "final", text: forUser(wrap.text), trace, provider: wrap.provider };
 }
 
 // The fast path (skip tools) is ONLY for clearly self-contained requests:
@@ -363,7 +417,7 @@ export function runAgent(system: string, message: string, tier: Tier, toolNames?
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
   if (forceFast || isFastPath(message)) {
     return runModel(tier, system, `${convo}User: ${message}\n\nAnswer directly.`, undefined, reason ? { reason } : undefined)
-      .then((r) => ({ kind: "final" as const, text: r.text, trace: [], provider: r.provider }));
+      .then((r) => ({ kind: "final" as const, text: forUser(r.text), trace: [], provider: r.provider }));
   }
   const prompt = `${convo}User: ${message}`;
   return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm, allow);   // swarm=true → dangerous never auto-runs (even in Elon)
@@ -384,8 +438,18 @@ export async function runAgentStream(system: string, message: string, tier: Tier
   // Fast path — only clearly self-contained generation (no live-info signal) — or Turbo.
   if (forceFast || isFastPath(message)) {
     let full = "";
-    const r = await streamModel(tier, system, `${convo}User: ${message}\n\nAnswer directly.`, (c) => { full += c; emit({ type: "token", t: c }); });
-    emit({ type: "done", text: r.text || full, provider: r.provider, trace: [] });
+    // THE CURTAIN on the stream: `done` carrying clean text is not enough on its own, because the
+    // clients render tokens the instant they arrive — the user would have READ the scaffolding
+    // before the clean text replaced it. The gate holds the opening back until it can be judged.
+    const gate = streamCurtain();
+    const r = await streamModel(tier, system, `${convo}User: ${message}\n\nAnswer directly.`, (c) => {
+      full += c;
+      const out = gate.push(c);
+      if (out) emit({ type: "token", t: out });
+    });
+    const tail = gate.flush();
+    if (tail) emit({ type: "token", t: tail });
+    emit({ type: "done", text: forUser(r.text || full), provider: r.provider, trace: [] });
     return;
   }
 
@@ -394,13 +458,19 @@ export async function runAgentStream(system: string, message: string, tier: Tier
 
   for (let step = 0; step < MAX_STEPS; step++) {
     let full = "", mode: null | "answer" | "tool" = null, emitted = 0;
+    // THE CURTAIN on the stream, per STEP — each model turn gets its opening judged on its own, so a
+    // step that opens with deliberation cannot leave the gate propped open for the step that
+    // actually answers. Everything after the opening streams straight through: the middle of an
+    // answer is never trimmed.
+    const gate = streamCurtain();
+    const show = (t: string) => { const out = gate.push(t); if (out) emit({ type: "token", t: out }); };
     // THE GRAMMAR on streaming (SAM_GRAMMAR_STREAM, default ON, =0 kill-switch, local only): the local
     // model is constrained to the tool-call schema, and a {"respond":"…"} answer is decoded and streamed
     // as prose by the respondStreamer (so the constraint is invisible). Tool calls stream nothing (parsed
     // below). If the brain IGNORES the constraint (an Ollama build without `format`, or a non-constrainable
     // model), it streams prose instead of JSON — `honored` catches that on the first non-ws char and we
     // fall back to the normal prose path, so a default-on flag never silently freezes the stream.
-    const grammarStream = process.env.SAM_GRAMMAR_STREAM !== "0" && tier === "local";
+    const grammarStream = process.env.SAM_GRAMMAR_STREAM !== "0" && await grammarReaches(tier);
     let rs = grammarStream ? respondStreamer() : null;
     let honored: boolean | null = grammarStream ? null : false;
     // Never stream past the start of a JSON tool-call object. Small free models often write a line of
@@ -411,7 +481,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       full += chunk;
       if (rs) {
         if (honored === null) { const s = full.replace(/^[\s`]+/, ""); if (s) honored = s[0] === "{"; }  // did the brain obey?
-        if (honored !== false) { const out = rs(chunk); if (out) emit({ type: "token", t: out }); return; }  // decode {respond} live
+        if (honored !== false) { const out = rs(chunk); if (out) show(out); return; }  // decode {respond} live
         rs = null;   // constraint ignored → this chunk and the rest go through the prose path below
       }
       if (mode === null) {
@@ -420,7 +490,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       }
       if (mode === "answer") {
         const cut = braceCut(full);
-        if (cut > emitted) { emit({ type: "token", t: full.slice(emitted, cut) }); emitted = cut; }
+        if (cut > emitted) { show(full.slice(emitted, cut)); emitted = cut; }
       }
     }, "deep", grammarStream ? { format: replySchema(TOOLS) } : undefined);
     const finalText = res.text || full;
@@ -478,16 +548,30 @@ export async function runAgentStream(system: string, message: string, tier: Tier
     // Final answer. When the brain HONORED the constraint the respondStreamer already emitted the decoded
     // answer, so just close with the unwrapped text — never release the raw {"respond":…} JSON. If the
     // constraint was ignored (honored === false), the prose already streamed and we fall to the path below.
-    if (grammarStream && honored) { emit({ type: "done", text: unwrapRespond(finalText) ?? finalText, provider: res.provider, trace }); return; }
+    if (grammarStream && honored) {
+      const tail = gate.flush();
+      if (tail) emit({ type: "token", t: tail });
+      emit({ type: "done", text: forUser(unwrapRespond(finalText) ?? finalText), provider: res.provider, trace });
+      return;
+    }
     // Release anything held back — either a full tool-mode buffer that turned out to be prose, or an
-    // answer-mode `{"…` tail that wasn't actually a valid tool call.
-    if (mode !== "answer") emit({ type: "token", t: finalText });
-    else if (full.length > emitted) emit({ type: "token", t: full.slice(emitted) });
-    emit({ type: "done", text: finalText, provider: res.provider, trace });
+    // answer-mode `{"…` tail that wasn't actually a valid tool call. Both go through the gate: a
+    // tool-mode buffer in particular has never been judged, because nothing streamed from it.
+    if (mode !== "answer") show(finalText);
+    else if (full.length > emitted) show(full.slice(emitted));
+    const tail = gate.flush();
+    if (tail) emit({ type: "token", t: tail });
+    emit({ type: "done", text: forUser(finalText), provider: res.provider, trace });
     return;
   }
-  const wrap = await streamModel(tier, sys, prompt + `\n\nWrap up now: give the user your best final answer in plain words.`, (c) => emit({ type: "token", t: c }));
-  emit({ type: "done", text: wrap.text, provider: wrap.provider, trace });
+  const wrapGate = streamCurtain();
+  const wrap = await streamModel(tier, sys, prompt + `\n\nWrap up now: give the user your best final answer in plain words.`, (c) => {
+    const out = wrapGate.push(c);
+    if (out) emit({ type: "token", t: out });
+  });
+  const wrapTail = wrapGate.flush();
+  if (wrapTail) emit({ type: "token", t: wrapTail });
+  emit({ type: "done", text: forUser(wrap.text), provider: wrap.provider, trace });
 }
 
 // Resume after the user approves (or rejects) a risky action.

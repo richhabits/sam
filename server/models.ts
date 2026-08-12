@@ -558,7 +558,17 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
   // prefer the LOCAL brain — private, offline, instant. It also becomes the floor if the free cloud
   // lanes below all fail. When cloud keys exist, we use the (usually faster/stronger) cloud pool first.
   if (tier !== "premium" && !hasCloudKeys() && await ollamaReady()) {
-    try { const text = await callOllama(system, prompt); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; } catch { /* fall to free cloud lanes */ }
+    // THE GRAMMAR REACHES HERE TOO (when enabled). This is the LOCAL brain answering under a
+    // non-local tier, and the constraint belongs to the brain that generates, not to the label on
+    // the request — a keyless user asking a "free" question is served by the same llama that the
+    // schema exists to constrain. Same graceful degradation as the tier==="local" branch: an Ollama
+    // that rejects the schema retries UNCONSTRAINED rather than falling through to the cloud lanes
+    // with a working local model in hand.
+    try { const text = await callOllama(system, prompt, OLLAMA_MODEL, format); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; }
+    catch { /* schema refused or brain hiccuped → unconstrained retry below */ }
+    if (format) {
+      try { const text = await callOllama(system, prompt); if (text) return { text, provider: `ollama:${OLLAMA_MODEL}`, tier: "local" }; } catch { /* fall to free cloud lanes */ }
+    }
   }
   // SAM Cloud gateway — if the operator turned it on (SAM_GATEWAY_URL at build) and the user has no
   // keys + no local brain, serve from the hosted free daily allowance before the public no-key lanes.
@@ -705,6 +715,26 @@ async function callOllamaStream(system: string, prompt: string, model: string, f
 // rule is unit-tested rather than merely inlined in a branch condition that a refactor could
 // quietly fold back into the cloud path (which is exactly how the streaming leak happened).
 export function localStaysOnDevice(tier: Tier): boolean { return tier === "local"; }
+
+/**
+ * Does the Grammar actually REACH the brain that will answer this turn?
+ *
+ * It used to be assumed equal to `tier === "local"`, and that assumption was wrong in the one
+ * configuration a keyless user runs: with no cloud keys loaded, a "free" request is served by the
+ * SAME local Ollama (the zero-key path in runModelInner), unconstrained — so the schema that exists
+ * to stop a small model emitting its deliberation was dark exactly where it was needed. That is how
+ * raw planning text reached a user's screen on 2026-08-12.
+ *
+ * Widening it is a behaviour change on the hot path (constrained decoding over the whole tool
+ * registry has its own latency and quality cost, unmeasured here), so the zero-key half is OFF
+ * until someone proves it live: SAM_GRAMMAR_ZEROKEY=1. The Curtain — which does not depend on the
+ * constraint reaching anything — is what guarantees the user never sees scaffolding meanwhile.
+ */
+export async function grammarReaches(tier: Tier): Promise<boolean> {
+  if (tier === "local") return true;
+  if (process.env.SAM_GRAMMAR_ZEROKEY !== "1") return false;
+  return tier !== "premium" && !hasCloudKeys() && await ollamaReady();
+}
 
 async function streamModelInner(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, format?: unknown): Promise<ModelResult> {
   // THE GRAMMAR on streaming: a constrained turn streams straight from the local Ollama with the schema.
