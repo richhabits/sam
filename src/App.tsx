@@ -249,7 +249,10 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Same treatment as the Control Centre: this was one long scroll (quality, audio, prefs, 9
   // skins, keys, devices, data, tools, help, profiles). Tabs keep each view about a screen.
-  const [stab, setStab] = useState<"general" | "audio" | "look" | "data" | "more">("general");
+  // IDs are historical; the labels they render are in the tab strip below. "more" shows as
+  // "Keys & devices" and "data" as "Your data" — renaming the ids would buy nothing and risk
+  // anything that has one persisted.
+  const [stab, setStab] = useState<"general" | "audio" | "look" | "domore" | "data" | "more">("general");
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [mem, setMem] = useState<{ groups: Record<string, { id: string; text: string; ts: number }[]>; count: number; note: string } | null>(null);
   const [memQuery, setMemQuery] = useState("");
@@ -1322,11 +1325,19 @@ export default function App() {
           <div className="pop-scrim" onClick={() => setSettingsOpen(false)} />
           <div className="popover" role="menu">
             <div className="pop-tabs" role="tablist">
+              {/* NAMED FOR WHAT IS INSIDE. Two of these were drawers rather than categories:
+                  "More" held the API keys, the phone, and switching person — three unrelated
+                  things filed under a word that describes none of them. "Data" was worse, because
+                  it read as a real category while actually holding Workflows, Notebooks, Standing
+                  Crew, Alarms, Cameras, Live usage and Connected: seven features nobody would
+                  look for under Data, and the reason they were hard to find.
+                  The tab IDs stay as they were — a label is not a migration. */}
               <button type="button" role="tab" aria-selected={stab === "general"} className={stab === "general" ? "on" : ""} onClick={() => setStab("general")}>General</button>
-              <button type="button" role="tab" aria-selected={stab === "audio"} className={stab === "audio" ? "on" : ""} onClick={() => setStab("audio")}>Audio</button>
-              <button type="button" role="tab" aria-selected={stab === "look"} className={stab === "look" ? "on" : ""} onClick={() => setStab("look")}>Look</button>
-              <button type="button" role="tab" aria-selected={stab === "data"} className={stab === "data" ? "on" : ""} onClick={() => setStab("data")}>Data</button>
-              <button type="button" role="tab" aria-selected={stab === "more"} className={stab === "more" ? "on" : ""} onClick={() => setStab("more")}>More</button>
+              <button type="button" role="tab" aria-selected={stab === "audio"} className={stab === "audio" ? "on" : ""} onClick={() => setStab("audio")}>Voice</button>
+              <button type="button" role="tab" aria-selected={stab === "look"} className={stab === "look" ? "on" : ""} onClick={() => setStab("look")}>Appearance</button>
+              <button type="button" role="tab" aria-selected={stab === "domore"} className={stab === "domore" ? "on" : ""} onClick={() => setStab("domore")}>Do more</button>
+              <button type="button" role="tab" aria-selected={stab === "data"} className={stab === "data" ? "on" : ""} onClick={() => setStab("data")}>Your data</button>
+              <button type="button" role="tab" aria-selected={stab === "more"} className={stab === "more" ? "on" : ""} onClick={() => setStab("more")}>Keys &amp; devices</button>
             </div>
             {stab === "general" && (<>
             <div className="pop-title">Answer quality</div>
@@ -1340,7 +1351,6 @@ export default function App() {
             </div>
             <div className="pop-title">Preferences</div>
             <div className="pop-group">
-              <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><Icon name="sparkle" size={16} /><span className="pop-opt-name">Dark mode</span><span className={`sw ${dark ? "on" : ""}`} aria-hidden="true"><i /></span></button>
               <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Autopilot</span><span className={`sw ${autopilot ? "on" : ""}`} aria-hidden="true"><i /></span></button>
               <button type="button" className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><Icon name="sparkle" size={16} /><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "No safety asks"}</span></button>
             </div>
@@ -1356,6 +1366,11 @@ export default function App() {
             </div>
             </>)}
             {stab === "look" && (<>
+            {/* Dark mode was under General while this whole tab existed for how SAM looks. */}
+            <div className="pop-title">Theme</div>
+            <div className="pop-group">
+              <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><Icon name="sparkle" size={16} /><span className="pop-opt-name">Dark mode</span><span className={`sw ${dark ? "on" : ""}`} aria-hidden="true"><i /></span></button>
+            </div>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
               {[["classic", "Classic"], ["jarvis", "Jarvis"], ["ember", "Ember"], ["stealth", "Stealth"], ["midnight", "Midnight"], ["nord", "Nord"], ["dracula", "Dracula"], ["linen", "Linen"], ["aurora", "Aurora"]].map(([id, label]) => (
@@ -1373,6 +1388,11 @@ export default function App() {
               <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><Icon name="shield" size={16} /><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">All off</span></button>
               <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><Icon name="chart" size={16} /><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">0 data sent</span></button>
             </div>
+            </>)}
+            {/* Its own tab, not a heading buried under "Your data". These are seven of SAM's
+                capabilities — the things it can DO — and filing them under data is why they read
+                as settings nobody needed to open. */}
+            {stab === "domore" && (<>
             <div className="pop-title">Do more</div>
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Pauses on risk</span></button>
@@ -1383,6 +1403,8 @@ export default function App() {
               <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
               <button type="button" className="pop-opt" onClick={() => { setConnectorsOpen(true); setSettingsOpen(false); }}><Icon name="link" size={16} /><span className="pop-opt-name">Connected</span><span className="pop-opt-sub">Read-only</span></button>
             </div>
+            </>)}
+            {stab === "data" && (<>
             <div className="pop-title">Help</div>
             <div className="pop-group">
               <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><Icon name="settings" size={16} /><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Self-check</span></button>
