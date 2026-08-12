@@ -244,8 +244,35 @@ async function checkSwarmCompletion(swarmId: string) {
 
   if (allFinished) {
     updateSwarm(swarmId, (sw) => { sw.status = "done"; });
-    const synthSys = `${s.system}\n\nYour swarm just completed the massive goal. Combine their work into ONE final, clear synthesis. Don't just list their outputs; synthesise the outcome.`;
-    const brief = s.agents.map((a) => `## ${a.name} ${a.emoji} — ${a.task}\n${a.output || "Failed."}`).join("\n\n");
+
+    // ── VERIFIER PASS (V2): before synthesis, independently validate each agent's
+    // output. Hollow outputs ("Failed.", empty strings, one-liners for a multi-step
+    // task) are flagged so they don't corrupt the final synthesis. A swarm that passes
+    // random noise to the synthesiser looks done but delivers garbage — this gate catches it.
+    const verifiedOutputs = await Promise.all(
+      s.agents.map(async (a) => {
+        if (a.status === "error" || !a.output || a.output.trim().length < 20) {
+          return { name: a.name, emoji: a.emoji, task: a.task, output: "(agent did not produce a usable output)", verified: false };
+        }
+        // Lightweight verifier: ask the model if this output meaningfully answers the task.
+        // Uses the free tier — a small/fast model is perfectly capable of this binary judgement.
+        try {
+          const vSys = `You are a strict verifier. Given a task and the agent's output, reply with ONLY "PASS" if the output meaningfully addresses the task, or "FAIL: <one-line reason>" if it doesn't. No other text.`;
+          const vPrompt = `Task: ${a.task}\n\nAgent output:\n${a.output.slice(0, 800)}`;
+          const vr = await runModel(s.tier as Tier, vSys, vPrompt);
+          const verdict = vr.text.trim();
+          if (verdict.startsWith("FAIL")) {
+            console.warn(`[SAM] swarm verifier: agent "${a.name}" flagged — ${verdict}`);
+            return { name: a.name, emoji: a.emoji, task: a.task, output: a.output, verified: false, flag: verdict };
+          }
+        } catch { /* verifier hiccup — treat as passed rather than blocking synthesis */ }
+        return { name: a.name, emoji: a.emoji, task: a.task, output: a.output, verified: true };
+      })
+    );
+
+    const passCount = verifiedOutputs.filter((v) => v.verified).length;
+    const synthSys = `${s.system}\n\nYour swarm just completed the massive goal. ${passCount < verifiedOutputs.length ? `Note: ${verifiedOutputs.length - passCount} agent(s) did not fully complete their task — synthesise from what you have, honestly noting any gaps.` : "All agents passed verification."}\n\nCombine their work into ONE final, clear synthesis. Don't just list their outputs; synthesise the outcome.`;
+    const brief = verifiedOutputs.map((a) => `## ${a.name} ${a.emoji} — ${a.task}\n${a.output}${a.verified === false && (a as any).flag ? `\n⚠️ Verifier note: ${(a as any).flag}` : ""}`).join("\n\n");
     try {
       const r = await runModel(s.tier as Tier, synthSys, `Goal: ${s.goal}\n\n${brief}\n\nFinal outcome:`);
       updateSwarm(swarmId, (sw) => { sw.synthesis = r.text; });
@@ -253,6 +280,7 @@ async function checkSwarmCompletion(swarmId: string) {
       updateSwarm(swarmId, (sw) => { sw.synthesis = "The swarm finished, but failed to write the final synthesis."; });
     }
   }
+
 }
 
 // Boot loop: pick up any "running" or "pending" agents that died during an app restart

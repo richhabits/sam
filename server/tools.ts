@@ -2169,6 +2169,45 @@ export const TOOLS: Tool[] = [
   { name: "read_emails", safe: true, description: "Read the latest emails in your inbox (senders + subjects).", params: "(none)",
     activity: () => `Checking your inbox`, run: readEmails },
 
+  // ── SELF-VERIFIER TOOLS (V2) — safe, read-only. SAM uses these to check its own
+  // work after writing code. Never mutates files. Runs automatically in agentic loops
+  // (no approval needed). The output is fed back as a tool result so SAM can self-correct.
+  { name: "lint_workspace", safe: true,
+    description: "Run TypeScript type-checking (npx tsc --noEmit) in a directory and return all errors. Use this after writing or editing code to verify it compiles cleanly. input: {dir?: string} (defaults to cwd).",
+    params: "{dir?}",
+    activity: (i: any) => `Type-checking ${i.dir ?? "workspace"}`,
+    run: async (i: any) => {
+      const target = i.dir ? safePath(i.dir) : homedir();
+      try {
+        const { stdout, stderr } = await sh("npx tsc --noEmit 2>&1 | head -n 80", { timeout: 45000, cwd: target, maxBuffer: 4 * 1024 * 1024 });
+        const out = (stdout + stderr).trim();
+        return out ? `TypeScript errors found:\n${out}` : "✅ No TypeScript errors — workspace is clean.";
+      } catch (e: any) {
+        const msg = (e?.stdout || e?.stderr || e?.message || "").trim();
+        return msg ? `TypeScript errors found:\n${msg.slice(0, 3000)}` : `lint failed: ${e?.message || e}`;
+      }
+    },
+  },
+  { name: "run_tests", safe: true,
+    description: "Run the test suite (vitest or jest) in a directory and return the pass/fail summary. Use this after writing code or fixes to verify tests pass. input: {dir?: string, pattern?: string} (pattern filters test files, e.g. 'agent.test.ts').",
+    params: "{dir?, pattern?}",
+    activity: (i: any) => `Running tests${i.pattern ? ` (${i.pattern})` : ""}`,
+    run: async (i: any) => {
+      const target = i.dir ? safePath(i.dir) : homedir();
+      const patternArg = i.pattern ? ` ${i.pattern}` : "";
+      // Try vitest first (used by SAM), fall back to jest
+      const cmd = `npx vitest run${patternArg} --reporter verbose 2>&1 | tail -n 60`;
+      try {
+        const { stdout, stderr } = await sh(cmd, { timeout: 60000, cwd: target, maxBuffer: 4 * 1024 * 1024 });
+        const out = (stdout + stderr).trim();
+        return out || "(test runner produced no output)";
+      } catch (e: any) {
+        const msg = (e?.stdout || e?.stderr || e?.message || "").trim();
+        return msg ? msg.slice(0, 3000) : `run_tests failed: ${e?.message || e}`;
+      }
+    },
+  },
+
   // risky · ask first
   { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },

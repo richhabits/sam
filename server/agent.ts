@@ -18,7 +18,15 @@ import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
 import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
 
-const MAX_STEPS = 4;   // fewer, leaner steps → stays inside free-tier token limits
+// Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
+// get up to 12 steps. Never a flat ceiling — scales with actual task complexity
+// so free-tier quota isn't burned on greeting messages, but a "build + test + fix"
+// loop has the headroom to fully self-correct without silently truncating.
+function maxSteps(message: string): number {
+  // Signals that a task will need multiple distinct tool calls to complete
+  const isComplex = /\b(build|deploy|test|fix|debug|analyse|refactor|research|compare|summarise|plan|write a|draft a|create a|set up|install|migrate|generate|implement|audit|review|find all|scan|crawl|extract|monitor|schedule|automate)\b.*\b(and|then|also|plus|with|ensure|verify|check)\b|\b(step[- ]by[- ]step|multi[- ]?step|end[- ]to[- ]end|full|complete|thorough|comprehensive|detailed|everything|all of)\b/i;
+  return isComplex.test(message) ? 12 : 4;
+}
 
 // Every tool SAM currently owns, read at CALL time — the registry grows after boot (MCP servers,
 // forged tools), so a snapshot taken at import would stop recognising the newest names. Rebuilt only
@@ -302,8 +310,9 @@ export async function executeToolBatch(calls: { tool: string; input: any }[], sw
 }
 
 // Core loop. `prompt` is the running transcript (the user's request + tool results).
-async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false, allow?: string[]): Promise<AgentResult> {
-  for (let step = 0; step < MAX_STEPS; step++) {
+// `budget` is set by the caller (adaptive: simple=4, complex=12) so we never flat-cap a real task.
+async function loop(system: string, prompt: string, tier: Tier, trace: string[], swarm = false, allow?: string[], budget = 4): Promise<AgentResult> {
+  for (let step = 0; step < budget; step++) {
     // Tool-PLANNING (deciding the next action) routes to the deep lane — Hermes fronts it, and it's
     // elite at exactly this agentic reasoning. Still falls through every free brain, so never dark.
     // THE GRAMMAR: on the LOCAL brain, constrain output to the tool-call schema so a malformed/
@@ -420,7 +429,7 @@ export function runAgent(system: string, message: string, tier: Tier, toolNames?
       .then((r) => ({ kind: "final" as const, text: forUser(r.text), trace: [], provider: r.provider }));
   }
   const prompt = `${convo}User: ${message}`;
-  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm, allow);   // swarm=true → dangerous never auto-runs (even in Elon)
+  return loop(`${system}\n\n${buildProtocol(toolNames)}`, prompt, tier, [], swarm, allow, maxSteps(message));   // adaptive budget; swarm=true → dangerous never auto-runs
 }
 
 // ── STREAMING variant — emits typed events for live token/tool UX ──
@@ -455,8 +464,9 @@ export async function runAgentStream(system: string, message: string, tier: Tier
 
   const sys = `${system}\n\n${buildProtocol(toolNames)}`;
   let prompt = `${convo}User: ${message}`;
+  const budget = maxSteps(message);  // adaptive: 4 for simple turns, 12 for complex tasks
 
-  for (let step = 0; step < MAX_STEPS; step++) {
+  for (let step = 0; step < budget; step++) {
     let full = "", mode: null | "answer" | "tool" = null, emitted = 0;
     // THE CURTAIN on the stream, per STEP — each model turn gets its opening judged on its own, so a
     // step that opens with deliberation cannot leave the gate propped open for the step that
