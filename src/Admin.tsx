@@ -394,12 +394,15 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               phone's BROWSER, while the SAM app pairs with a one-time code from Dashboard →
               Devices. Both were called "phone" in different corners of the UI, so scanning this
               one expecting the app to pair is a dead end that looks like a broken app. */}
-          <div className="admin-h" style={{ textAlign: "center", borderBottom: "none" }}><span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span></div>
+          <div className="admin-h" style={{ textAlign: "center", borderBottom: "none", display: "block" }}>
+            <span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Open SAM in your phone's browser</span>
+            <div className="admin-note" style={{ marginTop: 6 }}>chat, camera &amp; voice from your phone on the same Wi-Fi — for the SAM <b>app</b>, use Dashboard → Devices → Pair a phone</div>
+          </div>
           {phone.remoteOn && phoneQR ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "center", marginTop: 12 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Scan with your phone's camera to pair</div>
-                <div style={{ fontSize: 14, color: "#666", lineHeight: 1.5, maxWidth: 400 }}>Point your iPhone's camera at the QR code below to quickly and securely connect your device.</div>
+                <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Scan with your phone's camera</div>
+                <div style={{ fontSize: 14, color: "#666", lineHeight: 1.5, maxWidth: 400 }}>It opens SAM in your phone's browser, already signed in. Same Wi-Fi only. Tap <b>Share → Add to Home Screen</b> to keep it like an app.</div>
               </div>
               <img src={phoneQR} alt="Scan to pair" style={{ width: 260, height: 260, borderRadius: 16, background: "#fff", padding: 12, border: "1px solid #EAEAEA", boxShadow: "0 8px 32px rgba(0,0,0,0.05)" }} />
               
