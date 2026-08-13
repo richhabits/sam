@@ -1153,7 +1153,11 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* ── 🎨 SAM Studio — Higgsfield two-pane Creative Space ── */
 /* 🎨 SAM Studio — on-brand (shared design tokens, terracotta accent — no more off-brand lime) */
 .studio { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(320px, 34%) 1fr; background: transparent; color: var(--text); font-family: var(--sans); }
-.stu-panel { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: color-mix(in srgb, var(--surface) 70%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-right: 1px solid var(--border); background: transparent; overflow-y: auto; }
+/* One `background` only. This rule declared it twice — the frosted color-mix first, then
+   `transparent` — so the second silently won and the panel has been fully see-through since it
+   landed. Kept `transparent` because that is what it has actually been rendering; if the frosted
+   surface was the intent, swap this for the color-mix and drop transparent. */
+.stu-panel { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: transparent; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-right: 1px solid var(--border); overflow-y: auto; }
 .stu-brand { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
 .stu-seg { display: flex; gap: 6px; background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
 .stu-seg button { flex: 1; background: transparent; border: 0; color: var(--muted); font: 600 14px var(--sans); padding: 8px; border-radius: 8px; cursor: pointer; }
