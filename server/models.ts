@@ -42,7 +42,12 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-fable-5";
+// NOT claude-fable-5 — that's $10/$50 per MTok vs claude-sonnet-5's $3/$15, and Fable 5 can't
+// run under zero data retention at all. b86da3d flipped the default here while adopting Fable
+// 5's newer request shape (adaptive thinking, output_config.effort, server-side fallbacks) —
+// those params work identically on Sonnet 5, so keep them; just don't ship the pricier model
+// as SAM's default. Anyone who explicitly wants Fable 5 can still set CLAUDE_MODEL themselves.
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
 
 // ── SAM Cloud gateway (OPTIONAL hosted free tier — OFF unless SAM_GATEWAY_URL is set at build) ──
 // Anonymous per-install device id (random, no personal data) so the gateway can meter fairly.
