@@ -9,7 +9,7 @@ Not a chatbot. A doer — with a *crew*. SAM researches, remembers, and takes re
 `Free forever` · `Local-first & private` · `40 free AI brains` · `A team of agents` · `Ask-first safe`
 
 **Works everywhere: macOS · Windows · Linux** — [see the platform matrix](docs/PLATFORMS.md)
-
+*(📱 Standalone iOS & Android apps coming soon!)*
 </div>
 
 <p align="center">
@@ -53,6 +53,7 @@ Most "AI assistants" just talk. SAM works:
 - 📐️ **188 real tools** — web, files, terminal, email, iMessage, calls, calendar, music, camera & vision, screenshots, **GitHub (read, commit, push, PRs)**.
 - ⏰ **Scheduled Tasks** — run background routines on a cron (hourly, daily, weekly) e.g., `/schedule daily 09:00 | summarize the news`.
 - 📱 **iOS Companion** — drop notes to SAM from your iPhone/Watch via an iCloud folder; text notes are processed instantly, voice memos when Whisper is installed.
+- 🚀 **Native Mobile Apps (Coming Soon)** — Dedicated standalone iOS and Android apps are currently in development! In the meantime, use the PWA via the Devices menu.
 - 💻 **Native desktop app** — Mac/Windows/Linux desktop UI with a global **Alt+Space** (`⌥Space` on Mac) hotkey to summon SAM anywhere. Build it with `npm run build:mac` (or `:win` / `:linux`). Note: package the app from a **path with no spaces** — native modules can't build otherwise (the web app has no such restriction).
 - ✈️ **Autopilot** — lifts the routine work autonomously; the serious stuff still asks. And it reaches out first with a **morning brief** + nudges.
 - 👁️ **It can see** — looks through your camera, knows your people by sight (*"hey Alex"*), and **🛡️ Guardian** mode watches for intruders.
