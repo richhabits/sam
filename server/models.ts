@@ -42,7 +42,12 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-fable-5";
+// NOT claude-fable-5 — that's $10/$50 per MTok vs claude-sonnet-5's $3/$15, and Fable 5 can't
+// run under zero data retention at all. b86da3d flipped the default here while adopting Fable
+// 5's newer request shape (adaptive thinking, output_config.effort, server-side fallbacks) —
+// those params work identically on Sonnet 5, so keep them; just don't ship the pricier model
+// as SAM's default. Anyone who explicitly wants Fable 5 can still set CLAUDE_MODEL themselves.
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
 
 // ── SAM Cloud gateway (OPTIONAL hosted free tier — OFF unless SAM_GATEWAY_URL is set at build) ──
 // Anonymous per-install device id (random, no personal data) so the gateway can meter fairly.
@@ -163,7 +168,9 @@ async function callGemini(system: string, prompt: string, key: string): Promise<
 // ── PREMIUM · Claude (raw fetch — no SDK dependency) ─────────
 async function callAnthropic(system: string, prompt: string, key: string): Promise<string> {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
-    signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
+    // 120s, not 30s: adaptive thinking at effort:high spends real time before the first byte, so
+    // a 30s cap failed the model's own normal working speed. Still bounded — never hang forever.
+    signal: AbortSignal.timeout(120000),
     method: "POST",
     headers: {
       "x-api-key": key,
@@ -173,7 +180,10 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 128000,
+      // 128K is the model's ceiling, not a sane ask on a NON-streaming request: Anthropic wants
+      // streaming above ~16K, and a thinking model given that much room routinely runs for
+      // minutes — every call died on the 30s abort below. 16K is what this lane actually returns.
+      max_tokens: 16000,
       thinking: { type: "adaptive" },
       output_config: { effort: "high" },
       fallbacks: [{ model: "claude-opus-4-8" }],
@@ -185,8 +195,18 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
   });
   if (!r.ok) { const e: any = new Error(`anthropic ${r.status}`); e.status = r.status; throw e; }
   const d = await r.json();
+  // A safety refusal is HTTP 200 with an EMPTY content array — reading content[0] and shrugging
+  // returns "" as if the model had answered with nothing. Throw so the ladder falls through to the
+  // next brain instead of handing the user a blank reply. (`fallbacks` above only re-runs refusals
+  // the server itself can route; a refusal that survives the whole chain still lands here.)
+  if (d?.stop_reason === "refusal") {
+    const e: any = new Error(`anthropic refused (${d?.stop_details?.category || "unspecified"})`);
+    e.status = 200; throw e;
+  }
   const block = d?.content?.find((b: any) => b.type === "text");
-  return block?.text?.trim() || "";
+  const text = block?.text?.trim() || "";
+  if (!text) throw new Error("anthropic empty");
+  return text;
 }
 
 // ── PROVIDER REGISTRY — add a line to add a provider ─────────

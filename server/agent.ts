@@ -22,7 +22,7 @@ import { capture } from "./issues.ts";
 // get up to 12 steps. Never a flat ceiling — scales with actual task complexity
 // so free-tier quota isn't burned on greeting messages, but a "build + test + fix"
 // loop has the headroom to fully self-correct without silently truncating.
-function maxSteps(message: string): number {
+export function maxSteps(message: string): number {
   // Signals that a task will need multiple distinct tool calls to complete
   const isComplex = /\b(build|deploy|test|fix|debug|analyse|refactor|research|compare|summarise|plan|write a|draft a|create a|set up|install|migrate|generate|implement|audit|review|find all|scan|crawl|extract|monitor|schedule|automate)\b.*\b(and|then|also|plus|with|ensure|verify|check)\b|\b(step[- ]by[- ]step|multi[- ]?step|end[- ]to[- ]end|full|complete|thorough|comprehensive|detailed|everything|all of)\b/i;
   return isComplex.test(message) ? 12 : 4;
