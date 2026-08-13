@@ -1287,7 +1287,10 @@ export async function benchmarkBrains(
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
-  { name: "search_memory", safe: true, description: "Recall long-term facts, preferences, and coding rules about the user. Call this before planning any architectural work. No input needed.", params: "", activity: () => "Recalling memory", run: async () => {
+  // NOT `search_memory` — that name was already taken by the semantic vault search further down
+  // (`{query}` → scored hits). Registering it twice made 192 tools with 191 names, and since
+  // lookup takes the FIRST match, the query-based search became unreachable.
+  { name: "recall_facts", safe: true, description: "Recall long-term facts, preferences, and coding rules about the user. Call this before planning any architectural work. No input needed.", params: "", activity: () => "Recalling memory", run: async () => {
     try {
       const { readFileSync } = await import("node:fs");
       const { join } = await import("node:path");
