@@ -4,6 +4,7 @@ import Icon, { type IconName } from "./Icon";
 import { configureMcp, disablePhone, enablePhone, genAndroidKeystore, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, regeneratePhone, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
 import { enablePush, pushEnabled } from "./lib/push";
 import { useEscape } from "./lib/useOverlay";
+import UsageTracker from "./UsageTracker";
 
 type McpPreset = { id: string; label: string; emoji: string; note: string; official: boolean; fields: { env: string; label: string; placeholder?: string }[]; docs?: string; connected: boolean };
 
@@ -245,6 +246,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                   </div>
                 ))}
               </div>
+              <UsageTracker pools={cfg?.pools || []} />
               <div className="admin-lead"><b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
               {starters.map(row)}
               <button type="button" className="admin-more" onClick={() => setShowMore((v) => !v)}>
