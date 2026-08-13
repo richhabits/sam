@@ -28,7 +28,7 @@ function save() {
   // so on the next boot a revoked standing authorization can come BACK, or a granted one vanish.
   // Don't throw (callers are on hot paths and doctrine #8 keeps the loops alive) — but never
   // let it be invisible.
-  try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify([...load()])); }
+  try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify([...(allowed || load())])); }
   catch (e: any) { console.error("[SAM] authz: FAILED to persist standing authorizations —", e?.message || e); }
 }
 

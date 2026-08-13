@@ -159,7 +159,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
 }: any) {
   return (
     <div className={`row ${m.role}`}>
-      <div className="who">{m.role === "sam" ? "SAM" : "You"}{m.at && <span className="at"> · {m.at}</span>}</div>
+      {m.role === "sam" && <div className="who">SAM</div>}
       {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
       {m.text && (m.role === "sam"
         ? (m.text.length > 1600 && !isExpanded
@@ -1257,29 +1257,7 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" size={16} /> Studio</button>
           </div>
           <div className="bar-group">
-            <div className="mode-toggle" role="tablist" title="Business mind at work · Personal mind at home">
-              <button type="button" role="tab" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")}><Icon name="briefcase" size={16} /> Business</button>
-              <button type="button" role="tab" className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="home" size={16} /> Personal</button>
-            </div>
-            {/* Persona switcher — same brain + memory, different voice. Warm "SAM" is the default. */}
-            <PersonaPicker
-              value={persona}
-              options={PERSONA_OPTS}
-              onPick={(id) => {
-                setPersona(id);
-                const p = PERSONA_OPTS.find((x) => x.id === id);
-                sysNote(`${p?.emoji ?? ""} SAM is now your ${p?.label ?? "SAM"} — same memory, ${p?.blurb ?? ""}.`);
-              }}
-            />
-            {mode === "business" && (
-              <label className="biz">
-                <span className="biz-label">Brand</span>
-                <select value={brand} onChange={(e) => setBrand(e.target.value)}>
-                  <option value="">All my businesses</option>
-                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
-            )}
+
             {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
               <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now"><Icon name="ban" size={16} /> Stop</button>
             )}
@@ -1339,6 +1317,7 @@ export default function App() {
               <button type="button" role="tab" aria-selected={stab === "data"} className={stab === "data" ? "on" : ""} onClick={() => setStab("data")}>Your data</button>
               <button type="button" role="tab" aria-selected={stab === "more"} className={stab === "more" ? "on" : ""} onClick={() => setStab("more")}>Keys &amp; devices</button>
             </div>
+            <div className="pop-content">
             {stab === "general" && (<>
             <div className="pop-title">Answer quality</div>
             <div className="seg">
@@ -1350,26 +1329,65 @@ export default function App() {
               ))}
             </div>
             <div className="pop-title">Preferences</div>
-            <div className="pop-group">
-              <button type="button" className={`pop-opt ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Autopilot</span><span className={`sw ${autopilot ? "on" : ""}`} aria-hidden="true"><i /></span></button>
-              <button type="button" className={`pop-opt elon ${elon ? "on" : ""}`} onClick={toggleElon}><Icon name="sparkle" size={16} /><span className="pop-opt-name">Elon Mode</span><span className="pop-opt-sub">{elon ? "Off-leash — no ask-first at all. Deletes recoverable (30-day bin); outward actions aren't." : "No safety asks"}</span></button>
+            <div className="bento-grid">
+              <button type="button" className={`bento-card ${autopilot ? "on" : ""}`} onClick={() => { const n = !autopilot; setAutopilot(n); setAutopilotMode(n).catch(() => { setAutopilot(!n); showToast("Couldn't change Autopilot — SAM didn't save it."); }); }}>
+                <div className="bento-icon"><Icon name="refresh" size={18} /></div>
+                <span className="bento-name">Autopilot</span>
+                <span className="bento-sub">Background tasks</span>
+                <div className="bento-action"><span className={`sw ${autopilot ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
+              <button type="button" className={`bento-card ${elon ? "on" : ""}`} onClick={toggleElon}>
+                <div className="bento-icon"><Icon name="sparkle" size={18} /></div>
+                <span className="bento-name">Elon Mode</span>
+                <span className="bento-sub">{elon ? "Fully off-leash" : "No safety asks"}</span>
+                <div className="bento-action"><span className={`sw ${elon ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
             </div>
             </>)}
             {stab === "audio" && (<>
             <div className="pop-title">Audio &amp; camera</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt danger-opt" onClick={() => { stopAllAV(); setSettingsOpen(false); }}><Icon name="close" size={16} /><span className="pop-opt-name">Stop audio &amp; camera</span><span className="pop-opt-sub">Stops everything</span></button>
-              <button type="button" className={`pop-opt ${listening ? "on" : ""}`} onClick={toggleVoice}><Icon name="voice" size={16} /><span className="pop-opt-name">Mic — dictate{listening ? " · listening" : ""}</span><span className={`sw ${listening ? "on" : ""}`} aria-hidden="true"><i /></span></button>
-              <button type="button" className={`pop-opt ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}><Icon name="voice" size={16} /><span className="pop-opt-name">SAM talks back</span><span className={`sw ${speakReplies ? "on" : ""}`} aria-hidden="true"><i /></span></button>
-              <button type="button" className={`pop-opt ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}><Icon name="bell" size={16} /><span className="pop-opt-name">Wake word</span><span className={`sw ${wakeOn ? "on" : ""}`} aria-hidden="true"><i /></span></button>
-              <button type="button" className={`pop-opt ${guardian ? "on" : ""}`} onClick={toggleGuardian}><Icon name="eye" size={16} /><span className="pop-opt-name">Guardian camera</span><span className={`sw ${guardian ? "on" : ""}`} aria-hidden="true"><i /></span></button>
+            <div className="bento-grid">
+              <button type="button" className="bento-card" onClick={() => { stopAllAV(); setSettingsOpen(false); }}>
+                <div className="bento-icon" style={{ background: "var(--c-err-bg)", color: "var(--c-err)" }}><Icon name="close" size={18} /></div>
+                <span className="bento-name" style={{ color: "var(--c-err)" }}>Stop audio</span>
+                <span className="bento-sub">Kills all streams</span>
+              </button>
+              <button type="button" className={`bento-card ${listening ? "on" : ""}`} onClick={toggleVoice}>
+                <div className="bento-icon"><Icon name="voice" size={18} /></div>
+                <span className="bento-name">Microphone</span>
+                <span className="bento-sub">{listening ? "Listening..." : "Off"}</span>
+                <div className="bento-action"><span className={`sw ${listening ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
+              <button type="button" className={`bento-card ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)}>
+                <div className="bento-icon"><Icon name="voice" size={18} /></div>
+                <span className="bento-name">SAM talks back</span>
+                <span className="bento-sub">Voice replies</span>
+                <div className="bento-action"><span className={`sw ${speakReplies ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
+              <button type="button" className={`bento-card ${wakeOn ? "on" : ""}`} onClick={() => setWakeOn((v) => !v)}>
+                <div className="bento-icon"><Icon name="bell" size={18} /></div>
+                <span className="bento-name">Wake word</span>
+                <span className="bento-sub">Background listening</span>
+                <div className="bento-action"><span className={`sw ${wakeOn ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
+              <button type="button" className={`bento-card ${guardian ? "on" : ""}`} onClick={toggleGuardian}>
+                <div className="bento-icon"><Icon name="eye" size={18} /></div>
+                <span className="bento-name">Guardian</span>
+                <span className="bento-sub">Camera watch</span>
+                <div className="bento-action"><span className={`sw ${guardian ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
             </div>
             </>)}
             {stab === "look" && (<>
             {/* Dark mode was under General while this whole tab existed for how SAM looks. */}
             <div className="pop-title">Theme</div>
-            <div className="pop-group">
-              <button type="button" className={`pop-opt ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}><Icon name="sparkle" size={16} /><span className="pop-opt-name">Dark mode</span><span className={`sw ${dark ? "on" : ""}`} aria-hidden="true"><i /></span></button>
+            <div className="bento-grid">
+              <button type="button" className={`bento-card ${dark ? "on" : ""}`} onClick={() => setDark((v) => !v)}>
+                <div className="bento-icon"><Icon name="sparkle" size={18} /></div>
+                <span className="bento-name">Dark mode</span>
+                <span className="bento-sub">{dark ? "On" : "Off"}</span>
+                <div className="bento-action"><span className={`sw ${dark ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
             </div>
             <div className="pop-title">Skin</div>
             <div className="skin-row">
@@ -1383,10 +1401,22 @@ export default function App() {
             </>)}
             {stab === "data" && (<>
             <div className="pop-title">Your data</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}><Icon name="brain" size={16} /><span className="pop-opt-name">What SAM has learned about you</span><span className="pop-opt-sub">On-device</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}><Icon name="shield" size={16} /><span className="pop-opt-name">What can SAM do on its own?</span><span className="pop-opt-sub">All off</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}><Icon name="chart" size={16} /><span className="pop-opt-name">Your SAM</span><span className="pop-opt-sub">0 data sent</span></button>
+            <div className="bento-grid">
+              <button type="button" className="bento-card" onClick={() => { setLearnedOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="brain" size={18} /></div>
+                <span className="bento-name">Learned memory</span>
+                <span className="bento-sub">What SAM knows</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setAutonomyOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="shield" size={18} /></div>
+                <span className="bento-name">Autonomy</span>
+                <span className="bento-sub">What SAM can do</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setYourSamOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="chart" size={18} /></div>
+                <span className="bento-name">Your SAM</span>
+                <span className="bento-sub">0 data sent</span>
+              </button>
             </div>
             </>)}
             {/* Its own tab, not a heading buried under "Your data". These are seven of SAM's
@@ -1394,32 +1424,77 @@ export default function App() {
                 as settings nobody needed to open. */}
             {stab === "domore" && (<>
             <div className="pop-title">Do more</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}><Icon name="refresh" size={16} /><span className="pop-opt-name">Workflows</span><span className="pop-opt-sub">Pauses on risk</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}><Icon name="book" size={16} /><span className="pop-opt-name">Notebooks</span><span className="pop-opt-sub">Your sources</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setStandingOpen(true); setSettingsOpen(false); }}><Icon name="team" size={16} /><span className="pop-opt-name">Standing Crew</span><span className="pop-opt-sub">Background agents</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}><Icon name="clock" size={16} /><span className="pop-opt-name">Alarms &amp; Timers</span><span className="pop-opt-sub">Rings anytime</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setCameraOpen(true); setSettingsOpen(false); }}><Icon name="camera" size={16} /><span className="pop-opt-name">Cameras</span><span className="pop-opt-sub">Local only</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}><Icon name="markets" size={16} /><span className="pop-opt-name">Live usage</span><span className="pop-opt-sub">Live</span></button>
-              <button type="button" className="pop-opt" onClick={() => { setConnectorsOpen(true); setSettingsOpen(false); }}><Icon name="link" size={16} /><span className="pop-opt-name">Connected</span><span className="pop-opt-sub">Read-only</span></button>
+            <div className="bento-grid">
+              <button type="button" className="bento-card" onClick={() => { setWorkflowsOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="refresh" size={18} /></div>
+                <span className="bento-name">Workflows</span>
+                <span className="bento-sub">Pauses on risk</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setNotebookOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="book" size={18} /></div>
+                <span className="bento-name">Notebooks</span>
+                <span className="bento-sub">Your sources</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setStandingOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="team" size={18} /></div>
+                <span className="bento-name">Standing Crew</span>
+                <span className="bento-sub">Background agents</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setChimeOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="clock" size={18} /></div>
+                <span className="bento-name">Alarms &amp; Timers</span>
+                <span className="bento-sub">Rings anytime</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setCameraOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="camera" size={18} /></div>
+                <span className="bento-name">Cameras</span>
+                <span className="bento-sub">Local only</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setUsageOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="markets" size={18} /></div>
+                <span className="bento-name">Live usage</span>
+                <span className="bento-sub">Stats</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setConnectorsOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="link" size={18} /></div>
+                <span className="bento-name">Connected</span>
+                <span className="bento-sub">Integrations</span>
+              </button>
             </div>
             </>)}
             {stab === "data" && (<>
             <div className="pop-title">Help</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}><Icon name="settings" size={16} /><span className="pop-opt-name">SAM isn't working?</span><span className="pop-opt-sub">Self-check</span></button>
-              <button type="button" className="pop-opt" onClick={() => { exportChat(); setSettingsOpen(false); }}><Icon name="download" size={16} /><span className="pop-opt-name">Export this chat</span><span className="pop-opt-sub">Download</span></button>
-              <button type="button" className="pop-opt" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}><Icon name="bell" size={16} /><span className="pop-opt-name">Desktop notifications</span><span className="pop-opt-sub">Permission</span></button>
+            <div className="bento-grid">
+              <button type="button" className="bento-card" onClick={() => { setDoctorOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="settings" size={18} /></div>
+                <span className="bento-name">Not working?</span>
+                <span className="bento-sub">Self-check</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { exportChat(); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="download" size={18} /></div>
+                <span className="bento-name">Export chat</span>
+                <span className="bento-sub">Download</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { if ("Notification" in window) Notification.requestPermission(); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="bell" size={18} /></div>
+                <span className="bento-name">Notifications</span>
+                <span className="bento-sub">Permission</span>
+              </button>
             </div>
             </>)}
             {stab === "more" && (<>
             <div className="pop-title">Keys &amp; brains</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}><Icon name="key" size={16} /><span className="pop-opt-name">API keys &amp; providers</span><span className="pop-opt-sub">9 live</span></button>
-            </div>
-            <div className="pop-title">Devices</div>
-            <div className="pop-group">
-              <button type="button" className="pop-opt" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}><Icon name="phone" size={16} /><span className="pop-opt-name">Open SAM in your phone's browser</span><span className="pop-opt-sub">QR code</span></button>
+            <div className="bento-grid">
+              <button type="button" className="bento-card" onClick={() => { setAdminOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="key" size={18} /></div>
+                <span className="bento-name">API keys</span>
+                <span className="bento-sub">Providers</span>
+              </button>
+              <button type="button" className="bento-card" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); setSettingsOpen(false); }}>
+                <div className="bento-icon"><Icon name="phone" size={18} /></div>
+                <span className="bento-name">Phone</span>
+                <span className="bento-sub">QR code</span>
+              </button>
             </div>
             <div className="pop-sub-label"><Icon name="people" size={16} /> Who's using SAM · <b>{profile.name}</b></div>
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
@@ -1429,6 +1504,7 @@ export default function App() {
             {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return n ? <div className="pop-lanes">✓ {n} free {n === 1 ? "brain" : "brains"} ready — SAM rotates so you never hit a limit</div> : null; })()}
             <div className="pop-note">SAM can act for you — reading &amp; searching happen automatically; anything risky asks first.</div>
             </>)}
+          </div>
           </div>
         </>, document.body)}
       </header>
@@ -1495,7 +1571,18 @@ export default function App() {
         <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
           onOpen={openConvo} onDelete={deleteConvo} onRename={renameConvo} onTogglePin={togglePin}
           onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
-        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}><Icon name="download" /> Import your history</button>
+        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}><Icon name="download" /> Import</button>
+        <div className="side-bottom-actions">
+           <button type="button" className="side-action-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings"><Icon name="settings" size={16} /> Settings</button>
+           <button type="button" className="side-action-btn" onClick={() => setDashOpen(true)} title="Dashboard"><Icon name="chart" size={16} /> Dashboard</button>
+           <button type="button" className="side-action-btn" onClick={() => {
+              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
+              n === 0 ? setWizardOpen(true) : setAdminOpen(true);
+           }}><Icon name="key" size={16} /> Keys</button>
+           <button type="button" className="side-action-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={16} /> Pair Phone</button>
+           <button type="button" className="side-action-btn" onClick={openStudio} title="Studio"><Icon name="studio" size={16} /> Studio</button>
+           <button type="button" className="side-action-btn" onClick={openFlipit} title="Flip It"><Icon name="markets" size={16} /> Flip It</button>
+        </div>
       </aside>
       <div className="center">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
@@ -1676,6 +1763,23 @@ export default function App() {
         </div>
       )}
       <footer className="composer">
+        <div className="composer-context">
+            <button type="button" className="ctx-toggle-btn" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)"><Icon name="grid" size={15} /></button>
+            <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")}>
+                <option value="personal">Personal</option>
+                <option value="business">Business</option>
+            </select>
+            <select value={persona} onChange={(e) => setPersona(e.target.value)}>
+                {PERSONA_OPTS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+            {mode === "business" && (
+                <select value={brand} onChange={(e) => setBrand(e.target.value)}>
+                    <option value="">All my businesses</option>
+                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+            )}
+        </div>
+
         {attachments.length > 0 && (
           <div className="attach-row">
             {attachments.map((a, i) => (
@@ -1776,43 +1880,30 @@ export default function App() {
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
       </div>
+      
       {ctxOpen && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: context-panel scrim; click-outside close
-        // biome-ignore lint/a11y/useKeyWithClickEvents: context-panel scrim; click-outside close
-        <div className="ctx-scrim" onClick={() => setCtxOpen(false)} />
-      )}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .ctx-act buttons, which are real buttons with keyboard access */}
-      <aside className={ctxOpen ? "ctx open" : "ctx"}
-        onClick={(e) => { if ((e.target as HTMLElement).closest(".ctx-act")) setCtxOpen(false); }}>
-        <div className="ctx-title">Context</div>
-        <div className="ctx-brand">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</div>
-        <div className="ctx-label">Quick actions</div>
-        <button type="button" className="ctx-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}><Icon name="team" /> Assemble the Team</button>
-        <button type="button" className="ctx-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}><Icon name="ninja" /> Deploy the Ninjas</button>
-        <button type="button" className="ctx-act" onClick={openStudio}><Icon name="studio" /> Open Studio</button>
-        <button type="button" className="ctx-act" onClick={lookThroughCamera}><Icon name="eye" /> Look (camera)</button>
-        <button type="button" className="ctx-act" onClick={() => setRosterOpen(true)}><Icon name="people" /> Meet the team</button>
-        <button type="button" className="ctx-act" onClick={() => setMarketsOpen(true)}><Icon name="markets" /> Markets</button>
-        <button type="button" className="ctx-act" onClick={() => setColosseumOpen(true)}><Icon name="trophy" /> Colosseum</button>
-        <button type="button" className="ctx-act" onClick={() => setDashOpen(true)}><Icon name="chart" /> Dashboard</button>
-        <div className="ctx-label">Live status</div>
-        <div className="ctx-live">
-          <div className="ctx-row"><span className={`ctx-dot ${status ? "on" : ""}`} />{status ? "Connected" : "Starting…"}</div>
-          {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return <div className="ctx-row"><span className="ctx-ic"><Icon name="brain" size={14} /></span>{n ? `${n} free brains rotating` : "Local Ollama (free)"}</div>; })()}
-          {swarms.filter((s) => s.status === "running" || s.status === "planning" || s.status === "paused").slice(0, 3).map((s) => {
-            const done = s.agents.filter((a) => a.status === "done").length;
-            return <button type="button" key={s.id} className="ctx-swarm" onClick={() => setDashOpen(true)} title="Open the swarm in Dashboard">
-              <span className="ctx-ic"><Icon name="team" size={14} /></span><span className="ctx-swarm-goal">{s.goal}</span>
-              <span className="ctx-swarm-prog">{s.status === "planning" ? "…" : s.status === "paused" ? "⏸" : `${done}/${s.agents.length}`}</span>
-            </button>;
-          })}
-          {status?.vault?.count != null && status.vault.count > 0 && <button type="button" className="ctx-row ctx-click" onClick={() => setMemoryOpen(true)} title="See everything SAM remembers about you — all on your machine, deletable any time"><span className="ctx-ic">💭</span>Remembers {status.vault.count} thing{status.vault.count === 1 ? "" : "s"} about you</button>}
-          <div className="ctx-row"><span className="ctx-ic"><Icon name={quality === "private" ? "lock" : quality === "best" ? "sparkle" : "pulse"} size={14} /></span>{quality === "private" ? "Private · local only" : quality === "best" ? "Best quality" : "Auto · free"}</div>
-          {autopilot && <div className="ctx-row"><span className="ctx-ic"><Icon name="pulse" size={14} /></span>Autopilot on</div>}
-          {elon && <div className="ctx-row danger"><span className="ctx-ic"><Icon name="sparkle" size={14} /></span>Elon Mode ON</div>}
-          {guardian && <div className="ctx-row"><span className="ctx-ic"><Icon name="shield" size={14} /></span>Guardian watching</div>}
+        <div className="drawer-wrap" onClick={() => setCtxOpen(false)}>
+          <aside className="drawer apps-grid-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-head">
+              <div><div className="drawer-title">Apps</div><div className="drawer-sub">Quick actions and tools</div></div>
+            </div>
+            <div className="apps-grid">
+               <button type="button" className="app-card" onClick={() => { setInput("/team "); inputRef.current?.focus(); setCtxOpen(false); }}><span>Team</span></button>
+               <button type="button" className="app-card" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); setCtxOpen(false); }}><span>Ninjas</span></button>
+               <button type="button" className="app-card" onClick={() => { openStudio(); setCtxOpen(false); }}><span>Studio</span></button>
+               <button type="button" className="app-card" onClick={() => { lookThroughCamera(); setCtxOpen(false); }}><span>Camera</span></button>
+               <button type="button" className="app-card" onClick={() => { setRosterOpen(true); setCtxOpen(false); }}><span>Roster</span></button>
+               <button type="button" className="app-card" onClick={() => { setMarketsOpen(true); setCtxOpen(false); }}><span>Markets</span></button>
+               <button type="button" className="app-card" onClick={() => { setColosseumOpen(true); setCtxOpen(false); }}><span>Colosseum</span></button>
+               <button type="button" className="app-card" onClick={() => { setDashOpen(true); setCtxOpen(false); }}><span>Dashboard</span></button>
+               <button type="button" className="app-card" onClick={() => { setNotebookOpen(true); setCtxOpen(false); }}><span>Notebook</span></button>
+            </div>
+          </aside>
         </div>
-      </aside>
+      )}
+
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .ctx-act buttons, which are real buttons with keyboard access */}
+      
       </>
       )}
       </div>

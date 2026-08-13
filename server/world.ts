@@ -75,7 +75,12 @@ export function seedSocials(): Record<string, any> {
 export function worldContext(): string {
   const socials = loadSocials();
   const withHandles = Object.values(socials).filter((s: any) => s && (s.instagram || s.youtube || s.tiktok || s.x)).length;
-  return `Your operation (loaded at startup): ${APPS.length} in-house apps/repos, ${PROJECTS.length} brands, ${Object.keys(socials).length} social profiles on file (${withHandles} with handles). Pull specifics with the my_apps and my_socials tools — don't guess.`;
+  let ctx = `Your operation (loaded at startup): ${APPS.length} in-house apps/repos, ${PROJECTS.length} brands, ${Object.keys(socials).length} social profiles on file (${withHandles} with handles). Pull specifics with the my_apps and my_socials tools — don't guess.`;
+  
+  if (existsSync(join(process.cwd(), ".codemap/modules.json"))) {
+    ctx += `\n[V2 ARCHITECTURE AWARENESS]: A living architecture map (.codemap/modules.json) exists in this workspace. Read it before proposing major refactors.`;
+  }
+  return ctx;
 }
 
 // Called once at boot. Non-blocking. Returns a short line for the boot log.

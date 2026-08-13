@@ -1,0 +1,8 @@
+{
+  "lang": "en",
+  "project": "SAM",
+  "subtitle": "Agentic Desktop Assistant",
+  "outputDir": ".codemap",
+  "htmlFile": "codemap.html",
+  "mdFile": "codemap.md"
+}

@@ -1,0 +1,508 @@
+{
+ "meta": {
+  "project": "SAM",
+  "subtitle": "Agentic Desktop Assistant",
+  "htmlPath": ".codemap/codemap.html",
+  "mdPath": ".codemap/codemap.md",
+  "spineDesc": "User Request -> Server API -> Agentic Loop / Swarm -> Tool Execution -> Verification -> User Response",
+  "tracked_loc": 20185,
+  "tracked_files": 55,
+  "rev": "df5c39dc4ee836be68487365dffb5aed4f559347"
+ },
+ "bands": [
+  {
+   "id": "client",
+   "label": "Client UI (React/Vite)"
+  },
+  {
+   "id": "api",
+   "label": "API / Entry (Electron/Hono)"
+  },
+  {
+   "id": "engine",
+   "label": "Agentic Engine (Loops & Swarms)"
+  },
+  {
+   "id": "tools",
+   "label": "Tools & Execution"
+  },
+  {
+   "id": "core",
+   "label": "Core Foundation (Providers, Memory, Vault)"
+  }
+ ],
+ "spine": [
+  "client-app",
+  "api-server",
+  "engine-agent",
+  "engine-swarm",
+  "tools-registry",
+  "core-providers"
+ ],
+ "modules": [
+  {
+   "id": "client-app",
+   "label": "Client App",
+   "band": "client",
+   "path": "src",
+   "paths": [
+    "src/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.css",
+    "index.html"
+   ],
+   "coupling": "core",
+   "deps": [
+    "api-server"
+   ],
+   "desc": "The React/Vite frontend UI, managing chat state, settings panels, and artifact rendering.",
+   "loc": 11993,
+   "contentHash": "43b930fbacd4d3243a3f5a9de3d4aa236a2cc7da246fc3b0f0423011d403b20d",
+   "score": 68,
+   "grade": "C",
+   "tags": [
+    "duplication",
+    "fallback",
+    "silent-except",
+    "bloat"
+   ],
+   "findings": [
+    {
+     "sev": "MED",
+     "loc": "src/Dashboard.tsx:43",
+     "text": "QR code generation logic is duplicated here and in `Admin.tsx`, leading to maintenance overhead and potential inconsistencies. This should be a shared utility."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/Dashboard.tsx:64",
+     "text": "The `catch(() => { /* the next poll re-reads */ })` pattern in `refreshYard` and similar functions (`refreshActivity`) silences potential errors. While a poll might eventually correct the state, immediate feedback or logging is preferable for debugging and user experience."
+    },
+    {
+     "sev": "LOW",
+     "loc": "src/Dashboard.tsx:32",
+     "text": "Untyped `useState<any>(null)` is used for `s`, `sec`, and `people`. Specific types should be defined to improve code clarity and prevent runtime errors."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/Admin.tsx:55",
+     "text": "QR code generation logic is duplicated here and in `Dashboard.tsx`, leading to maintenance overhead and potential inconsistencies. This should be a shared utility."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/Admin.tsx:75",
+     "text": "Multiple API calls use `catch(() => {/* best-effort */})` which silently swallows errors. While described as 'best-effort,' these errors could indicate critical issues, especially for calls like `getAdminConfig` where a failure is explicitly surfaced, contrasting with others."
+    },
+    {
+     "sev": "LOW",
+     "loc": "src/Admin.tsx:84",
+     "text": "`biome-ignore lint/correctness/useExhaustiveDependencies` is used to suppress a valid linter warning. `refresh` is a stable function, but this suppression can hide legitimate dependency issues elsewhere."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "src/App.tsx:63",
+     "text": "The `visionErrorNote` function manually parses error objects (`e as { locked?: boolean; status?: number; message?: string }`). This indicates a lack of standardized error types from the `api` module, making error handling brittle and prone to type mismatches."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/App.tsx:94",
+     "text": "The `titleOf` function truncates titles at 42 characters and appends '…'. This is an arbitrary magic number; a named constant or configurable setting would improve readability and maintainability."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/VoiceMode.tsx:162",
+     "text": "The data channel message handler `try { msg = JSON.parse(e.data); } catch { return; }` silently ignores malformed JSON messages. While preventing crashes, this could mask underlying issues with the `oai-events` data stream."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "src/main.tsx:21",
+     "text": "The global `window.fetch` monkeypatch handles `X-SAM-Token` and `X-SAM-Pair` headers. While solving a critical problem for `file://` and authentication, this global modification can lead to unexpected side effects or conflicts with other libraries that might also attempt to modify `fetch`."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/main.tsx:34",
+     "text": "The service worker registration uses `catch(() => {/* browser API unavailable */})` which silently suppresses errors. While the note explains the intent, any other service worker registration failure would also be silently ignored."
+    },
+    {
+     "sev": "MED",
+     "loc": "src/main.tsx:54",
+     "text": "The global `unhandledrejection` handler creates and appends a DOM element to `document.body`. This is a low-level DOM manipulation that tightly couples the error display to the global `window` object, bypassing React's component tree. A React portal or a dedicated error boundary component would be more idiomatic."
+    }
+   ],
+   "auditedHash": "b700eed61e8376f3ab4426f9832571465e2e78c940fc5ec0cff730128a9eeb6b",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  },
+  {
+   "id": "api-server",
+   "label": "API Server",
+   "band": "api",
+   "path": "server/index.ts",
+   "paths": [
+    "server/index.ts"
+   ],
+   "coupling": "core",
+   "deps": [
+    "engine-agent",
+    "engine-swarm",
+    "core-settings"
+   ],
+   "desc": "The local server (Hono) and Electron bridge that receives chat inputs and routes them to the agentic engine.",
+   "loc": 2431,
+   "contentHash": "315a19b939da499edd5c2058a55cdc9604ee13aab3162908c3bda1fbb680d6da",
+   "score": 40,
+   "grade": "D",
+   "tags": [
+    "legacy",
+    "stub"
+   ],
+   "findings": [
+    {
+     "sev": "HIGH",
+     "loc": "/scrub.ts:1",
+     "text": "Uncaught exception will not be handled."
+    },
+    {
+     "sev": "MED",
+     "loc": "/server/index.ts:2432",
+     "text": "Unused import: 'node:os' in line 1"
+    }
+   ],
+   "auditedHash": "315a19b939da499edd5c2058a55cdc9604ee13aab3162908c3bda1fbb680d6da",
+   "auditedAt": "2026-08-12",
+   "auditedRev": ""
+  },
+  {
+   "id": "engine-agent",
+   "label": "Agent Loop",
+   "band": "engine",
+   "path": "server/agent.ts",
+   "paths": [
+    "server/agent.ts"
+   ],
+   "coupling": "core",
+   "deps": [
+    "tools-registry",
+    "core-providers"
+   ],
+   "desc": "The core sequential execution loop. Runs the LLM, parses tool calls, manages the adaptive step budget, and executes safe/approved tools.",
+   "loc": 605,
+   "contentHash": "1891cd335663053b72b600bfd75b9001def3a061937bb9ae7ef7a50f9449b4a7",
+   "score": 78,
+   "grade": "B",
+   "tags": [
+    "bloat",
+    "glue"
+   ],
+   "findings": [
+    {
+     "sev": "MED",
+     "loc": "server/agent.ts",
+     "text": "maxSteps function is complex and may be over-fitting."
+    }
+   ],
+   "auditedHash": "1891cd335663053b72b600bfd75b9001def3a061937bb9ae7ef7a50f9449b4a7",
+   "auditedAt": "2026-08-12",
+   "auditedRev": ""
+  },
+  {
+   "id": "engine-swarm",
+   "label": "Swarm Orchestrator",
+   "band": "engine",
+   "path": "server/swarm.ts",
+   "paths": [
+    "server/swarm.ts"
+   ],
+   "coupling": "core",
+   "deps": [
+    "engine-agent",
+    "core-providers"
+   ],
+   "desc": "Manages V2 massive background tasks via Planner -> Executor -> Verifier parallel subagents.",
+   "loc": 333,
+   "contentHash": "8f3faf65be4f6db5c886ffed36448432ec2a6890d280f68d7e5e5513c3fd011b",
+   "score": 75,
+   "grade": "B",
+   "tags": [
+    "monkeypatch",
+    "fallback",
+    "any-escape"
+   ],
+   "findings": [
+    {
+     "sev": "LOW",
+     "loc": "server/swarm.ts",
+     "text": "The module uses a lot of magic strings, which can make it harder to maintain."
+    }
+   ],
+   "auditedHash": "8f3faf65be4f6db5c886ffed36448432ec2a6890d280f68d7e5e5513c3fd011b",
+   "auditedAt": "2026-08-12",
+   "auditedRev": ""
+  },
+  {
+   "id": "engine-proactive",
+   "label": "Proactive Brain",
+   "band": "engine",
+   "path": "server/proactive.ts",
+   "paths": [
+    "server/proactive.ts",
+    "server/world.ts"
+   ],
+   "coupling": "low",
+   "deps": [
+    "core-providers"
+   ],
+   "desc": "Injects world context and manages proactive, unprompted background tasks.",
+   "loc": 214,
+   "contentHash": "0c98eab5ee42f0f0f6f7cf600af66facc2bd8209e5fd3fc50a9432b2ec635d11",
+   "score": 60,
+   "grade": "C",
+   "tags": [
+    "bloat",
+    "glue",
+    "any-escape"
+   ],
+   "findings": [
+    {
+     "sev": "MED",
+     "loc": "server/proactive.ts",
+     "text": "// ─────────────────────────────────────────────────────────────\n//  S.A.M. · PROACTIVE  — the \"alive\" layer\n//  A morning brief + nudges that reach out to you first. Slim:\n//  one light timer (checks every 5 min), nudges in a local file,\n//  the brief composed once a day. Delivered as a macOS notification\n//  (works even if the window's closed) + queued for the app."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/proactive.ts",
+     "text": "// ── Nudge store ──\nexport function addNudge(text: string, due?: string): Nudge {\n  const list = load<Nudge[]>(NUDGES, []);\n  const n: Nudge = { id: Math.random().toString(36).slice(2, 9), text: String(text).slice(0, 200), due, done: false, notified: false, created: new Date().toISOString() };"
+    },
+    {
+     "sev": "MED",
+     "loc": "server/proactive.ts",
+     "text": "// ── Delivery (cross-platform) ──\nexport function desktopNotify(title: string, msg: string) {\n  const clean = msg.replace(/[#*`]/g, \"\").slice(0, 220);\n  // Strip the chars that carry meaning in AppleScript/PowerShell/XML string contexts."
+    }
+   ],
+   "auditedHash": "0c98eab5ee42f0f0f6f7cf600af66facc2bd8209e5fd3fc50a9432b2ec635d11",
+   "auditedAt": "2026-08-12",
+   "auditedRev": ""
+  },
+  {
+   "id": "tools-registry",
+   "label": "Tool Registry",
+   "band": "tools",
+   "path": "server/tools.ts",
+   "paths": [
+    "server/tools.ts"
+   ],
+   "coupling": "core",
+   "deps": [],
+   "desc": "Defines every capability SAM has (run_command, read_file, lint_workspace, browser automation).",
+   "loc": 2969,
+   "contentHash": "a42e03f9bfe629d2a4f768d3894b843ecc5635908d05805595041053cf9bb0f5",
+   "score": 68,
+   "grade": "C",
+   "tags": [
+    "god-component",
+    "bloat",
+    "duplication",
+    "silent-except"
+   ],
+   "findings": [
+    {
+     "sev": "HIGH",
+     "loc": "server/tools.ts:2970",
+     "text": "This single file (server/tools.ts) is 2970 lines long, which is a clear indicator of a God component anti-pattern, making it difficult to maintain, test, and understand. This is a severe architectural issue."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/tools.ts:16",
+     "text": "The `exec` and `execFile` from `node:child_process` are promisified without explicitly specifying an encoding in the promisified version, which can lead to issues with binary data or incorrect string interpretations. While `promisify` itself doesn't cause this, the subsequent usage might implicitly rely on default encodings."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/tools.ts:31",
+     "text": "The `walkFiles` function uses a generic `any[]` type for `entries`, which reduces type safety. A more specific type like `fs.Dirent[]` should be used."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/tools.ts:33",
+     "text": "The `walkFiles` function uses a silent catch block (`try { ... } catch { return out; }`) which swallows all errors during directory reading. This can hide important issues like permission problems or I/O errors, making debugging difficult."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/tools.ts:51",
+     "text": "The `findByContent` function uses a silent catch block (`try { ... } catch { /* unreadable file in a scan — skip it, keep scanning */ }`) for file reading errors. This can hide issues with file corruption or permissions, reducing the robustness of the file search."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "server/tools.ts:63",
+     "text": "The comment states that 'Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call time via require'. While lazy loading can improve startup time, mixing `import` and `require` in a modern ESM module for core dependencies creates a dual-format problem and can lead to module resolution complexities, especially for a module acting as a central registry."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "server/tools.ts:68-124",
+     "text": "The module imports an extremely large number of other modules, each representing a distinct tool or capability. This indicates a severe violation of the Single Responsibility Principle and promotes tight coupling, making `server/tools.ts` a \"God component\" that orchestrates nearly every other part of the system. This centralizes failure points and complicates independent development and testing of features."
+    },
+    {
+     "sev": "LOW",
+     "loc": "server/tools.ts:133",
+     "text": "The `samLlm` constant uses `runModel(\"free\", ...)` directly. While the comment explains the rationale, this hardcoded string \"free\" could be prone to typos or lack flexibility if the pricing tiers change in the future. A constant or enum would be more robust."
+    }
+   ],
+   "auditedHash": "a42e03f9bfe629d2a4f768d3894b843ecc5635908d05805595041053cf9bb0f5",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  },
+  {
+   "id": "tools-mcp",
+   "label": "MCP Integration",
+   "band": "tools",
+   "path": "server/mcp.ts",
+   "paths": [
+    "server/mcp.ts"
+   ],
+   "coupling": "low",
+   "deps": [
+    "tools-registry"
+   ],
+   "desc": "Model Context Protocol bridge for dynamically loading external tools (e.g. Firecrawl).",
+   "loc": 106,
+   "contentHash": "702d1ab6c40ab99ed529f589816920bbf49bc983c8a5c528f1873eb661d0a9c3",
+   "score": 88,
+   "grade": "B",
+   "tags": [
+    "clean"
+   ],
+   "findings": [],
+   "auditedHash": "702d1ab6c40ab99ed529f589816920bbf49bc983c8a5c528f1873eb661d0a9c3",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  },
+  {
+   "id": "core-providers",
+   "label": "LLM Providers",
+   "band": "core",
+   "path": "server/providers.registry.ts",
+   "paths": [
+    "server/providers.registry.ts",
+    "server/models.ts",
+    "server/keys.ts"
+   ],
+   "coupling": "core",
+   "deps": [],
+   "desc": "Manages all LLM backends (Ollama, Anthropic, DeepSeek, etc), key pooling, and the burn-down fallback cascade.",
+   "loc": 1153,
+   "contentHash": "5a13f5405b3c7a162335745e96b494c356b897a36bccfd172b722265816482ea",
+   "score": 88,
+   "grade": "B",
+   "tags": [
+    "clean"
+   ],
+   "findings": [],
+   "auditedHash": "5a20d0e7b03386f17eeb90d40b06be44b61e463021cc9f86da1e74576fff5755",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  },
+  {
+   "id": "core-vault",
+   "label": "Memory Vault",
+   "band": "core",
+   "path": "server/vault.ts",
+   "paths": [
+    "server/vault.ts"
+   ],
+   "coupling": "med",
+   "deps": [],
+   "desc": "Manages persistent local memory (markdown daily notes and knowledge graph).",
+   "loc": 207,
+   "contentHash": "3beaf63d9d36f9a61c6063ac82424cf3d2b34f3a9e0cffc9468dab8dd8b2ec92",
+   "score": 58,
+   "grade": "D",
+   "tags": [
+    "silent-except",
+    "bloat",
+    "duplication"
+   ],
+   "findings": [
+    {
+     "sev": "HIGH",
+     "loc": "server/vault.ts:37",
+     "text": "The `pruneOldLogs` function uses a silent catch block for `unlinkSync` and `statSync` operations, meaning individual file deletion errors or file stat errors are completely ignored, potentially leaving corrupted or unpruned files without any indication."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "server/vault.ts:39",
+     "text": "The outer try-catch block in `pruneOldLogs` also silently ignores errors from `readdirSync`, which could hide critical issues like directory permissions or non-existent directories, leading to a false sense of successful pruning."
+    },
+    {
+     "sev": "HIGH",
+     "loc": "server/vault.ts:98",
+     "text": "The `setTimeout` block in `logExchange` uses a silent catch, meaning any error during model import (`import('./models.ts')`), `runModel` execution, or subsequent file operations (e.g., `appendFileSync`) is completely ignored. This \"fire and forget\" approach can lead to data loss or inconsistent state without any logging or error reporting."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/vault.ts:93",
+     "text": "The JSON parsing for extracted facts (`facts = JSON.parse(txt)`) uses a silent catch block, ignoring any malformed JSON returned by the model. This can lead to silently dropped facts if the model output is not perfectly formatted, hindering the memory extraction process without feedback."
+    },
+    {
+     "sev": "MED",
+     "loc": "server/vault.ts:167",
+     "text": "The comment \"Avoids scannin\" is incomplete and indicates unfinished work or a lack of attention to detail."
+    },
+    {
+     "sev": "LOW",
+     "loc": "server/vault.ts:51",
+     "text": "The `logExchange` function duplicates `existsSync(file)` and `writeFileSync` logic. If `writeFileSync` fails, the `appendFileSync` call will also fail, but the check is redundant for normal operation. A simpler approach might be to just `appendFileSync` and handle the potential error (e.g., by ensuring the file exists before appending, or catching the error if it's not guaranteed)."
+    },
+    {
+     "sev": "LOW",
+     "loc": "server/vault.ts:140",
+     "text": "The `recentLog` function iterates through all lines of today's file and then slices the result. It would be more efficient to read the file in reverse or process lines from the end to avoid unnecessary iteration over potentially large files, especially since only the last `limit` lines are needed."
+    },
+    {
+     "sev": "LOW",
+     "loc": "server/vault.ts:153",
+     "text": "The `recentExchanges` function also reads the entire file, splits it by '###', and then slices the blocks. While better than `recentLog`, processing the entire file before slicing could still be inefficient for very large daily logs. Reading blocks from the end might be more performant."
+    }
+   ],
+   "auditedHash": "49f2ffbf0782e5d1acd71c029a95c942863cb0badd622a7a7867a036d183de10",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  },
+  {
+   "id": "core-settings",
+   "label": "Settings & Authz",
+   "band": "core",
+   "path": "server/authz.ts",
+   "paths": [
+    "server/authz.ts",
+    "server/settings.ts",
+    "server/projects.ts"
+   ],
+   "coupling": "med",
+   "deps": [],
+   "desc": "Manages user preferences, ELON_MODE safety gates, and standing authorizations.",
+   "loc": 174,
+   "contentHash": "ab66477f41e551c7d19a140e61cd75eb8c8b1c20a8a5d2597f6638ca72201f9c",
+   "score": 74,
+   "grade": "C",
+   "tags": [
+    "duplication",
+    "bloat",
+    "glue",
+    "any-escape"
+   ],
+   "findings": [
+    {
+     "sev": "LOW",
+     "loc": "server/authz.ts:35",
+     "text": "There is a duplicated code in the load function of authz.ts, where it calls mkdirSync and writeFileSync with the same parameters."
+    },
+    {
+     "sev": "LOW",
+     "loc": "server/authz.ts:47",
+     "text": "The DANGEROUS set has some security-sensitive tools that can be marked as safe without proper review or testing."
+    }
+   ],
+   "auditedHash": "828eaa095e1fe7a7225c3ccb2f62dfb78d58bbcb5504ef59951dc5f77a423942",
+   "auditedAt": "2026-08-13",
+   "auditedRev": ""
+  }
+ ]
+}

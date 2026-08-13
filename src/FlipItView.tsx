@@ -50,7 +50,7 @@ function relative(ms: number, now: number): string {
   return future ? `in ${body}` : `${body} ago`;
 }
 
-const palette = {
+const palette = { /* OVERRIDDEN BY FLIPIT-VIEW CSS */
   "--ink": "#100E0C", "--ink-2": "#17130F", "--surface": "#1C1712", "--paper": "#F3EDE4",
   "--ash": "#B8AFA4", "--line": "rgba(240,130,78,.16)", "--ember": "#F0824E", "--ember-deep": "#E8673A",
   "--ember-soft": "rgba(240,130,78,.14)", "--live": "#5FD08A", "--c-err": "#EF4444", "--gold": "#D8B26A",
@@ -309,7 +309,7 @@ export default function FlipItView() {
   });
 
   return (
-    <div style={wrap}>
+    <div className="flipit-view" style={wrap}>
       <div style={shell}>
         {/* masthead */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>

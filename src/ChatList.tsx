@@ -168,9 +168,14 @@ export default function ChatList({
         ))}
         {empty && (
           <li className="side-empty">
-            {q.trim() ? `No chats match “${q.trim()}”.`
-              : folderFilter ? "No chats in this folder."
-                : "No chats yet — start typing."}
+            <div className="empty-state-ic"><Icon name="chat" size={24} /></div>
+            <div className="empty-state-text">
+              {q.trim() ? `No chats match “${q.trim()}”.`
+                : folderFilter ? "This folder is empty."
+                  : "It's quiet in here."}
+            </div>
+            {!q.trim() && !folderFilter && <div className="empty-state-sub">Type a message below to start your first conversation with SAM.</div>}
+            {!q.trim() && folderFilter && <div className="empty-state-sub">Drag and drop chats here to organize your workspace.</div>}
           </li>
         )}
       </ul>

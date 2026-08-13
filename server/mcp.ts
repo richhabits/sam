@@ -39,7 +39,14 @@ const MCP_ENV_PASS = [
 export function mcpEnv(declared: Record<string, string> = {}): Record<string, string> {
   const base: Record<string, string> = {};
   for (const k of MCP_ENV_PASS) { const v = process.env[k]; if (v) base[k] = v; }
-  return { ...base, ...declared };
+  const merged = { ...base, ...declared };
+  // Expand $ENV_VAR references in declared values
+  for (const [k, v] of Object.entries(merged)) {
+    if (v.startsWith("$") && process.env[v.slice(1)]) {
+      merged[k] = process.env[v.slice(1)]!;
+    }
+  }
+  return merged;
 }
 
 export async function loadMcpTools(): Promise<Tool[]> {
@@ -63,9 +70,10 @@ export async function loadMcpTools(): Promise<Tool[]> {
         env: mcpEnv(s.env || {}),
       });
       const client = new Client({ name: "sam", version: "1.0.0" });
-      await client.connect(transport);
+      const timeout = (ms: number, msg: string) => new Promise<never>((_, rej) => setTimeout(() => rej(new Error(msg)), ms));
+      await Promise.race([client.connect(transport), timeout(10000, "connect timeout")]);
       clients.push(client);
-      const { tools } = await client.listTools();
+      const { tools } = await Promise.race([client.listTools(), timeout(10000, "listTools timeout")]);
       for (const t of tools) {
         const name = `mcp_${label}_${t.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 60);
         // Everything an MCP server returns is third-party text — an issue body, a customer name,

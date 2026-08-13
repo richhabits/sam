@@ -392,44 +392,23 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               phone's BROWSER, while the SAM app pairs with a one-time code from Dashboard →
               Devices. Both were called "phone" in different corners of the UI, so scanning this
               one expecting the app to pair is a dead end that looks like a broken app. */}
-          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Open SAM in your phone's browser {phone.remoteOn ? "· on" : ""}</span><span className="admin-note">chat, camera &amp; voice from your phone on the same Wi-Fi — for the SAM <b>app</b>, use Dashboard → Devices → Pair a phone</span></div>
+          <div className="admin-h" style={{ textAlign: "center", borderBottom: "none" }}><span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span></div>
           {phone.remoteOn && phoneQR ? (
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-              <img src={phoneQR} alt="Scan to open SAM on your phone" style={{ width: 160, height: 160, borderRadius: 12, background: "#fff", padding: 6 }} />
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Scan with your phone's camera</div>
-                <div className="admin-note" style={{ lineHeight: 1.5 }}>It opens SAM already signed in. Same Wi-Fi only. On the phone, tap <b>Share → Add to Home Screen</b> to install it like an app.</div>
-                {/* Redacted on screen (screenshot/screen-share safety — same reasoning as a masked
-                   password field), but that left NO way to get the link onto a phone except
-                   camera-scanning the QR. If the QR can't be scanned (blocked LAN, no camera
-                   access, router client-isolation), there was no fallback at all. Copy grabs the
-                   real un-redacted phone.url already held in state — same trust boundary as
-                   scanning the QR, just a different transport (AirDrop/Messages/typing it in). */}
-                <div className="admin-note" style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, wordBreak: "break-all", opacity: .7 }}>{phone.url?.replace(/token=.*/, "token=•••")}</div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => {
-                    if (!phone.url) return;
-                    navigator.clipboard?.writeText(phone.url).then(
-                      () => setPhoneMsg("📋 Link copied — paste it into Messages/AirDrop/Notes to send to your phone."),
-                      () => setPhoneMsg("Couldn't copy — your browser blocked clipboard access."),
-                    );
-                  }}><Icon name="copy" size={14} /> Copy link</button>
-                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
-                    if (!window.confirm("Regenerate the phone token? Every connected device will be signed out and must re-scan.")) return;
-                    const r = await regeneratePhone().catch(() => ({ ok: false }));
-                    if (r.ok) { const p = await getPhoneLink(); setPhone(p); if (p.url) QRCode.toDataURL(p.url, { width: 220, margin: 1 }).then(setPhoneQR).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */}); setPhoneMsg("🔁 New token — old devices signed out. Re-scan the QR."); }
-                  }}><Icon name="refresh" size={14} /> New token</button>
-                  {/* Was styled like a destructive/logout action (red border+text, same as a delete
-                     button elsewhere) for what's actually a reversible toggle — flip it back on
-                     any time, nothing is lost. Matches "New token" right next to it instead. */}
-                  <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={async () => {
-                    if (!window.confirm("Turn off phone access? SAM goes back to this-computer-only (restart to fully close the network).")) return;
-                    const r = await disablePhone().catch(() => ({ ok: false }));
-                    if (r.ok) { setPhone({ remoteOn: false, lan: phone.lan, url: null }); setPhoneQR(""); setPhoneMsg("🔴 Phone access off — restart SAM to fully close the LAN."); }
-                  }}>Turn off</button>
-                </div>
-                <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, opacity: .8 }}><Icon name="lock" size={13} /> Same-Wi-Fi traffic isn't encrypted — fine on your own home network. For access from <b>anywhere</b> (encrypted), use <a href="https://tailscale.com/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Tailscale</a>.</div>
-                {phoneMsg && <div className="admin-note" style={{ marginTop: 6, color: "var(--accent-text)" }}>{phoneMsg}</div>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "center", marginTop: 12 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Scan with your phone's camera to pair</div>
+                <div style={{ fontSize: 14, color: "#666", lineHeight: 1.5, maxWidth: 400 }}>Point your iPhone's camera at the QR code below to quickly and securely connect your device.</div>
+              </div>
+              <img src={phoneQR} alt="Scan to pair" style={{ width: 260, height: 260, borderRadius: 16, background: "#fff", padding: 12, border: "1px solid #EAEAEA", boxShadow: "0 8px 32px rgba(0,0,0,0.05)" }} />
+              
+              <div style={{ fontSize: 13, color: "#666", marginTop: 12, textAlign: "center", maxWidth: 350 }}>
+                Make sure your iPhone is connected to the same Wi-Fi network.
+              </div>
+              
+              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+                <button type="button" style={{ background: "#F26101", color: "white", padding: "12px 24px", borderRadius: 24, border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(242, 97, 1, 0.3)" }} onClick={() => onClose()}>
+                  Continue
+                </button>
               </div>
             </div>
           ) : (
@@ -452,66 +431,23 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               }}>Turn on phone access</button>
             </div>
           )}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <div className="admin-note" style={{ marginBottom: 8, lineHeight: 1.5 }}><Icon name="bell" size={14} /> <b>Alerts on this device</b> — get SAM's morning brief, reminders &amp; task results as push notifications, even when SAM's closed. {pushOn ? <b style={{ color: "var(--accent-text)" }}>· On for this device ✓</b> : ""} {pushMsg && <b style={{ color: "var(--accent-text)" }}>{pushMsg}</b>}</div>
-            {!pushOn && <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
-              setPushMsg("…"); const r = await enablePush();
-              setPushMsg(r === "ok" ? "" : r === "denied" ? "You blocked notifications — allow them in your browser/phone settings." : r === "unsupported" ? "This device doesn't support push (on iPhone: install SAM via Share → Add to Home Screen first)." : "Couldn't enable — try again.");
-              if (r === "ok") setPushOn(true);
-            }}>Get alerts here</button>}
-          </div>
-        </div>
-
-        <div className="admin-cat"><Icon name="download" /> Ship your app</div>
-
-        <div className="admin-row">
-          <div className="admin-h"><span className="admin-name"><Icon name="briefcase" size={15} /> Sign the Mac app {signing?.mac?.ready ? "· ✓ ready" : ""}</span><span className="admin-note">so it opens with no "unidentified developer" warning</span></div>
-          {/* SAM checks what you have and tells you exactly what's left — no external checklist. */}
-          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
-              <span>{signing?.mac?.hasCert ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Developer ID certificate {signing?.mac?.certName ? <span className="admin-note">· {signing.mac.certName.slice(0, 42)}</span> : ""}</span>
-              <span>{signing?.mac?.hasAppleId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Apple ID &nbsp; {signing?.mac?.hasTeamId ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} Team ID &nbsp; {signing?.mac?.hasPassword ? <Icon name="check" size={14} className="ok" /> : <Icon name="frame" size={13} className="todo" />} App password</span>
+          <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #EAEAEA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><Icon name="bell" size={16} /> Device Alerts</div>
+              <div style={{ fontSize: 13, color: "#666", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>
+              {pushMsg && <div style={{ fontSize: 13, color: "#F26101", marginTop: 4, fontWeight: 500 }}>{pushMsg}</div>}
             </div>
-            {signing?.mac?.next && <div className="admin-note" style={{ marginTop: 8, lineHeight: 1.5, color: signing.mac.ready ? "var(--c-ok, #22C55E)" : "var(--accent-text)" }}>{signing.mac.next}</div>}
-          </div>
-          <div className="admin-note" style={{ margin: "10px 0", lineHeight: 1.6 }}>
-            <b>3 one-time steps</b> (you need a <a href="https://developer.apple.com/programs/" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>paid Apple Developer account</a>, $99/yr):<br />
-            1. <a href="https://developer.apple.com/account/resources/certificates/add" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Create a “Developer ID Application” certificate ↗</a> → download → double-click to install it.<br />
-            2. <a href="https://appleid.apple.com/account/manage" target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>Make an app-specific password ↗</a> (Sign-In &amp; Security).<br />
-            3. Enter your Apple ID + Team ID + that password below → SAM signs &amp; notarizes on the next build.
-          </div>
-          <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
-            <input className="admin-input" placeholder="Apple ID email" value={apple.appleId} onChange={(e) => setApple(v => ({ ...v, appleId: e.target.value }))} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="admin-input" style={{ width: 160 }} placeholder="Team ID (ABCDE12345)" value={apple.appleTeam} onChange={(e) => setApple(v => ({ ...v, appleTeam: e.target.value }))} />
-              <input className="admin-input" type="password" style={{ flex: 1 }} placeholder={cfg?.apple?.applePassSet ? "App password (saved — blank keeps it)" : "App-specific password"} value={apple.applePass} onChange={(e) => setApple(v => ({ ...v, applePass: e.target.value }))} />
+            <div>
+              {pushOn ? (
+                 <div style={{ background: "rgba(95,208,138,.15)", color: "#16a34a", padding: "8px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600 }}>Enabled ✓</div>
+              ) : (
+                 <button type="button" style={{ background: "#F4F4F4", color: "#111", padding: "8px 20px", borderRadius: 20, border: "1px solid #EAEAEA", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onClick={async () => {
+                  setPushMsg("Enabling..."); const r = await enablePush();
+                  setPushMsg(r === "ok" ? "" : r === "denied" ? "Blocked in browser settings." : r === "unsupported" ? "Push not supported." : "Couldn't enable.");
+                  if (r === "ok") setPushOn(true);
+                }}>Enable</button>
+              )}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
-                if (apple.appleId) await saveConfig("appleId", apple.appleId.trim());
-                if (apple.appleTeam) await saveConfig("appleTeam", apple.appleTeam.trim());
-                if (apple.applePass) await saveConfig("applePass", apple.applePass.trim());
-                setApple((v) => ({ ...v, applePass: "" })); flash("apple"); refresh(); getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-              }}>{saved === "apple" ? "Saved ✓" : "Save"}</button>
-              <button type="button" className="admin-save" style={{ width: "auto", background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }} onClick={() => getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */})}>↻ Re-check</button>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-row">
-          <div className="admin-h"><span className="admin-name"><Icon name="phone" size={15} /> Android app {signing?.android?.hasKeystore ? "· keystore ready" : ""}</span><span className="admin-note">install SAM on Android — free, no account needed</span></div>
-          <div className="admin-note" style={{ margin: "8px 0", lineHeight: 1.6 }}>
-            SAM already installs as an app on Android <b>right now</b> — connect your phone (above), open the link, then <b>⋮ → Add to Home Screen</b>. No signing, no Play Store, works today.<br />
-            For a <b>Play Store</b> build later you'll need a signing keystore — SAM can make one for you, locally, no account:
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button type="button" className="admin-save" style={{ width: "auto" }} disabled={signing?.android?.hasKeystore} onClick={async () => {
-              setSigningMsg("Generating keystore…");
-              const r = await genAndroidKeystore().catch((e: any) => ({ ok: false, error: e?.message || "failed" }));
-              setSigningMsg(r.ok ? `✅ Keystore created (vault/signing/). Password saved — keep it safe.` : `⚠️ ${r.error || "couldn't create"}`);
-              getSigningStatus().then(setSigning).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-            }}>{signing?.android?.hasKeystore ? "Keystore ready ✓" : "Generate Android keystore"}</button>
-            {signingMsg && <span className="admin-note">{signingMsg}</span>}
           </div>
         </div>
 

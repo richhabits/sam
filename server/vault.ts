@@ -41,9 +41,9 @@ export function pruneOldLogs(): { removed: number } {
     for (const f of readdirSync(DAILY_DIR)) {
       if (!f.endsWith(".md")) continue;
       const p = join(DAILY_DIR, f);
-      try { if (statSync(p).mtimeMs < cutoff) { unlinkSync(p); removed++; } } catch { /* ignore */ }
+      try { if (statSync(p).mtimeMs < cutoff) { unlinkSync(p); removed++; } } catch (err: any) { console.warn("[SAM] vault prune file error:", p, err?.message); }
     }
-  } catch { /* ignore */ }
+  } catch (err: any) { console.warn("[SAM] vault prune readdir error:", err?.message); }
   if (removed) graphCache = null; // pruning invalidates graph
   return { removed };
 }
@@ -80,6 +80,31 @@ export function logExchange(opts: {
     `**SAM** (${opts.provider}): ${opts.sam}\n\n---\n\n`;
   appendFileSync(file, entry);
   graphCache = null; // invalidate graph on new write
+
+  // 🔥 Mem0-style Async Graph Extraction: Wait 5 seconds, then extract long-term facts
+  setTimeout(async () => {
+    try {
+      const { runModel } = await import("./models.ts");
+      const extractPrompt = `You are a memory extraction engine for an AI assistant. Analyze the following conversation exchange and extract ONLY permanent facts about the user's preferences, identity, or codebase rules. Format as a JSON array of strings. If there are no long-term facts to extract, return an empty array [].\n\nUser: ${opts.user}\nSAM: ${opts.sam}`;
+      const res = await runModel("free", "Return ONLY a JSON array of strings.", extractPrompt);
+      const txt = res.text.trim().replace(/^```json/i, "").replace(/```$/, "").trim();
+      let facts: string[] = [];
+      try { facts = JSON.parse(txt); } catch { /* ignore bad JSON */ }
+      if (Array.isArray(facts) && facts.length > 0) {
+        const factsFile = join(VAULT_DIR, "facts.md");
+        let newFacts = "";
+        for (const f of facts) {
+          if (typeof f === "string" && f.length > 5) {
+            newFacts += `- [[Fact]]: ${f}\n`;
+          }
+        }
+        if (newFacts) {
+          appendFileSync(factsFile, newFacts);
+          graphCache = null;
+        }
+      }
+    } catch (err: any) { console.warn("[SAM] vault async fact extraction warning:", err?.message || err); }
+  }, 5000);
 }
 
 // projectId arrives from the chat request body and becomes a filename, so an unchecked
@@ -153,6 +178,19 @@ export function buildGraph() {
 
   scan(PROJECTS_DIR, "project");
   scan(DAILY_DIR, "daily");
+
+  const factsFile = join(VAULT_DIR, "facts.md");
+  if (existsSync(factsFile)) {
+    const id = "facts";
+    if (!seen.has(id)) { nodes.push({ id, group: "memory" }); seen.add(id); }
+    const content = readFileSync(factsFile, "utf8");
+    for (const link of content.matchAll(/\[\[([^\]]+)\]\]/g)) {
+      const to = link[1];
+      if (!seen.has(to)) { nodes.push({ id: to, group: "link" }); seen.add(to); }
+      edges.push({ from: id, to });
+    }
+  }
+
   graphCache = { nodes, edges };
   return graphCache;
 }

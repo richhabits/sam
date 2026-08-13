@@ -67,6 +67,7 @@ async function callGateway(system: string, prompt: string): Promise<string> {
 async function callOllama(system: string, prompt: string, model = OLLAMA_MODEL, format?: unknown): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
+    signal: AbortSignal.timeout(300000), // 5 minute timeout for cold starts
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
@@ -165,10 +166,10 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
     signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "prompt-caching-2024-07-31",
+      "anthropic-beta": "prompt-caching-2024-07-31,computer-use-2024-10-22",
+      "content-type": "application/json",
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
@@ -693,7 +694,7 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
 async function callOllamaStream(system: string, prompt: string, model: string, format: unknown, onChunk: (t: string) => void): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(300000), // 5 min timeout for cold starts
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, stream: true, messages: [{ role: "system", content: system }, { role: "user", content: prompt }], ...(format ? { format } : {}) }),
   });
