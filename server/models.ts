@@ -42,7 +42,7 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-fable-5";
 
 // ── SAM Cloud gateway (OPTIONAL hosted free tier — OFF unless SAM_GATEWAY_URL is set at build) ──
 // Anonymous per-install device id (random, no personal data) so the gateway can meter fairly.
@@ -168,12 +168,15 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
     headers: {
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "prompt-caching-2024-07-31,computer-use-2024-10-22",
+      "anthropic-beta": "prompt-caching-2024-07-31,computer-use-2024-10-22,server-side-fallback-2026-06-01",
       "content-type": "application/json",
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 1500,
+      max_tokens: 128000,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
+      fallbacks: [{ model: "claude-opus-4-8" }],
       // Cache the (large, repeated) system prompt so every call after the first in
       // a multi-step task pays ~90% less on those input tokens. 5-min ephemeral TTL.
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
