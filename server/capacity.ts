@@ -7,18 +7,15 @@
 // ─────────────────────────────────────────────────────────────
 
 import { keyStatus } from "./keys.ts";
+import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
-// Free-tier providers, best-first (speed + generosity). Each links to its OWN legit
-// signup page — SAM points you there, you create the account. One account per provider.
-export const FREE_PROVIDERS: { id: string; label: string; url: string; note: string }[] = [
-  { id: "cerebras",   label: "Cerebras",      url: "https://cloud.cerebras.ai",              note: "blazing fast · 70B" },
-  { id: "groq",       label: "Groq",          url: "https://console.groq.com/keys",          note: "fastest · generous" },
-  { id: "nvidia",     label: "NVIDIA",        url: "https://build.nvidia.com",               note: "capable 70B · generous" },
-  { id: "gemini",     label: "Gemini",        url: "https://aistudio.google.com/apikey",     note: "multimodal (photos)" },
-  { id: "openrouter", label: "OpenRouter",    url: "https://openrouter.ai/keys",             note: "many models, one key" },
-  { id: "mistral",    label: "Mistral",       url: "https://console.mistral.ai/api-keys",    note: "capable" },
-  { id: "github",     label: "GitHub Models", url: "https://github.com/settings/tokens",     note: "free with a GitHub token" },
-];
+// Derive from the single source of truth — every free provider in the registry is
+// automatically tracked. The old hand-maintained 7-item list had drifted to 7 while
+// the actual engine had 30+ wired. Now it can never go stale.
+export const FREE_PROVIDERS: { id: string; label: string; url: string; note: string }[] =
+  PROVIDER_REGISTRY
+    .filter((p) => p.tier === "free" && p.envPlural)
+    .map((p) => ({ id: p.id, label: p.label, url: p.url, note: p.note }));
 
 export type CapacityLevel = "ample" | "ok" | "low" | "none";
 export interface CapacityReport {
