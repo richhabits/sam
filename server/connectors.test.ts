@@ -153,25 +153,25 @@ describe("the dispatcher", () => {
   });
 
   it("separates a rejected token from an outage", async () => {
-    process.env.NOTION_API_KEY = "secret_dead";
+    process.env.SLACK_BOT_TOKEN = "secret_dead";
     stubFetch({}, 401);
-    let s = (await statuses({ refresh: true })).find((c) => c.id === "notion")!;
+    let s = (await statuses({ refresh: true })).find((c) => c.id === "slack")!;
     expect(s).toMatchObject({ connected: false, needsToken: true });
 
-    process.env.NOTION_API_KEY = "secret_ok";
+    process.env.SLACK_BOT_TOKEN = "secret_ok";
     stubFetch({}, 500);
-    s = (await statuses({ refresh: true })).find((c) => c.id === "notion")!;
+    s = (await statuses({ refresh: true })).find((c) => c.id === "slack")!;
     expect(s).toMatchObject({ connected: false, needsToken: false });
     expect(s.error).toContain("500");
   });
 
   it("memoises statuses, and forgets them when a token is saved", async () => {
-    process.env.LINEAR_API_KEY = "lin_api_x";
-    stubFetch({ data: { viewer: { name: "Romeo", email: "r@x" } } });
+    process.env.SLACK_BOT_TOKEN = "slack_api_x";
+    stubFetch({ ok: true, team: "Test", user: "Romeo" });
     const first = await statuses({ refresh: true });
     vi.unstubAllGlobals();
     // Same answer with no fetch stubbed at all — proof it did not call out again.
-    expect((await statuses()).find((c) => c.id === "linear")!.detail).toBe("Romeo");
+    expect((await statuses()).find((c) => c.id === "slack")!.detail).toBe("Romeo · Test");
     expect(await statuses()).toBe(first);
   });
 });
