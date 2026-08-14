@@ -522,7 +522,7 @@ function NewTaskSheet({ onClose, onCreated, busy, setBusy, setErr }: { onClose: 
         {kind === "project.build" ? (<>
           <input placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)}
             style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text)", fontSize: 13 }} />
-          <textarea placeholder="What is it? (optional — falls back to the name)" value={spec} onChange={(e) => setSpec(e.target.value)} rows={3}
+          <textarea placeholder="Task description (optional)" value={spec} onChange={(e) => setSpec(e.target.value)} rows={3}
             style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text)", fontSize: 13, resize: "vertical" }} />
         </>) : (<>
           <select value={slug} onChange={(e) => setSlug(e.target.value)}

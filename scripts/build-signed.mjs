@@ -32,8 +32,7 @@ const quiet = (c) => { try { return execSync(c, { stdio: ["ignore", "pipe", "ign
 //
 // Both steps are now here, in the same order the other targets use. The path check matters just
 // as much: node-gyp and electron-builder cannot pack an asar from a directory whose path
-// contains a space, and they fail deep inside with a cryptic offset error rather than saying so
-// — and the canonical checkout lives on a volume called "ROMEO HQ".
+// contains a space, and they fail deep inside with a cryptic offset error rather than saying so.
 run(`node scripts/preflight-build.mjs`);
 run(`npm run build`);
 

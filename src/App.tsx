@@ -18,7 +18,7 @@ const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
 import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
-import PersonaPicker from "./PersonaPicker";
+
 import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
@@ -1204,7 +1204,7 @@ export default function App() {
           </select>
           <input className="onboard-input" value={onboardKey} onChange={(e) => setOnboardKey(e.target.value)} type="password"
             onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }}
-            placeholder="Optional: paste a free Groq key for speed — or skip, SAM's free already" />
+            placeholder="Optional: Groq API key for extra speed (or skip — SAM's free)" />
           <div className="onboard-hint">No key? Skip it — SAM works free out of the box. Want it snappy? <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Grab a free Groq key</a> (~30 sec) and paste it above.</div>
           <button type="button" className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
           <div className="onboard-note">Then try: <b>"what's the weather and directions to the nearest coffee?"</b> — you'll watch SAM use a real tool. Private &amp; free — runs on your computer.</div>
@@ -1252,14 +1252,15 @@ export default function App() {
           </div>
           <div className="bar-group">
             {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={16} /> Add to Dock</button>}
+            <button type="button" className="icon-btn" onClick={() => setImportOpen(true)} title="Import"><Icon name="download" size={16} /> Import</button>
             {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
-            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud"><Icon name="voice" size={16} /> Voice</button>
-            <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation"><Icon name="studio" size={16} /> Studio</button>
+            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud" aria-label="Voice mode"><Icon name="voice" size={16} /> Voice</button>
+            <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation" aria-label="Open Studio"><Icon name="studio" size={16} /> Studio</button>
           </div>
           <div className="bar-group">
 
             {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
-              <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now"><Icon name="ban" size={16} /> Stop</button>
+              <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now" aria-label="Stop audio and camera"><Icon name="ban" size={16} /> Stop</button>
             )}
           </div>
           <div className="bar-group">
@@ -1293,6 +1294,7 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={16} /> FLIP IT</button>
           </div>
           <div className="bar-group">
+            <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={16} /> Pair Phone</button>
             <UpdateButton />
             <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
           </div>
@@ -1571,18 +1573,6 @@ export default function App() {
         <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
           onOpen={openConvo} onDelete={deleteConvo} onRename={renameConvo} onTogglePin={togglePin}
           onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
-        <button type="button" className="side-foot" onClick={() => setImportOpen(true)}><Icon name="download" /> Import</button>
-        <div className="side-bottom-actions">
-           <button type="button" className="side-action-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings"><Icon name="settings" size={16} /> Settings</button>
-           <button type="button" className="side-action-btn" onClick={() => setDashOpen(true)} title="Dashboard"><Icon name="chart" size={16} /> Dashboard</button>
-           <button type="button" className="side-action-btn" onClick={() => {
-              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
-              n === 0 ? setWizardOpen(true) : setAdminOpen(true);
-           }}><Icon name="key" size={16} /> Keys</button>
-           <button type="button" className="side-action-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={16} /> Pair Phone</button>
-           <button type="button" className="side-action-btn" onClick={openStudio} title="Studio"><Icon name="studio" size={16} /> Studio</button>
-           <button type="button" className="side-action-btn" onClick={openFlipit} title="Flip It"><Icon name="markets" size={16} /> Flip It</button>
-        </div>
       </aside>
       <div className="center">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
@@ -1882,7 +1872,9 @@ export default function App() {
       </div>
       
       {ctxOpen && (
-        <div className="drawer-wrap" onClick={() => setCtxOpen(false)}>
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close on Escape below
+        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close on Escape below
+        <div className="drawer-wrap" onClick={() => setCtxOpen(false)} onKeyDown={(e) => { if (e.key === "Escape") setCtxOpen(false); }} role="presentation">
           <aside className="drawer apps-grid-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <div><div className="drawer-title">Apps</div><div className="drawer-sub">Quick actions and tools</div></div>

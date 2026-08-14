@@ -381,7 +381,7 @@ export default function StudioView() {
         <footer className="stu-foot">
           <div className="stu-promptwrap">
             <textarea className="stu-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
-              placeholder={`Describe your ${mode}…`}
+              placeholder={mode === "image" ? "e.g. A futuristic city at night, neon lights, cinematic…" : "e.g. Person walks into frame, slow-motion, golden hour…"}
               onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(currentSpec()); }} autoFocus />
             <button type="button" className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing} title="Let SAM rewrite your prompt with more detail">
               <Icon name="sparkle" size={14} /><span>{enhancing ? "Enhancing…" : "Enhance"}</span>

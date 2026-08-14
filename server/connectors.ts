@@ -13,10 +13,7 @@
 import { ConnectorError, noToken, type Row, tokenFor } from "./connectors.http.ts";
 import { CONNECTORS, type ConnectorSpec, connector, topLists } from "./connectors.registry.ts";
 import { issues as ghIssues, repos as ghRepos, whoami as ghWhoami, type Issue, type Repo } from "./github.ts";
-import * as linear from "./linear.ts";
-import * as notion from "./notion.ts";
 import * as slack from "./slack.ts";
-import * as vercel from "./vercel.ts";
 
 /** Anything thrown in here becomes a ConnectorError, so routes have one status to read. */
 export function normalize(e: any): ConnectorError {
@@ -68,27 +65,12 @@ const LISTS: Record<string, Record<string, Lister>> = {
     channels: (t, _p, n) => slack.channels(t, n),
     messages: (t, p, n) => slack.messages(t, p || "", n),
   },
-  notion: {
-    pages: (t, _p, n) => notion.pages(t, n),
-    databases: (t, _p, n) => notion.databases(t, n),
-  },
-  linear: {
-    issues: (t, _p, n) => linear.issues(t, n),
-    teams: (t, _p, n) => linear.teams(t, n),
-  },
-  vercel: {
-    deployments: (t, p, n) => vercel.deployments(t, p, n),
-    projects: (t, _p, n) => vercel.projects(t, n),
-  },
 };
 
 /** Who the credential belongs to — the connection check, and the line the UI shows under the name. */
 const WHO: Record<string, (token: string) => Promise<string>> = {
   github: () => ghWhoami().then((u) => u.login),
   slack: (t) => slack.whoami(t).then((w) => [w.user, w.team].filter(Boolean).join(" · ")),
-  notion: (t) => notion.whoami(t).then((w) => [w.name, w.workspace].filter(Boolean).join(" · ")),
-  linear: (t) => linear.whoami(t).then((w) => w.name || w.email),
-  vercel: (t) => vercel.whoami(t).then((w) => w.username),
 };
 
 export interface ConnectorStatus {

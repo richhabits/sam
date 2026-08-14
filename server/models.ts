@@ -17,7 +17,6 @@ import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./key
 import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
 import { count, mark, observe } from "./pulse.ts";
 import { relayBrain } from "./relay.ts";
-import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 import { healthOrder } from "./speed.ts";
 
 export type Tier = "local" | "free" | "premium";
@@ -42,7 +41,7 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-fable-5";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
 
 // ── SAM Cloud gateway (OPTIONAL hosted free tier — OFF unless SAM_GATEWAY_URL is set at build) ──
 // Anonymous per-install device id (random, no personal data) so the gateway can meter fairly.
@@ -177,10 +176,30 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
       thinking: { type: "adaptive" },
       output_config: { effort: "high" },
       fallbacks: [{ model: "claude-opus-4-8" }],
-      // Cache the (large, repeated) system prompt so every call after the first in
-      // a multi-step task pays ~90% less on those input tokens. 5-min ephemeral TTL.
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: prompt }],
+      // The 4-Point Cache Break: Split the massive system prompt into its logical chunks
+      // (Persona, Vault, Tools) so a change in Vault doesn't bust the static Persona/Tools cache.
+      system: (() => {
+        const blocks: any[] = [];
+        const parts = system.split("Here are the tools you can use:");
+        if (parts.length === 2) {
+          const preTools = parts[0];
+          const tools = "Here are the tools you can use:" + parts[1];
+          const vaultParts = preTools.split("VAULT (THE MEMORY):");
+          if (vaultParts.length === 2) {
+            blocks.push({ type: "text", text: vaultParts[0], cache_control: { type: "ephemeral" } });
+            blocks.push({ type: "text", text: "VAULT (THE MEMORY):" + vaultParts[1], cache_control: { type: "ephemeral" } });
+            blocks.push({ type: "text", text: tools, cache_control: { type: "ephemeral" } });
+          } else {
+            blocks.push({ type: "text", text: preTools, cache_control: { type: "ephemeral" } });
+            blocks.push({ type: "text", text: tools, cache_control: { type: "ephemeral" } });
+          }
+        } else {
+          blocks.push({ type: "text", text: system, cache_control: { type: "ephemeral" } });
+        }
+        return blocks;
+      })(),
+      // Also cache the conversation history block for multi-step tool loops
+      messages: [{ role: "user", content: [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }] }],
     }),
   });
   if (!r.ok) { const e: any = new Error(`anthropic ${r.status}`); e.status = r.status; throw e; }
@@ -661,11 +680,8 @@ async function streamOpenAICompat(base: string, model: string, system: string, p
       const data = t.slice(5).trim(); if (data === "[DONE]") continue;
       try { const d = JSON.parse(data)?.choices?.[0]?.delta?.content; if (d) { full += d; onChunk(d); } } catch { /* malformed SSE chunk — skip it, the stream continues */ }
     }
-    // A degenerate repetition loop (weak brains "hello hello hello…") → cut it off now instead
-    // of streaming to the token cap. The final text is collapsed so history stays clean.
-    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch { /* cancelling an already-finished reader is not an error */ } break; }
   }
-  return collapseRepetition(full);
+  return full;
 }
 
 async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
@@ -685,9 +701,8 @@ async function streamGemini(system: string, prompt: string, key: string, onChunk
       const t = line.trim(); if (!t.startsWith("data:")) continue;
       try { const parts = JSON.parse(t.slice(5).trim())?.candidates?.[0]?.content?.parts; const d = parts?.map((p: any) => p.text).join("") || ""; if (d) { full += d; onChunk(d); } } catch { /* malformed SSE chunk — skip it, the stream continues */ }
     }
-    if (isDegenerateRepetition(full)) { try { await reader.cancel(); } catch { /* cancelling an already-finished reader is not an error */ } break; }
   }
-  return collapseRepetition(full);
+  return full;
 }
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,

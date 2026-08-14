@@ -18,7 +18,7 @@ export default defineConfig({
     // external exFAT drive), writing foo.test.ts also drops a binary ._foo.test.ts beside it.
     // It is gitignored, so it is invisible in `git status` — but it matches the test glob, and
     // vitest reports it as a failed suite with a parse error on a file you did not write.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**", ".claude/worktrees/**", "**/._*"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/dist-electron/**", "e2e/**", ".claude/worktrees/**", ".agents/**", "**/._*"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],

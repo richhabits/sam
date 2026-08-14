@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import Icon, { type IconName } from "./Icon";
-import { configureMcp, disablePhone, enablePhone, genAndroidKeystore, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, regeneratePhone, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
+import { configureMcp, disablePhone, enablePhone, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, regeneratePhone, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
 import { enablePush, pushEnabled } from "./lib/push";
 import { useEscape } from "./lib/useOverlay";
 import UsageTracker from "./UsageTracker";
@@ -29,7 +29,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", vercel: "", linearTeam: "" });
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
-  const [apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
+  const [_apple, setApple] = useState({ appleId: "", appleTeam: "", applePass: "" });
   const [phone, setPhone] = useState<{ remoteOn: boolean; lan: string | null; url: string | null }>({ remoteOn: false, lan: null, url: null });
   const [phoneQR, setPhoneQR] = useState("");
   // Same treatment as Settings and the Control Centre: this drawer was 43 providers + media +
@@ -46,8 +46,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   const [mcp, setMcp] = useState<McpPreset[]>([]);
   const [mcpKeys, setMcpKeys] = useState<Record<string, Record<string, string>>>({});
   const [mcpMsg, setMcpMsg] = useState<Record<string, string>>({});
-  const [signing, setSigning] = useState<any>(null);
-  const [signingMsg, setSigningMsg] = useState("");
+  const [_signing, setSigning] = useState<any>(null);
+  const [_signingMsg, _setSigningMsg] = useState("");
   const [mediaKeys, setMediaKeys] = useState({ pexels: "", pixabay: "", giphy: "", tmdb: "", omdb: "", cloudflareAccount: "", cloudflareToken: "" });
 
   const refresh = () => {
@@ -330,7 +330,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               <input className="admin-input" style={{ width: 110 }} placeholder="Port (587)" value={email.smtpPort} onChange={(e) => setEmail(v => ({ ...v, smtpPort: e.target.value }))} />
               <input className="admin-input" style={{ flex: 1 }} placeholder="Username (SAM's address)" value={email.smtpUser} onChange={(e) => setEmail(v => ({ ...v, smtpUser: e.target.value }))} />
             </div>
-            <input className="admin-input" type="password" placeholder={cfg?.email?.smtpPassSet ? "App password (saved — leave blank to keep)" : "App password"} value={email.smtpPass} onChange={(e) => setEmail(v => ({ ...v, smtpPass: e.target.value }))} />
+            <input className="admin-input" type="password" placeholder="App password" value={email.smtpPass} onChange={(e) => setEmail(v => ({ ...v, smtpPass: e.target.value }))} />
+            {cfg?.email?.smtpPassSet && <span className="admin-note" style={{ fontSize: 12, marginTop: -4 }}>Password saved — leave blank to keep it</span>}
             <input className="admin-input" placeholder='From (e.g. SAM <sam@you.com>) — optional' value={email.smtpFrom} onChange={(e) => setEmail(v => ({ ...v, smtpFrom: e.target.value }))} />
             <input className="admin-input" placeholder="Send my brief to (your inbox)" value={email.ownerEmail} onChange={(e) => setEmail(v => ({ ...v, ownerEmail: e.target.value }))} />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -394,7 +395,13 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               phone's BROWSER, while the SAM app pairs with a one-time code from Dashboard →
               Devices. Both were called "phone" in different corners of the UI, so scanning this
               one expecting the app to pair is a dead end that looks like a broken app. */}
-          <div className="admin-h" style={{ textAlign: "center", borderBottom: "none" }}><span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span></div>
+          <div className="admin-h" style={{ textAlign: "center", borderBottom: "none" }}>
+            <span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span>
+          </div>
+          <div className="admin-note" style={{ marginBottom: 6, fontSize: 13, color: "var(--muted)" }}>
+            {"Open SAM in your phone's browser (remote access). To pair the native app instead, go to "}
+            <b>Dashboard → Devices → Pair a phone</b>.
+          </div>
           {phone.remoteOn && phoneQR ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "center", marginTop: 12 }}>
               <div style={{ textAlign: "center" }}>

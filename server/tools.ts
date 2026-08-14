@@ -53,7 +53,6 @@ import { createRequire } from "node:module";
 // keeps startup fast/slim (they only load if you actually use them).
 const require = createRequire(import.meta.url);
 import type { Page } from "playwright-core";
-import { hasJina, jinaSearch, jinaRead } from "./jina.ts";
 import { redactKnownCredentials } from "./scrub.ts";
 import { renderVideo, titleCard } from "./render.ts";
 import { buildDeck, fallbackSections, outlineMarkdown, parseSections, saveDeck, sectionCount, type Section } from "./slides.ts";

@@ -7,7 +7,8 @@
 //  run_command is authorized.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,7 +29,7 @@ function save() {
   // so on the next boot a revoked standing authorization can come BACK, or a granted one vanish.
   // Don't throw (callers are on hot paths and doctrine #8 keeps the loops alive) — but never
   // let it be invisible.
-  try { mkdirSync(VAULT_DIR, { recursive: true }); writeFileSync(FILE, JSON.stringify([...(allowed || load())])); }
+  try { writeFileAtomic(FILE, JSON.stringify([...(allowed || load())]), { mode: 0o600 }); }
   catch (e: any) { console.error("[SAM] authz: FAILED to persist standing authorizations —", e?.message || e); }
 }
 

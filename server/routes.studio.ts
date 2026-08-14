@@ -4,7 +4,8 @@ import * as notebook from "./notebook.ts";
 import { runModel } from "./models.ts";
 import { TOOLS } from "./tools.ts";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,19 +48,35 @@ export function registerStudioRoutes(app: Express) {
       }
       if (!buf.length) return null;
       const name = createHash("sha1").update(ref).digest("hex").slice(0, 16) + "." + ext;
-      mkdirSync(GEN_DIR, { recursive: true });
-      writeFileSync(join(GEN_DIR, name), buf);
+      await mkdir(GEN_DIR, { recursive: true });
+      await writeFile(join(GEN_DIR, name), buf);
       // keep the 60 most-recent generations, prune the rest so the vault never balloons
-      try { readdirSync(GEN_DIR).map((f) => ({ f, t: statSync(join(GEN_DIR, f)).mtimeMs })).sort((a, b) => b.t - a.t).slice(60).forEach(({ f }) => { try { unlinkSync(join(GEN_DIR, f)); } catch { /* file already gone — that is the desired end state */ } }); } catch { /* generated-media dir may not exist yet — nothing to prune */ }
+      try {
+        const entries = await readdir(GEN_DIR);
+        const stats = await Promise.all(entries.map(async (f) => {
+          try { return { f, t: (await stat(join(GEN_DIR, f))).mtimeMs }; }
+          catch { return null; }
+        }));
+        const valid = stats.filter((s): s is { f: string; t: number } => s !== null);
+        valid.sort((a, b) => b.t - a.t);
+        for (const { f } of valid.slice(60)) {
+          await unlink(join(GEN_DIR, f)).catch(() => {});
+        }
+      } catch { /* generated-media dir may not exist yet — nothing to prune */ }
       return name;
     } catch (e: any) { console.error("[studio] cacheStudioMedia failed:", e?.message || e); return null; }
   }
-  app.get("/api/studio/media/:id", (req, res) => {
+  app.get("/api/studio/media/:id", async (req, res) => {
     const id = String(req.params.id).replace(/[^a-zA-Z0-9._-]/g, "");   // strip any path-traversal
     const file = join(GEN_DIR, id);
     if (!id || !existsSync(file)) return res.status(404).end();
     const ext = id.split(".").pop();
-    res.type(ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg").send(readFileSync(file));
+    try {
+      const data = await readFile(file);
+      res.type(ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg").send(data);
+    } catch {
+      res.status(404).end();
+    }
   });
   app.post("/api/studio/image", async (req, res) => {
     const { prompt, width, height } = req.body || {};
@@ -121,21 +138,37 @@ export function registerStudioRoutes(app: Express) {
     const prompt = STUDIO_PREVIEWS[id]; if (!prompt) return null;
     try {
       const u = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=220&height=150&nologo=true&seed=${id.length + 3}`;
-      const r = await fetch(u, { signal: AbortSignal.timeout(45000) });
-      if (r.ok) { const buf = Buffer.from(await r.arrayBuffer()); mkdirSync(PREVIEW_DIR, { recursive: true }); writeFileSync(join(PREVIEW_DIR, `${id}.jpg`), buf); return buf; }
+      const r = await fetch(u, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const buf = Buffer.from(await r.arrayBuffer());
+        await mkdir(PREVIEW_DIR, { recursive: true });
+        await writeFile(join(PREVIEW_DIR, `${id}.jpg`), buf);
+        return buf;
+      }
     } catch { /* best-effort — nothing downstream depends on this succeeding */ }
     return null;
   }
   app.get("/api/studio/preview/:style", async (req, res) => {
     const id = String(req.params.style); if (!STUDIO_PREVIEWS[id]) return res.status(404).end();
     const file = join(PREVIEW_DIR, `${id}.jpg`);
-    if (existsSync(file)) return res.type("jpeg").send(readFileSync(file));
+    if (existsSync(file)) {
+      try {
+        const data = await readFile(file);
+        return res.type("jpeg").send(data);
+      } catch {}
+    }
     const buf = await genPreview(id);
     if (buf) return res.type("jpeg").send(buf);
     res.status(503).end();
   });
   // Pre-warm the previews in the background at boot (once) so the Studio is snappy.
-  setTimeout(async () => { for (const id of Object.keys(STUDIO_PREVIEWS)) { if (!existsSync(join(PREVIEW_DIR, `${id}.jpg`))) await genPreview(id).catch(() => {/* best-effort — nothing downstream depends on this succeeding */}); } }, 4000);
+  if (process.env.NODE_ENV !== "test" && !process.env.VITEST && process.env.SAM_BENCH_MOCK !== "1") {
+    const timer = setTimeout(async () => {
+      const missing = Object.keys(STUDIO_PREVIEWS).filter((id) => !existsSync(join(PREVIEW_DIR, `${id}.jpg`)));
+      await Promise.allSettled(missing.map((id) => genPreview(id)));
+    }, 4000);
+    if (typeof timer.unref === "function") timer.unref();
+  }
 
   app.post("/api/studio/enhance", async (req, res) => {
     const p = String(req.body?.prompt || "").trim();

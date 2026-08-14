@@ -42,6 +42,7 @@ import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeyc
 import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
 import { previousRelease } from "./rollback.ts";
 import { friendlyUpdateError, isNewerVer, sourceUpdateStatus } from "./update-status.ts";
+import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
@@ -1692,7 +1693,18 @@ app.get("/api/update-check", async (_req, res) => {
   try {
     const local = await git("rev-parse HEAD");
     const remote = (await git("ls-remote origin HEAD")).split(/\s+/)[0] || "";
-    res.json(sourceUpdateStatus(SAM_VERSION, local, remote));
+    // If local and remote differ, we are only behind if the remote commit is NOT an ancestor of our local commit.
+    // (If the remote is an ancestor, we are purely ahead of it — e.g. local development commits).
+    let isBehind = false;
+    if (remote && local !== remote) {
+      try {
+        const base = await git(`merge-base HEAD ${remote}`);
+        isBehind = base !== remote;
+      } catch { isBehind = true; } // if merge-base fails, assume behind to be safe
+    }
+    const status = sourceUpdateStatus(SAM_VERSION, local, remote);
+    status.behind = isBehind;
+    res.json(status);
   } catch { res.json({ behind: false, current: SAM_VERSION || undefined }); }   // no git/remote → still report the version
 });
 app.post("/api/update", async (req, res) => {
@@ -1719,6 +1731,31 @@ app.get("/api/console", (req, res) => {
   const samples = samplesOf("brain.latency_ms", { tier: "free" });
   const s = samples.length ? samples : samplesOf("brain.latency_ms", { tier: "local" });
   res.type("html").send(renderConsole(snapshot(), listIssues(), s, new Date().toISOString(), { enabled: knackEnabled(), recent: recentInfluences() }, openAsks()));
+});
+
+// Hardware & Compute Tier Profiling (Universal Local/Cloud scaling)
+app.get("/api/hardware/profile", async (req, res) => {
+  const profile = await getHardwareProfile();
+  res.json(profile);
+});
+
+app.get("/api/hardware/ollama", async (req, res) => {
+  const status = await getOllamaStatus();
+  res.json(status);
+});
+
+// FlipIt Monzo-Style Wallet
+import { getWallet, deposit, requestKYC } from "./wallet.ts";
+app.get("/api/wallet", (req, res) => res.json(getWallet()));
+app.post("/api/wallet/deposit", (req, res) => res.json(deposit(Number(req.body?.amount || 0), req.body?.currency)));
+app.post("/api/wallet/kyc", (req, res) => res.json(requestKYC()));
+
+// Self-Healing & Admin Tasks
+import { getAdminTasks, updateTaskStatus } from "./self-heal.ts";
+app.get("/api/admin/tasks", (req, res) => res.json(getAdminTasks()));
+app.post("/api/admin/tasks/:id/status", (req, res) => {
+  const ok = updateTaskStatus(req.params.id, req.body?.status);
+  res.json({ ok });
 });
 
 // The Ask — the still-open out-of-band approval requests (loopback + Handshake, like the Console).

@@ -2,8 +2,190 @@
    S.A.M. — clean, light, anyone-can-use assistant UI
    Warm-neutral light theme · single terracotta accent · WCAG AA
    ───────────────────────────────────────────────────────────── */
+/* ── SETTINGS MODAL REDESIGN ── */
+.popover {
+  position: fixed !important;
+  top: 50% !important; left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 850px !important;
+  height: 600px !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.15) !important;
+  border: 1px solid #EAEAEA !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  bottom: auto !important;
+}
 
-:root {
+.pop-tabs {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 220px !important;
+  min-width: 220px !important;
+  background: #F9F9F9 !important;
+  border-right: 1px solid #EAEAEA !important;
+  border-bottom: none !important;
+  padding: 24px 16px !important;
+  gap: 8px !important;
+}
+
+.pop-tabs button {
+  text-align: left !important;
+  padding: 10px 16px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #111111 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.pop-tabs button:hover {
+  background: #EAEAEA !important;
+}
+
+.pop-tabs button.on {
+  background: #EAEAEA !important;
+  font-weight: 600 !important;
+}
+
+.pop-content {
+  flex: 1 !important;
+  padding: 40px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+}
+
+.pop-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #111111 !important;
+  border-bottom: 1px solid #EAEAEA !important;
+  padding-bottom: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+/* Nuke the Bento Grid styling to look like simple forms */
+.bento-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.bento-card {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: 1px solid #EAEAEA !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  gap: 16px !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.bento-card:hover {
+  background: #F9F9F9 !important;
+}
+
+.bento-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: #F4F4F4 !important;
+  color: #111111 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.bento-name {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: #111111 !important;
+}
+
+.bento-sub {
+  font-size: 13px !important;
+  color: #666666 !important;
+}
+
+.bento-action {
+  margin-left: auto !important;
+}
+
+/* ── SAM PREMIUM ORANGE ACCENTS ── */
+.status-indicator {
+  display: inline-block !important;
+  width: 8px !important; height: 8px !important;
+  border-radius: 50% !important;
+  background: #F26101 !important;
+  box-shadow: 0 0 8px rgba(242, 97, 1, 0.6) !important;
+  margin-left: 6px !important;
+}
+
+.composer-inner button[type="submit"] {
+  background: #F26101 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 36px !important; height: 36px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+}
+
+.side-title { color: #F26101 !important; }
+
+/* ── FLIP IT LUXURY DARK MODE (REVOLUT / MONZO STYLE) ── */
+.flipit-view {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  width: 100% !important;
+  height: 100vh !important;
+  padding: 24px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 24px !important;
+  box-sizing: border-box !important;
+}
+
+.flipit-side {
+  width: 300px !important;
+  min-width: 300px !important;
+  background: #111111 !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  border: 1px solid #222222 !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 48px) !important;
+}
+
+.flipit-main {
+  flex: 1 !important;
+  background: #111111 !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  border: 1px solid #222222 !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 48px) !important;
+}
+
+.flipit-asset {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+  border-bottom: 1px solid #222222 !important;
+}
+.flipit-asset:hover { background: #1A1A1A !important; }
+
+.flipit-green { color: #00E676 !important; }
+.flipit-red { color: #FF3D00 !important; }:root {
   --bg: #FDFBF9;          /* warm off-white app background */
   --surface: #FFFFFF;     /* cards / bubbles */
   --text: #1C1917;        /* warm near-black — AAA on bg */
@@ -1153,7 +1335,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* ── 🎨 SAM Studio — Higgsfield two-pane Creative Space ── */
 /* 🎨 SAM Studio — on-brand (shared design tokens, terracotta accent — no more off-brand lime) */
 .studio { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(320px, 34%) 1fr; background: transparent; color: var(--text); font-family: var(--sans); }
-.stu-panel { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: color-mix(in srgb, var(--surface) 70%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-right: 1px solid var(--border); background: transparent; overflow-y: auto; }
+.stu-panel { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: color-mix(in srgb, var(--surface) 70%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-right: 1px solid var(--border); overflow-y: auto; }
 .stu-brand { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
 .stu-seg { display: flex; gap: 6px; background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
 .stu-seg button { flex: 1; background: transparent; border: 0; color: var(--muted); font: 600 14px var(--sans); padding: 8px; border-radius: 8px; cursor: pointer; }
@@ -1177,13 +1359,13 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .stu-generate { margin-top: auto; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 14px; padding: 14px; font: 800 15.5px var(--sans); cursor: pointer; box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 32%, transparent); }
 .stu-generate:disabled { background: var(--border-strong); color: color-mix(in srgb, var(--text) 45%, transparent); box-shadow: none; cursor: default; }
 .stu-canvas { display: flex; flex-direction: column; padding: 22px; gap: 14px; overflow: hidden; }
-.stu-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--surface) 60%, var(--bg)), var(--bg)); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+.stu-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, var(--bg) 0, var(--bg) 2px, transparent 2px, transparent 8px), color-mix(in srgb, var(--surface) 60%, var(--bg)); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
 .stu-hero { max-width: 100%; max-height: 100%; border-radius: 12px; object-fit: contain; }
 /* Placeholder shown when a saved image can't load — the generation is kept, not deleted. */
 .stu-hero-broken { display: flex; align-items: center; justify-content: center; text-align: center;
   min-width: 220px; min-height: 160px; padding: 2rem; color: var(--text-dim, #888);
   background: var(--surface, rgba(0,0,0,0.04)); border: 1px dashed var(--border, #ccc); font-size: 13px; }
-.stu-hint { color: var(--muted); font-size: 15px; text-align: center; padding: 20px; max-width: 420px; line-height: 1.6; }
+.stu-hint { color: var(--text); font-weight: 500; font-size: 15px; text-align: center; padding: 20px; max-width: 420px; line-height: 1.6; }
 .stu-hint b { color: var(--accent-text); }
 
 .stu-carousel { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; flex: none; }
@@ -2348,13 +2530,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 
 /* ── CHATGPT CLONE LAYOUT OVERRIDES ── */
 body, html {
-  background: #FFFFFF !important;
   margin: 0 !important;
   padding: 0 !important;
   height: 100vh !important;
   width: 100vw !important;
   overflow: hidden !important;
 }
+/* White bg only when the main chat app is active, not FlipIt/Studio/Yard */
+body:has(.app) { background: #FFFFFF !important; }
+body:has(.flipit-view) { background: #000000 !important; }
 
 #root {
   height: 100vh !important;
@@ -2455,182 +2639,3 @@ body, html {
 .row.sam .who { display: none !important; } 
 .row.sam .bubble { font-size: 16px !important; padding-left: 0 !important; color: #111111 !important; }
 
-/* ── SETTINGS MODAL REDESIGN ── */
-.popover {
-  position: fixed !important;
-  top: 50% !important; left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: 850px !important;
-  height: 600px !important;
-  background: #FFFFFF !important;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.15) !important;
-  border: 1px solid #EAEAEA !important;
-  border-radius: 16px !important;
-  display: flex !important;
-  flex-direction: row !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  bottom: auto !important;
-}
-
-.pop-tabs {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 220px !important;
-  min-width: 220px !important;
-  background: #F9F9F9 !important;
-  border-right: 1px solid #EAEAEA !important;
-  border-bottom: none !important;
-  padding: 24px 16px !important;
-  gap: 8px !important;
-}
-
-.pop-tabs button {
-  text-align: left !important;
-  padding: 10px 16px !important;
-  border-radius: 8px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: #111111 !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-.pop-tabs button:hover {
-  background: #EAEAEA !important;
-}
-
-.pop-tabs button.on {
-  background: #EAEAEA !important;
-  font-weight: 600 !important;
-}
-
-.pop-content {
-  flex: 1 !important;
-  padding: 40px !important;
-  overflow-y: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 24px !important;
-}
-
-.pop-title {
-  font-size: 20px !important;
-  font-weight: 600 !important;
-  color: #111111 !important;
-  border-bottom: 1px solid #EAEAEA !important;
-  padding-bottom: 16px !important;
-  margin-bottom: 16px !important;
-}
-
-/* Nuke the Bento Grid styling to look like simple forms */
-.bento-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 16px !important;
-}
-
-.bento-card {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  background: transparent !important;
-  border: 1px solid #EAEAEA !important;
-  border-radius: 12px !important;
-  padding: 16px !important;
-  gap: 16px !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-}
-
-.bento-card:hover {
-  background: #F9F9F9 !important;
-}
-
-.bento-icon {
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 8px !important;
-  background: #F4F4F4 !important;
-  color: #111111 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.bento-name {
-  font-weight: 600 !important;
-  font-size: 15px !important;
-  color: #111111 !important;
-}
-
-.bento-sub {
-  font-size: 13px !important;
-  color: #666666 !important;
-}
-
-.bento-action {
-  margin-left: auto !important;
-}
-
-/* ── SAM PREMIUM ORANGE ACCENTS ── */
-.status-indicator {
-  display: inline-block !important;
-  width: 8px !important; height: 8px !important;
-  border-radius: 50% !important;
-  background: #F26101 !important;
-  box-shadow: 0 0 8px rgba(242, 97, 1, 0.6) !important;
-  margin-left: 6px !important;
-}
-
-.composer-inner button[type="submit"] {
-  background: #F26101 !important;
-  color: white !important;
-  border-radius: 50% !important;
-  width: 36px !important; height: 36px !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-}
-
-.side-title { color: #F26101 !important; }
-
-/* ── FLIP IT LUXURY DARK MODE (REVOLUT / MONZO STYLE) ── */
-.flipit-view {
-  background: #000000 !important;
-  color: #FFFFFF !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  width: 100% !important;
-  height: 100vh !important;
-  padding: 24px !important;
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 24px !important;
-  box-sizing: border-box !important;
-}
-
-.flipit-side {
-  width: 300px !important;
-  background: #111111 !important;
-  border-radius: 16px !important;
-  padding: 16px !important;
-  border: 1px solid #222222 !important;
-}
-
-.flipit-main {
-  flex: 1 !important;
-  background: #111111 !important;
-  border-radius: 16px !important;
-  padding: 24px !important;
-  border: 1px solid #222222 !important;
-}
-
-.flipit-asset {
-  display: flex !important;
-  justify-content: space-between !important;
-  padding: 12px !important;
-  border-radius: 8px !important;
-  border-bottom: 1px solid #222222 !important;
-}
-.flipit-asset:hover { background: #1A1A1A !important; }
-
-.flipit-green { color: #00E676 !important; }
-.flipit-red { color: #FF3D00 !important; }

@@ -17,9 +17,9 @@ import { describe, expect, it } from "vitest";
 // file not moved onto the shared opener, and the failure is invisible to everything except
 // actually running the built app with the yard switched on.
 
-// fileURLToPath, not .pathname — a URL percent-encodes, and the canonical checkout lives on a
-// volume called "ROMEO HQ", so .pathname yields "/Volumes/ROMEO%20HQ/..." and every readdir
-// throws ENOENT. Any path with a space would do it; this repo just guarantees one.
+// fileURLToPath, not .pathname — a URL percent-encodes, and if a checkout lives on a
+// volume with spaces in the name, .pathname yields percent-encoded paths and every readdir
+// throws ENOENT. Any path with a space would do it; this repo tests against paths with spaces.
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function sources(dir: string, out: string[] = []): string[] {

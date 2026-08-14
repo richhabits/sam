@@ -62,27 +62,23 @@ export type IOS = {
 };
 
 export const iosLight: IOS = {
-  groupedBg: '#F2F2F7',
+  groupedBg: '#FDFBF9',
   card: '#FFFFFF',
-  cardPressed: '#D1D1D6',
-  separator: '#C6C6C8',
-  label: '#000000',
-  secondaryLabel: 'rgba(60,60,67,0.6)',
-  tertiaryLabel: 'rgba(60,60,67,0.3)',
-  tint: '#D9531F',
-  tintPressed: '#B8441A',
-  // Same hue (16.8°) and saturation as tint, lightness pulled down until both grounds pass:
-  // 5.05:1 on card, 4.53:1 on groupedBg. Six lightness points darker than tint and, side by
-  // side with it on the same screen, not a colour anyone reads as different.
-  tintText: '#BE491B',
-  // Three points darker than tint — the least that carries white at AA (4.52:1).
-  tintFill: '#CB4E1D',
-  onTint: '#FFFFFF',
+  cardPressed: '#F5F0EB',
+  separator: '#E7E5E4',
+  label: '#1C1917',
+  secondaryLabel: '#78716C',
+  tertiaryLabel: 'rgba(120,113,108,0.4)',
+  tint: '#E8673A',
+  tintPressed: '#C2410C',
+  tintText: '#C2410C',
+  tintFill: '#F8DFD7',
+  onTint: '#1C1917', // dark ink text on light peach background for AA contrast
   destructive: '#FF3B30',
   green: '#34C759',
-  destructiveText: '#DE0C00', // 5.05:1 on card, 4.53:1 on groupedBg
-  greenText: '#217F39', // 5.05:1 on card, 4.52:1 on groupedBg
-  fill: 'rgba(118,118,128,0.12)',
+  destructiveText: '#DE0C00',
+  greenText: '#217F39',
+  fill: 'rgba(120,113,108,0.12)',
   scrim: 'rgba(0,0,0,0.4)',
 };
 
@@ -162,8 +158,8 @@ export const metrics = {
 // OS asks for, not a correction to the first.
 export const iosLightHighContrast: IOS = {
   ...iosLight,
-  secondaryLabel: 'rgba(60,60,67,0.73)',
-  tertiaryLabel: 'rgba(60,60,67,0.5)',
+  secondaryLabel: '#57534E',
+  tertiaryLabel: '#78716C',
 };
 
 export const iosDarkHighContrast: IOS = {

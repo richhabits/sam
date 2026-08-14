@@ -51,9 +51,9 @@ function relative(ms: number, now: number): string {
 }
 
 const palette = { /* OVERRIDDEN BY FLIPIT-VIEW CSS */
-  "--ink": "#100E0C", "--ink-2": "#17130F", "--surface": "#1C1712", "--paper": "#F3EDE4",
-  "--ash": "#B8AFA4", "--line": "rgba(240,130,78,.16)", "--ember": "#F0824E", "--ember-deep": "#E8673A",
-  "--ember-soft": "rgba(240,130,78,.14)", "--live": "#5FD08A", "--c-err": "#EF4444", "--gold": "#D8B26A",
+  "--ink": "#FDFBF9", "--ink-2": "#F5F0EB", "--surface": "#FFFFFF", "--paper": "#1C1917",
+  "--ash": "#78716C", "--line": "#EAEAEA", "--ember": "#E8673A", "--ember-deep": "#C2410C",
+  "--ember-soft": "rgba(232,103,58,.14)", "--live": "#10B981", "--c-err": "#EF4444", "--gold": "#D97706",
 } as React.CSSProperties;
 
 const card: React.CSSProperties = {
@@ -281,8 +281,14 @@ export default function FlipItView() {
 
   const back = () => {
     const sd = (globalThis as any).samDesktop;
-    if (sd?.close) sd.close(); else window.close();
-    if (!window.closed) location.href = location.pathname;
+    if (sd?.close) {
+      sd.close();
+    } else {
+      window.close();
+      setTimeout(() => {
+        if (!window.closed) location.href = "/";
+      }, 50);
+    }
   };
 
   const series = useMemo(() => d?.series ?? [], [d]);
@@ -291,6 +297,8 @@ export default function FlipItView() {
   const wrap: React.CSSProperties = {
     ...palette,
     minHeight: "100vh",
+    flex: 1,
+    width: "100%",
     background: "radial-gradient(900px 460px at 50% -12%, rgba(240,130,78,.12), transparent 62%), var(--ink)",
     color: "var(--paper)",
     fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif",
@@ -310,13 +318,13 @@ export default function FlipItView() {
 
   return (
     <div className="flipit-view" style={wrap}>
-      <div style={shell}>
+      <div className="flipit-side">
         {/* masthead */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.03em" }}>FLIP IT</div>
-            <div style={{ fontSize: 12, color: "var(--ash)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              read-only · nothing here trades
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4, background: "rgba(255,160,0,0.15)", border: "1px solid rgba(255,160,0,0.35)", borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700, color: "#ffa000", letterSpacing: ".04em", textTransform: "uppercase" }}>
+              👁 Read-only · nothing here trades
             </div>
           </div>
           <button type="button" onClick={back} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 10, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
@@ -415,7 +423,13 @@ export default function FlipItView() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
 
+      <div className="flipit-main">
+        {d && n && (
+          <div style={stack}>
             {/* ── equity curve ── */}
             <div style={card}>
               <div style={lbl}>Equity · since the forward test began</div>

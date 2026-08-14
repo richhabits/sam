@@ -48,7 +48,9 @@ function collectCode(mod: any, maxBytes = 28000): string {
         chunks.push(snippet);
         total += snippet.length;
         if (total > maxBytes) break;
-      } catch {}
+      } catch {
+        /* file read failed, skip snippet */
+      }
     }
     if (total > maxBytes) break;
   }
@@ -142,7 +144,9 @@ async function liveResearch(label: string) {
         return sJson.results.slice(0, 3).map((r: any) => `• ${r.title} — ${r.content || ""}`).join("\n");
       }
     }
-  } catch {}
+  } catch {
+    /* live research failed */
+  }
   return "Live research unavailable.";
 }
 
@@ -197,7 +201,7 @@ Return ONLY the JSON object.`;
       
       const jsonStr = extractJson(raw);
       let data: any;
-      try { data = JSON.parse(jsonStr); } catch (e) {
+      try { data = JSON.parse(jsonStr); } catch (_e) {
         console.log(`  ⚠️  JSON parse failed. Raw snippet: ${raw.slice(0, 200).replace(/\n/g, " ")}...`);
         continue;
       }
@@ -225,7 +229,9 @@ function applyResult(id: string, data: any): boolean {
     console.log(`  ❌ apply_audit rejected: ${stderr.trim()}`);
     return false;
   } finally {
-    try { execSync(`rm -f "${tmp}"`); } catch {}
+    try { execSync(`rm -f "${tmp}"`); } catch {
+      /* ignore cleanup error */
+    }
   }
 }
 

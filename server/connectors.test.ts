@@ -2,16 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConnectorError } from "./connectors.http.ts";
 import { CONNECTORS, connector, topLists } from "./connectors.registry.ts";
 import { forgetStatuses, list, normalize, safeRepo, statuses } from "./connectors.ts";
-import * as linear from "./linear.ts";
-import * as notion from "./notion.ts";
 import * as slack from "./slack.ts";
-import * as vercel from "./vercel.ts";
 
 // The network half needs real workspaces, so what is pinned here is everything that decides
 // whether a list is CORRECT or quietly wrong: the shaping, and the mapping of each service's
 // own idea of failure onto one status the UI can act on.
 
-const SECRETS = ["SLACK_BOT_TOKEN", "NOTION_API_KEY", "LINEAR_API_KEY", "VERCEL_TOKEN"];
+const SECRETS = ["SLACK_BOT_TOKEN"];
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -109,67 +106,7 @@ describe("slack", () => {
   });
 });
 
-describe("notion", () => {
-  // The title lives in a different place on a page than on a database, and on a page it is found
-  // by TYPE — the property is called "Name" in a database and "title" on a workspace page.
-  it("finds the title wherever Notion put it", () => {
-    expect(notion.titleOf({ title: [{ plain_text: "My DB" }] })).toBe("My DB");
-    expect(notion.titleOf({ properties: { Name: { type: "title", title: [{ plain_text: "A page" }] } } })).toBe("A page");
-    expect(notion.titleOf({ properties: { Status: { type: "select" } } })).toBe("(untitled)");
-    expect(notion.titleOf({})).toBe("(untitled)");
-  });
 
-  it("labels the row as a page or a database, with the date it changed", () => {
-    expect(notion.toRow({ id: "p1", object: "page", last_edited_time: "2026-07-30T09:00:00Z", url: "u", properties: {} })).toEqual({
-      id: "p1",
-      title: "(untitled)",
-      sub: "page · 2026-07-30",
-      url: "u",
-    });
-  });
-
-  it("asks for last-edited-first, and filters by object when asked", async () => {
-    const calls = stubFetch({ results: [] });
-    await notion.databases("secret_x", 5);
-    expect(calls[0]).toContain("/v1/search");
-  });
-});
-
-describe("linear", () => {
-  it("shapes an issue as its identifier, state and team", () => {
-    expect(linear.toIssue({ id: "i1", identifier: "SAM-12", title: "Ship it", state: { name: "In Progress" }, team: { key: "SAM" }, updatedAt: "2026-07-31T00:00:00Z", url: "u" })).toEqual({
-      id: "i1",
-      title: "SAM-12 · Ship it",
-      sub: "In Progress · SAM · 2026-07-31",
-      url: "u",
-    });
-  });
-
-  // GraphQL reports auth failure in the body at HTTP 200 — the same trap as Slack.
-  it("reads an authentication error out of a 200 body", async () => {
-    expect(linear.linearError([{ message: "Authentication required" }]).status).toBe(401);
-    expect(linear.linearError([{ message: "Something else" }]).status).toBe(502);
-    stubFetch({ errors: [{ message: "Authentication required, but no authentication was provided" }] });
-    await expect(linear.issues("lin_api_nope")).rejects.toMatchObject({ status: 401 });
-  });
-});
-
-describe("vercel", () => {
-  // The whole point of this connector: a deployment can be ERROR while the domain still answers
-  // 200, so the state has to survive into the row.
-  it("keeps the deployment state, target and date", () => {
-    expect(vercel.toDeployment({ uid: "d1", name: "web", state: "ERROR", target: "production", created: 1753900000000, url: "web-x.vercel.app" })).toEqual({
-      id: "d1",
-      title: "web",
-      sub: expect.stringContaining("error · production"),
-      url: "https://web-x.vercel.app",
-    });
-  });
-
-  it("never reports an unknown state as a success", () => {
-    expect(vercel.toDeployment({ uid: "d2", name: "web" }).sub).toContain("unknown");
-  });
-});
 
 describe("the dispatcher", () => {
   it("rejects a repo param that could climb out of the path", () => {

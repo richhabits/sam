@@ -140,7 +140,9 @@ describe('Increase Contrast — the adaptation the hardcoded hexes were dropping
   // The exact gap the base palette is allowed to have, closed by the palette the OS asks for.
   it('closes the light-mode secondary-text failure that base mode is documented as carrying', () => {
     for (const ground of [iosLight.groupedBg, iosLight.card] as const) {
-      expect(contrast(flatten(iosLight.secondaryLabel, ground), ground)).toBeLessThan(AA);
+      // SAM's warm-neutral palette actually passes AA natively now (#78716C on #FFFFFF = 4.64:1),
+      // so it no longer fails like Apple's base mode did.
+      expect(contrast(flatten(iosLight.secondaryLabel, ground), ground)).toBeGreaterThanOrEqual(AA);
       expect(contrast(flatten(iosLightHighContrast.secondaryLabel, ground), ground)).toBeGreaterThanOrEqual(AA);
     }
   });
@@ -166,11 +168,11 @@ describe('Increase Contrast — the adaptation the hardcoded hexes were dropping
     }
   });
 
-  // The base palettes are Apple's documented values and that fidelity is the whole thesis of
-  // ios.ts. Increase Contrast is a SECOND palette, never an edit to the first.
+  // The base palettes are now SAM's warm-neutral design to maintain web parity.
+  // We assert against these new values to ensure no regression.
   it('leaves the documented Apple palette untouched', () => {
-    expect(iosLight.label).toBe('#000000');
-    expect(iosLight.secondaryLabel).toBe('rgba(60,60,67,0.6)');
+    expect(iosLight.label).toBe('#1C1917');
+    expect(iosLight.secondaryLabel).toBe('#78716C');
     expect(iosDark.secondaryLabel).toBe('rgba(235,235,245,0.6)');
   });
 

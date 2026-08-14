@@ -41,11 +41,11 @@ export interface ProviderSpec {
 }
 
 export const PROVIDER_REGISTRY: ProviderSpec[] = [
-  { id: "groq", label: "Groq", tier: "free", envPlural: "GROQ_API_KEYS", envSingular: "GROQ_API_KEY", starter: true, note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys", keyPattern: "^gsk_[A-Za-z0-9]{20,}$" },
   { id: "cerebras", label: "Cerebras", tier: "free", envPlural: "CEREBRAS_API_KEYS", envSingular: "CEREBRAS_API_KEY", starter: true, note: "⚡ fast chat — blazing 70B, first pick", url: "https://cloud.cerebras.ai", keyPattern: "^csk-[A-Za-z0-9]{20,}$" },
+  { id: "groq", label: "Groq", tier: "free", envPlural: "GROQ_API_KEYS", envSingular: "GROQ_API_KEY", starter: true, note: "⚡ fast chat — SAM's go-to for quick replies", url: "https://console.groq.com/keys", keyPattern: "^gsk_[A-Za-z0-9]{20,}$" },
+  { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com", keyPattern: "^nvapi-[A-Za-z0-9_-]{20,}$" },
   { id: "gemini", label: "Google Gemini", tier: "free", envPlural: "GEMINI_API_KEYS", envSingular: "GEMINI_API_KEY", starter: true, note: "👁 photos & vision — reads images; solid all-rounder", url: "https://aistudio.google.com/apikey", keyPattern: "^AIza[A-Za-z0-9_-]{30,}$" },
   { id: "openrouter", label: "OpenRouter", tier: "free", envPlural: "OPENROUTER_API_KEYS", envSingular: "OPENROUTER_API_KEY", starter: true, note: "🌐 many models behind one key — great backup", url: "https://openrouter.ai/keys", keyPattern: "^sk-or-[A-Za-z0-9-]{20,}$" },
-  { id: "nvidia", label: "NVIDIA", tier: "free", envPlural: "NVIDIA_API_KEYS", envSingular: "NVIDIA_API_KEY", starter: true, note: "🧠 reasoning — capable 70B for harder questions", url: "https://build.nvidia.com", keyPattern: "^nvapi-[A-Za-z0-9_-]{20,}$" },
   { id: "mistral", label: "Mistral", tier: "free", envPlural: "MISTRAL_API_KEYS", envSingular: "MISTRAL_API_KEY", starter: true, note: "✍️ writing & chat — solid European models", url: "https://console.mistral.ai/api-keys", keyPattern: "^[A-Za-z0-9]{32}$" },
   // NOT a starter brain any more. Audited 2026-08-01: GitHub Models answers HTTP 410
   // `github_models_retirement_brownout` — the product is being retired, so telling a new user to

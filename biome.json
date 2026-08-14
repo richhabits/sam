@@ -18,7 +18,9 @@
       "!**/coverage",
       "!**/*.min.js",
       "!**/*.svg",
-      "!**/docs/_template.html"
+      "!**/docs/_template.html",
+      "!**/.agents",
+      "!**/.codemap"
     ]
   },
   "formatter": {

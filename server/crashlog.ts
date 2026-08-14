@@ -33,13 +33,19 @@ function rotateIfNeeded() {
 }
 
 // Record a crash/exception. `iso` is passed in (no Date.now() surprises for callers/tests).
+import { analyzeCrashAndProposeTask } from "./self-heal.ts";
+
 export function recordCrash(kind: string, err: unknown, iso: string): void {
   try {
     if (!existsSync(VAULT_DIR)) mkdirSync(VAULT_DIR, { recursive: true });
     rotateIfNeeded();
     const e = err as any;
-    const msg = redact(String(e?.stack || e?.message || e));
+    const stack = e?.stack ? redact(String(e.stack)) : undefined;
+    const msg = redact(String(stack || e?.message || e));
     appendFileSync(LOG, `\n─── ${iso} · ${kind} ───\n${msg}\n`);
+    
+    // Self-healing: propose a task to the admin inbox
+    analyzeCrashAndProposeTask(kind, String(e?.message || e), stack);
   } catch { /* never let the crash logger itself crash the process */ }
 }
 
