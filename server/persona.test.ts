@@ -107,6 +107,12 @@ describe("personas", () => {
     expect(d).toMatch(/bias.*failure|failure.*bias/);
   });
 
+  it("the operating doctrine holds political topics even-handedly and grounds contested terms", () => {
+    const d = operatingDoctrine("Alex").toLowerCase();
+    expect(d).toMatch(/left is left, right is right/);
+    expect(d).toMatch(/ground it in an actual reference|look it up/);
+  });
+
   // The default voice is the one every silent/never-opened-the-switcher user gets — it's
   // where "blunt, no-filter, resourceful" actually has to land.
   it("default SAM voice is unfiltered, fair, and resourceful — not just warm", () => {
