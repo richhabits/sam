@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PERSONAS, personaVoice, personaVoiceCompact } from "./persona.ts";
+import { PERSONAS, operatingDoctrine, personaVoice, personaVoiceCompact } from "./persona.ts";
 
 describe("personas", () => {
   it("every persona changes tone but keeps the honesty guardrail (no yes-man)", () => {
@@ -97,5 +97,23 @@ describe("personas", () => {
       expect(v).not.toContain("${");
       expect(v).not.toMatch(/\bundefined\b/);
     }
+  });
+
+  // Fairness is a doctrine-level rule (applies in every voice), not a persona quirk — locked
+  // in here so switching persona can never quietly drop it.
+  it("the operating doctrine rejects bias in either direction — never unfair, never softened into mush", () => {
+    const d = operatingDoctrine("Alex").toLowerCase();
+    expect(d).toContain("race, sex, background");
+    expect(d).toMatch(/bias.*failure|failure.*bias/);
+  });
+
+  // The default voice is the one every silent/never-opened-the-switcher user gets — it's
+  // where "blunt, no-filter, resourceful" actually has to land.
+  it("default SAM voice is unfiltered, fair, and resourceful — not just warm", () => {
+    const v = personaVoice("sam", "Alex").toLowerCase();
+    expect(v).toContain("no filter");
+    expect(v).toMatch(/never biased/);
+    expect(v).toMatch(/free or cheap/);
+    expect(v).toMatch(/enterprise-grade|top-tier/);
   });
 });
