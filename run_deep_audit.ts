@@ -1,13 +1,7 @@
 #!/usr/bin/env node
-/**
- * SAM Deep Truth CodeMap LLM Audit
- * Actively researches live web truths before grading.
- */
-import { runModel } from "./server/models.ts";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import "dotenv/config";
 import { execSync, execFileSync } from "node:child_process";
-import path from "node:path";
 
 const CODEMAP_STATE = ".codemap/modules.json";
 const APPLY_SCRIPT  = ".agents/skills/codemap-skill/scripts/apply_audit.py";
@@ -68,7 +62,7 @@ function extractJson(text: string): string {
 
 function validate(data: any) {
   let score: number;
-  try { score = parseInt(data.score); if (isNaN(score)) throw 0; }
+  try { score = parseInt(data.score, 10); if (Number.isNaN(score)) throw 0; }
   catch { return { ok: false, err: "missing/invalid 'score'" }; }
   if (score < 0 || score > 100) return { ok: false, err: `score out of range: ${score}` };
   

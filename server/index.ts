@@ -1734,25 +1734,25 @@ app.get("/api/console", (req, res) => {
 });
 
 // Hardware & Compute Tier Profiling (Universal Local/Cloud scaling)
-app.get("/api/hardware/profile", async (req, res) => {
+app.get("/api/hardware/profile", async (_req, res) => {
   const profile = await getHardwareProfile();
   res.json(profile);
 });
 
-app.get("/api/hardware/ollama", async (req, res) => {
+app.get("/api/hardware/ollama", async (_req, res) => {
   const status = await getOllamaStatus();
   res.json(status);
 });
 
 // FlipIt Monzo-Style Wallet
 import { getWallet, deposit, requestKYC } from "./wallet.ts";
-app.get("/api/wallet", (req, res) => res.json(getWallet()));
+app.get("/api/wallet", (_req, res) => res.json(getWallet()));
 app.post("/api/wallet/deposit", (req, res) => res.json(deposit(Number(req.body?.amount || 0), req.body?.currency)));
-app.post("/api/wallet/kyc", (req, res) => res.json(requestKYC()));
+app.post("/api/wallet/kyc", (_req, res) => res.json(requestKYC()));
 
 // Self-Healing & Admin Tasks
 import { getAdminTasks, updateTaskStatus } from "./self-heal.ts";
-app.get("/api/admin/tasks", (req, res) => res.json(getAdminTasks()));
+app.get("/api/admin/tasks", (_req, res) => res.json(getAdminTasks()));
 app.post("/api/admin/tasks/:id/status", (req, res) => {
   const ok = updateTaskStatus(req.params.id, req.body?.status);
   res.json({ ok });

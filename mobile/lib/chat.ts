@@ -1,5 +1,5 @@
 import { fetch as streamingFetch } from 'expo/fetch';
-import { ApiError, getHost, getToken } from './api';
+import { getHost, getToken } from './api';
 import { streamDirectAI } from './direct';
 import { parseFrames, type StreamEvent } from './sse';
 

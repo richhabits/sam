@@ -52,7 +52,7 @@ async function findByContent(root: string, query: string, limit = 30): Promise<s
     const { stdout } = await promisify(exec)(`rg -il ${shq(query)} ${shq(root)}`, { timeout: 10000 });
     const lines = stdout.split("\n").filter(Boolean);
     if (lines.length) return lines.slice(0, limit);
-  } catch (e: any) {
+  } catch (_e: any) {
     // 1 indicates no matches.
   }
 

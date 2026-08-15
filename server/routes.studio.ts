@@ -60,7 +60,7 @@ export function registerStudioRoutes(app: Express) {
         const valid = stats.filter((s): s is { f: string; t: number } => s !== null);
         valid.sort((a, b) => b.t - a.t);
         for (const { f } of valid.slice(60)) {
-          await unlink(join(GEN_DIR, f)).catch(() => {});
+          await unlink(join(GEN_DIR, f)).catch(() => { /* already gone, or a concurrent prune won the race */ });
         }
       } catch { /* generated-media dir may not exist yet — nothing to prune */ }
       return name;
@@ -155,7 +155,7 @@ export function registerStudioRoutes(app: Express) {
       try {
         const data = await readFile(file);
         return res.type("jpeg").send(data);
-      } catch {}
+      } catch { /* cached file vanished/unreadable — fall through and regenerate it */ }
     }
     const buf = await genPreview(id);
     if (buf) return res.type("jpeg").send(buf);

@@ -154,7 +154,7 @@ function detectAppleChip(): string | undefined {
   if (process.platform !== "darwin") return undefined;
   try {
     const chip = execSync("sysctl -n machdep.cpu.brand_string", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
-    if (chip && chip.includes("Apple")) return chip;
+    if (chip?.includes("Apple")) return chip;
     const model = execSync("sysctl -n hw.model", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     return model || "Apple Silicon";
   } catch {

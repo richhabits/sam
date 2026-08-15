@@ -3,7 +3,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -44,7 +43,7 @@ export default function App() {
     let alive = true;
     AccessibilityInfo.isDarkerSystemColorsEnabled?.()
       .then((v) => alive && setDarkerColors(!!v))
-      .catch(() => {});
+      .catch(() => { /* API unsupported on this OS version — default false is fine */ });
     const sub = AccessibilityInfo.addEventListener('darkerSystemColorsChanged', (v) =>
       setDarkerColors(!!v),
     );
@@ -61,7 +60,7 @@ export default function App() {
   const layout = useMemo(() => layoutFor(width), [width]);
   const column = useMemo(() => contentColumn(layout), [layout]);
 
-  const [paired, setPaired] = useState<boolean>(false);
+  const [_paired, setPaired] = useState<boolean>(false);
   const [surface, setSurface] = useState<Surface>('agent');
   const [prompt, setPrompt] = useState<string | null>(null);
   const [host, setHostInput] = useState('http://127.0.0.1:8787');
@@ -112,7 +111,7 @@ export default function App() {
             setSurface('agent');
             return;
           }
-        } catch {}
+        } catch { /* stored-token check failed — fall through to the original pairing error */ }
         setError(e?.message || 'Pairing failed. Make sure SAM is running on your computer.');
       } finally {
         setBusy(false);
@@ -240,7 +239,7 @@ export default function App() {
         ) : (
           <SettingsScreen
             ios={ios}
-            onForgotten={(note) => {
+            onForgotten={(_note) => {
               claimed.current = false;
               setPaired(false);
             }}

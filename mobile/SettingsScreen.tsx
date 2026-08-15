@@ -1,6 +1,6 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Switch, Text, View } from 'react-native';
+import { Linking, Switch, Text, } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { getCustomKey, setCustomKey } from './lib/direct';
@@ -21,10 +21,10 @@ export default function SettingsScreen({
   onOpenPairing?: () => void;
 }) {
   const [host, setHost] = useState('');
-  const [devices, setDevices] = useState<Device[] | null>(null);
+  const [_devices, setDevices] = useState<Device[] | null>(null);
   const [sound, setSound] = useState(true);
   const [notifyStatus, setNotifyStatus] = useState('');
-  const [error, setError] = useState('');
+  const [_error, setError] = useState('');
   const [consent, setConsentState] = useState<SpendConsent>('ask');
   const [groqKey, setGroqKey] = useState('');
   const [openrouterKey, setOpenrouterKey] = useState('');
@@ -45,7 +45,7 @@ export default function SettingsScreen({
         setDevices([]);
       }
       setError('');
-    } catch (e: any) {
+    } catch (_e: any) {
       setDevices([]);
     }
   }, []);

@@ -5,7 +5,7 @@ import { route } from "../server/classify.ts";
 import { isFastPath } from "../server/agent.ts";
 import { TOOLS, toolByName } from "../server/tools.ts";
 import { remember, memoryStats } from "../server/memory.ts";
-import { cacheable, fingerprint, store as cacheStore, lookup as cacheLookup, clearCache, cacheStats } from "../server/cache.ts";
+import { fingerprint, store as cacheStore, lookup as cacheLookup, clearCache, cacheStats } from "../server/cache.ts";
 import { desk as flipitDesk } from "../server/flipit.ts";
 import { runSelftest } from "../server/selftest.ts";
 

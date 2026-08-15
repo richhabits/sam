@@ -305,7 +305,7 @@ export default function FlipItView() {
     WebkitFontSmoothing: "antialiased",
   };
   // Phone first: one column by default, widening only where there's genuinely room.
-  const shell: React.CSSProperties = { maxWidth: 720, margin: "0 auto", padding: "18px 16px 64px" };
+  const _shell: React.CSSProperties = { maxWidth: 720, margin: "0 auto", padding: "18px 16px 64px" };
   const stack: React.CSSProperties = { display: "grid", gap: 14 };
 
   const tabBtn = (t: Tab): React.CSSProperties => ({

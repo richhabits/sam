@@ -7,7 +7,7 @@
 //  run_command is authorized.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, } from "node:fs";
 import { writeFileAtomic } from "./atomic.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

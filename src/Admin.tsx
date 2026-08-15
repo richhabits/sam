@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import Icon, { type IconName } from "./Icon";
-import { configureMcp, disablePhone, enablePhone, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, regeneratePhone, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
+import { configureMcp, enablePhone, getAdminConfig, getAllowed, getMcpPresets, getPhoneLink, getSigningStatus, removeMcp, saveConfig, saveKeys, setAllow, testEmail } from "./lib/api";
 import { enablePush, pushEnabled } from "./lib/push";
 import { useEscape } from "./lib/useOverlay";
 import UsageTracker from "./UsageTracker";

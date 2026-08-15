@@ -1,7 +1,6 @@
 import { fetch as streamingFetch } from 'expo/fetch';
 import * as SecureStore from 'expo-secure-store';
 import type { Turn, StreamHandlers } from './chat';
-import { parseFrames } from './sse';
 
 // STANDALONE DIRECT AI ENGINE FOR SAM MOBILE
 //
@@ -13,7 +12,7 @@ const CUSTOM_KEY_GROQ = 'sam.key.groq';
 const CUSTOM_KEY_OPENROUTER = 'sam.key.openrouter';
 const CUSTOM_KEY_GEMINI = 'sam.key.gemini';
 const CUSTOM_KEY_OPENAI = 'sam.key.openai';
-const CUSTOM_MODEL = 'sam.model.custom';
+const _CUSTOM_MODEL = 'sam.model.custom';
 
 export async function getCustomKey(provider: 'groq' | 'openrouter' | 'gemini' | 'openai'): Promise<string | null> {
   try {
@@ -148,7 +147,7 @@ export async function streamDirectAI(
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        if (!trimmed?.startsWith('data:')) continue;
         const dataStr = trimmed.slice(5).trim();
         if (dataStr === '[DONE]') continue;
 
