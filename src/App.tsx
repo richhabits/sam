@@ -1,6 +1,6 @@
 import type React from "react";
-import { useState, useEffect, useRef, useMemo, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys } from "./lib/api";
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, memo } from "react";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys, getPreferences, learnPreference } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -243,7 +243,30 @@ export default function App() {
   // once Tasks has mounted. TasksView consumes it once, then reports back to clear it.
   const [taskIntent, setTaskIntent] = useState<"new" | null>(null);
   // Persona: a switchable VOICE over the ONE shared memory (default warm "sam"). Tone only.
-  const [persona, setPersona] = useState<string>(() => { try { return localStorage.getItem("sam.persona") || "sam"; } catch { return "sam"; } });
+  const [persona, setPersonaRaw] = useState<string>(() => { try { return localStorage.getItem("sam.persona") || "sam"; } catch { return "sam"; } });
+  // Whether THIS device already has an explicit choice — if not, a confident learned preference
+  // (from preferences.ts, synced across devices via the vault) gets to pick the starting voice
+  // instead of always defaulting to "sam". Read once, before localStorage.setItem below ever runs.
+  const [personaWasExplicit] = useState<boolean>(() => { try { return !!localStorage.getItem("sam.persona"); } catch { return false; } });
+  // Every explicit pick teaches SAM — the wiring `learnPreference`/`smartDefault` in
+  // server/preferences.ts always had, but nothing ever actually called. Fire-and-forget: this is
+  // a local convenience default, not a source of truth, so a failed write changes nothing now.
+  const choosePersona = useCallback((id: string) => {
+    setPersonaRaw(id);
+    void learnPreference("default:persona", id).catch(() => { /* best-effort — nothing user-visible depends on this succeeding */ });
+  }, []);
+  // Once, on mount — a later change elsewhere in this session shouldn't be overwritten by a
+  // stale fetch that started before it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only
+  useEffect(() => {
+    if (personaWasExplicit) return;   // this device already has its own choice — don't override it
+    getPreferences()
+      .then((d) => {
+        const p = (d?.preferences || []).find((x: any) => x.key === "default:persona");
+        if (p && p.confidence >= 0.6 && p.value) setPersonaRaw(p.value);
+      })
+      .catch(() => { /* best-effort — falls back to the "sam" default already set */ });
+  }, []);
   const [quality, setQuality] = useState<Quality>(init.quality);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1039,7 +1062,7 @@ export default function App() {
         const raw = pm[1].toLowerCase();
         const id = raw.startsWith("gran") ? "gran" : raw === "mom" ? "mum" : raw === "assistant" ? "pa" : raw;
         const p = PERSONA_OPTS.find((x) => x.id === id);
-        if (p) { setPersona(id); setInput(""); sysNote(`${p.emoji} You've got it — I'm your ${p.label} now. Same memory, ${p.blurb}.`); return; }
+        if (p) { choosePersona(id); setInput(""); sysNote(`${p.emoji} You've got it — I'm your ${p.label} now. Same memory, ${p.blurb}.`); return; }
       }
     }
     setInput(""); setPending(null); setAttachments([]);
@@ -1760,7 +1783,7 @@ export default function App() {
                 <option value="personal">Personal</option>
                 <option value="business">Business</option>
             </select>
-            <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={setPersona} />
+            <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={choosePersona} />
             {mode === "business" && (
                 <select value={brand} onChange={(e) => setBrand(e.target.value)}>
                     <option value="">All my businesses</option>

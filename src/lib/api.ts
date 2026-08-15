@@ -257,6 +257,7 @@ export const getAutonomyLog = () => get("/api/autonomy-log");
 export const clearAutonomyLog = () => post("/api/autonomy-log/clear");
 export const getSuggestions = () => get("/api/suggestions");
 export const getPreferences = () => get("/api/preferences");
+export const learnPreference = (key: string, value: string) => post("/api/preferences/learn", { key, value });
 export const forgetPreference = (key: string) => post("/api/preferences/forget", { key });
 export const resetPreferences = () => post("/api/preferences/reset");
 export const getWorkflows = () => get("/api/workflows");
