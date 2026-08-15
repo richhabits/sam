@@ -20,7 +20,13 @@
     "production": {
       "ios": {
         "buildConfiguration": "Release",
-        "autoIncrement": true
+        "autoIncrement": true,
+        "appExtensions": [
+          {
+            "targetName": "SAMWidget",
+            "bundleIdentifier": "com.hectic.sam.mobile.widget"
+          }
+        ]
       },
       "android": {
         "buildType": "app-bundle",
