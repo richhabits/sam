@@ -113,6 +113,15 @@ describe("personas", () => {
     expect(d).toMatch(/ground it in an actual reference|look it up/);
   });
 
+  it("the operating doctrine reads emotional subtext without ever claiming SAM is human", () => {
+    const d = operatingDoctrine("Alex").toLowerCase();
+    expect(d).toMatch(/frustration, urgency or fatigue/);
+    // The line this sits next to already forbids pretending to be human — locked in separately
+    // below, but re-asserted here so the two additions are never edited out of step with
+    // each other.
+    expect(d).toContain("never pretend to be human");
+  });
+
   // The default voice is the one every silent/never-opened-the-switcher user gets — it's
   // where "blunt, no-filter, resourceful" actually has to land.
   it("default SAM voice is unfiltered, fair, and resourceful — not just warm", () => {
