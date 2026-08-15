@@ -46,7 +46,7 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>SAM uses the camera when you attach a photo to a message — the image is sent to your own SAM on your machine, nowhere else.</string>
+    <string>SAM uses the camera to attach a photo to a message, or to scan the QR code that pairs this phone with your Mac/PC — nothing leaves your own SAM.</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>SAM talks to the SAM running on your own computer, usually over your home network. Nothing is sent anywhere else.</string>
     <key>NSPhotoLibraryUsageDescription</key>

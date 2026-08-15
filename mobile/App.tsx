@@ -20,9 +20,10 @@ import { clearThread } from './lib/history';
 import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
-import { parsePairLink } from './lib/pairlink';
+import { parsePairLink, type PairLink } from './lib/pairlink';
 import { normalizeHost, pairedDespiteError } from './lib/pairstate';
 import { parseQuickLink } from './lib/quicklink';
+import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
 import TasksScreen from './TasksScreen';
 import { ActionRow, Field, Row, Section, Segmented } from './ui';
@@ -70,6 +71,7 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [showPairModal, setShowPairModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -156,6 +158,17 @@ export default function App() {
   const onNeedsPairing = useCallback(() => {
     setPaired(false);
   }, []);
+
+  const onScanned = useCallback(
+    (link: PairLink) => {
+      setShowScanner(false);
+      const target = link.host || host;
+      setHostInput(target);
+      setCode(link.code);
+      doClaim(target, link.code);
+    },
+    [host, doClaim],
+  );
 
   return (
     <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
@@ -270,8 +283,12 @@ export default function App() {
             <Section
               ios={ios}
               header="Pair this phone"
-              footer="Open SAM on your Mac/PC (Dashboard → Devices → Pair a phone) and scan the QR code with your Camera app, or enter the local address and code shown there."
+              footer="Open SAM on your Mac/PC (Dashboard → Devices → Pair a phone), then scan the QR code shown there — or enter the local address and code by hand."
             >
+              <ActionRow ios={ios} title="Scan QR Code" onPress={() => setShowScanner(true)} last />
+            </Section>
+
+            <Section ios={ios} header="Or enter manually">
               <Field
                 ios={ios}
                 label="Address"
@@ -312,6 +329,8 @@ export default function App() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <QRScanner ios={ios} visible={showScanner} onClose={() => setShowScanner(false)} onScanned={onScanned} />
 
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </SafeAreaView>

@@ -104,7 +104,7 @@ export default function TasksScreen({
         >
           <Row
             ios={ios}
-            glyph={GLYPHS.tasks}
+            glyph={GLYPHS.device}
             title="Desktop Node"
             value="Not connected"
           />

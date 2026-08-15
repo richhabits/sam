@@ -76,7 +76,7 @@ export async function claim(host: string, code: string): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-SAM-Client": CLIENT_HINT },
       body: JSON.stringify({ code: code.trim() }),
-      signal: initSignal(init.signal, controller.signal),
+      signal: controller.signal,
     });
   } catch (e: any) {
     clearTimeout(timer);
