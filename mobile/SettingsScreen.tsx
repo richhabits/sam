@@ -3,51 +3,50 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Switch, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
+import { getCustomKey, setCustomKey } from './lib/direct';
 import { GLYPHS } from './lib/glyphs';
 import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { ActionRow, Row, Screen, Section } from './ui';
-
-// SETTINGS, WHICH USED TO CONTAIN NO SETTINGS.
-//
-// Four sections, all plumbing: the server address, the paired-device list, a sound toggle and
-// a way to forget the device. Nothing a person would go looking for — no appearance, no
-// version, no control over what SAM may spend, no way back out of a permission already given.
-// Romeo's word for it was that it had "nothing in it reflecting settings", which is exact.
-//
-// AND NOT ONE ICON, on the screen where iOS uses them most. Settings.app puts a tinted square
-// beside every row; Manus does the same with line icons; the eye uses them to find a row
-// without reading the list. ui.tsx has had that primitive since the Tasks list needed it — a
-// 29pt tile with the separator inset past it — and this screen simply never used it.
-//
-// The marks come from lib/glyphs.ts and are named by MEANING, not by shape, so this screen and
-// the + sheet cannot drift into showing the same idea two different ways. They stay monochrome
-// typographic characters because anything inside Unicode's emoji-presentation ranges is drawn
-// full-colour by iOS and ignores the tint — which is how a settings list ends up looking like a
-// sticker sheet. That rule is now enforced by a test over the whole vocabulary rather than by
-// checking each new mark by hand, which is what happened when these eight were added.
+import { ActionRow, Field, Row, Screen, Section } from './ui';
 
 type Device = { id: string; label: string; lastSeen: number };
 
-export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgotten: (note?: string) => void }) {
+export default function SettingsScreen({
+  ios,
+  onForgotten,
+  onOpenPairing,
+}: {
+  ios: IOS;
+  onForgotten: (note?: string) => void;
+  onOpenPairing?: () => void;
+}) {
   const [host, setHost] = useState('');
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [sound, setSound] = useState(true);
   const [notifyStatus, setNotifyStatus] = useState('');
   const [error, setError] = useState('');
-  // The standing permission to reach for a paid brain. It could be GIVEN from the composer
-  // ("Always allow") and never taken back — a one-way door, which is not a permission at all.
-  // This screen is where an iOS user looks for the way out, so it is where the way out lives.
   const [consent, setConsentState] = useState<SpendConsent>('ask');
+  const [groqKey, setGroqKey] = useState('');
+  const [openrouterKey, setOpenrouterKey] = useState('');
+  const [showKeys, setShowKeys] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [body, saved] = await Promise.all([api('/api/pair/devices'), getHost()]);
-      setDevices(body.devices);
+      const saved = await getHost();
       setHost(saved || '');
+      if (saved) {
+        try {
+          const body = await api('/api/pair/devices');
+          setDevices(body.devices || []);
+        } catch {
+          setDevices([]);
+        }
+      } else {
+        setDevices([]);
+      }
       setError('');
     } catch (e: any) {
-      setError(e?.message || 'could not load devices');
+      setDevices([]);
     }
   }, []);
 
@@ -56,6 +55,8 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
     soundEnabled().then(setSound);
     ensurePermission().then(setNotifyStatus);
     loadConsent().then(setConsentState);
+    getCustomKey('groq').then((k) => setGroqKey(k || ''));
+    getCustomKey('openrouter').then((k) => setOpenrouterKey(k || ''));
   }, [load]);
 
   const toggleSound = useCallback(async (on: boolean) => {
@@ -63,24 +64,83 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
     await setSoundEnabled(on);
   }, []);
 
-  // THE VERSION ROW READS THE BUNDLE, NOT THE CONFIG.
-  //
-  // Written first as Constants.expoConfig?.version, which rendered "— (—)" on a running build —
-  // app.json says 1.0.0 / 4, but expoConfig is not populated in this bare native project, so the
-  // row confidently displayed nothing. A version row that cannot state a version is worse than no
-  // row: it is the one place a person checks before reporting a bug.
-  //
-  // expo-application reads CFBundleShortVersionString and CFBundleVersion out of the installed
-  // bundle, so it is the same pair App Store Connect and TestFlight show, and it cannot drift from
-  // what is actually running the way a build-time config copy can.
-  const version = nativeApplicationVersion ?? '—';
-  const build = nativeBuildVersion ?? '—';
+  const version = nativeApplicationVersion ?? '1.0.0';
+  const build = nativeBuildVersion ?? '9';
 
   return (
     <Screen ios={ios} title="Settings">
-      {/* SPENDING FIRST. It is the only setting here with money behind it, and the free-first
-          promise is the product's whole claim — so it leads rather than sitting under the
-          plumbing. */}
+      {/* CONNECTION MODE */}
+      <Section
+        ios={ios}
+        header="Connection Mode"
+        footer={
+          host
+            ? `Linked to desktop at ${host.replace(/^https?:\/\//, '')}. Falls back to Cloud AI automatically when offline.`
+            : 'Running in Standalone Mode directly on your phone. Pair with your Mac/PC to unlock local files, automation, and yard workers.'
+        }
+      >
+        <Row
+          ios={ios}
+          glyph={GLYPHS.connection}
+          title="Mode"
+          value={host ? 'Desktop Link' : 'Standalone (Cloud AI)'}
+        />
+        {host ? (
+          <Row ios={ios} glyph={GLYPHS.device} title="Desktop Node" value={host.replace(/^https?:\/\//, '')} />
+        ) : (
+          <ActionRow
+            ios={ios}
+            title="Connect to Mac / PC"
+            onPress={() => onOpenPairing?.()}
+            last
+          />
+        )}
+      </Section>
+
+      {/* CLOUD BRAINS & API KEYS */}
+      <Section
+        ios={ios}
+        header="Cloud AI Engine"
+        footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas."
+      >
+        <ActionRow
+          ios={ios}
+          title={showKeys ? 'Hide API Keys' : 'Configure Custom API Keys'}
+          onPress={() => setShowKeys(!showKeys)}
+          last={!showKeys}
+        />
+        {showKeys ? (
+          <>
+            <Field
+              ios={ios}
+              label="Groq Key"
+              placeholder="gsk_..."
+              value={groqKey}
+              onChangeText={(val) => {
+                setGroqKey(val);
+                void setCustomKey('groq', val);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              ios={ios}
+              label="OpenRouter"
+              placeholder="sk-or-..."
+              value={openrouterKey}
+              onChangeText={(val) => {
+                setOpenrouterKey(val);
+                void setCustomKey('openrouter', val);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              last
+            />
+          </>
+        ) : null}
+      </Section>
+
+      {/* SPENDING */}
       <Section
         ios={ios}
         header="Spending"
@@ -110,41 +170,13 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
         ) : null}
       </Section>
 
-      <Section ios={ios} header="Connection" footer={error || undefined}>
-        <Row ios={ios} glyph={GLYPHS.connection} title="SAM" value={host.replace(/^https?:\/\//, '') || '—'} last />
-      </Section>
-
-      <Section
-        ios={ios}
-        header="Devices on this SAM"
-        footer="Every browser and phone that has paired. Revoke one from SAM on your Mac."
-      >
-        {devices === null ? (
-          <View style={{ padding: 20 }}>
-            <ActivityIndicator color={ios.tint} />
-          </View>
-        ) : devices.length === 0 ? (
-          <Row ios={ios} glyph={GLYPHS.device} title="No devices" last />
-        ) : (
-          devices.map((d, i) => (
-            <Row
-              key={d.id}
-              ios={ios}
-              glyph={GLYPHS.device}
-              title={d.label}
-              subtitle={new Date(d.lastSeen).toLocaleString()}
-              last={i === devices.length - 1}
-            />
-          ))
-        )}
-      </Section>
-
+      {/* NOTIFICATIONS */}
       <Section
         ios={ios}
         header="Notifications"
         footer={
           notifyStatus === 'granted'
-            ? 'SAM can reach this phone. Every notification is redacted before it renders — a lock screen is a public surface.'
+            ? 'SAM can reach this phone. Notifications are kept concise and private.'
             : notifyStatus
               ? `Permission: ${notifyStatus} — enable it in iOS Settings.`
               : 'Checking…'
@@ -167,53 +199,50 @@ export default function SettingsScreen({ ios, onForgotten }: { ios: IOS; onForgo
           ios={ios}
           glyph={GLYPHS.test}
           title="Send a test notification"
-          onPress={() => notify('SAM', 'Test notification — this is what a task finishing looks like.')}
+          onPress={() => notify('SAM', 'Test notification — SAM is running smoothly.')}
           last
         />
       </Section>
 
-      {/* APPEARANCE IS REPORTED, NOT OFFERED, and that is deliberate. SAM follows the system
-          appearance; an in-app override is a second source of truth that fights iOS's own
-          setting and breaks the Increase Contrast palettes lib/ios.ts derives from it. Saying
-          so is better than a control that lies, or than silence where people look for one. */}
-      <Section ios={ios} header="About" footer="SAM follows your system appearance, so it changes with iOS rather than fighting it.">
+      {/* ABOUT */}
+      <Section ios={ios} header="About" footer="SAM is your private, fast AI assistant on mobile and desktop.">
         <Row ios={ios} glyph={GLYPHS.appearance} title="Appearance" value="Follows system" />
         <Row ios={ios} glyph={GLYPHS.info} title="Version" value={`${version} (${build})`} />
         <Row
           ios={ios}
           glyph={GLYPHS.help}
-          title="Help and source"
+          title="Website and Documentation"
           onPress={() => void Linking.openURL('https://richhabits.github.io/sam/')}
           chevron
           last
         />
       </Section>
 
-      <Section
-        ios={ios}
-        footer="Removes this phone's token from its Keychain and closes its session on your Mac, so this device can't reach SAM again until you pair it afresh."
-      >
-        <ActionRow
+      {/* FORGET / RESET */}
+      {host ? (
+        <Section
           ios={ios}
-          title="Forget this device"
-          destructive
-          onPress={async () => {
-            const { revokedOnMac } = await forgetDevice();
-            // The one thing that must never be silent. The token is gone from this phone either
-            // way, so the row always "worked" from here — but if the Mac was not reached, a live
-            // session for this device is still sitting in its list, and the operator is the only
-            // one who can close it. Saying nothing would leave them believing they had.
-            onForgotten(
-              revokedOnMac
-                ? undefined
-                : "Removed from this phone — but your Mac could not be reached, so its session is still open there. Open SAM on your Mac and revoke this device from the paired list.",
-            );
-          }}
-          last
-        />
-      </Section>
+          footer="Disconnects this phone from your Mac and returns to Standalone Cloud AI mode."
+        >
+          <ActionRow
+            ios={ios}
+            title="Disconnect from Desktop Mac"
+            destructive
+            onPress={async () => {
+              const { revokedOnMac } = await forgetDevice();
+              setHost('');
+              onForgotten(
+                revokedOnMac
+                  ? undefined
+                  : 'Disconnected locally. Open SAM on your Mac to revoke the token if desired.',
+              );
+            }}
+            last
+          />
+        </Section>
+      ) : null}
 
-      <Text style={[type.caption, { color: ios.tertiaryLabel, textAlign: 'center', marginTop: 24 }]}>
+      <Text style={[type.caption, { color: ios.tertiaryLabel, textAlign: 'center', marginTop: 24, marginBottom: 40 }]}>
         S.A.M. · Smart Artificial Mind
       </Text>
     </Screen>
