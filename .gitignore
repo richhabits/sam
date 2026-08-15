@@ -138,3 +138,6 @@ docs/strips/
 
 # graphify: generated knowledge graph (5MB+, absolute machine paths inside)
 graphify-out/
+
+# vault-reconciliation backups (local only — holds push-notification private keys)
+vault-amnesia-backup-*/
