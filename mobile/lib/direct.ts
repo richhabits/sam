@@ -177,140 +177,25 @@ export async function streamDirectAI(
 }
 
 /**
- * High-speed built-in intelligence streamer when offline from both Mac & Cloud API.
- * Ensures the app NEVER crashes with a red network error or presents a dead screen.
+ * Nothing reachable — no custom key, the keyless OpenRouter call failed, no desktop paired.
+ * Say so plainly and give the two real ways to fix it, instead of fabricating a plausible-
+ * looking answer. This used to keyword-match the prompt ("site"/"build"/"html" → a hardcoded
+ * dog-website template, anything else → a canned "I'm SAM, ready to help" blurb) and stream it
+ * word-by-word with an artificial 18ms/word delay to look like a real generation. That's the one
+ * thing SAM's own doctrine rules out by name — PROVE IT: never claim a result you don't actually
+ * have — and it meant "no AI is currently reachable" was invisible to the user, indistinguishable
+ * from a real (if generic) reply.
  */
 async function streamSimulatedAssistant(
-  prompt: string,
+  _prompt: string,
   handlers: StreamHandlers = {},
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<string> {
-  const p = prompt.toLowerCase();
-  let fullAnswer = '';
-
-  if (p.includes('dog') || p.includes('site') || p.includes('website') || p.includes('build') || p.includes('html')) {
-    fullAnswer = `### 🐶 Paws & Co. — One-Page Dog Care & Training
-
-Here is a modern, responsive one-page website designed for dogs, training, and pet care:
-
-\`\`\`html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paws & Co. · Premium Dog Care</title>
-  <style>
-    :root {
-      --primary: #e8673a;
-      --bg: #0d0f12;
-      --card: #181b20;
-      --text: #f0f2f5;
-      --sub: #9ba1a6;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-    header {
-      padding: 24px 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #282c34;
-    }
-    .logo { font-weight: 800; font-size: 1.25rem; color: var(--primary); }
-    .hero {
-      padding: 80px 24px;
-      text-align: center;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .hero h1 { font-size: 3rem; margin-bottom: 16px; font-weight: 800; }
-    .hero p { font-size: 1.2rem; color: var(--sub); margin-bottom: 32px; }
-    .btn {
-      background: var(--primary);
-      color: #fff;
-      padding: 14px 28px;
-      border-radius: 999px;
-      text-decoration: none;
-      font-weight: 600;
-      display: inline-block;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 24px;
-      max-width: 1000px;
-      margin: 40px auto;
-      padding: 0 24px;
-    }
-    .card {
-      background: var(--card);
-      padding: 32px;
-      border-radius: 16px;
-      border: 1px solid #282c34;
-    }
-    .card h3 { margin-bottom: 8px; font-size: 1.25rem; }
-    .card p { color: var(--sub); font-size: 0.95rem; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo">🐾 PAWS & CO.</div>
-    <a href="#book" class="btn" style="padding: 8px 18px; font-size: 0.9rem;">Get in Touch</a>
-  </header>
-  <main class="hero">
-    <h1>Your Dog's Best Life Starts Here.</h1>
-    <p>Professional force-free obedience training, luxury daycare, and grooming tailored to your dog's personality.</p>
-    <a href="#services" class="btn">Explore Services</a>
-    
-    <div class="grid" id="services">
-      <div class="card">
-        <h3>🎾 Agility & Training</h3>
-        <p>Positive reinforcement puppy socialization and master obedience classes.</p>
-      </div>
-      <div class="card">
-        <h3>🛁 Luxury Spa & Grooming</h3>
-        <p>Organic coats, gentle wash, nail care, and blueberry facials.</p>
-      </div>
-      <div class="card">
-        <h3>🏡 Daycare & Boarding</h3>
-        <p>Spacious indoor/outdoor play zones with 24/7 attentive supervision.</p>
-      </div>
-    </div>
-  </main>
-</body>
-</html>
-\`\`\`
-
-You can customize the colors, logos, and service items directly! Let me know if you want me to add online booking, testimonials, or pricing tables.`;
-  } else {
-    fullAnswer = `I'm **SAM** (Smart Artificial Mind). 
-
-I'm ready to help you with:
-- 💻 **Code & Building**: Websites, scripts, backend architectures, debugging.
-- ✍️ **Writing & Strategy**: Copy, planning, summaries, reports.
-- ⚡ **Productivity**: Analyzing ideas, drafting outlines, troubleshooting.
-
-*(Tip: You can use SAM standalone on your phone anywhere, or pair with SAM on your Mac/PC to execute tools, manage projects, and control your computer).*
-
-How can I help you today?`;
-  }
-
-  // Stream in realistic token chunks
-  const words = fullAnswer.split(' ');
-  let current = '';
-  for (let i = 0; i < words.length; i++) {
-    if (signal?.aborted) break;
-    current += (i === 0 ? '' : ' ') + words[i];
-    handlers.onToken?.(current);
-    await new Promise((r) => setTimeout(r, 18));
-  }
-
-  handlers.onDone?.(current);
-  return current;
+  const message =
+    "I can't reach an AI brain right now — no free key is set up on this phone, and the keyless " +
+    'public lane just failed too. Two ways to fix it: add a free key in Settings → Cloud AI Engine ' +
+    "(Groq's takes about 30 seconds), or pair this phone with your Mac/PC and use its brains instead.";
+  handlers.onToken?.(message);
+  handlers.onDone?.(message);
+  return message;
 }
