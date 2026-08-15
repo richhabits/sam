@@ -17,6 +17,7 @@ import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./key
 import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
 import { count, mark, observe } from "./pulse.ts";
 import { relayBrain } from "./relay.ts";
+import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 import { healthOrder } from "./speed.ts";
 
 export type Tier = "local" | "free" | "premium";
@@ -724,15 +725,21 @@ async function callOllamaStream(system: string, prompt: string, model: string, f
   });
   if (!res.ok || !res.body) { const e = new Error(`ollama ${res.status}`) as Error & { status?: number }; e.status = res.status; throw e; }
   const reader = res.body.getReader(); const dec = new TextDecoder();
-  let buf = "", full = "";
+  let buf = "", full = "", looped = false;
   const take = (line: string) => { const t = line.trim(); if (!t) return; try { const d = JSON.parse(t)?.message?.content; if (d) { full += d; onChunk(d); } } catch { /* skip a malformed NDJSON line */ } };
   for (;;) {
     const { done, value } = await reader.read(); if (done) break;
     buf += dec.decode(value, { stream: true });
     const lines = buf.split("\n"); buf = lines.pop() || "";
     for (const line of lines) take(line);
+    // Ollama has no token cap and a 5-minute timeout — a weak/quantized local model stuck
+    // repeating would otherwise run the full 5 minutes before this function ever returns,
+    // even though isDegenerateRepetition would have flagged it in the first few dozen tokens.
+    // Cancel the read and stop paying for tokens nobody's going to see.
+    if (isDegenerateRepetition(full)) { looped = true; break; }
   }
-  take(buf);
+  if (!looped) take(buf);
+  if (looped) { try { await reader.cancel(); } catch { /* best-effort — the fetch is being abandoned either way */ } return collapseRepetition(full); }
   return full;
 }
 

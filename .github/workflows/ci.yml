@@ -51,6 +51,13 @@ jobs:
       # Type-check — `vite build` uses esbuild which strips types WITHOUT checking them,
       # so type errors slip through the build. This catches them.
       - run: npx tsc --noEmit
+      # mobile/ has its OWN tsconfig (extends expo/tsconfig.base) and was never in the root
+      # config's `include` — so this was never checked here, ever. That's exactly how
+      # lib/api.ts's claim() shipped a `Cannot find name 'init'` that threw on every pairing
+      # attempt: it's a real tsc error, just one nothing was running (2026-08-15).
+      - name: Type-check the mobile app (its own tsconfig — root doesn't cover it)
+        run: npx tsc --noEmit
+        working-directory: mobile
       - run: npm run build
 
       # Truth check — advertised numbers must equal reality. Regenerate stats from the live

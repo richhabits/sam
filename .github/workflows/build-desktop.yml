@@ -68,6 +68,12 @@ jobs:
         run: |
           npm test
           npx tsc --noEmit
+      # mobile/ has its OWN tsconfig (extends expo/tsconfig.base) — the root `tsc --noEmit`
+      # above never covers it (root tsconfig.json's `include` doesn't list mobile/), so this
+      # had never actually been type-checked here despite the step's name (2026-08-15).
+      - name: Type-check the mobile app (its own tsconfig)
+        run: npx tsc --noEmit
+        working-directory: mobile
 
   build:
     needs: test-gate   # no installer builds or publishes unless the gate is green
