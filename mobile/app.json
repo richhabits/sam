@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.hectic.sam.mobile",
       "appleTeamId": "CC9Q9BH5NT",
-      "buildNumber": "9",
+      "buildNumber": "10",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true

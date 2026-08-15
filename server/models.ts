@@ -162,7 +162,7 @@ async function callGemini(system: string, prompt: string, key: string): Promise<
 // ── PREMIUM · Claude (raw fetch — no SDK dependency) ─────────
 async function callAnthropic(system: string, prompt: string, key: string): Promise<string> {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
-    signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
+    signal: AbortSignal.timeout(120000),   // 120s timeout for adaptive thinking
     method: "POST",
     headers: {
       "x-api-key": key,
@@ -172,7 +172,7 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 128000,
+      max_tokens: 16000,
       thinking: { type: "adaptive" },
       output_config: { effort: "high" },
       fallbacks: [{ model: "claude-opus-4-8" }],
@@ -204,8 +204,14 @@ async function callAnthropic(system: string, prompt: string, key: string): Promi
   });
   if (!r.ok) { const e: any = new Error(`anthropic ${r.status}`); e.status = r.status; throw e; }
   const d = await r.json();
+  if (d?.stop_reason === "refusal") {
+    const e: any = new Error(`anthropic refused (${d?.stop_details?.category || "unspecified"})`);
+    e.status = 200; throw e;
+  }
   const block = d?.content?.find((b: any) => b.type === "text");
-  return block?.text?.trim() || "";
+  const text = block?.text?.trim() || "";
+  if (!text) throw new Error("anthropic empty");
+  return text;
 }
 
 // ── PROVIDER REGISTRY — add a line to add a provider ─────────

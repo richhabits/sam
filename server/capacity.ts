@@ -9,13 +9,30 @@
 import { keyStatus } from "./keys.ts";
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
-// Derive from the single source of truth — every free provider in the registry is
-// automatically tracked. The old hand-maintained 7-item list had drifted to 7 while
-// the actual engine had 30+ wired. Now it can never go stale.
+// ACCOUNTING — derive from the single source of truth so a key the user actually added always
+// counts toward capacity. The old hand-maintained list tracked 7 while the engine had 30+ wired,
+// so keys for the other 20-odd were invisible to "how much free capacity do I have". Membership
+// comes from the registry; it can never go stale.
 export const FREE_PROVIDERS: { id: string; label: string; url: string; note: string }[] =
   PROVIDER_REGISTRY
     .filter((p) => p.tier === "free" && p.envPlural)
     .map((p) => ({ id: p.id, label: p.label, url: p.url, note: p.note }));
+
+// RECOMMENDING is a different question from counting, and deriving it from the same list got it
+// wrong twice. Registry order is identity order, not best-first, so the nudge led with whatever
+// happened to be declared first; and every free provider qualified, including `github` — which
+// the registry itself documents as answering HTTP 410 for chat and deliberately un-starred,
+// so a new user could be sent to fetch a token for a brain that cannot reply.
+//
+// So: candidates are the registry's OWN `starter` flag ("generous, easy, 2 minutes" — github
+// isn't one), ordered by the curated speed/generosity ranking below. Anything starred later in
+// the registry still gets recommended, just after the ranked ones.
+const NUDGE_ORDER = ["cerebras", "groq", "nvidia", "gemini", "openrouter", "mistral"];
+const starters = FREE_PROVIDERS.filter((p) => PROVIDER_REGISTRY.find((r) => r.id === p.id)?.starter);
+export const NUDGE_PROVIDERS = [
+  ...NUDGE_ORDER.map((id) => starters.find((p) => p.id === id)).filter(Boolean) as typeof starters,
+  ...starters.filter((p) => !NUDGE_ORDER.includes(p.id)),
+];
 
 export type CapacityLevel = "ample" | "ok" | "low" | "none";
 export interface CapacityReport {
@@ -47,7 +64,7 @@ export function capacityReport(): CapacityReport {
   const freeKeys = free.reduce((a, s) => a + s.total, 0);
   const healthy = free.reduce((a, s) => a + s.healthy, 0);
   const cooling = free.reduce((a, s) => a + s.cooling, 0);
-  const nextToAdd = FREE_PROVIDERS.find((p) => !(byId.get(p.id)?.total)) || null;
+  const nextToAdd = NUDGE_PROVIDERS.find((p) => !(byId.get(p.id)?.total)) || null;
 
   // keys.ts already knows when the soonest rate-limited key frees up — it was computed and then
   // consumed by nothing, so SAM could say "everything is cooling" but never "back in 4 minutes".
