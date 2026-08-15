@@ -35,10 +35,32 @@ async function findByName(root: string, query: string, limit = 30): Promise<stri
   return (await walkFiles(root, 5, [])).filter((f) => basename(f).toLowerCase().includes(q)).slice(0, limit);
 }
 async function findByContent(root: string, query: string, limit = 30): Promise<string[]> {
-  const q = query.toLowerCase(); const hits: string[] = [];
+  const q = query.toLowerCase();
+  
+  // Try git grep (insanely fast for git repos)
+  try {
+    const { stdout } = await promisify(exec)(`git -C ${shq(root)} grep -li ${shq(query)}`, { timeout: 10000 });
+    const lines = stdout.split("\n").filter(Boolean);
+    if (lines.length) return lines.slice(0, limit).map(f => join(root, f));
+  } catch (e: any) {
+    // 1 indicates no matches for grep, not necessarily a failure. Only fallback if it's a real failure.
+    if (e.code !== 1 && e.code !== 128) { /* fallback */ }
+  }
+
+  // Try ripgrep (rg) if installed
+  try {
+    const { stdout } = await promisify(exec)(`rg -il ${shq(query)} ${shq(root)}`, { timeout: 10000 });
+    const lines = stdout.split("\n").filter(Boolean);
+    if (lines.length) return lines.slice(0, limit);
+  } catch (e: any) {
+    // 1 indicates no matches.
+  }
+
+  // Fallback to JS walk
+  const hits: string[] = [];
   for (const f of await walkFiles(root, 4, [])) {
     if (hits.length >= limit) break;
-    if (!/\.(txt|md|markdown|json|jsonl|js|ts|tsx|csv|log|html?|xml|ya?ml|py|env|conf|ini|rtf)$/i.test(f)) continue;
+    if (!/\\.(txt|md|markdown|json|jsonl|js|ts|tsx|csv|log|html?|xml|ya?ml|py|env|conf|ini|rtf)$/i.test(f)) continue;
     try { if ((await readFile(f, "utf8")).toLowerCase().includes(q)) hits.push(f); } catch { /* unreadable file in a scan — skip it, keep scanning */ }
   }
   return hits;
