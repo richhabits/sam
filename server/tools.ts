@@ -1286,14 +1286,6 @@ export async function benchmarkBrains(
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
   // safe · read-only
-  { name: "search_memory", safe: true, description: "Recall long-term facts, preferences, and coding rules about the user. Call this before planning any architectural work. No input needed.", params: "", activity: () => "Recalling memory", run: async () => {
-    try {
-      const { readFileSync } = await import("node:fs");
-      const { join } = await import("node:path");
-      const f = join(process.env.VAULT_DIR || join(process.cwd(), "vault"), "facts.md");
-      return readFileSync(f, "utf8");
-    } catch { return "No long-term memories saved yet."; }
-  }},
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
       const { execSync } = await import("node:child_process");

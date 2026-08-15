@@ -8,27 +8,23 @@ describe("V2 Agentic Loop", () => {
   });
 
   it("scales maxSteps up to 12 for complex tasks", async () => {
-    // We'll mock the model to always return a fake tool call until it runs out of budget.
     let callCount = 0;
-    vi.stubGlobal("fetch", vi.fn(async () => {
+    const models = await import("./models.ts");
+    vi.spyOn(models, "runModel").mockImplementation(async () => {
       callCount++;
-      return new Response(JSON.stringify({ 
-        choices: [{ message: { content: `{"tool":"get_datetime","input":{}}` } }] 
-      }), { status: 200 });
-    }));
+      return { text: `{"tool":"get_datetime","input":{}}`, provider: "test", tier: "free" };
+    });
 
     const { runAgent } = await import("./agent.ts");
     
-    // A simple greeting should get 4 steps
-    const resSimple = await runAgent("system", "hello", "free");
+    // A simple task should get 4 loop steps + 1 wrap-up step = 5 calls
+    await runAgent("system", "check the date and time", "free", ["get_datetime"]);
     expect(callCount).toBe(5); // 4 loop steps + 1 wrap-up step
 
     callCount = 0;
-    // A complex task should trigger the 12-step budget
-    const resComplex = await runAgent("system", "build the app and test it thoroughly step by step", "free");
+    // A complex task should trigger the 12-step budget = 13 calls
+    await runAgent("system", "build the app and test it thoroughly step by step", "free", ["get_datetime"]);
     expect(callCount).toBe(13); // 12 loop steps + 1 wrap-up step
-
-    vi.unstubAllGlobals();
   });
 
   it("lint_workspace and run_tests are safe:true", async () => {
