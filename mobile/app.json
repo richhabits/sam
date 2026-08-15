@@ -80,7 +80,19 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "7164bfb8-8184-427c-a6da-a901fa79a5ca"
+        "projectId": "7164bfb8-8184-427c-a6da-a901fa79a5ca",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "SAMWidget",
+                  "bundleIdentifier": "com.hectic.sam.mobile.widget"
+                }
+              ]
+            }
+          }
+        }
       }
     },
     "owner": "piing"
