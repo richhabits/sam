@@ -2179,7 +2179,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pp-label { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-chev { font-size: 11px; color: var(--muted); line-height: 1; }
 .pp-scrim { position: fixed; inset: 0; z-index: 40; }
-.pp-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 41; min-width: 232px;
+/* Opens UPWARD — the only place this actually renders is the composer bar at the bottom of the
+   screen, where a downward menu clips against the viewport edge. */
+.pp-menu { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 41; min-width: 232px;
   padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0,0,0,.16); }
 .pp-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;

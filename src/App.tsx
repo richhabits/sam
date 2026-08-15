@@ -18,6 +18,7 @@ const Admin = lazy(() => import("./Admin"));
 import UpdateButton from "./UpdateButton";
 import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
+import PersonaPicker from "./PersonaPicker";
 
 import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
 const Notebook = lazy(() => import("./Notebook"));
@@ -1759,9 +1760,7 @@ export default function App() {
                 <option value="personal">Personal</option>
                 <option value="business">Business</option>
             </select>
-            <select value={persona} onChange={(e) => setPersona(e.target.value)}>
-                {PERSONA_OPTS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-            </select>
+            <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={setPersona} />
             {mode === "business" && (
                 <select value={brand} onChange={(e) => setBrand(e.target.value)}>
                     <option value="">All my businesses</option>
