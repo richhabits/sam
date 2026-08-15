@@ -38,10 +38,9 @@
   <key>manageAppVersionAndBuildNumber</key>
   <false/>
 
-  <!-- dSYMs go up with the build, or every TestFlight crash report comes back as
-       unsymbolicated addresses and tells you nothing about where it broke. -->
+  <!-- Disabled: prebuilt React Native/Hermes xcframeworks don't ship standalone DWARF dSYMs -->
   <key>uploadSymbols</key>
-  <true/>
+  <false/>
   <key>stripSwiftSymbols</key>
   <true/>
 
