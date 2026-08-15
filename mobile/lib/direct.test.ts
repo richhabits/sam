@@ -17,7 +17,19 @@ vi.mock('expo-secure-store', () => ({
 const fetchSpy = vi.fn();
 vi.mock('expo/fetch', () => ({ fetch: (...args: unknown[]) => fetchSpy(...args) }));
 
-import { streamDirectAI } from './direct';
+import { streamDirectAI, setCustomKey } from './direct';
+
+function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
+  const enc = new TextEncoder();
+  let i = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (i >= chunks.length) { controller.close(); return; }
+      controller.enqueue(enc.encode(`data: ${chunks[i++]}\n\n`));
+    },
+  });
+}
+const okChunk = (text: string) => JSON.stringify({ choices: [{ delta: { content: text } }] });
 
 beforeEach(() => {
   store.clear();
@@ -44,5 +56,45 @@ describe('streamDirectAI — when nothing is reachable', () => {
     const r1 = await streamDirectAI('what is the capital of France?', []);
     const r2 = await streamDirectAI('build me a website for my dog', []);
     expect(r1).toBe(r2);
+  });
+});
+
+describe('streamDirectAI — configured providers', () => {
+  it('uses a configured key and streams the real response', async () => {
+    await setCustomKey('groq', 'gsk_test123');
+    fetchSpy.mockResolvedValue({ ok: true, body: sseBody([okChunk('Hello'), okChunk(' world'), '[DONE]']) });
+
+    const result = await streamDirectAI('hi', []);
+
+    expect(result).toBe('Hello world');
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.groq.com');
+  });
+
+  it('falls through to the next configured provider when the first fails', async () => {
+    await setCustomKey('groq', 'gsk_test123');
+    await setCustomKey('cerebras', 'csk_test456');
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 429, body: null })   // groq rate-limited
+      .mockResolvedValueOnce({ ok: true, body: sseBody([okChunk('from cerebras'), '[DONE]']) });
+
+    const result = await streamDirectAI('hi', []);
+
+    expect(result).toBe('from cerebras');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.groq.com');
+    expect(fetchSpy.mock.calls[1][0]).toContain('api.cerebras.ai');
+  });
+
+  it('tries Gemini (a different request shape entirely) when that key is set', async () => {
+    await setCustomKey('gemini', 'AIzaTest');
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      body: sseBody([JSON.stringify({ candidates: [{ content: { parts: [{ text: 'from gemini' }] } }] })]),
+    });
+
+    const result = await streamDirectAI('hi', []);
+
+    expect(result).toBe('from gemini');
+    expect(fetchSpy.mock.calls[0][0]).toContain('generativelanguage.googleapis.com');
   });
 });

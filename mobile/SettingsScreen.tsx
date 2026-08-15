@@ -3,7 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Switch, Text, } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
-import { getCustomKey, setCustomKey } from './lib/direct';
+import { DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
+
+const ALL_PROVIDERS = [GEMINI_PROVIDER, ...DIRECT_PROVIDERS];
 import { GLYPHS } from './lib/glyphs';
 import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
@@ -26,8 +28,7 @@ export default function SettingsScreen({
   const [notifyStatus, setNotifyStatus] = useState('');
   const [_error, setError] = useState('');
   const [consent, setConsentState] = useState<SpendConsent>('ask');
-  const [groqKey, setGroqKey] = useState('');
-  const [openrouterKey, setOpenrouterKey] = useState('');
+  const [keys, setKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState(false);
 
   const load = useCallback(async () => {
@@ -55,8 +56,9 @@ export default function SettingsScreen({
     soundEnabled().then(setSound);
     ensurePermission().then(setNotifyStatus);
     loadConsent().then(setConsentState);
-    getCustomKey('groq').then((k) => setGroqKey(k || ''));
-    getCustomKey('openrouter').then((k) => setOpenrouterKey(k || ''));
+    Promise.all(ALL_PROVIDERS.map((p) => getCustomKey(p.id).then((k) => [p.id, k || ''] as const))).then((pairs) =>
+      setKeys(Object.fromEntries(pairs)),
+    );
   }, [load]);
 
   const toggleSound = useCallback(async (on: boolean) => {
@@ -109,35 +111,24 @@ export default function SettingsScreen({
           onPress={() => setShowKeys(!showKeys)}
           last={!showKeys}
         />
-        {showKeys ? (
-          <>
-            <Field
-              ios={ios}
-              label="Groq Key"
-              placeholder="gsk_..."
-              value={groqKey}
-              onChangeText={(val) => {
-                setGroqKey(val);
-                void setCustomKey('groq', val);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Field
-              ios={ios}
-              label="OpenRouter"
-              placeholder="sk-or-..."
-              value={openrouterKey}
-              onChangeText={(val) => {
-                setOpenrouterKey(val);
-                void setCustomKey('openrouter', val);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              last
-            />
-          </>
-        ) : null}
+        {showKeys
+          ? ALL_PROVIDERS.map((p, i) => (
+              <Field
+                key={p.id}
+                ios={ios}
+                label={p.label}
+                placeholder={p.keyPlaceholder}
+                value={keys[p.id] || ''}
+                onChangeText={(val) => {
+                  setKeys((k) => ({ ...k, [p.id]: val }));
+                  void setCustomKey(p.id, val);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                last={i === ALL_PROVIDERS.length - 1}
+              />
+            ))
+          : null}
       </Section>
 
       {/* SPENDING */}
