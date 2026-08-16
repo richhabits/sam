@@ -68,6 +68,6 @@ describe("lanIP — the address a phone can actually reach", () => {
   it("reads the live machine when given no argument", () => {
     const live = lanIP();
     expect(live === null || /^\d+\.\d+\.\d+\.\d+$/.test(live)).toBe(true);
-    expect(live).not.toMatch(/^169\.254\./);
+    if (typeof live === "string") expect(live).not.toMatch(/^169\.254\./);
   });
 });

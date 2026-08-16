@@ -110,6 +110,8 @@ import { executeSmartAction, generateSmartStudioPreset, buildSimpleFlipItSummary
 import { prepareMobilePush } from "./mobile-bridge.ts";
 import { generateSpeechAudio } from "./audio-engine.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
+import { getMasterDashboard } from "./orchestrator.ts";
+import { generateMobileFeed } from "./mobile-feed.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1587,6 +1589,33 @@ export async function flipitRebalancePortfolioTool(input: {
   return lines.join("\n");
 }
 
+export async function samMasterDashboardTool(): Promise<string> {
+  const d = getMasterDashboard();
+
+  const lines = [
+    `🎛️ SAM Master Executive Dashboard:`,
+    `· Overall System Health: [${d.systemHealth.status}] (${d.systemHealth.activeToolsCount} tools online)`,
+    `· Multi-Tier Cache: L1=${d.cacheStats.l1Entries}, L2=${d.cacheStats.l2Entries} (${d.cacheStats.totalHitRatioPct}% hit ratio)`,
+    `· Cost & Token Savings: $${d.costSavings.dollarsSaved.toFixed(2)} saved (${d.costSavings.freeTierPct}% free-lane efficiency)`,
+    `· FlipIt 100x Quant Desk: £${d.flipitQuant.equityGbp.toFixed(2)} on Rung ${d.flipitQuant.currentRung} (Safe Sizing: £${d.flipitQuant.safePositionGbp.toFixed(2)})`,
+    `· Higgsfield AI Studio: ${d.studioHiggsfield.cameraRigsCount} 3D Camera Rigs, ${d.studioHiggsfield.lensProfilesCount} Lenses, SoulID Active`,
+    `· Universal Mobile Bridge: ${d.mobileBridge.pairedDevicesCount} paired devices (APNs: ${d.mobileBridge.apnsOnline ? "ON" : "OFF"}, FCM: ${d.mobileBridge.fcmOnline ? "ON" : "OFF"})`,
+    `\nDiagnostics: ${d.systemHealth.doctorSummary}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function mobileGenerateFeedSnapshotTool(): Promise<string> {
+  const feed = generateMobileFeed();
+
+  const lines = [
+    `📱 Mobile Live Feed Stream Snapshot (${feed.activeCards.length} active cards):`,
+    ...feed.activeCards.map(c => `  - [${c.type}] ${c.title} (${c.badge}): ${c.subtitle}`),
+    `\nDeep Links: ${feed.activeCards.map(c => c.deepLink).join(", ")}`,
+  ];
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2621,6 +2650,14 @@ export const TOOLS: Tool[] = [
     },
     activity: () => "Calculating autonomous Risk-Parity portfolio rebalance",
     run: (i) => flipitRebalancePortfolioTool(i) },
+  { name: "sam_master_dashboard", safe: true, description: "Displays single-screen executive telemetry and status across all SAM subsystems (Swarms, Doctor, Caches, FlipIt 100x, Studio, Cost Optimizer, Mobile Bridge). input: {}.", params: "{}",
+    args: {},
+    activity: () => "Compiling SAM master executive dashboard",
+    run: () => samMasterDashboardTool() },
+  { name: "mobile_generate_feed_snapshot", safe: true, description: "Assembles high-speed live feed cards (Tasks, Market, Studio, Alerts) into a compressed stream for paired iOS and Android apps. input: {}.", params: "{}",
+    args: {},
+    activity: () => "Generating mobile live feed snapshot",
+    run: () => mobileGenerateFeedSnapshotTool() },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
