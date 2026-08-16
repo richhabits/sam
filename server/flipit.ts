@@ -352,4 +352,412 @@ export async function checkFlipItAlerts(now = Date.now()): Promise<string | null
   return null;
 }
 
+// ── 100x QUANTITATIVE ENGINE: HIGH-SPEED MONTE CARLO & RISK ──
+
+export interface MonteCarloConfig {
+  initialCapital?: number;
+  mu: number;              // Expected daily drift (e.g. 0.001 = +0.1%/day)
+  sigma: number;           // Daily volatility (e.g. 0.015 = 1.5%/day)
+  days?: number;           // Projection horizon (default: 60 days)
+  paths?: number;          // Number of simulated paths (default: 10,000, up to 100,000)
+  ruinThreshold?: number;  // Capital level considered total ruin (default: 0.5 = 50% loss)
+}
+
+export interface MonteCarloResult {
+  paths: number;
+  days: number;
+  meanFinalEquity: number;
+  medianFinalEquity: number;
+  quantiles: {
+    p1: number;
+    p5: number;
+    p10: number;
+    p25: number;
+    p50: number;
+    p75: number;
+    p90: number;
+    p95: number;
+    p99: number;
+  };
+  var95: number;           // 95% Value at Risk (max expected loss at 95% confidence)
+  var99: number;           // 99% Value at Risk
+  cvar95: number;          // 95% Expected Shortfall (mean loss beyond VaR 95)
+  cvar99: number;          // 99% Expected Shortfall
+  sharpeRatio: number;     // Annualized Sharpe ratio (assuming 252 trading days)
+  sortinoRatio: number;    // Annualized Sortino ratio (downside deviation only)
+  maxDrawdownMean: number; // Mean maximum peak-to-trough drawdown
+  maxDrawdownP95: number;  // 95th percentile max drawdown
+  ruinProbability: number; // Fraction of paths that breached the ruin threshold
+  trajectory: {
+    day: number;
+    median: number;
+    p5: number;
+    p95: number;
+  }[];
+}
+
+// Box-Muller standard normal generator
+function generateGaussianPair(): [number, number] {
+  let u1 = 0, u2 = 0;
+  while (u1 === 0) u1 = Math.random();
+  while (u2 === 0) u2 = Math.random();
+  const r = Math.sqrt(-2.0 * Math.log(u1));
+  const theta = 2.0 * Math.PI * u2;
+  return [r * Math.cos(theta), r * Math.sin(theta)];
+}
+
+export function monteCarlo100x(config: MonteCarloConfig): MonteCarloResult {
+  const cap = Math.max(1, config.initialCapital || 1);
+  const mu = Number(config.mu) || 0.0005;
+  const sigma = Math.max(0.0001, Number(config.sigma) || 0.01);
+  const days = Math.min(Math.max(5, config.days || 60), 365);
+  const paths = Math.min(Math.max(100, config.paths || 10_000), 100_000);
+  const ruinFloor = cap * (config.ruinThreshold ?? 0.5);
+
+  const finalEquities = new Float64Array(paths);
+  const finalReturns = new Float64Array(paths);
+  const maxDrawdowns = new Float64Array(paths);
+  let ruinCount = 0;
+
+  // Track quantile trajectories over time for summary
+  const trajectoryDays = Math.min(days, 20);
+  const stepInterval = Math.max(1, Math.floor(days / trajectoryDays));
+  const sampleSteps: number[] = [];
+  for (let d = stepInterval; d <= days; d += stepInterval) sampleSteps.push(d);
+  if (!sampleSteps.includes(days)) sampleSteps.push(days);
+
+  const stepEquities: Float64Array[] = sampleSteps.map(() => new Float64Array(paths));
+
+  for (let p = 0; p < paths; p++) {
+    let eq = cap;
+    let peak = cap;
+    let mdd = 0;
+    let ruined = false;
+    let stepIdx = 0;
+
+    for (let d = 1; d <= days; d += 2) {
+      const [z1, z2] = generateGaussianPair();
+
+      // Day 1
+      const ret1 = mu + sigma * z1;
+      eq *= (1 + ret1);
+      if (eq > peak) peak = eq;
+      const dd1 = (peak - eq) / peak;
+      if (dd1 > mdd) mdd = dd1;
+      if (eq <= ruinFloor) ruined = true;
+
+      if (stepIdx < sampleSteps.length && d === sampleSteps[stepIdx]) {
+        stepEquities[stepIdx][p] = eq;
+        stepIdx++;
+      }
+
+      // Day 2 (if within horizon)
+      if (d + 1 <= days) {
+        const ret2 = mu + sigma * z2;
+        eq *= (1 + ret2);
+        if (eq > peak) peak = eq;
+        const dd2 = (peak - eq) / peak;
+        if (dd2 > mdd) mdd = dd2;
+        if (eq <= ruinFloor) ruined = true;
+
+        if (stepIdx < sampleSteps.length && (d + 1) === sampleSteps[stepIdx]) {
+          stepEquities[stepIdx][p] = eq;
+          stepIdx++;
+        }
+      }
+    }
+
+    finalEquities[p] = eq;
+    finalReturns[p] = (eq - cap) / cap;
+    maxDrawdowns[p] = mdd;
+    if (ruined) ruinCount++;
+  }
+
+  // Sort returns for quantile analysis
+  finalReturns.sort();
+  finalEquities.sort();
+  maxDrawdowns.sort();
+
+  const getPercentile = (arr: Float64Array, pct: number) => {
+    const idx = Math.min(Math.floor((pct / 100) * arr.length), arr.length - 1);
+    return arr[idx];
+  };
+
+  const p1 = getPercentile(finalEquities, 1);
+  const p5 = getPercentile(finalEquities, 5);
+  const p10 = getPercentile(finalEquities, 10);
+  const p25 = getPercentile(finalEquities, 25);
+  const p50 = getPercentile(finalEquities, 50);
+  const p75 = getPercentile(finalEquities, 75);
+  const p90 = getPercentile(finalEquities, 90);
+  const p95 = getPercentile(finalEquities, 95);
+  const p99 = getPercentile(finalEquities, 99);
+
+  let sumEq = 0;
+  for (let i = 0; i < paths; i++) sumEq += finalEquities[i];
+  const meanFinalEquity = sumEq / paths;
+
+  // VaR and CVaR calculations on returns
+  const var95 = Math.max(0, -getPercentile(finalReturns, 5));
+  const var99 = Math.max(0, -getPercentile(finalReturns, 1));
+
+  let cvar95Sum = 0, cvar95Count = 0;
+  let cvar99Sum = 0, cvar99Count = 0;
+  const cutoff95Idx = Math.floor(0.05 * paths);
+  const cutoff99Idx = Math.floor(0.01 * paths);
+
+  for (let i = 0; i < cutoff95Idx; i++) {
+    cvar95Sum += -finalReturns[i];
+    cvar95Count++;
+  }
+  for (let i = 0; i < cutoff99Idx; i++) {
+    cvar99Sum += -finalReturns[i];
+    cvar99Count++;
+  }
+
+  const cvar95 = cvar95Count > 0 ? cvar95Sum / cvar95Count : var95;
+  const cvar99 = cvar99Count > 0 ? cvar99Sum / cvar99Count : var99;
+
+  // Annualized metrics (252 days)
+  const annualFactor = Math.sqrt(252);
+  const annualReturn = mu * 252;
+  const annualVol = sigma * annualFactor;
+  const sharpeRatio = annualVol > 0 ? annualReturn / annualVol : 0;
+
+  // Downside deviation for Sortino
+  let downsideSumSq = 0;
+  for (let i = 0; i < paths; i++) {
+    const r = finalReturns[i];
+    if (r < 0) downsideSumSq += r * r;
+  }
+  const downsideDev = Math.sqrt(downsideSumSq / paths);
+  const sortinoRatio = downsideDev > 0 ? (annualReturn / (downsideDev * Math.sqrt(252 / days))) : sharpeRatio;
+
+  let sumMdd = 0;
+  for (let i = 0; i < paths; i++) sumMdd += maxDrawdowns[i];
+  const maxDrawdownMean = sumMdd / paths;
+  const maxDrawdownP95 = getPercentile(maxDrawdowns, 95);
+
+  const trajectory = sampleSteps.map((day, sIdx) => {
+    const arr = stepEquities[sIdx];
+    arr.sort();
+    return {
+      day,
+      median: getPercentile(arr, 50),
+      p5: getPercentile(arr, 5),
+      p95: getPercentile(arr, 95),
+    };
+  });
+
+  return {
+    paths,
+    days,
+    meanFinalEquity,
+    medianFinalEquity: p50,
+    quantiles: { p1, p5, p10, p25, p50, p75, p90, p95, p99 },
+    var95,
+    var99,
+    cvar95,
+    cvar99,
+    sharpeRatio,
+    sortinoRatio,
+    maxDrawdownMean,
+    maxDrawdownP95,
+    ruinProbability: ruinCount / paths,
+    trajectory,
+  };
+}
+
+// ── MULTI-STRATEGY 100-ASSET PORTFOLIO ENGINE ──
+
+export interface AssetProfile {
+  id: string;
+  name: string;
+  expectedDailyReturn: number;
+  dailyVolatility: number;
+  weight?: number;
+}
+
+export interface PortfolioAnalysis {
+  assets: {
+    id: string;
+    name: string;
+    expectedDailyReturn: number;
+    dailyVolatility: number;
+    equalWeight: number;
+    inverseVolWeight: number;
+    riskParityWeight: number;
+  }[];
+  portfolioExpectedReturn: number;
+  portfolioVolatility: number;
+  diversificationRatio: number;
+  volatilityScaleFactor: number; // Scale needed to match targetVol
+  correlationMatrix: Record<string, Record<string, number>>;
+}
+
+export function analyzeMultiStrategy(
+  assets: AssetProfile[],
+  options: {
+    targetDailyVol?: number;
+    assumedCorrelation?: number; // default pairwise correlation when not given
+  } = {}
+): PortfolioAnalysis {
+  const n = Math.min(Math.max(1, assets.length), 100);
+  const targetVol = options.targetDailyVol || 0.01;
+  const rho = options.assumedCorrelation ?? 0.25;
+
+  // 1. Compute Weights
+  const equalWeight = 1 / n;
+
+  // Inverse volatility weights
+  let invVolSum = 0;
+  for (const a of assets) invVolSum += 1 / Math.max(0.0001, a.dailyVolatility);
+  const invVolWeights = assets.map(a => (1 / Math.max(0.0001, a.dailyVolatility)) / invVolSum);
+
+  const riskParityWeights = invVolWeights; // under constant pairwise correlation
+
+  // 2. Correlation & Covariance Matrix
+  const correlationMatrix: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < n; i++) {
+    const a1 = assets[i];
+    correlationMatrix[a1.id] = {};
+    for (let j = 0; j < n; j++) {
+      const a2 = assets[j];
+      correlationMatrix[a1.id][a2.id] = (i === j) ? 1.0 : rho;
+    }
+  }
+
+  // 3. Portfolio Variance & Volatility: w^T * Cov * w
+  let portVar = 0;
+  let weightedVolSum = 0;
+  let portReturn = 0;
+
+  for (let i = 0; i < n; i++) {
+    const w_i = riskParityWeights[i];
+    const s_i = assets[i].dailyVolatility;
+    const r_i = assets[i].expectedDailyReturn;
+    portReturn += w_i * r_i;
+    weightedVolSum += w_i * s_i;
+
+    for (let j = 0; j < n; j++) {
+      const w_j = riskParityWeights[j];
+      const s_j = assets[j].dailyVolatility;
+      const cov_ij = (i === j) ? (s_i * s_i) : (rho * s_i * s_j);
+      portVar += w_i * w_j * cov_ij;
+    }
+  }
+
+  const portVol = Math.sqrt(Math.max(0.000001, portVar));
+  const diversificationRatio = weightedVolSum / portVol;
+  const volatilityScaleFactor = targetVol / portVol;
+
+  const enrichedAssets = assets.map((a, idx) => ({
+    id: a.id,
+    name: a.name,
+    expectedDailyReturn: a.expectedDailyReturn,
+    dailyVolatility: a.dailyVolatility,
+    equalWeight,
+    inverseVolWeight: invVolWeights[idx],
+    riskParityWeight: riskParityWeights[idx],
+  }));
+
+  return {
+    assets: enrichedAssets,
+    portfolioExpectedReturn: portReturn,
+    portfolioVolatility: portVol,
+    diversificationRatio,
+    volatilityScaleFactor,
+    correlationMatrix,
+  };
+}
+
+// ── 100-RUNG COMPOUND LADDER ENGINE ──
+
+export interface LadderRung {
+  rung: number;
+  targetEquity: number;
+  stepMultiplier: number;
+  estimatedDaysToReach: number;
+  kellyFractionFull: number;
+  kellyFractionHalf: number;
+}
+
+export interface LadderProjection {
+  currentEquity: number;
+  currentRung: number;
+  totalRungs: number;
+  mu: number;
+  sigma: number;
+  optimalKellyFraction: number;
+  rungs: LadderRung[];
+  milestones: {
+    tenXDays: number;
+    fiftyXDays: number;
+    hundredXDays: number;
+  };
+}
+
+export function project100xLadder(
+  currentEquity = 5.0,
+  options: {
+    mu?: number;
+    sigma?: number;
+    totalRungs?: number;
+    stepMultiplier?: number;
+  } = {}
+): LadderProjection {
+  const eq = Math.max(0.01, Number(currentEquity) || 5.0);
+  const mu = Math.max(0.0001, Number(options.mu) || 0.002); // 0.2% daily drift
+  const sigma = Math.max(0.001, Number(options.sigma) || 0.012); // 1.2% daily vol
+  const totalRungs = Math.min(Math.max(10, options.totalRungs || 100), 100);
+  const stepMultiplier = options.stepMultiplier || 1.15; // +15% equity per rung step
+
+  // Continuous Kelly Criterion: f* = mu / sigma^2
+  const kellyFull = Math.min(1.0, Math.max(0.01, mu / (sigma * sigma)));
+  const kellyHalf = kellyFull * 0.5;
+
+  const rungs: LadderRung[] = [];
+  let currentTarget = eq;
+  let cumDays = 0;
+
+  for (let r = 1; r <= totalRungs; r++) {
+    currentTarget *= stepMultiplier;
+    // Expected compounded growth per day: g = mu - 0.5 * sigma^2
+    const dailyGrowth = Math.max(0.00001, mu - 0.5 * sigma * sigma);
+    const stepRatio = stepMultiplier;
+    const daysForStep = Math.log(stepRatio) / dailyGrowth;
+    cumDays += daysForStep;
+
+    rungs.push({
+      rung: r,
+      targetEquity: Number(currentTarget.toFixed(2)),
+      stepMultiplier,
+      estimatedDaysToReach: Math.round(cumDays),
+      kellyFractionFull: Number(kellyFull.toFixed(3)),
+      kellyFractionHalf: Number(kellyHalf.toFixed(3)),
+    });
+  }
+
+  const dailyGrowth = Math.max(0.00001, mu - 0.5 * sigma * sigma);
+  const tenXDays = Math.round(Math.log(10) / dailyGrowth);
+  const fiftyXDays = Math.round(Math.log(50) / dailyGrowth);
+  const hundredXDays = Math.round(Math.log(100) / dailyGrowth);
+
+  return {
+    currentEquity: eq,
+    currentRung: 0,
+    totalRungs,
+    mu,
+    sigma,
+    optimalKellyFraction: Number(kellyHalf.toFixed(3)), // half-Kelly safe default
+    rungs,
+    milestones: {
+      tenXDays,
+      fiftyXDays,
+      hundredXDays,
+    },
+  };
+}
+
+
 

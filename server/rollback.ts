@@ -30,7 +30,10 @@ export interface RollbackTarget { version: string; releaseUrl: string; asset: { 
 // The newest release strictly OLDER than `current` (skips drafts; includes betas only if on beta).
 export async function previousRelease(current: string, includePrerelease = false): Promise<RollbackTarget | null> {
   try {
-    const res = await fetch(`${REPO}?per_page=30`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" } });
+    const res = await fetch(`${REPO}?per_page=30`, {
+      headers: { Accept: "application/vnd.github+json", "User-Agent": "SAM-app" },
+      signal: AbortSignal.timeout(3000),
+    });
     if (!res.ok) return null;
     const rels = (await res.json() as Rel[])
       .filter((r) => !r.draft && (includePrerelease || !r.prerelease) && cmp(r.tag_name, current) < 0)

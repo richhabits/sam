@@ -103,6 +103,7 @@ import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
 import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
 import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, saveRanking, type ArenaResult } from "./colosseum.ts";
 import { championWithConfidence } from "./colosseum-significance.ts";
+import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipit.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1168,12 +1169,103 @@ export async function astReplaceSymbolTool(input: {
       execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
       tscStatus = "Clean (0 errors)";
     } catch (e: any) {
-      tscStatus = `TypeScript errors detected:\n${e.stdout || e.message}`;
+      // The rename is a plain word-boundary text replace, not scope-aware — it happily touches
+      // matches inside string literals, comments, and template literals too, so a bad rename is
+      // a real, expected outcome, not an edge case. Leaving broken code on disk because a
+      // "validation" step only reported the problem instead of gating on it would be worse than
+      // not validating at all — so revert on any tsc failure rather than leave the mess behind.
+      try { await writeFile(p, content, "utf8"); } catch { /* best effort */ }
+      const diffs = modifiedLines.map(m => `  Line ${m.line} ${m.isDeclaration ? "[DECLARATION]" : ""}:\n    - ${m.before}\n    + ${m.after}`).join("\n");
+      return `AST Symbol Refactor REVERTED for ${input.path}: the rename introduced TypeScript errors, so the file was restored to its original content.\n\nAttempted modifications:\n${diffs}\n\nTypeScript errors:\n${e.stdout || e.message}`;
     }
   }
 
   const diffs = modifiedLines.map(m => `  Line ${m.line} ${m.isDeclaration ? "[DECLARATION]" : ""}:\n    - ${m.before}\n    + ${m.after}`).join("\n");
-  return `AST Symbol Refactor Applied: Replaced "${oldSymbol}" with "${newSymbol}" in ${input.path} (${totalReplacements} replacement(s)).\n\nModifications:\n${diffs}\n\nTypeScript Validation: ${tscStatus}`;
+  return `AST Symbol Refactor Applied: Replaced "${oldSymbol}" with "${newSymbol}" in ${input.path} (${totalReplacements} replacement(s)).\n\nModifications:\n${diffs}\n\nTypeScript Validation: ${tscStatus}\n\nNote: this is a word-boundary text match, not scope-aware — it also replaces "${oldSymbol}" inside string literals, comments, and template literals, not only actual code references. Review the diff above before trusting a rename near strings/comments containing that text.`;
+}
+
+export async function flipitMonteCarloTool(input: {
+  initialCapital?: number;
+  mu?: number;
+  sigma?: number;
+  days?: number;
+  paths?: number;
+  ruinThreshold?: number;
+}): Promise<string> {
+  const res = monteCarlo100x({
+    initialCapital: input?.initialCapital,
+    mu: input?.mu ?? 0.001,
+    sigma: input?.sigma ?? 0.012,
+    days: input?.days ?? 60,
+    paths: input?.paths ?? 10_000,
+    ruinThreshold: input?.ruinThreshold ?? 0.5,
+  });
+
+  const lines = [
+    `FlipIt 100x Monte Carlo Simulation (${res.paths.toLocaleString()} paths, ${res.days} days):`,
+    `· Mean Final Equity: £${res.meanFinalEquity.toFixed(2)} | Median: £${res.medianFinalEquity.toFixed(2)}`,
+    `· Return Quantiles: p5: £${res.quantiles.p5.toFixed(2)} | p25: £${res.quantiles.p25.toFixed(2)} | p50: £${res.quantiles.p50.toFixed(2)} | p75: £${res.quantiles.p75.toFixed(2)} | p95: £${res.quantiles.p95.toFixed(2)}`,
+    `· Risk Metrics: VaR 95%: ${(res.var95 * 100).toFixed(2)}% | CVaR 95% (Expected Shortfall): ${(res.cvar95 * 100).toFixed(2)}%`,
+    `· Performance: Sharpe Ratio: ${res.sharpeRatio.toFixed(2)} | Sortino: ${res.sortinoRatio.toFixed(2)} | Max Drawdown (Mean): ${(res.maxDrawdownMean * 100).toFixed(2)}% | p95 Drawdown: ${(res.maxDrawdownP95 * 100).toFixed(2)}%`,
+    `· Ruin Risk: ${(res.ruinProbability * 100).toFixed(3)}%`,
+  ];
+  return lines.join("\n");
+}
+
+export async function flipitMultiStrategyTool(input: {
+  assets?: { id: string; name: string; expectedDailyReturn: number; dailyVolatility: number }[];
+  targetDailyVol?: number;
+  assumedCorrelation?: number;
+}): Promise<string> {
+  const rawAssets = Array.isArray(input?.assets) && input.assets.length > 0 ? input.assets : [
+    { id: "mom_12_1", name: "12-1 Momentum Core", expectedDailyReturn: 0.0012, dailyVolatility: 0.014 },
+    { id: "trend_filter", name: "200-SMA Trend Following", expectedDailyReturn: 0.0009, dailyVolatility: 0.011 },
+    { id: "mean_rev", name: "RSI Mean Reversion", expectedDailyReturn: 0.0007, dailyVolatility: 0.009 },
+    { id: "vol_break", name: "Bollinger Volatility Breakout", expectedDailyReturn: 0.0015, dailyVolatility: 0.018 },
+  ];
+
+  const res = analyzeMultiStrategy(rawAssets, {
+    targetDailyVol: input?.targetDailyVol,
+    assumedCorrelation: input?.assumedCorrelation,
+  });
+
+  const lines = [
+    `FlipIt Multi-Strategy Portfolio Matrix (${res.assets.length} strategies):`,
+    `· Portfolio Expected Return: +${(res.portfolioExpectedReturn * 100).toFixed(3)}%/day (${(res.portfolioExpectedReturn * 252 * 100).toFixed(1)}% p.a.)`,
+    `· Portfolio Volatility: ${(res.portfolioVolatility * 100).toFixed(2)}%/day | Diversification Ratio: ${res.diversificationRatio.toFixed(2)}x`,
+    `· Volatility Target Scaling: ${res.volatilityScaleFactor.toFixed(2)}x to meet ${((input?.targetDailyVol || 0.01) * 100).toFixed(2)}% daily target vol`,
+    `\nStrategy Allocations (Risk Parity):`,
+    ...res.assets.map(a => `  - ${a.name} (${a.id}): ${(a.riskParityWeight * 100).toFixed(1)}% allocation [vol: ${(a.dailyVolatility * 100).toFixed(1)}%]`),
+  ];
+  return lines.join("\n");
+}
+
+export async function flipitLadderProjectionsTool(input: {
+  currentEquity?: number;
+  mu?: number;
+  sigma?: number;
+  totalRungs?: number;
+}): Promise<string> {
+  const res = project100xLadder(input?.currentEquity ?? 5.0, {
+    mu: input?.mu,
+    sigma: input?.sigma,
+    totalRungs: input?.totalRungs ?? 100,
+  });
+
+  const lines = [
+    `FlipIt 100-Rung Ladder Projections (Start: £${res.currentEquity.toFixed(2)}):`,
+    `· Kelly Optimal Bet Sizing: ${(res.optimalKellyFraction * 100).toFixed(1)}% (half-Kelly)`,
+    `· Milestone Velocities:`,
+    `  - 10x (£${(res.currentEquity * 10).toFixed(2)}): ~${res.milestones.tenXDays} trading days`,
+    `  - 50x (£${(res.currentEquity * 50).toFixed(2)}): ~${res.milestones.fiftyXDays} trading days`,
+    `  - 100x (£${(res.currentEquity * 100).toFixed(2)}): ~${res.milestones.hundredXDays} trading days`,
+    `\nSample Milestone Rungs:`,
+    ...[1, 5, 10, 20, 50, 100].filter(r => r <= res.totalRungs).map(r => {
+      const rung = res.rungs[r - 1];
+      return `  - Rung ${rung.rung}: Target £${rung.targetEquity.toFixed(2)} (~Day ${rung.estimatedDaysToReach})`;
+    }),
+  ];
+  return lines.join("\n");
 }
 
 async function listDir(path: string): Promise<string> {
@@ -2077,7 +2169,7 @@ export const TOOLS: Tool[] = [
     activity: () => "Running Doctor auto-heal diagnostic and remediation",
     preview: () => "Run Doctor auto-heal and apply system remediations",
     run: () => doctorAutoHealTool() },
-  { name: "ast_replace_symbol", safe: false, description: "AST-guided surgical identifier/symbol renaming in a TypeScript or JavaScript file with syntax & type-check validation. input: { path, oldSymbol, newSymbol, dryRun? }.", params: "{path, oldSymbol, newSymbol, dryRun?}",
+  { name: "ast_replace_symbol", safe: false, description: "Renames an identifier in a TypeScript or JavaScript file (word-boundary text match, not scope-aware — also touches matches inside strings/comments/template literals) and type-checks the result, reverting automatically if the rename breaks compilation. input: { path, oldSymbol, newSymbol, dryRun? }.", params: "{path, oldSymbol, newSymbol, dryRun?}",
     args: {
       path: { type: "string", required: true, desc: "File path to refactor" },
       oldSymbol: { type: "string", required: true, desc: "Exact symbol name to replace" },
@@ -2087,6 +2179,34 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Refactoring symbol '${i.oldSymbol}' → '${i.newSymbol}' in ${i.path}`,
     preview: (i) => `Replace symbol '${i.oldSymbol}' with '${i.newSymbol}' in ${i.path}${i.dryRun ? " (dry run)" : ""}`,
     run: (i) => astReplaceSymbolTool(i) },
+  { name: "flipit_monte_carlo", safe: true, description: "Runs high-speed 100x Monte Carlo simulation (up to 100,000 paths) on a trading strategy, calculating quantiles, Value at Risk (VaR 95/99), CVaR Expected Shortfall, Sharpe, and ruin risk. input: { initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold? }.", params: "{initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold?}",
+    args: {
+      initialCapital: { type: "number", desc: "Starting capital (default: £1.0)" },
+      mu: { type: "number", desc: "Expected daily drift rate (default: 0.001 = 0.1%/day)" },
+      sigma: { type: "number", desc: "Daily volatility (default: 0.012 = 1.2%/day)" },
+      days: { type: "number", desc: "Projection horizon in trading days (default: 60)" },
+      paths: { type: "number", desc: "Number of simulated paths (default: 10,000, up to 100,000)" },
+      ruinThreshold: { type: "number", desc: "Drawdown fraction defining ruin (default: 0.5)" }
+    },
+    activity: (i) => `Running 100x Monte Carlo simulation (${Number(i?.paths || 10000).toLocaleString()} paths)`,
+    run: (i) => flipitMonteCarloTool(i) },
+  { name: "flipit_multi_strategy", safe: true, description: "Analyzes multi-strategy / multi-asset portfolio covariance, risk-parity weight allocation, diversification ratio, and target volatility scaling. input: { assets?, targetDailyVol?, assumedCorrelation? }.", params: "{assets?, targetDailyVol?, assumedCorrelation?}",
+    args: {
+      assets: { type: "array", desc: "Array of asset profiles [{id, name, expectedDailyReturn, dailyVolatility}]" },
+      targetDailyVol: { type: "number", desc: "Target daily portfolio volatility (default: 0.01)" },
+      assumedCorrelation: { type: "number", desc: "Pairwise correlation assumption (default: 0.25)" }
+    },
+    activity: () => "Analyzing multi-strategy risk parity portfolio",
+    run: (i) => flipitMultiStrategyTool(i) },
+  { name: "flipit_ladder_projections", safe: true, description: "Calculates 100-rung exponential milestone projections, Kelly optimal bet sizing (f* = mu / sigma^2), and velocity estimates. input: { currentEquity?, mu?, sigma?, totalRungs? }.", params: "{currentEquity?, mu?, sigma?, totalRungs?}",
+    args: {
+      currentEquity: { type: "number", desc: "Current account equity (default: £5.0)" },
+      mu: { type: "number", desc: "Expected daily drift (default: 0.002)" },
+      sigma: { type: "number", desc: "Daily volatility (default: 0.012)" },
+      totalRungs: { type: "number", desc: "Number of ladder rungs to project (default: 100)" }
+    },
+    activity: (i) => `Projecting 100-rung ladder growth from £${Number(i?.currentEquity || 5).toFixed(2)}`,
+    run: (i) => flipitLadderProjectionsTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
