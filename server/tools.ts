@@ -112,6 +112,8 @@ import { generateSpeechAudio } from "./audio-engine.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { generateMobileFeed } from "./mobile-feed.ts";
+import { conductDeepResearch } from "./deep-research.ts";
+import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1638,6 +1640,43 @@ export async function mobileGenerateFeedSnapshotTool(): Promise<string> {
   return lines.join("\n");
 }
 
+export async function deepResearchSynthesizerTool(input: {
+  query: string;
+  depth?: "quick" | "deep" | "exhaustive";
+}): Promise<string> {
+  const q = String(input?.query || "").trim();
+  if (!q) return "Error: query is required for deep research synthesis.";
+
+  const rep = conductDeepResearch(q, { depth: input?.depth });
+
+  const lines = [
+    `🔬 SAM Deep Research Brief: "${rep.topic}" (Consensus Score: ${rep.consensusConfidencePct}%):`,
+    `\n## Executive Summary:`,
+    rep.executiveSummary,
+    `\n## Key Cross-Verified Findings:`,
+    ...rep.keyFindings.map((f, i) => `  [${i + 1}] ${f.claim} (Confidence: ${(f.confidence * 100).toFixed(0)}%, verified across ${f.verifiedByCount} sources)`),
+    `\n## Tradeoffs & Dissenting Views:`,
+    ...rep.dissentingOrConflictingViews.map(d => `  - ${d}`),
+    `\n## Grounded Sources:`,
+    ...rep.sources.map(s => `  [${s.index}] ${s.title} (${s.domain})`),
+  ];
+  return lines.join("\n");
+}
+
+export async function brainPerformanceMatrixTool(): Promise<string> {
+  const mat = getBrainPerformanceMatrix();
+
+  const lines = [
+    `🧠 SAM Brain Performance & Provider Arbitrage Matrix:`,
+    `· Total Configured Providers: ${mat.totalConfiguredProviders} (${mat.freeTierCount} zero-cost lanes active)`,
+    `· Fastest Interactive Streamer: ${mat.fastestInteractiveProvider}`,
+    `· Top Reasoning Champion: ${mat.bestReasoningProvider}`,
+    `\nActive Provider Benchmarks:`,
+    ...mat.benchmarks.map(b => `  - [${b.status}] ${b.name} (${b.tier.toUpperCase()}): ${b.typicalLatencyMs}ms latency · ${b.tokensPerSecond} tok/s [${b.strengthCategory}]`),
+  ];
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2680,6 +2719,17 @@ export const TOOLS: Tool[] = [
     args: {},
     activity: () => "Generating mobile live feed snapshot",
     run: () => mobileGenerateFeedSnapshotTool() },
+  { name: "deep_research_synthesizer", safe: true, description: "Executes autonomous multi-query deep research across multiple vectors, calculates cross-source consensus scores, and produces grounded executive briefs. input: { query, depth? }.", params: "{query, depth?}",
+    args: {
+      query: { type: "string", desc: "The research topic or question to investigate" },
+      depth: { type: "string", desc: "Investigation depth: quick, deep, or exhaustive (default: deep)" }
+    },
+    activity: (i) => `Conducting deep research synthesis on "${i?.query ?? i}"`,
+    run: (i) => deepResearchSynthesizerTool(i) },
+  { name: "brain_performance_matrix", safe: true, description: "Audits live AI provider latency (ms/token), token throughput, zero-cost vs paid lane status, and model strength matrix. input: {}.", params: "{}",
+    args: {},
+    activity: () => "Auditing AI brain performance and latency arbitrage matrix",
+    run: () => brainPerformanceMatrixTool() },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
