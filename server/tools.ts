@@ -591,7 +591,14 @@ export async function manageTaskTool(i: { action: string; taskId?: string; comma
   return `Error: Unknown action '${i.action}'`;
 }
 
-export function unwrapPath(p: any): string {
+// depth guards against a circular reference (`const o = {}; o.path = o`) recursing forever, or a
+// pathologically deep nested object doing the same — neither is reachable via normal JSON-parsed
+// tool-call args (JSON can't encode cycles), but safePath()/unwrapPath() are called from plenty of
+// places that aren't necessarily fed parsed JSON, and tool.activity() calls this unguarded by any
+// try/catch in at least two real call sites (agent.ts's executeToolBatch and resumeAgent) — an
+// uncaught stack overflow there fails the whole batch/turn, not just one tool call.
+export function unwrapPath(p: any, depth = 0): string {
+  if (depth > 10) return "~";
   if (!p) return "~";
   if (typeof p === "string") {
     if (p === "[object Object]") return "~";
@@ -599,7 +606,7 @@ export function unwrapPath(p: any): string {
   }
   if (typeof p === "object") {
     const raw = p.path ?? p.dir ?? p.file ?? p.target ?? p.folder ?? p.src ?? p.name ?? "";
-    return unwrapPath(raw);
+    return unwrapPath(raw, depth + 1);
   }
   return String(p || "~");
 }
