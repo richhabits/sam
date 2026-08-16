@@ -8,10 +8,10 @@
 //  Events, screencapture, open) + Node + fetch. No paid APIs.
 // ─────────────────────────────────────────────────────────────
 
-import { exec, execFile as execFileCb } from "node:child_process";
+import { exec, execFile as execFileCb, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
-import { existsSync, readdirSync, mkdirSync, statfsSync } from "node:fs";
+import { existsSync, readdirSync, mkdirSync, statfsSync, createWriteStream } from "node:fs";
 
 // ── Cross-platform file search (NO shell) — works on Windows/Linux/Mac identically. Mac keeps its
 //    fast Spotlight `mdfind` path where called; this is the portable fallback. Walk is bounded so it
@@ -211,6 +211,12 @@ export interface Tool {
   activity: (input: any) => string;   // plain-language "what SAM is doing"
   preview?: (input: any) => string;   // what the confirm card shows (risky only)
   run: (input: any) => Promise<string>;
+  // Same tool + same input → same answer, for the lifetime of ONE agent run (not across runs —
+  // a file can change between turns). Only for tools where that's actually true: reads of stable
+  // state, not anything time-varying (current time, a live status check) or anything that writes.
+  // Deliberately opt-in per tool rather than inferred from `safe`, which covers plenty of
+  // safe-but-not-idempotent calls (datetime, weather) caching would make wrong, not fast.
+  cacheable?: boolean;
 }
 
 // Never run these, even if approved — catastrophic / irreversible. Tuned to block the
@@ -364,6 +370,43 @@ async function runCommand(cmd: string): Promise<string> {
   } catch (e: any) {
     return `Command failed: ${e?.message || e}`.slice(0, 2000);
   }
+}
+
+// run_daemon — for a command too slow to sit in the agent loop's step budget (a full test suite,
+// a big build, a long scrape). Same HARD_DENY gate and Elon-Mode trash-aliasing as run_command;
+// the only difference is it doesn't wait. Output streams to vault/daemons/<id>.log the whole time
+// (tail -f it, or ask SAM to read it) rather than being buffered until exit, and a nudge fires on
+// completion — SAM's server is a long-running process for the life of the daemon, so a plain
+// (non-detached) child is enough to guarantee the exit handler fires; it doesn't need to survive
+// a server restart the way a true system daemon would.
+const DAEMON_DIR = join(VAULT_DIR, "daemons");
+function runDaemon(cmd: string): string {
+  const d = denied(cmd);
+  if (d) return d;
+  let finalCmd = cmd;
+  if (isElonMode()) {
+    const trashAlias = `rm() { mkdir -p ~/.sam-trash; for arg in "$@"; do case "$arg" in -*) ;; *) mv "$arg" ~/.sam-trash/"$(basename "$arg")-$(date +%s)" 2>/dev/null || true ;; esac; done; }; `;
+    finalCmd = trashAlias + cmd;
+  }
+  mkdirSync(DAEMON_DIR, { recursive: true });
+  const id = `d-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const logPath = join(DAEMON_DIR, `${id}.log`);
+  const log = createWriteStream(logPath);
+  // A write failing here (the vault dir vanished — a real, recurring hazard on this codebase's
+  // external-drive deployments) must never become an uncaught exception that takes the whole
+  // server down for an unrelated background task.
+  log.on("error", () => { /* best-effort logging — the command itself is unaffected */ });
+  log.write(`$ ${cmd}\n\n`);
+  const child = spawn(finalCmd, { shell: true, cwd: homedir(), stdio: ["ignore", "pipe", "pipe"] });
+  child.on("error", (e) => { log.end(`\n[failed to start: ${e.message}]\n`); addNudge(`Background task failed to start — "${cmd.slice(0, 60)}": ${e.message}`); });
+  child.stdout.pipe(log, { end: false });
+  child.stderr.pipe(log, { end: false });
+  child.on("close", (code) => {
+    log.end(`\n\n[exit ${code}]\n`);
+    const short = cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd;
+    addNudge(`Background task finished (exit ${code}) — "${short}". Log: ${logPath}`);
+  });
+  return `Started in the background as ${id}. Logging to ${logPath} — I'll let you know when it finishes. Ask me to read that log anytime to check progress.`;
 }
 
 // ── FILES ────────────────────────────────────────────────────
@@ -1543,7 +1586,7 @@ export const TOOLS: Tool[] = [
       const s = addSchedule(command, cron);
       return `🛰️ 24/7 research agent is live — I'll sweep the web on **${topic}** every ${hrs}h, file it into notebook **${notebook}**, and ping you what's new. (schedule ${s.id})`;
     } },
-  { name: "read_file", safe: true, description: "Read a file's contents. input: a file path (supports ~).", params: "path",
+  { name: "read_file", safe: true, cacheable: true, description: "Read a file's contents. input: a file path (supports ~).", params: "path",
     activity: (i) => `Reading file ${i.path ?? i}`, run: (i) => readFileTool(i.path ?? i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
@@ -2059,7 +2102,7 @@ export const TOOLS: Tool[] = [
     } },
   { name: "open_url", safe: true, description: "Open a URL in the default browser. input: url.", params: "url",
     activity: (i) => `Opening ${i.url ?? i}`, run: (i) => openUrl(i.url ?? i) },
-  { name: "search_files", safe: true, description: "Search the Mac for files by name/content (Spotlight). input: query.", params: "query",
+  { name: "search_files", safe: true, cacheable: true, description: "Search the Mac for files by name/content (Spotlight). input: query.", params: "query",
     activity: (i) => `Searching your files for “${i.query ?? i}”`, run: (i) => searchFiles(i.query ?? i) },
 
   // ── GitHub (via the gh CLI the user's already logged into) ──
@@ -2083,7 +2126,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Opening a GitHub issue on ${i.repo}: “${i.title}”`,
     preview: (i) => `Create a GitHub issue on ${i.repo}\nTitle: ${i.title}\n${i.body || ""}`.slice(0, 300),
     run: (i) => gh(`issue create -R ${shq(i.repo)} --title ${shq(i.title)} --body ${shq(i.body || "")}`) },
-  { name: "my_apps", safe: true, description: "List the user's own in-house apps (their GitHub repos), grabbed at startup, with descriptions.", params: "(none)",
+  { name: "my_apps", safe: true, cacheable: true, description: "List the user's own in-house apps (their GitHub repos), grabbed at startup, with descriptions.", params: "(none)",
     activity: () => `Pulling up your apps`,
     run: async () => { const a = await grabRepos(); return a.length ? a.map((r) => `• ${r.name} [${r.visibility}]${r.desc ? ` — ${r.desc}` : ""}`).join("\n") : "No apps found (is gh logged in?)."; } },
   { name: "git_diff", safe: true, description: "Show what changed in a local repo (uncommitted). input: {dir, file?}.", params: "{dir, file?}",
@@ -2283,6 +2326,8 @@ export const TOOLS: Tool[] = [
   // risky · ask first
   { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
+  { name: "run_daemon", safe: false, description: "Run a shell command in the BACKGROUND without waiting — for anything too slow for a normal step (a full test suite, a big build, a long scrape). Returns immediately with a log path; you get nudged when it finishes. input: a command string.", params: "command",
+    activity: (_i) => `Starting a background task`, preview: (i) => `Run in background:\n  ${i.command ?? i}`, run: async (i) => runDaemon(i.command ?? i) },
   { name: "write_file", safe: false, description: "Write/overwrite a file. input: {path, content}.", params: "{path, content}",
     args: { path: { type: "string", required: true, desc: "file path (supports ~)" }, content: { type: "string", required: true, desc: "the full new file contents" } },
     activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },

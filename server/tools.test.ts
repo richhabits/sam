@@ -29,7 +29,7 @@ describe("Tool Registry Integrity", () => {
   it("enforces safe flag on destructive tools", () => {
     // These tools are inherently outward/destructive and MUST be marked safe: false
     const destructiveNames = [
-      "run_command", "write_file", "replace_content", "delete_file",
+      "run_command", "run_daemon", "write_file", "replace_content", "delete_file",
       "git_commit", "git_push", "forget_memory", "send_email",
       "npm_install", "uninstall_dep", "spawn_agent", "pause_agent",
       "create_project"

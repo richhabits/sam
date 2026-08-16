@@ -764,11 +764,6 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     ``,
     user?.language && !/^en|english/i.test(user.language) ? `## Language\nAlways reply to ${name} in ${user.language}, naturally and fluently — no matter what language they write in.` : ``,
     ``,
-    `## Right now`,
-    `- Today & current time: ${nowText()}`,
-    locationText() ? `- ${name}'s location (approx): ${locationText()}` : ``,
-    `Use these for anything time- or place-sensitive ("today", "tonight", "this weekend", "near me", "the weather"). For anything current, live, scheduled, or factual (news, sport fixtures, prices, who/what/when) — SEARCH THE WEB, don't answer from old training data.`,
-    ``,
     user?.about ? `## About ${name}\n${user.about}` : ``,
     ``,
     mode === "personal"
@@ -785,6 +780,20 @@ function buildSystem(skillBody: string, projectId?: string, user?: User, recalle
     docs ? `\n## From ${name}'s documents (indexed library — real excerpts; cite the file in [brackets] when you use one; use search_docs to dig deeper)\n${docs}` : ``,
     interactive ? recallMemory() : ``,   // recent-exchange context only helps live turns, not Team/swarm/background jobs
     skillBody ? `\n## Loaded skill playbook\n${skillBody}` : ``,
+    // PREFIX-CACHE STABILITY: this used to sit right after ## Language, near the TOP of the
+    // prompt — meaning the one line that changes on literally every single call (the clock)
+    // invalidated the cached prefix for everything after it, every turn, even though the
+    // doctrine/persona/non-negotiables above rarely change within a conversation. Anthropic's
+    // cache_control breakpoints and OpenAI/DeepSeek's automatic prefix caching both cache up to
+    // the first byte that differs from the last call — moving the clock as late as possible (the
+    // recency-reminder below still needs to be the true last line, for model attention, not
+    // caching) means everything ABOVE it stays a stable, cacheable prefix across an entire
+    // conversation instead of missing on every turn.
+    `## Right now`,
+    `- Today & current time: ${nowText()}`,
+    locationText() ? `- ${name}'s location (approx): ${locationText()}` : ``,
+    `Use these for anything time- or place-sensitive ("today", "tonight", "this weekend", "near me", "the weather"). For anything current, live, scheduled, or factual (news, sport fixtures, prices, who/what/when) — SEARCH THE WEB, don't answer from old training data.`,
+    ``,
     // Recency wins: a final, hard reminder of the chosen voice — small free models weight the
     // last instruction most, so this makes the persona actually land (only when non-default).
     user?.persona && user.persona !== "sam" ? `\n${personaVoiceCompact(user.persona, name)}\nStay in this voice for your reply.` : ``,

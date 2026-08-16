@@ -298,15 +298,31 @@ export function outOfScope(toolName: string, allow?: string[]): boolean {
   return Array.isArray(allow) && !allow.includes(toolName);
 }
 
+// Dedup key for a `cacheable` tool call — same tool + same input, byte for byte. Scoped to ONE
+// executeToolBatch invocation only (never across steps of the loop), which is what keeps this
+// safe: every call in a batch runs at the same instant, so there's no possible write-then-read
+// ordering a stale cache entry could violate. A model that asks for read_file("x.ts") twice in
+// one parallel batch (it happens — a plan step and a verification step landing together) now
+// runs it once instead of twice.
+function cacheKey(tool: string, input: any): string {
+  try { return `${tool}:${JSON.stringify(input)}`; } catch { return `${tool}:${String(input)}`; }
+}
+
 export async function executeToolBatch(calls: { tool: string; input: any }[], swarm = false, allow?: string[]): Promise<BatchRun> {
   const tools = calls.map((c) => toolByName(c.tool));
   // Any out-of-scope call sinks the parallel path → falls back to the sequential path, which
   // denies it per-call with a message (rather than silently dropping it from a batch).
   if (tools.some((t, i) => !t || outOfScope(calls[i].tool, allow) || (!t.safe && !mayAutoRun(calls[i].tool, swarm)))) return { parallel: false };
+  const cache = new Map<string, Promise<string>>();
   const results = await Promise.all(calls.map(async (c, i) => {
     const t = tools[i]!;
-    let result: string;
-    try { result = await t.run(c.input); } catch (e: any) { result = `that didn't work (${e?.message || e})`; }
+    const key = t.cacheable ? cacheKey(t.name, c.input) : null;
+    let resultP = key ? cache.get(key) : undefined;
+    if (!resultP) {
+      resultP = t.run(c.input).catch((e: any) => `that didn't work (${e?.message || e})`);
+      if (key) cache.set(key, resultP);
+    }
+    const result = await resultP;
     return { tool: t.name, result: fenceToolResult(t.name, result), activity: t.activity(c.input) };
   }));
   return { parallel: true, results };
