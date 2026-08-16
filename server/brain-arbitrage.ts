@@ -1,11 +1,17 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · BRAIN PERFORMANCE & LATENCY ARBITRAGE ENGINE
 //
-//  Profiles AI model providers for speed (ms/token), throughput,
-//  error rates, and pools keys to route tasks optimally.
+//  Reference speed/throughput figures (typical published numbers, NOT a live per-request
+//  benchmark — this never actually calls a provider) paired with REAL status: whether each
+//  provider genuinely has a usable key right now, cross-checked against keys.ts's live pool
+//  state (configured keys, healthy vs. cooling-down from real failures) rather than a hardcoded
+//  "ONLINE" literal. AUDIT FIX: status used to be hardcoded "ONLINE" for every entry regardless
+//  of whether a key was ever configured — a user with zero Groq/Cerebras keys would still be
+//  confidently told those lanes were online.
 // ─────────────────────────────────────────────────────────────
 
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
+import { keyStatus } from "./keys.ts";
 
 export interface ProviderBenchmark {
   id: string;
@@ -24,6 +30,25 @@ export function getBrainPerformanceMatrix(): {
   bestReasoningProvider: string;
   benchmarks: ProviderBenchmark[];
 } {
+  // Real per-provider status: a genuinely keyless provider (noKey in the registry) is ONLINE by
+  // construction; otherwise cross-check keys.ts's live pool state — healthy keys → ONLINE, keys
+  // configured but all cooling down from real failures → DEGRADED, no keys configured at all →
+  // NO_KEY. This is the one field on each entry that reflects reality; latencyMs/tokensPerSecond
+  // below are typical published figures, not something this function ever measures.
+  const pools = keyStatus();
+  // Pollinations isn't in PROVIDER_REGISTRY at all — it's an image/video generation service
+  // (see routes.studio.ts), not an LLM "brain", so it was never part of the single source of
+  // provider identity that file's own header describes. It's genuinely keyless by design
+  // elsewhere in this codebase, so absence from the registry must not read as absence of a key.
+  const KNOWN_KEYLESS_OUTSIDE_REGISTRY = new Set(["pollinations"]);
+  const liveStatus = (id: string): ProviderBenchmark["status"] => {
+    const spec = PROVIDER_REGISTRY.find((p) => p.id === id);
+    if (spec?.noKey || (!spec && KNOWN_KEYLESS_OUTSIDE_REGISTRY.has(id))) return "ONLINE";
+    const pool = pools.find((p) => p.provider === id);
+    if (!pool || pool.total === 0) return "NO_KEY";
+    return pool.healthy > 0 ? "ONLINE" : "DEGRADED";
+  };
+
   const benchmarks: ProviderBenchmark[] = [
     {
       id: "groq",
@@ -32,7 +57,7 @@ export function getBrainPerformanceMatrix(): {
       typicalLatencyMs: 180,
       tokensPerSecond: 280,
       strengthCategory: "fast_interactive",
-      status: "ONLINE",
+      status: liveStatus("groq"),
     },
     {
       id: "cerebras",
@@ -41,7 +66,7 @@ export function getBrainPerformanceMatrix(): {
       typicalLatencyMs: 140,
       tokensPerSecond: 450,
       strengthCategory: "fast_interactive",
-      status: "ONLINE",
+      status: liveStatus("cerebras"),
     },
     {
       id: "pollinations",
@@ -50,7 +75,7 @@ export function getBrainPerformanceMatrix(): {
       typicalLatencyMs: 650,
       tokensPerSecond: 45,
       strengthCategory: "fast_interactive",
-      status: "ONLINE",
+      status: liveStatus("pollinations"),
     },
     {
       id: "deepseek",
@@ -59,7 +84,7 @@ export function getBrainPerformanceMatrix(): {
       typicalLatencyMs: 420,
       tokensPerSecond: 95,
       strengthCategory: "deep_reasoning",
-      status: "ONLINE",
+      status: liveStatus("deepseek"),
     },
     {
       id: "anthropic",
@@ -68,18 +93,24 @@ export function getBrainPerformanceMatrix(): {
       typicalLatencyMs: 580,
       tokensPerSecond: 75,
       strengthCategory: "coding_ast",
-      status: "ONLINE",
+      status: liveStatus("anthropic"),
     },
   ];
 
   const total = PROVIDER_REGISTRY.length || benchmarks.length;
   const freeCount = benchmarks.filter(b => b.tier === "free").length;
 
+  // Pick the fastest/best-reasoning entry that's actually ONLINE right now, rather than a fixed
+  // "Cerebras is fastest" claim regardless of whether Cerebras has ever had a key configured.
+  const online = benchmarks.filter((b) => b.status === "ONLINE");
+  const fastest = [...online].sort((a, b) => b.tokensPerSecond - a.tokensPerSecond)[0];
+  const reasoning = online.find((b) => b.strengthCategory === "deep_reasoning") ?? online.find((b) => b.strengthCategory === "coding_ast");
+
   return {
     totalConfiguredProviders: total,
     freeTierCount: freeCount,
-    fastestInteractiveProvider: "Cerebras (450 tok/s)",
-    bestReasoningProvider: "DeepSeek R1 / Claude 3.5 Sonnet",
+    fastestInteractiveProvider: fastest ? `${fastest.name} (${fastest.tokensPerSecond} tok/s, typical)` : "none online",
+    bestReasoningProvider: reasoning ? reasoning.name : "none online",
     benchmarks,
   };
 }

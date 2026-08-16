@@ -114,6 +114,9 @@ import { getMasterDashboard } from "./orchestrator.ts";
 import { generateMobileFeed } from "./mobile-feed.ts";
 import { conductDeepResearch } from "./deep-research.ts";
 import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
+import { executeSimdToolBatch } from "./simd-tools.ts";
+import { resolveOptimalRoute } from "./speculative-router.ts";
+import { prewarmContext } from "./prefetch.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1647,18 +1650,24 @@ export async function deepResearchSynthesizerTool(input: {
   const q = String(input?.query || "").trim();
   if (!q) return "Error: query is required for deep research synthesis.";
 
-  const rep = conductDeepResearch(q, { depth: input?.depth });
+  const rep = await conductDeepResearch(
+    q,
+    { search: webSearch, synthesize: (system, prompt) => runModel("free", system, prompt) },
+    { depth: input?.depth },
+  );
+
+  if (!rep.sources.length) return rep.executiveSummary;
 
   const lines = [
     `🔬 SAM Deep Research Brief: "${rep.topic}" (Consensus Score: ${rep.consensusConfidencePct}%):`,
     `\n## Executive Summary:`,
     rep.executiveSummary,
-    `\n## Key Cross-Verified Findings:`,
-    ...rep.keyFindings.map((f, i) => `  [${i + 1}] ${f.claim} (Confidence: ${(f.confidence * 100).toFixed(0)}%, verified across ${f.verifiedByCount} sources)`),
+    `\n## Key Findings (cited to the sources below):`,
+    ...rep.keyFindings.map((f) => `  [${f.sourceIndex}] ${f.claim} (Confidence: ${(f.confidence * 100).toFixed(0)}%)`),
     `\n## Tradeoffs & Dissenting Views:`,
     ...rep.dissentingOrConflictingViews.map(d => `  - ${d}`),
-    `\n## Grounded Sources:`,
-    ...rep.sources.map(s => `  [${s.index}] ${s.title} (${s.domain})`),
+    `\n## Sources:`,
+    ...rep.sources.map(s => `  [${s.index}] ${s.title}\n      ${s.url}`),
   ];
   return lines.join("\n");
 }
@@ -1668,11 +1677,62 @@ export async function brainPerformanceMatrixTool(): Promise<string> {
 
   const lines = [
     `🧠 SAM Brain Performance & Provider Arbitrage Matrix:`,
-    `· Total Configured Providers: ${mat.totalConfiguredProviders} (${mat.freeTierCount} zero-cost lanes active)`,
-    `· Fastest Interactive Streamer: ${mat.fastestInteractiveProvider}`,
-    `· Top Reasoning Champion: ${mat.bestReasoningProvider}`,
-    `\nActive Provider Benchmarks:`,
-    ...mat.benchmarks.map(b => `  - [${b.status}] ${b.name} (${b.tier.toUpperCase()}): ${b.typicalLatencyMs}ms latency · ${b.tokensPerSecond} tok/s [${b.strengthCategory}]`),
+    `· Providers in registry: ${mat.totalConfiguredProviders} total — ${mat.benchmarks.length} profiled below (${mat.freeTierCount} of those are zero-cost lanes)`,
+    `· Fastest Interactive Streamer (of the profiled, currently-online lanes): ${mat.fastestInteractiveProvider}`,
+    `· Top Reasoning Champion (of the profiled, currently-online lanes): ${mat.bestReasoningProvider}`,
+    `\nProfiled Providers (status is live; ms/tok-s are typical published figures, not a live per-request measurement):`,
+    ...mat.benchmarks.map(b => `  - [${b.status}] ${b.name} (${b.tier.toUpperCase()}): ~${b.typicalLatencyMs}ms latency · ~${b.tokensPerSecond} tok/s [${b.strengthCategory}]`),
+  ];
+  return lines.join("\n");
+}
+
+export async function simdParallelToolBatchTool(input: {
+  calls: { name: string; args?: any }[];
+}): Promise<string> {
+  const calls = Array.isArray(input?.calls) ? input.calls : [];
+  if (!calls.length) return "Error: calls array is required with at least 1 tool call.";
+
+  const { fenceToolResult } = await import("./agent.ts");
+  const report = await executeSimdToolBatch(calls, async (name, args) => {
+    const t = TOOLS.find(x => x.name === name);
+    if (!t) return `Tool '${name}' not found.`;
+    if (!t.safe) return `Tool '${name}' is mutating and cannot run inside parallel read batch.`;
+    return fenceToolResult(name, await t.run(args));
+  });
+
+  const lines = [
+    `🏎️ SIMD Parallel Tool Batch Executed (${report.completedCount}/${report.totalTools} completed in ${report.wallClockDurationMs}ms):`,
+    `· Sequential Baseline Estimate: ${report.sequentialEstimatedMs}ms`,
+    `· Parallel Speedup Factor: ${report.speedupFactor}x faster`,
+    `\nTool Outputs:`,
+    ...report.results.map((r, i) => `  [${i + 1}] ${r.tool} (${r.durationMs}ms): ${r.output.slice(0, 120).replace(/\n/g, " ")}${r.output.length > 120 ? "..." : ""}`),
+  ];
+  return lines.join("\n");
+}
+
+export async function speculativeRouteIntentTool(input: { prompt: string }): Promise<string> {
+  const p = String(input?.prompt || "").trim();
+  if (!p) return "Error: prompt is required to calculate speculative route.";
+
+  const plan = resolveOptimalRoute(p);
+
+  const lines = [
+    `⚡ Speculative Difficulty Route Plan for "${plan.prompt.slice(0, 60)}":`,
+    `· Complexity Tier: [${plan.tier}] (Target Latency: ${plan.targetLatencyMs}ms)`,
+    `· Primary Free Brain: ${plan.primaryProvider} (${plan.primaryModel}) · Zero-Cost: ${plan.isZeroCostLane ? "YES" : "NO"}`,
+    `· Failover Hot-Swap Chain: ${plan.failoverChain.join(" → ")}`,
+    `· Rationale: ${plan.rationale}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function prefetchWarmContextTool(input?: { topics?: string[] }): Promise<string> {
+  const res = prewarmContext(input?.topics);
+
+  const lines = [
+    `🔥 Predictive L1 Cache Pre-Warmed (${res.durationMs}ms):`,
+    `· Warmed Keys: ${res.warmedKeys.length ? res.warmedKeys.join(", ") : "All keys already warm"}`,
+    `· L1 Resident Cache Size: ${res.l1TotalEntries} entries in-memory`,
   ];
   return lines.join("\n");
 }
@@ -2726,10 +2786,22 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Conducting deep research synthesis on "${i?.query ?? i}"`,
     run: (i) => deepResearchSynthesizerTool(i) },
-  { name: "brain_performance_matrix", safe: true, description: "Audits live AI provider latency (ms/token), token throughput, zero-cost vs paid lane status, and model strength matrix. input: {}.", params: "{}",
+  { name: "brain_performance_matrix", safe: true, description: "Shows which AI providers actually have a working key right now (live), paired with typical published latency/throughput figures (reference, not a live per-request benchmark) and a strength matrix. input: {}.", params: "{}",
     args: {},
     activity: () => "Auditing AI brain performance and latency arbitrage matrix",
     run: () => brainPerformanceMatrixTool() },
+  { name: "simd_parallel_tool_batch", safe: true, description: "Runs batches of independent safe read-only tool calls concurrently with Promise.allSettled, cutting multi-tool execution time to milliseconds. input: { calls: [{ name, args? }] }.", params: "{calls}",
+    args: { calls: { type: "array", desc: "Array of tool call descriptors { name, args? }" } },
+    activity: (i) => `Executing SIMD parallel batch of ${i?.calls?.length ?? 0} tools`,
+    run: (i) => simdParallelToolBatchTool(i) },
+  { name: "speculative_route_intent", safe: true, description: "Computes the optimal low-latency difficulty tier (0, 1, or 2) and free provider failover routing plan for any user prompt. input: { prompt }.", params: "{prompt}",
+    args: { prompt: { type: "string", desc: "User prompt to classify and route" } },
+    activity: (i) => `Calculating speculative route for "${i?.prompt ?? i}"`,
+    run: (i) => speculativeRouteIntentTool(i) },
+  { name: "prefetch_warm_context", safe: true, description: "Pre-warms L1 in-memory caches with system vitals, markets, and memory prior to user turns for sub-10ms response start. input: { topics? }.", params: "{topics?}",
+    args: { topics: { type: "array", desc: "Optional topics list to prefetch into L1 cache" } },
+    activity: () => "Pre-warming L1 context cache",
+    run: (i) => prefetchWarmContextTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
