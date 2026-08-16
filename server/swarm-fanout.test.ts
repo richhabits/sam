@@ -22,7 +22,7 @@ vi.mock("./models.ts", () => ({
 }));
 
 import { swarmFanout, type FanoutTask } from "./swarm.ts";
-import { swarmFanoutTool, codebaseScanParallelTool } from "./tools.ts";
+import { swarmFanoutTool, codebaseScanParallelTool, isCredentialPath } from "./tools.ts";
 import { parseToolBatch } from "./agent.ts";
 
 let dir: string;
@@ -147,21 +147,15 @@ describe("50x Scaling Architecture", () => {
       expect(out).toContain("credential");
     });
 
-    it("skips a file with an otherwise-allowed extension living inside a credential directory", async () => {
-      // .md is in codebase_scan_parallel's own extension whitelist, and isCredentialPath matches
-      // any path containing a "/.ssh/" segment, not just the scan root itself — so a real
-      // ~/.ssh/notes.md would slip past the extension filter without this per-file check.
-      const { mkdirSync } = await import("node:fs");
-      const sshDir = join(dir, ".ssh");
-      mkdirSync(sshDir);
-      writeFileSync(join(sshDir, "notes.md"), "private_key = SHOULD-NOT-LEAK-12345");
-      writeFileSync(join(dir, "normal.ts"), "const private_key_label = 'placeholder';");
-
-      const out = await codebaseScanParallelTool({ path: dir, pattern: "private_key" });
-
-      expect(out).not.toContain("SHOULD-NOT-LEAK-12345");
-      expect(out).not.toContain("notes.md");
-      expect(out).toContain("normal.ts");
+    it("the per-file isCredentialPath filter rejects a credential-directory path directly", () => {
+      // walkFiles already refuses to descend into any dot-prefixed directory (including .ssh),
+      // so an end-to-end scan can't actually reach this branch today — confirmed by temporarily
+      // removing the filter and re-running: the walkFiles-level skip alone still passed the
+      // "refuses outright" test above. This exercises the filter predicate itself directly, so
+      // the check stays proven correct if the extension whitelist or walkFiles' skip logic ever
+      // changes and this stops being unreachable.
+      expect(isCredentialPath(join(dir, ".ssh", "notes.md"))).toBe(true);
+      expect(isCredentialPath(join(dir, "normal.ts"))).toBe(false);
     });
   });
 
