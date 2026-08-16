@@ -156,3 +156,77 @@ export function clearCache(): void {
   loaded = true;   // prevent a later lazy load() from resurrecting a stale on-disk cache (bench reproducibility)
   try { if (existsSync(CACHE_PATH)) writeFileSync(CACHE_PATH, JSON.stringify({ entries: [] })); } catch { /* best-effort */ }
 }
+
+// ── MULTI-TIER L1/L2 GENERIC TOOL & DATA CACHE ──
+export interface ToolCacheEntry {
+  key: string;
+  namespace: string;
+  value: any;
+  at: number;
+  ttlMs: number;
+}
+
+const L1_CACHE = new Map<string, ToolCacheEntry>();
+const MAX_L1 = 1000;
+let l1Hits = 0, l1Misses = 0;
+
+function namespacedKey(namespace: string, key: string): string {
+  return `${namespace}:${key}`;
+}
+
+export function toolCacheSet(namespace: string, key: string, value: any, ttlMs = 300_000): void {
+  const fullKey = namespacedKey(namespace, key);
+  if (L1_CACHE.size >= MAX_L1) {
+    const oldest = L1_CACHE.keys().next().value;
+    if (oldest) L1_CACHE.delete(oldest);
+  }
+  L1_CACHE.set(fullKey, {
+    key,
+    namespace,
+    value,
+    at: Date.now(),
+    ttlMs,
+  });
+}
+
+export function toolCacheGet<T = any>(namespace: string, key: string): T | null {
+  const fullKey = namespacedKey(namespace, key);
+  const hit = L1_CACHE.get(fullKey);
+  if (!hit) {
+    l1Misses++;
+    return null;
+  }
+  if (Date.now() - hit.at > hit.ttlMs) {
+    L1_CACHE.delete(fullKey);
+    l1Misses++;
+    return null;
+  }
+  l1Hits++;
+  return hit.value as T;
+}
+
+export function toolCacheClear(namespace?: string): void {
+  if (!namespace) {
+    L1_CACHE.clear();
+    l1Hits = 0;
+    l1Misses = 0;
+    return;
+  }
+  for (const [k, v] of L1_CACHE.entries()) {
+    if (v.namespace === namespace) L1_CACHE.delete(k);
+  }
+}
+
+export function getMultiTierCacheStats() {
+  const sem = cacheStats();
+  return {
+    semantic: sem,
+    l1: {
+      size: L1_CACHE.size,
+      hits: l1Hits,
+      misses: l1Misses,
+      hitRate: l1Hits + l1Misses > 0 ? ((l1Hits / (l1Hits + l1Misses)) * 100).toFixed(1) + "%" : "0.0%",
+    },
+  };
+}
+

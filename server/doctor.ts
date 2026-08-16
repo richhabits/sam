@@ -79,3 +79,77 @@ export function runDoctor(w: DoctorWorld): { healthy: boolean; summary: string; 
     : `${fails} thing${fails === 1 ? "" : "s"} to fix before SAM can work. The fix is below each one.`;
   return { healthy, summary, checks };
 }
+
+import { sweepStaleLatches } from "./latch.ts";
+import { proposeTask } from "./self-heal.ts";
+import { mkdirSync, existsSync, writeFileSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
+
+export interface HealReport {
+  remediated: string[];
+  tasksCreated: string[];
+  status: "healed" | "needs_attention" | "clean";
+  summary: string;
+}
+
+/**
+ * ── AUTO-HEAL DOCTOR ──
+ * Automatically remediates common recoverable issues (stale locks, missing directories)
+ * and files admin tasks for unresolvable errors.
+ */
+export function autoHealDoctor(w: DoctorWorld, vaultDir?: string): HealReport {
+  const remediated: string[] = [];
+  const tasksCreated: string[] = [];
+  const vDir = vaultDir || process.env.VAULT_DIR || join(process.cwd(), "vault");
+
+  // 1. Ensure vault exists and is writable
+  try {
+    if (!existsSync(vDir)) {
+      mkdirSync(vDir, { recursive: true });
+      remediated.push(`Created missing vault directory at ${vDir}`);
+    }
+    const testFile = join(vDir, `.doctor-write-probe-${Date.now()}.tmp`);
+    writeFileSync(testFile, "probe", "utf8");
+    unlinkSync(testFile);
+  } catch (e: any) {
+    const task = proposeTask(
+      "Vault Permission Failure",
+      `SAM cannot write to vault directory (${vDir}): ${e.message}`,
+      "bug",
+      undefined,
+      `Ensure write permissions on ${vDir}`
+    );
+    tasksCreated.push(task.title);
+  }
+
+  // 2. Sweep stale latch locks
+  try {
+    const cleared = sweepStaleLatches();
+    if (cleared.length > 0) {
+      remediated.push(`Cleaned ${cleared.length} stale lock(s): ${cleared.join(", ")}`);
+    }
+  } catch { /* best effort */ }
+
+  // 3. Inspect Doctor status
+  const doc = runDoctor(w);
+  for (const check of doc.checks) {
+    if (check.status === "fail") {
+      const task = proposeTask(
+        `Doctor Issue: ${check.label}`,
+        check.detail,
+        "bug",
+        undefined,
+        check.fix
+      );
+      tasksCreated.push(task.title);
+    }
+  }
+
+  const status = tasksCreated.length > 0 ? "needs_attention" : (remediated.length > 0 ? "healed" : "clean");
+  const summary = status === "clean"
+    ? "System is healthy, no remediation needed."
+    : `Auto-heal completed: ${remediated.length} fix(es) applied, ${tasksCreated.length} task(s) logged.`;
+
+  return { remediated, tasksCreated, status, summary };
+}
+

@@ -24,7 +24,13 @@ import { capture } from "./issues.ts";
 // scales with actual task complexity so free-tier quota isn't burned on greeting messages, but a "build + test + fix"
 // loop or 50x multi-module refactor has the headroom to fully self-correct without silently truncating.
 function maxSteps(message: string): number {
-  const is50x = /\b(50x|massive|epic|deep[- ]dive|full[- ]stack|end[- ]to[- ]end|mega|multi[- ]module|complete[- ]refactor|exhaustive|deep[- ]pipeline)\b/i;
+  // Deliberately narrow: "full stack", "end to end", "epic", "exhaustive" etc. are ordinary
+  // words people use in completely normal requests. A 50-step budget also means up to 50
+  // parallel tool calls per step, and (via swarm_fanout) up to 50 concurrent sub-agents each
+  // re-running this same function against their own task text — a loose match here compounds
+  // into real cost/resource risk, not just a wrong estimate. Require the literal, deliberate
+  // "50x" marker rather than inferring intent from common language.
+  const is50x = /\b50x\b/i;
   if (is50x.test(message)) return 50;
   // Signals that a task will need multiple distinct tool calls to complete
   const isComplex = /\b(build|deploy|test|fix|debug|analyse|refactor|research|compare|summarise|plan|write a|draft a|create a|set up|install|migrate|generate|implement|audit|review|find all|scan|crawl|extract|monitor|schedule|automate)\b.*\b(and|then|also|plus|with|ensure|verify|check)\b|\b(step[- ]by[- ]step|multi[- ]?step|end[- ]to[- ]end|full|complete|thorough|comprehensive|detailed|everything|all of)\b/i;

@@ -136,6 +136,33 @@ describe("50x Scaling Architecture", () => {
       });
       expect(out).toContain("No matches found");
     });
+
+    // AUDIT FIX: shipped safe:true (auto-runs, no approval) with zero credential-path
+    // awareness — the same bug class already found and fixed twice this session in
+    // run_safe_command and grep_search. codebase_scan_parallel reads real file content and
+    // returns matching lines; pointed at a credential directory it would leak them the same way.
+    it("refuses outright when the scan root itself is a credential path", async () => {
+      const out = await codebaseScanParallelTool({ path: "~/.ssh", pattern: "anything" });
+      expect(out).toContain("Blocked");
+      expect(out).toContain("credential");
+    });
+
+    it("skips a file with an otherwise-allowed extension living inside a credential directory", async () => {
+      // .md is in codebase_scan_parallel's own extension whitelist, and isCredentialPath matches
+      // any path containing a "/.ssh/" segment, not just the scan root itself — so a real
+      // ~/.ssh/notes.md would slip past the extension filter without this per-file check.
+      const { mkdirSync } = await import("node:fs");
+      const sshDir = join(dir, ".ssh");
+      mkdirSync(sshDir);
+      writeFileSync(join(sshDir, "notes.md"), "private_key = SHOULD-NOT-LEAK-12345");
+      writeFileSync(join(dir, "normal.ts"), "const private_key_label = 'placeholder';");
+
+      const out = await codebaseScanParallelTool({ path: dir, pattern: "private_key" });
+
+      expect(out).not.toContain("SHOULD-NOT-LEAK-12345");
+      expect(out).not.toContain("notes.md");
+      expect(out).toContain("normal.ts");
+    });
   });
 
   describe("parseToolBatch 50x", () => {

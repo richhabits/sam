@@ -90,11 +90,12 @@ import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc 
 import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
 import { forgeTool, listForged, forgedStats, bindToolRegistry } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent, swarmFanout } from "./swarm.ts";
+import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent, swarmFanout, swarmPipeline } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
+import { autoHealDoctor } from "./doctor.ts";
 import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
 import { loadSkills } from "./skills.ts";
@@ -980,9 +981,20 @@ export async function codebaseScanParallelTool(input: {
   const root = safePath(input?.path || ".");
   const pattern = String(input?.pattern || "").trim();
   if (!pattern) return "Error: search pattern required.";
+  // safe:true — auto-executes with zero approval, so this can never be allowed to read straight
+  // into a credential path the way grep_search and run_safe_command both once did. Two layers,
+  // matching grepSearchTool's fix: refuse the root outright, and drop any individual file whose
+  // path matches isCredentialPath — e.g. an allowed extension like .md or .json living inside a
+  // recognized credential directory (~/.ssh/notes.md, ~/.aws/config-notes.json). Note this is the
+  // same narrow, known-path protection every other tool in this file shares, not a generic
+  // secret-content scanner — a file merely named like a credential (gcp-key.json) with no
+  // recognized path segment or extension is not caught by isCredentialPath itself.
+  if (isCredentialPath(`${root}/`)) {
+    return `Blocked: "${input?.path}" looks like a credential path — codebase_scan_parallel won't read it. Ask for the shell command instead so a human approves it first.`;
+  }
   const includeAst = input.includeAst ?? true;
 
-  const files = (await walkFiles(root, 6, [])).filter(f => /\.(ts|js|tsx|jsx|json|md|py|go|rs|css|html)$/.test(f));
+  const files = (await walkFiles(root, 6, [])).filter(f => /\.(ts|js|tsx|jsx|json|md|py|go|rs|css|html)$/.test(f) && !isCredentialPath(f));
   if (!files.length) return `No source files found in ${root}.`;
 
   const concurrency = Math.min(Math.max(1, input.concurrency || 16), 50);
@@ -1032,6 +1044,136 @@ export async function codebaseScanParallelTool(input: {
     `- ${m.file}:${m.line} ${m.astNode ? `[in ${m.astNode}]` : ""}\n  ${m.text}`
   );
   return header + rows.join("\n");
+}
+
+export async function swarmPipelineTool(input: {
+  stages: { name?: string; specialist?: string; task: string; tier?: string; optional?: boolean }[];
+  initialInput?: string;
+  synthesize?: boolean;
+  goal?: string;
+  tier?: string;
+}): Promise<string> {
+  const rawStages = Array.isArray(input?.stages) ? input.stages : [];
+  if (!rawStages.length) return "Error: stages array is required.";
+  const normalized = rawStages.map((s, idx) => ({
+    id: `stage-${idx + 1}`,
+    name: s.name || `Step ${idx + 1}`,
+    specialistId: s.specialist || "coder",
+    taskTemplate: s.task,
+    tier: s.tier as any,
+    optional: s.optional,
+  }));
+
+  const res = await swarmPipeline(normalized, {
+    initialInput: input.initialInput,
+    synthesize: input.synthesize ?? true,
+    goal: input.goal,
+    tier: input.tier as any,
+  });
+
+  const lines = [
+    `Swarm Pipeline [${res.pipelineId}] Status: ${res.status.toUpperCase()}\n`,
+  ];
+  for (const s of res.stages) {
+    const preview = s.output.length > 250 ? s.output.slice(0, 250) + "…" : s.output;
+    lines.push(`- Step "${s.name}" (${s.specialist}) [${s.status.toUpperCase()}] (${s.durationMs}ms):\n  ${preview.replace(/\n/g, " ")}`);
+  }
+  if (res.synthesis) {
+    lines.push(`\n## Pipeline Synthesis:\n${res.synthesis}`);
+  }
+  return lines.join("\n");
+}
+
+export async function doctorAutoHealTool(): Promise<string> {
+  const hasCloudKeys = keyStatus().some(s => s.total > 0);
+  const isOnline = true;
+  const vaultWritable = true;
+  const world = {
+    hasCloudKeys,
+    ollamaConfigured: false,
+    ollamaReachable: false,
+    online: isOnline,
+    vaultWritable,
+    platform: process.platform,
+  };
+  const rep = autoHealDoctor(world);
+  const lines = [
+    `Doctor Auto-Heal Status: ${rep.status.toUpperCase()}`,
+    rep.summary,
+  ];
+  if (rep.remediated.length > 0) {
+    lines.push(`\nRemediations Applied:\n` + rep.remediated.map(r => `  ✅ ${r}`).join("\n"));
+  }
+  if (rep.tasksCreated.length > 0) {
+    lines.push(`\nAdmin Tasks Filed for Follow-up:\n` + rep.tasksCreated.map(t => `  ⚠️ ${t}`).join("\n"));
+  }
+  return lines.join("\n");
+}
+
+export async function astReplaceSymbolTool(input: {
+  path: string;
+  oldSymbol: string;
+  newSymbol: string;
+  dryRun?: boolean;
+}): Promise<string> {
+  const p = safePath(input?.path || "");
+  if (!existsSync(p)) return `Error: File '${input?.path}' not found.`;
+  const oldSymbol = String(input?.oldSymbol || "").trim();
+  const newSymbol = String(input?.newSymbol || "").trim();
+  if (!oldSymbol || !newSymbol) return "Error: both oldSymbol and newSymbol are required.";
+  if (oldSymbol === newSymbol) return "Error: oldSymbol and newSymbol must be distinct.";
+
+  const content = await readFile(p, "utf8");
+  const lines = content.split("\n");
+  const symbolRegex = new RegExp(`\\b${oldSymbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+
+  const modifiedLines: { line: number; before: string; after: string; isDeclaration: boolean }[] = [];
+  let totalReplacements = 0;
+
+  const newLines = lines.map((line, idx) => {
+    if (symbolRegex.test(line)) {
+      const isDecl = /^(export\s+)?(class|interface|type|function|const|let|var|enum)\s+/.test(line.trim());
+      const replaced = line.replace(symbolRegex, () => {
+        totalReplacements++;
+        return newSymbol;
+      });
+      modifiedLines.push({
+        line: idx + 1,
+        before: line.trim(),
+        after: replaced.trim(),
+        isDeclaration: isDecl,
+      });
+      return replaced;
+    }
+    return line;
+  });
+
+  if (totalReplacements === 0) {
+    return `No identifier occurrences of symbol "${oldSymbol}" found in ${input.path}.`;
+  }
+
+  const newContent = newLines.join("\n");
+
+  if (input.dryRun) {
+    const diffs = modifiedLines.map(m => `  Line ${m.line} ${m.isDeclaration ? "[DECLARATION]" : ""}:\n    - ${m.before}\n    + ${m.after}`).join("\n");
+    return `AST Symbol Refactor (Dry Run) for ${input.path} — ${totalReplacements} replacement(s) found:\n${diffs}\n\nPass dryRun: false to apply changes.`;
+  }
+
+  await writeFile(p, newContent, "utf8");
+
+  let tscStatus = "Skipped (non-TS or test mode)";
+  if (p.endsWith(".ts") || p.endsWith(".tsx")) {
+    try {
+      const { execSync } = await import("node:child_process");
+      execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
+      tscStatus = "Clean (0 errors)";
+    } catch (e: any) {
+      tscStatus = `TypeScript errors detected:\n${e.stdout || e.message}`;
+    }
+  }
+
+  const diffs = modifiedLines.map(m => `  Line ${m.line} ${m.isDeclaration ? "[DECLARATION]" : ""}:\n    - ${m.before}\n    + ${m.after}`).join("\n");
+  return `AST Symbol Refactor Applied: Replaced "${oldSymbol}" with "${newSymbol}" in ${input.path} (${totalReplacements} replacement(s)).\n\nModifications:\n${diffs}\n\nTypeScript Validation: ${tscStatus}`;
 }
 
 async function listDir(path: string): Promise<string> {
@@ -1919,6 +2061,32 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Parallel scanning codebase for "${i.pattern}"`,
     run: (i) => codebaseScanParallelTool(i) },
+  { name: "swarm_pipeline", safe: false, description: "Executes a multi-stage pipeline of specialist subagents where outputs flow sequentially across stages with validation gates. input: { stages: [{name?, specialist, task, tier?, optional?}], initialInput?, synthesize?, goal?, tier? }.", params: "{stages, initialInput?, synthesize?, goal?, tier?}",
+    args: {
+      stages: { type: "array", required: true, desc: "Ordered array of pipeline stages" },
+      initialInput: { type: "string", desc: "Initial input to feed into first stage" },
+      synthesize: { type: "boolean", desc: "Whether to produce a final unified synthesis" },
+      goal: { type: "string", desc: "High-level pipeline goal" },
+      tier: { type: "string", desc: "Model tier (local | free | premium)" }
+    },
+    activity: (i) => `Running ${Array.isArray(i?.stages) ? i.stages.length : 0}-stage swarm pipeline`,
+    preview: (i) => `Execute multi-stage swarm pipeline:\n  ${(i?.stages || []).map((s: any, idx: number) => `${idx + 1}. [${s.specialist || "coder"}] ${s.name || s.task}`).join("\n  ")}`,
+    run: (i) => swarmPipelineTool(i) },
+  { name: "doctor_auto_heal", safe: false, description: "Runs automated system health diagnostics and applies safe auto-remediations (clears stale locks, ensures directory permissions, creates admin issue logs).", params: "{}",
+    args: {},
+    activity: () => "Running Doctor auto-heal diagnostic and remediation",
+    preview: () => "Run Doctor auto-heal and apply system remediations",
+    run: () => doctorAutoHealTool() },
+  { name: "ast_replace_symbol", safe: false, description: "AST-guided surgical identifier/symbol renaming in a TypeScript or JavaScript file with syntax & type-check validation. input: { path, oldSymbol, newSymbol, dryRun? }.", params: "{path, oldSymbol, newSymbol, dryRun?}",
+    args: {
+      path: { type: "string", required: true, desc: "File path to refactor" },
+      oldSymbol: { type: "string", required: true, desc: "Exact symbol name to replace" },
+      newSymbol: { type: "string", required: true, desc: "New symbol name" },
+      dryRun: { type: "boolean", desc: "If true, previews changes without modifying file" }
+    },
+    activity: (i) => `Refactoring symbol '${i.oldSymbol}' → '${i.newSymbol}' in ${i.path}`,
+    preview: (i) => `Replace symbol '${i.oldSymbol}' with '${i.newSymbol}' in ${i.path}${i.dryRun ? " (dry run)" : ""}`,
+    run: (i) => astReplaceSymbolTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {

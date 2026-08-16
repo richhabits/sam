@@ -468,4 +468,138 @@ export async function swarmFanout(
   };
 }
 
+export interface PipelineStage {
+  id?: string;
+  name: string;
+  specialistId: string;
+  taskTemplate: string; // supports {{previous}} and {{stages.<id|name>.output}}
+  tier?: Tier;
+  optional?: boolean; // if true, failure does not abort the pipeline
+}
+
+export interface PipelineResult {
+  pipelineId: string;
+  status: "done" | "aborted" | "error";
+  stages: {
+    id: string;
+    name: string;
+    specialist: string;
+    status: "done" | "paused" | "error" | "skipped";
+    input: string;
+    output: string;
+    durationMs: number;
+  }[];
+  finalOutput: string;
+  synthesis?: string;
+}
+
+/**
+ * ── MULTI-STAGE SWARM PIPELINE ──
+ * Chains specialist subagents sequentially where each stage receives
+ * outputs from previous stages with validation gates and synthesis.
+ */
+export async function swarmPipeline(
+  stages: PipelineStage[],
+  options: {
+    initialInput?: string;
+    synthesize?: boolean;
+    goal?: string;
+    tier?: Tier;
+  } = {}
+): Promise<PipelineResult> {
+  const pipelineId = "pip-" + Math.random().toString(36).slice(2, 9);
+  const stageOutputs: Record<string, string> = {};
+  const results: PipelineResult["stages"] = [];
+  let previousOutput = options.initialInput || "";
+  let aborted = false;
+
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i];
+    const stageId = stage.id || `stage-${i + 1}`;
+    
+    if (aborted) {
+      results.push({
+        id: stageId,
+        name: stage.name,
+        specialist: stage.specialistId,
+        status: "skipped",
+        input: "",
+        output: "Skipped due to earlier pipeline failure.",
+        durationMs: 0,
+      });
+      continue;
+    }
+
+    // Interpolate {{previous}} and {{stages.<key>.output}}
+    let resolvedTask = stage.taskTemplate.replace(/\{\{previous\}\}/gi, previousOutput);
+    for (const [k, v] of Object.entries(stageOutputs)) {
+      resolvedTask = resolvedTask.replace(new RegExp(`\\{\\{stages\\.${k}\\.output\\}\\}`, "gi"), v);
+    }
+
+    const t0 = Date.now();
+    try {
+      const res = await spawnSubAgent({
+        task: resolvedTask,
+        specialistId: stage.specialistId,
+        tier: stage.tier || options.tier,
+      });
+      const durationMs = Date.now() - t0;
+      const isSuccess = res.status === "done";
+      
+      results.push({
+        id: stageId,
+        name: stage.name,
+        specialist: stage.specialistId,
+        status: res.status as any,
+        input: resolvedTask,
+        output: res.output,
+        durationMs,
+      });
+
+      if (isSuccess) {
+        previousOutput = res.output;
+        stageOutputs[stageId] = res.output;
+        stageOutputs[stage.name] = res.output;
+      } else if (!stage.optional) {
+        aborted = true;
+      }
+    } catch (e: any) {
+      results.push({
+        id: stageId,
+        name: stage.name,
+        specialist: stage.specialistId,
+        status: "error",
+        input: resolvedTask,
+        output: e?.message || "Stage execution failed",
+        durationMs: Date.now() - t0,
+      });
+      if (!stage.optional) aborted = true;
+    }
+  }
+
+  const finalOutput = previousOutput || (results[results.length - 1]?.output || "Pipeline finished with no output.");
+  let synthesis: string | undefined;
+
+  if (options.synthesize && results.length > 0) {
+    const tier = options.tier || "free";
+    const synthSys = "You are SAM's pipeline synthesizer. Given a multi-stage specialist pipeline run, produce a clean end-to-end summary of what was accomplished and the final result.";
+    const report = results.map((r, i) => `### Step ${i + 1}: ${r.name} (${r.specialist}) [${r.status}]\n${r.output}`).join("\n\n");
+    try {
+      const sr = await runModel(tier, synthSys, `Pipeline Goal: ${options.goal || "Multi-stage Execution"}\n\n${report}\n\nSynthesis:`);
+      synthesis = sr.text;
+    } catch {
+      synthesis = finalOutput;
+    }
+  }
+
+  return {
+    pipelineId,
+    status: aborted ? "aborted" : "done",
+    stages: results,
+    finalOutput,
+    synthesis,
+  };
+}
+
+
 
