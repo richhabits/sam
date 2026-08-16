@@ -117,6 +117,9 @@ import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import { executeSimdToolBatch } from "./simd-tools.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
 import { prewarmContext } from "./prefetch.ts";
+import { trySolveLocally } from "./local-micro-solver.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1737,6 +1740,36 @@ export async function prefetchWarmContextTool(input?: { topics?: string[] }): Pr
   return lines.join("\n");
 }
 
+export async function localMicroSolverTool(input: { query: string }): Promise<string> {
+  const q = String(input?.query || "").trim();
+  if (!q) return "Error: query is required for local micro solver.";
+
+  const res = trySolveLocally(q);
+  if (res.solvedLocally) {
+    return `⚡ Local Zero-Token Solution (${res.durationMs}ms · 0 tokens · $0.00):\n· Type: ${res.type.toUpperCase()}\n· Result: ${res.answer}`;
+  }
+  return `ℹ️ Query "${q}" is non-deterministic or requires multi-step LLM reasoning.`;
+}
+
+export async function spaceConsumptionOptimizerTool(input?: { mode?: "audit" | "compact" }): Promise<string> {
+  const mode = input?.mode || "audit";
+  if (mode === "compact") {
+    const res = compactSpaceAndMemory();
+    return `🧹 Space & Memory Compaction Completed in ${res.durationMs}ms:\n· Purged Cache Items: ${res.freedCacheEntries}\n· Current Heap Memory: ${res.currentHeapUsedMb} MB\n· Status: ${res.status}`;
+  }
+
+  const audit = auditSpaceConsumption();
+  return `📊 Memory & Storage Consumption Audit:\n· Heap Memory Used: ${audit.heapUsedMb} MB (of ${audit.heapTotalMb} MB allocated)\n· Resident Set (RSS): ${audit.rssMb} MB\n· Active L1 Cache Entries: ${audit.l1CacheEntries}\n· Status: [${audit.status}]\n· Recommendation: ${audit.savingsRecommendation}`;
+}
+
+export async function intentAutoDisambiguatorTool(input: { prompt: string; activeFile?: string }): Promise<string> {
+  const p = String(input?.prompt || "").trim();
+  if (!p) return "Error: prompt is required for intent disambiguation.";
+
+  const dis = disambiguateUserIntent(p, { activeFile: input?.activeFile });
+  return `🎯 Disambiguated Intent (${dis.confidencePct}% confidence):\n· Inferred Target: ${dis.inferredTarget}\n· Recommended Action: ${dis.recommendedTool}(${JSON.stringify(dis.inferredArgs)})\n· Why: ${dis.explanation}`;
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2802,6 +2835,21 @@ export const TOOLS: Tool[] = [
     args: { topics: { type: "array", desc: "Optional topics list to prefetch into L1 cache" } },
     activity: () => "Pre-warming L1 context cache",
     run: (i) => prefetchWarmContextTool(i) },
+  { name: "local_micro_solver", safe: true, description: "Solves arithmetic calculations, unit conversions (bytes, time), timestamps, and deterministic queries in <1ms locally with 0 LLM API tokens. input: { query }.", params: "{query}",
+    args: { query: { type: "string", desc: "Math, conversion, timestamp, or deterministic query" } },
+    activity: (i) => `Solving locally: "${i?.query ?? i}"`,
+    run: (i) => localMicroSolverTool(i) },
+  { name: "space_consumption_optimizer", safe: true, description: "Audits memory heap consumption, sweeps expired caches, and reclaims RAM footprint. input: { mode? } ('audit' or 'compact').", params: "{mode?}",
+    args: { mode: { type: "string", desc: "Operation mode: 'audit' (default) or 'compact'" } },
+    activity: (i) => `${i?.mode === "compact" ? "Compacting" : "Auditing"} memory and storage footprint`,
+    run: (i) => spaceConsumptionOptimizerTool(i) },
+  { name: "intent_auto_disambiguator", safe: true, description: "Infers exact target actions and parameters from ambiguous shorthand queries based on workspace context. input: { prompt, activeFile? }.", params: "{prompt, activeFile?}",
+    args: {
+      prompt: { type: "string", desc: "User's shorthand or ambiguous prompt" },
+      activeFile: { type: "string", desc: "Optional current active editor file" }
+    },
+    activity: (i) => `Disambiguating intent for: "${i?.prompt ?? i}"`,
+    run: (i) => intentAutoDisambiguatorTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
