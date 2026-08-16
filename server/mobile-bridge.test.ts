@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { createHash } from "node:crypto";
 import {
   prepareMobilePush,
   issueBiometricChallenge,
@@ -29,13 +30,25 @@ describe("Mobile Bridge & Push Notification Engine", () => {
     expect(challenge.challengeId).toContain("bio_");
     expect(challenge.nonce.length).toBeGreaterThanOrEqual(16);
 
-    // Immediate token verification
-    const verified = verifyBiometricChallenge(challenge.challengeId, challenge.nonce);
+    const token = createHash("sha256").update(challenge.nonce + challenge.purpose).digest("hex");
+    const verified = verifyBiometricChallenge(challenge.challengeId, token);
     expect(verified).toBe(true);
 
     // Cannot replay token
-    const replayed = verifyBiometricChallenge(challenge.challengeId, challenge.nonce);
+    const replayed = verifyBiometricChallenge(challenge.challengeId, token);
     expect(replayed).toBe(false);
+  });
+
+  // AUDIT FIX: verifyBiometricChallenge used to also accept the raw nonce echoed straight
+  // back as "valid" — but issueBiometricChallenge() hands the nonce to the caller in its own
+  // response, so that accepted a value that proves nothing beyond "received the HTTP
+  // response." Removed; this pins it rejected. (Note the sha256(nonce+purpose) path above
+  // isn't real biometric proof either, for the same reason — see the warning comment on
+  // verifyBiometricChallenge. This function is currently unwired to any route or tool.)
+  it("rejects the raw nonce echoed back as a token — that proves nothing was actually verified", () => {
+    const challenge = issueBiometricChallenge("Authorize high-stakes trade");
+    const rejected = verifyBiometricChallenge(challenge.challengeId, challenge.nonce);
+    expect(rejected).toBe(false);
   });
 
   it("retrieves mobile bridge device snapshot", () => {

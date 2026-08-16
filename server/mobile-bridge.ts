@@ -109,6 +109,17 @@ export function issueBiometricChallenge(purpose = "Authorize sensitive action"):
   return challenge;
 }
 
+// AUDIT WARNING — this is NOT yet a real biometric check, and must not be wired to gate
+// anything sensitive until it is one. issueBiometricChallenge() returns `nonce` and `purpose`
+// directly in its response; any caller who receives that response already has everything
+// needed to compute sha256(nonce + purpose) themselves — no FaceID/TouchID/fingerprint scan
+// required. A real implementation needs proof of something the server never sees: a signature
+// made with a device-bound key that only unlocks after a successful local biometric prompt
+// (Secure Enclave / Android StrongBox / WebAuthn-style attestation), verified here against a
+// public key registered at enrollment. Until that exists, this function only proves the caller
+// received the challenge over the network — currently unreachable from any route or tool, kept
+// as scaffolding, previously also accepted the raw nonce echoed straight back as "valid" (an
+// even weaker check with zero justification — removed).
 export function verifyBiometricChallenge(challengeId: string, clientToken: string): boolean {
   const ch = ACTIVE_CHALLENGES.get(challengeId);
   if (!ch) return false;
@@ -117,9 +128,8 @@ export function verifyBiometricChallenge(challengeId: string, clientToken: strin
     return false;
   }
 
-  // Token is verified if it hashes the challenge nonce
   const expectedHash = createHash("sha256").update(ch.nonce + ch.purpose).digest("hex");
-  const valid = clientToken === expectedHash || clientToken === ch.nonce;
+  const valid = clientToken === expectedHash;
 
   ACTIVE_CHALLENGES.delete(challengeId);
   return valid;
