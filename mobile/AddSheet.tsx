@@ -53,6 +53,19 @@ const CATALOGUE: { kind: Native; label: string; hint: string; glyph: string }[] 
   { kind: 'tools', label: 'Tools', hint: 'Every tool SAM can reach', glyph: GLYPHS.tools },
 ];
 
+// Same rule as everything else in this file: a row here only if the capability actually runs
+// from a phone today, not "coming soon". make_slides, deep_research_synthesizer and
+// generate_image are all `safe: true` server tools — no desktop passkey needed, unlike a yard
+// build. Deliberately NOT included: a spreadsheet-creation quick action (sheets.ts only
+// analyses existing data, it has no creation path) and a website-building one (yard's
+// /api/yard/enqueue is isYardTrusted — needs the desktop passkey a phone can't hold, per this
+// file's own note on why yard jobs aren't listed here at all).
+const QUICK_ACTIONS: { id: string; title: string; hint: string; glyph: string; prompt: string }[] = [
+  { id: 'slides', title: 'Create slides', hint: 'A structured deck on any topic', glyph: GLYPHS.slides, prompt: 'Create a 5-slide deck on ' },
+  { id: 'research', title: 'Deep research', hint: 'Multi-angle, cited findings', glyph: GLYPHS.research, prompt: 'Conduct deep research on ' },
+  { id: 'image', title: 'Create image', hint: 'Generate an image from a description', glyph: GLYPHS.imageGen, prompt: 'Generate a high-res image of ' },
+];
+
 /** SAM's own endpoints each name their own array; normalise to one row so the list stays dumb. */
 function toRows(kind: Native, body: any): Item[] {
   const arr = Array.isArray(body) ? body : body?.[kind] || body?.items || [];
@@ -227,6 +240,20 @@ export default function AddSheet({
                   if (a) { onAttach(a); onClose(); }
                 }}
               />
+            </Section>
+
+            <Section ios={ios} header="Quick start" footer="Drops a starter prompt into the message box, finish the thought and send.">
+              {QUICK_ACTIONS.map((a, i) => (
+                <Row
+                  key={a.id}
+                  ios={ios}
+                  glyph={a.glyph}
+                  title={a.title}
+                  subtitle={a.hint}
+                  onPress={() => { onPick(a.prompt); onClose(); }}
+                  last={i === QUICK_ACTIONS.length - 1}
+                />
+              ))}
             </Section>
 
             <Section ios={ios} header="From SAM" footer="Picking one drops its name into the message box. Nothing runs until you send it.">

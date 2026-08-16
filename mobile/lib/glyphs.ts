@@ -89,6 +89,10 @@ export const GLYPHS = {
   projects: '◰', // square with upper-left quadrant — a board with work on it
   tools: `⚒${TEXT}`, // hammer and pick, as taskGlyph draws a build
   connector: '◇', // white diamond — a service SAM can reach
+  slides: '▥', // square with vertical fill — stacked panels, a deck
+  research: '◍', // circle with vertical fill — a focused pass over sources
+  imageGen: '◑', // circle, right half black — distinct shape family from Photos (▨) on purpose,
+  // since a generated image is not an attached one and the two rows must not read as the same idea
 
   // Jobs. taskGlyph() owns the kind→mark mapping; these are its vocabulary, here so the
   // emoji rule walks them too.
