@@ -1412,6 +1412,7 @@ registerPeopleRoutes(app, PORT);
 
 // ── The Team + The Ninjas: parallel specialists, synthesised (SSE) ──
 app.get("/api/team/roster", (_req, res) => res.json({ crew: SPECIALISTS, ninjas: NINJAS }));
+app.get("/api/agents", (_req, res) => res.json({ specialists: SPECIALISTS, crew: SPECIALISTS, ninjas: NINJAS }));
 async function runSquad(kind: "team" | "ninjas", req: any, res: any) {
   const { message, projectId, user } = req.body as { message: string; projectId?: string; user?: User };
   res.setHeader("Content-Type", "text/event-stream");
