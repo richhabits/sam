@@ -3,6 +3,15 @@ import type { Express } from "express";
 import * as notebook from "./notebook.ts";
 import { runModel } from "./models.ts";
 import { TOOLS } from "./tools.ts";
+import {
+  HIGGSFIELD_CAMERA_RIGS,
+  HIGGSFIELD_LENSES,
+  HIGGSFIELD_PHYSICS,
+  buildCharacterAnchorPrompt,
+  generateStoryboardDirector,
+  compileHiggsfieldMotionPrompt,
+  type CharacterProfile,
+} from "./studio-higgsfield.ts";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
@@ -191,6 +200,72 @@ export function registerStudioRoutes(app: Express) {
 
   app.get("/api/studio/presets/cameras", (_req, res) => {
     res.json({ cameras: CAMERA_PRESETS });
+  });
+
+  app.get("/api/studio/presets/motion", (_req, res) => {
+    res.json({
+      cameras: HIGGSFIELD_CAMERA_RIGS,
+      physics: HIGGSFIELD_PHYSICS,
+    });
+  });
+
+  app.get("/api/studio/presets/lenses", (_req, res) => {
+    res.json({ lenses: HIGGSFIELD_LENSES });
+  });
+
+  app.post("/api/studio/storyboard", async (req, res) => {
+    const { concept, shotCount, style, character } = req.body || {};
+    if (!concept) return res.status(400).json({ error: "no concept provided" });
+    try {
+      const storyboard = await generateStoryboardDirector({
+        concept: String(concept),
+        shotCount: Number(shotCount) || 4,
+        style: style ? String(style) : undefined,
+        character: character as CharacterProfile,
+      });
+      res.json(storyboard);
+    } catch (e: any) {
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  app.post("/api/studio/character/consistency", (req, res) => {
+    const char = req.body as CharacterProfile;
+    if (!char?.name) return res.status(400).json({ error: "character name required" });
+    const anchorPrompt = buildCharacterAnchorPrompt(char);
+    res.json({
+      characterId: char.characterId || `char_${Date.now()}`,
+      anchorPrompt,
+      tokens: char.distinctTokens || [],
+    });
+  });
+
+  app.post("/api/studio/motion/control", (req, res) => {
+    const { basePrompt, cameraRigId, lensId, physicsId, motionIntensity, aspectRatio, characterProfile, seed } = req.body || {};
+    if (!basePrompt) return res.status(400).json({ error: "basePrompt required" });
+    const synthesis = compileHiggsfieldMotionPrompt({
+      basePrompt: String(basePrompt),
+      cameraRigId,
+      lensId,
+      physicsId,
+      motionIntensity: Number(motionIntensity) || 1.0,
+      aspectRatio,
+      characterProfile,
+      seed,
+    });
+    res.json(synthesis);
+  });
+
+  app.post("/api/studio/lipsync", (req, res) => {
+    const { prompt, speaker, transcript } = req.body || {};
+    if (!prompt && !transcript) return res.status(400).json({ error: "prompt or transcript required" });
+    const voiceSyncPrompt = `Realistic talking head animation, high-fidelity lip sync with precise phoneme viseme articulation matching spoken speech: "${String(transcript || prompt).slice(0, 300)}", micro-expressions, subtle natural eye blinks, facial muscle movement, head tilt pacing, cinematic studio portrait lighting.`;
+    res.json({
+      speaker: speaker || "Actor",
+      lipSyncPrompt: voiceSyncPrompt,
+      aspectRatio: "16:9",
+      negativePrompt: "mouth distortion, unnatural teeth, audio desync, robotic jaw movement, plastic skin",
+    });
   });
 
   app.post("/api/studio/enhance", async (req, res) => {
