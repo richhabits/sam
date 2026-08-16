@@ -20,15 +20,52 @@
 //  so a database read cannot resurrect a live session. Pairing codes are single-use and short-lived.
 // ─────────────────────────────────────────────────────────────
 
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomInt, createHash, timingSafeEqual } from "node:crypto";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "./db.ts";
 
 export const SESSION_COOKIE = "sam_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // 30-day rolling expiry
-const CODE_TTL_MS = 15 * 60 * 1000;                // a pairing code is good for 15 minutes (forgiving for a walk-to-the-phone hand-off; still single-use + short-lived)
+const CODE_TTL_MS = 15 * 60 * 1000;                // the 32-char hex code is good for 15 minutes (forgiving for a walk-to-the-phone hand-off; 128 bits of entropy makes the window irrelevant to brute force)
+// AUDIT: the 6-digit PIN shares the SAME pendingCodes bundle as the hex code, but has only
+// ~900,000 possible values — nowhere near enough entropy to reuse a 15-minute, unrate-limited
+// window. Both routes that call claimCode() (GET /pair, POST /api/pair/claim) had ZERO rate
+// limiting before this fix: an attacker on the network could try all 900k PINs well within 15
+// minutes with plain concurrent HTTP requests and pair a malicious device with full session
+// access. Fixed two ways: a much shorter PIN-specific expiry, and a per-IP lockout on repeated
+// failed claims (keyed on the real socket address, not a spoofable header — see
+// sam-shared-ratelimit-signin-lockout for why that distinction matters).
+const PIN_TTL_MS = 2 * 60 * 1000;                  // the 6-digit PIN is good for 2 minutes only
 const TOUCH_THROTTLE_MS = 60 * 60 * 1000;          // only rewrite last_seen once an hour (roll without write-amplifying)
+const CLAIM_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;     // rolling window for counting failed claims per IP
+const CLAIM_MAX_ATTEMPTS = 8;                      // generous for genuine typos, tight enough to kill brute force
+const CLAIM_LOCKOUT_MS = 10 * 60 * 1000;           // locked out for 10 minutes after exceeding the limit
+
+interface ClaimAttemptState { count: number; windowStart: number; lockedUntil: number; }
+const claimAttempts = new Map<string, ClaimAttemptState>();
+
+/** True if this client is currently locked out from claim attempts. */
+function isLockedOut(clientIp: string, now: number): boolean {
+  const s = claimAttempts.get(clientIp);
+  return !!s && s.lockedUntil > now;
+}
+
+/** Record a failed claim attempt, locking the IP out once it exceeds the threshold within the window. */
+function recordFailedAttempt(clientIp: string, now: number): void {
+  let s = claimAttempts.get(clientIp);
+  if (!s || now - s.windowStart > CLAIM_ATTEMPT_WINDOW_MS) {
+    s = { count: 0, windowStart: now, lockedUntil: 0 };
+    claimAttempts.set(clientIp, s);
+  }
+  s.count++;
+  if (s.count >= CLAIM_MAX_ATTEMPTS) s.lockedUntil = now + CLAIM_LOCKOUT_MS;
+}
+
+/** A successful claim clears this IP's failure history — a genuine owner shouldn't stay throttled. */
+function clearAttempts(clientIp: string): void {
+  claimAttempts.delete(clientIp);
+}
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const db = openDb(join(VAULT_DIR, "sessions.db"));
@@ -48,7 +85,8 @@ try { db.exec(`ALTER TABLE sessions ADD COLUMN grants TEXT NOT NULL DEFAULT '{}'
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 interface PendingPairing {
-  expiry: number;
+  expiry: number;      // the 32-char hex code's own expiry (15 min)
+  pinExpiry?: number;  // the 6-digit PIN's own, much shorter expiry (2 min) — undefined if this bundle has no PIN
   pin?: string;
   code?: string;
 }
@@ -64,11 +102,16 @@ function normalizeCode(raw: string): string {
 
 /** Mint a one-time pairing bundle containing both a full 32-char hex token and a 6-digit PIN. */
 export function mintPairingBundle(now: number): { code: string; pin: string } {
-  for (const [h, entry] of pendingCodes) if (entry.expiry <= now) pendingCodes.delete(h);   // prune
+  for (const [h, entry] of pendingCodes) {
+    const stillLive = entry.expiry > now || (entry.pinExpiry !== undefined && entry.pinExpiry > now);
+    if (!stillLive) pendingCodes.delete(h);
+  }
   const code = randomBytes(16).toString("hex");   // 32 hex chars, single-use, short-lived
-  const pin = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit friendly PIN
+  // randomInt, not Math.random() — this grants real device access, so it needs the same
+  // cryptographically-secure source as the hex code above, not a non-crypto PRNG.
+  const pin = String(randomInt(100000, 1000000));  // 6-digit friendly PIN
 
-  const entry: PendingPairing = { expiry: now + CODE_TTL_MS, pin, code };
+  const entry: PendingPairing = { expiry: now + CODE_TTL_MS, pinExpiry: now + PIN_TTL_MS, pin, code };
   pendingCodes.set(sha(normalizeCode(code)), entry);
   pendingCodes.set(sha(normalizeCode(pin)), entry);
   return { code, pin };
@@ -80,12 +123,23 @@ export function mintPairingCode(now: number): string {
 }
 
 /** Exchange a valid, unexpired, single-use code or 6-digit PIN for a new session. Returns the raw session token
- *  (to set as the cookie) or null if the code is unknown/expired/already used. */
-export function claimCode(code: string, now: number, label = "browser"): string | null {
+ *  (to set as the cookie) or null if the code is unknown/expired/already used/rate-limited.
+ *  clientIp should be the caller's real socket address (not a client-supplied header) — it
+ *  gates the per-IP lockout that specifically protects the low-entropy 6-digit PIN. */
+export function claimCode(code: string, now: number, label = "browser", clientIp = "unknown"): string | null {
+  if (isLockedOut(clientIp, now)) return null;
+
   const norm = normalizeCode(code);
   const h = sha(norm);
   const entry = pendingCodes.get(h);
-  if (!entry || entry.expiry <= now) { pendingCodes.delete(h); return null; }
+  const isPinMatch = !!entry && entry.pin !== undefined && sha(normalizeCode(entry.pin)) === h;
+  const relevantExpiry = isPinMatch ? entry?.pinExpiry : entry?.expiry;
+
+  if (!entry || relevantExpiry === undefined || relevantExpiry <= now) {
+    pendingCodes.delete(h);
+    recordFailedAttempt(clientIp, now);
+    return null;
+  }
 
   // SINGLE USE: Consume both the 32-char hex code and the 6-digit PIN linked to this bundle
   for (const [key, val] of pendingCodes.entries()) {
@@ -94,6 +148,7 @@ export function claimCode(code: string, now: number, label = "browser"): string 
     }
   }
 
+  clearAttempts(clientIp);
   const token = randomBytes(32).toString("base64url");
   db.prepare(`INSERT INTO sessions (hash, created, last_seen, label) VALUES (?, ?, ?, ?)`)
     .run(sha(token), now, now, String(label).slice(0, 60));

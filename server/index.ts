@@ -222,9 +222,9 @@ app.get("/pair", (req, res) => {
   const code = typeof req.query.code === "string" ? req.query.code : "";
   // B2 — a real device label from the one thing every pairing request already carries,
   // instead of every row in the registry reading the same literal "browser".
-  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"]));
+  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"]), req.socket.remoteAddress || "unknown");
   if (!token) {
-    res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used or has expired (they last 15 minutes). Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
+    res.status(400).type("html").send(`<!doctype html><meta charset=utf8><body style="font-family:system-ui;max-width:34rem;margin:16vh auto;padding:0 6vw;line-height:1.5"><h2>Pairing link expired</h2><p>That code was already used, has expired, or too many wrong attempts were made recently. Start SAM again to print a fresh link, or run pairing from the desktop app.</p></body>`);
     return;
   }
   res.setHeader("Set-Cookie", sessionCookieHeader(token));
@@ -241,8 +241,8 @@ app.post("/api/pair/claim", (req, res) => {
   const code = typeof req.body?.code === "string" ? req.body.code : "";
   // X-SAM-Client lets the native app name its platform — React Native's User-Agent carries no
   // device, so without it every phone registers as "device · browser". Closed allowlist, see guessLabel.
-  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"], req.headers["x-sam-client"]));
-  if (!token) { res.status(400).json({ error: "That code was already used or has expired (they last 15 minutes)." }); return; }
+  const token = claimCode(code, Date.now(), guessLabel(req.headers["user-agent"], req.headers["x-sam-client"]), req.socket.remoteAddress || "unknown");
+  if (!token) { res.status(400).json({ error: "That code was already used, has expired, or too many wrong attempts were made recently." }); return; }
   res.json({ token });
 });
 // Mint a fresh pairing code — the desktop app calls this to pair a new browser/phone.
@@ -278,8 +278,9 @@ app.post("/api/pair/new", (req, res) => {
   res.json({
     url: `http://${ip}:${PORT}/pair?code=${bundle.code}`,
     code: bundle.code,
-    pin: bundle.pin,
     expiresInSec: 900,
+    pin: bundle.pin,
+    pinExpiresInSec: 120, // the PIN is far lower-entropy than the hex code — much shorter window, see pairing.ts
   });
 });
 // Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is

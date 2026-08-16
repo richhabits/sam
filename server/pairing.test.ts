@@ -67,6 +67,59 @@ describe("pairing codes → sessions", () => {
     expect(P.claimCode("deadbeef", NOW)).toBeNull();
     expect(P.claimCode("", NOW)).toBeNull();
   });
+
+  // AUDIT FIX: the 6-digit PIN (~900,000 possible values) shared the hex code's 15-minute
+  // window, and neither claim route (GET /pair, POST /api/pair/claim) had ANY rate limiting —
+  // an attacker on the network could brute-force every PIN well within 15 minutes with plain
+  // concurrent HTTP requests. Fixed two ways: a much shorter PIN-only expiry, and a per-IP
+  // lockout on repeated failed claims. These pin both.
+  describe("PIN brute-force protection", () => {
+    it("the PIN expires much sooner than the hex code from the same bundle", () => {
+      const bundle = P.mintPairingBundle(NOW);
+      // Past the PIN's own short window, but still well inside the hex code's 15-minute one.
+      expect(P.claimCode(bundle.pin, NOW + 3 * 60 * 1000)).toBeNull();
+      expect(P.claimCode(bundle.code, NOW + 3 * 60 * 1000)).toBeTruthy();
+    });
+
+    it("locks out an IP after repeated failed claims, independent of whether any single code was real", () => {
+      const ip = "10.0.0.5";
+      for (let i = 0; i < 8; i++) {
+        expect(P.claimCode(`wrong${i}`, NOW, "browser", ip)).toBeNull();
+      }
+      // The 9th attempt is now blocked by the lockout itself, even with a real, valid PIN —
+      // this is the actual brute-force defense, not just "that guess was wrong".
+      const bundle = P.mintPairingBundle(NOW);
+      expect(P.claimCode(bundle.pin, NOW, "browser", ip)).toBeNull();
+    });
+
+    it("the lockout is per-IP — a different device isn't punished for someone else's failed guesses", () => {
+      const attacker = "10.0.0.6";
+      for (let i = 0; i < 8; i++) P.claimCode(`wrong${i}`, NOW, "browser", attacker);
+
+      const bundle = P.mintPairingBundle(NOW);
+      const legitimateOwner = "10.0.0.7";
+      expect(P.claimCode(bundle.pin, NOW, "browser", legitimateOwner)).toBeTruthy();
+    });
+
+    it("a successful claim clears that IP's failure history, so a genuine owner isn't left throttled after a few typos", () => {
+      const ip = "10.0.0.8";
+      P.claimCode("typo1", NOW, "browser", ip);
+      P.claimCode("typo2", NOW, "browser", ip);
+      const bundle = P.mintPairingBundle(NOW);
+      expect(P.claimCode(bundle.pin, NOW, "browser", ip)).toBeTruthy();
+
+      // Fresh bundle, same IP — should still have full attempts available, not carry over.
+      const bundle2 = P.mintPairingBundle(NOW);
+      expect(P.claimCode(bundle2.pin, NOW, "browser", ip)).toBeTruthy();
+    });
+
+    it("the lockout eventually expires", () => {
+      const ip = "10.0.0.9";
+      for (let i = 0; i < 8; i++) P.claimCode(`wrong${i}`, NOW, "browser", ip);
+      const bundle = P.mintPairingBundle(NOW + 11 * 60 * 1000);
+      expect(P.claimCode(bundle.pin, NOW + 11 * 60 * 1000, "browser", ip)).toBeTruthy();
+    });
+  });
 });
 
 describe("session validation + lifecycle", () => {
