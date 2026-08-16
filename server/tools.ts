@@ -1778,6 +1778,13 @@ export async function flipitScaleShieldTool(input?: {
   winRate?: number;
   avgWinGbp?: number;
   avgLossGbp?: number;
+  // AUDIT FIX: this tool's own description already claimed "cross-market arbitrage spreads",
+  // but scanCrossMarketSpreads (flipit-scale.ts) was imported and never called anywhere —
+  // genuinely dead code the description was already lying about. SAM has no live exchange feed,
+  // so this stays honest: the scan only runs if the caller supplies real quotes; with none
+  // given, that section is omitted rather than fabricating spreads that were never computed.
+  quotes?: { symbol: string; exchangeA: string; bidA: number; askA: number; exchangeB: string; bidB: number; askB: number }[];
+  allocatedCapitalGbp?: number;
 }): Promise<string> {
   const current = Number(input?.currentEquityGbp ?? 1000);
   const peak = Number(input?.peakEquityGbp ?? current);
@@ -1793,7 +1800,7 @@ export async function flipitScaleShieldTool(input?: {
     avgLossGbp: avgLoss,
   });
 
-  return [
+  const lines = [
     `🛡️ FlipIt Portfolio Scaling & Risk Shield:`,
     `· Current Equity: £${res.currentEquityGbp.toLocaleString()} (Drawdown: ${res.drawdownPct}%)`,
     `· Risk Regime: [${res.riskRegime}]`,
@@ -1801,7 +1808,21 @@ export async function flipitScaleShieldTool(input?: {
     `· Max Permitted Leverage: ${res.maxLeveragePermitted}x`,
     `· Recommended Cash Reserve: ${res.recommendedCashReservePct}%`,
     `· Hedging Protocol: ${res.hedgingAction}`,
-  ].join("\n");
+  ];
+
+  if (Array.isArray(input?.quotes) && input.quotes.length > 0) {
+    const opps = scanCrossMarketSpreads(input.quotes, input?.allocatedCapitalGbp ?? 1000);
+    lines.push(`\nCross-Market Arbitrage Scan (${opps.length} opportunit${opps.length === 1 ? "y" : "ies"} above fees):`);
+    if (opps.length === 0) {
+      lines.push(`  No spread cleared the 10bps threshold plus fees on the supplied quotes.`);
+    } else {
+      for (const o of opps.slice(0, 10)) {
+        lines.push(`  - ${o.pair}: buy ${o.sourceExchange} → sell ${o.targetExchange}, ${o.spreadBps}bps, net ~£${o.estimatedNetProfitGbp} [${o.executionRisk} execution risk]`);
+      }
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export async function studioDirectorStoryboardTool(input: {
@@ -2918,11 +2939,15 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Disambiguating intent for: "${i?.prompt ?? i}"`,
     run: (i) => intentAutoDisambiguatorTool(i) },
-  { name: "flipit_scale_shield", safe: true, description: "Calculates Kelly leverage sizing, drawdown circuit-breakers, and cross-market arbitrage spreads for FlipIt portfolio scaling. input: { currentEquityGbp?, peakEquityGbp?, winRate? }.", params: "{currentEquityGbp?, peakEquityGbp?, winRate?}",
+  { name: "flipit_scale_shield", safe: true, description: "Calculates Kelly leverage sizing and drawdown circuit-breakers for FlipIt portfolio scaling. Also scans cross-market arbitrage spreads, but only against real quotes you supply — SAM has no live exchange feed, so this never invents spreads on its own. input: { currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp? }.", params: "{currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp?}",
     args: {
       currentEquityGbp: { type: "number", desc: "Current portfolio equity in GBP" },
       peakEquityGbp: { type: "number", desc: "Peak portfolio equity for drawdown tracking" },
-      winRate: { type: "number", desc: "Strategy win rate (e.g. 0.55)" }
+      winRate: { type: "number", desc: "Strategy win rate (e.g. 0.55)" },
+      avgWinGbp: { type: "number", desc: "Average winning trade size in GBP" },
+      avgLossGbp: { type: "number", desc: "Average losing trade size in GBP" },
+      quotes: { type: "array", desc: "Real bid/ask quotes across two exchanges to scan for arbitrage — omit to skip the scan entirely" },
+      allocatedCapitalGbp: { type: "number", desc: "Capital to size the arbitrage profit estimate against (default 1000)" },
     },
     activity: () => "Calculating FlipIt dynamic risk shield & Kelly allocation",
     run: (i) => flipitScaleShieldTool(i) },

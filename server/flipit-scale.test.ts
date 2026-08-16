@@ -46,4 +46,23 @@ describe("FlipIt Dynamic Risk Shield & Portfolio Scaler", () => {
     expect(out).toContain("FlipIt Portfolio Scaling & Risk Shield");
     expect(out).toContain("Risk Regime:");
   });
+
+  // AUDIT FIX: scanCrossMarketSpreads was imported into tools.ts and never called anywhere —
+  // dead code the tool's own description already claimed to do ("cross-market arbitrage
+  // spreads"). Proves the wiring now actually runs, and stays honest with no quotes supplied
+  // (SAM has no live exchange feed, so it must never fabricate a spread on its own).
+  it("flipitScaleShieldTool runs the arbitrage scan when real quotes are supplied", async () => {
+    const quotes = [
+      { symbol: "BTC/GBP", exchangeA: "Kraken", bidA: 50000, askA: 50020, exchangeB: "Binance", bidB: 50200, askB: 50210 },
+    ];
+    const out = await flipitScaleShieldTool({ currentEquityGbp: 5000, quotes, allocatedCapitalGbp: 10000 });
+    expect(out).toContain("Cross-Market Arbitrage Scan");
+    expect(out).toContain("BTC/GBP");
+    expect(out).toContain("Kraken");
+  });
+
+  it("flipitScaleShieldTool omits the arbitrage section entirely when no quotes are given — never fabricates one", async () => {
+    const out = await flipitScaleShieldTool({ currentEquityGbp: 5000 });
+    expect(out).not.toContain("Cross-Market Arbitrage Scan");
+  });
 });
