@@ -17,7 +17,9 @@ const VAULT = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.ur
 const KEYS = join(VAULT, "push-keys.json");
 const SUBS = join(VAULT, "push-subs.json");
 
-type Sub = { endpoint: string; keys: { p256dh: string; auth: string } };
+type WebSub = { endpoint: string; keys: { p256dh: string; auth: string } };
+type ExpoSub = { expoPushToken: string };
+type Sub = WebSub | ExpoSub;
 
 function load<T>(p: string, fallback: T): T { try { return existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : fallback; } catch { return fallback; } }
 // AUDIT FIX: atomic (temp+rename, no truncation on crash) + optional 0600. push-keys.json holds the
@@ -35,8 +37,13 @@ export function vapidPublicKey(): string { return keys!.publicKey; }
 let subs: Sub[] = load<Sub[]>(SUBS, []);
 
 export function addSubscription(sub: Sub): boolean {
-  if (!sub?.endpoint || !sub?.keys?.p256dh) return false;
-  if (!subs.some((s) => s.endpoint === sub.endpoint)) { subs.push(sub); saveJson(SUBS, subs); }
+  if (!sub) return false;
+  if ("expoPushToken" in sub && typeof sub.expoPushToken === "string") {
+    if (!subs.some((s) => "expoPushToken" in s && s.expoPushToken === sub.expoPushToken)) { subs.push(sub); saveJson(SUBS, subs); }
+    return true;
+  }
+  if (!("endpoint" in sub) || !sub?.keys?.p256dh) return false;
+  if (!subs.some((s) => "endpoint" in s && s.endpoint === sub.endpoint)) { subs.push(sub); saveJson(SUBS, subs); }
   return true;
 }
 export function subscriberCount(): number { return subs.length; }
@@ -58,8 +65,24 @@ export async function pushNotify(title: string, body: string, url = "/"): Promis
   const payload = JSON.stringify({ title, body: safeBody, url });
   const dead: string[] = [];
   await Promise.all(subs.map(async (s) => {
-    try { await webpush.sendNotification(s as any, payload); }
-    catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) dead.push(s.endpoint); }
+    if ("expoPushToken" in s) {
+      try {
+        const res = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: s.expoPushToken, title, body: safeBody, data: { url } })
+        });
+        const d = await res.json();
+        if (d?.data?.status === "error" && d?.data?.details?.error === "DeviceNotRegistered") {
+          dead.push(s.expoPushToken);
+        }
+      } catch { /* ignore network errors */ }
+    } else {
+      try { await webpush.sendNotification(s as any, payload); }
+      catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) dead.push(s.endpoint); }
+    }
   }));
-  if (dead.length) { subs = subs.filter((s) => !dead.includes(s.endpoint)); saveJson(SUBS, subs); }
+  if (dead.length) { 
+    subs = subs.filter((s) => !("expoPushToken" in s && dead.includes(s.expoPushToken)) && !("endpoint" in s && dead.includes(s.endpoint))); 
+    saveJson(SUBS, subs); 
+  }
 }

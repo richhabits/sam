@@ -8,7 +8,7 @@
 //  Events, screencapture, open) + Node + fetch. No paid APIs.
 // ─────────────────────────────────────────────────────────────
 
-import { exec, execFile as execFileCb, spawn } from "node:child_process";
+import { exec, execFile as execFileCb, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
 import { existsSync, readFileSync, readdirSync, mkdirSync, statfsSync, createWriteStream } from "node:fs";
@@ -498,6 +498,8 @@ async function runSafeCommand(cmd: string): Promise<string> {
 // (non-detached) child is enough to guarantee the exit handler fires; it doesn't need to survive
 // a server restart the way a true system daemon would.
 const DAEMON_DIR = join(VAULT_DIR, "daemons");
+export const activeTasks = new Map<string, { cmd: string; child: ChildProcess; logPath: string; startedAt: number }>();
+
 function runDaemon(cmd: string): string {
   const d = denied(cmd);
   if (d) return d;
@@ -520,11 +522,58 @@ function runDaemon(cmd: string): string {
   child.stdout.pipe(log, { end: false });
   child.stderr.pipe(log, { end: false });
   child.on("close", (code) => {
+    activeTasks.delete(id);
     log.end(`\n\n[exit ${code}]\n`);
     const short = cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd;
     addNudge(`Background task finished (exit ${code}) — "${short}". Log: ${logPath}`);
   });
+  activeTasks.set(id, { cmd: finalCmd, child, logPath, startedAt: Date.now() });
   return `Started in the background as ${id}. Logging to ${logPath} — I'll let you know when it finishes. Ask me to read that log anytime to check progress.`;
+}
+
+export async function manageTaskTool(i: { action: string; taskId?: string; command?: string; input?: string }): Promise<string> {
+  if (i.action === "list") {
+    if (activeTasks.size === 0) return "No active tasks.";
+    return Array.from(activeTasks.entries()).map(([id, t]) => 
+      `- ${id}: ${t.cmd.slice(0, 60)} (running for ${Math.round((Date.now() - t.startedAt) / 1000)}s)`
+    ).join("\n");
+  }
+  
+  if (i.action === "spawn") {
+    if (!i.command) return "Error: 'command' required for spawn.";
+    return runDaemon(i.command);
+  }
+
+  const id = i.taskId;
+  if (!id) return "Error: 'taskId' required for this action.";
+  const task = activeTasks.get(id);
+  if (!task) return `Error: task ${id} not found or already finished.`;
+
+  if (i.action === "status") {
+    let out = `Task ${id} is RUNNING.\nLog path: ${task.logPath}\n`;
+    try {
+      const logs = readFileSync(task.logPath, "utf8");
+      const lines = logs.split("\n");
+      const tail = lines.slice(-30).join("\n");
+      out += `\n--- LAST 30 LINES ---\n${tail}`;
+    } catch { out += "\n(No log output yet)"; }
+    return out;
+  }
+
+  if (i.action === "send_input") {
+    if (i.input === undefined) return "Error: 'input' required for send_input.";
+    if (!task.child.stdin) return `Error: task ${id} has no stdin.`;
+    task.child.stdin.write(i.input + (i.input.endsWith("\n") ? "" : "\n"));
+    return `Sent input to task ${id}. Use status to check output.`;
+  }
+
+  if (i.action === "kill") {
+    task.child.kill();
+    activeTasks.delete(id);
+    return `Sent SIGTERM to task ${id}.`;
+  }
+
+  return `Error: Unknown action '${i.action}'`;
 }
 
 // ── FILES ────────────────────────────────────────────────────
@@ -803,6 +852,17 @@ export async function grepSearchTool(input: GrepSearchInput | string): Promise<s
   return hits.length > 0
     ? `Found in ${hits.length} file(s):\n${hits.slice(0, max).join("\n")}${scrubNote(scrubbed)}`
     : `No matches found for "${query}" in ${targetDir}.${scrubNote(scrubbed)}`;
+}
+
+export async function semanticSearchTool(input: { query: string; path?: string; k?: number; floor?: number }): Promise<string> {
+  const q = String(input.query || "").trim();
+  if (!q) return "Error: query required.";
+  const p = safePath(input.path || ".");
+  // Fast ingest (skips unchanged files) to ensure codebase is up to date
+  await ingestFolder(p, 2000);
+  const hits = await searchDocs(q, input.k || 10, input.floor || 0.2);
+  if (!hits.length) return `No semantic matches found for "${q}" (floor ${input.floor || 0.2}).`;
+  return `Found ${hits.length} semantic match(es):\n\n` + hits.map(h => `--- ${h.source} (score: ${h.score.toFixed(3)}) ---\n${h.text}`).join("\n\n");
 }
 
 async function listDir(path: string): Promise<string> {
@@ -1914,6 +1974,17 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Searching code for “${i?.query ?? i}”`,
     run: (i) => grepSearchTool(i) },
+  { name: "semantic_search", safe: true,
+    description: "Search the codebase by semantic meaning (concept) rather than exact keyword match. Auto-indexes the workspace. input: {query, path?, k?, floor?}.",
+    params: "{query, path?, k?, floor?}",
+    args: {
+      query: { type: "string", required: true, desc: "the semantic concept or question" },
+      path: { type: "string", desc: "directory to search/index (defaults to current dir)" },
+      k: { type: "number", desc: "max matches (defaults to 10)" },
+      floor: { type: "number", desc: "minimum cosine similarity (defaults to 0.2)" }
+    },
+    activity: (i) => `Semantic searching for “${i?.query ?? i}”`,
+    run: (i) => semanticSearchTool(i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
   { name: "folder_digest", safe: true, description: "Summarise a folder: file count, total size, top file types, and the largest files. input: a folder path (supports ~).", params: "path",
@@ -2661,6 +2732,14 @@ export const TOOLS: Tool[] = [
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "run_daemon", safe: false, description: "Run a shell command in the BACKGROUND without waiting — for anything too slow for a normal step (a full test suite, a big build, a long scrape). Returns immediately with a log path; you get nudged when it finishes. input: a command string.", params: "command",
     activity: (_i) => `Starting a background task`, preview: (i) => `Run in background:\n  ${i.command ?? i}`, run: async (i) => runDaemon(i.command ?? i) },
+  { name: "manage_task", safe: true, description: "Manage background tasks. Support interactive processes. input: { action, taskId?, command?, input? }. Actions: 'spawn' (needs command), 'list', 'status' (needs taskId), 'send_input' (needs taskId, input), 'kill' (needs taskId).", params: "{action, taskId?, command?, input?}",
+    args: {
+      action: { type: "string", required: true, desc: "spawn | list | status | send_input | kill" },
+      taskId: { type: "string", desc: "task id (e.g. d-12345)" },
+      command: { type: "string", desc: "command to spawn" },
+      input: { type: "string", desc: "text to send to stdin" }
+    },
+    activity: (i) => `Managing task: ${i.action}`, run: (i) => manageTaskTool(i) },
   { name: "write_file", safe: false, description: "Write/overwrite a full file. Use edit_file instead when modifying existing code. input: {path, content}.", params: "{path, content}",
     args: { path: { type: "string", required: true, desc: "file path (supports ~)" }, content: { type: "string", required: true, desc: "the full new file contents" } },
     activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },

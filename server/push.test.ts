@@ -80,3 +80,38 @@ describe("pushNotify — the actual sent payload is scrubbed, not just summarize
     expect(sent[0].payload.url).toBe("/?ask=abc123");
   });
 });
+
+describe("Expo Push Token Support", () => {
+  it("accepts and stores an Expo Push Token", async () => {
+    const success = P.addSubscription({ expoPushToken: "ExponentPushToken[12345]" });
+    expect(success).toBe(true);
+    expect(P.subscriberCount()).toBe(1);
+  });
+
+  it("sends via HTTP to the Expo push API instead of webpush when token is present", async () => {
+    P.addSubscription({ expoPushToken: "ExponentPushToken[12345]" });
+    let fetchedUrl = "";
+    let fetchedBody = "";
+    
+    // Mock global fetch for this test
+    const origFetch = global.fetch;
+    global.fetch = async (url: any, opts: any) => {
+      fetchedUrl = url;
+      fetchedBody = opts.body;
+      return { json: async () => ({ data: { status: "ok" } }) } as any;
+    };
+
+    try {
+      await P.pushNotify("expo title", "expo body", "/expo-url");
+    } finally {
+      global.fetch = origFetch;
+    }
+
+    expect(fetchedUrl).toBe("https://exp.host/--/api/v2/push/send");
+    expect(fetchedBody).toContain("ExponentPushToken[12345]");
+    expect(fetchedBody).toContain("expo title");
+    
+    // Should NOT have sent via web-push
+    expect(sent).toHaveLength(0);
+  });
+});
