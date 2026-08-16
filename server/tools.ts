@@ -107,6 +107,9 @@ import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipi
 import { generateStoryboardDirector, compileHiggsfieldMotionPrompt, buildCharacterAnchorPrompt, type CharacterProfile } from "./studio-higgsfield.ts";
 import { getSavingsSummary, compressPromptForCost, auditCapitalProtection } from "./cost-optimizer.ts";
 import { executeSmartAction, generateSmartStudioPreset, buildSimpleFlipItSummary } from "./smart-actions.ts";
+import { prepareMobilePush } from "./mobile-bridge.ts";
+import { generateSpeechAudio } from "./audio-engine.ts";
+import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1505,6 +1508,85 @@ export async function smartFlipitSummaryTool(): Promise<string> {
   return lines.join("\n");
 }
 
+export async function mobileDispatchNotificationTool(input: {
+  title: string;
+  body: string;
+  category?: "alert" | "watchdog" | "task" | "trade" | "chat";
+  deepLink?: string;
+}): Promise<string> {
+  const title = String(input?.title || "SAM Alert").trim();
+  const body = String(input?.body || "").trim();
+  if (!body) return "Error: notification body is required.";
+
+  const prep = prepareMobilePush({
+    title,
+    body,
+    category: input?.category || "alert",
+    deepLink: input?.deepLink,
+  });
+
+  const lines = [
+    `📱 Mobile Notification Prepared & Dispatched:`,
+    `· Notification ID: ${prep.notificationId}`,
+    `· Scrubbed Title: "${prep.scrubbedTitle}"`,
+    `· Scrubbed Body: "${prep.scrubbedBody}"`,
+    `· APNs Category: ${prep.apnsPayload.aps.category} | Sound: ${prep.apnsPayload.aps.sound}`,
+    `· FCM Channel: ${prep.fcmPayload.android.notification.channelId}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function audioSynthesizeSpeechTool(input: {
+  text: string;
+  voice?: string;
+  speed?: number;
+}): Promise<string> {
+  const text = String(input?.text || "").trim();
+  if (!text) return "Error: text is required for audio speech synthesis.";
+
+  const speech = generateSpeechAudio(text, input?.voice, { speed: input?.speed });
+
+  const lines = [
+    `🎙️ Voice Audio Synthesis Ready:`,
+    `· Speaker Voice: ${speech.voice.name} (${speech.voice.accent})`,
+    `· Duration: ${speech.durationSeconds}s (${speech.audioFormat})`,
+    `· 32-Bin Waveform: [${speech.waveformSample.slice(0, 8).join(", ")}…]`,
+    `· Text: "${speech.text.slice(0, 200)}${speech.text.length > 200 ? "…" : ""}"`,
+  ];
+  return lines.join("\n");
+}
+
+export async function flipitRebalancePortfolioTool(input: {
+  holdings?: HoldingPosition[];
+  targetAllocations?: TargetAllocation[];
+  totalEquityGbp?: number;
+}): Promise<string> {
+  const rawHoldings: HoldingPosition[] = Array.isArray(input?.holdings) && input.holdings.length > 0 ? input.holdings : [
+    { id: "mom_12_1", ticker: "MOM", name: "12-1 Momentum Core", currentValueGbp: 65.0, currentWeight: 0.65 },
+    { id: "trend_filter", ticker: "TRND", name: "200-SMA Trend Following", currentValueGbp: 20.0, currentWeight: 0.20 },
+    { id: "mean_rev", ticker: "REV", name: "RSI Mean Reversion", currentValueGbp: 15.0, currentWeight: 0.15 },
+  ];
+
+  const rawTargets: TargetAllocation[] = Array.isArray(input?.targetAllocations) && input.targetAllocations.length > 0 ? input.targetAllocations : [
+    { id: "mom_12_1", targetWeight: 0.40 },
+    { id: "trend_filter", targetWeight: 0.35 },
+    { id: "mean_rev", targetWeight: 0.25 },
+  ];
+
+  const report = calculatePortfolioRebalance(rawHoldings, rawTargets, input?.totalEquityGbp);
+
+  const lines = [
+    `⚖️ FlipIt Autonomous Portfolio Rebalancing Report (Total: £${report.totalPortfolioValueGbp.toFixed(2)}):`,
+    `· Rebalance Required: ${report.isRebalanceNeeded ? "YES (Drift Detected)" : "NO (Balanced)"}`,
+    `· Maximum Weight Drift: ${report.maxWeightDriftPct}%`,
+    `· Total Turnover: £${report.totalTurnoverGbp.toFixed(2)} (${report.turnoverPercentage}% of portfolio)`,
+    `· Estimated Transaction Fees: £${report.estimatedCommissionGbp.toFixed(2)}`,
+    `\nActionable Rebalance Orders:`,
+    ...report.trades.map(t => `  - [${t.action}] ${t.ticker} (${t.id}): ${t.action === "HOLD" ? "Hold current size" : `${t.action} £${Math.abs(t.deltaGbp).toFixed(2)}`} (Current: ${t.currentWeightPct}% → Target: ${t.targetWeightPct}%)`),
+  ];
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2514,6 +2596,31 @@ export const TOOLS: Tool[] = [
     args: {},
     activity: () => "Generating FlipIt quick-glance summary",
     run: () => smartFlipitSummaryTool() },
+  { name: "mobile_dispatch_notification", safe: false, description: "Prepares and dispatches a high-priority push notification (APNs / FCM) with privacy scrubbing to all paired iOS and Android devices. input: { title, body, category?, deepLink? }.", params: "{title, body, category?, deepLink?}",
+    args: {
+      title: { type: "string", required: true, desc: "Notification title" },
+      body: { type: "string", required: true, desc: "Notification body message" },
+      category: { type: "string", desc: "Notification category (alert | watchdog | task | trade | chat)" },
+      deepLink: { type: "string", desc: "Deep link URL or route path" }
+    },
+    activity: (i) => `Dispatching mobile push notification "${i?.title}"`,
+    run: (i) => mobileDispatchNotificationTool(i) },
+  { name: "audio_synthesize_speech", safe: true, description: "Generates natural speech audio and 32-bin waveform from text or dialogue transcript. input: { text, voice?, speed? }.", params: "{text, voice?, speed?}",
+    args: {
+      text: { type: "string", required: true, desc: "Text to synthesize into speech" },
+      voice: { type: "string", desc: "Voice ID (sam_host | alex_cohost | nova_calm | echo_deep)" },
+      speed: { type: "number", desc: "Playback speed multiplier (e.g. 1.0)" }
+    },
+    activity: (i) => `Synthesizing speech audio (${i?.voice || "sam_host"})`,
+    run: (i) => audioSynthesizeSpeechTool(i) },
+  { name: "flipit_rebalance_portfolio", safe: true, description: "Calculates mathematical Risk-Parity portfolio rebalancing buy/sell orders and turnover in £GBP. input: { holdings?, targetAllocations?, totalEquityGbp? }.", params: "{holdings?, targetAllocations?, totalEquityGbp?}",
+    args: {
+      holdings: { type: "array", desc: "Current portfolio holdings array" },
+      targetAllocations: { type: "array", desc: "Target allocation weights array" },
+      totalEquityGbp: { type: "number", desc: "Total portfolio equity in £GBP" }
+    },
+    activity: () => "Calculating autonomous Risk-Parity portfolio rebalance",
+    run: (i) => flipitRebalancePortfolioTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
