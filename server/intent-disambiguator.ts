@@ -71,13 +71,18 @@ export function disambiguateUserIntent(
 
   // 5. Context-aware file fallback if user mentions "fix this" or "refactor"
   if ((p.includes("fix") || p.includes("refactor")) && contextHints?.activeFile) {
+    // AUDIT FIX: ast_replace_symbol's real parameter is `path`, not `filePath` (see its
+    // registration in tools.ts) — the mismatched key meant a suggested call built from this
+    // would silently fail to resolve the target file. oldSymbol/newSymbol are still left for
+    // the caller to fill in — a vague "fix this"/"refactor" has no way to know which identifier
+    // is meant, so this is a starting point, not a complete, ready-to-run call.
     return {
       rawPrompt: prompt,
       inferredTarget: `File AST refactoring on ${contextHints.activeFile}`,
       recommendedTool: "ast_replace_symbol",
-      inferredArgs: { filePath: contextHints.activeFile },
+      inferredArgs: { path: contextHints.activeFile },
       confidencePct: 88,
-      explanation: `Applies AST-safe syntax refactoring to active file: ${contextHints.activeFile}`,
+      explanation: `Applies AST-safe syntax refactoring to active file: ${contextHints.activeFile} (still needs oldSymbol/newSymbol — which identifier to rename isn't inferrable from "${prompt}" alone).`,
     };
   }
 
