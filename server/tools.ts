@@ -143,7 +143,7 @@ function obsidianVault(): string | null {
   return null;
 }
 
-const sh = promisify(exec);
+export const sh = promisify(exec);
 // No-shell exec for anything carrying model/user text — args go straight to the
 // binary, so $(…)/backticks/quotes can never reach a shell.
 const execFile = promisify(execFileCb);
@@ -863,6 +863,57 @@ export async function semanticSearchTool(input: { query: string; path?: string; 
   const hits = await searchDocs(q, input.k || 10, input.floor || 0.2);
   if (!hits.length) return `No semantic matches found for "${q}" (floor ${input.floor || 0.2}).`;
   return `Found ${hits.length} semantic match(es):\n\n` + hits.map(h => `--- ${h.source} (score: ${h.score.toFixed(3)}) ---\n${h.text}`).join("\n\n");
+}
+
+export async function astOutlineTool(input: { path: string }): Promise<string> {
+  const p = safePath(input.path);
+  if (!existsSync(p)) return `Error: File ${p} not found.`;
+  const code = readFileSync(p, "utf8");
+  const lines = code.split("\n");
+  const outline: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (l.match(/^(export\s+)?(class|interface|type|function)\s+([a-zA-Z0-9_]+)/)) {
+      outline.push(`[Line ${i + 1}] ${l.split('{')[0].trim()}`);
+    } else if (l.match(/^(export\s+)?(const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(async\s*)?(\(|[a-zA-Z0-9_]+)/)) {
+      if (l.includes("=>")) outline.push(`[Line ${i + 1}] ${l.split('=>')[0].trim()} => { ... }`);
+      else outline.push(`[Line ${i + 1}] ${l.split('=')[0].trim()} = ...`);
+    }
+  }
+  
+  if (outline.length === 0) return `File ${p} contains no top-level structural declarations (classes/functions/interfaces).`;
+  return `AST Outline for ${p}:\n${outline.join("\n")}`;
+}
+
+export async function runTestsTool(input: { path?: string }): Promise<string> {
+  const p = input.path ? safePath(input.path) : "";
+  const { stdout, stderr } = await sh(`npx vitest run ${shq(p)} --reporter=json`).catch(e => e);
+  
+  try {
+    // Vitest JSON output might have preceding text before the JSON payload starts.
+    const jsonStr = stdout.substring(stdout.indexOf('{'));
+    const report = JSON.parse(jsonStr);
+    
+    if (report.success) {
+      return `Success: All ${report.numPassedTests} tests passed in ${report.numPassedTestSuites} suites.`;
+    }
+    
+    const failures: string[] = [];
+    for (const suite of report.testResults || []) {
+      if (suite.status === "failed") {
+        for (const test of suite.assertionResults || []) {
+          if (test.status === "failed") {
+            const errs = test.failureMessages?.join("\n").slice(0, 500) || "Unknown error";
+            failures.push(`- Test: "${test.ancestorTitles.join(" > ")} > ${test.title}"\n  File: ${suite.name}\n  Error: ${errs}\n`);
+          }
+        }
+      }
+    }
+    return `Tests Failed!\n${failures.join("\n")}`;
+  } catch (e: any) {
+    return `Failed to parse test output. Raw error:\n${stderr || stdout || e.message}`.slice(0, 2000);
+  }
 }
 
 async function listDir(path: string): Promise<string> {
@@ -1715,6 +1766,12 @@ export async function benchmarkBrains(
 
 // ── REGISTRY ─────────────────────────────────────────────────
 export const TOOLS: Tool[] = [
+  { name: "ast_outline", safe: true, description: "Extracts an AST-style structural outline (classes, functions, interfaces) from a JS/TS file with line numbers. Use this on large files instead of reading them line-by-line. input: { path }.", params: "{path}",
+    args: { path: { type: "string", required: true, desc: "File to parse" } },
+    activity: (i) => `Parsing outline for ${i.path}`, run: (i) => astOutlineTool(i) },
+  { name: "run_tests", safe: true, description: "Runs the vitest test suite programmatically and parses the JSON output to return ONLY the failures (exact errors and line numbers) instead of raw terminal logs. input: { path? }.", params: "{path?}",
+    args: { path: { type: "string", desc: "Optional path to a specific test file or directory" } },
+    activity: (i) => `Running tests ${i.path || ""}`, run: (i) => runTestsTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
