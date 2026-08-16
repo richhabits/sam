@@ -104,6 +104,7 @@ import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
 import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, saveRanking, type ArenaResult } from "./colosseum.ts";
 import { championWithConfidence } from "./colosseum-significance.ts";
 import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipit.ts";
+import { generateStoryboardDirector, compileHiggsfieldMotionPrompt, buildCharacterAnchorPrompt, type CharacterProfile } from "./studio-higgsfield.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1268,6 +1269,129 @@ export async function flipitLadderProjectionsTool(input: {
   return lines.join("\n");
 }
 
+export async function studioHiggsfieldDirectorTool(input: {
+  concept: string;
+  shotCount?: number;
+  style?: string;
+  characterName?: string;
+  characterDesc?: string;
+}): Promise<string> {
+  const concept = String(input?.concept || "").trim();
+  if (!concept) return "Error: concept is required for Higgsfield storyboard director.";
+
+  let character: CharacterProfile | undefined;
+  if (input.characterName) {
+    character = {
+      characterId: `char_${Date.now()}`,
+      name: input.characterName,
+      age: 28,
+      gender: "person",
+      ethnicity: "distinct",
+      facialFeatures: input.characterDesc || "sharp cinematic features",
+      hair: "styled dark hair",
+      eyes: "expressive hazel",
+      signatureClothing: "signature cinematic wardrobe",
+      distinctTokens: ["id_anchor_1", "soul_lock"],
+    };
+  }
+
+  const proj = await generateStoryboardDirector({
+    concept,
+    shotCount: input.shotCount,
+    style: input.style,
+    character,
+  });
+
+  const lines = [
+    `🎬 Higgsfield Studio Storyboard: "${proj.title}"`,
+    `· Narrative Goal: ${proj.narrativeGoal}`,
+    `· Total Shots: ${proj.shots.length} (${proj.totalDurationSec}s estimated runtime)`,
+    `· Negative Prompt Filter: ${proj.negativePromptScrub}`,
+    `\n## Shot Sequence:`,
+  ];
+
+  for (const shot of proj.shots) {
+    lines.push(
+      `\n### Shot ${shot.shotNumber}: [${shot.shotType}] (${shot.durationSec}s) — ${shot.action}`,
+      `· Camera Rig: ${shot.cameraMoveId} | Lens: ${shot.lensId} | Transition: ${shot.transitionToNext}`,
+      `· Generation Prompt:\n  "${shot.cinematicPrompt}"`
+    );
+  }
+
+  return lines.join("\n");
+}
+
+export async function studioMotionControllerTool(input: {
+  prompt: string;
+  cameraRig?: string;
+  lens?: string;
+  physics?: string;
+  motionIntensity?: number;
+  aspectRatio?: string;
+}): Promise<string> {
+  const prompt = String(input?.prompt || "").trim();
+  if (!prompt) return "Error: prompt is required.";
+
+  const syn = compileHiggsfieldMotionPrompt({
+    basePrompt: prompt,
+    cameraRigId: input.cameraRig,
+    lensId: input.lens,
+    physicsId: input.physics,
+    motionIntensity: input.motionIntensity,
+    aspectRatio: input.aspectRatio as any,
+  });
+
+  const lines = [
+    `🎥 Higgsfield 3D Motion Control Synthesis:`,
+    `· Lens Signature: ${syn.lensSignature} | Aspect Ratio: ${syn.aspectRatio}`,
+    `· Physics Dynamics: ${syn.physicsCues}`,
+    `· 3D Camera Trajectory: Rig "${syn.cameraTrajectory.rig}" (Intensity: ${(syn.cameraTrajectory.intensity * 100).toFixed(0)}%)`,
+    `  Translation: [${syn.cameraTrajectory.translation.map(n => n.toFixed(2)).join(", ")}] | Rotation: [${syn.cameraTrajectory.rotation.map(n => n.toFixed(2)).join(", ")}]`,
+    `\n## Compiled Generation Prompt:\n"${syn.compiledPrompt}"`,
+    `\n## Scrubbed Negative Prompt:\n"${syn.negativePrompt}"`,
+  ];
+
+  return lines.join("\n");
+}
+
+export async function studioCharacterLockTool(input: {
+  name: string;
+  age?: number | string;
+  gender?: string;
+  ethnicity?: string;
+  facialFeatures?: string;
+  hair?: string;
+  eyes?: string;
+  signatureClothing?: string;
+  distinctTokens?: string[];
+}): Promise<string> {
+  const name = String(input?.name || "").trim();
+  if (!name) return "Error: character name is required.";
+
+  const profile: CharacterProfile = {
+    characterId: `char_${name.toLowerCase().replace(/\s+/g, "_")}`,
+    name,
+    age: input.age || 25,
+    gender: input.gender || "female",
+    ethnicity: input.ethnicity || "athletic",
+    facialFeatures: input.facialFeatures || "high cheekbones, symmetrical features",
+    hair: input.hair || "shoulder-length dark hair",
+    eyes: input.eyes || "green",
+    signatureClothing: input.signatureClothing || "black leather jacket and silver pendant",
+    distinctTokens: input.distinctTokens || [`${name.toLowerCase()}_soulid`, "character_lock_v1"],
+  };
+
+  const anchorPrompt = buildCharacterAnchorPrompt(profile);
+
+  return [
+    `👤 Higgsfield SoulID Character Profile Locked: "${profile.name}"`,
+    `· ID: ${profile.characterId}`,
+    `· Anchor Tokens: ${profile.distinctTokens.join(", ")}`,
+    `\n## Character Consistency Prompt Anchor:\n"${anchorPrompt}"\n`,
+    `Append this anchor to any generation prompt to maintain consistent character identity across scenes without face or style drift.`,
+  ].join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2207,6 +2331,40 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Projecting 100-rung ladder growth from £${Number(i?.currentEquity || 5).toFixed(2)}`,
     run: (i) => flipitLadderProjectionsTool(i) },
+  { name: "studio_higgsfield_director", safe: true, description: "Generates multi-shot Hollywood/Higgsfield cinematic storyboards with camera trajectories, lens profiles, character anchors, and shot pacing. input: { concept, shotCount?, style?, characterName?, characterDesc? }.", params: "{concept, shotCount?, style?, characterName?, characterDesc?}",
+    args: {
+      concept: { type: "string", required: true, desc: "Visual cinematic story concept" },
+      shotCount: { type: "number", desc: "Number of sequential shots (default: 4, max: 8)" },
+      style: { type: "string", desc: "Cinematic visual style" },
+      characterName: { type: "string", desc: "Optional character name to anchor across shots" },
+      characterDesc: { type: "string", desc: "Optional physical description for character anchor" }
+    },
+    activity: (i) => `Directing Higgsfield storyboard for "${String(i?.concept || "").slice(0, 35)}…"`,
+    run: (i) => studioHiggsfieldDirectorTool(i) },
+  { name: "studio_motion_controller", safe: true, description: "Compiles Higgsfield 3D camera trajectory vectors (orbit, dolly, crane, FPV dive) and physics dynamics into precise video generation prompts. input: { prompt, cameraRig?, lens?, physics?, motionIntensity?, aspectRatio? }.", params: "{prompt, cameraRig?, lens?, physics?, motionIntensity?, aspectRatio?}",
+    args: {
+      prompt: { type: "string", required: true, desc: "Base video generation prompt" },
+      cameraRig: { type: "string", desc: "Camera movement rig (orbit_360_cw | dolly_in_rapid | fpv_drone_dive | vertigo_hitchcock | steadicam_tracking | macro_slider_glide)" },
+      lens: { type: "string", desc: "Cinematic lens (anamorphic_panavision | arri_master_prime | imax_70mm_grand | portrait_85mm_bokeh)" },
+      physics: { type: "string", desc: "Physics dynamic (cloth_wind_flutter | fluid_liquid_splash | particle_fire_embers | zero_g_float)" },
+      motionIntensity: { type: "number", desc: "Motion strength multiplier 0.1 to 5.0 (default: 1.0)" },
+      aspectRatio: { type: "string", desc: "Aspect ratio (16:9 | 9:16 | 1:1 | 2.39:1 | 4:5)" }
+    },
+    activity: (i) => `Compiling 3D motion control for "${String(i?.prompt || "").slice(0, 30)}…"`,
+    run: (i) => studioMotionControllerTool(i) },
+  { name: "studio_character_lock", safe: true, description: "Creates a reusable SoulID character consistency profile with anchor tokens to prevent facial and stylistic drift across video generations. input: { name, age?, gender?, ethnicity?, facialFeatures?, hair?, eyes?, signatureClothing?, distinctTokens? }.", params: "{name, age?, gender?, ethnicity?, facialFeatures?, hair?, eyes?, signatureClothing?, distinctTokens?}",
+    args: {
+      name: { type: "string", required: true, desc: "Character name" },
+      age: { type: "number", desc: "Character age" },
+      gender: { type: "string", desc: "Character gender" },
+      ethnicity: { type: "string", desc: "Character ethnicity" },
+      facialFeatures: { type: "string", desc: "Distinctive facial anatomy features" },
+      hair: { type: "string", desc: "Hairstyle and color" },
+      eyes: { type: "string", desc: "Eye shape and color" },
+      signatureClothing: { type: "string", desc: "Signature wardrobe" }
+    },
+    activity: (i) => `Locking SoulID character profile for "${i?.name}"`,
+    run: (i) => studioCharacterLockTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
