@@ -50,10 +50,17 @@ function relative(ms: number, now: number): string {
   return future ? `in ${body}` : `${body} ago`;
 }
 
-const palette = { /* OVERRIDDEN BY FLIPIT-VIEW CSS */
-  "--ink": "#FDFBF9", "--ink-2": "#F5F0EB", "--surface": "#FFFFFF", "--paper": "#1C1917",
-  "--ash": "#78716C", "--line": "#EAEAEA", "--ember": "#E8673A", "--ember-deep": "#C2410C",
-  "--ember-soft": "rgba(232,103,58,.14)", "--live": "#10B981", "--c-err": "#EF4444", "--gold": "#D97706",
+// "Luxury dark mode" (Revolut/Monzo-style) — this used to be a light-theme fallback that
+// styles.css silently overrode with !important on the outer .flipit-view/.flipit-side wrappers
+// only. Cards inside .flipit-main have no CSS override of their own, so they read `--surface`
+// straight from here — which meant the equity curve, ladder and holdings cards rendered as
+// stark WHITE boxes while the sidebar around them was black. Same view, two themes. This is
+// now the actual source of truth for FlipIt's dark palette (values match what styles.css used
+// to hardcode), so every card is consistently dark and nothing needs a CSS override anymore.
+const palette = {
+  "--ink": "#000000", "--ink-2": "#1A1A1A", "--surface": "#111111", "--paper": "#FFFFFF",
+  "--ash": "#9B9B9B", "--line": "#222222", "--ember": "#E8673A", "--ember-deep": "#C2410C",
+  "--ember-soft": "rgba(232,103,58,.14)", "--live": "#00E676", "--c-err": "#FF3D00", "--gold": "#D97706",
 } as React.CSSProperties;
 
 const card: React.CSSProperties = {

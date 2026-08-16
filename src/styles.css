@@ -140,52 +140,37 @@
 
 .side-title { color: #F26101 !important; }
 
-/* ── FLIP IT LUXURY DARK MODE (REVOLUT / MONZO STYLE) ── */
+/* ── FLIP IT — layout only. Colour used to be duplicated here as hardcoded hex + !important
+   (see git history: "LUXURY DARK MODE") fighting the component's own --ink/--surface/--paper
+   custom properties, which still had light-theme defaults — so the sidebar rendered dark (this
+   CSS won) while the equity/ladder/holdings cards rendered white (nothing overrode their
+   `background: var(--surface)`). Same view, two themes. FlipItView.tsx's own `palette` constant
+   is now the single source of truth for FlipIt's dark colours; this block only ever needed to
+   own the two-column layout, which the palette can't express. ── */
 .flipit-view {
-  background: #000000 !important;
-  color: #FFFFFF !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  width: 100% !important;
-  height: 100vh !important;
-  padding: 24px !important;
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 24px !important;
-  box-sizing: border-box !important;
+  width: 100%;
+  height: 100vh;
+  padding: 24px;
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  box-sizing: border-box;
 }
 
 .flipit-side {
-  width: 300px !important;
-  min-width: 300px !important;
-  background: #111111 !important;
-  border-radius: 16px !important;
-  padding: 16px !important;
-  border: 1px solid #222222 !important;
-  overflow-y: auto !important;
-  max-height: calc(100vh - 48px) !important;
+  width: 300px;
+  min-width: 300px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
 }
 
 .flipit-main {
-  flex: 1 !important;
-  background: #111111 !important;
-  border-radius: 16px !important;
-  padding: 24px !important;
-  border: 1px solid #222222 !important;
-  overflow-y: auto !important;
-  max-height: calc(100vh - 48px) !important;
-}
-
-.flipit-asset {
-  display: flex !important;
-  justify-content: space-between !important;
-  padding: 12px !important;
-  border-radius: 8px !important;
-  border-bottom: 1px solid #222222 !important;
-}
-.flipit-asset:hover { background: #1A1A1A !important; }
-
-.flipit-green { color: #00E676 !important; }
-.flipit-red { color: #FF3D00 !important; }:root {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
+}:root {
   --bg: #FDFBF9;          /* warm off-white app background */
   --surface: #FFFFFF;     /* cards / bubbles */
   --text: #1C1917;        /* warm near-black — AAA on bg */
@@ -2540,7 +2525,13 @@ body, html {
 }
 /* White bg only when the main chat app is active, not FlipIt/Studio/Yard */
 body:has(.app) { background: #FFFFFF !important; }
-body:has(.flipit-view) { background: #000000 !important; }
+/* Elastic overscroll bounce (macOS/iOS) can briefly show the body behind .flipit-view's own
+   100vh — matches FlipItView.tsx's palette --ink. body can't read that custom property directly
+   (inline custom properties only inherit down the DOM, and body is .flipit-view's ancestor, not
+   descendant), so this stays a literal hex kept in sync by hand. No !important needed: the base
+   `body { background: transparent; }` above doesn't have one either, so normal cascade order
+   already wins here. */
+body:has(.flipit-view) { background: #000000; }
 
 #root {
   height: 100vh !important;
