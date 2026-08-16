@@ -40,5 +40,35 @@ describe("Autonomous Deep Research Synthesizer", () => {
     expect(report.keyFindings.length).toBeGreaterThanOrEqual(1);
     expect(report.consensusConfidencePct).toBeGreaterThan(0);
     expect(report.sources.length).toBeGreaterThanOrEqual(1);
+    // The old version's fabricated content — must never appear now that this is grounded.
+    expect(JSON.stringify(report)).not.toContain("inter-thread contention");
+    expect(JSON.stringify(report)).not.toContain("docs.local");
+  });
+
+  it("drops a synthesized finding that cites a sourceIndex not present in the real sources — never trusts the model's citation blindly", async () => {
+    const search = async () => `• Real Source — a real search result\n  https://example.com/real`;
+    const badSynthesize = async () => ({
+      text: JSON.stringify({
+        executiveSummary: "Summary [1].",
+        keyFindings: [
+          { claim: "Real finding tied to a real source.", sourceIndex: 1, confidence: 0.9 },
+          { claim: "Fabricated finding citing a source that doesn't exist.", sourceIndex: 99, confidence: 0.9 },
+        ],
+        dissentingOrConflictingViews: [],
+        suggestedFollowups: [],
+      }),
+    });
+    const report = await conductDeepResearch("any topic", { search, synthesize: badSynthesize }, { depth: "quick" });
+    expect(report.keyFindings.length).toBe(1);
+    expect(report.keyFindings[0].claim).toBe("Real finding tied to a real source.");
+  });
+
+  it("reports honestly, without fabricating findings, when search returns nothing usable", async () => {
+    const noResults = async () => "";
+    const synthesize = async () => ({ text: "{}" });
+    const report = await conductDeepResearch("an extremely obscure query", { search: noResults, synthesize }, { depth: "quick" });
+    expect(report.sources.length).toBe(0);
+    expect(report.keyFindings.length).toBe(0);
+    expect(report.executiveSummary).toContain("no usable results");
   });
 });
