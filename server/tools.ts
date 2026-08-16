@@ -500,7 +500,7 @@ async function runSafeCommand(cmd: string): Promise<string> {
 const DAEMON_DIR = join(VAULT_DIR, "daemons");
 export const activeTasks = new Map<string, { cmd: string; child: ChildProcess; logPath: string; startedAt: number }>();
 
-function runDaemon(cmd: string): string {
+function runDaemon(cmd: string, opts?: { interactive?: boolean }): string {
   const d = denied(cmd);
   if (d) return d;
   let finalCmd = cmd;
@@ -517,10 +517,13 @@ function runDaemon(cmd: string): string {
   // server down for an unrelated background task.
   log.on("error", () => { /* best-effort logging — the command itself is unaffected */ });
   log.write(`$ ${cmd}\n\n`);
-  const child = spawn(finalCmd, { shell: true, cwd: homedir(), stdio: ["ignore", "pipe", "pipe"] });
+  // stdin defaults to "ignore" (run_daemon is fire-and-forget). manage_task's send_input needs
+  // an actual pipe to write to, or the feature can never work regardless of validation.
+  const stdinMode: "pipe" | "ignore" = opts?.interactive ? "pipe" : "ignore";
+  const child = spawn(finalCmd, { shell: true, cwd: homedir(), stdio: [stdinMode, "pipe", "pipe"] });
   child.on("error", (e) => { log.end(`\n[failed to start: ${e.message}]\n`); addNudge(`Background task failed to start — "${cmd.slice(0, 60)}": ${e.message}`); });
-  child.stdout.pipe(log, { end: false });
-  child.stderr.pipe(log, { end: false });
+  child.stdout!.pipe(log, { end: false });
+  child.stderr!.pipe(log, { end: false });
   child.on("close", (code) => {
     activeTasks.delete(id);
     log.end(`\n\n[exit ${code}]\n`);
@@ -541,7 +544,7 @@ export async function manageTaskTool(i: { action: string; taskId?: string; comma
   
   if (i.action === "spawn") {
     if (!i.command) return "Error: 'command' required for spawn.";
-    return runDaemon(i.command);
+    return runDaemon(i.command, { interactive: true });
   }
 
   const id = i.taskId;
@@ -2789,26 +2792,6 @@ export const TOOLS: Tool[] = [
       }
     },
   },
-  { name: "run_tests", safe: true,
-    description: "Run the test suite (vitest or jest) in a directory and return the pass/fail summary. Use this after writing code or fixes to verify tests pass. input: {dir?: string, pattern?: string} (pattern filters test files, e.g. 'agent.test.ts').",
-    params: "{dir?, pattern?}",
-    activity: (i: any) => `Running tests${i.pattern ? ` (${i.pattern})` : ""}`,
-    run: async (i: any) => {
-      const target = i.dir ? safePath(i.dir) : homedir();
-      const patternArg = i.pattern ? ` ${i.pattern}` : "";
-      // Try vitest first (used by SAM), fall back to jest
-      const cmd = `npx vitest run${patternArg} --reporter verbose 2>&1 | tail -n 60`;
-      try {
-        const { stdout, stderr } = await sh(cmd, { timeout: 60000, cwd: target, maxBuffer: 4 * 1024 * 1024 });
-        const out = (stdout + stderr).trim();
-        return out || "(test runner produced no output)";
-      } catch (e: any) {
-        const msg = (e?.stdout || e?.stderr || e?.message || "").trim();
-        return msg ? msg.slice(0, 3000) : `run_tests failed: ${e?.message || e}`;
-      }
-    },
-  },
-
   // risky · ask first
   // ── AUTO-APPROVED terminal for read-only commands (Antigravity-parity) ──
   // SAM uses this for git status, ls, cat, npx tsc, grep, etc. — anything the
