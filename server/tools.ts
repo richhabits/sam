@@ -120,6 +120,8 @@ import { prewarmContext } from "./prefetch.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
+import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
+import { generateCinematicStoryboard } from "./studio-director.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1770,6 +1772,72 @@ export async function intentAutoDisambiguatorTool(input: { prompt: string; activ
   return `🎯 Disambiguated Intent (${dis.confidencePct}% confidence):\n· Inferred Target: ${dis.inferredTarget}\n· Recommended Action: ${dis.recommendedTool}(${JSON.stringify(dis.inferredArgs)})\n· Why: ${dis.explanation}`;
 }
 
+export async function flipitScaleShieldTool(input?: {
+  currentEquityGbp?: number;
+  peakEquityGbp?: number;
+  winRate?: number;
+  avgWinGbp?: number;
+  avgLossGbp?: number;
+}): Promise<string> {
+  const current = Number(input?.currentEquityGbp ?? 1000);
+  const peak = Number(input?.peakEquityGbp ?? current);
+  const winRate = Number(input?.winRate ?? 0.55);
+  const avgWin = Number(input?.avgWinGbp ?? 100);
+  const avgLoss = Number(input?.avgLossGbp ?? 80);
+
+  const res = computeKellyRiskShield({
+    currentEquityGbp: current,
+    peakEquityGbp: peak,
+    winRate,
+    avgWinGbp: avgWin,
+    avgLossGbp: avgLoss,
+  });
+
+  return [
+    `🛡️ FlipIt Portfolio Scaling & Risk Shield:`,
+    `· Current Equity: £${res.currentEquityGbp.toLocaleString()} (Drawdown: ${res.drawdownPct}%)`,
+    `· Risk Regime: [${res.riskRegime}]`,
+    `· Kelly Allocation: Full ${Number((res.fullKellyFraction * 100).toFixed(1))}% · Rec Half-Kelly: ${Number((res.recommendedHalfKelly * 100).toFixed(1))}%`,
+    `· Max Permitted Leverage: ${res.maxLeveragePermitted}x`,
+    `· Recommended Cash Reserve: ${res.recommendedCashReservePct}%`,
+    `· Hedging Protocol: ${res.hedgingAction}`,
+  ].join("\n");
+}
+
+export async function studioDirectorStoryboardTool(input: {
+  prompt: string;
+  sceneCount?: number;
+  aspectRatio?: "16:9" | "9:16" | "2.39:1" | "1:1";
+}): Promise<string> {
+  const p = String(input?.prompt || "").trim();
+  if (!p) return "Error: prompt is required for cinematic storyboard generation.";
+
+  const plan = generateCinematicStoryboard({
+    narrativePrompt: p,
+    sceneCount: input?.sceneCount,
+    aspectRatio: input?.aspectRatio,
+  });
+
+  const lines = [
+    `🎬 Cinematic Storyboard Director's Plan: "${plan.title}"`,
+    `· Aspect Ratio: [${plan.aspectRatio}] · Framerate: ${plan.framerateFps}fps · Total Duration: ${plan.totalDurationSec}s (${plan.totalFrames} frames)`,
+    `· Consistent Character Seed Anchor: ${plan.characterSeedAnchor}`,
+    `· Total Shots: ${plan.shots.length}`,
+    ``,
+  ];
+
+  for (const shot of plan.shots) {
+    lines.push(`Shot ${shot.shotNumber} (${shot.durationSec}s | Frames ${shot.startFrame}–${shot.endFrame}):`);
+    lines.push(`  🎥 Camera Rig: ${shot.cameraRig.label} [${shot.cameraRig.category.toUpperCase()}]`);
+    lines.push(`  💡 Lighting & Lens: ${shot.lightingScheme} · ${shot.lensOptics}`);
+    lines.push(`  🖼 Visual Prompt: "${shot.visualPrompt}"`);
+    lines.push(`  🎵 Audio Cue: ${shot.audioCue}`);
+    lines.push(``);
+  }
+
+  return lines.join("\n").trim();
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2850,6 +2918,22 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Disambiguating intent for: "${i?.prompt ?? i}"`,
     run: (i) => intentAutoDisambiguatorTool(i) },
+  { name: "flipit_scale_shield", safe: true, description: "Calculates Kelly leverage sizing, drawdown circuit-breakers, and cross-market arbitrage spreads for FlipIt portfolio scaling. input: { currentEquityGbp?, peakEquityGbp?, winRate? }.", params: "{currentEquityGbp?, peakEquityGbp?, winRate?}",
+    args: {
+      currentEquityGbp: { type: "number", desc: "Current portfolio equity in GBP" },
+      peakEquityGbp: { type: "number", desc: "Peak portfolio equity for drawdown tracking" },
+      winRate: { type: "number", desc: "Strategy win rate (e.g. 0.55)" }
+    },
+    activity: () => "Calculating FlipIt dynamic risk shield & Kelly allocation",
+    run: (i) => flipitScaleShieldTool(i) },
+  { name: "studio_director_storyboard", safe: true, description: "Generates cinematic multi-scene storyboard sequences with 3D camera vector rigs, lighting palettes, lens optics, and audio cue timing. input: { prompt, sceneCount?, aspectRatio? }.", params: "{prompt, sceneCount?, aspectRatio?}",
+    args: {
+      prompt: { type: "string", desc: "Narrative storyline or cinematic scene description" },
+      sceneCount: { type: "number", desc: "Number of storyboard scenes (3-8)" },
+      aspectRatio: { type: "string", desc: "Aspect ratio ('16:9', '9:16', '2.39:1', '1:1')" }
+    },
+    activity: (i) => `Directing cinematic storyboard for: "${i?.prompt ?? i}"`,
+    run: (i) => studioDirectorStoryboardTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
