@@ -2319,7 +2319,7 @@ async function notify(input: { title?: string; message: string }): Promise<strin
   // PowerShell/XML string contexts differently and add nothing to a notification.
   const e = (s: string) => s.replace(/["'<>&\\]/g, "").replace(/\n/g, " ");
   if (IS_MAC) {
-    await execFile("osascript", ["-e", `display notification "${e(clean)}" with title "${e(title.slice(0, 60))}"`]);
+    await execFile("osascript", ["-e", `tell application "SAM" to display notification "${e(clean)}" with title "${e(title.slice(0, 60))}"`]);
   } else if (OS === "windows") {
     const ps = `[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime] | Out-Null; $t=[Windows.UI.Notifications.ToastNotification]::new([Windows.Data.Xml.Dom.XmlDocument]::new()); $x=$t.Content; $x.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${e(title)}</text><text id="2">${e(clean)}</text></binding></visual></toast>'); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SAM').Show($t)`;
     await execFile("powershell", ["-command", ps]);
