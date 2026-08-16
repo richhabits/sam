@@ -725,11 +725,38 @@ export interface GrepSearchInput {
   maxResults?: number;
 }
 
+// AUDIT FIX: grep_search is safe:true (no approval, ever) and shipped with zero
+// credential-path awareness — read_file and run_safe_command both check isCredentialPath;
+// this didn't. Confirmed exploitable: grep_search({ path: "~/.ssh" }) returned real content
+// straight out of known_hosts with no targeting trick beyond just pointing `path` at the
+// directory. Two layers: refuse outright when the search root itself is (or is inside) a
+// credential path, and — since git-grep/ripgrep/findByContent could still surface a stray
+// credential file even in an otherwise-legitimate search root (one that isn't actually
+// gitignored, say) — strip any individual `file:line:content` result whose file path matches,
+// rather than trust the search root check alone to be the only line of defence.
+function scrubCredentialMatches(lines: string[]): { kept: string[]; scrubbed: number } {
+  let scrubbed = 0;
+  const kept = lines.filter((line) => {
+    const filePath = line.split(":")[0];
+    if (filePath && isCredentialPath(filePath)) { scrubbed++; return false; }
+    return true;
+  });
+  return { kept, scrubbed };
+}
+const scrubNote = (n: number) => (n > 0 ? `\n(${n} match${n === 1 ? "" : "es"} in credential files withheld — ask for the shell command instead if you need to see them, so a human approves it first.)` : "");
+
 export async function grepSearchTool(input: GrepSearchInput | string): Promise<string> {
   const parsed = typeof input === "string" ? { query: input } : input;
   const query = String(parsed?.query || "").trim();
   if (!query) return "Please provide a query for grep_search.";
   const targetDir = parsed?.path ? safePath(parsed.path) : homedir();
+  // isCredentialPath's patterns match "/.ssh/" etc. WITH a trailing separator (they're built to
+  // test a file path, not a bare directory) — a directory path from safePath() never has one, so
+  // testing targetDir alone would silently miss exactly the case this exists to catch. The
+  // per-line scrub below still catches it as a second layer either way, but this should too.
+  if (isCredentialPath(`${targetDir}/`)) {
+    return `Blocked: ${targetDir} holds credentials, and grep_search runs without asking you first. If you want SAM to see it, ask for the shell command instead — that one shows you the exact command and waits for your approval.`;
+  }
   const max = Math.min(Math.max(1, Number(parsed?.maxResults) || 50), 200);
 
   const flags: string[] = ["-n", "-I"];
@@ -740,12 +767,13 @@ export async function grepSearchTool(input: GrepSearchInput | string): Promise<s
   try {
     const cmd = `git -C ${shq(targetDir)} grep ${flags.join(" ")} ${shq(query)}`;
     const { stdout } = await sh(cmd, { timeout: 15000, maxBuffer: 10 * 1024 * 1024 });
-    const lines = stdout.split("\n").filter(Boolean);
+    const { kept: lines, scrubbed } = scrubCredentialMatches(stdout.split("\n").filter(Boolean));
     if (lines.length > 0) {
       const top = lines.slice(0, max);
       const extra = lines.length > max ? `\n…and ${lines.length - max} more matches.` : "";
-      return `Found ${lines.length} match(es) in ${targetDir}:\n${top.join("\n")}${extra}`;
+      return `Found ${lines.length} match(es) in ${targetDir}:\n${top.join("\n")}${extra}${scrubNote(scrubbed)}`;
     }
+    if (scrubbed > 0) return `No shareable matches for "${query}" in ${targetDir}.${scrubNote(scrubbed)}`;
   } catch (e: any) {
     if (e.code === 1) return `No matches found for "${query}" in ${targetDir}.`;
     // non-git directory or git error, try ripgrep
@@ -760,19 +788,21 @@ export async function grepSearchTool(input: GrepSearchInput | string): Promise<s
       "--max-count", String(max),
     ].filter(Boolean).join(" ");
     const { stdout } = await sh(`rg ${rgFlags} ${shq(query)} ${shq(targetDir)}`, { timeout: 15000, maxBuffer: 10 * 1024 * 1024 });
-    const lines = stdout.split("\n").filter(Boolean);
+    const { kept: lines, scrubbed } = scrubCredentialMatches(stdout.split("\n").filter(Boolean));
     if (lines.length > 0) {
-      return `Found ${lines.length} match(es) in ${targetDir}:\n${lines.slice(0, max).join("\n")}`;
+      return `Found ${lines.length} match(es) in ${targetDir}:\n${lines.slice(0, max).join("\n")}${scrubNote(scrubbed)}`;
     }
+    if (scrubbed > 0) return `No shareable matches for "${query}" in ${targetDir}.${scrubNote(scrubbed)}`;
   } catch (e: any) {
     if (e.code === 1) return `No matches found for "${query}" in ${targetDir}.`;
   }
 
   // 3. Fallback to findByContent if git/rg not applicable
-  const hits = await findByContent(targetDir, query, max);
+  const allHits = await findByContent(targetDir, query, max * 2);
+  const { kept: hits, scrubbed } = scrubCredentialMatches(allHits);
   return hits.length > 0
-    ? `Found in ${hits.length} file(s):\n${hits.join("\n")}`
-    : `No matches found for "${query}" in ${targetDir}.`;
+    ? `Found in ${hits.length} file(s):\n${hits.slice(0, max).join("\n")}${scrubNote(scrubbed)}`
+    : `No matches found for "${query}" in ${targetDir}.${scrubNote(scrubbed)}`;
 }
 
 async function listDir(path: string): Promise<string> {

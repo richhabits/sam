@@ -98,4 +98,33 @@ describe("grep_search tool — fast codebase search", () => {
 
     expect(res).toContain("Please provide a query");
   });
+
+  // AUDIT FIX: grep_search shipped safe:true (auto-runs, no approval, ever) with zero
+  // credential-path awareness — confirmed exploitable against the real filesystem before this
+  // was added: grepSearchTool({ path: "~/.ssh" }) returned real content out of known_hosts with
+  // no bypass needed, just pointing `path` at the directory. read_file and run_safe_command both
+  // already refuse credential paths; this is the same protection, extended here.
+  describe("credential safety — must never surface secrets, even with no approval gate", () => {
+    it("refuses outright when the search root itself is a credential path", async () => {
+      const res = await grepSearchTool({ query: "anything", path: "~/.ssh" });
+      expect(res).toContain("Blocked");
+      expect(res).toContain("credentials");
+    });
+
+    it("scrubs an individual credential-file match even inside an otherwise legitimate search", async () => {
+      // A dotfile like .env is skipped by ripgrep's own default hidden-file filter before the
+      // scrub logic ever runs — proves the overall result is safe, but not that THIS fix is
+      // what's doing it. server.pem isn't hidden, so it's genuinely found by the search
+      // backend, which is what actually exercises scrubCredentialMatches().
+      writeFileSync(join(tempDir, "server.pem"), "API_SECRET=sk-shouldnotleak12345\n", "utf8");
+      writeFileSync(join(tempDir, "normal.ts"), "const API_SECRET_LABEL = 'placeholder';\n", "utf8");
+
+      const res = await grepSearchTool({ query: "API_SECRET", path: tempDir });
+
+      expect(res).not.toContain("sk-shouldnotleak12345");
+      expect(res).not.toContain("server.pem:");
+      expect(res).toContain("normal.ts");
+      expect(res).toContain("withheld");
+    });
+  });
 });
