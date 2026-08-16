@@ -56,7 +56,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
+import { mintPairingCode, mintPairingBundle, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
 import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
 import { list as connectorList, normalize as normalizeConnectorError, statuses as connectorStatuses } from "./connectors.ts";
@@ -274,8 +274,13 @@ app.post("/api/pair/new", (req, res) => {
   // cannot say where it is, it says so.
   const ip = lanIP();
   if (!ip) { res.status(503).json({ error: "This Mac has no network address a phone could reach — connect it to the same Wi-Fi as your phone and try again." }); return; }
-  const code = mintPairingCode(Date.now());
-  res.json({ url: `http://${ip}:${PORT}/pair?code=${code}`, expiresInSec: 900 });
+  const bundle = mintPairingBundle(Date.now());
+  res.json({
+    url: `http://${ip}:${PORT}/pair?code=${bundle.code}`,
+    code: bundle.code,
+    pin: bundle.pin,
+    expiresInSec: 900,
+  });
 });
 // Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is
 // a one-request denial of service that logs every device out, and it was reachable exactly as

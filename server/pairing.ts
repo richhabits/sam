@@ -47,26 +47,53 @@ try { db.exec(`ALTER TABLE sessions ADD COLUMN grants TEXT NOT NULL DEFAULT '{}'
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
-// Pending single-use pairing codes: hash → expiry. In memory — they live for minutes and must not
+interface PendingPairing {
+  expiry: number;
+  pin?: string;
+  code?: string;
+}
+
+// Pending single-use pairing codes: hash → pending entry. In memory — they live for minutes and must not
 // survive a restart (a leaked-but-stale code should never pair). Keyed by hash so the log/heap never
 // holds a usable code.
-const pendingCodes = new Map<string, number>();
+const pendingCodes = new Map<string, PendingPairing>();
+
+function normalizeCode(raw: string): string {
+  return String(raw || "").trim().replace(/[-\s]/g, "").toLowerCase();
+}
+
+/** Mint a one-time pairing bundle containing both a full 32-char hex token and a 6-digit PIN. */
+export function mintPairingBundle(now: number): { code: string; pin: string } {
+  for (const [h, entry] of pendingCodes) if (entry.expiry <= now) pendingCodes.delete(h);   // prune
+  const code = randomBytes(16).toString("hex");   // 32 hex chars, single-use, short-lived
+  const pin = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit friendly PIN
+
+  const entry: PendingPairing = { expiry: now + CODE_TTL_MS, pin, code };
+  pendingCodes.set(sha(normalizeCode(code)), entry);
+  pendingCodes.set(sha(normalizeCode(pin)), entry);
+  return { code, pin };
+}
 
 /** Mint a one-time pairing code (returned raw, ONCE). Exchange it via claimCode() for a session. */
 export function mintPairingCode(now: number): string {
-  for (const [h, exp] of pendingCodes) if (exp <= now) pendingCodes.delete(h);   // prune
-  const code = randomBytes(16).toString("hex");   // 32 hex chars, single-use, short-lived
-  pendingCodes.set(sha(code), now + CODE_TTL_MS);
-  return code;
+  return mintPairingBundle(now).code;
 }
 
-/** Exchange a valid, unexpired, single-use code for a new session. Returns the raw session token
+/** Exchange a valid, unexpired, single-use code or 6-digit PIN for a new session. Returns the raw session token
  *  (to set as the cookie) or null if the code is unknown/expired/already used. */
 export function claimCode(code: string, now: number, label = "browser"): string | null {
-  const h = sha(String(code || ""));
-  const exp = pendingCodes.get(h);
-  if (!exp || exp <= now) { pendingCodes.delete(h); return null; }
-  pendingCodes.delete(h);   // SINGLE USE — consumed whether or not the session write succeeds below
+  const norm = normalizeCode(code);
+  const h = sha(norm);
+  const entry = pendingCodes.get(h);
+  if (!entry || entry.expiry <= now) { pendingCodes.delete(h); return null; }
+
+  // SINGLE USE: Consume both the 32-char hex code and the 6-digit PIN linked to this bundle
+  for (const [key, val] of pendingCodes.entries()) {
+    if (val === entry || (entry.code && val.code === entry.code) || (entry.pin && val.pin === entry.pin)) {
+      pendingCodes.delete(key);
+    }
+  }
+
   const token = randomBytes(32).toString("base64url");
   db.prepare(`INSERT INTO sessions (hash, created, last_seen, label) VALUES (?, ?, ?, ?)`)
     .run(sha(token), now, now, String(label).slice(0, 60));

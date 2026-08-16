@@ -40,6 +40,29 @@ describe("pairing codes → sessions", () => {
     expect(P.claimCode(code, NOW + 16 * 60 * 1000)).toBeNull();
   });
 
+  it("a minted bundle pairs via 6-digit PIN and consumes both PIN and hex code", () => {
+    const bundle = P.mintPairingBundle(NOW);
+    expect(bundle.code).toHaveLength(32);
+    expect(bundle.pin).toMatch(/^\d{6}$/);
+
+    // Claim via formatted PIN (with spaces/dashes)
+    const token = P.claimCode(` ${bundle.pin.slice(0, 3)}-${bundle.pin.slice(3)} `, NOW);
+    expect(token).toBeTruthy();
+    expect(P.validateSession(token!, NOW)).toBe(true);
+
+    // Full hex code is also consumed
+    expect(P.claimCode(bundle.code, NOW)).toBeNull();
+    // PIN cannot be reused
+    expect(P.claimCode(bundle.pin, NOW)).toBeNull();
+  });
+
+  it("claiming via full hex code invalidates the linked 6-digit PIN", () => {
+    const bundle = P.mintPairingBundle(NOW);
+    const token = P.claimCode(bundle.code, NOW);
+    expect(token).toBeTruthy();
+    expect(P.claimCode(bundle.pin, NOW)).toBeNull();
+  });
+
   it("refuses an unknown / garbage code", () => {
     expect(P.claimCode("deadbeef", NOW)).toBeNull();
     expect(P.claimCode("", NOW)).toBeNull();
