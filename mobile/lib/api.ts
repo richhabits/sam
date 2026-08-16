@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { demoApi, isDemo, leaveDemo } from "./demo";
 import { normalizeHost } from "./pairstate";
+import { registerForExpoPushAsync } from "./notify";
 
 // How this device names itself in SAM's device registry — the operator's revoke list. RN's
 // User-Agent is a bare CFNetwork/Darwin string with no device in it, so without this every
@@ -87,6 +88,7 @@ export async function claim(host: string, code: string): Promise<void> {
   if (!res.ok) throw new ApiError(res.status, body?.error || `pairing failed (${res.status})`);
   await setHost(base);
   await setToken(body.token);
+  void registerForExpoPushAsync(base, body.token);
 }
 
 function initSignal(userSignal?: AbortSignal | null, timeoutSignal?: AbortSignal): AbortSignal | undefined {

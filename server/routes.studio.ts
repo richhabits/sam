@@ -170,10 +170,35 @@ export function registerStudioRoutes(app: Express) {
     if (typeof timer.unref === "function") timer.unref();
   }
 
+  const CAMERA_PRESETS = [
+    { id: "dolly_in", label: "Dolly In", desc: "Smooth cinematic push in towards the subject" },
+    { id: "dolly_out", label: "Dolly Out", desc: "Slow cinematic pull back revealing the wider environment" },
+    { id: "orbit_left", label: "Orbit Left", desc: "Smooth 360-degree rotation around the subject counter-clockwise" },
+    { id: "orbit_right", label: "Orbit Right", desc: "Smooth 360-degree rotation around the subject clockwise" },
+    { id: "crane_up", label: "Crane Up", desc: "Sweeping vertical jib crane ascent looking down" },
+    { id: "crane_down", label: "Crane Down", desc: "Dramatic descending crane swoop to eye level" },
+    { id: "fpv_drone", label: "FPV Drone", desc: "High-speed dynamic aerobatic first-person drone flight" },
+    { id: "whip_pan", label: "Whip Pan", desc: "Fast motion-blurred transition snap between perspectives" },
+    { id: "bullet_time", label: "Bullet Time", desc: "Matrix-style frozen time orbital camera wrap" },
+    { id: "dutch_angle", label: "Dutch Angle", desc: "Tilted canted horizon conveying tension and drama" },
+    { id: "tracking_shot", label: "Tracking Shot", desc: "Parallel tracking alongside the moving subject" },
+    { id: "vertigo_zoom", label: "Vertigo Dolly Zoom", desc: "Hitchcock dolly zoom with background expansion" },
+    { id: "low_angle_hero", label: "Low Angle Hero", desc: "Ground-level upward hero perspective" },
+    { id: "overhead_god", label: "Overhead God View", desc: "Top-down 90-degree bird's eye perspective" },
+    { id: "macro_glide", label: "Macro Glide", desc: "Ultra close-up microscopic glide across textures" },
+    { id: "handheld_raw", label: "Handheld Raw", desc: "Gritty documentary-style handheld camera sway" }
+  ];
+
+  app.get("/api/studio/presets/cameras", (_req, res) => {
+    res.json({ cameras: CAMERA_PRESETS });
+  });
+
   app.post("/api/studio/enhance", async (req, res) => {
     const p = String(req.body?.prompt || "").trim();
+    const style = req.body?.style ? ` Style preset: ${req.body.style}.` : "";
+    const camera = req.body?.camera ? ` Camera motion: ${req.body.camera}.` : "";
     if (!p) return res.status(400).json({ error: "no prompt" });
-    const sys = "You are a prompt engineer for AI image/video generation. Rewrite the user's idea into ONE vivid, specific, cinematic prompt (subject, setting, lighting, mood, lens, detail). Output ONLY the improved prompt, no quotes, no preamble, under 60 words.";
+    const sys = `You are a prompt engineer for AI image/video generation. Rewrite the user's idea into ONE vivid, specific, cinematic prompt (subject, setting, lighting, mood, lens, motion).${style}${camera} Output ONLY the improved prompt, no quotes, no preamble, under 60 words.`;
     try { const r = await runModel("free", sys, p); res.json({ prompt: (r.text || p).replace(/^["']|["']$/g, "").trim() }); }
     catch { res.json({ prompt: p }); }
   });

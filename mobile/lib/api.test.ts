@@ -12,6 +12,7 @@ vi.mock('expo-secure-store', () => ({
   deleteItemAsync: async (k: string) => { store.delete(k); },
 }));
 vi.mock('react-native', () => ({ Platform: { OS: 'ios', isPad: false } }));
+vi.mock('./notify', () => ({ registerForExpoPushAsync: vi.fn() }));
 
 import { claim, getHost, getToken } from './api';
 

@@ -90,7 +90,7 @@ import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc 
 import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
 import { forgeTool, listForged, forgedStats, bindToolRegistry } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { startSwarm, loadSwarms, stopSwarm } from "./swarm.ts";
+import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
@@ -562,6 +562,8 @@ export async function manageTaskTool(i: { action: string; taskId?: string; comma
 
   if (i.action === "send_input") {
     if (i.input === undefined) return "Error: 'input' required for send_input.";
+    const d = denied(i.input);
+    if (d) return d;
     if (!task.child.stdin) return `Error: task ${id} has no stdin.`;
     task.child.stdin.write(i.input + (i.input.endsWith("\n") ? "" : "\n"));
     return `Sent input to task ${id}. Use status to check output.`;
@@ -914,6 +916,13 @@ export async function runTestsTool(input: { path?: string }): Promise<string> {
   } catch (e: any) {
     return `Failed to parse test output. Raw error:\n${stderr || stdout || e.message}`.slice(0, 2000);
   }
+}
+
+export async function subAgentTool(input: { task: string; specialist?: string; tier?: string }): Promise<string> {
+  const task = String(input.task || "").trim();
+  if (!task) return "Error: task required for subagent.";
+  const res = await spawnSubAgent({ task, specialistId: input.specialist, tier: input.tier as any });
+  return `Subagent [${res.id}] (${res.status}):\n\n${res.output}`;
 }
 
 async function listDir(path: string): Promise<string> {
@@ -1772,6 +1781,13 @@ export const TOOLS: Tool[] = [
   { name: "run_tests", safe: true, description: "Runs the vitest test suite programmatically and parses the JSON output to return ONLY the failures (exact errors and line numbers) instead of raw terminal logs. input: { path? }.", params: "{path?}",
     args: { path: { type: "string", desc: "Optional path to a specific test file or directory" } },
     activity: (i) => `Running tests ${i.path || ""}`, run: (i) => runTestsTool(i) },
+  { name: "spawn_subagent", safe: true, description: "Spawns an autonomous background specialist sub-agent to solve a focused task. input: { task, specialist?, tier? }. Specialists: coder, investigator, designer, writer, scout.", params: "{task, specialist?, tier?}",
+    args: {
+      task: { type: "string", required: true, desc: "The subtask for the agent to execute" },
+      specialist: { type: "string", desc: "Specialist role (coder | investigator | designer | writer | scout)" },
+      tier: { type: "string", desc: "Model tier (fast | powerful)" }
+    },
+    activity: (i) => `Delegating to sub-agent (${i.specialist || "coder"}): ${i.task}`, run: (i) => subAgentTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
@@ -2789,14 +2805,19 @@ export const TOOLS: Tool[] = [
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "run_daemon", safe: false, description: "Run a shell command in the BACKGROUND without waiting — for anything too slow for a normal step (a full test suite, a big build, a long scrape). Returns immediately with a log path; you get nudged when it finishes. input: a command string.", params: "command",
     activity: (_i) => `Starting a background task`, preview: (i) => `Run in background:\n  ${i.command ?? i}`, run: async (i) => runDaemon(i.command ?? i) },
-  { name: "manage_task", safe: true, description: "Manage background tasks. Support interactive processes. input: { action, taskId?, command?, input? }. Actions: 'spawn' (needs command), 'list', 'status' (needs taskId), 'send_input' (needs taskId, input), 'kill' (needs taskId).", params: "{action, taskId?, command?, input?}",
+  { name: "manage_task", safe: false, description: "Manage background tasks. Support interactive processes. input: { action, taskId?, command?, input? }. Actions: 'spawn' (needs command), 'list', 'status' (needs taskId), 'send_input' (needs taskId, input), 'kill' (needs taskId).", params: "{action, taskId?, command?, input?}",
     args: {
       action: { type: "string", required: true, desc: "spawn | list | status | send_input | kill" },
       taskId: { type: "string", desc: "task id (e.g. d-12345)" },
       command: { type: "string", desc: "command to spawn" },
       input: { type: "string", desc: "text to send to stdin" }
     },
-    activity: (i) => `Managing task: ${i.action}`, run: (i) => manageTaskTool(i) },
+    activity: (i) => `Managing task: ${i.action}`,
+    preview: (i) => i.action === "spawn" ? `Spawn background task:\n  ${i.command ?? ""}`
+      : i.action === "send_input" ? `Send to task ${i.taskId}:\n  ${i.input ?? ""}`
+      : i.action === "kill" ? `Kill task ${i.taskId}`
+      : `Manage task: ${i.action}${i.taskId ? ` (${i.taskId})` : ""}`,
+    run: (i) => manageTaskTool(i) },
   { name: "write_file", safe: false, description: "Write/overwrite a full file. Use edit_file instead when modifying existing code. input: {path, content}.", params: "{path, content}",
     args: { path: { type: "string", required: true, desc: "file path (supports ~)" }, content: { type: "string", required: true, desc: "the full new file contents" } },
     activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },

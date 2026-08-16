@@ -331,3 +331,32 @@ export function stopSwarm(id: string): boolean {
   });
   return true;
 }
+
+export async function spawnSubAgent(opts: {
+  task: string;
+  specialistId?: string;
+  tier?: Tier;
+}): Promise<{ id: string; status: string; output: string }> {
+  const specId = opts.specialistId && byId(opts.specialistId) ? opts.specialistId : "coder";
+  const spec = byId(specId) || SPECIALISTS[0];
+  const tier: Tier = opts.tier || "free";
+  const agentId = "sub-" + Math.random().toString(36).slice(2, 9);
+  
+  const systemPrompt = `You are ${spec.name} (${spec.emoji}). ${spec.brief}\nGoal: ${opts.task}\nComplete this subtask autonomously using the provided tools. Be thorough and verify your changes.`;
+  
+  try {
+    const res = await runAgent(systemPrompt, opts.task, tier);
+    return {
+      id: agentId,
+      status: res.kind === "final" ? "done" : "paused",
+      output: res.kind === "final" ? (res.text || "Task completed.") : (res.preview || "Subagent paused waiting for tool authorization."),
+    };
+  } catch (e: any) {
+    return {
+      id: agentId,
+      status: "error",
+      output: `Subagent failed: ${e.message}`,
+    };
+  }
+}
+

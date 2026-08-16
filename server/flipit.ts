@@ -17,6 +17,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
+import { pushNotify } from "./push.ts";
 
 // The rig's own thresholds. Mirrored here so the desk labels a day the same way the
 // rig does; they are read-only constants, not settings — the rig remains the authority.
@@ -319,3 +320,36 @@ export function desk(now = Date.now()): Desk {
   return d;
 }
 export function clearDeskCache() { cached = null; }
+
+let lastAlertedState = { rung: -1, stale: false };
+export async function checkFlipItAlerts(now = Date.now()): Promise<string | null> {
+  const d = desk(now);
+  if (!d.present || !d.loop || !d.now) return null;
+  
+  if (d.loop.stale && !lastAlertedState.stale) {
+    lastAlertedState.stale = true;
+    await pushNotify(
+      "FlipIt Watchdog Alert ⚠️",
+      `The forward step is overdue (stale). Next step was expected by ${new Date(d.loop.nextScheduled || 0).toLocaleTimeString()}.`,
+      "/flipit"
+    );
+    return "stale_alert_sent";
+  } else if (!d.loop.stale) {
+    lastAlertedState.stale = false;
+  }
+
+  const currentRung = d.now.rung;
+  if (lastAlertedState.rung !== -1 && currentRung > lastAlertedState.rung) {
+    await pushNotify(
+      "FlipIt Ladder Unlocked! 🚀",
+      `Target reached! Advanced to Rung ${currentRung}. Equity: £${d.now.equity.toFixed(2)}.`,
+      "/flipit"
+    );
+    lastAlertedState.rung = currentRung;
+    return "rung_alert_sent";
+  }
+  lastAlertedState.rung = currentRung;
+  return null;
+}
+
+

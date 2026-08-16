@@ -73,11 +73,28 @@ export async function notify(title: string, body: string, data?: Record<string, 
   });
 }
 
-// devicePushToken() lived here — an APNs/FCM token getter with NO caller anywhere in the app,
-// since the day it was written. Removed 2026-08-11 rather than left as scaffolding: an exported
-// function that fetches a push token is read as evidence that push works, and it does not. The
-// server's B4 push is Web Push / VAPID, which a native app cannot consume at all (see AGENTS.md),
-// so this was a door onto a road that was never built. Notifications here are LOCAL only.
-//
-// When a real transport lands it needs an APNs key from the operator's Apple account, and the
-// three lines this deleted are the least of that work.
+/** Register this device's Expo Push Token with the paired SAM server.
+ *  Enables remote lockscreen updates and task completion alerts from the server. */
+export async function registerForExpoPushAsync(serverHost: string, authToken?: string): Promise<boolean> {
+  const perm = await ensurePermission();
+  if (perm !== 'granted') return false;
+
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const expoPushToken = tokenData?.data;
+    if (!expoPushToken) return false;
+
+    const base = serverHost.trim().replace(/\/+$/, '');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+    const res = await fetch(`${base}/api/push/subscribe`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ expoPushToken }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

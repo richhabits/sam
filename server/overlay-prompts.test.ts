@@ -35,4 +35,14 @@ describe("overlay injection fencing", () => {
     expect(p).toContain("some doc text");
     expect(p).toContain("END SELECTION");
   });
+
+  it("developer code actions demand fenced code and pure transformations", () => {
+    const code = "function add(a,b) { return a+b; }";
+    expect(buildPrompt("code_review", code)).toContain("Review the selected code");
+    expect(buildPrompt("code_review", code)).toContain("END SELECTION");
+    expect(buildPrompt("code_refactor", code)).toContain("ONLY the refactored code");
+    expect(buildPrompt("code_types", code)).toContain("ONLY the typed code");
+    expect(buildPrompt("code_test", code)).toContain("ONLY the test code");
+    expect(buildPrompt("explain_code", code)).toContain("Explain how this code works");
+  });
 });
