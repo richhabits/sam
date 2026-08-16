@@ -345,7 +345,8 @@ export async function spawnSubAgent(opts: {
   const systemPrompt = `You are ${spec.name} (${spec.emoji}). ${spec.brief}\nGoal: ${opts.task}\nComplete this subtask autonomously using the provided tools. Be thorough and verify your changes.`;
   
   try {
-    const res = await runAgent(systemPrompt, opts.task, tier);
+    // swarm=true ensures risky/mutating tools always pause for human approval
+    const res = await runAgent(systemPrompt, opts.task, tier, undefined, false, true);
     return {
       id: agentId,
       status: res.kind === "final" ? "done" : "paused",

@@ -889,12 +889,26 @@ export async function astOutlineTool(input: { path: string }): Promise<string> {
 }
 
 export async function runTestsTool(input: { path?: string }): Promise<string> {
-  const p = input.path ? safePath(input.path) : "";
-  const { stdout, stderr } = await sh(`npx vitest run ${shq(p)} --reporter=json`).catch(e => e);
+  const args = ["vitest", "run", "--reporter=json"];
+  if (input.path) {
+    const p = safePath(input.path);
+    if (!existsSync(p)) return `Error: test target path '${input.path}' not found.`;
+    args.push(p);
+  }
+  let stdout = "", stderr = "";
+  try {
+    const res = await execFile("npx", args, { timeout: 45000, maxBuffer: 10 * 1024 * 1024 });
+    stdout = res.stdout;
+    stderr = res.stderr;
+  } catch (e: any) {
+    stdout = e.stdout || "";
+    stderr = e.stderr || e.message;
+  }
   
   try {
-    // Vitest JSON output might have preceding text before the JSON payload starts.
-    const jsonStr = stdout.substring(stdout.indexOf('{'));
+    const jsonIdx = stdout.indexOf('{');
+    if (jsonIdx === -1) throw new Error(stderr || stdout || "No JSON output from vitest");
+    const jsonStr = stdout.substring(jsonIdx);
     const report = JSON.parse(jsonStr);
     
     if (report.success) {
@@ -1781,13 +1795,15 @@ export const TOOLS: Tool[] = [
   { name: "run_tests", safe: true, description: "Runs the vitest test suite programmatically and parses the JSON output to return ONLY the failures (exact errors and line numbers) instead of raw terminal logs. input: { path? }.", params: "{path?}",
     args: { path: { type: "string", desc: "Optional path to a specific test file or directory" } },
     activity: (i) => `Running tests ${i.path || ""}`, run: (i) => runTestsTool(i) },
-  { name: "spawn_subagent", safe: true, description: "Spawns an autonomous background specialist sub-agent to solve a focused task. input: { task, specialist?, tier? }. Specialists: coder, investigator, designer, writer, scout.", params: "{task, specialist?, tier?}",
+  { name: "spawn_subagent", safe: false, description: "Spawns an autonomous background specialist sub-agent to solve a focused task. input: { task, specialist?, tier? }. Specialists: coder, investigator, designer, writer, scout.", params: "{task, specialist?, tier?}",
     args: {
       task: { type: "string", required: true, desc: "The subtask for the agent to execute" },
       specialist: { type: "string", desc: "Specialist role (coder | investigator | designer | writer | scout)" },
-      tier: { type: "string", desc: "Model tier (fast | powerful)" }
+      tier: { type: "string", desc: "Model tier (local | free | premium)" }
     },
-    activity: (i) => `Delegating to sub-agent (${i.specialist || "coder"}): ${i.task}`, run: (i) => subAgentTool(i) },
+    activity: (i) => `Delegating to sub-agent (${i.specialist || "coder"}): ${i.task}`,
+    preview: (i) => `Spawn autonomous sub-agent (${i.specialist || "coder"}):\n  ${i.task ?? ""}`,
+    run: (i) => subAgentTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
