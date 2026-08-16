@@ -106,6 +106,7 @@ import { championWithConfidence } from "./colosseum-significance.ts";
 import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipit.ts";
 import { generateStoryboardDirector, compileHiggsfieldMotionPrompt, buildCharacterAnchorPrompt, type CharacterProfile } from "./studio-higgsfield.ts";
 import { getSavingsSummary, compressPromptForCost, auditCapitalProtection } from "./cost-optimizer.ts";
+import { executeSmartAction, generateSmartStudioPreset, buildSimpleFlipItSummary } from "./smart-actions.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1456,6 +1457,54 @@ export async function capitalProtectionAuditTool(input: {
   return lines.join("\n");
 }
 
+export async function smartQuickActionTool(input: {
+  intent: string;
+}): Promise<string> {
+  const intent = String(input?.intent || "").trim();
+  if (!intent) return "Error: intent is required for smart action execution.";
+
+  const act = await executeSmartAction(intent);
+  const lines = [
+    `${act.title}:`,
+    `· ${act.summary}`,
+    `\nDetails:`,
+    ...act.details.map(d => `  - ${d}`),
+    `\nNext Step: ${act.nextSuggestedAction}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function smartStudioPresetTool(input: {
+  concept: string;
+  mood?: "cinematic" | "action" | "moody" | "commercial" | "anime" | "vintage";
+}): Promise<string> {
+  const concept = String(input?.concept || "").trim();
+  if (!concept) return "Error: concept is required.";
+
+  const preset = generateSmartStudioPreset(concept, input?.mood);
+  const lines = [
+    `🎬 Higgsfield 1-Click Studio Preset:`,
+    `· Recommended Camera: ${preset.recommendedCameraRig} | Lens: ${preset.recommendedLens} | Aspect: ${preset.aspectRatio}`,
+    `\n## Ready-To-Generate Prompt:\n"${preset.enhancedPrompt}"`,
+    `\nQuick Tips:`,
+    ...preset.quickTips.map(t => `  - ${t}`),
+  ];
+  return lines.join("\n");
+}
+
+export async function smartFlipitSummaryTool(): Promise<string> {
+  const card = buildSimpleFlipItSummary();
+  const lines = [
+    `📈 FlipIt Quick Glance Summary:`,
+    `· Current Balance: ${card.currentEquity}`,
+    `· Ladder Status: ${card.rungStatus} (${card.ladderProgressPct}% progress)`,
+    `· Safe Position Size: ${card.safePositionSize}`,
+    `· System Health: [${card.overallHealth}]`,
+    `· Guidance: ${card.actionAdvice}`,
+  ];
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2448,6 +2497,23 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Auditing capital protection for equity £${Number(i?.equity || 5).toFixed(2)}`,
     run: (i) => capitalProtectionAuditTool(i) },
+  { name: "smart_quick_action", safe: true, description: "Executes 1-click natural language smart workflows across SAM, FlipIt, and Studio with zero cognitive friction. input: { intent }.", params: "{intent}",
+    args: {
+      intent: { type: "string", required: true, desc: "High-level user request or intent" }
+    },
+    activity: (i) => `Executing 1-click smart action for "${String(i?.intent || "").slice(0, 30)}…"`,
+    run: (i) => smartQuickActionTool(i) },
+  { name: "smart_studio_preset", safe: true, description: "Generates an instant 1-click Higgsfield cinematic prompt with auto-matched camera rig, lens, and lighting. input: { concept, mood? }.", params: "{concept, mood?}",
+    args: {
+      concept: { type: "string", required: true, desc: "Basic visual idea or prompt" },
+      mood: { type: "string", desc: "Visual mood (cinematic | action | moody | commercial | anime | vintage)" }
+    },
+    activity: (i) => `Generating 1-click studio preset for "${String(i?.concept || "").slice(0, 30)}…"`,
+    run: (i) => smartStudioPresetTool(i) },
+  { name: "smart_flipit_summary", safe: true, description: "Displays a dead-simple, 3-line financial health and ladder progress card for FlipIt. input: {}.", params: "{}",
+    args: {},
+    activity: () => "Generating FlipIt quick-glance summary",
+    run: () => smartFlipitSummaryTool() },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
