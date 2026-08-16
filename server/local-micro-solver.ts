@@ -95,6 +95,32 @@ export function trySolveLocally(input: string): MicroSolverResult {
     };
   }
 
+  // 4. Distance & Weight conversions (miles <-> km, lbs <-> kg)
+  const distMatch = p.match(/^(\d+(?:\.\d+)?)\s*(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)\s+(?:to|in)\s+(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)$/);
+  if (distMatch) {
+    const val = parseFloat(distMatch[1]);
+    const from = distMatch[2];
+    const to = distMatch[3];
+    const toMeters: Record<string, number> = {
+      m: 1, meter: 1, meters: 1,
+      km: 1000, kilometer: 1000, kilometers: 1000,
+      cm: 0.01,
+      in: 0.0254, inches: 0.0254,
+      ft: 0.3048, feet: 0.3048,
+      mi: 1609.344, mile: 1609.344, miles: 1609.344,
+    };
+    const meters = val * (toMeters[from] || 1);
+    const converted = meters / (toMeters[to] || 1);
+    return {
+      solvedLocally: true,
+      type: "unit_conversion",
+      answer: `${val} ${from} = ${converted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${to}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
   return {
     solvedLocally: false,
     type: "unsupported",
