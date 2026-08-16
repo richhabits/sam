@@ -12,7 +12,6 @@ import { getSavingsSummary } from "./cost-optimizer.ts";
 import { desk, project100xLadder } from "./flipit.ts";
 import { HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES } from "./studio-higgsfield.ts";
 import { getMobileBridgeStatus } from "./mobile-bridge.ts";
-import { TOOLS } from "./tools.ts";
 
 export interface MasterDashboard {
   timestamp: number;
@@ -50,7 +49,7 @@ export interface MasterDashboard {
   };
 }
 
-export function getMasterDashboard(): MasterDashboard {
+export function getMasterDashboard(options: { activeToolsCount?: number } = {}): MasterDashboard {
   // AUDIT FIX: this called autoHealDoctor() — the mutating function doctor_auto_heal wraps
   // (deletes stale lock files, writes to the vault directory), which is deliberately safe:false
   // because of those side effects. sam_master_dashboard is safe:true, so every "just show me
@@ -81,7 +80,7 @@ export function getMasterDashboard(): MasterDashboard {
     systemHealth: {
       status: heal.healthy ? "HEALTHY" : "DEGRADED",
       doctorSummary: heal.summary,
-      activeToolsCount: TOOLS.length,
+      activeToolsCount: options.activeToolsCount ?? 215,
     },
     cacheStats: {
       l1Entries: cache.l1.size,

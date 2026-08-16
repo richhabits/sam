@@ -1590,7 +1590,7 @@ export async function flipitRebalancePortfolioTool(input: {
 }
 
 export async function samMasterDashboardTool(): Promise<string> {
-  const d = getMasterDashboard();
+  const d = getMasterDashboard({ activeToolsCount: TOOLS.length });
 
   const lines = [
     `🎛️ SAM Master Executive Dashboard:`,
@@ -1606,7 +1606,7 @@ export async function samMasterDashboardTool(): Promise<string> {
 }
 
 export async function mobileGenerateFeedSnapshotTool(): Promise<string> {
-  const feed = generateMobileFeed();
+  const feed = generateMobileFeed({ activeToolsCount: TOOLS.length });
 
   const lines = [
     `📱 Mobile Live Feed Stream Snapshot (${feed.activeCards.length} active cards):`,

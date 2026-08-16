@@ -27,8 +27,12 @@ export interface MobileLiveFeed {
   unreadCount: number;
 }
 
-export function generateMobileFeed(): MobileLiveFeed {
-  const dash = getMasterDashboard();
+export function generateMobileFeed(options: { activeToolsCount?: number } = {}): MobileLiveFeed {
+  // activeToolsCount is threaded through rather than importing TOOLS from tools.ts directly —
+  // tools.ts imports generateMobileFeed to register mobile_generate_feed_snapshot, so importing
+  // TOOLS here would recreate the exact orchestrator ⇄ tools import cycle getMasterDashboard's
+  // own activeToolsCount parameter exists to avoid.
+  const dash = getMasterDashboard({ activeToolsCount: options.activeToolsCount });
   const d = desk();
   const eq = d.now?.equity ?? 5.0;
   const ladder = project100xLadder(eq);
