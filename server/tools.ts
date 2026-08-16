@@ -424,7 +424,7 @@ const UNSAFE_PATTERNS = [
   /\bdiskutil\b/i,
 ];
 
-// Extract the first "real" command from a pipeline, skipping env assignments like
+// Extract the first "real" command from a segment, skipping env assignments like
 // `FOO=bar BAZ=qux command args`. Returns the base command name.
 function firstCommand(cmd: string): string {
   // Strip leading env assignments (VAR=value pairs)
@@ -435,13 +435,42 @@ function firstCommand(cmd: string): string {
   return first.replace(/^.*\//, "");
 }
 
+// AUDIT FIX: the original version only split on `|` before checking each segment's first
+// token, so `ls ; cat ~/.ssh/id_rsa` sailed through — the whole string became one "segment",
+// firstCommand() found "ls" as the first whitespace token, and everything after the `;` was
+// never inspected at all. `$(...)`, backticks and `<(...)` are worse: the SHELL evaluates
+// those before the outer command even runs, so no amount of splitting on separators catches
+// them — the only sound answer is to refuse the whole command outright if it contains one.
+// Confirmed exploitable pre-fix: `cat ~/.ssh/id_rsa` (no chaining needed at all — cat/head/
+// grep were unconditionally in the allowlist with zero credential-path awareness, silently
+// undoing the exact protection read_file's CREDENTIAL_PATH check exists to enforce),
+// `ls ; base64 ~/.ssh/id_rsa`, `echo $(cat ~/.aws/credentials)`, `ls && cat ~/.env`.
+const SUBSHELL_SYNTAX = /\$\(|`|<\(|>\(/;
+
 export function isReadOnlyCommand(cmd: string): boolean {
+  // An empty (or separator-only, e.g. ";;") command has zero segments to check once filtered —
+  // the loop below would run zero times and fall through to `true` vacuously otherwise.
+  if (!cmd.trim()) return false;
+  // Refuse outright rather than try to parse into it — process/command substitution runs
+  // before anything else in the pipeline, regardless of what the outer command looks like.
+  if (SUBSHELL_SYNTAX.test(cmd)) return false;
+  // Same protection read_file enforces for exactly the same reason, extended here: run_command
+  // still lets a human see+approve a `cat` of a private key; this tool must never let that
+  // happen silently. Checked per TOKEN, not against the whole command string — isCredentialPath
+  // anchors on "immediately after a path separator or string start" (`(^|\/)`), which a relative
+  // arg like "cat .env" never satisfies when tested as part of the full "cat .env" string (the
+  // space before ".env" isn't a "/", and ".env" isn't at position 0). Each individual token IS
+  // exactly the kind of standalone path isCredentialPath was built to test.
+  if (cmd.split(/\s+/).some((tok) => isCredentialPath(tok))) return false;
   // Never safe if it matches a known destructive pattern
   if (UNSAFE_PATTERNS.some((re) => re.test(cmd))) return false;
   // Also never safe if the hard-deny list catches it
   if (isCatastrophic(cmd)) return false;
-  // Check every segment of a pipeline — ALL must be safe
-  const segments = cmd.split(/\s*[|]\s*/);
+  // Split on every shell separator — pipes, sequencing (;), conditional chaining (&&/||),
+  // backgrounding (&), and a literal newline (a multi-line command is sequenced exactly like
+  // `;`) — and check EVERY resulting segment's own first command, not just the string's first
+  // token. A single un-inspected segment is a single un-inspected command.
+  const segments = cmd.split(/\s*(?:\|\||&&|[|;&\n])\s*/).filter(Boolean);
   for (const seg of segments) {
     const base = firstCommand(seg);
     if (!SAFE_CMD_PREFIXES.has(base)) return false;

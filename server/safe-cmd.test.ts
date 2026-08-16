@@ -184,4 +184,47 @@ describe("isReadOnlyCommand — edge cases and bypass attempts", () => {
     expect(isReadOnlyCommand("git commit -m 'x'")).toBe(false);
     expect(isReadOnlyCommand("git reset --hard")).toBe(false);
   });
+
+  // AUDIT FIX (found reviewing the version that shipped these 87 tests, before it was pushed):
+  // every case above passed for real, but four real exploits also returned `true` and nothing
+  // here caught them. "blocks semicolons sneaking a second command" (above) used `rm -rf /`
+  // after the `;` — which passes because UNSAFE_PATTERNS matches "rm -rf" as a substring
+  // ANYWHERE in the raw string, not because anything actually inspected the post-`;` segment.
+  // A command with no rm/mv/chmod/etc. after the separator sailed straight through. These
+  // cases use commands with nothing UNSAFE_PATTERNS would ever match, so they only pass if the
+  // segment-splitting itself is doing the real work.
+  it("blocks a semicolon-chained command with nothing in UNSAFE_PATTERNS to catch it by luck", () => {
+    expect(isReadOnlyCommand("ls ; base64 ~/.ssh/id_rsa")).toBe(false);
+    expect(isReadOnlyCommand("ls;base64 ~/.ssh/id_rsa")).toBe(false);
+  });
+
+  it("blocks && and & chained commands the same way, not just pipes", () => {
+    expect(isReadOnlyCommand("ls && cat ~/.env")).toBe(false);
+    expect(isReadOnlyCommand("ls & cat ~/.ssh/id_rsa")).toBe(false);
+    expect(isReadOnlyCommand("git status || base64 ~/.aws/credentials")).toBe(false);
+  });
+
+  it("blocks command/process substitution outright — the shell evaluates it before anything else runs", () => {
+    expect(isReadOnlyCommand("echo $(cat ~/.ssh/id_rsa)")).toBe(false);
+    expect(isReadOnlyCommand("echo `cat ~/.ssh/id_rsa`")).toBe(false);
+    expect(isReadOnlyCommand("diff <(cat ~/.env) /dev/null")).toBe(false);
+  });
+
+  it("blocks a newline-sequenced second command, same as ; would be", () => {
+    expect(isReadOnlyCommand("ls\nbase64 ~/.ssh/id_rsa")).toBe(false);
+    expect(isReadOnlyCommand("git status\nnpm install left-pad")).toBe(false);
+  });
+
+  it("blocks a direct read of a credential path with NO chaining trick needed at all", () => {
+    // cat/head/tail/grep were unconditionally in the allowlist with zero credential-path
+    // awareness — this is the one that mattered most: no bypass required, just the tool
+    // working exactly as documented against a private key.
+    expect(isReadOnlyCommand("cat ~/.ssh/id_rsa")).toBe(false);
+    expect(isReadOnlyCommand("head -50 ~/.aws/credentials")).toBe(false);
+    expect(isReadOnlyCommand("grep -r password ~/.ssh/")).toBe(false);
+    expect(isReadOnlyCommand("cat .env")).toBe(false);
+    expect(isReadOnlyCommand("tail ~/.npmrc")).toBe(false);
+    // Sanity: cat on a NON-credential path must still work — this isn't "never cat anything".
+    expect(isReadOnlyCommand("cat package.json")).toBe(true);
+  });
 });
