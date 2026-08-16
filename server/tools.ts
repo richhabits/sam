@@ -591,8 +591,23 @@ export async function manageTaskTool(i: { action: string; taskId?: string; comma
   return `Error: Unknown action '${i.action}'`;
 }
 
-// ── FILES ────────────────────────────────────────────────────
-const safePath = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
+export function unwrapPath(p: any): string {
+  if (!p) return "~";
+  if (typeof p === "string") {
+    if (p === "[object Object]") return "~";
+    return p.trim() || "~";
+  }
+  if (typeof p === "object") {
+    const raw = p.path ?? p.dir ?? p.file ?? p.target ?? p.folder ?? p.src ?? p.name ?? "";
+    return unwrapPath(raw);
+  }
+  return String(p || "~");
+}
+
+const safePath = (p: any) => {
+  const str = unwrapPath(p);
+  return resolve(str.replace(/^~(?=$|\/)/, homedir()));
+};
 
 // Files that are ONLY ever credentials. read_file is safe:true, and safe:true means the agent loop
 // never asks — see agent.ts, where the gate is `!tool.safe && !mayAutoRun(...)`, so the whole tier
@@ -2929,15 +2944,15 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Semantic searching for “${i?.query ?? i}”`,
     run: (i) => semanticSearchTool(i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
-    activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
+    activity: (i) => `Looking in ${unwrapPath(i)}`, run: (i) => listDir(unwrapPath(i)) },
   { name: "folder_digest", safe: true, description: "Summarise a folder: file count, total size, top file types, and the largest files. input: a folder path (supports ~).", params: "path",
-    activity: (i) => `Sizing up ${i.path ?? i ?? "~"}`, run: (i) => folderDigest(i.path ?? i ?? "~") },
+    activity: (i) => `Sizing up ${unwrapPath(i)}`, run: (i) => folderDigest(unwrapPath(i)) },
   { name: "find_duplicates", safe: true, description: "Find duplicate files (identical contents) in a folder, grouped, with total reclaimable space. input: a folder path (supports ~).", params: "path",
-    activity: (i) => `Hunting duplicates in ${i.path ?? i ?? "~"}`, run: (i) => findDuplicates(i.path ?? i ?? "~") },
+    activity: (i) => `Hunting duplicates in ${unwrapPath(i)}`, run: (i) => findDuplicates(unwrapPath(i)) },
   { name: "recent_files", safe: true, description: "List the most recently modified files in a folder (name, when, size), newest first — great for 'what did I work on lately'. input: { path, limit? } (path supports ~; limit defaults to 15).", params: "path, limit?",
-    activity: (i) => `Finding recent files in ${i.path ?? i ?? "~"}`, run: (i) => recentFiles(i.path ?? i ?? "~", i.limit) },
+    activity: (i) => `Finding recent files in ${unwrapPath(i)}`, run: (i) => recentFiles(unwrapPath(i), i?.limit) },
   { name: "disk_space", safe: true, description: "Report free / used / total disk space for the drive holding a path — check 'am I running low on space'. input: a path (supports ~; defaults to home).", params: "path?",
-    activity: (i) => `Checking disk space for ${i?.path ?? i ?? "~"}`, run: (i) => diskSpace(i?.path ?? i ?? "~") },
+    activity: (i) => `Checking disk space for ${unwrapPath(i)}`, run: (i) => diskSpace(unwrapPath(i)) },
   { name: "find_files", safe: true, description: "Find files by name in a folder (case-insensitive substring match), newest-modified first — great for 'where's that invoice pdf'. input: { query, path? } (path supports ~; defaults to home).", params: "query, path?",
     activity: (i) => `Searching for "${i?.query ?? i}" in ${i?.path ?? "~"}`, run: (i) => findFiles(i?.query ?? i, i?.path ?? "~") },
   { name: "analyse_data", safe: true, description: "Analyse a spreadsheet / CSV: what each column holds (type, range, mean/median, top values) and the problems in it — duplicate rows, empty or mostly-empty columns, one column holding mixed types, numeric outliers. Use this instead of read_file for .csv/.tsv. input: { path?, csv?, question? } — a file path (supports ~) OR the CSV text inline.", params: "{path?, csv?, question?}",
