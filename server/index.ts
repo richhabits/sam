@@ -117,6 +117,7 @@ import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
+import { processWatchPrompt, APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1226,6 +1227,13 @@ app.get("/api/projects", (_req, res) => res.json(PROJECTS));
 app.get("/api/skills", (_req, res) =>
   res.json(SKILLS.map((s) => ({ id: s.id, name: s.name, tier: s.tier, triggers: s.triggers })))
 );
+app.post("/api/watch/prompt", async (req, res) => {
+  const result = await processWatchPrompt(req.body);
+  res.json(result);
+});
+app.get("/api/apple/app-intents", (_req, res) => {
+  res.json({ intents: APPLE_APP_INTENTS });
+});
 // THE VAULT — Romeo's own notes. Same bar as the connectors (canReadPrivate), and for the same
 // reason: these were plain loopback GETs, so any other process on this Mac could read them without
 // knowing a secret. Lower severity than the connectors hole — the log returns note titles and
