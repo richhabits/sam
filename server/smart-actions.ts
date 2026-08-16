@@ -7,7 +7,7 @@
 
 import { HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES, compileHiggsfieldMotionPrompt } from "./studio-higgsfield.ts";
 import { desk, project100xLadder } from "./flipit.ts";
-import { autoHealDoctor } from "./doctor.ts";
+import { runDoctor } from "./doctor.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
 
 export interface SmartStudioPresetResult {
@@ -170,7 +170,15 @@ export async function executeSmartAction(intent: string): Promise<SmartActionRes
   }
 
   // 3. System Health & Proactive Optimization
-  const heal = autoHealDoctor({
+  // AUDIT FIX: this used to call autoHealDoctor() directly — the same mutating function
+  // doctor_auto_heal wraps (deletes stale lock files, writes to the vault directory), which is
+  // deliberately safe:false because of those side effects. smart_quick_action is safe:true, so
+  // that call silently bypassed doctor_auto_heal's approval gate for virtually any intent string
+  // that didn't happen to match the Studio/Investment keyword lists — this fallback branch is
+  // the default. A glance card only needs to REPORT status, not apply remediations, so this now
+  // calls the read-only runDoctor() diagnostic instead. If actual remediation is wanted, call
+  // doctor_auto_heal explicitly — it still correctly asks first.
+  const doc = runDoctor({
     hasCloudKeys: true,
     ollamaConfigured: false,
     ollamaReachable: false,
@@ -186,10 +194,12 @@ export async function executeSmartAction(intent: string): Promise<SmartActionRes
     title: "⚡ SAM System Health & Efficiency Autopilot",
     summary: `System is clean · $${savings.ledger.dollarsSavedTotal.toFixed(2)} estimated API costs saved.`,
     details: [
-      `Doctor Status: [${heal.status.toUpperCase()}] ${heal.summary}`,
+      `Doctor Status: [${doc.healthy ? "HEALTHY" : "NEEDS ATTENTION"}] ${doc.summary}`,
       `Free-Tier Routing Efficiency: ${savings.freeEfficiencyPercentage}%`,
       `Semantic Cache Deduplication: ${savings.cacheEfficiencyPercentage}%`,
     ],
-    nextSuggestedAction: "All background systems, locks, and caches are operating optimally.",
+    nextSuggestedAction: doc.healthy
+      ? "All background systems, locks, and caches are operating optimally."
+      : "Run doctor_auto_heal to apply fixes (asks for approval first).",
   };
 }

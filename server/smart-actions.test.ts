@@ -1,4 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   generateSmartStudioPreset,
   buildSimpleFlipItSummary,
@@ -9,6 +12,16 @@ import {
   smartStudioPresetTool,
   smartFlipitSummaryTool,
 } from "./tools.ts";
+
+let dir: string;
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "sam-smart-actions-test-"));
+  process.env.VAULT_DIR = dir;
+});
+afterEach(() => {
+  delete process.env.VAULT_DIR;
+  rmSync(dir, { recursive: true, force: true });
+});
 
 describe("Smart Actions & Maximum UX Suite", () => {
   describe("generateSmartStudioPreset", () => {
@@ -59,6 +72,31 @@ describe("Smart Actions & Maximum UX Suite", () => {
       const act = await executeSmartAction("Check system status and cleanup");
       expect(act.category).toBe("SYSTEM");
       expect(act.title).toContain("SAM System Health");
+    });
+
+    // AUDIT FIX: the SYSTEM branch used to call autoHealDoctor() directly — the same mutating
+    // function doctor_auto_heal wraps (deletes stale lock files, writes to the vault
+    // directory), which is safe:false specifically because of those side effects.
+    // smart_quick_action is safe:true and this branch is the fallback for any intent that
+    // doesn't match Studio/Investment keywords, so it silently bypassed that approval gate for
+    // most inputs. Proves the fix: a genuinely stale lock (dead pid, old timestamp — the exact
+    // shape autoHealDoctor's sweep targets, per doctor-heal.test.ts) survives untouched.
+    it("the SYSTEM branch never mutates the filesystem, even though it's safe:true", async () => {
+      const lockDir = join(dir, ".locks");
+      const lockFile = join(lockDir, "smart_actions_audit_test.lock");
+      mkdirSync(lockDir, { recursive: true });
+      writeFileSync(lockFile, JSON.stringify({
+        resource: "smart_actions_audit_test",
+        owner: "dead-proc",
+        pid: 999999999,
+        host: "localhost",
+        at: new Date(Date.now() - 100_000).toISOString(),
+        token: "dead123",
+      }));
+
+      await executeSmartAction("just checking in, how's everything");
+
+      expect(existsSync(lockFile)).toBe(true);
     });
   });
 
