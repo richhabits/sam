@@ -361,3 +361,111 @@ export async function spawnSubAgent(opts: {
   }
 }
 
+export interface FanoutTask {
+  id?: string;
+  task: string;
+  specialistId?: string;
+  tier?: Tier;
+}
+
+export interface FanoutResult {
+  total: number;
+  completed: number;
+  failed: number;
+  results: { id: string; task: string; specialist: string; status: "done" | "paused" | "error"; output: string; durationMs: number }[];
+  synthesis?: string;
+}
+
+/**
+ * 50x SWARM FAN-OUT — Dispatches up to 50 specialist subagents concurrently
+ * across partitioned subtasks with bounded pool concurrency and automatic synthesis.
+ */
+export async function swarmFanout(
+  tasks: (string | FanoutTask)[],
+  options: {
+    concurrency?: number;
+    synthesize?: boolean;
+    system?: string;
+    tier?: Tier;
+    goal?: string;
+  } = {}
+): Promise<FanoutResult> {
+  const normalizedTasks: FanoutTask[] = tasks.map((t, idx) => {
+    if (typeof t === "string") return { id: `task-${idx + 1}`, task: t, specialistId: "coder" };
+    return {
+      id: t.id || `task-${idx + 1}`,
+      task: t.task,
+      specialistId: t.specialistId || (t as any).specialist || "coder",
+      tier: t.tier,
+    };
+  }).slice(0, 50); // Cap at 50 for 50x scaling safely
+
+  const concurrency = Math.min(Math.max(1, options.concurrency || 8), 50);
+  const results: FanoutResult["results"] = [];
+  let completed = 0;
+  let failed = 0;
+
+  // Bounded concurrency pool
+  const queue = [...normalizedTasks];
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) break;
+      const t0 = Date.now();
+      try {
+        const res = await spawnSubAgent({
+          task: item.task,
+          specialistId: item.specialistId,
+          tier: item.tier || options.tier,
+        });
+        const durationMs = Date.now() - t0;
+        if (res.status === "done") completed++;
+        else if (res.status === "error") failed++;
+        results.push({
+          id: item.id || res.id,
+          task: item.task,
+          specialist: item.specialistId || "coder",
+          status: res.status as any,
+          output: res.output,
+          durationMs,
+        });
+      } catch (e: any) {
+        failed++;
+        results.push({
+          id: item.id || `err-${Math.random().toString(36).slice(2, 7)}`,
+          task: item.task,
+          specialist: item.specialistId || "coder",
+          status: "error",
+          output: e?.message || "Task failed",
+          durationMs: Date.now() - t0,
+        });
+      }
+    }
+  });
+
+  await Promise.all(workers);
+
+  // Optional reduction / synthesis pass
+  let synthesis: string | undefined;
+  if (options.synthesize && results.length > 0) {
+    const tier = options.tier || "free";
+    const synthSys = options.system || "You are SAM's swarm synthesizer. Combine the parallel task outputs into ONE concise, structured, high-density summary report highlighting accomplishments, key data, and any issues.";
+    const summaryList = results.map((r, i) => `### Subtask ${i + 1} (${r.specialist}) [${r.status}]: ${r.task}\n${r.output}`).join("\n\n");
+    try {
+      const sr = await runModel(tier, synthSys, `Goal: ${options.goal || "50x Parallel Swarm Execution"}\n\n${summaryList}\n\nSynthesis:`);
+      synthesis = sr.text;
+    } catch {
+      synthesis = `Completed ${completed} of ${results.length} tasks in parallel.`;
+    }
+  }
+
+  return {
+    total: normalizedTasks.length,
+    completed,
+    failed,
+    results,
+    synthesis,
+  };
+}
+
+

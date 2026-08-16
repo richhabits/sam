@@ -67,7 +67,7 @@ async function findByContent(root: string, query: string, limit = 30): Promise<s
 }
 import { homedir, } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
-import { resolve, dirname, basename, extname, join, sep } from "node:path";
+import { resolve, dirname, basename, extname, join, sep, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
@@ -90,7 +90,7 @@ import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc 
 import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
 import { forgeTool, listForged, forgedStats, bindToolRegistry } from "./forge.ts";
 import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent } from "./swarm.ts";
+import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent, swarmFanout } from "./swarm.ts";
 import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
 import { PROJECTS } from "./projects.ts";
 import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
@@ -940,6 +940,98 @@ export async function subAgentTool(input: { task: string; specialist?: string; t
   if (!task) return "Error: task required for subagent.";
   const res = await spawnSubAgent({ task, specialistId: input.specialist, tier: input.tier as any });
   return `Subagent [${res.id}] (${res.status}):\n\n${res.output}`;
+}
+
+export async function swarmFanoutTool(input: {
+  tasks: string[] | { task: string; specialist?: string; tier?: string }[];
+  concurrency?: number;
+  synthesize?: boolean;
+  goal?: string;
+  tier?: string;
+}): Promise<string> {
+  const rawTasks = Array.isArray(input?.tasks) ? input.tasks : [];
+  if (!rawTasks.length) return "Error: tasks array is required (up to 50 tasks).";
+  const res = await swarmFanout(rawTasks as any, {
+    concurrency: input.concurrency,
+    synthesize: input.synthesize ?? true,
+    goal: input.goal,
+    tier: input.tier as any,
+  });
+
+  const lines = [
+    `Swarm Fan-Out (50x Concurrency): ${res.completed}/${res.total} completed (${res.failed} failed)\n`,
+  ];
+  for (const r of res.results) {
+    const preview = r.output.length > 200 ? r.output.slice(0, 200) + "…" : r.output;
+    lines.push(`- [${r.status.toUpperCase()}] ${r.specialist}: "${r.task}" (${r.durationMs}ms)\n  ${preview.replace(/\n/g, " ")}`);
+  }
+  if (res.synthesis) {
+    lines.push(`\n## 50x Swarm Synthesis:\n${res.synthesis}`);
+  }
+  return lines.join("\n");
+}
+
+export async function codebaseScanParallelTool(input: {
+  path?: string;
+  pattern: string;
+  includeAst?: boolean;
+  concurrency?: number;
+}): Promise<string> {
+  const root = safePath(input?.path || ".");
+  const pattern = String(input?.pattern || "").trim();
+  if (!pattern) return "Error: search pattern required.";
+  const includeAst = input.includeAst ?? true;
+
+  const files = (await walkFiles(root, 6, [])).filter(f => /\.(ts|js|tsx|jsx|json|md|py|go|rs|css|html)$/.test(f));
+  if (!files.length) return `No source files found in ${root}.`;
+
+  const concurrency = Math.min(Math.max(1, input.concurrency || 16), 50);
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern, "i");
+  } catch {
+    regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  }
+  const matches: { file: string; line: number; text: string; astNode?: string }[] = [];
+
+  const queue = [...files];
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const file = queue.shift();
+      if (!file) break;
+      try {
+        const content = await readFile(file, "utf8");
+        const lines = content.split("\n");
+        let currentAst = "";
+        for (let idx = 0; idx < lines.length; idx++) {
+          const line = lines[idx];
+          if (includeAst) {
+            const astMatch = line.match(/^(export\s+)?(class|interface|type|function|const|let|var)\s+([a-zA-Z0-9_]+)/);
+            if (astMatch) currentAst = astMatch[0].trim();
+          }
+          if (regex.test(line)) {
+            matches.push({
+              file: relative(root, file),
+              line: idx + 1,
+              text: line.trim().slice(0, 200),
+              astNode: currentAst || undefined,
+            });
+            if (matches.length >= 100) break;
+          }
+        }
+      } catch { /* skip unreadable files */ }
+    }
+  });
+
+  await Promise.all(workers);
+
+  if (!matches.length) return `No matches found for pattern "${pattern}" across ${files.length} scanned files.`;
+
+  const header = `Parallel Codebase Scan (50x Scanner): Found ${matches.length} match(es) across ${files.length} files for "${pattern}":\n`;
+  const rows = matches.slice(0, 50).map(m => 
+    `- ${m.file}:${m.line} ${m.astNode ? `[in ${m.astNode}]` : ""}\n  ${m.text}`
+  );
+  return header + rows.join("\n");
 }
 
 async function listDir(path: string): Promise<string> {
@@ -1807,6 +1899,26 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Delegating to sub-agent (${i.specialist || "coder"}): ${i.task}`,
     preview: (i) => `Spawn autonomous sub-agent (${i.specialist || "coder"}):\n  ${i.task ?? ""}`,
     run: (i) => subAgentTool(i) },
+  { name: "swarm_fanout", safe: false, description: "Runs up to 50 autonomous specialist sub-agents in parallel with bounded concurrency and synthesizes their results. input: { tasks: [{task, specialist?, tier?}], concurrency?, synthesize?, goal?, tier? }.", params: "{tasks, concurrency?, synthesize?, goal?, tier?}",
+    args: {
+      tasks: { type: "array", required: true, desc: "Array of subagent tasks (up to 50)" },
+      concurrency: { type: "number", desc: "Max concurrent subagents (default: 8, max: 50)" },
+      synthesize: { type: "boolean", desc: "Whether to generate a unified final synthesis" },
+      goal: { type: "string", desc: "High-level goal description for synthesis" },
+      tier: { type: "string", desc: "Model tier (local | free | premium)" }
+    },
+    activity: (i) => `Fanning out ${Array.isArray(i?.tasks) ? i.tasks.length : 0} parallel sub-agents (50x swarm)`,
+    preview: (i) => `Fan out ${Array.isArray(i?.tasks) ? i.tasks.length : 0} sub-agents in parallel:\n  ${(i?.tasks || []).slice(0, 3).map((t: any) => typeof t === "string" ? t : t.task).join("\n  ")}`,
+    run: (i) => swarmFanoutTool(i) },
+  { name: "codebase_scan_parallel", safe: true, description: "Scans the entire codebase concurrently across multiple files for a pattern or AST structure (50x scanner). input: { path?, pattern, includeAst?, concurrency? }.", params: "{path?, pattern, includeAst?, concurrency?}",
+    args: {
+      path: { type: "string", desc: "Root directory to scan (defaults to workspace root)" },
+      pattern: { type: "string", required: true, desc: "Regex or string pattern to find" },
+      includeAst: { type: "boolean", desc: "Extract enclosing AST node declarations (default: true)" },
+      concurrency: { type: "number", desc: "Parallel file scan concurrency (default: 16, max: 50)" }
+    },
+    activity: (i) => `Parallel scanning codebase for "${i.pattern}"`,
+    run: (i) => codebaseScanParallelTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {

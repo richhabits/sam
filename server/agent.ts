@@ -20,10 +20,12 @@ import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
 
 // Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
-// get up to 12 steps. Never a flat ceiling — scales with actual task complexity
-// so free-tier quota isn't burned on greeting messages, but a "build + test + fix"
-// loop has the headroom to fully self-correct without silently truncating.
+// get up to 12 steps, and massive/50x multi-stage workflows get up to 50 steps. Never a flat ceiling —
+// scales with actual task complexity so free-tier quota isn't burned on greeting messages, but a "build + test + fix"
+// loop or 50x multi-module refactor has the headroom to fully self-correct without silently truncating.
 function maxSteps(message: string): number {
+  const is50x = /\b(50x|massive|epic|deep[- ]dive|full[- ]stack|end[- ]to[- ]end|mega|multi[- ]module|complete[- ]refactor|exhaustive|deep[- ]pipeline)\b/i;
+  if (is50x.test(message)) return 50;
   // Signals that a task will need multiple distinct tool calls to complete
   const isComplex = /\b(build|deploy|test|fix|debug|analyse|refactor|research|compare|summarise|plan|write a|draft a|create a|set up|install|migrate|generate|implement|audit|review|find all|scan|crawl|extract|monitor|schedule|automate)\b.*\b(and|then|also|plus|with|ensure|verify|check)\b|\b(step[- ]by[- ]step|multi[- ]?step|end[- ]to[- ]end|full|complete|thorough|comprehensive|detailed|everything|all of)\b/i;
   return isComplex.test(message) ? 12 : 4;
@@ -278,7 +280,7 @@ export function parseToolBatch(text: string): { tool: string; input: any }[] | n
     const obj = JSON.parse(cleaned.slice(start, end + 1));
     if (!Array.isArray(obj?.tools)) return null;
     const calls = obj.tools.filter((c: any) => c && typeof c.tool === "string").map((c: any) => ({ tool: c.tool, input: c.input ?? {} }));
-    return calls.length >= 2 ? calls : null;   // a "batch" of one is just a normal call
+    return calls.length >= 2 ? calls.slice(0, 50) : null;   // support up to 50 concurrent tool calls in batch
   } catch { return null; }
 }
 
