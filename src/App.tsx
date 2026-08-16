@@ -1254,7 +1254,7 @@ export default function App() {
       )}
       <header className="bar">
         <div className="brandmark">
-          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History">☰</button>
+          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History"><Icon name="chat" size={16} /></button>
           {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
           <button type="button" className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
           <span className="wordmark">SAM<span className="wm-dot">.</span></span>
@@ -1262,63 +1262,42 @@ export default function App() {
           <span className="tag">Smart Artificial Mind</span>
         </div>
         <div className="bar-right">
-          {/* Grouped into clusters with a hairline between them, instead of ~13 same-weight pills
-             in one undifferentiated row — that flat wall was both the "looks cheap" complaint and
-             the reason it wrapped raggedly (one button alone on row 2 wherever width ran out).
-             Wrapping now happens per-group, so a narrow window drops a whole cluster to the next
-             line together rather than splitting it mid-group. Nothing here changes handlers or
-             moves a control into a menu — same buttons, organized. */}
           <div className="bar-group">
-            <div className="mode-toggle surface-toggle" role="tablist" title="Agent: the conversation · Tasks: every job SAM has run">
-              <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={16} /> Agent</button>
-              <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={16} /> Tasks</button>
+            <div className="mode-toggle surface-toggle" role="tablist" title="Agent: conversation · Tasks: every job SAM has run">
+              <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={15} /> Agent</button>
+              <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={15} /> Tasks</button>
             </div>
           </div>
           <div className="bar-group">
-            {deferredPrompt && <button type="button" className="icon-btn" onClick={() => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => setDeferredPrompt(null)); }} title="Install SAM to your Dock"><Icon name="download" size={16} /> Add to Dock</button>}
-            <button type="button" className="icon-btn" onClick={() => setImportOpen(true)} title="Import"><Icon name="download" size={16} /> Import</button>
-            {started && <button type="button" className="icon-btn" onClick={newChat} title="New chat (⌘K)">New chat</button>}
-            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud" aria-label="Voice mode"><Icon name="voice" size={16} /> Voice</button>
-            <button type="button" className="icon-btn" onClick={openStudio} title="Open SAM Studio — image & video generation" aria-label="Open Studio"><Icon name="studio" size={16} /> Studio</button>
+            <button type="button" className="icon-btn prime-btn" onClick={newChat} title="New chat (⌘K)"><Icon name="plus" size={15} /> New chat</button>
+            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud" aria-label="Voice mode"><Icon name="voice" size={15} /> Voice</button>
+            <button type="button" className="icon-btn studio-btn" onClick={openStudio} title="Open SAM Studio — image & video generation" aria-label="Open Studio"><Icon name="studio" size={15} /> Studio</button>
+            <button type="button" className="icon-btn flipit-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={15} /> FLIP IT</button>
           </div>
           <div className="bar-group">
-
             {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
               <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now" aria-label="Stop audio and camera"><Icon name="ban" size={16} /> Stop</button>
             )}
-          </div>
-          <div className="bar-group">
             {(() => {
               const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
               return (
                 <button
                   type="button"
                   className={"key-cta" + (n === 0 ? " needs" : "")}
-                  // First run (no keys yet) → the 4-brain wizard, which is the gentler on-ramp.
-                  // Once you HAVE keys, this button reads as "manage my keys", so it must open the
-                  // full panel: the wizard lists 4 of 43 providers, so anyone hunting for a specific
-                  // brain (GLM, Kimi) hit a dead end here and had no way through to the real list.
                   onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
                   title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
-                  <Icon name="key" size={16} /> {n > 0 ? `${n} free key${n === 1 ? "" : "s"}` : "Add free keys"}
+                  <Icon name="key" size={15} /> {n > 0 ? `${n} free keys` : "Add keys"}
                 </button>
               );
             })()}
-            {/* The badge the poll above has always been computing and nothing ever displayed —
-                so a browser waiting to pair announced itself to no one, which is precisely the
-                scavenger hunt that comment describes preventing. Rendered now. */}
             <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title={pairPendingCount > 0 ? `${pairPendingCount} device${pairPendingCount === 1 ? "" : "s"} waiting to pair` : "SAM control centre"}>
-              <Icon name="chart" size={16} /> Dashboard
+              <Icon name="chart" size={15} /> Dashboard
               {pairPendingCount > 0 && (
-                // role="status" so a screen reader announces a device arriving, rather than a bare
-                // number appearing silently next to a button.
-                <span role="status" aria-label={`${pairPendingCount} waiting to pair`} style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--c-err)", color: "#fff" }}>{pairPendingCount}</span>
+                <span role="status" aria-label={`${pairPendingCount} waiting to pair`} className="badge-count">{pairPendingCount}</span>
               )}
             </button>
-            <button type="button" className="icon-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={16} /> FLIP IT</button>
-          </div>
-          <div className="bar-group">
-            <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={16} /> Pair Phone</button>
+            <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={15} /> Pair Phone</button>
+            <button type="button" className="icon-btn" onClick={() => setImportOpen(true)} title="Import chat history" aria-label="Import"><Icon name="download" size={15} /></button>
             <UpdateButton />
             <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
           </div>
@@ -1892,7 +1871,126 @@ export default function App() {
         <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
       </footer>
       </div>
-      
+      <aside className="ctx">
+        <div className="ctx-head">
+          <div className="ctx-title-row">
+            <span className="ctx-badge"><Icon name="sparkle" size={12} /> CONTROL</span>
+            <span className="dot-live" title="Online" />
+          </div>
+          <div className="ctx-brand-card">
+            <div className="ctx-brand-icon"><Icon name={mode === "business" ? "briefcase" : "home"} size={16} /></div>
+            <div className="ctx-brand-info">
+              <span className="ctx-brand-label">WORKSPACE</span>
+              <span className="ctx-brand-name">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="ctx-section-label">
+          <span>QUICK ACTIONS</span>
+          <span className="ctx-section-count">8 Tools</span>
+        </div>
+
+        <div className="ctx-action-list">
+          <button type="button" className="ctx-card-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>
+            <div className="ctx-card-icon team"><Icon name="team" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Assemble Team</div>
+              <div className="ctx-card-desc">Coordinate multi-agent crew</div>
+            </div>
+            <span className="ctx-card-shortcut">/team</span>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>
+            <div className="ctx-card-icon ninja"><Icon name="ninja" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Deploy Ninjas</div>
+              <div className="ctx-card-desc">Fast autonomous coders</div>
+            </div>
+            <span className="ctx-card-shortcut">/ninjas</span>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={openStudio}>
+            <div className="ctx-card-icon studio"><Icon name="studio" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">SAM Studio</div>
+              <div className="ctx-card-desc">AI image &amp; video director</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={lookThroughCamera}>
+            <div className="ctx-card-icon eye"><Icon name="eye" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Vision Camera</div>
+              <div className="ctx-card-desc">Live camera &amp; visual reasoning</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={openFlipit}>
+            <div className="ctx-card-icon markets"><Icon name="markets" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">FLIP IT Trading</div>
+              <div className="ctx-card-desc">Arbitrage &amp; automated rig</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={() => setMarketsOpen(true)}>
+            <div className="ctx-card-icon chart"><Icon name="chart" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Live Markets</div>
+              <div className="ctx-card-desc">Zero-cost ticker quotes</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={() => setColosseumOpen(true)}>
+            <div className="ctx-card-icon trophy"><Icon name="trophy" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Colosseum</div>
+              <div className="ctx-card-desc">Head-to-head LLM rankings</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={() => setNotebookOpen(true)}>
+            <div className="ctx-card-icon book"><Icon name="book" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Notebooks</div>
+              <div className="ctx-card-desc">Grounded research from sources</div>
+            </div>
+          </button>
+
+          <button type="button" className="ctx-card-act" onClick={() => setRosterOpen(true)}>
+            <div className="ctx-card-icon people"><Icon name="people" size={16} /></div>
+            <div className="ctx-card-text">
+              <div className="ctx-card-title">Meet the Team</div>
+              <div className="ctx-card-desc">Roster &amp; specialist bios</div>
+            </div>
+          </button>
+        </div>
+
+        <div className="ctx-hud-footer">
+          <div className="ctx-hud-card">
+            <div className="ctx-hud-head">
+              <div className="ctx-pulse-dot" />
+              <span className="ctx-hud-label">AI ROUTING ENGINE</span>
+              <button type="button" className="ctx-hud-opt" onClick={() => setAdminOpen(true)} title="Manage keys"><Icon name="settings" size={12} /></button>
+            </div>
+            {(() => {
+              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
+              return (
+                <div className="ctx-hud-body">
+                  <div className="ctx-hud-stat">
+                    <span className="ctx-hud-number">{n || "Local"}</span>
+                    <span className="ctx-hud-sub">{n ? `${n === 1 ? "Brain" : "Brains"} Pooled` : "Ollama Model"}</span>
+                  </div>
+                  <div className="ctx-hud-desc">
+                    {n ? "Smart rotation · 0 token cost · High availability" : "Private on-device inference"}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </aside>
       {ctxOpen && (
         // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close on Escape below
         // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close on Escape below

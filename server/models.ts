@@ -19,6 +19,7 @@ import { count, mark, observe } from "./pulse.ts";
 import { relayBrain } from "./relay.ts";
 import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 import { healthOrder } from "./speed.ts";
+import { classifyPromptTier } from "./speculative-router.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -653,6 +654,14 @@ async function runModelInner(tier: Tier, system: string, prompt: string, laneHin
 // badge + benchmark. In bench-mock mode it returns a deterministic answer with no network.
 export async function runModel(tier: Tier, system: string, prompt: string, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean; format?: unknown }): Promise<ModelResult> {
   const t0 = Date.now();
+  
+  if (tier === "premium" && !meta?.escalated) {
+    const classTier = classifyPromptTier(prompt);
+    if (classTier !== "TIER_2_DEEP_REASON") {
+      tier = "free";
+    }
+  }
+
   const r = BENCH_MOCK ? await mockRun(tier) : await runModelInner(tier, system, prompt, laneHint, meta?.format);
   const ms = Date.now() - t0;
   const promptTokens = estTokens(system) + estTokens(prompt);
@@ -832,6 +841,14 @@ async function streamModelInner(tier: Tier, system: string, prompt: string, onCh
 // Bench-mock: emit the deterministic answer in two chunks with a modelled TTFT.
 export async function streamModel(tier: Tier, system: string, prompt: string, onChunk: (t: string) => void, laneHint?: Lane, meta?: { reason?: string; escalated?: boolean; format?: unknown }): Promise<ModelResult> {
   const t0 = Date.now();
+  
+  if (tier === "premium" && !meta?.escalated) {
+    const classTier = classifyPromptTier(prompt);
+    if (classTier !== "TIER_2_DEEP_REASON") {
+      tier = "free";
+    }
+  }
+
   let ttft = 0;
   const wrap = (t: string) => { if (!ttft) ttft = Date.now() - t0; onChunk(t); };
   let r: ModelResult;

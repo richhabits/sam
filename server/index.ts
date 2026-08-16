@@ -93,6 +93,9 @@ import { registerPeopleRoutes, lanIP } from "./routes.people.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
+import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
+import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
+import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -1221,6 +1224,9 @@ registerAdminRoutes(app);
 // Voice/TTS routes live in routes.voice.ts — self-contained (no index.ts-local state).
 registerVoiceRoutes(app);
 registerCreativeRoutes(app);
+registerFlipItScaleRoutes(app);
+registerAdminCostRoutes(app);
+registerStudioDirectorRoutes(app);
 
 
 // ── HUD DATA ENDPOINTS ───────────────────────────────────────
