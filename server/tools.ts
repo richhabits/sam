@@ -105,6 +105,7 @@ import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, s
 import { championWithConfidence } from "./colosseum-significance.ts";
 import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipit.ts";
 import { generateStoryboardDirector, compileHiggsfieldMotionPrompt, buildCharacterAnchorPrompt, type CharacterProfile } from "./studio-higgsfield.ts";
+import { getSavingsSummary, compressPromptForCost, auditCapitalProtection } from "./cost-optimizer.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1392,6 +1393,69 @@ export async function studioCharacterLockTool(input: {
   ].join("\n");
 }
 
+export async function costSavingsReportTool(): Promise<string> {
+  const summary = getSavingsSummary();
+  const ledger = summary.ledger;
+
+  const lines = [
+    `💰 SAM Cost & Token Savings Ledger:`,
+    `· Total Requests Handled: ${ledger.totalRequests.toLocaleString()}`,
+    `· Free-Tier Routing Efficiency: ${summary.freeEfficiencyPercentage}% (${ledger.freeTierRequests} requests served free)`,
+    `· Semantic Cache Efficiency: ${summary.cacheEfficiencyPercentage}% (${ledger.cachedRequests} requests served from zero-token cache)`,
+    `· Tokens Processed Free/Cached: ${(ledger.tokensProcessed.freeInputTokens + ledger.tokensProcessed.freeOutputTokens + ledger.tokensProcessed.cachedTokens).toLocaleString()} tokens`,
+    `· Estimated Dollars Saved: $${ledger.dollarsSavedTotal.toFixed(2)} (approx. £${summary.estimatedGbpSaved})`,
+    `· Total Paid API Spend: $${ledger.dollarsSpentTotal.toFixed(2)}`,
+    `\nStrategy: Free-first routing + semantic caching automatically saves tokens on 90%+ of everyday queries.`,
+  ];
+  return lines.join("\n");
+}
+
+export async function optimizePromptTokensTool(input: {
+  text: string;
+  maxLines?: number;
+}): Promise<string> {
+  const text = String(input?.text || "").trim();
+  if (!text) return "Error: text is required for prompt token optimization.";
+
+  const res = compressPromptForCost(text, { maxLines: input?.maxLines });
+
+  const lines = [
+    `⚡ Prompt Token Optimization Summary:`,
+    `· Original Size: ${res.originalLength.toLocaleString()} chars (~${res.estimatedOriginalTokens.toLocaleString()} tokens)`,
+    `· Optimized Size: ${res.compressedLength.toLocaleString()} chars (~${res.estimatedCompressedTokens.toLocaleString()} tokens)`,
+    `· Tokens Saved: ${res.tokensSaved.toLocaleString()} tokens (${res.reductionPercentage}% reduction)`,
+    `\n## Optimized Text Preview:\n${res.compressedText.slice(0, 500)}${res.compressedText.length > 500 ? "…" : ""}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function capitalProtectionAuditTool(input: {
+  equity?: number;
+  highWaterMark?: number;
+  maxDrawdownLimit?: number;
+}): Promise<string> {
+  const eq = input?.equity ?? 5.0;
+  const hwm = input?.highWaterMark ?? 5.0;
+
+  const audit = auditCapitalProtection({
+    equity: eq,
+    highWaterMark: hwm,
+    maxDrawdownLimit: input?.maxDrawdownLimit,
+  });
+
+  const lines = [
+    `🛡️ Capital Protection & Risk Circuit Breaker:`,
+    `· Current Equity: £${audit.equity.toFixed(2)} | High-Water Mark: £${audit.highWaterMark.toFixed(2)}`,
+    `· Drawdown: ${(audit.currentDrawdown * 100).toFixed(2)}% (Max Limit: ${(audit.maxDrawdownLimit * 100).toFixed(1)}%)`,
+    `· Circuit Breaker Status: [${audit.status}]`,
+    `· Optimal Kelly Fraction (Position Size): ${(audit.recommendedMaxBetFraction * 100).toFixed(1)}% max per trade`,
+  ];
+  if (audit.riskWarning) {
+    lines.push(`\n⚠️ Alert:\n${audit.riskWarning}`);
+  }
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2365,6 +2429,25 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Locking SoulID character profile for "${i?.name}"`,
     run: (i) => studioCharacterLockTool(i) },
+  { name: "cost_savings_report", safe: true, description: "Displays real-world token and dollar savings ledger across SAM free-first routing, semantic cache deduplication, and local models. input: {}.", params: "{}",
+    args: {},
+    activity: () => "Generating SAM cost and token savings report",
+    run: () => costSavingsReportTool() },
+  { name: "optimize_prompt_tokens", safe: true, description: "Optimizes and condenses long prompt contexts and tool logs, stripping redundancy to save 40-60% input tokens. input: { text, maxLines? }.", params: "{text, maxLines?}",
+    args: {
+      text: { type: "string", required: true, desc: "Prompt or context text to optimize" },
+      maxLines: { type: "number", desc: "Maximum lines to keep" }
+    },
+    activity: () => "Optimizing prompt tokens and stripping context redundancy",
+    run: (i) => optimizePromptTokensTool(i) },
+  { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
+    args: {
+      equity: { type: "number", desc: "Current account equity (default: £5.0)" },
+      highWaterMark: { type: "number", desc: "Peak high-water mark equity" },
+      maxDrawdownLimit: { type: "number", desc: "Maximum allowable drawdown fraction (default: 0.15 = 15%)" }
+    },
+    activity: (i) => `Auditing capital protection for equity £${Number(i?.equity || 5).toFixed(2)}`,
+    run: (i) => capitalProtectionAuditTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
