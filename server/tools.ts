@@ -11,7 +11,7 @@
 import { exec, execFile as execFileCb, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
-import { existsSync, readdirSync, mkdirSync, statfsSync, createWriteStream } from "node:fs";
+import { existsSync, readFileSync, readdirSync, mkdirSync, statfsSync, createWriteStream } from "node:fs";
 
 // ── Cross-platform file search (NO shell) — works on Windows/Linux/Mac identically. Mac keeps its
 //    fast Spotlight `mdfind` path where called; this is the portable fallback. Walk is bounded so it
@@ -556,14 +556,16 @@ const CREDENTIAL_PATH = [
 export function isCredentialPath(p: string): boolean {
   return CREDENTIAL_PATH.some((re) => re.test(p));
 }
-async function readFileTool(path: string): Promise<string> {
+export async function readFileTool(input: string | { path?: string; startLine?: number; endLine?: number; lineNumbers?: boolean }): Promise<string> {
+  const rawPath = typeof input === "string" ? input : String(input?.path || "");
+  if (!rawPath) return "No file path provided to read_file.";
   try {
-    const sp = safePath(path);
+    const sp = safePath(rawPath);
     // Checked on the RESOLVED path, so "~/x/../.ssh/id_rsa" and a symlink-free relative walk both
     // land on the same string this matches against.
     if (isCredentialPath(sp)) {
       logSecurity("alert", "blocked-credential-read", `Refused an unattended read of a credential file: ${sp}`, "agent");
-      return `Blocked: ${path} holds credentials, and read_file runs without asking you first. If you want SAM to see it, ask for the shell command instead (\`cat ${path}\`) — that one shows you the exact command and waits for your approval.`;
+      return `Blocked: ${rawPath} holds credentials, and read_file runs without asking you first. If you want SAM to see it, ask for the shell command instead (\`cat ${rawPath}\`) — that one shows you the exact command and waits for your approval.`;
     }
     const ext = extname(sp).toLowerCase();
     
@@ -581,11 +583,107 @@ async function readFileTool(path: string): Promise<string> {
       return clip(res.value);
     }
 
-    return clip(await readFile(sp, "utf8")); 
+    const raw = await readFile(sp, "utf8");
+
+    // Line slicing support
+    if (typeof input === "object" && input !== null && (input.startLine !== undefined || input.endLine !== undefined || input.lineNumbers !== undefined)) {
+      const lines = raw.split("\n");
+      const totalLines = lines.length;
+      const start = Math.max(1, Math.min(totalLines, Number(input.startLine) || 1));
+      const end = Math.min(totalLines, Math.max(start, Number(input.endLine) || totalLines));
+      
+      const slice = lines.slice(start - 1, end);
+      const shouldNumber = input.lineNumbers !== false;
+      const formatted = slice.map((line, idx) => {
+        const lineNo = start + idx;
+        return shouldNumber ? `${lineNo}: ${line}` : line;
+      }).join("\n");
+
+      return `Showing lines ${start} to ${end} of ${totalLines} in ${rawPath}:\n${formatted}`;
+    }
+
+    return clip(raw); 
   } catch (e: any) { 
-    return `Could not read ${path}: ${e?.message}`; 
+    return `Could not read ${rawPath}: ${e?.message || e}`; 
   }
 }
+
+export interface EditFileInput {
+  path: string;
+  target: string;
+  replacement: string;
+  allowMultiple?: boolean;
+}
+
+export async function editFileTool(input: EditFileInput): Promise<string> {
+  const rawPath = String(input?.path || "");
+  if (!rawPath) return "No file path provided to edit_file.";
+  try {
+    const sp = safePath(rawPath);
+    if (!existsSync(sp)) return `Could not edit ${rawPath}: file does not exist. Use write_file to create new files.`;
+
+    const target = input.target;
+    if (typeof target !== "string" || target.length === 0) {
+      return `edit_file rejected: target content cannot be empty.`;
+    }
+    const replacement = typeof input.replacement === "string" ? input.replacement : "";
+
+    const content = await readFile(sp, "utf8");
+
+    // Count occurrences
+    let occurrences = 0;
+    let pos = content.indexOf(target);
+    while (pos !== -1) {
+      occurrences++;
+      pos = content.indexOf(target, pos + target.length);
+    }
+
+    if (occurrences === 0) {
+      return `Target content not found in ${rawPath}. Make sure the target text matches existing lines exactly, including indentation.`;
+    }
+
+    if (occurrences > 1 && !input.allowMultiple) {
+      return `Target content found ${occurrences} times in ${rawPath}. Set allowMultiple: true to replace all instances, or provide more surrounding context to make target unique.`;
+    }
+
+    let newContent: string;
+    if (input.allowMultiple) {
+      newContent = content.split(target).join(replacement);
+    } else {
+      const idx = content.indexOf(target);
+      newContent = content.slice(0, idx) + replacement + content.slice(idx + target.length);
+    }
+
+    if (process.env.SAM_PREVIEW_COMMIT !== "0") {
+      const plan = previewChanges([{ kind: "write", path: sp, after: newContent }]);
+      const c = plan.changes[0];
+      if (c.action === "unchanged") return `${rawPath} is unchanged (target was identical to replacement).`;
+      const r = commitChanges(plan);
+      if (!r.ok) return `Could not edit ${rawPath}: ${r.error || "commit failed and was rolled back"}`;
+      return `Edited ${rawPath} (${occurrences} replacement${occurrences === 1 ? "" : "s"}, +${c.addedLines}/-${c.removedLines} lines, journalled)`;
+    }
+
+    await writeFile(sp, newContent, "utf8");
+    return `Edited ${rawPath} (${occurrences} replacement${occurrences === 1 ? "" : "s"})`;
+  } catch (e: any) {
+    return `Could not edit ${rawPath}: ${e?.message || e}`;
+  }
+}
+
+function editFileCard(i: EditFileInput): string {
+  try {
+    const sp = safePath(i.path);
+    if (!existsSync(sp)) return `Edit ${i.path} (file not found)`;
+    const content = readFileSync(sp, "utf8");
+    if (!content.includes(i.target)) return `Edit ${i.path} (target snippet not found in file)`;
+    const newContent = i.allowMultiple ? content.split(i.target).join(i.replacement || "") : content.replace(i.target, i.replacement || "");
+    const c = previewChanges([{ kind: "write", path: sp, after: newContent }]).changes[0];
+    return `Edit ${i.path} · +${c.addedLines}/-${c.removedLines} lines`;
+  } catch {
+    return `Edit ${i?.path || "file"}`;
+  }
+}
+
 async function writeFileTool(input: { path: string; content: string }): Promise<string> {
   try {
     const abs = safePath(input.path);
@@ -618,6 +716,65 @@ function writeFileCard(i: { path: string; content: string }): string {
     return `${verb} ${i.path} · +${c.addedLines}/-${c.removedLines} lines`;
   } catch { return `Write to ${i.path} (${(i.content || "").length} chars)`; }
 }
+
+export interface GrepSearchInput {
+  query: string;
+  path?: string;
+  caseInsensitive?: boolean;
+  isRegex?: boolean;
+  maxResults?: number;
+}
+
+export async function grepSearchTool(input: GrepSearchInput | string): Promise<string> {
+  const parsed = typeof input === "string" ? { query: input } : input;
+  const query = String(parsed?.query || "").trim();
+  if (!query) return "Please provide a query for grep_search.";
+  const targetDir = parsed?.path ? safePath(parsed.path) : homedir();
+  const max = Math.min(Math.max(1, Number(parsed?.maxResults) || 50), 200);
+
+  const flags: string[] = ["-n", "-I"];
+  if (parsed?.caseInsensitive !== false) flags.push("-i");
+  if (parsed?.isRegex) flags.push("-E");
+
+  // 1. Try git grep
+  try {
+    const cmd = `git -C ${shq(targetDir)} grep ${flags.join(" ")} ${shq(query)}`;
+    const { stdout } = await sh(cmd, { timeout: 15000, maxBuffer: 10 * 1024 * 1024 });
+    const lines = stdout.split("\n").filter(Boolean);
+    if (lines.length > 0) {
+      const top = lines.slice(0, max);
+      const extra = lines.length > max ? `\n…and ${lines.length - max} more matches.` : "";
+      return `Found ${lines.length} match(es) in ${targetDir}:\n${top.join("\n")}${extra}`;
+    }
+  } catch (e: any) {
+    if (e.code === 1) return `No matches found for "${query}" in ${targetDir}.`;
+    // non-git directory or git error, try ripgrep
+  }
+
+  // 2. Try ripgrep (rg)
+  try {
+    const rgFlags = [
+      "-n",
+      parsed?.caseInsensitive !== false ? "-i" : "",
+      parsed?.isRegex ? "" : "-F",
+      "--max-count", String(max),
+    ].filter(Boolean).join(" ");
+    const { stdout } = await sh(`rg ${rgFlags} ${shq(query)} ${shq(targetDir)}`, { timeout: 15000, maxBuffer: 10 * 1024 * 1024 });
+    const lines = stdout.split("\n").filter(Boolean);
+    if (lines.length > 0) {
+      return `Found ${lines.length} match(es) in ${targetDir}:\n${lines.slice(0, max).join("\n")}`;
+    }
+  } catch (e: any) {
+    if (e.code === 1) return `No matches found for "${query}" in ${targetDir}.`;
+  }
+
+  // 3. Fallback to findByContent if git/rg not applicable
+  const hits = await findByContent(targetDir, query, max);
+  return hits.length > 0
+    ? `Found in ${hits.length} file(s):\n${hits.join("\n")}`
+    : `No matches found for "${query}" in ${targetDir}.`;
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -1704,8 +1861,29 @@ export const TOOLS: Tool[] = [
       const s = addSchedule(command, cron);
       return `🛰️ 24/7 research agent is live — I'll sweep the web on **${topic}** every ${hrs}h, file it into notebook **${notebook}**, and ping you what's new. (schedule ${s.id})`;
     } },
-  { name: "read_file", safe: true, cacheable: true, description: "Read a file's contents. input: a file path (supports ~).", params: "path",
-    activity: (i) => `Reading file ${i.path ?? i}`, run: (i) => readFileTool(i.path ?? i) },
+  { name: "read_file", safe: true, cacheable: true,
+    description: "Read a file's contents. Supports line range slicing and line numbers for reading large files without truncation. input: { path, startLine?, endLine?, lineNumbers? } or a path string.",
+    params: "{path, startLine?, endLine?, lineNumbers?} | path",
+    args: {
+      path: { type: "string", required: true, desc: "file path (supports ~)" },
+      startLine: { type: "number", desc: "1-indexed start line" },
+      endLine: { type: "number", desc: "1-indexed end line" },
+      lineNumbers: { type: "boolean", desc: "prefix lines with line numbers (defaults to true when startLine/endLine is provided)" },
+    },
+    activity: (i) => `Reading file ${i?.path ?? i}`,
+    run: (i) => readFileTool(i) },
+  { name: "grep_search", safe: true,
+    description: "Fast code and text search across the codebase with line numbers and snippets (git grep / ripgrep). input: {query, path?, isRegex?, caseInsensitive?, maxResults?}.",
+    params: "{query, path?, isRegex?, caseInsensitive?, maxResults?}",
+    args: {
+      query: { type: "string", required: true, desc: "the search pattern or string" },
+      path: { type: "string", desc: "search directory (defaults to current directory / home)" },
+      isRegex: { type: "boolean", desc: "treat query as regular expression" },
+      caseInsensitive: { type: "boolean", desc: "case-insensitive search (defaults to true)" },
+      maxResults: { type: "number", desc: "max matches to return (defaults to 50)" },
+    },
+    activity: (i) => `Searching code for “${i?.query ?? i}”`,
+    run: (i) => grepSearchTool(i) },
   { name: "list_dir", safe: true, description: "List a folder's contents. input: a folder path (supports ~).", params: "path",
     activity: (i) => `Looking in ${i.path ?? i ?? "~"}`, run: (i) => listDir(i.path ?? i ?? "~") },
   { name: "folder_digest", safe: true, description: "Summarise a folder: file count, total size, top file types, and the largest files. input: a folder path (supports ~).", params: "path",
@@ -2453,9 +2631,19 @@ export const TOOLS: Tool[] = [
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "run_daemon", safe: false, description: "Run a shell command in the BACKGROUND without waiting — for anything too slow for a normal step (a full test suite, a big build, a long scrape). Returns immediately with a log path; you get nudged when it finishes. input: a command string.", params: "command",
     activity: (_i) => `Starting a background task`, preview: (i) => `Run in background:\n  ${i.command ?? i}`, run: async (i) => runDaemon(i.command ?? i) },
-  { name: "write_file", safe: false, description: "Write/overwrite a file. input: {path, content}.", params: "{path, content}",
+  { name: "write_file", safe: false, description: "Write/overwrite a full file. Use edit_file instead when modifying existing code. input: {path, content}.", params: "{path, content}",
     args: { path: { type: "string", required: true, desc: "file path (supports ~)" }, content: { type: "string", required: true, desc: "the full new file contents" } },
     activity: (i) => `Saving ${i.path}`, preview: (i) => writeFileCard(i), run: (i) => writeFileTool(i) },
+  { name: "edit_file", safe: false,
+    description: "Precisely edit an existing file by replacing a target snippet with new text. Fast, safe, and avoids rewriting whole files. input: {path, target, replacement, allowMultiple?}.",
+    params: "{path, target, replacement, allowMultiple?}",
+    args: {
+      path: { type: "string", required: true, desc: "file path (supports ~)" },
+      target: { type: "string", required: true, desc: "exact substring to find and replace (must match existing lines including indentation)" },
+      replacement: { type: "string", required: true, desc: "the new replacement text" },
+      allowMultiple: { type: "boolean", desc: "set to true if target occurs multiple times and all should be replaced" },
+    },
+    activity: (i) => `Editing ${i.path}`, preview: (i) => editFileCard(i), run: (i) => editFileTool(i) },
   { name: "open_app", safe: false, description: "Open a Mac application. input: app name.", params: "app name",
     activity: (i) => `Opening ${i.app ?? i}`, preview: (i) => `Open app: ${i.app ?? i}`, run: (i) => openApp(i.app ?? i) },
   { name: "type_text", safe: false, description: "Type text via the keyboard into the focused app. input: text.", params: "text",
