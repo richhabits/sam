@@ -6,7 +6,7 @@
 //  FlipIt 100x Desk, Higgsfield Studio, Cost Optimizer & Mobile.
 // ─────────────────────────────────────────────────────────────
 
-import { autoHealDoctor } from "./doctor.ts";
+import { runDoctor } from "./doctor.ts";
 import { getMultiTierCacheStats } from "./cache.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
 import { desk, project100xLadder } from "./flipit.ts";
@@ -51,7 +51,13 @@ export interface MasterDashboard {
 }
 
 export function getMasterDashboard(): MasterDashboard {
-  const heal = autoHealDoctor({
+  // AUDIT FIX: this called autoHealDoctor() — the mutating function doctor_auto_heal wraps
+  // (deletes stale lock files, writes to the vault directory), which is deliberately safe:false
+  // because of those side effects. sam_master_dashboard is safe:true, so every "just show me
+  // the dashboard" call silently applied remediations with zero approval. Third occurrence of
+  // this exact pattern this session (see smart-actions.ts, tools.ts's spawn_subagent review) —
+  // a dashboard only needs to REPORT status, not apply fixes.
+  const heal = runDoctor({
     hasCloudKeys: true,
     ollamaConfigured: false,
     ollamaReachable: false,
@@ -73,7 +79,7 @@ export function getMasterDashboard(): MasterDashboard {
   return {
     timestamp: Date.now(),
     systemHealth: {
-      status: heal.status === "clean" ? "HEALTHY" : "DEGRADED",
+      status: heal.healthy ? "HEALTHY" : "DEGRADED",
       doctorSummary: heal.summary,
       activeToolsCount: TOOLS.length,
     },
