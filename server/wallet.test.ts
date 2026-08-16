@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { rmSync, mkdirSync } from "node:fs";
+import { rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SCRATCH = "/tmp/sam-wallet-test";
@@ -49,11 +49,15 @@ describe("KYC flow", () => {
   });
 
   it("requestKYC on rejected re-starts the process", () => {
-    // Manually set rejected state via approve then re-request cycle
-    const wallet = W.getWallet();
-    // A rejected user can try again
-    W.requestKYC();
-    const w = W.getWallet();
+    // The previous version of this test didn't actually reach a rejected state — there's no
+    // rejectKYC() in the public API to drive it there, so it silently re-tested the
+    // unverified→pending transition under a misleading name. Writing the rejected state
+    // directly to the persisted file (which wallet.ts itself reads fresh each call) genuinely
+    // exercises the `state.kyc === "rejected"` branch of requestKYC's guard.
+    writeFileSync(join(SCRATCH, "wallet.json"), JSON.stringify({
+      balance: 0, currency: "GBP", kyc: "rejected", transactions: [],
+    }));
+    const w = W.requestKYC();
     expect(w.kyc).toBe("pending");
   });
 });

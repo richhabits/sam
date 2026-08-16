@@ -18,16 +18,12 @@ describe("PROVIDER_REGISTRY structural integrity", () => {
   });
 
   it("no provider uses both envPlural and configKey (they're mutually exclusive storage)", () => {
-    for (const p of PROVIDER_REGISTRY) {
-      if (p.configKey) {
-        // configKey providers SHOULD NOT also have envPlural pooling
-        // (configKey means it's a single value, not a rotating pool)
-        // Actually checking the code: some might have both. Let's just
-        // verify the derivation logic works.
-      }
-    }
-    // At minimum: the registry doesn't crash
-    expect(PROVIDER_REGISTRY.length).toBeGreaterThan(20);
+    // Per ProviderSpec's own doc comment: "configKey: set instead of envPlural when it is a
+    // single CONFIG value" — a provider is either a rotating key pool OR a single config value,
+    // never both. This is the actual check; the version this replaced only asserted the
+    // registry's length, which would pass even if every provider violated the invariant.
+    const violators = PROVIDER_REGISTRY.filter((p) => p.configKey && p.envPlural).map((p) => p.id);
+    expect(violators).toEqual([]);
   });
 
   it("known starter providers are present", () => {
