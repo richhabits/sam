@@ -88,6 +88,11 @@ interface DeviceHandoffSession {
 }
 
 const activeHandoffs = new Map<string, DeviceHandoffSession>();
+// Unlike pairing.ts's pendingCodes (short-lived, single-use, pruned on mint), this had no TTL
+// or size bound at all — an authenticated caller (the POST route is gated) could grow it
+// unbounded indefinitely. 30 minutes is generous for genuine cross-device continuity while
+// keeping the registry from accumulating forever.
+const HANDOFF_TTL_MS = 30 * 60 * 1000;
 
 export async function processUniversalPrompt(req: UniversalPromptRequest): Promise<UniversalPromptResponse> {
   const t0 = Date.now();
@@ -173,18 +178,24 @@ export function registerDeviceHandoff(session: {
   activePrompt?: string;
   activeSurface?: string;
 }): DeviceHandoffSession {
+  const now = Date.now();
+  for (const [id, entry] of activeHandoffs) if (now - entry.updatedAt > HANDOFF_TTL_MS) activeHandoffs.delete(id);
+
   const data: DeviceHandoffSession = {
     sessionId: session.sessionId,
     lastActiveDevice: session.devicePlatform,
     deviceName: session.deviceName || "Unknown Device",
     activePrompt: session.activePrompt || "",
     activeSurface: session.activeSurface || "chat",
-    updatedAt: Date.now(),
+    updatedAt: now,
   };
   activeHandoffs.set(session.sessionId, data);
   return data;
 }
 
 export function getDeviceHandoff(sessionId: string): DeviceHandoffSession | null {
-  return activeHandoffs.get(sessionId) || null;
+  const entry = activeHandoffs.get(sessionId);
+  if (!entry) return null;
+  if (Date.now() - entry.updatedAt > HANDOFF_TTL_MS) { activeHandoffs.delete(sessionId); return null; }
+  return entry;
 }

@@ -95,7 +95,8 @@ export function trySolveLocally(input: string): MicroSolverResult {
     };
   }
 
-  // 4. Distance & Weight conversions (miles <-> km, lbs <-> kg)
+  // 4. Distance conversions (miles/km/m/ft/in/cm) — no weight (lbs/kg) conversion is actually
+  // implemented below, despite what an earlier version of this comment claimed.
   const distMatch = p.match(/^(\d+(?:\.\d+)?)\s*(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)\s+(?:to|in)\s+(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)$/);
   if (distMatch) {
     const val = parseFloat(distMatch[1]);

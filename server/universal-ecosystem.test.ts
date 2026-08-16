@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   processUniversalPrompt,
   UNIVERSAL_SHORTCUTS,
@@ -44,5 +44,34 @@ describe("Universal Multi-Device Ecosystem (Android, Wear OS, Windows, Linux, PW
     const retrieved = getDeviceHandoff("sess_xyz123");
     expect(retrieved?.activeSurface).toBe("flipit");
     expect(retrieved?.deviceName).toBe("Pixel Watch 2");
+  });
+
+  // AUDIT FIX: activeHandoffs had no TTL or size bound at all, unlike pairing.ts's pendingCodes
+  // (short-lived, pruned on mint) — an authenticated caller could grow it unbounded forever.
+  describe("handoff sessions expire — no unbounded growth", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("a session is gone after the TTL window", () => {
+      registerDeviceHandoff({
+        sessionId: "sess_ttl_test",
+        devicePlatform: "android",
+        deviceName: "Pixel 9",
+        activePrompt: "test",
+      });
+      expect(getDeviceHandoff("sess_ttl_test")).not.toBeNull();
+
+      vi.advanceTimersByTime(31 * 60 * 1000); // 31 minutes — past the 30-minute TTL
+      expect(getDeviceHandoff("sess_ttl_test")).toBeNull();
+    });
+
+    it("registering a new session prunes other expired ones", () => {
+      registerDeviceHandoff({ sessionId: "sess_old", devicePlatform: "android", deviceName: "Old" });
+      vi.advanceTimersByTime(31 * 60 * 1000);
+      registerDeviceHandoff({ sessionId: "sess_new", devicePlatform: "ios", deviceName: "New" });
+
+      expect(getDeviceHandoff("sess_old")).toBeNull();
+      expect(getDeviceHandoff("sess_new")).not.toBeNull();
+    });
   });
 });

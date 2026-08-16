@@ -1246,7 +1246,14 @@ app.post("/api/device/handoff", (req, res) => {
   const session = registerDeviceHandoff(req.body);
   res.json({ ok: true, session });
 });
+// AUDIT FIX: this GET had zero auth at all, while the POST that creates a handoff session is
+// (correctly) covered by the mutation gate above. sessionId is fully client-chosen, not a
+// server-generated random token, and the session's own activePrompt carries the operator's
+// real prompt text — exactly the "plain loopback GET, any other process on this Mac could
+// read it without knowing a secret" hole this file already fixed once for connectors/vault
+// (see canReadPrivate's own comment, a few hundred lines below). Same bar, same fix.
 app.get("/api/device/handoff/:id", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "cross-device handoff state");
   const session = getDeviceHandoff(req.params.id);
   if (!session) return res.status(404).json({ error: "Session not found" });
   res.json({ ok: true, session });

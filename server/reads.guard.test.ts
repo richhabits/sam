@@ -49,6 +49,10 @@ const PRIVATE_READS = [
   // The telemetry preview BUILDS the real payload from live analytics — a panel whose entire
   // purpose is proving nothing leaves the device was handing it to any local caller.
   "/api/telemetry/preview",
+  // sessionId is client-chosen, not a server-generated random token, and activePrompt carries
+  // the operator's real prompt text verbatim — this shipped with zero guard at all while the
+  // POST that creates the session was (correctly) covered by the mutation gate.
+  "/api/device/handoff/:id",
 ];
 
 describe("reads carrying the operator's own content refuse an uncredentialed caller", () => {
