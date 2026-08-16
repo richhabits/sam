@@ -293,7 +293,7 @@ button { font-family: inherit; cursor: pointer; }
 .ic { vertical-align: -.15em; flex: 0 0 auto; }
 /* Status-tinted glyphs (e.g. the signing checklist): done reads green, pending reads muted. */
 .ic.ok { color: var(--c-ok); } .ic.todo { color: var(--muted); opacity: .55; }
-.ctx-ic, .plus-opt .icon { display: inline-flex; align-items: center; justify-content: center; }
+.plus-opt .icon { display: inline-flex; align-items: center; justify-content: center; }
 .onboard-pills span, .confirm-head, .update-bar span { display: inline-flex; align-items: center; gap: 6px; }
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg); }
@@ -1410,13 +1410,15 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* Voice Mode blocked state — dimmed orb, clearly not listening */
 .vm-orb.blocked { filter: grayscale(0.7) brightness(0.6); opacity: .6; }
 
-/* ── 3-column shell: chats sidebar · chat · context ── */
-.shell { flex: 1; display: grid; grid-template-columns: 236px minmax(0,1fr) 232px; min-height: 0; overflow: hidden; }
+/* ── 2-column shell: chats sidebar · chat ──
+   Was 3 columns (+ a "context" sidebar, 232px) until that panel's Quick Actions + Live Status
+   were superseded by the Apps grid drawer (App.tsx, ctxOpen/apps-grid-drawer) — same actions,
+   plus Markets/Colosseum/Notebook the old panel never had. Its JSX was removed but this grid
+   still reserved the column, rendering as a blank white strip with a stray vertical border. */
+.shell { flex: 1; display: grid; grid-template-columns: 236px minmax(0,1fr); min-height: 0; overflow: hidden; }
 .center { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .center .chat { flex: 1; }
-.side, .ctx { display: flex; flex-direction: column; background: color-mix(in srgb, var(--surface) 55%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); overflow: hidden; }
-.side { border-right: 1px solid var(--border); background: transparent; }
-.ctx { border-left: 1px solid var(--border); gap: 7px; padding: 16px 14px; overflow-y: auto; }
+.side { display: flex; flex-direction: column; background: transparent; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-right: 1px solid var(--border); overflow: hidden; }
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; }
 .side-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .side-new { background: transparent; border: 1px solid var(--border-strong); border-radius: 8px; width: 26px; height: 26px; color: var(--text); font-size: 15px; cursor: pointer; }
@@ -1470,34 +1472,13 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 }
 .side-foot { margin: 8px; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 13px; text-align: left; cursor: pointer; }
 .side-foot:hover { border-color: var(--accent); color: var(--accent-text); }
-.ctx-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.ctx-brand { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-.ctx-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 14px; }
-.ctx-act { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13px; letter-spacing: -.01em; cursor: pointer; }
-.ctx-act:hover { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-text); }
 
 /* A hair of word-spacing so emoji don't jam against their label (header pills, quick actions,
    settings rows) — the standard space next to an emoji glyph reads too tight otherwise. */
 .icon-btn, .chip, .mode-toggle button { word-spacing: .06em; }
-/* The mobile entry point for the Context panel — hidden on desktop where .ctx is always visible. */
-.ctx-toggle { display: none; }
 @media (max-width: 1080px) {
   .shell { grid-template-columns: 1fr; }
   .side { display: none; }                    /* chats stay reachable via the ☰ history drawer */
-  .ctx-toggle { display: inline-flex; }        /* ◧ opens Context + Quick actions on mobile */
-  /* Context was display:none here, which stranded Quick actions + Live status on mobile.
-     Make it a slide-in right drawer instead (same feel as the history drawer). */
-  .ctx {
-    position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 86vw); z-index: 46;
-    background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg);
-    transform: translateX(101%); transition: transform .22s cubic-bezier(.2, .7, .2, 1);
-    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
-  }
-  .ctx.open { transform: translateX(0); }
-  .ctx-scrim {
-    position: fixed; inset: 0; z-index: 45; background: rgba(0, 0, 0, .38);
-    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: scrim-in .18s ease;
-  }
 }
 
 /* Sidebar folders */
@@ -1508,17 +1489,6 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .side-move { opacity: 0; background: none; border: 0; color: var(--muted); font-size: 11px; cursor: pointer; max-width: 30px; }
 .side-list li:hover .side-move { opacity: .8; }
 
-/* Context live status */
-.ctx-live { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
-.ctx-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); }
-.ctx-row.danger { color: #EF4444; font-weight: 600; }
-/* clickable status row (opens the "what SAM remembers" panel) — button reset + subtle hover */
-.ctx-click { width: 100%; text-align: left; background: none; border: none; font: inherit; color: var(--text); cursor: pointer; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; }
-.ctx-click:hover { background: transparent; color: var(--accent-text); }
-.ctx-ic { width: 16px; text-align: center; font-size: 13px; }
-.ctx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); flex: none; }
-.ctx-dot.on { background: #22C55E; box-shadow: 0 0 8px #22C55E; }
-
 /* Drag a chat into a folder */
 .side-list li[draggable] .side-open { cursor: grab; }
 .side-list li.dragging { opacity: .4; }
@@ -1528,10 +1498,6 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 /* Folder delete + live swarm details */
 .side-folder.del-folder { color: #EF4444; border-color: transparent; }
 .side-folder.del-folder:hover { background: rgba(239,68,68,.1); border-color: #EF4444; }
-.ctx-swarm { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; border: 0; padding: 2px 0; color: var(--text); font-size: 12px; cursor: pointer; }
-.ctx-swarm:hover .ctx-swarm-goal { color: var(--accent-text); }
-.ctx-swarm-goal { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-swarm-prog { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11px; }
 
 /* ═══ 📓 NOTEBOOK (NotebookLM) — grounded research workspace ═══ */
 .notebook-drawer { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 3vh 2vw; }
@@ -1947,15 +1913,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Vertical rhythm: rows and quick actions get room to breathe. */
 .side-list li { min-height: 40px; }
 .side-open { padding-top: 2px; padding-bottom: 2px; }
-/* The quick-actions column is `.ctx` holding `.ctx-act` buttons — my first attempt
-   targeted .ctx-actions/.ctx-btn, which match NOTHING, so the rule was inert. Verified
-   the class names in the live DOM rather than guessing a second time. */
-.ctx { gap: 10px; }
-.ctx-act { padding-top: 10px; padding-bottom: 10px; }
-
 /* Small-label floor. These are uppercase tracked labels, so 11.5px reads as
    deliberate where 10.5px read as squeezed. */
-.side-group, .ctx-label, .side-title, .dash-sec { font-size: 11px; }
+.side-group, .side-title, .dash-sec { font-size: 11px; }
 
 /* ============================================================================
    UPDATE CONTROL — always present, silent when there's nothing to do.
@@ -2001,9 +1961,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
    currentColor, so they inherit colour, opacity and all nine themes for free.
    ========================================================================== */
 .ic { flex: none; vertical-align: -0.18em; }
-.icon-btn .ic, .ctx-act .ic, .pop-opt .ic { opacity: .8; }
-.icon-btn:hover .ic, .ctx-act:hover .ic { opacity: 1; }
-.ctx-act { display: flex; align-items: center; gap: 9px; }
+.icon-btn .ic, .pop-opt .ic { opacity: .8; }
+.icon-btn:hover .ic { opacity: 1; }
 .icon-btn { display: inline-flex; align-items: center; gap: 7px; }
 
 /* The control centre was one long scroll — stats, 42 lanes, security, swarms, schedules,
@@ -2488,7 +2447,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 
 
 /* ── UI Stripdown Overrides (Apple White) ── */
-.ctx { display: none !important; }
 .composer { background: transparent !important; padding: 24px 16px !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-top: none !important; display: flex; flex-direction: column; align-items: center; }
 .composer-inner { width: 100%; max-width: 800px; border-radius: 24px !important; border: 1px solid var(--border) !important; background: #FFFFFF !important; box-shadow: var(--shadow-lg) !important; padding: 4px; }
 .composer-context { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; justify-content: center; opacity: 0.9; }

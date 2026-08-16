@@ -1778,7 +1778,7 @@ export default function App() {
       )}
       <footer className="composer">
         <div className="composer-context">
-            <button type="button" className="ctx-toggle-btn" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)"><Icon name="grid" size={15} /></button>
+            <button type="button" className="icon-btn ghost" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)" aria-label="Apps grid"><Icon name="grid" size={15} /></button>
             <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")}>
                 <option value="personal">Personal</option>
                 <option value="business">Business</option>
