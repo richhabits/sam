@@ -34,7 +34,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [devicesRefused, setDevicesRefused] = useState(false);
   // The pairing code currently on offer, if the operator has asked for one.
-  const [pairCode, setPairCode] = useState<{ code: string; url: string } | null>(null);
+  const [pairCode, setPairCode] = useState<{ code: string; url: string; pin?: string; pinExpiresInSec?: number } | null>(null);
   const [pairErr, setPairErr] = useState("");
   // Same reasoning as the phone-link QR in Admin.tsx: this code was only ever shown as text to
   // type in by hand. The mobile app's claim() (mobile/lib/api.ts) posts the CODE straight to
@@ -50,7 +50,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
         // The phone's field wants the CODE, not the URL — the Pocket posts it to
         // /api/pair/claim. Showing only the link is what sent people hunting for a number.
         const code = new URL(r.url).searchParams.get("code") || "";
-        setPairCode({ code, url: r.url });
+        setPairCode({ code, url: r.url, pin: r.pin, pinExpiresInSec: r.pinExpiresInSec });
         // The QR must carry sam://, not the printed http://<lan-ip>/pair?code=… link — a
         // Camera-app scan of a plain http(s) link just opens Safari (Universal Links need a
         // fixed, DNS-verified domain; a dynamic LAN IP can never have one), while a registered
@@ -396,13 +396,25 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                       <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", wordBreak: "break-all" }}>
                         {pairCode.code}
                       </div>
+                      {pairCode.pin && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
+                          <div style={{ fontSize: 12, opacity: 0.75 }}>Or enter this 6-digit PIN on your phone:</div>
+                          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: 3 }}>
+                            {pairCode.pin.slice(0, 3)} {pairCode.pin.slice(3)}
+                          </div>
+                        </div>
+                      )}
                       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                         <button type="button" className="mini" onClick={() => navigator.clipboard?.writeText(pairCode.code)}>Copy code</button>
                         <button type="button" className="mini" onClick={mintPair}>New code</button>
                         {/* Fifteen, from the server's own claimCode window — the browser flow's
                             five-minute number is a DIFFERENT code space, and saying five here is
-                            how someone ends up typing one into the other. */}
-                        <span style={{ fontSize: 11, opacity: 0.6 }}>one-time · valid 15 minutes</span>
+                            how someone ends up typing one into the other. The PIN has its own,
+                            much shorter window (2 min) — see server/pairing.ts's PIN_TTL_MS — since
+                            it's low-entropy compared to the hex code and needs to expire fast. */}
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>
+                          code valid 15 min{pairCode.pin ? ` · PIN valid ${Math.round((pairCode.pinExpiresInSec ?? 120) / 60)} min` : ""}
+                        </span>
                       </div>
                     </div>
                   </div>

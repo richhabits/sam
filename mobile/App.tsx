@@ -162,6 +162,9 @@ export default function App() {
   const onScanned = useCallback(
     (link: PairLink) => {
       setShowScanner(false);
+      // Reopen the pairing modal so a failed claim shows its error somewhere the user can see
+      // and retry — doClaim closes it again immediately on success, so this is a no-op then.
+      setShowPairModal(true);
       const target = link.host || host;
       setHostInput(target);
       setCode(link.code);
@@ -285,7 +288,19 @@ export default function App() {
               header="Pair this phone"
               footer="Open SAM on your Mac/PC (Dashboard → Devices → Pair a phone), then scan the QR code shown there — or enter the local address and code by hand."
             >
-              <ActionRow ios={ios} title="Scan QR Code" onPress={() => setShowScanner(true)} last />
+              <ActionRow
+                ios={ios}
+                title="Scan QR Code"
+                onPress={() => {
+                  // AUDIT FIX: iOS presenting QRScanner's own fullScreen Modal while this
+                  // pageSheet Modal is still visible collided in RCTModalHostView — the camera
+                  // view failed to present or stayed hidden behind the page sheet. Dismiss this
+                  // one first; onClose/onScanned below reopen it.
+                  setShowPairModal(false);
+                  setShowScanner(true);
+                }}
+                last
+              />
             </Section>
 
             <Section ios={ios} header="Or enter manually">
@@ -304,7 +319,7 @@ export default function App() {
                 label="Code"
                 value={code}
                 onChangeText={setCode}
-                placeholder="32-character hex pairing code"
+                placeholder="6-digit PIN or hex code"
                 autoCapitalize="none"
                 autoCorrect={false}
                 mono
@@ -330,7 +345,15 @@ export default function App() {
         </SafeAreaView>
       </Modal>
 
-      <QRScanner ios={ios} visible={showScanner} onClose={() => setShowScanner(false)} onScanned={onScanned} />
+      <QRScanner
+        ios={ios}
+        visible={showScanner}
+        onClose={() => {
+          setShowScanner(false);
+          setShowPairModal(true); // don't strand the user with neither modal visible on Cancel
+        }}
+        onScanned={onScanned}
+      />
 
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </SafeAreaView>
