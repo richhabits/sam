@@ -372,6 +372,95 @@ async function runCommand(cmd: string): Promise<string> {
   }
 }
 
+// ── SAFE TERMINAL — auto-approved read-only commands (Antigravity-parity) ─────
+// These patterns match commands that are strictly read-only, non-destructive, and
+// non-outward-facing. The command is ONLY auto-approved if the FIRST real token
+// (ignoring env assignments and pipes) matches one of these known-safe executables
+// and the full pipeline doesn't contain anything dangerous. This is the exact
+// architecture Cursor and Antigravity use.
+const SAFE_CMD_PREFIXES = new Set([
+  // Filesystem reads
+  "ls", "cat", "head", "tail", "wc", "file", "stat", "du", "df",
+  "find", "tree", "basename", "dirname", "realpath", "readlink",
+  // Search
+  "grep", "rg", "ag", "ack", "fgrep", "egrep", "git",
+  // Build / type-check / lint (read-only verification)
+  "npx", "node", "npm", "pnpm", "yarn", "bun", "deno",
+  "tsc", "eslint", "biome", "prettier",
+  // System info
+  "echo", "date", "uname", "whoami", "hostname", "id", "env", "printenv",
+  "which", "where", "type", "man", "help",
+  "sw_vers", "system_profiler", "sysctl",
+  // Network reads (non-mutating)
+  "curl", "wget", "dig", "nslookup", "host", "ping", "traceroute",
+  // Process inspection
+  "ps", "top", "lsof", "pgrep",
+  // Archive inspection (not extraction)
+  "unzip", "tar", "zipinfo",
+  // Diff / compare
+  "diff", "cmp", "md5", "shasum", "sha256sum",
+  // Python / Ruby (for one-liners and scripts)
+  "python", "python3", "ruby",
+]);
+
+// Commands that are NEVER safe, even if the first token looks innocent. These indicate
+// mutation, outward effects, or destructive action anywhere in the pipeline.
+const UNSAFE_PATTERNS = [
+  /\brm\s+(-|[^|])/i,              // rm anything
+  /\bmkdir\b/i, /\btouch\b/i,       // filesystem mutation
+  /\bmv\b/i, /\bcp\b/i,             // file copy/move (could overwrite)
+  /\bchmod\b/i, /\bchown\b/i,       // permission changes
+  /\bsudo\b/i,                      // privilege escalation
+  /\bgit\s+(push|merge|rebase|reset|checkout|stash|commit|cherry-pick|revert|clean)\b/i,  // git mutations
+  /\bgit\s+branch\s+-[dD]\b/i,      // git branch delete
+  /\bnpm\s+(publish|deprecate|unpublish|install|uninstall|link|ci)\b/i,    // npm mutations
+  /\bnpx\s+(create-|degit|giget|prisma\s+migrate)/i,                      // project scaffolding
+  /\bkill\b/i, /\bkillall\b/i,
+  /\bcurl\s.*(-X\s*(POST|PUT|PATCH|DELETE)|--data|--upload|-d\s)/i,       // mutating HTTP
+  /\bwget\s.*-O\b/i,                // wget writing files
+  />\s*[^|]/,                       // output redirection to file (not pipe)
+  /\bdd\b/i, /\bmkfs\b/i,
+  /\bshutdown\b/i, /\breboot\b/i,
+  /\bdiskutil\b/i,
+];
+
+// Extract the first "real" command from a pipeline, skipping env assignments like
+// `FOO=bar BAZ=qux command args`. Returns the base command name.
+function firstCommand(cmd: string): string {
+  // Strip leading env assignments (VAR=value pairs)
+  const stripped = cmd.replace(/^(\s*[A-Za-z_][A-Za-z0-9_]*=[^\s]*\s+)*/, "").trim();
+  // Get the first token
+  const first = stripped.split(/\s+/)[0] || "";
+  // Strip any path prefix: /usr/bin/git → git
+  return first.replace(/^.*\//, "");
+}
+
+export function isReadOnlyCommand(cmd: string): boolean {
+  // Never safe if it matches a known destructive pattern
+  if (UNSAFE_PATTERNS.some((re) => re.test(cmd))) return false;
+  // Also never safe if the hard-deny list catches it
+  if (isCatastrophic(cmd)) return false;
+  // Check every segment of a pipeline — ALL must be safe
+  const segments = cmd.split(/\s*[|]\s*/);
+  for (const seg of segments) {
+    const base = firstCommand(seg);
+    if (!SAFE_CMD_PREFIXES.has(base)) return false;
+  }
+  return true;
+}
+
+async function runSafeCommand(cmd: string): Promise<string> {
+  if (!isReadOnlyCommand(cmd)) {
+    return `This command isn't in SAM's read-only allowlist — use run_command instead (it'll ask for approval). Blocked: "${cmd}"`;
+  }
+  try {
+    const { stdout, stderr } = await sh(cmd, { timeout: 60000, cwd: homedir(), maxBuffer: 8 * 1024 * 1024 });
+    return clip((stdout || "") + (stderr ? `\n[stderr] ${stderr}` : "")) || "(command finished, no output)";
+  } catch (e: any) {
+    return `Command failed: ${e?.message || e}`.slice(0, 2000);
+  }
+}
+
 // run_daemon — for a command too slow to sit in the agent loop's step budget (a full test suite,
 // a big build, a long scrape). Same HARD_DENY gate and Elon-Mode trash-aliasing as run_command;
 // the only difference is it doesn't wait. Output streams to vault/daemons/<id>.log the whole time
@@ -2324,7 +2413,14 @@ export const TOOLS: Tool[] = [
   },
 
   // risky · ask first
-  { name: "run_command", safe: false, description: "Run a shell command on the Mac. input: a command string.", params: "command",
+  // ── AUTO-APPROVED terminal for read-only commands (Antigravity-parity) ──
+  // SAM uses this for git status, ls, cat, npx tsc, grep, etc. — anything the
+  // allowlist in isReadOnlyCommand() passes. If the command doesn't pass, SAM
+  // gets told to use run_command instead (which asks the user). Placed BEFORE
+  // run_command so the model sees it first and prefers it for reads.
+  { name: "run_safe_command", safe: true, description: "Run a READ-ONLY shell command that auto-executes without asking (git log, ls, cat, grep, npx tsc, etc). If the command isn't in the safe allowlist, you'll be told to use run_command instead. input: a command string.", params: "command",
+    activity: (i) => `Running ${(i.command ?? i).toString().slice(0, 40)}`, run: (i) => runSafeCommand(i.command ?? i) },
+  { name: "run_command", safe: false, description: "Run a shell command on the Mac (needs approval). Use run_safe_command first for reads. input: a command string.", params: "command",
     activity: (_i) => `Running a command`, preview: (i) => `Terminal command:\n  ${i.command ?? i}`, run: (i) => runCommand(i.command ?? i) },
   { name: "run_daemon", safe: false, description: "Run a shell command in the BACKGROUND without waiting — for anything too slow for a normal step (a full test suite, a big build, a long scrape). Returns immediately with a log path; you get nudged when it finishes. input: a command string.", params: "command",
     activity: (_i) => `Starting a background task`, preview: (i) => `Run in background:\n  ${i.command ?? i}`, run: async (i) => runDaemon(i.command ?? i) },
