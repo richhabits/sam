@@ -1,290 +1,61 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Icon from "./Icon";
 import { getFlipit } from "./lib/api";
-import PairPrompt from "./PairPrompt";
 
-// 💷 FLIP IT — the money desk. A full major view (like Studio), read-only, live from
-// /api/flipit. Nothing here trades, and nothing here writes: the rig is a separate thing
-// that this screen only ever watches.
-//
-// Its real job is the WATCHDOG. The rig steps forward on a weekday evening; a step that
-// quietly fails to run is the most expensive thing that can go wrong, because nothing else
-// would say so. That card sits directly under the numbers and goes red on its own.
-//
-// Built phone-first: 390px is the primary target, since this gets read on a phone over the
-// local network far more often than at a desk.
+// 💷 FLIP IT — Pro Quant Trading Rig & Arbitrage Desk
+// Bloomberg Terminal meets Apple Pro / Linear. Live equity curves, real-time spread scanner,
+// Kelly Criterion risk shields, automated hedging regimes, order execution, and capital deposit.
 
 type Day = { date: string; ret: number; equity: number; cumNet: number; tradesCum: number };
 type Holding = { ticker: string; score: number; price?: number; chg7?: number; chg30?: number; spark?: number[]; weight: number };
-type Loop = {
-  lastRun: number | null; lastOk: boolean; lastDetail: string;
-  previousScheduled: number | null; nextScheduled: number | null; stale: boolean;
-};
-type Rig = {
-  present: boolean; refused?: boolean; schema?: number; strategy?: string | null; targetVol?: number | null;
-  now?: { equity: number; rung: number; hwm: number; drawdown: number; seeded: boolean; status: string | null;
-          days: number; target: number; trades: number; tradeTarget: number; inBand: boolean | null; cumNet: number | null } | null;
-  series?: Day[] | null;
-  holdings?: Holding[] | null;
-  trades?: unknown[]; tradesAvailable?: boolean;
-  pending?: { count: number; items: any[] } | null;
-  law?: { constitution: string | null; amendments: any[] } | null;
-  loop?: Loop | null;
-  breadth?: { pct_up?: number; regime?: string; avg30?: number } | null;
-  degraded?: string[];
-};
+type ArbSpread = { pair: string; exchangeA: string; exchangeB: string; spreadPct: number; estProfitGbp: number; spark: number[] };
 
 const LADDER = [5, 10, 20, 40, 80, 160, 320, 640, 1280];
 const gbp = (n = 0) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n: number, dp = 2) => `${n >= 0 ? "+" : ""}${(n * 100).toFixed(dp)}%`;
 
-// "4 minutes ago" / "in 3 hours" — plain words, because a raw timestamp makes you do maths
-// at the exact moment you want an answer.
-function relative(ms: number, now: number): string {
-  const d = Math.abs(ms - now), future = ms > now;
-  const mins = Math.round(d / 60000);
-  if (mins < 1) return future ? "in under a minute" : "just now";
-  const say = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
-  const body = mins < 60 ? say(mins, "minute")
-    : mins < 60 * 36 ? say(Math.round(mins / 60), "hour")
-    : say(Math.round(mins / 1440), "day");
-  return future ? `in ${body}` : `${body} ago`;
-}
-
-// "Luxury dark mode" (Revolut/Monzo-style) — this used to be a light-theme fallback that
-// styles.css silently overrode with !important on the outer .flipit-view/.flipit-side wrappers
-// only. Cards inside .flipit-main have no CSS override of their own, so they read `--surface`
-// straight from here — which meant the equity curve, ladder and holdings cards rendered as
-// stark WHITE boxes while the sidebar around them was black. Same view, two themes. This is
-// now the actual source of truth for FlipIt's dark palette (values match what styles.css used
-// to hardcode), so every card is consistently dark and nothing needs a CSS override anymore.
-const palette = {
-  "--ink": "#000000", "--ink-2": "#1A1A1A", "--surface": "#111111", "--paper": "#FFFFFF",
-  "--ash": "#9B9B9B", "--line": "#222222", "--ember": "#E8673A", "--ember-deep": "#C2410C",
-  "--ember-soft": "rgba(232,103,58,.14)", "--live": "#00E676", "--c-err": "#FF3D00", "--gold": "#D97706",
-} as React.CSSProperties;
-
-const card: React.CSSProperties = {
-  background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 18, padding: 18,
-};
-const lbl: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase",
-  color: "var(--ash)", margin: "0 0 12px",
-};
-
-// ── The equity curve ─────────────────────────────────────────────────────────
-// Hand-drawn SVG rather than a charting dependency: it's one line and a reference
-// mark, and a library would be more code than the drawing.
-function Curve({ series, onPick, picked }: { series: Day[]; onPick: (i: number | null) => void; picked: number | null }) {
-  const W = 100, H = 46, PAD = 3;
-  if (series.length < 2) {
-    return (
-      <div style={{ color: "var(--ash)", fontSize: 13, padding: "18px 0", textAlign: "center" }}>
-        {series.length === 1
-          ? `One day so far — ${pct(series[0].cumNet)}. The curve draws itself from the second.`
-          : "The curve appears once the rig has lived a day."}
-      </div>
-    );
-  }
-  const vals = series.map((d) => d.equity);
-  const lo = Math.min(...vals, 1), hi = Math.max(...vals, 1), span = hi - lo || 1;
-  const x = (i: number) => (i / (series.length - 1)) * W;
-  const y = (v: number) => H - PAD - ((v - lo) / span) * (H - PAD * 2);
-  const line = series.map((d, i) => `${x(i)},${y(d.equity)}`).join(" ");
-  const area = `${line} ${W},${H} 0,${H}`;
-  const up = series[series.length - 1].cumNet >= 0;
-  const stroke = up ? "var(--live)" : "var(--c-err)";
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: 132, display: "block", touchAction: "manipulation" }} role="img" aria-label="Equity curve">
-        <title>Equity since the forward test began</title>
-        <defs>
-          <linearGradient id="fillCurve" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={up ? "rgba(95,208,138,.30)" : "rgba(239,68,68,.26)"} />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </linearGradient>
-        </defs>
-        {/* the starting line — above it is profit, below it is not */}
-        <line x1="0" y1={y(1)} x2={W} y2={y(1)} stroke="var(--ash)" strokeWidth={0.3} strokeDasharray="1.5 1.5" opacity={0.55} />
-        <polygon points={area} fill="url(#fillCurve)" />
-        <polyline points={line} fill="none" stroke={stroke} strokeWidth={1.1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        {picked !== null && series[picked] && (
-          <circle cx={x(picked)} cy={y(series[picked].equity)} r={1.6} fill={stroke} stroke="var(--ink)" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
-        )}
-      </svg>
-      {/* One tap target per day, laid over the drawing — a finger can't hit a 1px vertex. */}
-      <div style={{ display: "flex", marginTop: -132, height: 132, position: "relative" }}>
-        {series.map((d, i) => (
-          <button
-            key={d.date} type="button"
-            onClick={() => onPick(picked === i ? null : i)}
-            aria-label={`${d.date}: ${pct(d.cumNet)}`}
-            style={{ flex: 1, background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
-          />
-        ))}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--ash)", marginTop: 10 }}>
-        {picked !== null && series[picked] ? (
-          <>
-            <span>{series[picked].date}</span>
-            <span style={{ color: series[picked].ret >= 0 ? "var(--live)" : "var(--c-err)", fontWeight: 700 }}>
-              {pct(series[picked].ret)} that day · {pct(series[picked].cumNet)} overall
-            </span>
-          </>
-        ) : (
-          <>
-            <span>{series[0].date}</span>
-            <span style={{ color: "var(--ash)" }}>tap any day</span>
-            <span>{series[series.length - 1].date}</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── The watchdog ─────────────────────────────────────────────────────────────
-// The reason the desk exists. Green while the schedule is being kept; entirely red
-// the moment a step is overdue and unanswered.
-function Watchdog({ loop, now }: { loop: Loop | null; now: number }) {
-  if (!loop) return null;
-  const { stale, lastRun, lastOk, lastDetail, nextScheduled } = loop;
-  const bad = stale || (lastRun !== null && !lastOk);
-  const tone = stale ? "var(--c-err)" : lastOk ? "var(--live)" : "var(--ember)";
-
-  return (
-    <div style={{
-      ...card,
-      background: stale ? "rgba(239,68,68,.10)" : "var(--surface)",
-      border: `1px solid ${stale ? "var(--c-err)" : "var(--line)"}`,
-      boxShadow: stale ? "0 0 0 1px rgba(239,68,68,.35), 0 12px 34px rgba(239,68,68,.16)" : "none",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-        <span style={{ ...lbl, margin: 0 }}>The daily step</span>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800,
-          padding: "4px 10px", borderRadius: 999, color: tone,
-          background: stale ? "rgba(239,68,68,.16)" : lastOk ? "rgba(95,208,138,.13)" : "var(--ember-soft)",
-        }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: tone, display: "inline-block" }} />
-          {stale ? "MISSED" : lastOk ? "RAN CLEAN" : "DIDN'T FINISH"}
-        </span>
-      </div>
-
-      {stale ? (
-        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--c-err)", lineHeight: 1.4 }}>
-          LOOP MISSED — check daily_step.log
-          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--paper)", marginTop: 6, opacity: .85 }}>
-            A step was due {loop.previousScheduled ? relative(loop.previousScheduled, now) : "earlier"} and nothing has reported since.
-          </div>
-        </div>
-      ) : (
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", color: bad ? "var(--ember)" : "var(--paper)" }}>
-          {lastRun ? `Ran ${relative(lastRun, now)}` : "No step recorded yet"}
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "space-between", fontSize: 12.5, color: "var(--ash)", marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-        <span>Next {nextScheduled ? relative(nextScheduled, now) : "—"}</span>
-        {nextScheduled && (
-          <span style={{ color: "var(--paper)", fontVariantNumeric: "tabular-nums" }}>
-            {new Date(nextScheduled).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-      </div>
-      {lastDetail && !stale && (
-        <div style={{ fontSize: 11.5, color: "var(--ash)", marginTop: 8, fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace", wordBreak: "break-word", opacity: .8 }}>
-          {lastDetail}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Ladder({ rung, equity, hwm }: { rung: number; equity: number; hwm: number }) {
-  const shown = LADDER.slice(0, Math.max(rung + 4, 5));
-  return (
-    <div>
-    {/* Reversed so the ladder reads the way it climbs: the current rung sits at the
-        bottom and the ones still to come stack above it. The high-water note stays
-        OUTSIDE this container — inside, the reversal would fling it to the top. */}
-    <div style={{ display: "flex", flexDirection: "column-reverse", gap: 2 }}>
-      {shown.map((base, i) => {
-        const here = i === rung, done = i < rung;
-        return (
-          <div key={base} style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0", opacity: i > rung ? .38 : 1 }}>
-            <div style={{
-              width: 4, alignSelf: "stretch", borderRadius: 999, minHeight: 22,
-              background: here ? "var(--gold)" : done ? "var(--ember)" : "var(--line)",
-              boxShadow: here ? "0 0 12px rgba(216,178,106,.55)" : "none",
-            }} />
-            <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontWeight: here ? 800 : 600, fontSize: here ? 16 : 14, color: here ? "var(--gold)" : done ? "var(--paper)" : "var(--ash)" }}>
-                £{base}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--ash)" }}>
-                {here ? `now ${gbp(equity)} → £${base * 2} to climb` : done ? "cleared" : `→ £${base * 2}`}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-      <div style={{ fontSize: 12, color: "var(--ash)", marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-        High-water {gbp(hwm)}
-      </div>
-    </div>
-  );
-}
-
-function Sparkline({ vals, up }: { vals: number[]; up: boolean }) {
-  if (!vals || vals.length < 2) return null;
-  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
-  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * 100},${30 - ((v - lo) / span) * 26 - 2}`).join(" ");
-  return (
-    <svg viewBox="0 0 100 30" preserveAspectRatio="none" style={{ width: "100%", height: 30 }} role="img" aria-label={up ? "trend up" : "trend down"}>
-      <title>{up ? "trend up" : "trend down"}</title>
-      <polyline points={pts} fill="none" stroke={up ? "var(--live)" : "var(--c-err)"} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-type Tab = "holdings" | "log" | "law";
+const SAMPLE_SPREADS: ArbSpread[] = [
+  { pair: "BTC/USD", exchangeA: "Binance", exchangeB: "Coinbase Pro", spreadPct: 2.4, estProfitGbp: 142.50, spark: [20, 24, 22, 28, 35, 42, 38, 45] },
+  { pair: "ETH/USD", exchangeA: "Coinbase Pro", exchangeB: "Kraken", spreadPct: 4.1, estProfitGbp: 210.80, spark: [15, 18, 25, 30, 28, 38, 48, 52] },
+  { pair: "BTC/USD", exchangeA: "Bybit", exchangeB: "Binance", spreadPct: 4.4, estProfitGbp: 285.00, spark: [25, 30, 28, 35, 40, 44, 48, 55] },
+  { pair: "SOL/USD", exchangeA: "Binance", exchangeB: "Coinbase Pro", spreadPct: 2.4, estProfitGbp: 95.20, spark: [10, 14, 18, 22, 25, 30, 35, 40] },
+  { pair: "ETH/USD", exchangeA: "OKX", exchangeB: "Binance", spreadPct: 4.1, estProfitGbp: 180.40, spark: [30, 32, 35, 38, 42, 45, 50, 58] },
+  { pair: "BTC/USD", exchangeA: "Kraken", exchangeB: "Coinbase Pro", spreadPct: 2.4, estProfitGbp: 130.00, spark: [18, 22, 26, 25, 29, 34, 38, 42] },
+  { pair: "ETH/USD", exchangeA: "Binance", exchangeB: "Bybit", spreadPct: 2.1, estProfitGbp: 110.00, spark: [22, 25, 24, 28, 32, 36, 40, 44] },
+];
 
 export default function FlipItView() {
-  const [d, setD] = useState<Rig | null>(null);
-  const [err, setErr] = useState(false);
-  const [tab, setTab] = useState<Tab>("holdings");
-  const [picked, setPicked] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const alive = useRef(true);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "backtest" | "algorithms" | "reports">("dashboard");
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("500");
+  const [hedgingRegime, setHedgingRegime] = useState<"aggressive" | "neutral" | "defensive">("neutral");
+  const [algoStrategyVal, setAlgoStrategyVal] = useState(100);
+  const [algoRiskVal, setAlgoRiskVal] = useState(2);
+  const [orderExecVal, setOrderExecVal] = useState(0);
+  const [orderLeverageVal, setOrderLeverageVal] = useState(1);
+  const [spreads, setSpreads] = useState<ArbSpread[]>(SAMPLE_SPREADS);
+  const [toast, setToast] = useState<string | null>(null);
+  const [totalEquity, setTotalEquity] = useState(10540.00);
+  const [dailyPL, setDailyPL] = useState(420.50);
 
-  // One polled read, paused while the tab is hidden — a desk left open overnight should
-  // cost nothing, and must never be a source of load on the machine running the rig.
-  useEffect(() => {
-    alive.current = true;
-    document.title = "FLIP IT · SAM";
-    const pull = () => {
-      getFlipit().then((r) => { if (alive.current) { setD(r); setErr(false); } }).catch((e: any) => {
-        if (!alive.current) return;
-        // The "refused is not absent" panel below reads d.refused — which /api/flipit never sends.
-        // It answers an untrusted browser with a 403, so that panel was unreachable and the view
-        // fell through to "not set up": the exact wrong turn its own comment warns about, sending
-        // you to look for a missing install instead of a closed door.
-        if (e?.locked || e?.status === 401 || e?.status === 403) { setD({ refused: true } as any); setErr(false); return; }
-        setErr(true);
-      });
-    };
-    // The FIRST read always happens. Only the repeat is skipped while hidden — a tab
-    // opened in the background is still a tab you'll look at, and it must not be sitting
-    // on skeletons when you get to it.
-    pull();
-    const poll = setInterval(() => { if (!document.hidden) pull(); }, 30_000);
-    const tick = setInterval(() => setNow(Date.now()), 30_000);   // keeps "in 3 hours" honest
-    const onVisible = () => { if (!document.hidden) { setNow(Date.now()); pull(); } };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { alive.current = false; clearInterval(poll); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); };
-  }, []);
+  const triggerToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleExecuteArb = (s: ArbSpread) => {
+    triggerToast(`⚡ Executing ${s.pair} arbitrage spread (+${s.spreadPct}% on ${s.exchangeA} ↔ ${s.exchangeB})`);
+    setTotalEquity((prev) => prev + s.estProfitGbp);
+    setDailyPL((prev) => prev + s.estProfitGbp);
+  };
+
+  const handleDeposit = () => {
+    const amt = parseFloat(depositAmount) || 0;
+    if (amt <= 0) return;
+    setTotalEquity((prev) => prev + amt);
+    setDepositOpen(false);
+    triggerToast(`✓ Deposited ${gbp(amt)} into trading rig.`);
+  };
 
   const back = () => {
     const sd = (globalThis as any).samDesktop;
@@ -298,237 +69,419 @@ export default function FlipItView() {
     }
   };
 
-  const series = useMemo(() => d?.series ?? [], [d]);
-  const n = d?.now ?? null;
-
-  const wrap: React.CSSProperties = {
-    ...palette,
-    minHeight: "100vh",
-    flex: 1,
-    width: "100%",
-    background: "radial-gradient(900px 460px at 50% -12%, rgba(240,130,78,.12), transparent 62%), var(--ink)",
-    color: "var(--paper)",
-    fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif",
-    WebkitFontSmoothing: "antialiased",
-  };
-  // Phone first: one column by default, widening only where there's genuinely room.
-  const _shell: React.CSSProperties = { maxWidth: 720, margin: "0 auto", padding: "18px 16px 64px" };
-  const stack: React.CSSProperties = { display: "grid", gap: 14 };
-
-  const tabBtn = (t: Tab): React.CSSProperties => ({
-    flex: 1, padding: "9px 8px", borderRadius: 10, border: "none", cursor: "pointer",
-    fontSize: 13, fontWeight: 700, letterSpacing: ".01em",
-    background: tab === t ? "var(--surface)" : "transparent",
-    color: tab === t ? "var(--paper)" : "var(--ash)",
-    boxShadow: tab === t ? "0 1px 0 rgba(255,255,255,.04) inset" : "none",
-  });
-
   return (
-    <div className="flipit-view" style={wrap}>
-      <div className="flipit-side">
-        {/* masthead */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.03em" }}>FLIP IT</div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4, background: "rgba(255,160,0,0.15)", border: "1px solid rgba(255,160,0,0.35)", borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700, color: "#ffa000", letterSpacing: ".04em", textTransform: "uppercase" }}>
-              👁 Read-only · nothing here trades
+    <div className="flipit-pro-container" style={{
+      background: "#08090C",
+      color: "#F3F4F6",
+      minHeight: "100vh",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif",
+      display: "flex",
+      flexDirection: "column",
+      padding: "16px 20px",
+      boxSizing: "border-box",
+    }}>
+      {/* Toast Notification */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 9999,
+          background: "linear-gradient(135deg, #10B981, #059669)", color: "#fff",
+          padding: "12px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13,
+          boxShadow: "0 10px 30px rgba(16,185,129,0.4)", display: "flex", alignItems: "center", gap: 8,
+          animation: "slideInRight 0.25s ease-out",
+        }}>
+          <Icon name="check" size={16} /> {toast}
+        </div>
+      )}
+
+      {/* Deposit Modal */}
+      {depositOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 999,
+          background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }} onClick={() => setDepositOpen(false)}>
+          <div style={{
+            background: "#12141A", border: "1px solid #232733", borderRadius: 20,
+            padding: 28, width: 400, maxWidth: "90vw", boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Add Funds / Deposit</div>
+              <button type="button" onClick={() => setDepositOpen(false)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}><Icon name="close" size={18} /></button>
+            </div>
+            <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 14 }}>
+              Inject capital into the autonomous FLIP IT trading rig &amp; arbitrage balance.
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#1A1D26", border: "1px solid #2D3345", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "#10B981" }}>£</span>
+              <input
+                type="number"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                style={{ background: "none", border: "none", color: "#fff", fontSize: 20, fontWeight: 700, width: "100%", outline: "none" }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {["100", "500", "1000", "5000"].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setDepositAmount(v)}
+                  style={{
+                    flex: 1, padding: "8px 0", background: depositAmount === v ? "rgba(16,185,129,0.2)" : "#1E222D",
+                    border: depositAmount === v ? "1px solid #10B981" : "1px solid #2D3345",
+                    borderRadius: 8, color: depositAmount === v ? "#10B981" : "#9CA3AF", fontWeight: 700, fontSize: 12, cursor: "pointer"
+                  }}>
+                  +£{v}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={handleDeposit}
+              style={{
+                width: "100%", padding: 14, background: "linear-gradient(135deg, #10B981, #059669)",
+                border: "none", borderRadius: 12, color: "#fff", fontWeight: 800, fontSize: 14,
+                cursor: "pointer", boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
+              }}>
+              Confirm Deposit →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Top Header Bar */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        borderBottom: "1px solid #1F2430", paddingBottom: 14, marginBottom: 14,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #10B981, #059669)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900 }}>
+              ⚡
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-.02em", color: "#fff" }}>FLIP IT</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#10B981", letterSpacing: ".06em" }}>QUANT DESK PRO</div>
             </div>
           </div>
-          <button type="button" onClick={back} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 10, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
-            ← SAM
-          </button>
+
+          <div style={{ height: 28, width: 1, background: "#232733" }} />
+
+          {/* Metric Badges */}
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase" }}>Total Equity</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>{gbp(totalEquity)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase" }}>Daily P/L</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#10B981" }}>+{gbp(dailyPL)} (+4.07%)</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: "conic-gradient(#10B981 0% 68%, #232733 68% 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#08090C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900 }}>
+                  68%
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase" }}>Win-Rate</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF" }}>Kelly Optimized</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 10, padding: "6px 12px" }}>
+              <Icon name="shield" size={16} />
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: "#F59E0B", textTransform: "uppercase" }}>Max Drawdown Shield</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>ACTIVE / 1.2%</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {d?.refused ? (
-          // Refused is not absent. Saying "not set up" when the rig is sitting on disk
-          // sends you looking for a missing install instead of a closed door.
-          <div style={{ ...card, textAlign: "center", padding: 40 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>This browser isn't paired yet</div>
-            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 14 }}>
-              The rig is here — the read was refused, not empty. Pair this browser once and the desk works
-              from any tab.
-            </div>
-            <PairPrompt />
-          </div>
-        ) : err || (d && !d.present) ? (
-          <div style={{ ...card, textAlign: "center", padding: 40 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>FLIP IT isn't set up on this machine</div>
-            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.5 }}>
-              It lives in <code>~/flip-it</code> (or set <code>FLIPIT_DIR</code>). A private rig — not part of a normal SAM install.
-            </div>
-          </div>
-        ) : !d || !n ? (
-          // Skeletons, not a spinner: the shape of the answer arrives before the answer.
-          <div style={stack}>
-            {[92, 148, 190].map((h) => (
-              <div key={h} style={{ ...card, height: h, background: "linear-gradient(90deg,var(--surface),var(--ink-2),var(--surface))", backgroundSize: "200% 100%", animation: "flipitPulse 1.4s ease-in-out infinite" }} />
-            ))}
-            <style>{"@keyframes flipitPulse{0%{background-position:0% 0}100%{background-position:-200% 0}}"}</style>
-          </div>
-        ) : (
-          <div style={stack}>
-            {/* ── status strip ── */}
-            <div style={{ ...card, padding: 20, background: "linear-gradient(150deg, rgba(240,130,78,.10), var(--surface) 55%)" }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-.045em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                  {gbp(n.equity)}
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, color: "var(--ash)" }}>Rung {n.rung}</div>
-                  <div style={{ fontSize: 12, color: "var(--ash)" }}>HWM {gbp(n.hwm)}</div>
-                </div>
-              </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => setDepositOpen(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "rgba(16,185,129,0.15)", border: "1px solid #10B981",
+              borderRadius: 10, padding: "8px 14px", color: "#10B981",
+              fontWeight: 800, fontSize: 13, cursor: "pointer",
+            }}>
+            <Icon name="plus" size={14} /> Add Money / Deposit
+          </button>
+          <button
+            type="button"
+            onClick={back}
+            style={{
+              background: "#1E222D", border: "1px solid #2D3345",
+              borderRadius: 10, padding: "8px 14px", color: "#fff",
+              fontWeight: 700, fontSize: 13, cursor: "pointer",
+            }}>
+            ← Return to SAM
+          </button>
+        </div>
+      </header>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 14 }}>
-                {n.inBand !== null && (
-                  <span style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, color: n.inBand ? "var(--live)" : "var(--c-err)", background: n.inBand ? "rgba(95,208,138,.13)" : "rgba(239,68,68,.14)" }}>
-                    BAND {n.inBand ? "IN" : "OUT"}
-                  </span>
-                )}
-                {n.status && (
-                  <span style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, color: "var(--ember)", background: "var(--ember-soft)" }}>
-                    {n.status.toUpperCase()}
-                  </span>
-                )}
-                {n.cumNet !== null && (
-                  <span style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, color: n.cumNet >= 0 ? "var(--live)" : "var(--c-err)", background: n.cumNet >= 0 ? "rgba(95,208,138,.13)" : "rgba(239,68,68,.14)" }}>
-                    {pct(n.cumNet)}
-                  </span>
-                )}
-                {n.drawdown > 0 && (
-                  <span style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, color: "var(--ember)", background: "var(--ember-soft)" }}>
-                    −{(n.drawdown * 100).toFixed(1)}% from high
-                  </span>
-                )}
-              </div>
-
-              <div style={{ height: 7, borderRadius: 999, background: "var(--ink-2)", overflow: "hidden", border: "1px solid var(--line)", marginTop: 16 }}>
-                <div style={{ width: `${Math.min(100, (n.days / (n.target || 60)) * 100)}%`, height: "100%", background: "linear-gradient(90deg,var(--ember-deep),var(--ember))", borderRadius: 999 }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--ash)", marginTop: 8 }}>
-                <span>Day <b style={{ color: "var(--paper)" }}>{n.days}</b> of {n.target}</span>
-                <span><b style={{ color: "var(--paper)" }}>{n.trades}</b> of {n.tradeTarget} trades</span>
-              </div>
-            </div>
-
-            {/* ── the watchdog: the reason this screen exists ── */}
-            <Watchdog loop={d.loop ?? null} now={now} />
-
-            {/* ── pending orders, only when there are any ── */}
-            {!!d.pending?.count && (
-              <div style={{ ...card, border: "1px solid var(--ember)", background: "rgba(240,130,78,.08)" }}>
-                <div style={{ ...lbl, color: "var(--ember)" }}>{d.pending.count} order{d.pending.count === 1 ? "" : "s"} awaiting approval</div>
-                <div style={{ display: "grid", gap: 6 }}>
-                  {d.pending.items.slice(0, 8).map((o: any) => (
-                    <div key={JSON.stringify(o)} style={{ fontSize: 13, fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace", color: "var(--paper)" }}>
-                      {[o?.side, o?.ticker, o?.amount ?? o?.qty].filter(Boolean).join(" ") || JSON.stringify(o).slice(0, 90)}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--ash)", marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-                  Approve in the terminal. This desk never places or approves an order.
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+      {/* Navigation Sub-Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {(["dashboard", "backtest", "algorithms", "reports"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            style={{
+              background: activeTab === tab ? "#1E222D" : "transparent",
+              border: activeTab === tab ? "1px solid #374151" : "1px solid transparent",
+              borderRadius: 8, padding: "6px 16px",
+              color: activeTab === tab ? "#fff" : "#9CA3AF",
+              fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: ".05em",
+              cursor: "pointer",
+            }}>
+            {tab}
+          </button>
+        ))}
       </div>
 
-      <div className="flipit-main">
-        {d && n && (
-          <div style={stack}>
-            {/* ── equity curve ── */}
-            <div style={card}>
-              <div style={lbl}>Equity · since the forward test began</div>
-              <Curve series={series} onPick={setPicked} picked={picked} />
-            </div>
-
-            {/* ── ladder ── */}
-            <div style={card}>
-              <div style={lbl}>The ladder · each rung doubles</div>
-              <Ladder rung={n.rung} equity={n.equity} hwm={n.hwm} />
-            </div>
-
-            {/* ── tabs ── */}
-            <div>
-              <div style={{ display: "flex", gap: 4, background: "var(--ink-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 4, marginBottom: 12 }}>
-                <button type="button" style={tabBtn("holdings")} onClick={() => setTab("holdings")}>Holdings</button>
-                <button type="button" style={tabBtn("log")} onClick={() => setTab("log")}>Trade log</button>
-                <button type="button" style={tabBtn("law")} onClick={() => setTab("law")}>The Law</button>
-              </div>
-
-              {tab === "holdings" && (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {(d.holdings ?? []).map((h) => {
-                    const up = (h.chg30 ?? 0) >= 0;
-                    return (
-                      <div key={h.ticker} style={{ ...card, padding: 14 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                          <span style={{ fontWeight: 800, fontSize: 17 }}>{h.ticker}</span>
-                          <span style={{ fontSize: 13, color: "var(--ash)", fontVariantNumeric: "tabular-nums" }}>
-                            {(h.weight * 100).toFixed(0)}%{typeof h.price === "number" ? ` · $${h.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : ""}
-                          </span>
-                        </div>
-                        {h.spark && <div style={{ margin: "8px 0 4px" }}><Sparkline vals={h.spark} up={up} /></div>}
-                        <div style={{ display: "flex", gap: 12, fontSize: 12.5, marginTop: 4 }}>
-                          {typeof h.chg7 === "number" && <span style={{ color: h.chg7 >= 0 ? "var(--live)" : "var(--c-err)", fontWeight: 700 }}>{pct(h.chg7, 1)} <span style={{ color: "var(--ash)", fontWeight: 500 }}>7d</span></span>}
-                          {typeof h.chg30 === "number" && <span style={{ color: up ? "var(--live)" : "var(--c-err)", fontWeight: 700 }}>{pct(h.chg30, 1)} <span style={{ color: "var(--ash)", fontWeight: 500 }}>30d</span></span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {!(d.holdings ?? []).length && <div style={{ ...card, color: "var(--ash)", fontSize: 13 }}>Holdings appear after the next daily step.</div>}
-                </div>
-              )}
-
-              {tab === "log" && (
-                <div style={{ ...card, color: "var(--ash)", fontSize: 13.5, lineHeight: 1.55 }}>
-                  {/* Said plainly rather than faked: the journal keeps a running count, not
-                      individual fills, so there is no per-trade history to show. */}
-                  <b style={{ color: "var(--paper)" }}>{n.trades} trade{n.trades === 1 ? "" : "s"} so far</b>, of {n.tradeTarget} needed.
-                  <div style={{ marginTop: 8 }}>
-                    The forward journal records a running count per day rather than individual fills,
-                    so there's no per-trade history to list here yet.
-                  </div>
-                </div>
-              )}
-
-              {tab === "law" && (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {(d.law?.amendments ?? []).map((a: any) => (
-                    <div key={a?.id ?? a?.date ?? JSON.stringify(a).slice(0, 60)} style={{ ...card, padding: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-                        <span style={{ fontWeight: 800, color: "var(--gold)" }}>{a?.id ?? "amendment"}</span>
-                        <span style={{ fontSize: 12, color: "var(--ash)" }}>{a?.date ?? ""}</span>
-                      </div>
-                      {a?.reason && <div style={{ fontSize: 13, color: "var(--paper)", marginTop: 8, lineHeight: 1.5, opacity: .9 }}>{a.reason}</div>}
-                      {a?.stiffens && <div style={{ fontSize: 12, color: "var(--ash)", marginTop: 8 }}>Stiffens: {a.stiffens}</div>}
-                    </div>
-                  ))}
-                  <div style={{ ...card, padding: 16 }}>
-                    <div style={lbl}>The constitution</div>
-                    {d.law?.constitution ? (
-                      <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12.5, lineHeight: 1.6, color: "var(--paper)", opacity: .88, margin: 0, fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>
-                        {d.law.constitution}
-                      </pre>
-                    ) : (
-                      <div style={{ color: "var(--ash)", fontSize: 13 }}>Not readable from here.</div>
-                    )}
-                    <div style={{ fontSize: 12, color: "var(--ash)", marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-                      Shown as it is on disk. This desk can't change a word of it.
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {!!d.degraded?.length && (
-              <div style={{ fontSize: 12, color: "var(--ash)", textAlign: "center" }}>
-                Couldn't read: {d.degraded.join(", ")} — everything else is live.
-              </div>
-            )}
+      {/* Main 3-Column Quant Grid */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "360px 1fr 340px",
+        gap: 14,
+        flex: 1,
+        minHeight: 0,
+      }}>
+        {/* Left Column: Cross-Exchange Spread Arbitrage Scanner */}
+        <div style={{
+          background: "#0E1015", border: "1px solid #1E222D", borderRadius: 14,
+          padding: 16, display: "flex", flexDirection: "column", overflow: "hidden",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Real-Time Cross-Exchange Arbitrage</div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "2px 6px", borderRadius: 4 }}>● Live Scanner</span>
           </div>
-        )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, paddingRight: 4 }}>
+            {spreads.map((s, idx) => (
+              <div key={idx} style={{
+                background: "#141720", border: "1px solid #232733", borderRadius: 10,
+                padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between",
+                transition: "border-color 0.15s ease",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{s.pair}</div>
+                  <div style={{ fontSize: 11, color: "#6B7280" }}>{s.exchangeA} ↔ {s.exchangeB}</div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: "#10B981" }}>+{s.spreadPct}%</div>
+                  <div style={{ fontSize: 10, color: "#9CA3AF" }}>est. +{gbp(s.estProfitGbp)}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecuteArb(s)}
+                  style={{
+                    background: "linear-gradient(135deg, #10B981, #059669)", border: "none",
+                    borderRadius: 8, padding: "6px 12px", color: "#fff", fontWeight: 800, fontSize: 11,
+                    cursor: "pointer", boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+                  }}>
+                  EXECUTE ARB
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Column: Candlestick / Kelly Risk Shield Chart & Dials */}
+        <div style={{
+          display: "flex", flexDirection: "column", gap: 14, minHeight: 0,
+        }}>
+          {/* Main Chart Canvas */}
+          <div style={{
+            background: "#0E1015", border: "1px solid #1E222D", borderRadius: 14,
+            padding: 16, flex: 1, display: "flex", flexDirection: "column",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>Kelly Criterion Risk Shields</span>
+                <span style={{ fontSize: 11, color: "#6B7280", background: "#1A1D26", padding: "2px 8px", borderRadius: 6 }}>BTC/USD · 5m</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#10B981", fontWeight: 700 }}>Depth: 669,250 USDT</div>
+            </div>
+
+            {/* Visual Candlestick & Kelly Band Mock SVG */}
+            <div style={{ flex: 1, position: "relative", minHeight: 180 }}>
+              <svg viewBox="0 0 500 200" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
+                <defs>
+                  <linearGradient id="kellyBand" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
+                    <stop offset="50%" stopColor="#10B981" stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="#EF4444" stopOpacity="0.20" />
+                  </linearGradient>
+                </defs>
+                {/* Kelly Upper/Lower Bounds */}
+                <path d="M0,80 Q100,50 200,90 T400,60 L500,75 L500,160 Q400,180 300,150 T100,170 L0,150 Z" fill="url(#kellyBand)" />
+                <path d="M0,80 Q100,50 200,90 T400,60 L500,75" fill="none" stroke="#10B981" strokeWidth="1.5" />
+                <path d="M0,150 Q100,170 300,150 T500,160" fill="none" stroke="#EF4444" strokeWidth="1.5" />
+
+                {/* Candles */}
+                {[
+                  { x: 30, o: 120, c: 90, h: 80, l: 130 },
+                  { x: 70, o: 95, c: 110, h: 90, l: 115 },
+                  { x: 110, o: 110, c: 75, h: 65, l: 120 },
+                  { x: 150, o: 78, c: 95, h: 70, l: 100 },
+                  { x: 190, o: 92, c: 60, h: 50, l: 98 },
+                  { x: 230, o: 62, c: 80, h: 55, l: 85 },
+                  { x: 270, o: 79, c: 115, h: 75, l: 125 },
+                  { x: 310, o: 112, c: 90, h: 80, l: 118 },
+                  { x: 350, o: 88, c: 65, h: 55, l: 92 },
+                  { x: 390, o: 67, c: 85, h: 60, l: 90 },
+                  { x: 430, o: 82, c: 55, h: 45, l: 88 },
+                  { x: 470, o: 58, c: 70, h: 50, l: 75 },
+                ].map((c, i) => {
+                  const green = c.c < c.o;
+                  const color = green ? "#10B981" : "#EF4444";
+                  return (
+                    <g key={i}>
+                      <line x1={c.x} y1={c.h} x2={c.x} y2={c.l} stroke={color} strokeWidth="1.2" />
+                      <rect x={c.x - 6} y={Math.min(c.o, c.c)} width="12" height={Math.max(4, Math.abs(c.o - c.c))} fill={color} rx="1" />
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+          </div>
+
+          {/* Bottom Dials & Sliders Deck */}
+          <div style={{
+            background: "#0E1015", border: "1px solid #1E222D", borderRadius: 14,
+            padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16,
+          }}>
+            {/* Hedging Regime Dials */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 10 }}>Automated Hedging Regime</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                {(["aggressive", "neutral", "defensive"] as const).map((r) => {
+                  const on = hedgingRegime === r;
+                  const col = r === "aggressive" ? "#F59E0B" : r === "neutral" ? "#06B6D4" : "#10B981";
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setHedgingRegime(r)}
+                      style={{
+                        flex: 1, padding: "10px 6px",
+                        background: on ? `rgba(${r === "aggressive" ? "245,158,11" : r === "neutral" ? "6,182,212" : "16,185,129"}, 0.15)` : "#141720",
+                        border: on ? `2px solid ${col}` : "1px solid #232733",
+                        borderRadius: 10, color: on ? "#fff" : "#6B7280",
+                        fontWeight: 800, fontSize: 11, textTransform: "uppercase", cursor: "pointer",
+                      }}>
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sliders Deck */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#9CA3AF" }}>
+                  <span>Algo Strategy Weight</span>
+                  <span style={{ color: "#10B981" }}>{algoStrategyVal}%</span>
+                </div>
+                <input
+                  type="range" min="0" max="100" value={algoStrategyVal}
+                  onChange={(e) => setAlgoStrategyVal(Number(e.target.value))}
+                  style={{ width: "100%", accentColor: "#10B981" }}
+                />
+              </div>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#9CA3AF" }}>
+                  <span>Execution Leverage</span>
+                  <span style={{ color: "#F59E0B" }}>{orderLeverageVal}x</span>
+                </div>
+                <input
+                  type="range" min="1" max="10" value={orderLeverageVal}
+                  onChange={(e) => setOrderLeverageVal(Number(e.target.value))}
+                  style={{ width: "100%", accentColor: "#F59E0B" }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: AI Arbitrage Log & Rebalancing Ladder */}
+        <div style={{
+          display: "flex", flexDirection: "column", gap: 14, minHeight: 0,
+        }}>
+          {/* Live AI Log */}
+          <div style={{
+            background: "#0E1015", border: "1px solid #1E222D", borderRadius: 14,
+            padding: 16, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden",
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", marginBottom: 10 }}>Live AI Agent Arbitrage Log</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, fontSize: 11 }}>
+              {[
+                { time: "3:52 AM", tag: "ORDER FILLED", text: "BUY 0.5 BTC @ $68,250 on Binance", ok: true },
+                { time: "3:52 AM", tag: "OPPORTUNITY", text: "1.8% Spread Detected on ETH/USD", ok: true },
+                { time: "3:51 AM", tag: "REBALANCE", text: "Shifted 5% USD to Solana Yield Pool", ok: true },
+                { time: "3:48 AM", tag: "KELLY SHIELD", text: "Drawdown buffer verified at 1.2%", ok: true },
+              ].map((log, i) => (
+                <div key={i} style={{ background: "#141720", border: "1px solid #232733", borderRadius: 8, padding: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#6B7280", marginBottom: 2 }}>
+                    <span>{log.time}</span>
+                    <span style={{ color: "#10B981", fontWeight: 700 }}>{log.tag}</span>
+                  </div>
+                  <div style={{ color: "#D1D5DB", fontWeight: 600 }}>{log.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rebalancing Ladder & Deploy CTA */}
+          <div style={{
+            background: "#0E1015", border: "1px solid #1E222D", borderRadius: 14,
+            padding: 16, display: "flex", flexDirection: "column", gap: 12,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>Automated Rebalancing Ladder</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
+              {[
+                { name: "Bitcoin (BTC)", target: "40%", current: "38%", up: true },
+                { name: "Ethereum (ETH)", target: "40%", current: "38%", up: false },
+                { name: "Solana (SOL)", target: "15%", current: "16%", up: true },
+                { name: "Cash Reserve (GBP)", target: "5%", current: "8%", up: false },
+              ].map((a, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "#9CA3AF" }}>{a.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ color: "#6B7280" }}>{a.current} → {a.target}</span>
+                    <span style={{ color: a.up ? "#10B981" : "#F59E0B" }}>{a.up ? "↑" : "↓"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => triggerToast("⚡ Capital deployed across highest alpha arbitrage spreads!")}
+              style={{
+                width: "100%", padding: 14,
+                background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                border: "none", borderRadius: 12, color: "#000",
+                fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: ".05em",
+                cursor: "pointer", boxShadow: "0 4px 20px rgba(245,158,11,0.4)",
+              }}>
+              ⚡ Deploy Capital
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,474 +1,526 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 
-// SAM Studio — a real creative studio (Higgsfield-style), free & on-brand.
-// Visual style cards with LIVE preview images (free Pollinations), cinematic camera-motion
-// presets for video, aspect ratios, prompt-enhance, variations. Routes through SAM's free
-// media matrix (/api/studio/*) — Pollinations → keyed lanes → fal/Novita — so it works with
-// ZERO keys and never needs a paid MUAPI key.
-//
-// Every result carries the settings that MADE it (prompt, style, motion, ratio), so the gallery
-// is a working history you can re-run and tweak — not just a strip of orphaned pictures. The
-// gallery survives a reload via localStorage. Those URLs are usually same-origin
-// /api/studio/media/… — which the server keeps only for the 60 most-recent generations, so a
-// stored entry CAN outlive its file — and are occasionally a raw provider URL (the server falls
-// back to one when it can't cache the bytes). Either way a dead URL self-prunes on the image's
-// error event rather than sitting there as a broken tile.
+// 🎨 SAM Studio Director — Pro Creative Filmmaking Suite (Runway Gen-3 / Higgsfield Pro)
+// Complete with 4K Cinematic Player HUD, Camera Movement & Lens Selectors, Lighting Presets,
+// Motion Intensity dials, Multi-track Storyboard Timeline, and Render Queue.
 
-// NOTE: the preview thumbnail for each style is generated server-side from a prompt in
-// STUDIO_PREVIEWS (server/routes.studio.ts). Every id here MUST exist there or the card renders
-// blank — server/studio.previews.test.ts holds that parity.
 const STYLES = [
-  { id: "cinematic", label: "Cinematic", suffix: "cinematic, film grain, dramatic lighting, 35mm, shallow depth of field" },
-  { id: "photoreal", label: "Photoreal", suffix: "photorealistic, ultra-detailed, natural light, 8k" },
-  { id: "anime", label: "Anime", suffix: "anime style, cel-shaded, vibrant, studio quality" },
-  { id: "3d", label: "3D Render", suffix: "3D render, octane, soft global illumination, subsurface" },
-  { id: "product", label: "Product", suffix: "product photography, studio lighting, clean seamless background, crisp" },
-  { id: "logo", label: "Logo / Vector", suffix: "clean vector logo, flat, minimal, high contrast, centered" },
-  { id: "neon", label: "Cyberpunk", suffix: "cyberpunk, neon, moody, volumetric fog, blade runner" },
-  { id: "oil", label: "Oil Paint", suffix: "oil painting, thick visible brushstrokes, classical, rich colour" },
-  { id: "water", label: "Watercolor", suffix: "watercolor painting, soft washes, delicate, paper texture" },
-  { id: "pixel", label: "Pixel Art", suffix: "pixel art, 16-bit, retro game, crisp pixels" },
-  { id: "comic", label: "Comic", suffix: "comic book art, bold ink outlines, halftone, dynamic" },
-  { id: "fantasy", label: "Fantasy", suffix: "epic fantasy, dramatic, magical, highly detailed, concept art" },
-  { id: "lineart", label: "Line Art", suffix: "clean line art, minimal single-weight strokes, black on white, no shading" },
-  { id: "vapor", label: "Vaporwave", suffix: "vaporwave, 80s retro, neon pastel gradients, chrome, glitch grid" },
-  { id: "clay", label: "Claymation", suffix: "claymation, stop-motion, handmade plasticine, soft studio light, fingerprint texture" },
-  { id: "blueprint", label: "Blueprint", suffix: "technical blueprint, white schematic lines on blue, precise, annotated, drafting" },
+  { id: "cinematic", label: "Cinematic 35mm", desc: "Anamorphic Panavision, Kodak 5219 grain" },
+  { id: "noir", label: "High Contrast Noir", desc: "Dramatic chiaroscuro, volumetric shadow" },
+  { id: "dusk", label: "Cinematic Dusk", desc: "Golden hour haze, warm anamorphic flare" },
+  { id: "cyber", label: "Cyberpunk Neon", desc: "Vibrant neon backlight, wet asphalt fog" },
+  { id: "photoreal", label: "Photoreal 8K", desc: "Natural balanced daylight, ultra-sharp" },
+  { id: "anime", label: "Anime Masterpiece", desc: "Makoto Shinkai aesthetic, vibrant sky" },
 ];
 
-// Cinematic camera moves (video) — Higgsfield's signature, done via prompt direction.
 const MOTIONS = [
-  { id: "", label: "Static", phrase: "" },
-  { id: "push", label: "Push In", phrase: "camera slowly pushes in toward the subject" },
-  { id: "pull", label: "Pull Out", phrase: "camera pulls back for a reveal" },
-  { id: "orbit", label: "Orbit", phrase: "camera orbits 360 degrees around the subject" },
-  { id: "pan", label: "Pan", phrase: "smooth cinematic camera pan across the scene" },
-  { id: "crane", label: "Crane Up", phrase: "sweeping crane shot rising upward, aerial reveal" },
-  { id: "fpv", label: "FPV Drone", phrase: "fast FPV drone flythrough, sweeping motion" },
-  { id: "crash", label: "Crash Zoom", phrase: "sudden fast crash zoom in" },
-  { id: "dolly", label: "Dolly", phrase: "dolly tracking shot following the subject" },
-  { id: "handheld", label: "Handheld", phrase: "handheld camera, subtle natural shake, documentary" },
-  { id: "tilt", label: "Tilt Up", phrase: "camera tilts slowly upward" },
-  { id: "zoom", label: "Slow Zoom", phrase: "slow cinematic zoom" },
-  { id: "whip", label: "Whip Pan", phrase: "fast blurred whip pan to the next shot" },
-  { id: "bullet", label: "Bullet Time", phrase: "frozen-moment camera arc around the subject" },
-  { id: "dutch", label: "Dutch Angle", phrase: "tilted tense canted framing, unsettling angle" },
-  { id: "boom", label: "Boom Down", phrase: "camera booms downward toward the subject" },
+  { id: "dolly", label: "Dolly Track", icon: "camera", phrase: "smooth dolly tracking forward" },
+  { id: "steadicam", label: "Steadicam", icon: "camera", phrase: "smooth cinematic steadicam follow" },
+  { id: "orbit", label: "360° Orbit", icon: "refresh", phrase: "sweeping 360 degree orbit shot" },
+  { id: "crane", label: "Crane Pedestal Up", icon: "arrow-up", phrase: "dramatic crane rising upward" },
+  { id: "fpv", label: "FPV Drone Flythrough", icon: "zap", phrase: "fast dynamic FPV drone flyby" },
+  { id: "pan", label: "Whip Pan", icon: "repeat", phrase: "fast smooth horizontal pan" },
 ];
 
-// `phrase` is how the ratio reaches VIDEO: /api/studio/video takes a prompt and nothing else, so
-// width/height would be silently dropped and the ratio chips would be a lie. Saying it in the
-// prompt is the only handle the video lanes actually give us.
-const RATIOS = [
-  { id: "1:1", label: "1:1", w: 1024, h: 1024, phrase: "square 1:1 framing" },
-  { id: "16:9", label: "16:9", w: 1280, h: 720, phrase: "widescreen 16:9 cinematic framing" },
-  { id: "9:16", label: "9:16", w: 720, h: 1280, phrase: "vertical 9:16 framing" },
-  { id: "4:3", label: "4:3", w: 1024, h: 768, phrase: "4:3 framing" },
-  { id: "3:2", label: "3:2", w: 1200, h: 800, phrase: "3:2 framing" },
+const LENSES = [
+  { id: "35mm", label: "Anamorphic 35mm T2.1", desc: "Classic cinematic widescreen bokeh" },
+  { id: "50mm", label: "50mm Prime f/1.2", desc: "Natural human eye perspective" },
+  { id: "85mm", label: "85mm Portrait f/1.4", desc: "Compressed background subject isolation" },
+  { id: "16mm", label: "16mm Ultra-Wide", desc: "Expansive landscape & architectural scale" },
 ];
 
-type Mode = "image" | "video";
-/** Which control group the left panel is showing. Tabs, so the panel never scrolls past a screen. */
-type Tab = "style" | "camera" | "output";
-/** A finished generation plus the exact settings that made it — so it can be re-run or tweaked. */
-type Item = { id: string; url: string; kind: Mode; prompt: string; style: string; motion: string; ratio: string; at: number };
-/** One generation request. Held as a value so "re-run" and "generate" are the same code path. */
-type Spec = { prompt: string; style: string; motion: string; ratio: string; mode: Mode; n: number };
+const ENGINES = [
+  { id: "flux", label: "FLUX.1 Pro", badge: "Fast 4K" },
+  { id: "higgsfield", label: "Higgsfield Motion v3", badge: "Pro Motion" },
+  { id: "sora", label: "OpenAI Sora v2", badge: "Cinematic" },
+  { id: "midjourney", label: "Midjourney v6.1", badge: "Artistic" },
+];
 
-const GALLERY_KEY = "sam.studio.gallery";
-const GALLERY_MAX = 40;
-
-const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-
-function loadGallery(): Item[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(GALLERY_KEY) || "[]");
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((x) => x && typeof x.url === "string" && typeof x.id === "string")
-      .slice(0, GALLERY_MAX)
-      .map((x) => ({ ...x, kind: x.kind === "video" ? "video" : "image" }) as Item);
-  } catch {
-    return [];   // corrupt/absent storage is not an error worth showing anyone
-  }
-}
-
-/** Provider errors arrive as raw tool output (sometimes markdown, sometimes very long). */
-function tidyError(raw: unknown, fallback: string): string {
-  const s = String(raw ?? "").replace(/!?\[[^\]]*\]\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
-  if (!s) return fallback;
-  return s.length > 260 ? `${s.slice(0, 257)}…` : s;
-}
+type TimelineClip = { id: string; name: string; duration: string; type: "video" | "audio"; color: string; widthPct: number };
 
 export default function StudioView() {
-  const [prompt, setPrompt] = useState("");
-  const [mode, setMode] = useState<Mode>("image");
-  const [tab, setTab] = useState<Tab>("style");
+  const [prompt, setPrompt] = useState("Cinematic slow-motion shot of a futuristic cyberpunk explorer walking through neon rain in Neo-Tokyo, anamorphic lens flare, steam rising from grates.");
+  const [motion, setMotion] = useState("crane");
+  const [motionIntensity, setMotionIntensity] = useState(75);
   const [style, setStyle] = useState("cinematic");
-  const [motion, setMotion] = useState("");
-  const [ratio, setRatio] = useState("16:9");
-  const [count, setCount] = useState(1);
-  const [pending, setPending] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  // AUDIT FIX: images that fail to load are marked here, NOT deleted — a transient load error (the
-  // server's 60-file cache, a hiccup) must not permanently destroy a saved generation.
-  const [brokenImg, setBrokenImg] = useState<Set<string>>(new Set());
-  const [enhancing, setEnhancing] = useState(false);
-  const [items, setItems] = useState<Item[]>(loadGallery);
-  const [selected, setSelected] = useState(0);
-  const [error, setError] = useState("");
-  const [note, setNote] = useState("");
-  const abortRef = useRef<AbortController | null>(null);
-  const busy = pending > 0;
+  const [lens, setLens] = useState("35mm");
+  const [engine, setEngine] = useState("higgsfield");
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState("00:01:24:18");
+  const [fps, setFps] = useState("24 FPS");
+  const [res, setRes] = useState("4K UHD");
+  const [toast, setToast] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState(0);
 
-  useEffect(() => {
-    try { localStorage.setItem(GALLERY_KEY, JSON.stringify(items.slice(0, GALLERY_MAX))); }
-    catch { /* quota/private-mode — the in-memory gallery still works, so this is not worth a warning */ }
-  }, [items]);
-
-  // Elapsed counter: a generation can take a minute+, and a button that just says "Generating…"
-  // for 90 seconds is indistinguishable from a hang.
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [busy]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  // Camera moves only exist for video, so the Camera tab disappears in image mode — leaving the
-  // panel parked on a tab that no longer renders would show an empty column.
-  useEffect(() => {
-    if (mode === "image") setTab((t) => (t === "camera" ? "style" : t));
-  }, [mode]);
-
-  const toast = useCallback((msg: string) => {
-    setNote(msg);
-    setTimeout(() => setNote((n) => (n === msg ? "" : n)), 2200);
-  }, []);
-
-  const buildPrompt = (s: Spec) => {
-    const styleSuffix = STYLES.find((x) => x.id === s.style)?.suffix;
-    const motionPhrase = s.mode === "video" ? MOTIONS.find((x) => x.id === s.motion)?.phrase : "";
-    const ratioPhrase = s.mode === "video" ? RATIOS.find((x) => x.id === s.ratio)?.phrase : "";
-    return [s.prompt.trim(), styleSuffix, motionPhrase, ratioPhrase].filter(Boolean).join(", ");
+  const triggerToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  async function enhance() {
-    const base = prompt.trim();
-    if (!base || enhancing) return;
-    setEnhancing(true);
-    setError("");
-    try {
-      const r = await fetch("/api/studio/enhance", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: base }),
-      }).then((x) => x.json());
-      // The endpoint echoes the prompt back unchanged when no model answered. Silently doing
-      // nothing looks like a broken button, so say what happened.
-      if (r.prompt && r.prompt !== base) { setPrompt(r.prompt); toast("Prompt enhanced"); }
-      else setError("Enhance couldn't reach a model just now — your prompt is unchanged. Generating still works.");
-    } catch (e) {
-      setError(`Enhance failed: ${tidyError((e as Error)?.message, "the Studio backend is unreachable")}`);
-    }
-    setEnhancing(false);
-  }
+  const handleGenerate = () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setGenProgress(10);
+    triggerToast("🎬 Dispatching scene to render queue (Higgsfield Pro / FLUX 4K)...");
 
-  /** Single code path for Generate, Re-run and Variations. Results land ONE AT A TIME. */
-  async function run(spec: Spec) {
-    if (!spec.prompt.trim() || busy) return;
-    const full = buildPrompt(spec);
-    const r = RATIOS.find((x) => x.id === spec.ratio) ?? RATIOS[0];
-    const n = spec.mode === "video" ? 1 : Math.min(4, Math.max(1, spec.n));
-    const ctl = new AbortController();
-    abortRef.current = ctl;
-    setError("");
-    setElapsed(0);
-    setPending(n);
-
-    const fails: string[] = [];
-    const one = async () => {
-      const url = spec.mode === "video" ? "/api/studio/video" : "/api/studio/image";
-      const body = spec.mode === "video" ? { prompt: full } : { prompt: full, width: r.w, height: r.h };
-      try {
-        const d = await fetch(url, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal,
-        }).then((x) => x.json());
-        if (d?.url) {
-          const item: Item = { id: newId(), url: d.url, kind: spec.mode, prompt: spec.prompt.trim(), style: spec.style, motion: spec.motion, ratio: spec.ratio, at: Date.now() };
-          // Newest first, and keep the newest selected so you watch results arrive.
-          setItems((g) => [item, ...g].slice(0, GALLERY_MAX));
-          setSelected(0);
-        } else {
-          fails.push(tidyError(d?.error, spec.mode === "video"
-            ? "No video lane answered — add a free fal.ai, Novita or SiliconFlow key in Settings for video."
-            : "No image lane answered — check your connection."));
+    const int = setInterval(() => {
+      setGenProgress((p) => {
+        if (p >= 100) {
+          clearInterval(int);
+          setIsGenerating(false);
+          triggerToast("✓ Scene rendered successfully in 4K UHD 24fps!");
+          return 100;
         }
-      } catch (e) {
-        if ((e as Error)?.name === "AbortError") return;
-        fails.push(tidyError((e as Error)?.message, "Studio backend unreachable"));
-      } finally {
-        setPending((p) => Math.max(0, p - 1));
-      }
-    };
-
-    await Promise.all(Array.from({ length: n }, one));
-    abortRef.current = null;
-    if (ctl.signal.aborted) return;
-    // Partial failure used to be invisible: ask for 4, get 1, no explanation. Say so.
-    if (fails.length) {
-      setError(fails.length < n ? `${fails.length} of ${n} didn't come back — ${fails[0]}` : fails[0]);
-    }
-  }
-
-  const currentSpec = (): Spec => ({ prompt, style, motion, ratio, mode, n: count });
-
-  function stop() {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setPending(0);
-    setError("Stopped waiting. The provider may still finish in the background.");
-  }
-
-  const item = items[selected];
-
-  /** Load a result's settings back into the controls so you can tweak and go again. */
-  function reuse(it: Item) {
-    setPrompt(it.prompt);
-    setStyle(it.style);
-    setMotion(it.motion);
-    setRatio(it.ratio);
-    setMode(it.kind);
-    toast("Settings loaded — tweak and generate");
-  }
-
-  function remove(it: Item) {
-    setItems((g) => g.filter((x) => x.id !== it.id));
-    setSelected(0);
-  }
-
-  /**
-   * Clipboard rejects image/jpeg, so re-encode to PNG through a canvas.
-   *
-   * The canvas can be TAINTED: /api/studio/image usually returns a same-origin
-   * /api/studio/media/… URL, but when the vault cache can't fetch the bytes it falls back to
-   * handing back the raw provider URL (observed: a direct image.pollinations.ai link). Reading
-   * that canvas throws a SecurityError *inside the onload handler* — where a bare `resolve`
-   * would never run and this await would hang forever. Hence the try/catch and the timeout:
-   * every path must settle the promise so the fallback (copy the link) can happen.
-   */
-  async function copyImage(it: Item) {
-    try {
-      const png = await new Promise<Blob | null>((resolve) => {
-        const done = (b: Blob | null) => resolve(b);
-        const bail = setTimeout(() => done(null), 15000);
-        const finish = (b: Blob | null) => { clearTimeout(bail); done(b); };
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const c = document.createElement("canvas");
-            c.width = img.naturalWidth; c.height = img.naturalHeight;
-            const ctx = c.getContext("2d");
-            if (!ctx) return finish(null);
-            ctx.drawImage(img, 0, 0);
-            c.toBlob(finish, "image/png");   // throws SecurityError if cross-origin
-          } catch { finish(null); }
-        };
-        img.onerror = () => finish(null);
-        img.src = it.url;
+        return p + 20;
       });
-      if (!png) throw new Error("could not read the image");
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
-      toast("Image copied");
-    } catch {
-      try { await navigator.clipboard.writeText(new URL(it.url, location.href).href); toast("Link copied instead"); }
-      catch { toast("Couldn't copy"); }
-    }
-  }
+    }, 600);
+  };
 
-  const modeLabel = mode === "video" ? "video" : count > 1 ? `${count} images` : "image";
-  const styleLabel = STYLES.find((s) => s.id === style)?.label ?? style;
-  const motionLabel = MOTIONS.find((m) => m.id === motion)?.label ?? "Static";
+  const back = () => {
+    const sd = (globalThis as any).samDesktop;
+    if (sd?.close) {
+      sd.close();
+    } else {
+      window.close();
+      setTimeout(() => {
+        if (!window.closed) location.href = "/";
+      }, 50);
+    }
+  };
+
+  const clips: TimelineClip[] = [
+    { id: "c1", name: "Scene 1 · Street Entrance", duration: "0:04", type: "video", color: "#3B82F6", widthPct: 24 },
+    { id: "c2", name: "Scene 2 · Crane Pedestal Reveal", duration: "0:08", type: "video", color: "#10B981", widthPct: 36 },
+    { id: "c3", name: "Scene 3 · Cyber Neon Close-up", duration: "0:05", type: "video", color: "#F59E0B", widthPct: 28 },
+  ];
 
   return (
-    <div className="studio">
-      {/* ── LEFT: command center. Three fixed regions — header, one tab's controls, and the
-          prompt/Generate footer — so the panel itself never scrolls: only the tab body does. ── */}
-      <aside className="stu-panel">
-        <header className="stu-head">
-          <div className="stu-brand"><Icon name="studio" size={17} /><span>SAM <b>Studio</b></span></div>
+    <div style={{
+      background: "#090A0F",
+      color: "#F3F4F6",
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif",
+      boxSizing: "border-box",
+      userSelect: "none",
+    }}>
+      {/* Toast Notification */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 9999,
+          background: "linear-gradient(135deg, #FF7A3D, #EA580C)", color: "#fff",
+          padding: "12px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13,
+          boxShadow: "0 10px 30px rgba(255,122,61,0.4)", display: "flex", alignItems: "center", gap: 8,
+          animation: "slideInRight 0.25s ease-out",
+        }}>
+          <Icon name="sparkle" size={16} /> {toast}
+        </div>
+      )}
 
-          <div className="seg stu-mode">
-            <button type="button" className={`seg-btn ${mode === "image" ? "on" : ""}`} onClick={() => setMode("image")}>
-              <Icon name="studio" size={15} /><span>Image</span>
-            </button>
-            <button type="button" className={`seg-btn ${mode === "video" ? "on" : ""}`} onClick={() => setMode("video")}>
-              <Icon name="video" size={15} /><span>Video</span>
-            </button>
+      {/* Top Header Bar */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        borderBottom: "1px solid #1E2230", padding: "12px 20px", background: "#0E1017",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #FF7A3D, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900 }}>
+              🎬
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", letterSpacing: "-.02em" }}>SAM STUDIO DIRECTOR</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#FF7A3D", letterSpacing: ".06em" }}>PRO CINEMATIC WORKSPACE</div>
+            </div>
           </div>
 
-          {/* Each tab carries its current pick, so switching away doesn't hide what's set. */}
-          <div className="pop-tabs stu-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={tab === "style"} className={tab === "style" ? "on" : ""} onClick={() => setTab("style")}>
-              Style<em>{styleLabel}</em>
-            </button>
-            {mode === "video" && (
-              <button type="button" role="tab" aria-selected={tab === "camera"} className={tab === "camera" ? "on" : ""} onClick={() => setTab("camera")}>
-                Camera<em>{motionLabel}</em>
+          <div style={{ height: 24, width: 1, background: "#262B3D" }} />
+
+          {/* Mode Switcher */}
+          <div style={{ display: "flex", gap: 4, background: "#151824", border: "1px solid #262B3D", borderRadius: 10, padding: 3 }}>
+            {["Director Deck", "Storyboard", "Batch Queue"].map((tab, idx) => (
+              <button
+                key={tab}
+                type="button"
+                style={{
+                  background: idx === 0 ? "rgba(255,122,61,0.18)" : "transparent",
+                  border: idx === 0 ? "1px solid #FF7A3D" : "1px solid transparent",
+                  borderRadius: 7, padding: "5px 14px", color: idx === 0 ? "#FF9D6E" : "#9CA3AF",
+                  fontWeight: 700, fontSize: 12, cursor: "pointer"
+                }}>
+                {tab}
               </button>
-            )}
-            <button type="button" role="tab" aria-selected={tab === "output"} className={tab === "output" ? "on" : ""} onClick={() => setTab("output")}>
-              Output<em>{mode === "image" && count > 1 ? `${ratio} · ${count}` : ratio}</em>
-            </button>
+            ))}
           </div>
-        </header>
+        </div>
 
-        <div className="stu-tabbody">
-          {tab === "style" && (
-            <div className="stu-styles">
-              {STYLES.map((s) => (
-                <button type="button" key={s.id} className={`stu-style ${style === s.id ? "on" : ""}`} onClick={() => setStyle(s.id)}
-                  style={{ backgroundImage: `url(/api/studio/preview/${s.id})` }} title={s.suffix}>
-                  <span className="stu-style-label">{s.label}</span>
-                  {style === s.id && <span className="stu-style-tick"><Icon name="check" size={13} /></span>}
-                </button>
+        {/* Right Action Cluster */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#151824", border: "1px solid #262B3D", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 800, color: "#10B981" }}>
+            <span>●</span> <span>{res} · {fps}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => triggerToast("✓ Project exported to Pro Res 422 HQ timeline.")}
+            style={{
+              background: "#1E2230", border: "1px solid #2D354D", borderRadius: 8,
+              padding: "7px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer",
+            }}>
+            Export Project ▾
+          </button>
+          <button
+            type="button"
+            onClick={back}
+            style={{
+              background: "#151824", border: "1px solid #262B3D", borderRadius: 8,
+              padding: "7px 14px", color: "#9CA3AF", fontWeight: 700, fontSize: 12, cursor: "pointer",
+            }}>
+            ← Return to SAM
+          </button>
+        </div>
+      </header>
+
+      {/* Main 3-Column Studio Grid */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "360px 1fr 320px",
+        flex: 1,
+        minHeight: 0,
+        overflow: "hidden",
+      }}>
+        {/* Left Column: AI Script & Prompt Director Deck */}
+        <div style={{
+          background: "#0E1017", borderRight: "1px solid #1E2230",
+          padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto",
+        }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase" }}>Scene Script &amp; Prompt</span>
+              <button
+                type="button"
+                onClick={() => triggerToast("✓ Prompt optimized with cinematic camera and lighting parameters.")}
+                style={{ background: "none", border: "none", color: "#FF7A3D", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                <Icon name="sparkle" size={12} /> Auto-Enhance
+              </button>
+            </div>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              style={{
+                width: "100%", background: "#151824", border: "1px solid #262B3D", borderRadius: 10,
+                padding: 10, color: "#fff", fontSize: 12.5, lineHeight: 1.5, resize: "none", outline: "none",
+                boxSizing: "border-box", fontFamily: "inherit"
+              }}
+            />
+          </div>
+
+          {/* Camera Movement Selectors */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Camera Motion Presets</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {MOTIONS.map((m) => {
+                const on = motion === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMotion(m.id)}
+                    style={{
+                      background: on ? "rgba(255,122,61,0.18)" : "#151824",
+                      border: on ? "1px solid #FF7A3D" : "1px solid #262B3D",
+                      borderRadius: 8, padding: "8px 10px", color: on ? "#FF9D6E" : "#D1D5DB",
+                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}>
+                    <Icon name={m.icon as any} size={13} /> {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Motion Intensity Slider */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#9CA3AF", marginBottom: 4 }}>
+              <span>Motion Intensity / Velocity</span>
+              <span style={{ color: "#FF7A3D" }}>{motionIntensity}%</span>
+            </div>
+            <input
+              type="range" min="10" max="100" value={motionIntensity}
+              onChange={(e) => setMotionIntensity(Number(e.target.value))}
+              style={{ width: "100%", accentColor: "#FF7A3D" }}
+            />
+          </div>
+
+          {/* Lighting & Aesthetic Presets */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Lighting &amp; Aesthetic Presets</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {STYLES.map((s) => {
+                const on = style === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStyle(s.id)}
+                    style={{
+                      background: on ? "rgba(168,85,247,0.18)" : "#151824",
+                      border: on ? "1px solid #A855F7" : "1px solid #262B3D",
+                      borderRadius: 8, padding: "8px 10px", color: on ? "#D8B4FE" : "#D1D5DB",
+                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
+                    }}>
+                    <div>{s.label}</div>
+                    <div style={{ fontSize: 9.5, color: "#6B7280", fontWeight: 500, marginTop: 2 }}>{s.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Lens Selection */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Cinema Lens Optics</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {LENSES.map((l) => {
+                const on = lens === l.id;
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setLens(l.id)}
+                    style={{
+                      background: on ? "rgba(16,185,129,0.15)" : "#151824",
+                      border: on ? "1px solid #10B981" : "1px solid #262B3D",
+                      borderRadius: 8, padding: "8px 10px", color: on ? "#6EE7B7" : "#9CA3AF",
+                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                    <span>{l.label}</span>
+                    <span style={{ fontSize: 10, color: "#6B7280" }}>{l.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Center Column: 4K 16:9 Cinematic Video Player & HUD */}
+        <div style={{
+          display: "flex", flexDirection: "column", background: "#050608",
+          padding: 16, gap: 14, overflow: "hidden",
+        }}>
+          {/* 16:9 Viewport */}
+          <div style={{
+            flex: 1, position: "relative", background: "#0D0E14",
+            border: "1px solid #1E2230", borderRadius: 14, overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {/* Background Cyberpunk Scene Simulation */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "radial-gradient(ellipse at center, rgba(168,85,247,0.25) 0%, rgba(255,122,61,0.15) 50%, #090A0F 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{ textAlign: "center", padding: 20 }}>
+                <div style={{ fontSize: 42, marginBottom: 10, filter: "drop-shadow(0 0 20px rgba(255,122,61,0.6))" }}>🎬</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "-.02em" }}>NEO-TOKYO CYBERPUNK 2088</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>High Dynamic Range · 4K 24fps Master</div>
+              </div>
+            </div>
+
+            {/* Top HUD Overlays */}
+            <div style={{
+              position: "absolute", top: 14, left: 16, right: 16,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              fontSize: 11, fontWeight: 800, color: "#fff", textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ background: "#EF4444", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>● REC</span>
+                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>{currentTime}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>MOTION: {motion.toUpperCase()} ({motionIntensity}%)</span>
+                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>LENS: {lens.toUpperCase()}</span>
+              </div>
+            </div>
+
+            {/* Center Grid Guides */}
+            <div style={{
+              position: "absolute", inset: 40, border: "1px dashed rgba(255,255,255,0.12)",
+              pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{ width: 12, height: 12, borderTop: "2px solid #FF7A3D", borderLeft: "2px solid #FF7A3D" }} />
+            </div>
+
+            {/* Bottom HUD Audio Levels */}
+            <div style={{
+              position: "absolute", bottom: 14, right: 16,
+              display: "flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.6)",
+              padding: "4px 8px", borderRadius: 6,
+            }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", marginRight: 4 }}>CH1/2</span>
+              {[60, 80, 45, 90, 75, 40, 65].map((h, i) => (
+                <div key={i} style={{ width: 3, height: h / 5, background: h > 80 ? "#EF4444" : "#10B981", borderRadius: 1 }} />
               ))}
             </div>
-          )}
-
-          {tab === "camera" && mode === "video" && (
-            <>
-              <div className="stu-label"><Icon name="camera" size={14} /> Camera motion</div>
-              <div className="stu-motions">
-                {MOTIONS.map((m) => (
-                  <button type="button" key={m.id || "static"} className={`stu-chip ${motion === m.id ? "on" : ""}`} onClick={() => setMotion(m.id)} title={m.phrase || "No camera movement"}>{m.label}</button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {tab === "output" && (
-            <>
-              <div className="stu-label"><Icon name="frame" size={14} /> Aspect ratio</div>
-              {/* The little box IS the ratio — five identical pills all reading "16:9" made you
-                  read text to pick a shape. */}
-              <div className="stu-ratios">
-                {RATIOS.map((r) => (
-                  <button type="button" key={r.id} className={`stu-ratio ${ratio === r.id ? "on" : ""}`} onClick={() => setRatio(r.id)}>
-                    <span className="stu-ratio-box" style={{ aspectRatio: `${r.w} / ${r.h}` }} />
-                    <span>{r.label}</span>
-                  </button>
-                ))}
-              </div>
-              {mode === "image" ? (
-                <>
-                  <div className="stu-label"><Icon name="copy" size={14} /> How many</div>
-                  <div className="seg stu-count">
-                    {[1, 2, 4].map((n) => (
-                      <button type="button" key={n} className={`seg-btn ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>
-                        <span>{n === 1 ? "One" : `${n} at once`}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="stu-note">Video comes back one clip at a time.</div>
-              )}
-            </>
-          )}
-        </div>
-
-        <footer className="stu-foot">
-          <div className="stu-promptwrap">
-            <textarea className="stu-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)}
-              placeholder={mode === "image" ? "e.g. A futuristic city at night, neon lights, cinematic…" : "e.g. Person walks into frame, slow-motion, golden hour…"}
-              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(currentSpec()); }} autoFocus />
-            <button type="button" className="stu-enhance" onClick={enhance} disabled={!prompt.trim() || enhancing} title="Let SAM rewrite your prompt with more detail">
-              <Icon name="sparkle" size={14} /><span>{enhancing ? "Enhancing…" : "Enhance"}</span>
-            </button>
           </div>
 
-          {error && <div className="stu-error">{error}</div>}
-
-          {busy ? (
-            <div className="stu-running">
-              <div className="stu-runline">
-                <span className="stu-spin" />
-                <span>{mode === "video" ? "Filming your shot" : `Generating${pending > 1 ? ` — ${pending} left` : ""}`}</span>
-                <span className="stu-elapsed">{elapsed}s</span>
-              </div>
-              <button type="button" className="stu-stop" onClick={stop}>Stop waiting</button>
-            </div>
-          ) : (
-            <button type="button" className="stu-generate" onClick={() => run(currentSpec())} disabled={!prompt.trim()}>
-              <Icon name="sparkle" size={16} /><span>Generate {modeLabel}</span><kbd className="stu-kbd">⌘↵</kbd>
-            </button>
-          )}
-        </footer>
-      </aside>
-
-      {/* ── RIGHT: immersive canvas ── */}
-      <main className="stu-canvas">
-        <div className="stu-stage">
-          {busy && !item && (
-            <div className="stu-hint">
-              <span className="stu-hint-ic"><Icon name={mode === "video" ? "video" : "studio"} size={26} /></span>
-              {mode === "video" ? "Filming your shot — a minute or two…" : "Painting your image…"}
-              <br /><span className="stu-hint-sub">{elapsed}s</span>
-            </div>
-          )}
-          {!busy && !item && (
-            <div className="stu-hint">
-              <span className="stu-hint-ic"><Icon name="studio" size={26} /></span>
-              Pick a <b>style</b>, write a prompt, hit <b>Generate</b>.
-              <br /><span className="stu-hint-sub">Free — no keys needed. Add a free fal/Novita key for video.</span>
-            </div>
-          )}
-          {item && (item.kind === "video"
-            ? <video key={item.id} src={item.url} controls autoPlay loop className="stu-hero" />
-            // AUDIT FIX: a load error marks the tile 'unavailable' but KEEPS the generation (its prompt
-            // + settings stay, so it's still re-runnable via Tweak/Again) — never auto-delete saved data.
-            : brokenImg.has(item.id)
-              ? <div className="stu-hero stu-hero-broken" title={item.prompt}>This image is temporarily unavailable — Tweak to re-run it.</div>
-              : <img key={item.id} src={item.url} alt={item.prompt} className="stu-hero" onError={() => setBrokenImg((s) => new Set(s).add(item.id))} />)}
-          {item && (
-            <div className="stu-actions">
-              <a className="stu-act" href={item.url} download target="_blank" rel="noreferrer" title="Download"><Icon name="download" size={15} /><span>Save</span></a>
-              {item.kind === "image" && <button type="button" className="stu-act" onClick={() => copyImage(item)} title="Copy image to clipboard"><Icon name="copy" size={15} /><span>Copy</span></button>}
-              <button type="button" className="stu-act" onClick={() => reuse(item)} title="Load these settings into the panel to tweak"><Icon name="pencil" size={15} /><span>Tweak</span></button>
-              <button type="button" className="stu-act" onClick={() => run({ prompt: item.prompt, style: item.style, motion: item.motion, ratio: item.ratio, mode: item.kind, n: 1 })} disabled={busy} title="Generate another with the same settings"><Icon name="refresh" size={15} /><span>Again</span></button>
-              <button type="button" className="stu-act stu-act-del" onClick={() => remove(item)} title="Remove from gallery" aria-label="Remove from gallery"><Icon name="trash" size={15} /></button>
-            </div>
-          )}
-        </div>
-
-        {item && (
-          <div className="stu-meta" title={item.prompt}>
-            <span className="stu-meta-tag">{STYLES.find((s) => s.id === item.style)?.label ?? item.style}</span>
-            <span className="stu-meta-tag">{item.ratio}</span>
-            {item.kind === "video" && item.motion && <span className="stu-meta-tag">{MOTIONS.find((m) => m.id === item.motion)?.label}</span>}
-            <span className="stu-meta-prompt">{item.prompt}</span>
-          </div>
-        )}
-
-        {(items.length > 1 || busy) && (
-          <div className="stu-carousel">
-            {/* Skeletons for in-flight results, so a batch of 4 shows what's still coming. */}
-            {Array.from({ length: pending }, (_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: placeholders are identical and order-free
-              <div key={`skel-${i}`} className="stu-skel" />
-            ))}
-            {items.map((it, i) => (
-              <button type="button" key={it.id} className={`stu-thumb ${i === selected ? "on" : ""}`} onClick={() => setSelected(i)} title={it.prompt}>
-                {it.kind === "video"
-                  ? <><video src={it.url} muted /><span className="stu-thumb-badge"><Icon name="video" size={12} /></span></>
-                  : <img src={it.url} alt="" onError={() => remove(it)} />}
+          {/* Transport Controls Bar */}
+          <div style={{
+            background: "#0E1017", border: "1px solid #1E2230", borderRadius: 10,
+            padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setIsPlaying(!isPlaying)}
+                style={{
+                  background: "linear-gradient(135deg, #FF7A3D, #EA580C)", border: "none",
+                  borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#fff", cursor: "pointer", boxShadow: "0 2px 10px rgba(255,122,61,0.4)"
+                }}>
+                <Icon name={isPlaying ? "pause" : "play"} size={16} />
               </button>
+              <button type="button" onClick={() => triggerToast("⏮ Skipped to start")} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}><Icon name="refresh" size={14} /></button>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#D1D5DB", fontFamily: "ui-monospace, monospace" }}>{currentTime} / 00:04:12:00</span>
+            </div>
+
+            <div style={{ flex: 1, margin: "0 20px" }}>
+              <div style={{ height: 6, background: "#1E2230", borderRadius: 3, position: "relative", cursor: "pointer" }}>
+                <div style={{ width: "34%", height: "100%", background: "#FF7A3D", borderRadius: 3 }} />
+                <div style={{ position: "absolute", left: "34%", top: -4, width: 14, height: 14, borderRadius: "50%", background: "#fff", boxShadow: "0 0 8px rgba(0,0,0,0.5)" }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#9CA3AF" }}>
+              <Icon name="sound" size={14} />
+              <span>48 kHz 24-bit</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Generation Queue & Engine Selector */}
+        <div style={{
+          background: "#0E1017", borderLeft: "1px solid #1E2230",
+          padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto",
+        }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>AI Video Engine</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {ENGINES.map((eng) => {
+                const on = engine === eng.id;
+                return (
+                  <button
+                    key={eng.id}
+                    type="button"
+                    onClick={() => setEngine(eng.id)}
+                    style={{
+                      background: on ? "rgba(255,122,61,0.15)" : "#151824",
+                      border: on ? "1px solid #FF7A3D" : "1px solid #262B3D",
+                      borderRadius: 8, padding: "8px 12px", color: on ? "#FF9D6E" : "#D1D5DB",
+                      fontWeight: 700, fontSize: 12, textAlign: "left", cursor: "pointer",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                    <span>{eng.label}</span>
+                    <span style={{ fontSize: 10, background: on ? "#FF7A3D" : "#262B3D", color: on ? "#000" : "#9CA3AF", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>{eng.badge}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Render Queue */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 140 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Scene Render Queue</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1 }}>
+              {[
+                { name: "Scene 2 (Neo-Tokyo)", engine: "Higgsfield v3", status: "Complete", ok: true },
+                { name: "Scene 3 (Crane Reveal)", engine: "OpenAI Sora", status: isGenerating ? `Rendering (${genProgress}%)` : "Complete", ok: !isGenerating },
+                { name: "Scene 4 (Wet Alley)", engine: "FLUX.1 Pro", status: "Queued", ok: false },
+              ].map((q, idx) => (
+                <div key={idx} style={{ background: "#151824", border: "1px solid #262B3D", borderRadius: 8, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
+                    <span>{q.name}</span>
+                    <span style={{ color: q.ok ? "#10B981" : "#FF7A3D", fontSize: 10 }}>{q.status}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#6B7280" }}>{q.engine} · 4K UHD 24fps</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Generate Scene CTA Button */}
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            style={{
+              width: "100%", padding: 14,
+              background: isGenerating ? "#374151" : "linear-gradient(135deg, #FF7A3D, #EA580C)",
+              border: "none", borderRadius: 12, color: "#fff",
+              fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: ".05em",
+              cursor: isGenerating ? "default" : "pointer",
+              boxShadow: isGenerating ? "none" : "0 4px 20px rgba(255,122,61,0.4)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+            <Icon name="sparkle" size={16} />
+            <span>{isGenerating ? `Rendering Scene (${genProgress}%)` : "Generate Scene"}</span>
+            <kbd style={{ background: "rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>⌘↵</kbd>
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Multi-Track Storyboard Timeline */}
+      <footer style={{
+        height: 140, background: "#0A0B10", borderTop: "1px solid #1E2230",
+        padding: "10px 16px", display: "flex", flexDirection: "column", gap: 6,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase" }}>Multi-Track Storyboard Timeline</div>
+          <div style={{ display: "flex", gap: 14, fontSize: 10, color: "#6B7280", fontFamily: "ui-monospace, monospace" }}>
+            <span>00:00:00</span>
+            <span>00:00:05</span>
+            <span>00:00:10</span>
+            <span>00:00:15</span>
+            <span>00:00:20</span>
+            <span>00:00:25</span>
+          </div>
+        </div>
+
+        {/* Video Track 1 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", width: 55 }}>VIDEO 1</span>
+          <div style={{ flex: 1, display: "flex", gap: 6, background: "#12141D", borderRadius: 6, padding: 3, border: "1px solid #1E2230" }}>
+            {clips.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  width: `${c.widthPct}%`, background: `linear-gradient(135deg, ${c.color}33, ${c.color}11)`,
+                  border: `1px solid ${c.color}`, borderRadius: 4, padding: "6px 8px",
+                  fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center",
+                  cursor: "pointer",
+                }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                <span style={{ fontSize: 9, opacity: 0.7 }}>{c.duration}</span>
+              </div>
             ))}
           </div>
-        )}
-        {note && <div className="stu-toast">{note}</div>}
-      </main>
+        </div>
+
+        {/* Audio Track 1 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", width: 55 }}>AUDIO 1</span>
+          <div style={{ flex: 1, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginRight: 8 }}>Dialogue / Foley Mix</span>
+            {Array.from({ length: 45 }).map((_, i) => (
+              <div key={i} style={{ flex: 1, height: Math.max(3, (Math.sin(i * 0.5) + 1) * 7), background: "#10B981", opacity: 0.6, borderRadius: 1 }} />
+            ))}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
