@@ -27,12 +27,13 @@ import { tmpdir } from "node:os";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PKG = join(ROOT, "node_modules", "better-sqlite3");
-const NODE_BUILT = join(PKG, "build", "Release", "better_sqlite3.node");
+const PREBUILT = join(PKG, "prebuilds", `${process.platform}-${process.arch}.node`);
+const NODE_BUILT = existsSync(join(PKG, "build", "Release", "better_sqlite3.node"))
+  ? join(PKG, "build", "Release", "better_sqlite3.node")
+  : existsSync(PREBUILT)
+  ? PREBUILT
+  : null;
 const PARKED = join(ROOT, "build", "Release", "better_sqlite3.node");
-// OUTSIDE the package's build/ dir on purpose: `node-gyp rebuild` cleans that whole
-// directory before compiling, so a backup kept in there is deleted by the very command
-// it exists to protect against — and the restore then fails, leaving the SERVER holding
-// an Electron-ABI binary it cannot load. Found the hard way.
 const BACKUP = join(tmpdir(), "sam-better_sqlite3.node-abi.bak");
 
 const electronVersion = JSON.parse(readFileSync(join(ROOT, "node_modules", "electron", "package.json"), "utf8")).version;
@@ -42,14 +43,14 @@ if (existsSync(PARKED) && !force) {
   console.log("✓ Electron-ABI better_sqlite3 already parked at build/Release — nothing to do (--force to rebuild).");
   process.exit(0);
 }
-if (!existsSync(NODE_BUILT)) {
-  console.error("✗ node_modules/better-sqlite3 has no Node build to protect. Run `npm install` first.");
+if (!NODE_BUILT || !existsSync(NODE_BUILT)) {
+  console.error("✗ node_modules/better-sqlite3 has no Node build or prebuild to protect. Run `npm install` first.");
   process.exit(1);
 }
 
 // Keep the Node build safe FIRST — node-gyp writes over it, and a failed compile
 // partway through must not leave the server without a binary it can load.
-copyFileSync(NODE_BUILT, BACKUP);
+if (existsSync(NODE_BUILT)) copyFileSync(NODE_BUILT, BACKUP);
 try {
   console.log(`• building better-sqlite3 against Electron ${electronVersion} headers…`);
   execFileSync(
