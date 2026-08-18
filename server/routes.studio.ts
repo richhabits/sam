@@ -48,7 +48,7 @@ export function registerStudioRoutes(app: Express) {
         let ct = "";
         for (let attempt = 0; attempt < 4 && !buf.length; attempt++) {
           if (attempt) await new Promise((r) => setTimeout(r, 1500));
-          const r = await fetch(ref, { signal: AbortSignal.timeout(45000) });
+          const r = await fetch(ref, { signal: AbortSignal.timeout(8000) });
           if (!r.ok) continue;
           buf = Buffer.from(await r.arrayBuffer());
           ct = r.headers.get("content-type") || "";
@@ -138,6 +138,10 @@ export function registerStudioRoutes(app: Express) {
     vapor: "vaporwave sunset, palm trees, pink and teal grid, retro chrome",
     clay: "claymation fox character, stop-motion, plasticine, soft light",
     blueprint: "blueprint schematic of a rocket, white lines on blue, annotated",
+    dusk: "cinematic dusk landscape, golden hour haze, warm anamorphic lens flare",
+    noir: "high contrast noir detective scene, dramatic chiaroscuro lighting, deep shadows",
+    golden: "perfect golden hour cinematic shot, warm sunlight, beautiful lens flare",
+    cyber: "cyberpunk neon alley, wet asphalt, glowing signs, dark futuristic atmosphere",
   };
   // Every id in src/StudioView.tsx's STYLES must have an entry above, or that style card renders
   // blank (the route 404s and the CSS background-image resolves to nothing). These four were

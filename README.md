@@ -11,14 +11,22 @@
   <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a">
   <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6">
   <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40+-blue">
-  <img alt="platforms" src="https://img.shields.io/badge/iOS%20%C2%B7%20Android%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-cross--platform-6E56CF">
+  <img alt="tools" src="https://img.shields.io/badge/tools-231%20integrated-purple">
+  <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS%20%C2%B7%20Android-cross--platform-6E56CF">
   <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
 ```bash
+# macOS & Linux One-Liner
 curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash
 ```
-**macOS · Linux · Windows (one-click / one-paste)** — [See Platform Matrix](docs/PLATFORMS.md)
+
+```powershell
+# Windows (PowerShell) One-Liner
+irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex
+```
+
+**macOS · Windows · Linux (one-click / one-paste)** — [See Platform Matrix](docs/PLATFORMS.md)
 
 </div>
 
@@ -30,24 +38,24 @@ curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh
 graph TD
     User([You: Phone, Laptop, or PC])
     
-    subgraph Mobile ["📱 SAM Mobile (iOS & Android)"]
+    subgraph Mobile ["📱 SAM Mobile (iOS & Android) — Coming Soon"]
         MobileAI[Standalone Direct Cloud AI]
-        MobilePair[Zero-Config Desktop Pairing]
-        MobileYard[Remote Task & Yard Monitor]
+        MobilePair[Zero-Config Desktop QR Pairing]
+        MobileYard[Remote Task, Feed & Yard Monitor]
     end
     
     subgraph Core ["💻 SAM Desktop & Server (Mac / Win / Linux)"]
-        Agent[Agentic Doer Loop · 192 Tools]
+        Agent[Agentic Doer Loop · 231 Tools & 29 Skills]
         Cascade[Cascade Router & 40+ Free Brains]
         Memory[Obsidian-Style Vault & Semantic Cache]
         Overlay[Global ⌥Space Everywhere Overlay]
         Yard[Yard Background Workers & Builds]
-        Studio[🎨 SAM Studio · Higgsfield Creative Suite]
-        FlipIt[📈 FlipIt Monzo-Style Money Rig]
+        Studio[🎨 SAM Studio · Creative Suite]
+        FlipIt[📈 FlipIt Mathematical Risk & Execution Desk]
     end
 
     User -->|On the Go| MobileAI
-    User -->|On Home Wi-Fi / Mesh| MobilePair
+    User -->|On Home Wi-Fi / LAN| MobilePair
     MobilePair -->|Sync & Control| Core
     User -->|Direct Computer Use| Core
 ```
@@ -56,45 +64,54 @@ graph TD
 
 ## 🚀 Key Superpowers
 
-### 📱 1. Standalone Mobile + Seamless Desktop Link
-* **Works Anywhere Instantly**: Download SAM on iOS or Android and chat directly with high-speed AI out-of-the-box. No Mac required.
-* **Hybrid Desktop Pairing**: When on your home Wi-Fi or VPN, SAM automatically pairs with your computer to run local terminal commands, edit code, index files, and monitor background tasks.
-* **Zero Disconnection Errors**: If your computer goes to sleep or you're away on 5G, SAM seamlessly falls back to cloud AI without breaking the conversation.
-
-### 🎨 2. SAM Studio (Higgsfield-Style Creative Workspace)
-* **Free-First Image & Video Generation**: Powered by multi-provider matrix (Pollinations, Together, HF, NVIDIA, Cloudflare).
-* **Same-Origin Media Vault**: Automatically caches generations to your local vault so image and video links never rot or break.
-* **Notebooks & Grounded Audio Overviews**: Upload PDFs, notes, or web links to generate instant audio briefings and grounded Q&A.
-
-### 📈 3. FlipIt & The Money Desk
-* **Monzo-Style Automated Rig**: Real-time watchdog monitoring schedules, forward steps, and daily execution metrics.
-* **Resilient Watchdog**: Detects stale loops, calendar shifts (GMT/BST), and guarantees automated step execution.
-
-### 🧠 4. Cascade Router & 40+ Free AI Brains
-* **Free-First Auto-Rotation**: Groq · Cerebras · NVIDIA · DeepSeek · Gemini · Mistral · SambaNova · Together · Fireworks · Ollama.
+### 🧠 1. Cascade Router & 40+ Free AI Brains
+* **Free-First Auto-Rotation**: Groq · Cerebras · NVIDIA NIM · DeepSeek · Gemini · Mistral · SambaNova · Together · Fireworks · Ollama.
 * **Zero Cost**: Automatically falls through to the fastest available free model. If one hits a rate limit, it hops to the next in sub-milliseconds.
-* **Sub-Millisecond Semantic Cache**: Repeated questions answer from memory in ~2ms with 0 token cost.
+* **Sub-Millisecond Semantic Cache**: Repeated questions answer from local memory in ~2ms with 0 token cost.
 
-### 🛠️ 5. The Doer (192 Real Computer Tools)
-* Not just text generation. SAM executes bash scripts, edits files with syntax auto-verification, commits to Git, inspects browsers, manages scheduled tasks, and runs multi-agent parallel swarms.
+### 🛠️ 2. The Doer (231 Real Computer Tools & 29 Skills)
+* Not just text generation. SAM executes terminal commands, edits code with syntax validation, commits to Git, inspects browsers, manages scheduled cron tasks, and orchestrates multi-agent parallel swarms.
+* **Universal Cross-Platform**: 213 universal tools running identically on macOS, Windows, and Linux, with 18 specialized macOS platform hooks that degrade gracefully.
+
+### 🎨 3. SAM Studio (Creative Suite)
+* **Free-First Image & Video Generation**: Powered by a multi-provider matrix (Pollinations, Together, HuggingFace, NVIDIA, Cloudflare).
+* **Persistent Media Vault**: Automatically stores generated visual assets in your local vault with persistent preview styles.
+* **Notebooks & Audio Briefings**: Upload PDFs, notes, or web links to generate grounded audio overviews and interactive citations.
+
+### 📈 4. FlipIt & The Financial Execution Desk
+* **Mathematical Kelly Criterion Engine**: Automated capital allocation and real-time risk regime calculation (`POST /api/flipit/shield`).
+* **Resilient Watchdogs**: Continuous schedule monitoring, forward execution metrics, and market data telemetry.
+
+### 📱 5. Mobile Companion (iOS & Android) — *In Active Beta / Coming Soon*
+* **Standalone AI on the Go**: Chat directly with cloud-routed AI models from your mobile device with zero desktop prerequisites.
+* **Instant LAN QR Pairing**: Scan a single QR code from your desktop dashboard to pair your phone securely via LAN tokens.
+* **Live Feeds & Remote Yard Control**: Receive push moments, trigger remote tasks, and monitor active workflows in real time.
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start & Downloads
 
-### 🖥️ Desktop (macOS / Linux / Windows)
+### 🖥️ Desktop (macOS / Windows / Linux)
 
-#### Option A: One-Paste Install (Recommended)
-* **macOS & Linux:**
+#### Option A: One-Paste Terminal Install (Recommended)
+
+* **macOS (Apple Silicon & Intel) & Linux:**
   ```bash
   curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash
   ```
-* **Windows (PowerShell):**
+
+* **Windows (PowerShell 5.1+ / Windows Terminal):**
   ```powershell
   irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex
   ```
 
-#### Option B: Run from Source
+#### Option B: Standalone Release Installers
+Download the latest binaries directly from the [GitHub Releases](https://github.com/richhabits/sam/releases/latest) page:
+* **macOS**: `SAM-x.x.x-arm64.dmg` (Apple Silicon M1/M2/M3/M4) or `SAM-x.x.x.dmg` (Intel)
+* **Windows**: `SAM-Setup-x.x.x.exe`
+* **Linux**: `SAM-x.x.x.AppImage` or `SAM-x.x.x.deb`
+
+#### Option C: Run from Source (Developers)
 ```bash
 git clone https://github.com/richhabits/sam.git
 cd sam
@@ -102,15 +119,17 @@ npm install
 cp .env.example .env
 npm start
 ```
-Open **http://localhost:8787** — free and ready immediately.
+Open **http://localhost:8787** — free, local, and ready immediately.
 
 ---
 
-### 📱 Mobile (iOS & Android)
+### 📱 Mobile Companion App (iOS & Android)
 
-* **iOS**: Available via TestFlight / App Store.
-* **Android**: Build APK or run locally via `cd mobile && npx expo run:android`.
-* **Pairing**: In SAM Desktop, go to **Dashboard → Devices → Pair a phone** and scan the QR code with your phone camera.
+> **Status: 🚀 In Active Development / App Store & Google Play Coming Soon**
+
+* **iOS**: Native Swift / Expo companion coming to TestFlight and Apple App Store.
+* **Android**: Native APK and Google Play release coming soon.
+* **LAN Pairing**: Once installed, navigate to **Dashboard → Devices → Pair a phone** in SAM Desktop and point your camera at the screen for instant zero-config pairing.
 
 ---
 
@@ -120,22 +139,23 @@ Open **http://localhost:8787** — free and ready immediately.
 |---|:---:|:---:|:---:|
 | **Monthly Cost** | **Free (£0/mo)** | $20/mo | $20/mo |
 | **Mobile Standalone + Desktop Sync** | **✅ Full Hybrid** | ❌ Separate | ❌ Separate |
-| **Multi-Agent Swarm** | **✅ Parallel Crew** | ❌ Single Turn | ❌ Single Turn |
-| **Local Tools & Yard Workers** | **✅ 192 Real Tools** | ⚠️ Sandboxed | ⚠️ MCP Only |
+| **Multi-Agent Swarms** | **✅ Parallel Crew** | ❌ Single Turn | ❌ Single Turn |
+| **Local Tools & Yard Workers** | **✅ 231 Real Tools** | ⚠️ Sandboxed | ⚠️ MCP Only |
 | **Offline Brain Support** | **✅ Ollama / Local** | ❌ Cloud only | ❌ Cloud only |
-| **Data Privacy** | **✅ 100% On-Device** | ❌ Sent to OpenAI | ❌ Sent to Anthropic |
+| **Data Privacy** | **✅ 100% On-Device** | ❌ Cloud storage | ❌ Cloud storage |
 | **Creative Studio & FlipIt** | **✅ Built-in** | ❌ | ❌ |
 
 ---
 
-## 🔒 Privacy & Architecture
+## 🔒 Privacy & Local-First Architecture
 
-* All memories, chats, and vault notes are stored in human-readable Markdown on your local disk (`vault/`).
-* API keys are stored securely in your local environment / Keychain and never shared.
-* Full offline mode available with local Ollama models.
+* All chats, memories, and vault artifacts are stored as plain Markdown & SQLite files in your local workspace (`vault/`).
+* API keys are stored strictly in your local environment / OS Keychain and never sent to external telemetry servers.
+* Full offline capability supported with local Ollama models (e.g. `llama3.2:3b`, `qwen2.5-coder`).
 
 ---
 
 <div align="center">
-  <b>Built by HECTIC · Open, Free, and Unstoppable.</b>
+  <b>Built by HECTIC · Open, Free, and Yours.</b>
 </div>
+

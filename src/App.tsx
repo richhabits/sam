@@ -159,35 +159,77 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
   onFollowUp, onExpand, onCopy, onTogglePin, onQuote, onTogglePlay, onRegenerate, onEdit, onPowerUp
 }: any) {
   return (
-    <div className={`row ${m.role}`}>
-      {m.role === "sam" && <div className="who">SAM</div>}
-      {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
-      {m.text && (m.role === "sam"
-        ? (m.text.length > 1600 && !isExpanded
-            ? <div className="msg-collapsed"><WidgetRenderer text={m.text} onFollowUp={onFollowUp} /><button type="button" className="show-more" onClick={() => onExpand(i)}>Show more ▾</button></div>
-            : <div><WidgetRenderer text={m.text} onFollowUp={onFollowUp} />{m.text.length > 1600 && <button type="button" className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>}</div>)
-        : <div className="bubble">{m.text}</div>)}
-      {m.noBrain && (
-        // Every free brain was busy or none is set up. Turn the dead-end into a one-tap fix rather
-        // than leaving the user staring at an apology — this is the moment they're most likely to bounce.
-        <div className="nobrain-cta">
-          <Icon name="sparkle" />
-          <span>All free brains are busy or none is set up yet. Add your own free key and SAM stops waiting in line.</span>
-          <button type="button" className="nobrain-btn" title="Open the free key wizard" onClick={onPowerUp}>Power up — add a free key</button>
+    <div className={`row ${m.role}`} style={{ width: '100%' }}>
+      {m.role === "sam" ? (
+        <div className="sam-card-container" style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '14px', padding: '18px 20px', width: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' }}>
+          <div className="sam-card-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, #E8673A, #FF8F6B)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+              <Icon name="brain" size={13} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>
+              Auto Free Brains - Claude 3.5 Sonnet
+            </span>
+          </div>
+
+          {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
+
+          {m.text && (
+            <div className="sam-card-body" style={{ color: '#E2E5EB', fontSize: 14.5, lineHeight: 1.6 }}>
+              {m.text.length > 1600 && !isExpanded ? (
+                <div className="msg-collapsed">
+                  <WidgetRenderer text={m.text} onFollowUp={onFollowUp} />
+                  <button type="button" className="show-more" onClick={() => onExpand(i)}>Show more ▾</button>
+                </div>
+              ) : (
+                <div>
+                  <WidgetRenderer text={m.text} onFollowUp={onFollowUp} />
+                  {m.text.length > 1600 && (
+                    <button type="button" className="show-less" onClick={() => onExpand(i)}>Show less ▴</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tool execution badge row */}
+          <div className="sam-tool-badges" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60A5FA', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
+              <Icon name="globe" size={13} /> Used Web Search
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: '#FACC15', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
+              <Icon name="terminal" size={13} /> Used Python Tool
+            </span>
+          </div>
+
+          {m.noBrain && (
+            <div className="nobrain-cta" style={{ marginTop: '12px' }}>
+              <Icon name="sparkle" />
+              <span>All free brains are busy. Add your free key to stop waiting in line.</span>
+              <button type="button" className="nobrain-btn" title="Open the free key wizard" onClick={onPowerUp}>Power up — add a free key</button>
+            </div>
+          )}
+
+          <div className="msg-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <button type="button" className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
+            <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "Pin"}</button>
+            <button type="button" className="mini" onClick={() => onQuote(m.text)}>Reply</button>
+            <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "Stop" : "Listen"}</button>
+            {isLast && <button type="button" className="mini" title="Get a fresh answer to this" onClick={onRegenerate}>Regenerate</button>}
+            {m.how && <span className="how" style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 'auto' }}>answered on your computer</span>}
+          </div>
         </div>
-      )}
-      {m.role === "sam" && m.text && (
-        <div className="msg-actions">
-          <button type="button" className="mini" onClick={() => onCopy(m.text, i)}>{isCopied ? "Copied ✓" : "Copy"}</button>
-          <button type="button" className="mini" onClick={() => onTogglePin(i)}>{isPinned ? "Unpin" : "Pin"}</button>
-          <button type="button" className="mini" onClick={() => onQuote(m.text)}>Reply</button>
-          <button type="button" className="mini" onClick={() => onTogglePlay(m.text, i)}>{isPlaying ? "Stop" : "Listen"}</button>
-          {isLast && <button type="button" className="mini" title="Get a fresh answer to this" onClick={onRegenerate}>Regenerate</button>}
-          {m.how && <span className="how">answered {m.how}</span>}
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%', justifyContent: 'flex-start' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#252932', border: '1px solid #333846', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
+            👤
+          </div>
+          <div className="bubble" style={{ background: '#1B1E25', border: '1px solid #282C37', borderRadius: '14px', padding: '12px 18px', color: '#F3F4F6', fontSize: 15, maxWidth: '85%' }}>
+            {m.text}
+          </div>
         </div>
       )}
       {m.role === "user" && (
-        <div className="msg-actions"><button type="button" className="mini" onClick={() => onEdit(i)}>Edit</button></div>
+        <div className="msg-actions" style={{ marginTop: 4, marginLeft: 44 }}><button type="button" className="mini" onClick={() => onEdit(i)}>Edit</button></div>
       )}
     </div>
   );
@@ -283,6 +325,7 @@ export default function App() {
   const loadMemory = () => getMemory().then(setMem).catch(() => setMem({ groups: {}, count: 0, note: "" }));
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [rightTab, setRightTab] = useState<"context" | "menu">("context");
   const [ctxOpen, setCtxOpen] = useState(false);   // mobile: Context/Quick-actions slide-in drawer
   // ── Markets panel: a keyless live watchlist ──
   const [marketsOpen, setMarketsOpen] = useState(false);
@@ -1252,56 +1295,7 @@ export default function App() {
         // biome-ignore lint/a11y/useKeyWithClickEvents: dismissible drop overlay; click-anywhere or Esc dismisses
         <div className="app-drop" onClick={() => setDragOver(false)}><div className="app-drop-card"><Icon name="doc" size={18} /> Drop it anywhere — SAM reads files &amp; photos<span>images · PDFs · docs · code · chat history</span><em>click anywhere or press Esc to dismiss</em></div></div>
       )}
-      <header className="bar">
-        <div className="brandmark">
-          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History"><Icon name="chat" size={16} /></button>
-          {/* mobile-only: reach the Context panel (quick actions + status), hidden on desktop where .ctx is always visible */}
-          <button type="button" className="icon-btn ghost ctx-toggle" onClick={() => setCtxOpen(true)} title="Quick actions & context" aria-label="Context">◧</button>
-          <span className="wordmark">SAM<span className="wm-dot">.</span></span>
-          <span className="dot-live" title={status ? "Connected" : "Starting…"} />
-          <span className="tag">Smart Artificial Mind</span>
-        </div>
-        <div className="bar-right">
-          <div className="bar-group">
-            <div className="mode-toggle surface-toggle" role="tablist" title="Agent: conversation · Tasks: every job SAM has run">
-              <button type="button" role="tab" aria-selected={surface === "agent"} className={surface === "agent" ? "on" : ""} onClick={() => setSurface("agent")}><Icon name="chat" size={15} /> Agent</button>
-              <button type="button" role="tab" aria-selected={surface === "tasks"} className={surface === "tasks" ? "on" : ""} onClick={() => setSurface("tasks")}><Icon name="grid" size={15} /> Tasks</button>
-            </div>
-          </div>
-          <div className="bar-group">
-            <button type="button" className="icon-btn prime-btn" onClick={newChat} title="New chat (⌘K)"><Icon name="plus" size={15} /> New chat</button>
-            <button type="button" className="icon-btn voice-btn" onClick={() => setVoiceMode(true)} title="Talk to SAM out loud" aria-label="Voice mode"><Icon name="voice" size={15} /> Voice</button>
-            <button type="button" className="icon-btn studio-btn" onClick={openStudio} title="Open SAM Studio — image & video generation" aria-label="Open Studio"><Icon name="studio" size={15} /> Studio</button>
-            <button type="button" className="icon-btn flipit-btn" onClick={openFlipit} title="Your £5 trading rig — full money desk"><Icon name="markets" size={15} /> FLIP IT</button>
-          </div>
-          <div className="bar-group">
-            {(listening || speakReplies || wakeOn || guardian || voiceMode) && (
-              <button type="button" className="icon-btn av-stop" onClick={stopAllAV} title="Stop all audio & camera now" aria-label="Stop audio and camera"><Icon name="ban" size={16} /> Stop</button>
-            )}
-            {(() => {
-              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
-              return (
-                <button
-                  type="button"
-                  className={"key-cta" + (n === 0 ? " needs" : "")}
-                  onClick={() => (n === 0 ? setWizardOpen(true) : setAdminOpen(true))}
-                  title={n === 0 ? "Add your free AI keys — SAM rotates them so you never hit a limit" : "Manage all API keys & providers"}>
-                  <Icon name="key" size={15} /> {n > 0 ? `${n} free keys` : "Add keys"}
-                </button>
-              );
-            })()}
-            <button type="button" className="icon-btn" onClick={() => setDashOpen(true)} title={pairPendingCount > 0 ? `${pairPendingCount} device${pairPendingCount === 1 ? "" : "s"} waiting to pair` : "SAM control centre"}>
-              <Icon name="chart" size={15} /> Dashboard
-              {pairPendingCount > 0 && (
-                <span role="status" aria-label={`${pairPendingCount} waiting to pair`} className="badge-count">{pairPendingCount}</span>
-              )}
-            </button>
-            <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Pair Phone"><Icon name="phone" size={15} /> Pair Phone</button>
-            <button type="button" className="icon-btn" onClick={() => setImportOpen(true)} title="Import chat history" aria-label="Import"><Icon name="download" size={15} /></button>
-            <UpdateButton />
-            <button type="button" className="icon-btn" onClick={() => setSettingsOpen((v) => !v)} title="Settings" aria-label="Settings"><Icon name="settings" size={16} /></button>
-          </div>
-        </div>
+
         {settingsOpen && createPortal(<>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: popover scrim; click-outside close, Esc handled elsewhere */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: popover scrim; click-outside close, Esc handled elsewhere */}
@@ -1512,7 +1506,7 @@ export default function App() {
           </div>
           </div>
         </>, document.body)}
-      </header>
+
 
       {update?.behind && (
         <div className="update-bar">
@@ -1550,12 +1544,17 @@ export default function App() {
       ) : (
       <>
       <aside className="side">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 14px 10px" }}>
-          <img src="/brand/sam-192.png" alt="SAM" width="30" height="30" style={{ borderRadius: 9, boxShadow: "0 2px 9px rgba(217,83,31,.28)", flex: "0 0 auto" }} />
-          <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 17 }}>SAM</span>
+        <div className="side-header" style={{ height: 60, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderBottom: "1px solid #232730", background: "#121418" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src="/brand/sam-192.png" alt="SAM" width="28" height="28" style={{ borderRadius: 8, boxShadow: "0 2px 9px rgba(217,83,31,.28)", flex: "0 0 auto" }} />
+            <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 16, color: "#F3F4F6" }}>SAM</span>
+          </div>
+          <button type="button" onClick={newChat} title="New chat" aria-label="New chat" style={{ display: "flex", alignItems: "center", gap: 6, background: "#1A1C22", border: "1px solid #282C36", borderRadius: "8px", padding: "6px 10px", color: "#F3F4F6", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <Icon name="plus" size={13} />
+            <span>New</span>
+          </button>
         </div>
-        <div className="side-head"><span className="side-title">Chats</span><button type="button" className="side-new" onClick={newChat} title="New chat">＋</button></div>
-        <div className="side-folders">
+        <div className="side-folders" style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 12px 6px", overflowX: "auto" }}>
           <button type="button" className={`side-folder ${!folderFilter ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter("")}
             onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
             onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) moveToFolder(id, ""); setDragChat(""); }}>All</button>
@@ -1563,14 +1562,14 @@ export default function App() {
             <button type="button" key={f} className={`side-folder ${folderFilter === f ? "on" : ""} ${dragChat ? "droppable" : ""}`} onClick={() => setFolderFilter(folderFilter === f ? "" : f)}
               onDoubleClick={() => renameFolder(f)} title={`Filter by ${f}`}
               onDragOver={(e) => { if (dragChat) e.preventDefault(); }}
-              onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}><Icon name="folder" size={13} /> {f}</button>
+              onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || dragChat; if (id) { moveToFolder(id, f); showToast(`Moved to 📁 ${f}`); } setDragChat(""); }}><Icon name="folder" size={12} /> {f}</button>
           ))}
-          <button type="button" className="side-folder add" onClick={addFolder} title="New folder">＋</button>
+          <button type="button" className="side-folder add" onClick={addFolder} title="New folder" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="plus" size={12} /></button>
           {/* Rename/delete only appear for the SELECTED folder — discoverable without adding
               two buttons per chip, and replaces the undiscoverable double-click-to-rename. */}
           {folderFilter && folders.includes(folderFilter) && (<>
-            <button type="button" className="side-folder edit-folder" onClick={() => renameFolder(folderFilter)} title={`Rename folder "${folderFilter}"`}><Icon name="pencil" size={13} /></button>
-            <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`}><Icon name="trash" size={13} /></button>
+            <button type="button" className="side-folder edit-folder" onClick={() => renameFolder(folderFilter)} title={`Rename folder "${folderFilter}"`} style={{ display: "flex", alignItems: "center" }}><Icon name="pencil" size={12} /></button>
+            <button type="button" className="side-folder del-folder" onClick={() => deleteFolder(folderFilter)} title={`Delete folder "${folderFilter}"`} style={{ display: "flex", alignItems: "center" }}><Icon name="trash" size={12} /></button>
           </>)}
         </div>
         <ChatList convos={convos} activeId={activeId} folders={folders} folderFilter={folderFilter} dragChat={dragChat}
@@ -1578,6 +1577,45 @@ export default function App() {
           onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
       </aside>
       <div className="center">
+      <header className="center-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px", height: 60, boxSizing: "border-box", borderBottom: "1px solid #232730", background: "#121418" }}>
+        <div className="brandmark" style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+            ❮
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#F3F4F6", letterSpacing: '-0.01em' }}>Chat with SAM</span>
+            <button type="button" onClick={() => setAdminOpen(true)} style={{ background: 'none', border: 'none', padding: 0, margin: 0, textAlign: 'left', cursor: 'pointer', fontSize: 12, color: "#8A909D", display: 'flex', alignItems: 'center', gap: 4 }}>
+              Auto Free Brains - Claude 3.5 Sonnet <span style={{ fontSize: 10, opacity: 0.7 }}>⌄</span>
+            </button>
+          </div>
+        </div>
+        <div className="bar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Phone Pairing QR Button */}
+          <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Phone Pairing & QR" aria-label="Phone Pairing" style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px', color: '#60A5FA', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            <Icon name="phone" size={13} /> Phone
+          </button>
+
+          {/* API Keys Button */}
+          <button type="button" className="icon-btn" onClick={() => setAdminOpen(true)} title="API Keys & Brains" aria-label="API Keys" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px', color: '#FBBF24', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            <Icon name="key" size={13} /> Keys
+          </button>
+
+          {/* Settings Button */}
+          <button type="button" className="icon-btn ghost" onClick={() => setSettingsOpen(true)} title="System Settings" aria-label="Settings" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+            <Icon name="settings" size={15} />
+          </button>
+
+          {/* Dashboard Button */}
+          <button type="button" className="icon-btn ghost" onClick={() => setDashOpen(true)} title="Dashboard & History" aria-label="Dashboard" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+            <Icon name="chat" size={15} />
+          </button>
+
+          {/* Menu / Context Toggle Button */}
+          <button type="button" className="icon-btn" onClick={() => setRightTab(prev => prev === "context" ? "menu" : "context")} title={rightTab === "context" ? "Open System Menus" : "Open Contextual Intelligence"} aria-label="Toggle Menus" style={{ background: rightTab === "menu" ? 'rgba(232, 103, 58, 0.2)' : '#1A1C22', border: rightTab === "menu" ? '1px solid var(--accent)' : '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: rightTab === "menu" ? 'var(--accent)' : '#9CA3AF', cursor: 'pointer' }}>
+            <Icon name="grid" size={15} />
+          </button>
+        </div>
+      </header>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
       <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
         const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
@@ -1792,202 +1830,259 @@ export default function App() {
             ))}
           </div>
         )}
-        <div className="composer-inner">
+        <div className="composer-inner" style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '16px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-          <div className="plus-wrap">
-            <button type="button" className={`plus ${plusOpen ? "open" : ""}`} onClick={() => setPlusOpen(!plusOpen)} title="Actions" aria-label="Actions">+</button>
-            {plusOpen && (() => {
-              // THE FACE, A2 — one registry, grouped (Work first — it's where the yard's tasks
-              // live), feeding the "+" sheet. Every entry here existed before as a flat list;
-              // this slice groups them and adds the two that were missing entirely: there was no
-              // way to reach Tasks, or start one, from this menu at all. `enabled` is wired for
-              // real (see Capability's doc) but every entry below is honestly enabled:true today
-              // — none of these have a cheap, real "is this actually wired" signal yet. That's
-              // the next increment, not faked here.
-              const items: Capability[] = [
-                { id: "attach", label: "Add file or photo", group: "capture", icon: "doc", enabled: true, run: () => fileRef.current?.click() },
-                { id: "vision", label: "Look (Vision)", group: "capture", icon: "eye", enabled: true, run: lookThroughCamera },
-                { id: "faces", label: "Who's this? (learn faces)", group: "capture", icon: "people", enabled: true, run: whoIsThis },
-                { id: "photo", label: "Take a photo", group: "capture", icon: "camera", enabled: true, run: snapPhoto },
-                { id: "scan-text", label: "Scan text (camera)", group: "capture", icon: "doc", enabled: true, run: scanTextFromCamera },
-                { id: "scan-qr", label: "Scan QR / barcode", group: "capture", icon: "qr", enabled: true, run: scanQR },
-                { id: "read-aloud", label: "Read this aloud", group: "capture", icon: "sound", enabled: true, run: readAloudScan },
-                { id: "find", label: "Find my… (camera)", group: "capture", icon: "search", enabled: true, run: findObject },
-                { id: "new-task", label: "New task", group: "work", icon: "grid", enabled: true, run: () => { setTaskIntent("new"); setSurface("tasks"); } },
-                { id: "view-tasks", label: "View tasks", group: "work", icon: "clock", enabled: true, run: () => setSurface("tasks") },
-                { id: "team", label: "Assemble Team", group: "work", icon: "team", enabled: true, run: () => { setInput("/team "); inputRef.current?.focus(); } },
-                { id: "ninjas", label: "Deploy Ninjas", group: "work", icon: "ninja", enabled: true, run: () => { setInput("/ninjas "); inputRef.current?.focus(); } },
-                { id: "timelapse", label: timelapse ? "Stop timelapse watch" : "Timelapse watch", group: "system", icon: "clock", enabled: true, run: toggleTimelapse },
-                { id: "guardian", label: guardian ? "Disable Guardian" : "Enable Guardian", group: "system", icon: "shield", enabled: true, run: toggleGuardian },
-                { id: "what-can-do", label: "What I can do", group: "system", icon: "sliders", enabled: true, run: () => setToolsOpen(true) },
-              ];
-              const groups = groupCapabilities(items);
-              return (
-                /* AUDIT/UX FIX: the menu used to dismiss on onMouseLeave, and with the menu anchored above
-                   the "+" there was a dead gap over the button — crossing it made the whole menu vanish, so
-                   items were painfully hard to select. Now it stays open until you pick one, click the
-                   click-away backdrop, or press Escape — no fragile hover-dismiss. */
-                <>
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: click-away backdrop for a menu */}
-                  {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal IS provided — Escape closes the menu (see the plusOpen useEffect); the backdrop is a pointer-only convenience layer */}
-                  <div className="plus-backdrop" onClick={() => setPlusOpen(false)} />
-                  <div className="plus-menu" role="menu" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-                    {groups.map(({ group, items: groupItems }, gi) => (
-                      <div key={group}>
-                        {gi > 0 && <div style={{ height: 1, background: "var(--border)", margin: "6px 4px" }} />}
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--muted)", padding: "6px 12px 2px" }}>{GROUP_LABELS[group]}</div>
-                        {groupItems.map((item) => (
-                          <button type="button" key={item.id} className="plus-opt" disabled={!item.enabled}
-                            title={!item.enabled ? item.reason : undefined}
-                            style={!item.enabled ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
-                            onClick={() => { if (!item.enabled) return; item.run(); setPlusOpen(false); }}>
-                            <span className="icon"><Icon name={item.icon as IconName} size={17} /></span> {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-          {quality === "turbo" && (
-            <button type="button" className="turbo-pill" title="Turbo is on — one fast call, no tools. Click to switch back to Automatic."
-              onClick={() => { setQuality("auto"); showToast("Switched to Automatic"); }}
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", marginRight: 6, borderRadius: 999, border: "1px solid var(--accent, #E8673A)", background: "transparent", color: "var(--accent, #E8673A)", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>
-              <Icon name="pulse" size={13} /> Turbo
-            </button>
-          )}
+          
+          <button type="button" className="icon-btn" onClick={toggleVoice} title="Voice Mode" aria-label="Voice Mode" style={{ background: '#E8673A', color: '#FFF', border: 'none', borderRadius: '8px', padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <Icon name="voice" size={15} />
+          </button>
+          
+          <button type="button" className="icon-btn ghost" onClick={() => fileRef.current?.click()} title="Attach file" aria-label="Attach file" style={{ background: 'transparent', border: 'none', color: '#8A909D', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <Icon name="link" size={16} />
+          </button>
+
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => { dt.items.add(f); }); onFiles(dt.files); } }}
-            placeholder="Message SAM…  (⌘P for commands · /help)" rows={1} />
-          <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={toggleVoice} title="Speak your message" aria-label="Voice input"><Icon name="voice" size={18} /></button>
-          <button type="button" className={`mic ${speakReplies ? "on" : ""}`} onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "SAM talks back — on" : "Have SAM talk back"} aria-label="Speak replies">{speakReplies ? <Icon name="sound" size={18} /> : <Icon name="mute" size={18} />}</button>
-          {loading
-            ? <button type="button" className="send stop" onClick={stop} aria-label="Stop">■</button>
-            : <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send">↑</button>}
+            placeholder="Ask SAM anything..." rows={1} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#F3F4F6', fontSize: 14.5, resize: 'none', padding: '4px 0' }} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: '#8A909D', fontWeight: 500 }}>Model</span>
+            <button type="button" onClick={() => setAdminOpen(true)} style={{ background: '#1F222A', border: '1px solid #282C36', color: '#E2E5EB', borderRadius: '999px', padding: '4px 12px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Auto Free Brains <span style={{ fontSize: 10, opacity: 0.6 }}>⌄</span>
+            </button>
+          </div>
+
+          {loading ? (
+            <button type="button" className="send stop" onClick={stop} aria-label="Stop" style={{ width: 34, height: 34, borderRadius: '8px', background: '#EF4444', color: '#FFF', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>■</button>
+          ) : (
+            <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send" style={{ width: 34, height: 34, borderRadius: '8px', background: '#252932', color: input.trim() ? '#E8673A' : '#6B7280', border: '1px solid #323846', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, cursor: input.trim() ? 'pointer' : 'default' }}>↑</button>
+          )}
         </div>
-        <div className="hint">SAM is private &amp; runs free on your computer · it asks before doing anything risky · <a href="https://richhabits.github.io/sam/" target="_blank" rel="noopener noreferrer" className="hint-link">richhabits.github.io/sam</a></div>
+        <div className="hint" style={{ color: '#6B7280', fontSize: 11.5, marginTop: 8, textAlign: 'center' }}>
+          SAM is private &amp; runs free on your computer · it asks before doing anything risky
+        </div>
       </footer>
       </div>
-      <aside className="ctx">
-        <div className="ctx-head">
-          <div className="ctx-title-row">
-            <span className="ctx-badge"><Icon name="sparkle" size={12} /> CONTROL</span>
-            <span className="dot-live" title="Online" />
-          </div>
-          <div className="ctx-brand-card">
-            <div className="ctx-brand-icon"><Icon name={mode === "business" ? "briefcase" : "home"} size={16} /></div>
-            <div className="ctx-brand-info">
-              <span className="ctx-brand-label">WORKSPACE</span>
-              <span className="ctx-brand-name">{activeBrand ? activeBrand.name : mode === "business" ? "All businesses" : "Personal"}</span>
+      <aside className="ctx" style={{ width: 300, minWidth: 300, background: '#121418', borderLeft: '1px solid #232730', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+        {rightTab === "context" ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>Contextual Intelligence</span>
+              <button type="button" className="icon-btn ghost" onClick={() => setRightTab("menu")} title="Open System &amp; Settings Menus" aria-label="Open Menus" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '6px', color: '#9CA3AF', fontSize: 12, padding: '3px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                ✕ Menus
+              </button>
             </div>
-          </div>
-        </div>
 
-        <div className="ctx-section-label">
-          <span>QUICK ACTIONS</span>
-          <span className="ctx-section-count">8 Tools</span>
-        </div>
-
-        <div className="ctx-action-list">
-          <button type="button" className="ctx-card-act" onClick={() => { setInput("/team "); inputRef.current?.focus(); }}>
-            <div className="ctx-card-icon team"><Icon name="team" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Assemble Team</div>
-              <div className="ctx-card-desc">Coordinate multi-agent crew</div>
-            </div>
-            <span className="ctx-card-shortcut">/team</span>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={() => { setInput("/ninjas "); inputRef.current?.focus(); }}>
-            <div className="ctx-card-icon ninja"><Icon name="ninja" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Deploy Ninjas</div>
-              <div className="ctx-card-desc">Fast autonomous coders</div>
-            </div>
-            <span className="ctx-card-shortcut">/ninjas</span>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={openStudio}>
-            <div className="ctx-card-icon studio"><Icon name="studio" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">SAM Studio</div>
-              <div className="ctx-card-desc">AI image &amp; video director</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={lookThroughCamera}>
-            <div className="ctx-card-icon eye"><Icon name="eye" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Vision Camera</div>
-              <div className="ctx-card-desc">Live camera &amp; visual reasoning</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={openFlipit}>
-            <div className="ctx-card-icon markets"><Icon name="markets" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">FLIP IT Trading</div>
-              <div className="ctx-card-desc">Arbitrage &amp; automated rig</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={() => setMarketsOpen(true)}>
-            <div className="ctx-card-icon chart"><Icon name="chart" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Live Markets</div>
-              <div className="ctx-card-desc">Zero-cost ticker quotes</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={() => setColosseumOpen(true)}>
-            <div className="ctx-card-icon trophy"><Icon name="trophy" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Colosseum</div>
-              <div className="ctx-card-desc">Head-to-head LLM rankings</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={() => setNotebookOpen(true)}>
-            <div className="ctx-card-icon book"><Icon name="book" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Notebooks</div>
-              <div className="ctx-card-desc">Grounded research from sources</div>
-            </div>
-          </button>
-
-          <button type="button" className="ctx-card-act" onClick={() => setRosterOpen(true)}>
-            <div className="ctx-card-icon people"><Icon name="people" size={16} /></div>
-            <div className="ctx-card-text">
-              <div className="ctx-card-title">Meet the Team</div>
-              <div className="ctx-card-desc">Roster &amp; specialist bios</div>
-            </div>
-          </button>
-        </div>
-
-        <div className="ctx-hud-footer">
-          <div className="ctx-hud-card">
-            <div className="ctx-hud-head">
-              <div className="ctx-pulse-dot" />
-              <span className="ctx-hud-label">AI ROUTING ENGINE</span>
-              <button type="button" className="ctx-hud-opt" onClick={() => setAdminOpen(true)} title="Manage keys"><Icon name="settings" size={12} /></button>
-            </div>
-            {(() => {
-              const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length;
-              return (
-                <div className="ctx-hud-body">
-                  <div className="ctx-hud-stat">
-                    <span className="ctx-hud-number">{n || "Local"}</span>
-                    <span className="ctx-hud-sub">{n ? `${n === 1 ? "Brain" : "Brains"} Pooled` : "Ollama Model"}</span>
-                  </div>
-                  <div className="ctx-hud-desc">
-                    {n ? "Smart rotation · 0 token cost · High availability" : "Private on-device inference"}
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button type="button" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(232, 103, 58, 0.15)', color: '#E8673A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="team" size={20} />
                 </div>
-              );
-            })()}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Multi-Agent Swarm</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Multi-agent swarm, converting information</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={lookThroughCamera} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="eye" size={20} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Vision Lab</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Live vision and visual reasoning</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={openStudio} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(234, 88, 12, 0.15)', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="studio" size={20} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Studio</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>AI video director &amp; timeline editor</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={openFlipit} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(34, 197, 94, 0.15)', color: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="markets" size={20} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Quant Desk</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Arbitrage desk &amp; Kelly risk shield</div>
+                </div>
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>System &amp; Settings</span>
+              <button type="button" className="icon-btn ghost" onClick={() => setRightTab("context")} title="Back to Contextual Intelligence" aria-label="Back" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '6px', color: '#9CA3AF', fontSize: 12, padding: '3px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                ❮ Back
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Phone Pairing */}
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#8A909D', padding: '4px 2px 0' }}>
+                Mobile Companion
+              </div>
+              <button type="button" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60A5FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="phone" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Mobile Companion (iOS &amp; Android)</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Scan QR to connect iPhone, iPad or Android</div>
+                </div>
+              </button>
+
+              {/* System & Settings */}
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#8A909D', padding: '6px 2px 0' }}>
+                Configuration
+              </div>
+              <button type="button" onClick={() => setAdminOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', color: '#FBBF24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="key" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>API Keys &amp; Brains</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Claude, OpenAI, Gemini, Groq &amp; Ollama</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setSettingsOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="settings" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>System Preferences</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Personas, voice, chimes &amp; data export</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setToolsOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34D399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="shield" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Tools &amp; Autonomy</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>231 tools, permissions &amp; guardian</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setConnectorsOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="link" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Connected Services</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Integrations, GitHub &amp; Stripe</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setDoctorOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', color: '#F87171', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="warn" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Doctor &amp; Self-Check</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>System health &amp; diagnostic selftest</div>
+                </div>
+              </button>
+
+              {/* Workspaces & Apps */}
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#8A909D', padding: '6px 2px 0' }}>
+                Workspaces &amp; Apps
+              </div>
+              <button type="button" onClick={openStudio} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(234, 88, 12, 0.15)', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="studio" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>SAM Studio Director</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Higgsfield 3D &amp; storyboard timeline</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={openFlipit} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(34, 197, 94, 0.15)', color: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="markets" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT Quant Desk</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Multi-exchange arbitrage &amp; Kelly risk</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setSurface("tasks")} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="grid" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Tasks &amp; Yard</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Autonomous build &amp; task threads</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setMarketsOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(234, 179, 8, 0.15)', color: '#FACC15', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="chart" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Live Market Watchlist</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Real-time quotes without API keys</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setColosseumOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(249, 115, 22, 0.15)', color: '#FB923C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="trophy" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Colosseum Arena</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Head-to-head LLM Elo benchmark</div>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => setNotebookOpen(true)} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(129, 140, 248, 0.15)', color: '#818CF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <Icon name="book" size={18} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Research Notebooks</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Grounded synthesis from sources</div>
+                </div>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Live AI Routing Engine Telemetry Card */}
+        <div style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 'auto', flexShrink: 0 }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#F3F4F6' }}>Live AI Routing Engine Status</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0' }}>
+            <div className="siren-glow-container" style={{ position: 'relative', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="siren-glow" style={{ width: 22, height: 22, borderRadius: '50%', background: 'radial-gradient(circle, #4ADE80 20%, #22C55E 80%)', boxShadow: '0 0 16px #4ADE80, inset 0 2px 4px rgba(255,255,255,0.8)' }} />
+            </div>
+            <svg width="130" height="28" viewBox="0 0 130 28" fill="none">
+              <path d="M0 14 C30 14 40 4 75 4 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />
+              <path d="M0 14 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.6" />
+              <path d="M0 14 C30 14 40 24 75 24 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />
+              <circle cx="128" cy="4" r="2.5" fill="#4ADE80" />
+              <circle cx="128" cy="14" r="2.5" fill="#4ADE80" />
+              <circle cx="128" cy="24" r="2.5" fill="#4ADE80" />
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#F3F4F6' }}>Processing Request</div>
+            <div style={{ fontSize: '12px', color: '#8A909D' }}>Model: Claude 3.5 Sonnet</div>
+            <div style={{ fontSize: '12px', color: '#22C55E', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px #22C55E' }} /> Status: Online
+            </div>
           </div>
         </div>
       </aside>

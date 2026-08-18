@@ -121,9 +121,9 @@ export default function ChatList({
       {editing !== c.id && (
         <span className="side-acts">
           <button type="button" className={`side-act ${c.pinned ? "on" : ""}`} onClick={() => onTogglePin(c.id)}
-            title={c.pinned ? "Unpin" : "Pin to top"} aria-label={c.pinned ? "Unpin chat" : "Pin chat"}><Icon name="pin" size={13} /></button>
+            title={c.pinned ? "Unpin" : "Pin to top"} aria-label={c.pinned ? "Unpin chat" : "Pin chat"}><Icon name="pin" size={12} /></button>
           <button type="button" className="side-act" onClick={() => startRename(c)}
-            title="Rename" aria-label="Rename chat">✎</button>
+            title="Rename" aria-label="Rename chat"><Icon name="pencil" size={12} /></button>
           {folders.length > 0 && (
             <select className="side-move" value={c.folder || ""} onClick={(e) => e.stopPropagation()}
               onChange={(e) => onMoveToFolder(c.id, e.target.value)} title="Move to folder" aria-label="Move to folder">
@@ -132,7 +132,7 @@ export default function ChatList({
             </select>
           )}
           <button type="button" className="side-act del" onClick={() => onDelete(c.id)}
-            title="Delete" aria-label="Delete chat">✕</button>
+            title="Delete" aria-label="Delete chat"><Icon name="close" size={12} /></button>
         </span>
       )}
     </li>
@@ -142,15 +142,12 @@ export default function ChatList({
 
   return (
     <>
-      {/* The search box earns its space only once there are enough chats to lose one in. */}
-      {convos.length > 4 && (
-        <div className="side-search">
-          <span className="side-search-ic" aria-hidden="true"><Icon name="search" size={13} /></span>
-          <input value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search chats…" aria-label="Search chats" />
-          {q && <button type="button" className="side-search-x" onClick={() => setQ("")} aria-label="Clear search">✕</button>}
-        </div>
-      )}
+      <div className="side-search" style={{ margin: "4px 12px 10px", display: "flex", alignItems: "center", gap: 8, background: "#16181D", border: "1px solid #232730", borderRadius: "10px", padding: "7px 12px", height: 36, boxSizing: "border-box" }}>
+        <span className="side-search-ic" aria-hidden="true" style={{ color: "#8A909D", display: "flex", alignItems: "center" }}><Icon name="search" size={14} /></span>
+        <input value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder="Search chats…" aria-label="Search chats" style={{ background: "transparent", border: "none", outline: "none", color: "#F3F4F6", fontSize: 13, width: "100%" }} />
+        {q && <button type="button" className="side-search-x" onClick={() => setQ("")} aria-label="Clear search" style={{ background: "none", border: "none", color: "#8A909D", cursor: "pointer", display: "flex", alignItems: "center" }}><Icon name="close" size={12} /></button>}
+      </div>
       <ul className="side-list">
         {pinned.length > 0 && !q.trim() && (
           <>

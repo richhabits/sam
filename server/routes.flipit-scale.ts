@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
+import { createStripeCheckoutSession, handleStripeWebhookSuccess } from "./stripe-payments.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
   app.post("/api/flipit/rebalance", (req, res) => {
@@ -57,6 +58,58 @@ export function registerFlipItScaleRoutes(app: Express) {
       res.json({ opportunities: opps });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Failed to scan arbitrage spreads" });
+    }
+  });
+
+  // Stripe Checkout Flow
+  app.post("/api/flipit/checkout", (req, res) => {
+    try {
+      const { amount, paymentMethod } = req.body || {};
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid deposit amount" });
+      }
+      const session = createStripeCheckoutSession(Number(amount), paymentMethod || "visa");
+      res.json({ url: session.url });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Checkout failed" });
+    }
+  });
+
+  // Mock Stripe processing endpoint that simulates the checkout screen
+  app.get("/api/flipit/mock-checkout-process", (req, res) => {
+    const sessionId = req.query.session_id as string;
+    if (!sessionId) return res.send("Invalid session");
+    
+    // Simulate web hook firing
+    handleStripeWebhookSuccess(sessionId);
+    
+    // Redirect back to flipit desk with success
+    res.redirect("/?app=flipit&deposit=success");
+  });
+
+  // Arbitrage Execute Route
+  app.post("/api/flipit/execute", (req, res) => {
+    try {
+      const { spreadId, estProfitGbp } = req.body || {};
+      if (!spreadId) return res.status(400).json({ error: "spreadId required" });
+      
+      // Simulate real latency of trade execution
+      setTimeout(() => {
+        res.json({ success: true, actualProfitGbp: estProfitGbp, status: "FILLED" });
+      }, 600);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to execute trade" });
+    }
+  });
+
+  // Hedging Regime Route
+  app.post("/api/flipit/hedging-regime", (req, res) => {
+    try {
+      const { regime } = req.body || {};
+      // In reality, this would connect to flipit-auto.ts to adjust risk parameters globally
+      res.json({ success: true, activeRegime: regime, message: `System re-tuned to ${regime} mode.` });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to switch regime" });
     }
   });
 }

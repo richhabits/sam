@@ -1,526 +1,471 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "./Icon";
 
-// 🎨 SAM Studio Director — Pro Creative Filmmaking Suite (Runway Gen-3 / Higgsfield Pro)
-// Complete with 4K Cinematic Player HUD, Camera Movement & Lens Selectors, Lighting Presets,
-// Motion Intensity dials, Multi-track Storyboard Timeline, and Render Queue.
+type TimelineClip = { id: string; time: string; img: string; name: string };
 
 const STYLES = [
-  { id: "cinematic", label: "Cinematic 35mm", desc: "Anamorphic Panavision, Kodak 5219 grain" },
-  { id: "noir", label: "High Contrast Noir", desc: "Dramatic chiaroscuro, volumetric shadow" },
-  { id: "dusk", label: "Cinematic Dusk", desc: "Golden hour haze, warm anamorphic flare" },
-  { id: "cyber", label: "Cyberpunk Neon", desc: "Vibrant neon backlight, wet asphalt fog" },
-  { id: "photoreal", label: "Photoreal 8K", desc: "Natural balanced daylight, ultra-sharp" },
-  { id: "anime", label: "Anime Masterpiece", desc: "Makoto Shinkai aesthetic, vibrant sky" },
+  { id: "cinematic", label: "Cinematic" },
+  { id: "photoreal", label: "Photoreal" },
+  { id: "anime", label: "Anime" },
+  { id: "3d", label: "3D Pixar" },
+  { id: "product", label: "Product" },
+  { id: "logo", label: "Logo" },
+  { id: "neon", label: "Neon" },
+  { id: "oil", label: "Oil Painting" },
+  { id: "water", label: "Watercolour" },
+  { id: "pixel", label: "Pixel Art" },
+  { id: "comic", label: "Comic" },
+  { id: "fantasy", label: "Fantasy" },
+  { id: "lineart", label: "Line Art" },
+  { id: "vapor", label: "Vaporwave" },
+  { id: "clay", label: "Claymation" },
+  { id: "blueprint", label: "Blueprint" },
+  { id: "dusk", label: "Cinematic Dusk" },
+  { id: "noir", label: "High Contrast Noir" },
+  { id: "golden", label: "Golden Hour" },
+  { id: "cyber", label: "Cyberpunk" },
 ];
 
 const MOTIONS = [
-  { id: "dolly", label: "Dolly Track", icon: "camera", phrase: "smooth dolly tracking forward" },
-  { id: "steadicam", label: "Steadicam", icon: "camera", phrase: "smooth cinematic steadicam follow" },
-  { id: "orbit", label: "360° Orbit", icon: "refresh", phrase: "sweeping 360 degree orbit shot" },
-  { id: "crane", label: "Crane Pedestal Up", icon: "arrow-up", phrase: "dramatic crane rising upward" },
-  { id: "fpv", label: "FPV Drone Flythrough", icon: "zap", phrase: "fast dynamic FPV drone flyby" },
-  { id: "pan", label: "Whip Pan", icon: "repeat", phrase: "fast smooth horizontal pan" },
+  { id: "dolly", label: "DOLLY", icon: "camera" },
+  { id: "steadicam", label: "STEADICAM", icon: "camera" },
+  { id: "orbit", label: "360 ORBIT", icon: "refresh" },
 ];
 
-const LENSES = [
-  { id: "35mm", label: "Anamorphic 35mm T2.1", desc: "Classic cinematic widescreen bokeh" },
-  { id: "50mm", label: "50mm Prime f/1.2", desc: "Natural human eye perspective" },
-  { id: "85mm", label: "85mm Portrait f/1.4", desc: "Compressed background subject isolation" },
-  { id: "16mm", label: "16mm Ultra-Wide", desc: "Expansive landscape & architectural scale" },
+const TIMELINE_CLIPS = [
+  { id: "c1", time: "0:00", img: "/api/studio/preview/dusk", name: "Drone Shot" },
+  { id: "c2", time: "0:15", img: "/api/studio/preview/noir", name: "Hallway" },
+  { id: "c3", time: "0:30", img: "/api/studio/preview/cyber", name: "Drone Shot 2" },
+  { id: "c4", time: "0:45", img: "/api/studio/preview/photoreal", name: "Alien Ship" },
+  { id: "c5", time: "1:00", img: "/api/studio/preview/cinematic", name: "City" },
+  { id: "c6", time: "1:15", img: "/api/studio/preview/golden", name: "Explosion" },
 ];
-
-const ENGINES = [
-  { id: "flux", label: "FLUX.1 Pro", badge: "Fast 4K" },
-  { id: "higgsfield", label: "Higgsfield Motion v3", badge: "Pro Motion" },
-  { id: "sora", label: "OpenAI Sora v2", badge: "Cinematic" },
-  { id: "midjourney", label: "Midjourney v6.1", badge: "Artistic" },
-];
-
-type TimelineClip = { id: string; name: string; duration: string; type: "video" | "audio"; color: string; widthPct: number };
 
 export default function StudioView() {
-  const [prompt, setPrompt] = useState("Cinematic slow-motion shot of a futuristic cyberpunk explorer walking through neon rain in Neo-Tokyo, anamorphic lens flare, steam rising from grates.");
-  const [motion, setMotion] = useState("crane");
+  const [prompt, setPrompt] = useState("Scene description - then inastering into this cinematic enenatics, innema to the newromanans and futvorare dohering of cyber-drone, hovear the futurity scene.\n\nPrompt: your saten-went rise include on the, right noother omanoure and showame.");
+  const [motion, setMotion] = useState("dolly");
   const [motionIntensity, setMotionIntensity] = useState(75);
-  const [style, setStyle] = useState("cinematic");
-  const [lens, setLens] = useState("35mm");
-  const [engine, setEngine] = useState("higgsfield");
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState("00:01:24:18");
-  const [fps, setFps] = useState("24 FPS");
-  const [res, setRes] = useState("4K UHD");
+  const [style, setStyle] = useState("dusk");
+  const [motionToggle, setMotionToggle] = useState(true);
+
+  // Render Settings State
+  const [engine, setEngine] = useState("FLUX/HIGGSFIELD/SORA");
+  const [resolution, setResolution] = useState("4K UHD");
+  const [fps, setFps] = useState("24fps");
+
   const [toast, setToast] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [genUrl, setGenUrl] = useState<string | null>(null);
   const [genProgress, setGenProgress] = useState(0);
 
-  const triggerToast = (msg: string) => {
+  const [timeline, setTimeline] = useState<TimelineClip[]>(() => {
+    const saved = localStorage.getItem("studio_timeline");
+    return saved ? JSON.parse(saved) : [...TIMELINE_CLIPS];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("studio_timeline", JSON.stringify(timeline));
+  }, [timeline]);
+
+  const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
     setGenProgress(10);
-    triggerToast("🎬 Dispatching scene to render queue (Higgsfield Pro / FLUX 4K)...");
+    showToast("🎬 Dispatching scene to rendering engine...");
+    
+    // Simulate progress bar while waiting for fetch
+    const progressInterval = setInterval(() => {
+      setGenProgress(p => (p < 90 ? p + 5 : p));
+    }, 800);
 
-    const int = setInterval(() => {
-      setGenProgress((p) => {
-        if (p >= 100) {
-          clearInterval(int);
-          setIsGenerating(false);
-          triggerToast("✓ Scene rendered successfully in 4K UHD 24fps!");
-          return 100;
-        }
-        return p + 20;
+    try {
+      // Fire real backend request to generate video
+      let res = await fetch("/api/studio/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: `${prompt} | Style: ${style} | Motion: ${motion}` })
       });
-    }, 600);
+      let data = await res.json();
+      
+      // Fallback to Image API if video requires key
+      if (data.error && data.error.includes("free-credit key")) {
+        showToast("📷 Video requires API key. Falling back to free image generation...");
+        res = await fetch("/api/studio/image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: `${prompt} | Style: ${style}` })
+        });
+        data = await res.json();
+      }
+
+      clearInterval(progressInterval);
+      setGenProgress(100);
+      
+      if (data.url) {
+        setGenUrl(data.url);
+        
+        // Make the mock dynamic: Add the newly generated asset to the timeline!
+        setTimeline((prev: TimelineClip[]) => [
+          ...prev, 
+          { 
+            id: `gen-${Date.now()}`, 
+            time: `1:${prev.length * 15}`, 
+            img: data.url, 
+            name: "Generated Shot" 
+          }
+        ]);
+
+        showToast("✓ Scene rendered successfully and added to timeline!");
+      } else {
+        showToast("⚠️ Render failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      clearInterval(progressInterval);
+      showToast("⚠️ Network error during render.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAutoEnhance = async () => {
+    showToast("✨ Auto-Enhancing Prompt...");
+    try {
+      const res = await fetch("/api/studio/enhance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style, camera: motion })
+      });
+      const data = await res.json();
+      if (data.prompt) {
+        setPrompt(data.prompt);
+        showToast("✓ Prompt optimized.");
+      }
+    } catch {
+      showToast("⚠️ Enhancement failed.");
+    }
   };
 
   const back = () => {
     const sd = (globalThis as any).samDesktop;
-    if (sd?.close) {
-      sd.close();
-    } else {
-      window.close();
-      setTimeout(() => {
-        if (!window.closed) location.href = "/";
-      }, 50);
-    }
+    if (sd?.close) sd.close();
+    else { window.close(); setTimeout(() => { if (!window.closed) location.href = "/"; }, 50); }
   };
-
-  const clips: TimelineClip[] = [
-    { id: "c1", name: "Scene 1 · Street Entrance", duration: "0:04", type: "video", color: "#3B82F6", widthPct: 24 },
-    { id: "c2", name: "Scene 2 · Crane Pedestal Reveal", duration: "0:08", type: "video", color: "#10B981", widthPct: 36 },
-    { id: "c3", name: "Scene 3 · Cyber Neon Close-up", duration: "0:05", type: "video", color: "#F59E0B", widthPct: 28 },
-  ];
 
   return (
     <div style={{
-      background: "#090A0F",
-      color: "#F3F4F6",
+      background: "#1E1E1E",
+      color: "#FFFFFF",
       minHeight: "100vh",
       display: "flex",
       flexDirection: "column",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
       boxSizing: "border-box",
       userSelect: "none",
     }}>
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
         <div style={{
           position: "fixed", top: 20, right: 20, zIndex: 9999,
-          background: "linear-gradient(135deg, #FF7A3D, #EA580C)", color: "#fff",
-          padding: "12px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13,
-          boxShadow: "0 10px 30px rgba(255,122,61,0.4)", display: "flex", alignItems: "center", gap: 8,
-          animation: "slideInRight 0.25s ease-out",
+          background: "#D9A05B", color: "#111", padding: "12px 20px",
+          borderRadius: 8, fontWeight: 600, fontSize: 13,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", gap: 8
         }}>
-          <Icon name="sparkle" size={16} /> {toast}
+          {toast}
         </div>
       )}
 
-      {/* Top Header Bar */}
+      {/* Header */}
       <header style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderBottom: "1px solid #1E2230", padding: "12px 20px", background: "#0E1017",
+        display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+        borderBottom: "1px solid #333", padding: "12px", background: "#1A1A1A",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #FF7A3D, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900 }}>
-              🎬
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", letterSpacing: "-.02em" }}>SAM STUDIO DIRECTOR</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#FF7A3D", letterSpacing: ".06em" }}>PRO CINEMATIC WORKSPACE</div>
-            </div>
-          </div>
-
-          <div style={{ height: 24, width: 1, background: "#262B3D" }} />
-
-          {/* Mode Switcher */}
-          <div style={{ display: "flex", gap: 4, background: "#151824", border: "1px solid #262B3D", borderRadius: 10, padding: 3 }}>
-            {["Director Deck", "Storyboard", "Batch Queue"].map((tab, idx) => (
-              <button
-                key={tab}
-                type="button"
-                style={{
-                  background: idx === 0 ? "rgba(255,122,61,0.18)" : "transparent",
-                  border: idx === 0 ? "1px solid #FF7A3D" : "1px solid transparent",
-                  borderRadius: 7, padding: "5px 14px", color: idx === 0 ? "#FF9D6E" : "#9CA3AF",
-                  fontWeight: 700, fontSize: 12, cursor: "pointer"
-                }}>
-                {tab}
-              </button>
-            ))}
-          </div>
+        <div style={{ position: "absolute", left: 16, display: "flex", gap: 8 }}>
+          <div onClick={back} style={{ width: 12, height: 12, borderRadius: "50%", background: "#FF5F56", cursor: "pointer" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#FFBD2E" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#27C93F" }} />
         </div>
-
-        {/* Right Action Cluster */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#151824", border: "1px solid #262B3D", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 800, color: "#10B981" }}>
-            <span>●</span> <span>{res} · {fps}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => triggerToast("✓ Project exported to Pro Res 422 HQ timeline.")}
-            style={{
-              background: "#1E2230", border: "1px solid #2D354D", borderRadius: 8,
-              padding: "7px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer",
-            }}>
-            Export Project ▾
-          </button>
-          <button
-            type="button"
-            onClick={back}
-            style={{
-              background: "#151824", border: "1px solid #262B3D", borderRadius: 8,
-              padding: "7px 14px", color: "#9CA3AF", fontWeight: 700, fontSize: 12, cursor: "pointer",
-            }}>
-            ← Return to SAM
-          </button>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "#AAA" }}>SAM Studio Director</div>
+        <div style={{ position: "absolute", right: 16, display: "flex", gap: 12 }}>
+          <Icon name="cloud" size={16} />
+          <Icon name="grid" size={16} />
         </div>
       </header>
 
-      {/* Main 3-Column Studio Grid */}
+      {/* Main Grid */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "360px 1fr 320px",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
+        display: "grid", gridTemplateColumns: "320px 1fr 300px", flex: 1, minHeight: 0, padding: "12px", gap: "12px", background: "#111"
       }}>
-        {/* Left Column: AI Script & Prompt Director Deck */}
-        <div style={{
-          background: "#0E1017", borderRight: "1px solid #1E2230",
-          padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto",
-        }}>
+        {/* LEFT COLUMN: Script & Prompt */}
+        <div style={{ background: "#1F1F1F", borderRadius: 8, border: "1px solid #333", padding: "16px", display: "flex", flexDirection: "column", gap: "24px", overflowY: "auto" }}>
+          
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase" }}>Scene Script &amp; Prompt</span>
-              <button
-                type="button"
-                onClick={() => triggerToast("✓ Prompt optimized with cinematic camera and lighting parameters.")}
-                style={{ background: "none", border: "none", color: "#FF7A3D", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <Icon name="sparkle" size={12} /> Auto-Enhance
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD" }}>AI SCRIPT & PROMPT DIRECTOR</span>
+              <button onClick={handleAutoEnhance} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <span style={{ color: "#D9A05B" }}><Icon name="sparkle" size={14} /></span>
               </button>
             </div>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              rows={4}
               style={{
-                width: "100%", background: "#151824", border: "1px solid #262B3D", borderRadius: 10,
-                padding: 10, color: "#fff", fontSize: 12.5, lineHeight: 1.5, resize: "none", outline: "none",
-                boxSizing: "border-box", fontFamily: "inherit"
+                width: "100%", background: "#141414", border: "1px solid #333", borderRadius: 8,
+                padding: "12px", color: "#999", fontSize: 13, lineHeight: 1.6, resize: "none", outline: "none", boxSizing: "border-box", minHeight: 140
               }}
             />
           </div>
 
-          {/* Camera Movement Selectors */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Camera Motion Presets</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {MOTIONS.map((m) => {
-                const on = motion === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMotion(m.id)}
-                    style={{
-                      background: on ? "rgba(255,122,61,0.18)" : "#151824",
-                      border: on ? "1px solid #FF7A3D" : "1px solid #262B3D",
-                      borderRadius: 8, padding: "8px 10px", color: on ? "#FF9D6E" : "#D1D5DB",
-                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 6,
-                    }}>
-                    <Icon name={m.icon as any} size={13} /> {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Motion Intensity Slider */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#9CA3AF", marginBottom: 4 }}>
-              <span>Motion Intensity / Velocity</span>
-              <span style={{ color: "#FF7A3D" }}>{motionIntensity}%</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD" }}>MOTION INTENSITY</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#D9A05B" }}>{motionIntensity}%</span>
             </div>
             <input
               type="range" min="10" max="100" value={motionIntensity}
               onChange={(e) => setMotionIntensity(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#FF7A3D" }}
+              style={{ width: "100%", accentColor: "#D9A05B" }}
             />
           </div>
 
-          {/* Lighting & Aesthetic Presets */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Lighting &amp; Aesthetic Presets</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD" }}>CAMERA MOVEMENT</span>
+              <span style={{ fontSize: 10 }}>▼</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {MOTIONS.map((m) => {
+                const on = motion === m.id;
+                return (
+                  <button
+                    key={m.id} onClick={() => setMotion(m.id)}
+                    style={{
+                      background: on ? "rgba(217,160,91,0.1)" : "transparent",
+                      border: on ? "1px solid #D9A05B" : "1px solid #444",
+                      borderRadius: 6, padding: "12px 4px", color: on ? "#D9A05B" : "#888",
+                      fontWeight: 600, fontSize: 10, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8
+                    }}>
+                    <Icon name={m.icon as any} size={16} /> {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD", display: "block", marginBottom: 12 }}>LIGHTING PRESETS</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {STYLES.map((s) => {
                 const on = style === s.id;
                 return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setStyle(s.id)}
-                    style={{
-                      background: on ? "rgba(168,85,247,0.18)" : "#151824",
-                      border: on ? "1px solid #A855F7" : "1px solid #262B3D",
-                      borderRadius: 8, padding: "8px 10px", color: on ? "#D8B4FE" : "#D1D5DB",
-                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
-                    }}>
-                    <div>{s.label}</div>
-                    <div style={{ fontSize: 9.5, color: "#6B7280", fontWeight: 500, marginTop: 2 }}>{s.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Lens Selection */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Cinema Lens Optics</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {LENSES.map((l) => {
-                const on = lens === l.id;
-                return (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setLens(l.id)}
-                    style={{
-                      background: on ? "rgba(16,185,129,0.15)" : "#151824",
-                      border: on ? "1px solid #10B981" : "1px solid #262B3D",
-                      borderRadius: 8, padding: "8px 10px", color: on ? "#6EE7B7" : "#9CA3AF",
-                      fontWeight: 700, fontSize: 11.5, textAlign: "left", cursor: "pointer",
-                      display: "flex", justifyContent: "space-between", alignItems: "center"
-                    }}>
-                    <span>{l.label}</span>
-                    <span style={{ fontSize: 10, color: "#6B7280" }}>{l.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Center Column: 4K 16:9 Cinematic Video Player & HUD */}
-        <div style={{
-          display: "flex", flexDirection: "column", background: "#050608",
-          padding: 16, gap: 14, overflow: "hidden",
-        }}>
-          {/* 16:9 Viewport */}
-          <div style={{
-            flex: 1, position: "relative", background: "#0D0E14",
-            border: "1px solid #1E2230", borderRadius: 14, overflow: "hidden",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {/* Background Cyberpunk Scene Simulation */}
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "radial-gradient(ellipse at center, rgba(168,85,247,0.25) 0%, rgba(255,122,61,0.15) 50%, #090A0F 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{ textAlign: "center", padding: 20 }}>
-                <div style={{ fontSize: 42, marginBottom: 10, filter: "drop-shadow(0 0 20px rgba(255,122,61,0.6))" }}>🎬</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "-.02em" }}>NEO-TOKYO CYBERPUNK 2088</div>
-                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>High Dynamic Range · 4K 24fps Master</div>
-              </div>
-            </div>
-
-            {/* Top HUD Overlays */}
-            <div style={{
-              position: "absolute", top: 14, left: 16, right: 16,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              fontSize: 11, fontWeight: 800, color: "#fff", textShadow: "0 2px 4px rgba(0,0,0,0.8)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ background: "#EF4444", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>● REC</span>
-                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>{currentTime}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>MOTION: {motion.toUpperCase()} ({motionIntensity}%)</span>
-                <span style={{ background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6, backdropFilter: "blur(6px)" }}>LENS: {lens.toUpperCase()}</span>
-              </div>
-            </div>
-
-            {/* Center Grid Guides */}
-            <div style={{
-              position: "absolute", inset: 40, border: "1px dashed rgba(255,255,255,0.12)",
-              pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{ width: 12, height: 12, borderTop: "2px solid #FF7A3D", borderLeft: "2px solid #FF7A3D" }} />
-            </div>
-
-            {/* Bottom HUD Audio Levels */}
-            <div style={{
-              position: "absolute", bottom: 14, right: 16,
-              display: "flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.6)",
-              padding: "4px 8px", borderRadius: 6,
-            }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", marginRight: 4 }}>CH1/2</span>
-              {[60, 80, 45, 90, 75, 40, 65].map((h, i) => (
-                <div key={i} style={{ width: 3, height: h / 5, background: h > 80 ? "#EF4444" : "#10B981", borderRadius: 1 }} />
-              ))}
-            </div>
-          </div>
-
-          {/* Transport Controls Bar */}
-          <div style={{
-            background: "#0E1017", border: "1px solid #1E2230", borderRadius: 10,
-            padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button
-                type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
-                style={{
-                  background: "linear-gradient(135deg, #FF7A3D, #EA580C)", border: "none",
-                  borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#fff", cursor: "pointer", boxShadow: "0 2px 10px rgba(255,122,61,0.4)"
-                }}>
-                <Icon name={isPlaying ? "pause" : "play"} size={16} />
-              </button>
-              <button type="button" onClick={() => triggerToast("⏮ Skipped to start")} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}><Icon name="refresh" size={14} /></button>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#D1D5DB", fontFamily: "ui-monospace, monospace" }}>{currentTime} / 00:04:12:00</span>
-            </div>
-
-            <div style={{ flex: 1, margin: "0 20px" }}>
-              <div style={{ height: 6, background: "#1E2230", borderRadius: 3, position: "relative", cursor: "pointer" }}>
-                <div style={{ width: "34%", height: "100%", background: "#FF7A3D", borderRadius: 3 }} />
-                <div style={{ position: "absolute", left: "34%", top: -4, width: 14, height: 14, borderRadius: "50%", background: "#fff", boxShadow: "0 0 8px rgba(0,0,0,0.5)" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#9CA3AF" }}>
-              <Icon name="sound" size={14} />
-              <span>48 kHz 24-bit</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Generation Queue & Engine Selector */}
-        <div style={{
-          background: "#0E1017", borderLeft: "1px solid #1E2230",
-          padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto",
-        }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>AI Video Engine</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {ENGINES.map((eng) => {
-                const on = engine === eng.id;
-                return (
-                  <button
-                    key={eng.id}
-                    type="button"
-                    onClick={() => setEngine(eng.id)}
-                    style={{
-                      background: on ? "rgba(255,122,61,0.15)" : "#151824",
-                      border: on ? "1px solid #FF7A3D" : "1px solid #262B3D",
-                      borderRadius: 8, padding: "8px 12px", color: on ? "#FF9D6E" : "#D1D5DB",
-                      fontWeight: 700, fontSize: 12, textAlign: "left", cursor: "pointer",
-                      display: "flex", justifyContent: "space-between", alignItems: "center"
-                    }}>
-                    <span>{eng.label}</span>
-                    <span style={{ fontSize: 10, background: on ? "#FF7A3D" : "#262B3D", color: on ? "#000" : "#9CA3AF", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>{eng.badge}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Render Queue */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 140 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", marginBottom: 8 }}>Scene Render Queue</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1 }}>
-              {[
-                { name: "Scene 2 (Neo-Tokyo)", engine: "Higgsfield v3", status: "Complete", ok: true },
-                { name: "Scene 3 (Crane Reveal)", engine: "OpenAI Sora", status: isGenerating ? `Rendering (${genProgress}%)` : "Complete", ok: !isGenerating },
-                { name: "Scene 4 (Wet Alley)", engine: "FLUX.1 Pro", status: "Queued", ok: false },
-              ].map((q, idx) => (
-                <div key={idx} style={{ background: "#151824", border: "1px solid #262B3D", borderRadius: 8, padding: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
-                    <span>{q.name}</span>
-                    <span style={{ color: q.ok ? "#10B981" : "#FF7A3D", fontSize: 10 }}>{q.status}</span>
+                  <div key={s.id} onClick={() => setStyle(s.id)} style={{ cursor: "pointer" }}>
+                    <div style={{ 
+                      height: 60, borderRadius: 6, marginBottom: 6, border: on ? "2px solid #D9A05B" : "1px solid #444",
+                      backgroundImage: `url(/api/studio/preview/${s.id})`, backgroundSize: "cover", backgroundPosition: "center"
+                    }} />
+                    <div style={{ fontSize: 10, color: on ? "#D9A05B" : "#888", textAlign: "center", fontWeight: 500 }}>{s.label}</div>
                   </div>
-                  <div style={{ fontSize: 10, color: "#6B7280" }}>{q.engine} · 4K UHD 24fps</div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* CENTER COLUMN: Video Player */}
+        <div style={{ background: "#1F1F1F", borderRadius: 8, border: "1px solid #333", display: "flex", flexDirection: "column", position: "relative" }}>
+          <div style={{ flex: 1, background: "#000", borderTopLeftRadius: 8, borderTopRightRadius: 8, position: "relative", overflow: "hidden" }}>
+            
+            {/* The actual video or realistic drone background. */}
+            {genUrl ? (
+              genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? (
+                <img src={genUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <video src={genUrl} autoPlay loop controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              )
+            ) : (
+              <div style={{
+                position: "absolute", inset: 0,
+                backgroundImage: "url(/api/studio/preview/cyber)",
+                backgroundSize: "cover", backgroundPosition: "center",
+                filter: "brightness(0.7) contrast(1.2)"
+              }} />
+            )}
+
+            {/* Bounding Box Overlay (only show if no generated video) */}
+            {!genUrl && (
+              <>
+                <div style={{ position: "absolute", inset: "40px", border: "1px solid rgba(255,255,255,0.4)" }}>
+                  <div style={{ position: "absolute", top: -1, left: -1, width: 20, height: 20, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", top: -1, right: -1, width: 20, height: 20, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", bottom: -1, left: -1, width: 20, height: 20, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                </div>
+
+                <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(30,30,30,0.8)", padding: "10px 16px", borderRadius: 6, backdropFilter: "blur(4px)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#FFF", marginBottom: 6 }}>CRANE PEDESTAL UP</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 10, color: "#D9A05B" }}>MOTION</span>
+                    <div onClick={() => setMotionToggle(!motionToggle)} style={{ width: 28, height: 14, background: motionToggle ? "#D9A05B" : "#555", borderRadius: 7, position: "relative", cursor: "pointer" }}>
+                        <div style={{ position: "absolute", top: 2, left: motionToggle ? 16 : 2, width: 10, height: 10, background: "#FFF", borderRadius: "50%", transition: "left 0.2s" }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ position: "absolute", bottom: 20, right: 20, textAlign: "right" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#FFF", letterSpacing: "1px" }}>ANAMORPHIC</div>
+                  <div style={{ fontSize: 11, color: "#AAA" }}>PANAVISION 35MM T2.1</div>
+                </div>
+              </>
+            )}
+
+          </div>
+          
+          {/* Playback Controls */}
+          <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 16 }}>
+            <span style={{ fontSize: 12, color: "#AAA", fontFamily: "monospace" }}>00:00:00 x 7889</span>
+            
+            <div style={{ flex: 1, position: "relative", height: 4, background: "#333", borderRadius: 2 }}>
+              <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "40%", background: "#D9A05B", borderRadius: 2 }} />
+              <div style={{ position: "absolute", top: -4, left: "40%", height: 12, width: 12, background: "#D9A05B", borderRadius: "50%" }} />
+            </div>
+
+            <div style={{ display: "flex", gap: 12, color: "#888", alignItems: "center" }}>
+              <span onClick={() => showToast("⏮ Jump to start")} style={{ fontSize: 14, cursor: "pointer" }}>⏮</span>
+              <span onClick={() => showToast("⏪ Rewind")} style={{ fontSize: 14, cursor: "pointer" }}>⏪</span>
+              <span onClick={() => showToast(genUrl && genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? "⚠️ Cannot play static image. Add an API key for video!" : "▶️ Play")} style={{ color: "#FFF", cursor: "pointer" }}><Icon name="play" size={18} /></span>
+              <span onClick={() => showToast("⏩ Fast Forward")} style={{ fontSize: 14, cursor: "pointer" }}>⏩</span>
+              <span onClick={() => showToast("⏭ Jump to end")} style={{ fontSize: 14, cursor: "pointer" }}>⏭</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, color: "#888", marginLeft: "auto" }}>
+              <span style={{ fontSize: 10, cursor: "pointer" }} onClick={() => showToast("Aspect ratio locked")}>16:9</span>
+              <span style={{ cursor: "pointer" }} onClick={() => showToast("Framing options locked")}><Icon name="frame" size={14} /></span>
+              <span style={{ cursor: "pointer" }} onClick={() => showToast("Playback settings")}><Icon name="settings" size={14} /></span>
+              <span style={{ cursor: "pointer" }} onClick={() => showToast("Fullscreen mode")}><Icon name="screen" size={14} /></span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Queue & Settings */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          
+          <div style={{ background: "#1F1F1F", borderRadius: 8, border: "1px solid #333", padding: "16px", flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD" }}>GENERATION QUEUE</span>
+              <span style={{ cursor: "pointer" }} onClick={() => showToast("Clear queue")}><Icon name="trash" size={14} /></span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {isGenerating ? (
+                <div style={{ background: "#141414", border: "1px solid #444", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#FFF" }}>
+                    <div style={{ width: 6, height: 6, background: "#D9A05B", borderRadius: "50%" }} /> Rendering ({genProgress}%)
+                  </div>
+                  <span style={{ color: "#888", cursor: "pointer" }} onClick={() => showToast("Cancel render")}><Icon name="refresh" size={14} /></span>
+                </div>
+              ) : genUrl ? (
+                 <div style={{ background: "#141414", border: "1px solid #444", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => showToast("Load completed scene")}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#27C93F" }}>
+                    <div style={{ width: 6, height: 6, background: "#27C93F", borderRadius: "50%" }} /> Completed
+                  </div>
+                  <span style={{ color: "#27C93F" }}><Icon name="check" size={14} /></span>
+                </div>
+              ) : null}
+
+              <div style={{ background: "#141414", border: "1px solid #333", borderRadius: 6, padding: "10px 12px", fontSize: 12, color: "#888", cursor: "pointer" }} onClick={() => showToast("Load pending scene")}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 6, height: 6, background: "#555", borderRadius: "50%" }} /> Scene 4 - Pending
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: "#1F1F1F", borderRadius: 8, border: "1px solid #333", padding: "16px" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", color: "#DDD", marginBottom: 12 }}>RENDER SETTINGS</div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[ {val: engine, set: setEngine}, {val: resolution, set: setResolution}, {val: fps, set: setFps} ].map((dropdown, i) => (
+                <div key={i} onClick={() => showToast("⚠️ Pro Setting: Unlock with API Key")} style={{ cursor: "pointer", background: "#141414", border: "1px solid #333", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#AAA", fontSize: 12 }}>
+                  {dropdown.val}
+                  <span style={{ fontSize: 10 }}>▼</span>
                 </div>
               ))}
             </div>
+
+            <button onClick={handleGenerate} disabled={isGenerating} style={{
+              width: "100%", marginTop: 16, background: isGenerating ? "#444" : "linear-gradient(180deg, #EDBE7D 0%, #D9A05B 100%)",
+              color: isGenerating ? "#888" : "#111", border: "none", borderRadius: 6, padding: "12px", fontSize: 12, fontWeight: 700, letterSpacing: "1px", cursor: isGenerating ? "default" : "pointer",
+            }}>
+              {isGenerating ? `RENDERING...` : `GENERATE & EXPORT`}
+            </button>
           </div>
 
-          {/* Generate Scene CTA Button */}
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            style={{
-              width: "100%", padding: 14,
-              background: isGenerating ? "#374151" : "linear-gradient(135deg, #FF7A3D, #EA580C)",
-              border: "none", borderRadius: 12, color: "#fff",
-              fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: ".05em",
-              cursor: isGenerating ? "default" : "pointer",
-              boxShadow: isGenerating ? "none" : "0 4px 20px rgba(255,122,61,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}>
-            <Icon name="sparkle" size={16} />
-            <span>{isGenerating ? `Rendering Scene (${genProgress}%)` : "Generate Scene"}</span>
-            <kbd style={{ background: "rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>⌘↵</kbd>
-          </button>
         </div>
       </div>
 
-      {/* Bottom Multi-Track Storyboard Timeline */}
-      <footer style={{
-        height: 140, background: "#0A0B10", borderTop: "1px solid #1E2230",
-        padding: "10px 16px", display: "flex", flexDirection: "column", gap: 6,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", textTransform: "uppercase" }}>Multi-Track Storyboard Timeline</div>
-          <div style={{ display: "flex", gap: 14, fontSize: 10, color: "#6B7280", fontFamily: "ui-monospace, monospace" }}>
-            <span>00:00:00</span>
-            <span>00:00:05</span>
-            <span>00:00:10</span>
-            <span>00:00:15</span>
-            <span>00:00:20</span>
-            <span>00:00:25</span>
+      {/* BOTTOM COLUMN: Timeline */}
+      <div style={{ height: 160, background: "#1A1A1A", borderTop: "1px solid #333", padding: "12px 16px", display: "flex", gap: "16px" }}>
+        {/* Track Labels */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 60 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "#888" }}>
+             <span style={{ fontSize: 12 }}>↰</span> <Icon name="copy" size={14} />
           </div>
+          <div style={{ fontSize: 11, color: "#DDD", height: 44, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ color: "#888" }}><Icon name="grid" size={12} /></span> Video 1
+          </div>
+          <div style={{ fontSize: 11, color: "#888", height: 20, display: "flex", alignItems: "center" }}>Audio 1</div>
+          <div style={{ fontSize: 11, color: "#888", height: 20, display: "flex", alignItems: "center" }}>Audio 2</div>
         </div>
 
-        {/* Video Track 1 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", width: 55 }}>VIDEO 1</span>
-          <div style={{ flex: 1, display: "flex", gap: 6, background: "#12141D", borderRadius: 6, padding: 3, border: "1px solid #1E2230" }}>
-            {clips.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  width: `${c.widthPct}%`, background: `linear-gradient(135deg, ${c.color}33, ${c.color}11)`,
-                  border: `1px solid ${c.color}`, borderRadius: 4, padding: "6px 8px",
-                  fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center",
-                  cursor: "pointer",
-                }}>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                <span style={{ fontSize: 9, opacity: 0.7 }}>{c.duration}</span>
+        {/* Timeline Content */}
+        <div style={{ flex: 1, position: "relative" }}>
+          
+          {/* Time markers */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#888", marginBottom: 8, paddingLeft: 4, borderBottom: "1px solid #333", paddingBottom: 4 }}>
+            <span>0:00</span><span>0:15</span><span>0:30</span><span>0:45</span><span>1:00</span><span>1:15</span>
+          </div>
+
+          {/* Playhead */}
+          <div style={{ position: "absolute", top: 0, left: "4%", width: 2, height: "100%", background: "#D9A05B", zIndex: 10 }}>
+            <div style={{ position: "absolute", top: 18, left: -4, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "6px solid #D9A05B" }} />
+          </div>
+
+          {/* Video Track */}
+          <div style={{ display: "flex", gap: 4, height: 44, marginBottom: 12 }}>
+            {timeline.map((clip, i) => (
+              <div key={clip.id} className="studio-timeline-clip" style={{ 
+                flex: i === timeline.length - 1 ? 1.5 : 1, 
+                border: i === timeline.length - 1 ? "2px solid #D9A05B" : undefined,
+                backgroundImage: `url(${clip.img})`
+              }}>
+                <div style={{ position: "absolute", bottom: 4, left: 6, fontSize: 10, color: "#FFF", background: "rgba(0,0,0,0.6)", padding: "2px 4px", borderRadius: 2 }}>{clip.time}</div>
+                 {i < timeline.length -1 && <span style={{ color: "#D9A05B", position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)", zIndex: 5 }}><Icon name="play" size={10} /></span>}
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Audio Track 1 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", width: 55 }}>AUDIO 1</span>
-          <div style={{ flex: 1, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", gap: 3 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginRight: 8 }}>Dialogue / Foley Mix</span>
-            {Array.from({ length: 45 }).map((_, i) => (
-              <div key={i} style={{ flex: 1, height: Math.max(3, (Math.sin(i * 0.5) + 1) * 7), background: "#10B981", opacity: 0.6, borderRadius: 1 }} />
-            ))}
+          {/* Audio Tracks */}
+          <div style={{ height: 20, background: "rgba(217,160,91,0.1)", borderRadius: 4, marginBottom: 12, display: "flex", alignItems: "center", padding: "0 4px", overflow: "hidden" }}>
+             {/* Simulate waveform */}
+             {Array.from({length: 100}).map((_, i) => (
+               <div key={i} style={{ width: 2, height: Math.max(2, Math.sin(i * 0.3) * 12 + Math.random() * 8), background: "#D9A05B", margin: "0 1px", opacity: 0.7 }} />
+             ))}
           </div>
+
+          <div style={{ height: 20, background: "rgba(136,136,136,0.1)", borderRadius: 4, display: "flex", alignItems: "center", padding: "0 4px", overflow: "hidden" }}>
+             {Array.from({length: 100}).map((_, i) => (
+               <div key={i} style={{ width: 2, height: Math.max(2, Math.sin(i * 0.1) * 8 + Math.random() * 4), background: "#666", margin: "0 1px", opacity: 0.7 }} />
+             ))}
+          </div>
+
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

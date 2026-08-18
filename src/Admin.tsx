@@ -403,26 +403,26 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <b>Dashboard → Devices → Pair a phone</b>.
           </div>
           {phone.remoteOn && phoneQR ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "center", marginTop: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center", marginTop: 12 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Scan with your phone's camera to pair</div>
-                <div style={{ fontSize: 14, color: "#666", lineHeight: 1.5, maxWidth: 400 }}>Point your iPhone's camera at the QR code below to quickly and securely connect your device.</div>
+                <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6, color: "#F3F4F6" }}>Scan with your iOS or Android camera</div>
+                <div style={{ fontSize: 13.5, color: "#8A909D", lineHeight: 1.5, maxWidth: 420 }}>Point your iPhone, iPad, or Android camera at the QR code below to securely pair your mobile companion across your local Wi-Fi network.</div>
               </div>
-              <img src={phoneQR} alt="Scan to pair" style={{ width: 260, height: 260, borderRadius: 16, background: "#fff", padding: 12, border: "1px solid #EAEAEA", boxShadow: "0 8px 32px rgba(0,0,0,0.05)" }} />
+              <img src={phoneQR} alt="Scan to pair" style={{ width: 240, height: 240, borderRadius: 16, background: "#fff", padding: 12, border: "1px solid #282C36", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }} />
               
-              <div style={{ fontSize: 13, color: "#666", marginTop: 12, textAlign: "center", maxWidth: 350 }}>
-                Make sure your iPhone is connected to the same Wi-Fi network.
+              <div style={{ fontSize: 12.5, color: "#8A909D", textAlign: "center", maxWidth: 360 }}>
+                Make sure your iOS (iPhone/iPad) or Android device is on the same local Wi-Fi. Multiplatform support across macOS, Windows, Linux, iOS &amp; Android.
               </div>
               
-              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-                <button type="button" style={{ background: "#F26101", color: "white", padding: "12px 24px", borderRadius: 24, border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(242, 97, 1, 0.3)" }} onClick={() => onClose()}>
-                  Continue
+              <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                <button type="button" style={{ background: "#E8673A", color: "white", padding: "10px 24px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(232, 103, 58, 0.3)" }} onClick={() => onClose()}>
+                  Done
                 </button>
               </div>
             </div>
           ) : (
             <div style={{ marginTop: 12 }}>
-              <div className="admin-note" style={{ marginBottom: 10, lineHeight: 1.5 }}>Turn on phone access — SAM opens to your Wi-Fi with a private token, and you scan a QR to connect. {phoneMsg && <b style={{ color: "var(--accent-text)" }}>{phoneMsg}</b>}</div>
+              <div className="admin-note" style={{ marginBottom: 10, lineHeight: 1.5 }}>Turn on mobile companion access — SAM opens securely to your Wi-Fi with a private passkey token for iOS and Android. {phoneMsg && <b style={{ color: "var(--accent-text)" }}>{phoneMsg}</b>}</div>
               <button type="button" className="admin-save" style={{ width: "auto" }} onClick={async () => {
                 const sd = (window as any).samDesktop;
                 setPhoneMsg(sd?.relaunch ? "Turning on — restarting SAM…" : "Turning on…");
@@ -437,10 +437,10 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                 } else {
                   setPhoneMsg("✓ Enabled — restart SAM (quit & reopen), then come back here for the QR.");
                 }
-              }}>Turn on phone access</button>
+              }}>Turn on mobile companion</button>
             </div>
           )}
-          <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #EAEAEA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #232730", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><Icon name="bell" size={16} /> Device Alerts</div>
               <div style={{ fontSize: 13, color: "#666", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>

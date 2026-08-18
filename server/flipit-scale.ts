@@ -11,6 +11,8 @@ export interface KellyRiskAssessment {
   winLossRatio: number;
   fullKellyFraction: number;
   recommendedHalfKelly: number;
+  recommendedTradeSizeGbp: number;
+  status: "OK" | "DRAWDOWN_HALT" | "INSUFFICIENT_DATA";
   maxLeveragePermitted: number;
   drawdownPct: number;
   riskRegime: "AGGRESSIVE" | "BALANCED" | "DEFENSIVE" | "CIRCUIT_BREAKER_HALT";
@@ -75,16 +77,18 @@ export function computeKellyRiskShield(params: {
   }
 
   return {
-    currentEquityGbp: Number(current.toFixed(2)),
-    winRatePct: Number((winRate * 100).toFixed(2)),
-    winLossRatio: Number(b.toFixed(2)),
+    currentEquityGbp: current,
+    winRatePct: params.winRate * 100,
+    winLossRatio: params.avgWinGbp / Math.max(1, params.avgLossGbp),
     fullKellyFraction: fullKelly,
     recommendedHalfKelly: halfKelly,
+    recommendedTradeSizeGbp: 0, // Placeholder, execution engine manages sizing
+    status: regime === "CIRCUIT_BREAKER_HALT" ? "DRAWDOWN_HALT" : "OK",
     maxLeveragePermitted: maxLeverage,
     drawdownPct: Number(drawdown.toFixed(2)),
     riskRegime: regime,
     recommendedCashReservePct: cashReservePct,
-    hedgingAction,
+    hedgingAction
   };
 }
 
