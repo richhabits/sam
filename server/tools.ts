@@ -855,11 +855,11 @@ export async function grepSearchTool(input: GrepSearchInput | string): Promise<s
   }
   const max = Math.min(Math.max(1, Number(parsed?.maxResults) || 50), 200);
 
-  const flags: string[] = ["-n", "-I"];
+  const flags: string[] = ["--no-index", "-n", "-I"];
   if (parsed?.caseInsensitive !== false) flags.push("-i");
   if (parsed?.isRegex) flags.push("-E");
 
-  // 1. Try git grep
+  // 1. Try git grep (with --no-index so untracked working trees and temp dirs are searched)
   try {
     const cmd = `git -C ${shq(targetDir)} grep ${flags.join(" ")} ${shq(query)}`;
     const { stdout } = await sh(cmd, { timeout: 15000, maxBuffer: 10 * 1024 * 1024 });
