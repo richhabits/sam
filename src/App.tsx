@@ -2069,6 +2069,7 @@ export default function App() {
               <div className="siren-glow" style={{ width: 22, height: 22, borderRadius: '50%', background: 'radial-gradient(circle, #4ADE80 20%, #22C55E 80%)', boxShadow: '0 0 16px #4ADE80, inset 0 2px 4px rgba(255,255,255,0.8)' }} />
             </div>
             <svg width="130" height="28" viewBox="0 0 130 28" fill="none">
+              <title>AI routing engine activity waveform</title>
               <path d="M0 14 C30 14 40 4 75 4 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />
               <path d="M0 14 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.6" />
               <path d="M0 14 C30 14 40 24 75 24 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />

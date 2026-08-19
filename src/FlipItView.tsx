@@ -124,7 +124,9 @@ export default function FlipItView() {
     })
       .then((res) => res.json())
       .then((data) => { if (!data?.error) setShield(data); })
-      .catch(() => {});
+      .catch(() => {
+        // Backend unreachable — keep showing the last known shield values (or the ?? fallbacks).
+      });
   }, [totalEquity, peakEquity, spreads]);
 
   const [d, setD] = useState<{ refused?: boolean } | null>(null);
@@ -277,6 +279,7 @@ export default function FlipItView() {
         <div style={{ height: 200, border: "1px solid #1E293B", borderRadius: 8, overflow: "hidden", position: "relative" }}>
           {/* Equity Curve Mock */}
           <svg viewBox="0 0 800 200" style={{ width: "100%", height: "100%", opacity: 0.8 }}>
+            <title>Simulated backtest equity curve</title>
             <defs>
               <linearGradient id="eqGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#10B981" stopOpacity="0.4" />
@@ -640,7 +643,12 @@ export default function FlipItView() {
             <span style={{ fontSize: 14 }}>🏛️</span>
             <span><strong>FCA COMPLIANCE PENDING:</strong> FlipIt is operating in Simulated Beta Mode. No real fiat is currently custodied. Partnering with ZeroHash and ClearBank.</span>
           </div>
-          <a href="#" onClick={(e) => { e.preventDefault(); triggerToast("Opening Legal Disclaimers..."); }} style={{ color: "#A5B4FC", textDecoration: "underline", cursor: "pointer" }}>View Legal Stack</a>
+          <button
+            type="button"
+            onClick={() => triggerToast("Opening Legal Disclaimers...")}
+            style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "#A5B4FC", textDecoration: "underline", cursor: "pointer" }}>
+            View Legal Stack
+          </button>
         </div>
 
         {/* Top Stats Header */}
@@ -793,6 +801,7 @@ export default function FlipItView() {
                   {/* Sparkline mini */}
                   <div style={{ width: 44, height: 18 }}>
                     <svg viewBox="0 0 44 18" style={{ width: "100%", height: "100%" }}>
+                      <title>{s.pair} spread trend</title>
                       <polyline points="0,14 10,12 20,15 30,8 44,4" fill="none" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
                   </div>
@@ -837,6 +846,7 @@ export default function FlipItView() {
               {/* Candlestick & Kelly Envelope SVG */}
               <div style={{ flex: 1, position: "relative", minHeight: 160 }}>
                 <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
+                  <title>Kelly criterion risk envelope with recent candlesticks</title>
                   <defs>
                     <linearGradient id="kellyGlow" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />

@@ -83,14 +83,18 @@ export default function StudioView() {
     fetch("/api/studio/presets/motion")
       .then((res) => res.json())
       .then((data) => { if (Array.isArray(data?.cameras)) setCameraRigs(data.cameras); })
-      .catch(() => {});
+      .catch(() => {
+        // Backend unreachable — rigIdFor() falls back to MOTION_RIG_FALLBACK.
+      });
     fetch("/api/studio/presets/lenses")
       .then((res) => res.json())
       .then((data) => {
         const found = Array.isArray(data?.lenses) ? data.lenses.find((l: any) => l.id === DEFAULT_LENS_ID) : null;
         if (found) setLens(found);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Backend unreachable — the overlay keeps its static "PANAVISION 35MM T2.1" fallback text.
+      });
   }, []);
 
   const rigIdFor = (motionKey: string) => {
@@ -336,7 +340,7 @@ export default function StudioView() {
             {/* The actual video or realistic drone background. */}
             {genUrl ? (
               genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? (
-                <img src={genUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={genUrl} alt="Generated scene preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <video src={genUrl} autoPlay loop controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               )

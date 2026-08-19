@@ -36,9 +36,9 @@
         "noStaticElementInteractions": "warn",
         "useKeyWithClickEvents": "warn",
         "useButtonType": "warn",
-        "noSvgWithoutTitle": "warn",
-        "useAltText": "warn",
-        "useValidAnchor": "warn"
+        "noSvgWithoutTitle": "error",
+        "useAltText": "error",
+        "useValidAnchor": "error"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -49,7 +49,7 @@
         "noConfusingVoidType": "off",
         "noArrayIndexKey": "warn",
         "useIterableCallbackReturn": "warn",
-        "noEmptyBlockStatements": "warn"
+        "noEmptyBlockStatements": "error"
       },
       "complexity": {
         "noForEach": "off",
