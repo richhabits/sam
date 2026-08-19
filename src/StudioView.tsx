@@ -32,6 +32,15 @@ const MOTIONS = [
   { id: "orbit", label: "360 ORBIT", icon: "refresh" },
 ];
 
+// Maps the 3 motion buttons above onto real Higgsfield camera-rig ids from
+// server/studio-higgsfield.ts (fallback values if /api/studio/presets/motion is unreachable).
+const MOTION_RIG_FALLBACK: Record<string, string> = {
+  dolly: "dolly_in_rapid",
+  steadicam: "steadicam_tracking",
+  orbit: "orbit_360_cw",
+};
+const DEFAULT_LENS_ID = "anamorphic_panavision";
+
 const TIMELINE_CLIPS = [
   { id: "c1", time: "0:00", img: "/api/studio/preview/dusk", name: "Drone Shot" },
   { id: "c2", time: "0:15", img: "/api/studio/preview/noir", name: "Hallway" },
@@ -63,9 +72,31 @@ export default function StudioView() {
     return saved ? JSON.parse(saved) : [...TIMELINE_CLIPS];
   });
 
+  const [cameraRigs, setCameraRigs] = useState<{ id: string; label: string }[]>([]);
+  const [lens, setLens] = useState<{ id: string; name: string; focalLength: string; aperture: string } | null>(null);
+
   useEffect(() => {
     localStorage.setItem("studio_timeline", JSON.stringify(timeline));
   }, [timeline]);
+
+  useEffect(() => {
+    fetch("/api/studio/presets/motion")
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data?.cameras)) setCameraRigs(data.cameras); })
+      .catch(() => {});
+    fetch("/api/studio/presets/lenses")
+      .then((res) => res.json())
+      .then((data) => {
+        const found = Array.isArray(data?.lenses) ? data.lenses.find((l: any) => l.id === DEFAULT_LENS_ID) : null;
+        if (found) setLens(found);
+      })
+      .catch(() => {});
+  }, []);
+
+  const rigIdFor = (motionKey: string) => {
+    const fallback = MOTION_RIG_FALLBACK[motionKey];
+    return cameraRigs.find((r) => r.id === fallback)?.id || fallback;
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -84,21 +115,42 @@ export default function StudioView() {
     }, 800);
 
     try {
+      // Compile the real Higgsfield motion/lens prompt from the selected camera rig,
+      // instead of hand-concatenating "Motion: dolly" into the prompt string.
+      let compiledPrompt = `${prompt} | Style: ${style} | Motion: ${motion}`;
+      try {
+        const motionRes = await fetch("/api/studio/motion/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            basePrompt: `${prompt} | Style: ${style}`,
+            cameraRigId: rigIdFor(motion),
+            lensId: DEFAULT_LENS_ID,
+            motionIntensity: motionIntensity / 50,
+            aspectRatio: "16:9",
+          }),
+        });
+        const motionData = await motionRes.json();
+        if (motionData?.compiledPrompt) compiledPrompt = motionData.compiledPrompt;
+      } catch {
+        // Fall back to the plain concatenated prompt above if motion/control is unreachable.
+      }
+
       // Fire real backend request to generate video
       let res = await fetch("/api/studio/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: `${prompt} | Style: ${style} | Motion: ${motion}` })
+        body: JSON.stringify({ prompt: compiledPrompt })
       });
       let data = await res.json();
-      
+
       // Fallback to Image API if video requires key
       if (data.error && data.error.includes("free-credit key")) {
         showToast("📷 Video requires API key. Falling back to free image generation...");
         res = await fetch("/api/studio/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: `${prompt} | Style: ${style}` })
+          body: JSON.stringify({ prompt: compiledPrompt })
         });
         data = await res.json();
       }
@@ -319,7 +371,7 @@ export default function StudioView() {
 
                 <div style={{ position: "absolute", bottom: 20, right: 20, textAlign: "right" }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#FFF", letterSpacing: "1px" }}>ANAMORPHIC</div>
-                  <div style={{ fontSize: 11, color: "#AAA" }}>PANAVISION 35MM T2.1</div>
+                  <div style={{ fontSize: 11, color: "#AAA" }}>{lens ? `${lens.name.split(" ")[0].toUpperCase()} ${lens.focalLength.toUpperCase()} ${lens.aperture}` : "PANAVISION 35MM T2.1"}</div>
                 </div>
               </>
             )}

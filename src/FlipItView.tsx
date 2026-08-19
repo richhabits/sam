@@ -48,6 +48,15 @@ export default function FlipItView() {
     const saved = localStorage.getItem("flipit_dailyPL");
     return saved ? parseFloat(saved) : 420.50;
   });
+  const [peakEquity, setPeakEquity] = useState(() => {
+    const saved = localStorage.getItem("flipit_peakEquity");
+    if (saved) return parseFloat(saved);
+    const eq = localStorage.getItem("flipit_equity");
+    return eq ? parseFloat(eq) : 10540.00;
+  });
+  const [shield, setShield] = useState<{
+    winRatePct: number; drawdownPct: number; status: string; riskRegime: string;
+  } | null>(null);
 
   const [arbLogs, setArbLogs] = useState<{ time: string, tag: string, text: string, color: string }[]>(() => {
     const saved = localStorage.getItem("flipit_arbLogs");
@@ -86,12 +95,45 @@ export default function FlipItView() {
     localStorage.setItem("flipit_dailyPL", dailyPL.toString());
   }, [dailyPL]);
 
+  useEffect(() => {
+    setPeakEquity((prev) => Math.max(prev, totalEquity));
+  }, [totalEquity]);
+
+  useEffect(() => {
+    localStorage.setItem("flipit_peakEquity", peakEquity.toString());
+  }, [peakEquity]);
+
+  // Live Kelly risk shield from the backend. winRate is a fixed backtested-edge assumption
+  // (this paper rig's /execute always fills, so there's no local loss history to derive it from);
+  // avgWin/avgLoss are derived from the currently visible spread book at a ~1.8:1 payoff ratio.
+  useEffect(() => {
+    const avgWinGbp = spreads.length > 0
+      ? spreads.reduce((sum, s) => sum + s.estProfitGbp, 0) / spreads.length
+      : 150;
+    const avgLossGbp = avgWinGbp * 0.55;
+    fetch("/api/flipit/shield", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentEquityGbp: totalEquity,
+        peakEquityGbp: Math.max(peakEquity, totalEquity),
+        winRate: 0.68,
+        avgWinGbp,
+        avgLossGbp,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => { if (!data?.error) setShield(data); })
+      .catch(() => {});
+  }, [totalEquity, peakEquity, spreads]);
+
   const [d, setD] = useState<{ refused?: boolean } | null>(null);
 
   useEffect(() => {
+    // Note: getFlipit() reads a separate, unrelated paper-trading rig's state — its `equity`
+    // field must not overwrite this dashboard's own tracked totalEquity (flipit_equity).
     getFlipit()
       .then((data: any) => {
-        if (data?.equity) setTotalEquity(data.equity);
         setD(data);
       })
       .catch((e: any) => {
@@ -634,17 +676,19 @@ export default function FlipItView() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{
                 position: "relative", width: 42, height: 42, borderRadius: "50%",
-                background: "conic-gradient(#10B981 0% 68%, #1E293B 68% 100%)",
+                background: `conic-gradient(#10B981 0% ${shield?.winRatePct ?? 68}%, #1E293B ${shield?.winRatePct ?? 68}% 100%)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 boxShadow: "0 0 12px rgba(16,185,129,0.3)",
               }}>
                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#080C13", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "#fff" }}>
-                  68%
+                  {Math.round(shield?.winRatePct ?? 68)}%
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>Win-Rate</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#10B981" }}>Optimized</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: shield?.status === "DRAWDOWN_HALT" ? "#EF4444" : "#10B981" }}>
+                  {shield?.status === "DRAWDOWN_HALT" ? "Halted" : shield?.status === "INSUFFICIENT_DATA" ? "Calibrating" : "Optimized"}
+                </div>
               </div>
             </div>
 
@@ -657,7 +701,9 @@ export default function FlipItView() {
               <div style={{ fontSize: 18, color: "#F59E0B" }}>🛡️</div>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#F59E0B", textTransform: "uppercase" }}>Max Drawdown Shield</div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#10B981" }}>ACTIVE / 1.2%</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: shield?.status === "DRAWDOWN_HALT" ? "#EF4444" : "#10B981" }}>
+                  {shield?.status === "DRAWDOWN_HALT" ? "HALTED" : "ACTIVE"} / {(shield?.drawdownPct ?? 1.2).toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
