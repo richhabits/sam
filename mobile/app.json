@@ -47,6 +47,7 @@
       }
     },
     "android": {
+      "package": "com.hectic.sam.mobile",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FBEDE7",
@@ -54,6 +55,13 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_NETWORK_STATE",
+        "INTERNET"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {

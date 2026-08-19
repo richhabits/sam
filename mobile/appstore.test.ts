@@ -80,6 +80,13 @@ describe("submission metadata", () => {
     expect(app.scheme).toBe("sam");
     expect(String(app.ios.buildNumber)).toMatch(/^\d+$/);
   });
+
+  it("declares Android package name, version code and camera permissions for Android parity", () => {
+    expect(app.android.package).toBe("com.hectic.sam.mobile");
+    expect(typeof app.android.versionCode).toBe("number");
+    expect(app.android.permissions).toContain("CAMERA");
+    expect(app.android.permissions).toContain("INTERNET");
+  });
 });
 
 describe("signing the widget, which only fails away from Xcode.app", () => {
