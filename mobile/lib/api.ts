@@ -91,7 +91,7 @@ export async function claim(host: string, code: string): Promise<void> {
   // that pull in native/dev-only globals real device builds have but test/SSR contexts don't.
   // A static top-level import here would break every test file that imports api.ts at all,
   // not just ones that touch push.
-  import("./notify").then((m) => m.registerForExpoPushAsync(base, body.token)).catch(() => {});
+  import("./notify").then((m) => m.registerForExpoPushAsync(base, body.token)).catch(() => { /* push registration is best-effort */ });
 }
 
 function initSignal(userSignal?: AbortSignal | null, timeoutSignal?: AbortSignal): AbortSignal | undefined {

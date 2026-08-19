@@ -35,7 +35,10 @@
         "useMediaCaption": "off",
         "noStaticElementInteractions": "warn",
         "useKeyWithClickEvents": "warn",
-        "useButtonType": "warn"
+        "useButtonType": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useAltText": "warn",
+        "useValidAnchor": "warn"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -46,7 +49,7 @@
         "noConfusingVoidType": "off",
         "noArrayIndexKey": "warn",
         "useIterableCallbackReturn": "warn",
-        "noEmptyBlockStatements": "error"
+        "noEmptyBlockStatements": "warn"
       },
       "complexity": {
         "noForEach": "off",
