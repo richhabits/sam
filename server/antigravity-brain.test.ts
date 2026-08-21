@@ -116,4 +116,20 @@ describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => 
     expect(ds.heroComponentHtml).toContain("OmniCraft");
     expect(ds.cardComponentHtml).toContain("glass-card");
   });
+
+  it("queries the Antigravity knowledge graph in stats and query modes", async () => {
+    const { antigravityKnowledgeGraphTool } = await import("./tools.ts");
+    const stats = await antigravityKnowledgeGraphTool({ mode: "stats" });
+    expect(stats).toBeDefined();
+
+    const query = await antigravityKnowledgeGraphTool({ query: "agent", mode: "query" });
+    expect(query).toBeDefined();
+  });
+
+  it("executes the Antigravity self-heal diagnostic tool", async () => {
+    const { antigravitySelfHealTool } = await import("./tools.ts");
+    const report = await antigravitySelfHealTool();
+    expect(report).toContain("Antigravity Self-Healing Diagnostic Scan");
+  });
 });
+

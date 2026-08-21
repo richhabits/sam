@@ -137,7 +137,7 @@ import { executeAntigravityCognition, verifyFactualGrounding, verifySymbolDeclar
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
-import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
+import { parseCompilerDiagnostics, generateRepairPlan, runSelfHealingVerification } from "./code-repair.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { generateExecutiveDailyDeck } from "./executive-deck.ts";
@@ -2252,6 +2252,90 @@ export async function antigravityUiCompilerTool(input: {
   return lines.join("\n");
 }
 
+export async function antigravityKnowledgeGraphTool(input: {
+  query?: string;
+  mode?: "god_nodes" | "query" | "stats";
+  limit?: number;
+}): Promise<string> {
+  const mode = input?.mode || (input?.query ? "query" : "stats");
+  const limit = Math.min(input?.limit || 15, 50);
+  const q = String(input?.query || "").toLowerCase().trim();
+
+  const graphPath = join(process.cwd(), "graphify-out", "graph.json");
+  if (!existsSync(graphPath)) {
+    return "ℹ️ Knowledge graph not found at graphify-out/graph.json. Run `graphify update .` to generate.";
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(graphPath, "utf8"));
+    const nodes: any[] = raw.nodes || [];
+    const links: any[] = raw.links || raw.edges || [];
+
+    if (mode === "stats") {
+      const communities = new Set(nodes.map((n) => n.community).filter(Boolean));
+      return [
+        `🌐 S.A.M. Antigravity Knowledge Graph Telemetry:`,
+        `· Total Indexed Nodes: ${nodes.length.toLocaleString()}`,
+        `· Inter-Module Edges: ${links.length.toLocaleString()}`,
+        `· Detected Communities: ${communities.size.toLocaleString()}`,
+        `· Graph Format: AST Code & Structural Relations`,
+        `\nTip: Use mode: "god_nodes" to view primary architectural hubs or query: "<concept>" to search subgraphs.`,
+      ].join("\n");
+    }
+
+    if (mode === "god_nodes") {
+      const degreeMap = new Map<string, number>();
+      for (const l of links) {
+        const s = String(l.source);
+        const t = String(l.target);
+        degreeMap.set(s, (degreeMap.get(s) || 0) + 1);
+        degreeMap.set(t, (degreeMap.get(t) || 0) + 1);
+      }
+      const sorted = [...nodes].sort((a, b) => (degreeMap.get(b.id) || 0) - (degreeMap.get(a.id) || 0)).slice(0, limit);
+      const rows = sorted.map((n, idx) => `${idx + 1}. **${n.label}** (${n.source_file || n.id}) — ${degreeMap.get(n.id) || 0} connections [Community: ${n.community_name || n.community || 'N/A'}]`);
+      return `🏛️ Top Architectural God Nodes (Highest Connectivity):\n${rows.join("\n")}`;
+    }
+
+    const matched = nodes.filter((n) =>
+      (n.label && n.label.toLowerCase().includes(q)) ||
+      (n.source_file && n.source_file.toLowerCase().includes(q)) ||
+      (n.id && n.id.toLowerCase().includes(q)) ||
+      (n.community_name && n.community_name.toLowerCase().includes(q))
+    ).slice(0, limit);
+
+    if (!matched.length) return `No nodes found matching query "${input?.query}".`;
+
+    const rows = matched.map((n) => {
+      return `· **${n.label}** [${n.file_type || "code"}] in \`${n.source_file || n.id}\` (Community: ${n.community_name || n.community})`;
+    });
+
+    return `🔍 Knowledge Graph Matches for "${input?.query}" (${matched.length} nodes):\n${rows.join("\n")}`;
+  } catch (err: any) {
+    return `Error querying knowledge graph: ${err?.message}`;
+  }
+}
+
+export async function antigravitySelfHealTool(input?: {
+  fixInstruction?: string;
+}): Promise<string> {
+  const report = await runSelfHealingVerification();
+  const lines = [
+    `🛡️ Antigravity Self-Healing Diagnostic Scan:`,
+    `· Status: ${report.summary}`,
+    `· Error Count: ${report.diagnosticsCount}`,
+  ];
+
+  if (report.diagnosticsCount > 0) {
+    lines.push(`\n[Actionable Repair Candidates]`);
+    for (const c of report.candidates.slice(0, 5)) {
+      lines.push(`- File: ${c.filePath} (lines ${c.startLine}-${c.endLine}): ${c.instruction}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3552,6 +3636,20 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Compiling 100x ultra-premium design system for "${i?.brandName}"`,
     run: (i) => antigravityUiCompilerTool(i) },
+  { name: "antigravity_knowledge_graph", safe: true, description: "Queries SAM's Graphify knowledge graph to instantly discover god nodes, architectural hubs, subgraphs, and module connections without blind grep. input: { query?, mode?: 'god_nodes'|'query'|'stats', limit? }.", params: "{query?, mode?, limit?}",
+    args: {
+      query: { type: "string", desc: "Keyword or concept to search within the graph" },
+      mode: { type: "string", desc: "Query mode: 'god_nodes' (primary hubs), 'query' (search), or 'stats' (graph telemetry)" },
+      limit: { type: "number", desc: "Max nodes to return (default: 15)" }
+    },
+    activity: (i) => `Querying Antigravity knowledge graph (${i?.mode || (i?.query ? "query" : "stats")})`,
+    run: (i) => antigravityKnowledgeGraphTool(i) },
+  { name: "antigravity_self_heal", safe: true, description: "Executes an automated closed-loop diagnostic scan and compiler check, generating pinpoint AST repair candidates to auto-fix code before returning to the user. input: { fixInstruction? }.", params: "{fixInstruction?}",
+    args: {
+      fixInstruction: { type: "string", desc: "Optional instruction guiding the self-healing repair" }
+    },
+    activity: () => "Running Antigravity autonomous closed-loop self-healing diagnostic scan",
+    run: (i) => antigravitySelfHealTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },

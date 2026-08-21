@@ -37,4 +37,13 @@ src/App.tsx(102,15): error TS2322: Type 'number' is not assignable to type 'stri
     expect(plan.diagnosticsCount).toBe(0);
     expect(plan.summary).toContain("100% clean");
   });
+
+  it("runSelfHealingVerification returns structured report without crashing", async () => {
+    const { runSelfHealingVerification } = await import("./code-repair.ts");
+    const res = await runSelfHealingVerification();
+    expect(res).toBeDefined();
+    expect(typeof res.diagnosticsCount).toBe("number");
+    expect(typeof res.summary).toBe("string");
+  });
 });
+

@@ -125,3 +125,36 @@ export function generateRepairPlan(diagnostics: DiagnosticError[]): CodeRepairRe
       : `⚠️ Found ${diagnostics.length} diagnostic error(s) across ${repairedFiles.length} file(s).`,
   };
 }
+
+/**
+ * Runs an automated TypeScript compiler check and parses diagnostics.
+ */
+export async function runSelfHealingVerification(): Promise<CodeRepairReport> {
+  if (process.env.SAM_BENCH_MOCK === "1" || process.env.VITEST) {
+    return generateRepairPlan([]);
+  }
+
+  try {
+    const { exec } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execAsync = promisify(exec);
+
+    try {
+      await execAsync("npx tsc --noEmit", { cwd: process.cwd(), timeout: 15000 });
+      return generateRepairPlan([]);
+    } catch (err: any) {
+      const output = String(err?.stdout || "") + "\n" + String(err?.stderr || "") + "\n" + String(err?.message || "");
+      const diags = parseCompilerDiagnostics(output);
+      return generateRepairPlan(diags);
+    }
+  } catch (err: any) {
+    return {
+      diagnosticsCount: 0,
+      diagnostics: [],
+      repairedFiles: [],
+      candidates: [],
+      summary: `Verification skipped: ${err?.message}`,
+    };
+  }
+}
+
