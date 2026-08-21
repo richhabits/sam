@@ -517,12 +517,25 @@ export interface PremiumDesignSystemResult {
  * 100x Ultra-Premium Design System & Glassmorphism Compiler:
  * Generates bespoke, production-ready design tokens, CSS variables, and HTML/React component blueprints.
  */
+// Callers embed this HTML directly into live-served pages (server/yard/preview.ts) — brandName
+// is caller-supplied text with no format constraint, so it needs escaping wherever it lands in
+// markup. Kept separate from `brand`, which stays raw for the returned brandName data field.
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function generatePremiumDesignSystem(input: {
   brandName: string;
   theme?: "obsidian" | "midnight-slate" | "cyberpunk" | "luxury-gold";
   fontDisplay?: string;
 }): PremiumDesignSystemResult {
   const brand = String(input?.brandName || "Alpha").trim();
+  const brandHtml = escapeHtml(brand);
   const theme = input?.theme || "obsidian";
   const displayFont = input?.fontDisplay || "Plus Jakarta Sans, sans-serif";
 
@@ -726,7 +739,7 @@ body {
     <span class="pulse-dot"></span> 100x Ultra-Premium Architecture Active
   </div>
   <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 20px 0; background: linear-gradient(135deg, #FFFFFF 0%, #94A3B8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    ${brand} Built for Maximum Impact.
+    ${brandHtml} Built for Maximum Impact.
   </h1>
   <p style="font-size: 1.2rem; color: var(--text-sub); max-width: 680px; margin: 0 auto 36px auto; line-height: 1.6;">
     Uncompromising design aesthetics, real-time speed, and state-of-the-art glassmorphism craftsmanship.

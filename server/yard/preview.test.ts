@@ -138,5 +138,13 @@ describe("listing what is in a project", () => {
     const fallbackHtml = renderProjectPreviewHtml("nonexistent-project");
     expect(fallbackHtml).toContain("not found in The Yard");
   });
+
+  it("escapes an unmanaged slug in the fallback page — isManagedProject does no format validation, so this is live-servable HTML built from arbitrary caller input", async () => {
+    const { renderProjectPreviewHtml } = await import("./preview.ts");
+    const payload = '<script>alert(1)</script>';
+    const html = renderProjectPreviewHtml(payload);
+    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
 });
 

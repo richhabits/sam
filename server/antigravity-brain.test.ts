@@ -117,6 +117,14 @@ describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => 
     expect(ds.cardComponentHtml).toContain("glass-card");
   });
 
+  it("escapes brandName in the returned HTML — brandName is caller-supplied text embedded in markup that server/yard/preview.ts serves live", () => {
+    const payload = '<script>alert(1)</script>';
+    const ds = generatePremiumDesignSystem({ brandName: payload, theme: "obsidian" });
+    expect(ds.brandName).toBe(payload); // the raw data field stays raw
+    expect(ds.heroComponentHtml).not.toContain("<script>alert(1)</script>");
+    expect(ds.heroComponentHtml).toContain("&lt;script&gt;");
+  });
+
   it("queries the Antigravity knowledge graph in stats and query modes", async () => {
     const { antigravityKnowledgeGraphTool } = await import("./tools.ts");
     const stats = await antigravityKnowledgeGraphTool({ mode: "stats" });
