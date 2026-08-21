@@ -95,4 +95,18 @@ describe('using the space, not just capping it', () => {
     expect(centreWhenRoomy(layoutFor(IPHONE_SE))).toEqual({});
     expect(centreWhenRoomy(layoutFor(SLIDE_OVER))).toEqual({});
   });
+
+  it('accurately resolves device tiers and grid column counts across viewports', async () => {
+    const { deviceTierFor } = await import('./layout');
+    expect(deviceTierFor(320)).toBe('compact_phone');
+    expect(deviceTierFor(390)).toBe('phone');
+    expect(deviceTierFor(600)).toBe('phablet');
+    expect(deviceTierFor(834)).toBe('tablet');
+    expect(deviceTierFor(1440)).toBe('desktop');
+
+    expect(layoutFor(320).gridColumns).toBe(1);
+    expect(layoutFor(600).gridColumns).toBe(2);
+    expect(layoutFor(834).gridColumns).toBe(3);
+    expect(layoutFor(1440).gridColumns).toBe(4);
+  });
 });

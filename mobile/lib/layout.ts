@@ -35,6 +35,19 @@ export interface Layout {
   gutter: number;
   /** Brand mark and other fixed art can afford to grow when there is room. */
   markSize: number;
+  /** Specific device tier categorization for granular responsive adapting */
+  tier: "compact_phone" | "phone" | "phablet" | "tablet" | "desktop";
+  /** Optimal column count for grid layouts on this viewport */
+  gridColumns: number;
+}
+
+export function deviceTierFor(width: number): "compact_phone" | "phone" | "phablet" | "tablet" | "desktop" {
+  const w = Number.isFinite(width) && width > 0 ? width : 0;
+  if (w <= 360) return "compact_phone";
+  if (w <= 480) return "phone";
+  if (w < REGULAR_WIDTH) return "phablet";
+  if (w <= 1024) return "tablet";
+  return "desktop";
 }
 
 export function layoutFor(width: number): Layout {
@@ -43,6 +56,12 @@ export function layoutFor(width: number): Layout {
   // a tablet layout on every phone launch.
   const w = Number.isFinite(width) && width > 0 ? width : 0;
   const isRegular = w >= REGULAR_WIDTH;
+  const tier = deviceTierFor(w);
+
+  let gridColumns = 1;
+  if (tier === "phablet") gridColumns = 2;
+  else if (tier === "tablet") gridColumns = 3;
+  else if (tier === "desktop") gridColumns = 4;
 
   return {
     isRegular,
@@ -51,6 +70,8 @@ export function layoutFor(width: number): Layout {
     contentMaxWidth: isRegular ? READABLE_MAX : Infinity,
     gutter: isRegular ? 32 : 16,
     markSize: isRegular ? 76 : 56,
+    tier,
+    gridColumns,
   };
 }
 

@@ -595,7 +595,28 @@ body {
   font-family: var(--font-body);
   margin: 0;
   padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-accent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary-accent);
+  border-radius: 4px;
 }
 
 .glass-card {
@@ -617,6 +638,7 @@ body {
 .glow-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 12px 24px;
   background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
@@ -628,11 +650,17 @@ body {
   cursor: pointer;
   box-shadow: 0 8px 20px -4px var(--glow-shadow);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .glow-btn:hover {
   transform: scale(1.02);
   filter: brightness(1.1);
+}
+
+.glow-btn:active {
+  transform: scale(0.98);
 }
 
 .badge-pulse {
@@ -660,6 +688,35 @@ body {
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Multi-Device Responsive Breakpoints */
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 48px 16px !important;
+  }
+  .glow-btn {
+    width: 100%;
+  }
+  .glass-card {
+    border-radius: 12px;
+    padding: 20px !important;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 1024px) {
+  .hero-section {
+    padding: 64px 20px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 `.trim();
 
