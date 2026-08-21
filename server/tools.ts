@@ -3499,7 +3499,7 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Inspecting real-time streaming voice agent [${i?.sessionId || "default-mic"}]`,
     run: (i) => voiceAgentStreamTool(i) },
-  { name: "antigravity_cognition", safe: true, description: "Executes Antigravity-grade multi-branch speculative reasoning, factual workspace grounding, and zero-hallucination verification. input: { taskPrompt, maxBranches? }.", params: "{taskPrompt, maxBranches?}",
+  { name: "antigravity_cognition", safe: true, description: "Picks a strategy from fixed templates (not per-task LLM reasoning) and empirically verifies file paths, imported symbols, and math claims against real workspace state — confidence is scaled by that real grounding check. input: { taskPrompt, maxBranches? }.", params: "{taskPrompt, maxBranches?}",
     args: {
       taskPrompt: { type: "string", required: true, desc: "Complex task, engineering problem, or mathematical claim to evaluate" },
       maxBranches: { type: "number", desc: "Number of speculative hypotheses to generate (default: 3)" }

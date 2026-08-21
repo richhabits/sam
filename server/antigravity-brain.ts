@@ -413,7 +413,10 @@ export function executeAntigravityCognition(
     });
   }
 
-  // Select optimal hypothesis based on confidence
+  // Select optimal hypothesis. NOTE: candidateHypotheses above are fixed strategy templates,
+  // not per-task LLM-generated reasoning — their factualConfidence values are constants, so this
+  // sort is deterministic (Hypothesis A always wins) regardless of taskPrompt. Real adaptive
+  // branch generation would need an actual model call per hypothesis; this is heuristic routing.
   const sorted = [...candidateHypotheses].sort((a, b) => b.factualConfidence - a.factualConfidence);
   const optimal = sorted[0];
 
@@ -435,11 +438,17 @@ export function executeAntigravityCognition(
   telemetryState.totalInvocations++;
   telemetryState.totalLatencySumMs += executionTimeMs;
 
+  // synthesizedConfidence must reflect real evidence, not just the fixed template's constant —
+  // otherwise a task with detected discrepancies (nonexistent file, broken math, unresolved
+  // symbol) would report the same 0.98 as a fully-grounded one. Blend the template's baseline
+  // with the actually-measured grounding score so a real problem visibly lowers the number.
+  const synthesizedConfidence = Number((optimal.factualConfidence * (grounding.score / 100)).toFixed(4));
+
   return {
     taskId,
     taskPrompt: cleanPrompt,
     optimalStrategy: optimal.reasoningVector,
-    synthesizedConfidence: optimal.factualConfidence,
+    synthesizedConfidence,
     candidateHypotheses,
     groundingReport: grounding,
     recommendedToolSequence: toolSeq,
