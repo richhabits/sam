@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWebhookSignature } from "./stripe-payments.ts";
+import { FlipItExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
   app.post("/api/flipit/rebalance", (req, res) => {
@@ -107,16 +108,44 @@ export function registerFlipItScaleRoutes(app: Express) {
     }
   });
 
-  // Arbitrage Execute Route
-  app.post("/api/flipit/execute", (req, res) => {
+  // Arbitrage & Market Order Execute Route
+  app.post("/api/flipit/execute", async (req, res) => {
     try {
-      const { spreadId, estProfitGbp } = req.body || {};
-      if (!spreadId) return res.status(400).json({ error: "spreadId required" });
-      
-      // Simulate real latency of trade execution
-      setTimeout(() => {
-        res.json({ success: true, actualProfitGbp: estProfitGbp, status: "FILLED" });
-      }, 600);
+      const { spreadId, pair, sellEx, buyEx, spreadPct, sellPrice, buyPrice, tokenId, price, size, side } = req.body || {};
+
+      if (tokenId) {
+        // Direct Polymarket CLOB Order Execution
+        const clobRes = await submitPolymarketClobOrder({
+          tokenId: String(tokenId),
+          price: Number(price || 0.5),
+          size: Number(size || 10),
+          side: side === "SELL" ? "SELL" : "BUY",
+        });
+        return res.json(clobRes);
+      }
+
+      // Cross-Exchange Arbitrage Execution via Risk Manager
+      const engine = new FlipItExecutionEngine({
+        mode: (process.env.POLYMARKET_ADDRESS && process.env.POLYMARKET_API_KEY) ? "live" : "paper",
+      });
+
+      const order = engine.executeArbitrage(
+        pair || "BTC/GBP",
+        sellEx || "binance",
+        buyEx || "kraken",
+        spreadPct != null ? Number(spreadPct) : 0.005,
+        sellPrice != null ? Number(sellPrice) : 52000,
+        buyPrice != null ? Number(buyPrice) : 51740
+      );
+
+      if (!order) {
+        return res.status(422).json({
+          success: false,
+          error: "Trade rejected by Kelly risk shield or capital constraints.",
+        });
+      }
+
+      res.json({ success: true, order });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Failed to execute trade" });
     }

@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────
+//  S.A.M. · FLIPIT REAL-TIME MARKET DATA INGESTION ENGINE
+//
+//  Production WebSocket connections to Binance and Kraken for
+//  live order book ticker data. Falls back to REST polling when
+//  WebSocket is unavailable. No random simulation.
+// ─────────────────────────────────────────────────────────────
+
 import { EventEmitter } from "node:events";
 
 export interface OrderBookTick {
@@ -12,104 +20,276 @@ export interface OrderBookTick {
 
 export interface IngestionOptions {
   pairs: string[];
-  mockMode?: boolean;
+  exchanges?: Array<"binance" | "kraken">;
+  restFallbackIntervalMs?: number;
+}
+
+/**
+ * Converts a SAM pair format ("BTC/GBP") to Binance stream format ("btcgbp").
+ */
+export function toBinanceSymbol(pair: string): string {
+  return pair.replace("/", "").toLowerCase();
+}
+
+/**
+ * Converts a SAM pair format ("BTC/GBP") to Kraken API format ("BTC/GBP" — already correct).
+ */
+export function toKrakenSymbol(pair: string): string {
+  return pair.toUpperCase();
+}
+
+/**
+ * Parses a Binance bookTicker WebSocket message into an OrderBookTick.
+ */
+export function parseBinanceTick(data: any, pair: string): OrderBookTick | null {
+  try {
+    const msg = typeof data === "string" ? JSON.parse(data) : data;
+    if (!msg || typeof msg.b !== "string") return null;
+    return {
+      exchange: "binance",
+      pair,
+      bid: Number(msg.b),
+      ask: Number(msg.a),
+      bidVol: Number(msg.B),
+      askVol: Number(msg.A),
+      timestamp: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parses a Kraken v2 ticker WebSocket message into an OrderBookTick.
+ */
+export function parseKrakenTick(data: any, pair: string): OrderBookTick | null {
+  try {
+    const msg = typeof data === "string" ? JSON.parse(data) : data;
+    if (msg?.channel !== "ticker" || !msg?.data?.[0]) return null;
+    const d = msg.data[0];
+    return {
+      exchange: "kraken",
+      pair,
+      bid: Number(d.bid),
+      ask: Number(d.ask),
+      bidVol: Number(d.bid_qty || 0),
+      askVol: Number(d.ask_qty || 0),
+      timestamp: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches a single REST snapshot from Binance's public bookTicker endpoint.
+ */
+export async function fetchBinanceRestTick(
+  pair: string,
+  options: { fetcher?: typeof fetch } = {}
+): Promise<OrderBookTick | null> {
+  const fetchImpl = options.fetcher || fetch;
+  const symbol = toBinanceSymbol(pair).toUpperCase();
+  try {
+    const res = await fetchImpl(
+      `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const d = await res.json();
+    return {
+      exchange: "binance",
+      pair,
+      bid: Number(d.bidPrice),
+      ask: Number(d.askPrice),
+      bidVol: Number(d.bidQty),
+      askVol: Number(d.askQty),
+      timestamp: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches a single REST snapshot from Kraken's public ticker endpoint.
+ */
+export async function fetchKrakenRestTick(
+  pair: string,
+  options: { fetcher?: typeof fetch } = {}
+): Promise<OrderBookTick | null> {
+  const fetchImpl = options.fetcher || fetch;
+  const krakenPair = pair.replace("/", "");
+  try {
+    const res = await fetchImpl(
+      `https://api.kraken.com/0/public/Ticker?pair=${krakenPair}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const body = await res.json();
+    if (body?.error?.length) return null;
+    const entries = Object.values(body?.result || {}) as any[];
+    if (!entries.length) return null;
+    const d = entries[0];
+    return {
+      exchange: "kraken",
+      pair,
+      bid: Number(d.b?.[0] || 0),
+      ask: Number(d.a?.[0] || 0),
+      bidVol: Number(d.b?.[2] || 0),
+      askVol: Number(d.a?.[2] || 0),
+      timestamp: Date.now(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * The Real-Time Data Ingestion Engine.
- * Responsible for managing WebSocket connections to major exchanges,
- * normalizing their diverse data formats into standard OrderBookTicks,
- * and broadcasting them to the internal event bus.
  */
 export class FlipItIngestEngine extends EventEmitter {
   private pairs: string[];
-  private mockMode: boolean;
-  private running: boolean = false;
-  private mockIntervals: NodeJS.Timeout[] = [];
+  private exchanges: Array<"binance" | "kraken">;
+  private running = false;
+  private sockets: any[] = [];
+  private restIntervals: NodeJS.Timeout[] = [];
+  private restFallbackMs: number;
 
   constructor(options: IngestionOptions) {
     super();
     this.pairs = options.pairs;
-    this.mockMode = options.mockMode ?? true;
+    this.exchanges = options.exchanges || ["binance", "kraken"];
+    this.restFallbackMs = options.restFallbackIntervalMs || 5000;
   }
 
-  public start() {
+  public start(): void {
     if (this.running) return;
     this.running = true;
-    console.log(`[INGEST] Starting FlipIt Data Ingestion for pairs: ${this.pairs.join(", ")}`);
 
-    if (this.mockMode) {
-      this.startMockFeeds();
-    } else {
-      this.connectBinance();
-      this.connectKraken();
+    for (const exchange of this.exchanges) {
+      if (exchange === "binance") this.connectBinance();
+      if (exchange === "kraken") this.connectKraken();
     }
   }
 
-  public stop() {
+  public stop(): void {
     this.running = false;
-    for (const interval of this.mockIntervals) {
+    for (const ws of this.sockets) {
+      try {
+        if (typeof ws?.close === "function") ws.close();
+      } catch { /* ignore */ }
+    }
+    this.sockets = [];
+    for (const interval of this.restIntervals) {
       clearInterval(interval);
     }
-    this.mockIntervals = [];
-    console.log("[INGEST] Stopped data ingestion streams.");
+    this.restIntervals = [];
   }
 
-  private connectBinance() {
-    // In production, instantiate robust WebSocket connection to wss://stream.binance.com:9443/ws
-    // For this prototype architecture, we assume connection success and binding
-    console.log("[INGEST] (Prod) Connected to Binance WebSocket Feed.");
-  }
+  private connectBinance(): void {
+    const streams = this.pairs.map((p) => `${toBinanceSymbol(p)}@bookTicker`).join("/");
+    const url = `wss://stream.binance.com:9443/stream?streams=${streams}`;
 
-  private connectKraken() {
-    // In production, instantiate robust WebSocket connection to wss://ws.kraken.com
-    console.log("[INGEST] (Prod) Connected to Kraken WebSocket Feed.");
-  }
+    try {
+      const WsConstructor = (globalThis as any).WebSocket;
+      if (!WsConstructor) {
+        this.startRestFallback("binance");
+        return;
+      }
 
-  /**
-   * Simulates high-frequency ticks for the arbitrage scanner.
-   */
-  private startMockFeeds() {
-    const exchanges: Array<"binance" | "kraken" | "coinbase"> = ["binance", "kraken", "coinbase"];
-    
-    // Simulate base prices for pairs
-    const basePrices: Record<string, number> = {
-      "BTC/GBP": 52000,
-      "ETH/GBP": 2800,
-      "SOL/GBP": 110
-    };
+      const ws = new WsConstructor(url);
+      this.sockets.push(ws);
 
-    for (const pair of this.pairs) {
-      const basePrice = basePrices[pair] || 1000;
+      ws.onmessage = (event: any) => {
+        try {
+          const envelope = JSON.parse(event.data?.toString() || "{}");
+          const streamName = envelope?.stream || "";
+          const matchedPair = this.pairs.find((p) => streamName.startsWith(toBinanceSymbol(p)));
+          if (!matchedPair) return;
+          const tick = parseBinanceTick(envelope?.data, matchedPair);
+          if (tick) this.emit("tick", tick);
+        } catch { /* malformed frame */ }
+      };
 
-      // Tick every ~50ms to simulate high frequency
-      const interval = setInterval(() => {
-        if (!this.running) return;
+      ws.onerror = () => {
+        this.startRestFallback("binance");
+      };
 
-        // Pick a random exchange to update
-        const ex = exchanges[Math.floor(Math.random() * exchanges.length)];
-        
-        // Random walk noise
-        const noise = (Math.random() - 0.5) * (basePrice * 0.001); // 0.1% volatility
-        const spread = basePrice * 0.0002; // 2bps spread
-
-        const currentMid = basePrice + noise;
-        
-        const tick: OrderBookTick = {
-          exchange: ex,
-          pair,
-          bid: Number((currentMid - spread / 2).toFixed(2)),
-          ask: Number((currentMid + spread / 2).toFixed(2)),
-          bidVol: Number((Math.random() * 5).toFixed(4)),
-          askVol: Number((Math.random() * 5).toFixed(4)),
-          timestamp: Date.now()
-        };
-
-        // Broadcast to the internal pub/sub event bus
-        this.emit("tick", tick);
-      }, 50 + Math.random() * 100);
-
-      this.mockIntervals.push(interval);
+      ws.onclose = () => {
+        if (this.running) {
+          setTimeout(() => this.connectBinance(), 3000);
+        }
+      };
+    } catch {
+      this.startRestFallback("binance");
     }
+  }
+
+  private connectKraken(): void {
+    const url = "wss://ws.kraken.com/v2";
+
+    try {
+      const WsConstructor = (globalThis as any).WebSocket;
+      if (!WsConstructor) {
+        this.startRestFallback("kraken");
+        return;
+      }
+
+      const ws = new WsConstructor(url);
+      this.sockets.push(ws);
+
+      ws.onopen = () => {
+        try {
+          const subscribeMsg = JSON.stringify({
+            method: "subscribe",
+            params: {
+              channel: "ticker",
+              symbol: this.pairs.map(toKrakenSymbol),
+              event_trigger: "bbo",
+            },
+          });
+          ws.send(subscribeMsg);
+        } catch { /* ignore */ }
+      };
+
+      ws.onmessage = (event: any) => {
+        try {
+          const msg = JSON.parse(event.data?.toString() || "{}");
+          if (msg?.channel !== "ticker" || !msg?.data?.[0]) return;
+          const symbol = msg.data[0]?.symbol || "";
+          const matchedPair = this.pairs.find(
+            (p) => toKrakenSymbol(p) === symbol || symbol.includes(p.replace("/", ""))
+          );
+          if (!matchedPair) return;
+          const tick = parseKrakenTick(msg, matchedPair);
+          if (tick) this.emit("tick", tick);
+        } catch { /* malformed frame */ }
+      };
+
+      ws.onerror = () => {
+        this.startRestFallback("kraken");
+      };
+
+      ws.onclose = () => {
+        if (this.running) {
+          setTimeout(() => this.connectKraken(), 3000);
+        }
+      };
+    } catch {
+      this.startRestFallback("kraken");
+    }
+  }
+
+  private startRestFallback(exchange: "binance" | "kraken"): void {
+    const fetchFn = exchange === "binance" ? fetchBinanceRestTick : fetchKrakenRestTick;
+    const interval = setInterval(async () => {
+      if (!this.running) return;
+      for (const pair of this.pairs) {
+        const tick = await fetchFn(pair);
+        if (tick) this.emit("tick", tick);
+      }
+    }, this.restFallbackMs);
+    this.restIntervals.push(interval);
   }
 }
