@@ -137,28 +137,33 @@ export async function fetchBrainTelemetry(): Promise<any> {
 
 /**
  * Mobile FlipIt Portfolio & Risk Shield Monitor
+ *
+ * There is no real "/api/flipit/scale/risk" — the actual shield route (POST
+ * /api/flipit/shield) requires real portfolio state (equity, win rate, etc.) as
+ * body params this zero-argument screen call has no way to supply. The live
+ * signals feed is the closest real, parameterless equivalent for a mobile monitor.
  */
 export async function fetchFlipItRiskShield(): Promise<any> {
-  return api("/api/flipit/scale/risk");
+  return api("/api/flipit/signals");
 }
 
 /**
  * Mobile Revenue & Commercial Opportunities Radar
  */
 export async function fetchRevenueOpportunities(): Promise<any> {
-  return api("/api/revenue/opportunities");
+  return api("/api/revenue/hunt", { method: "POST", body: "{}" });
 }
 
 /**
  * Mobile Yard Tasks & Pending Builds
  */
 export async function fetchYardTasks(): Promise<any> {
-  return api("/api/yard/tasks");
+  return api("/api/yard");
 }
 
 /**
  * Mobile Voice Session Status
  */
 export async function fetchVoiceSessionState(): Promise<any> {
-  return api("/api/voice/session");
+  return api("/api/voice/status");
 }

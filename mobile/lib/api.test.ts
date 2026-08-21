@@ -70,4 +70,59 @@ describe('claim() actually completes a pairing request', () => {
       })
     );
   });
+
+  // These four shipped pointing at endpoints that don't exist on the server at all
+  // (/api/flipit/scale/risk, /api/revenue/opportunities, /api/yard/tasks, /api/voice/session)
+  // — every call would have 404'd. There was no test for any of them, so nothing caught it.
+  // Pinned to the real registered routes here so a future rename can't silently drift again.
+  it('fetchFlipItRiskShield calls the real, parameterless signals route', async () => {
+    const { fetchFlipItRiskShield, setHost } = await import('./api');
+    await setHost('http://127.0.0.1:8787');
+    store.set('sam.token', 'test_token');
+
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ signals: [] }) });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await fetchFlipItRiskShield();
+    expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:8787/api/flipit/signals', expect.anything());
+  });
+
+  it('fetchRevenueOpportunities POSTs to the real /api/revenue/hunt route', async () => {
+    const { fetchRevenueOpportunities, setHost } = await import('./api');
+    await setHost('http://127.0.0.1:8787');
+    store.set('sam.token', 'test_token');
+
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await fetchRevenueOpportunities();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/api/revenue/hunt',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('fetchYardTasks calls the real /api/yard route', async () => {
+    const { fetchYardTasks, setHost } = await import('./api');
+    await setHost('http://127.0.0.1:8787');
+    store.set('sam.token', 'test_token');
+
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ on: true }) });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await fetchYardTasks();
+    expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:8787/api/yard', expect.anything());
+  });
+
+  it('fetchVoiceSessionState calls the real /api/voice/status route', async () => {
+    const { fetchVoiceSessionState, setHost } = await import('./api');
+    await setHost('http://127.0.0.1:8787');
+    store.set('sam.token', 'test_token');
+
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await fetchVoiceSessionState();
+    expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:8787/api/voice/status', expect.anything());
+  });
 });
