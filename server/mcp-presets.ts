@@ -45,6 +45,8 @@ export const MCP_PRESETS: McpPreset[] = [
     command: "npx", args: ["-y", "@modelcontextprotocol/server-slack"], fields: [{ env: "SLACK_BOT_TOKEN", label: "Bot token", placeholder: "xoxb-…" }, { env: "SLACK_TEAM_ID", label: "Team ID" }], docs: "https://github.com/modelcontextprotocol/servers" },
   { id: "brave", label: "Brave Search", emoji: "🦁", official: true, note: "independent web search (extra source for research)",
     command: "npx", args: ["-y", "@modelcontextprotocol/server-brave-search"], fields: [{ env: "BRAVE_API_KEY", label: "API key" }], docs: "https://github.com/modelcontextprotocol/servers" },
+  { id: "firecrawl", label: "Firecrawl", emoji: "🔥", official: true, note: "search, scrape, and crawl web pages into clean markdown",
+    command: "npx", args: ["-y", "firecrawl-mcp"], fields: [{ env: "FIRECRAWL_API_KEY", label: "API key", placeholder: "fc-…" }], docs: "https://docs.firecrawl.dev/mcp" },
 
   // ── 🧠 Agent infra ──
   { id: "headroom", label: "Headroom (compression)", emoji: "🗜️", official: true, note: "compress context 60-95% — the full engine (SmartCrusher/AST), on top of SAM built-in",

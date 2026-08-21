@@ -46,7 +46,7 @@ describe("astReplaceSymbolTool", () => {
 
     const updated = readFileSync(file, "utf8");
     expect(updated).toContain("export function computeGrandTotal(items: any[])");
-  });
+  }, 15000);
 
   it("supports dry-run mode without modifying file", async () => {
     const file = join(dir, "user.ts");

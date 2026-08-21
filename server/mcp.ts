@@ -71,9 +71,9 @@ export async function loadMcpTools(): Promise<Tool[]> {
       });
       const client = new Client({ name: "sam", version: "1.0.0" });
       const timeout = (ms: number, msg: string) => new Promise<never>((_, rej) => setTimeout(() => rej(new Error(msg)), ms));
-      await Promise.race([client.connect(transport), timeout(10000, "connect timeout")]);
+      await Promise.race([client.connect(transport), timeout(25000, "connect timeout")]);
       clients.push(client);
-      const { tools } = await Promise.race([client.listTools(), timeout(10000, "listTools timeout")]);
+      const { tools } = await Promise.race([client.listTools(), timeout(25000, "listTools timeout")]);
       for (const t of tools) {
         const name = `mcp_${label}_${t.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 60);
         // Everything an MCP server returns is third-party text — an issue body, a customer name,
