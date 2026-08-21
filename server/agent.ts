@@ -20,6 +20,7 @@ import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
 import { recordAuditEvent } from "./audit-ledger.ts";
+import { runAntigravitySilentVerifier } from "./antigravity-brain.ts";
 
 // Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
 // get up to 12 steps, and massive/50x multi-stage workflows get up to 50 steps. Never a flat ceiling —
@@ -424,13 +425,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
       }
       result = await tool.run(call.input); 
       // THE ANTIGRAVITY SILENT VERIFIER LOOP
-      if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file" || tool.name === "edit_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
-        try {
-          execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
-        } catch (tscError: any) {
-          result += `\n\n[Verification Failed] tsc --noEmit returned an error:\n${tscError.stdout || tscError.message}\n\nPlease fix this syntax error immediately before finishing your answer.`;
-        }
-      }
+      result = runAntigravitySilentVerifier(tool.name, call.input, result);
     }
     catch (e: any) { result = `that didn't work (${e?.message || e})`; }
     prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${fenceToolResult(tool.name, result)}`);
@@ -617,13 +612,7 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       }
       result = await tool.run(call.input);
       // THE ANTIGRAVITY SILENT VERIFIER LOOP
-      if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
-        try {
-          execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
-        } catch (tscError: any) {
-          result += `\n\n[Verification Failed] tsc --noEmit returned an error:\n${tscError.stdout || tscError.message}\n\nPlease fix this syntax error immediately before finishing your answer.`;
-        }
-      }
+      result = runAntigravitySilentVerifier(tool.name, call.input, result);
     } catch (e: any) { result = `that didn't work (${e?.message || e})`; }
       prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${fenceToolResult(tool.name, result)}`);
       continue;

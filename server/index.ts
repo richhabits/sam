@@ -1190,29 +1190,56 @@ registerMemoryRoutes(app);
 // Persona presets for the switcher — same brain + shared memory, tone only.
 app.get("/api/personas", (_req, res) => res.json({ personas: PERSONAS }));
 
+// Helper to execute pending action approval/decline and resume agent loop
+async function executePendingConfirmation(
+  pendingId: string,
+  approved: boolean,
+  always?: boolean
+): Promise<{ expired?: boolean; text?: string; result?: any; error?: string; [k: string]: any }> {
+  const p = takePendingApproval(pendingId ? String(pendingId) : undefined);
+  if (!p) {
+    recordAuditEvent("operator", "CONFIRM_EXPIRED", { pendingId }, "DENIED");
+    return { expired: true, text: "That approval expired — ask me again and I'll re-propose it." };
+  }
+  recordAuditEvent(
+    "operator",
+    approved ? "CONFIRM_APPROVE" : "CONFIRM_DECLINE",
+    { tool: p.tool, input: p.input, always },
+    approved ? "SUCCESS" : "DENIED"
+  );
+  if (approved && always && p.tool) allow(p.tool); // "yes, and always allow this"
+  try {
+    const system = buildSystem(p.skillBody, p.projectId, p.user, undefined, true);
+    const r = await resumeAgent(system, p.transcript, p.tier as Tier, !!approved, p.tool, p.input, p.trace);
+    if (r.kind === "final") {
+      logExchange({
+        user: `[${approved ? "approved" : "declined"} ${p.tool}]`,
+        sam: r.text || "",
+        skill: p.skillId,
+        project: p.projectId,
+        provider: r.provider || "",
+      });
+    }
+    const ctx: PendingCtx = { tier: p.tier, projectId: p.projectId, skillBody: p.skillBody, skillId: p.skillId, user: p.user };
+    return { ...withPending(r, ctx), skill: p.skillId || null, projectId: p.projectId || "", tier: p.tier };
+  } catch (e: any) {
+    return { error: publicError(e) };
+  }
+}
+
 // ── APPROVE / DECLINE a risky action, then continue ──────────
 app.post("/api/confirm", async (req, res) => {
   // Client sends only {pendingId, approved, always} — everything else comes from
   // the server-held record, so a caller can't approve a tool/input we never proposed.
   const { pendingId, approved, always } = req.body as { pendingId?: string; approved?: boolean; always?: boolean };
-  const p = takePendingApproval(pendingId ? String(pendingId) : undefined);
-  if (!p) {
-    recordAuditEvent("operator", "CONFIRM_EXPIRED", { pendingId }, "DENIED");
-    return res.status(410).json({ kind: "final", text: "That approval expired — ask me again and I'll re-propose it.", trace: [] });
+  const outcome = await executePendingConfirmation(pendingId ? String(pendingId) : "", !!approved, !!always);
+  if (outcome.expired) {
+    return res.status(410).json({ kind: "final", text: outcome.text, trace: [] });
   }
-  recordAuditEvent("operator", approved ? "CONFIRM_APPROVE" : "CONFIRM_DECLINE", { tool: p.tool, input: p.input, always }, approved ? "SUCCESS" : "DENIED");
-  if (approved && always && p.tool) allow(p.tool);   // "yes, and always allow this"
-  try {
-    const system = buildSystem(p.skillBody, p.projectId, p.user, undefined, true);
-    const r = await resumeAgent(system, p.transcript, p.tier as Tier, !!approved, p.tool, p.input, p.trace);
-    if (r.kind === "final") {
-      logExchange({ user: `[${approved ? "approved" : "declined"} ${p.tool}]`, sam: r.text || "", skill: p.skillId, project: p.projectId, provider: r.provider || "" });
-    }
-    const ctx: PendingCtx = { tier: p.tier, projectId: p.projectId, skillBody: p.skillBody, skillId: p.skillId, user: p.user };
-    res.json({ ...withPending(r, ctx), skill: p.skillId || null, projectId: p.projectId || "", tier: p.tier });
-  } catch (e: any) {
-    if (!res.headersSent) res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: publicError(e) });
+  if (outcome.error) {
+    return res.status(500).json({ kind: "final", text: "Something went wrong finishing that — try again.", error: outcome.error });
   }
+  res.json(outcome);
 });
 
 // What can SAM actually do? (for the UI / transparency)
@@ -1252,7 +1279,7 @@ registerVoiceRoutes(app);
 registerCreativeRoutes(app);
 registerFlipItScaleRoutes(app);
 registerSpeedRoutes(app);
-registerCompanionRoutes(app);
+registerCompanionRoutes(app, { resolvePending: executePendingConfirmation });
 registerAdminCostRoutes(app);
 registerStudioDirectorRoutes(app);
 

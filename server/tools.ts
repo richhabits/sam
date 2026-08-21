@@ -133,6 +133,7 @@ import { compileProductionTimeline } from "./studio-master-timeline.ts";
 import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
 import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
+import { executeAntigravityCognition, verifyFactualGrounding } from "./antigravity-brain.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -2152,6 +2153,38 @@ export async function voiceAgentStreamTool(input?: {
   return lines.join("\n");
 }
 
+export async function antigravityCognitionTool(input: {
+  taskPrompt: string;
+  maxBranches?: number;
+}): Promise<string> {
+  const p = String(input?.taskPrompt || "").trim();
+  if (!p) return "Error: taskPrompt is required for Antigravity cognition execution.";
+
+  const result = executeAntigravityCognition(p, { maxBranches: input.maxBranches || 3 });
+
+  const lines = [
+    `⚡ Antigravity Cognitive Brain & Factual Grounding [${result.taskId}]:`,
+    `· Grounding Score: ${result.groundingReport.score}% (${result.groundingReport.isFullyGrounded ? "✅ Fully Grounded" : "⚠️ Needs Verification"})`,
+    `· Optimal Strategy: "${result.optimalStrategy}" (Confidence: ${(result.synthesizedConfidence * 100).toFixed(1)}%)`,
+    `· Verified Workspace Files: ${result.groundingReport.verifiedFilePaths.length > 0 ? result.groundingReport.verifiedFilePaths.join(", ") : "None cited"}`,
+    `· Recommended Tool Execution Sequence: ${result.recommendedToolSequence.join(" ➔ ")}`,
+  ];
+
+  if (result.groundingReport.discrepancies.length > 0) {
+    lines.push(`· ⚠️ Discrepancy Warnings:`);
+    for (const d of result.groundingReport.discrepancies) {
+      lines.push(`  - [${d.category}] ${d.claim} ➔ ${d.correction}`);
+    }
+  }
+
+  lines.push(`· Evaluated ${result.candidateHypotheses.length} Speculative Hypotheses in ${result.executionTimeMs}ms:`);
+  for (const h of result.candidateHypotheses) {
+    lines.push(`  - [${(h.factualConfidence * 100).toFixed(0)}% Conf | ${h.computationalComplexity}] ${h.reasoningVector}`);
+  }
+
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3423,6 +3456,13 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Inspecting real-time streaming voice agent [${i?.sessionId || "default-mic"}]`,
     run: (i) => voiceAgentStreamTool(i) },
+  { name: "antigravity_cognition", safe: true, description: "Executes Antigravity-grade multi-branch speculative reasoning, factual workspace grounding, and zero-hallucination verification. input: { taskPrompt, maxBranches? }.", params: "{taskPrompt, maxBranches?}",
+    args: {
+      taskPrompt: { type: "string", required: true, desc: "Complex task, engineering problem, or mathematical claim to evaluate" },
+      maxBranches: { type: "number", desc: "Number of speculative hypotheses to generate (default: 3)" }
+    },
+    activity: (i) => `Running Antigravity speculative cognition for "${String(i?.taskPrompt || "").slice(0, 30)}…"`,
+    run: (i) => antigravityCognitionTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },
