@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { FlipItExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
+import {
+  FlipItExecutionEngine,
+  getSharedExecutionEngine,
+  submitPolymarketClobOrder,
+} from "./flipit-execution.ts";
 
 describe("FlipIt Execution Engine & Polymarket CLOB Adapter", () => {
   it("submits paper orders cleanly when credentials are absent", async () => {
@@ -48,7 +52,7 @@ describe("FlipIt Execution Engine & Polymarket CLOB Adapter", () => {
     expect(res.orderId).toBe("0xlive_poly_order_998877");
   });
 
-  it("executes arbitrage order sized by Kelly risk shield", () => {
+  it("executes paper arbitrage order sized by Kelly risk shield", () => {
     const engine = new FlipItExecutionEngine({ startingCapitalGbp: 1000, mode: "paper" });
     let emittedOrder: any = null;
 
@@ -58,8 +62,22 @@ describe("FlipIt Execution Engine & Polymarket CLOB Adapter", () => {
 
     const order = engine.executeArbitrage("BTC/GBP", "binance", "kraken", 0.005, 52000, 51740);
     expect(order).toBeDefined();
-    expect(order?.status).toBe("FILLED");
+    expect(order?.status).toBe("PAPER_SIMULATED");
+    expect(order?.mode).toBe("paper");
     expect(order?.amountGbp).toBeGreaterThan(10);
     expect(emittedOrder).toBeDefined();
+  });
+
+  it("marks live execution CONFIG_REQUIRED when keys are absent", () => {
+    const engine = new FlipItExecutionEngine({ startingCapitalGbp: 1000, mode: "live" });
+    const order = engine.executeArbitrage("BTC/GBP", "binance", "kraken", 0.005, 52000, 51740);
+    expect(order).toBeDefined();
+    expect(order?.status).toBe("CONFIG_REQUIRED");
+    expect(order?.error).toContain("requires API keys");
+  });
+
+  it("wires shared execution engine to shared ingestion singleton", () => {
+    const engine = getSharedExecutionEngine();
+    expect(engine).toBeDefined();
   });
 });

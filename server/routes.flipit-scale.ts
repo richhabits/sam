@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWebhookSignature } from "./stripe-payments.ts";
-import { FlipItExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
+import { getSharedExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
+import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
 import { isLoopback } from "./http-guards.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
@@ -90,9 +91,6 @@ export function registerFlipItScaleRoutes(app: Express) {
     const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
     const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    // Fail closed: an unconfigured secret must reject the event, not skip verification —
-    // this endpoint is necessarily internet-reachable (Stripe calls it from the outside),
-    // so a missing secret would otherwise let anyone credit the wallet with a forged payload.
     if (!secret) {
       return res.status(503).json({ error: "STRIPE_WEBHOOK_SECRET is not configured — webhook cannot be verified." });
     }
@@ -109,10 +107,34 @@ export function registerFlipItScaleRoutes(app: Express) {
     }
   });
 
+  // Live Exchange WebSocket Stream Status
+  app.get("/api/flipit/stream/status", (req, res) => {
+    if (!isLoopback(req)) return res.status(403).json({ error: "Stream status can only be accessed on loopback." });
+    const ingestStatus = getSharedIngestStatus();
+    const executionEngine = getSharedExecutionEngine();
+    res.json({
+      stream: ingestStatus,
+      activeOrders: executionEngine.getActiveOrders(),
+    });
+  });
+
+  // Start Live Exchange Stream
+  app.post("/api/flipit/stream/start", (req, res) => {
+    if (!isLoopback(req)) return res.status(403).json({ error: "Stream control can only be triggered on loopback." });
+    const { pairs } = req.body || {};
+    const engine = startSharedIngestEngine(Array.isArray(pairs) ? pairs : undefined);
+    res.json({ success: true, status: engine.getStatus() });
+  });
+
+  // Stop Live Exchange Stream
+  app.post("/api/flipit/stream/stop", (req, res) => {
+    if (!isLoopback(req)) return res.status(403).json({ error: "Stream control can only be triggered on loopback." });
+    stopSharedIngestEngine();
+    res.json({ success: true, message: "Exchange streams stopped." });
+  });
+
   // Arbitrage & Market Order Execute Route
   app.post("/api/flipit/execute", async (req, res) => {
-    // This can dispatch a real, signed Polymarket order using whatever credentials are
-    // configured in env — same trust bar as every other credential-linked route in this file.
     if (!isLoopback(req)) return res.status(403).json({ error: "Trade execution can only be triggered on this computer, not remotely." });
     try {
       const { spreadId, pair, sellEx, buyEx, spreadPct, sellPrice, buyPrice, tokenId, price, size, side } = req.body || {};
@@ -129,7 +151,7 @@ export function registerFlipItScaleRoutes(app: Express) {
       }
 
       // Cross-Exchange Arbitrage Execution via Risk Manager
-      const engine = new FlipItExecutionEngine({
+      const engine = getSharedExecutionEngine({
         mode: (process.env.POLYMARKET_ADDRESS && process.env.POLYMARKET_API_KEY) ? "live" : "paper",
       });
 
@@ -159,7 +181,6 @@ export function registerFlipItScaleRoutes(app: Express) {
   app.post("/api/flipit/hedging-regime", (req, res) => {
     try {
       const { regime } = req.body || {};
-      // In reality, this would connect to flipit-auto.ts to adjust risk parameters globally
       res.json({ success: true, activeRegime: regime, message: `System re-tuned to ${regime} mode.` });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Failed to switch regime" });

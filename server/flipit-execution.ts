@@ -6,10 +6,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { EventEmitter } from "node:events";
-import { type OrderBookTick } from "./flipit-ingest.ts";
+import { type OrderBookTick, getSharedIngestEngine } from "./flipit-ingest.ts";
 import { type SentimentSignal } from "./flipit-oracle.ts";
 import { computeKellyRiskShield } from "./flipit-scale.ts";
-import { getWallet, deposit } from "./wallet.ts";
+import { getWallet } from "./wallet.ts";
 
 export interface ExecutionOptions {
   startingCapitalGbp?: number;
@@ -25,7 +25,8 @@ export interface TradeOrder {
   amountGbp: number;
   mode: "live" | "paper";
   routes: Array<{ exchange: string; allocationPct: number; expectedPrice: number }>;
-  status: "FILLED" | "SUBMITTED" | "REJECTED";
+  status: "FILLED" | "PAPER_SIMULATED" | "SUBMITTED" | "REJECTED" | "CONFIG_REQUIRED";
+  error?: string;
   timestamp: number;
 }
 
@@ -45,10 +46,12 @@ export async function submitPolymarketClobOrder(
   options: { fetcher?: typeof fetch } = {}
 ): Promise<{ success: boolean; orderId?: string; error?: string; mode: "live" | "paper" }> {
   const fetchImpl = options.fetcher || fetch;
-  const isLive = !!(credentials.address && credentials.apiKey);
+  const address = credentials.address || process.env.POLYMARKET_ADDRESS;
+  const apiKey = credentials.apiKey || process.env.POLYMARKET_API_KEY;
+  const isLive = !!(address && apiKey);
 
   if (!isLive) {
-    // Paper trading mode — realistic order fill simulation
+    // Explicit paper trading simulation
     const paperOrderId = `poly_paper_${Date.now()}_${params.tokenId.slice(0, 6)}`;
     return {
       success: true,
@@ -62,8 +65,8 @@ export async function submitPolymarketClobOrder(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "POLY_ADDRESS": credentials.address!,
-        "POLY_SIGNATURE": credentials.apiKey!,
+        "POLY_ADDRESS": address,
+        "POLY_SIGNATURE": apiKey,
         "POLY_TIMESTAMP": String(Date.now()),
       },
       body: JSON.stringify({
@@ -194,6 +197,18 @@ export class FlipItExecutionEngine extends EventEmitter {
     if (tradeSize < 5) return null; // Minimum order size
 
     const orderId = `ARB-${Date.now()}`;
+    const isLive = this.mode === "live";
+
+    // In live mode, verify exchange credentials before marking executed
+    const hasLiveCreds = !!(this.polymarketCredentials.address && this.polymarketCredentials.apiKey);
+    const status = isLive
+      ? (hasLiveCreds ? "SUBMITTED" : "CONFIG_REQUIRED")
+      : "PAPER_SIMULATED";
+
+    const error = (isLive && !hasLiveCreds)
+      ? `Live trade execution requires API keys for ${buyEx}/${sellEx} in Settings or .env`
+      : undefined;
+
     const order: TradeOrder = {
       id: orderId,
       asset: pair,
@@ -201,7 +216,8 @@ export class FlipItExecutionEngine extends EventEmitter {
       amountGbp: Number(tradeSize.toFixed(2)),
       mode: this.mode,
       routes: [{ exchange: buyEx, allocationPct: 100, expectedPrice: buyPrice }],
-      status: "FILLED",
+      status,
+      error,
       timestamp: Date.now(),
     };
 
@@ -209,4 +225,16 @@ export class FlipItExecutionEngine extends EventEmitter {
     this.emit("trade_executed", order);
     return order;
   }
+}
+
+// ── SHARED EXECUTION ENGINE SINGLETON ──
+let sharedExecutionEngine: FlipItExecutionEngine | null = null;
+
+export function getSharedExecutionEngine(options?: ExecutionOptions): FlipItExecutionEngine {
+  if (!sharedExecutionEngine) {
+    sharedExecutionEngine = new FlipItExecutionEngine(options);
+    const ingest = getSharedIngestEngine();
+    ingest.on("tick", (tick) => sharedExecutionEngine?.onTick(tick));
+  }
+  return sharedExecutionEngine;
 }

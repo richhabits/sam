@@ -24,6 +24,15 @@ export interface IngestionOptions {
   restFallbackIntervalMs?: number;
 }
 
+export interface IngestStatus {
+  running: boolean;
+  pairs: string[];
+  exchanges: string[];
+  activeSocketsCount: number;
+  totalTicksReceived: number;
+  latestTicks: Record<string, OrderBookTick>;
+}
+
 /**
  * Converts a SAM pair format ("BTC/GBP") to Binance stream format ("btcgbp").
  */
@@ -155,12 +164,52 @@ export class FlipItIngestEngine extends EventEmitter {
   private sockets: any[] = [];
   private restIntervals: NodeJS.Timeout[] = [];
   private restFallbackMs: number;
+  private latestTicksMap = new Map<string, OrderBookTick>();
+  private totalTicksReceivedCount = 0;
 
   constructor(options: IngestionOptions) {
     super();
     this.pairs = options.pairs;
     this.exchanges = options.exchanges || ["binance", "kraken"];
     this.restFallbackMs = options.restFallbackIntervalMs || 5000;
+  }
+
+  public get isRunning(): boolean {
+    return this.running;
+  }
+
+  public get totalTicks(): number {
+    return this.totalTicksReceivedCount;
+  }
+
+  public getLatestTick(key: string): OrderBookTick | undefined {
+    return this.latestTicksMap.get(key);
+  }
+
+  public getLatestTicks(): OrderBookTick[] {
+    return Array.from(this.latestTicksMap.values());
+  }
+
+  public getStatus(): IngestStatus {
+    const ticksObj: Record<string, OrderBookTick> = {};
+    for (const [k, v] of this.latestTicksMap.entries()) {
+      ticksObj[k] = v;
+    }
+
+    return {
+      running: this.running,
+      pairs: [...this.pairs],
+      exchanges: [...this.exchanges],
+      activeSocketsCount: this.sockets.length,
+      totalTicksReceived: this.totalTicksReceivedCount,
+      latestTicks: ticksObj,
+    };
+  }
+
+  public recordTick(tick: OrderBookTick): void {
+    this.latestTicksMap.set(`${tick.exchange}:${tick.pair}`, tick);
+    this.totalTicksReceivedCount++;
+    this.emit("tick", tick);
   }
 
   public start(): void {
@@ -208,7 +257,7 @@ export class FlipItIngestEngine extends EventEmitter {
           const matchedPair = this.pairs.find((p) => streamName.startsWith(toBinanceSymbol(p)));
           if (!matchedPair) return;
           const tick = parseBinanceTick(envelope?.data, matchedPair);
-          if (tick) this.emit("tick", tick);
+          if (tick) this.recordTick(tick);
         } catch { /* malformed frame */ }
       };
 
@@ -263,7 +312,7 @@ export class FlipItIngestEngine extends EventEmitter {
           );
           if (!matchedPair) return;
           const tick = parseKrakenTick(msg, matchedPair);
-          if (tick) this.emit("tick", tick);
+          if (tick) this.recordTick(tick);
         } catch { /* malformed frame */ }
       };
 
@@ -287,9 +336,35 @@ export class FlipItIngestEngine extends EventEmitter {
       if (!this.running) return;
       for (const pair of this.pairs) {
         const tick = await fetchFn(pair);
-        if (tick) this.emit("tick", tick);
+        if (tick) this.recordTick(tick);
       }
     }, this.restFallbackMs);
     this.restIntervals.push(interval);
   }
+}
+
+// ── SHARED INGESTION ENGINE SINGLETON ──
+let sharedIngestEngine: FlipItIngestEngine | null = null;
+
+export function getSharedIngestEngine(options?: IngestionOptions): FlipItIngestEngine {
+  if (!sharedIngestEngine) {
+    sharedIngestEngine = new FlipItIngestEngine(options || { pairs: ["BTC/GBP", "ETH/GBP", "SOL/GBP"] });
+  }
+  return sharedIngestEngine;
+}
+
+export function startSharedIngestEngine(pairs?: string[]): FlipItIngestEngine {
+  const engine = getSharedIngestEngine(pairs ? { pairs } : undefined);
+  engine.start();
+  return engine;
+}
+
+export function stopSharedIngestEngine(): void {
+  if (sharedIngestEngine) {
+    sharedIngestEngine.stop();
+  }
+}
+
+export function getSharedIngestStatus(): IngestStatus {
+  return getSharedIngestEngine().getStatus();
 }

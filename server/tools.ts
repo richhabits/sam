@@ -121,6 +121,7 @@ import { trySolveLocally } from "./local-micro-solver.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
+import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -1835,6 +1836,38 @@ export async function flipitScaleShieldTool(input?: {
   return lines.join("\n");
 }
 
+export async function flipitMarketStreamTool(input?: {
+  action?: "status" | "start" | "stop";
+  pairs?: string[];
+}): Promise<string> {
+  const action = input?.action || "status";
+  if (action === "start") {
+    const engine = startSharedIngestEngine(input?.pairs);
+    return `📡 Started live Binance & Kraken market stream for pairs: ${engine.getStatus().pairs.join(", ")}.`;
+  }
+  if (action === "stop") {
+    stopSharedIngestEngine();
+    return "🛑 Stopped live Binance & Kraken market stream.";
+  }
+  const status = getSharedIngestStatus();
+  const ticks = Object.values(status.latestTicks);
+  const lines = [
+    `📡 FlipIt Real-Time Exchange Stream Status:`,
+    `· Status: ${status.running ? "ACTIVE (Streaming)" : "IDLE (Stopped)"}`,
+    `· Monitored Pairs: ${status.pairs.join(", ")}`,
+    `· Active Sockets: ${status.activeSocketsCount} · Total Ticks Ingested: ${status.totalTicksReceived}`,
+  ];
+  if (ticks.length > 0) {
+    lines.push(`\nLatest Live Book Ticks:`);
+    for (const t of ticks) {
+      lines.push(`  - [${t.exchange.toUpperCase()}] ${t.pair}: Bid £${t.bid} (vol ${t.bidVol}) · Ask £${t.ask} (vol ${t.askVol})`);
+    }
+  } else {
+    lines.push(`\nNo ticks received yet. Run action="start" to connect live feeds.`);
+  }
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3133,7 +3166,7 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Disambiguating intent for: "${i?.prompt ?? i}"`,
     run: (i) => intentAutoDisambiguatorTool(i) },
-  { name: "flipit_scale_shield", safe: true, description: "Calculates Kelly leverage sizing and drawdown circuit-breakers for FlipIt portfolio scaling. Also scans cross-market arbitrage spreads, but only against real quotes you supply — SAM has no live exchange feed, so this never invents spreads on its own. input: { currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp? }.", params: "{currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp?}",
+  { name: "flipit_scale_shield", safe: true, description: "Calculates Kelly leverage sizing and drawdown circuit-breakers for FlipIt portfolio scaling. Scans cross-market arbitrage spreads against real quotes. input: { currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp? }.", params: "{currentEquityGbp?, peakEquityGbp?, winRate?, avgWinGbp?, avgLossGbp?, quotes?, allocatedCapitalGbp?}",
     args: {
       currentEquityGbp: { type: "number", desc: "Current portfolio equity in GBP" },
       peakEquityGbp: { type: "number", desc: "Peak portfolio equity for drawdown tracking" },
@@ -3145,6 +3178,13 @@ export const TOOLS: Tool[] = [
     },
     activity: () => "Calculating FlipIt dynamic risk shield & Kelly allocation",
     run: (i) => flipitScaleShieldTool(i) },
+  { name: "flipit_market_stream", safe: true, description: "Inspects and controls real-time Binance and Kraken WebSocket order book ticker streams. input: { action?: 'status' | 'start' | 'stop', pairs?: string[] }.", params: "{action?, pairs?}",
+    args: {
+      action: { type: "string", desc: "Action to perform: 'status' (default), 'start', or 'stop'" },
+      pairs: { type: "array", desc: "Optional currency pairs to monitor (e.g. ['BTC/GBP', 'ETH/GBP'])" }
+    },
+    activity: (i) => `Monitoring FlipIt live market streams (${i?.action || "status"})`,
+    run: (i) => flipitMarketStreamTool(i) },
   { name: "studio_director_storyboard", safe: true, description: "Generates cinematic multi-scene storyboard sequences with 3D camera vector rigs, lighting palettes, lens optics, and audio cue timing. input: { prompt, sceneCount?, aspectRatio? }.", params: "{prompt, sceneCount?, aspectRatio?}",
     args: {
       prompt: { type: "string", desc: "Narrative storyline or cinematic scene description" },

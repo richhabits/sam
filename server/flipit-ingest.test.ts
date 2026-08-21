@@ -7,6 +7,10 @@ import {
   fetchBinanceRestTick,
   fetchKrakenRestTick,
   FlipItIngestEngine,
+  getSharedIngestEngine,
+  startSharedIngestEngine,
+  stopSharedIngestEngine,
+  getSharedIngestStatus,
 } from "./flipit-ingest.ts";
 
 describe("FlipIt Real-Time Market Data Ingestion Engine", () => {
@@ -110,10 +114,43 @@ describe("FlipIt Real-Time Market Data Ingestion Engine", () => {
     expect(tick!.ask).toBe(52105);
   });
 
-  it("instantiates engine and stops cleanly without connecting", () => {
+  it("instantiates engine and records ticks accurately", () => {
     const engine = new FlipItIngestEngine({ pairs: ["BTC/GBP"], exchanges: [] });
     engine.start();
+    expect(engine.isRunning).toBe(true);
+
+    engine.recordTick({
+      exchange: "binance",
+      pair: "BTC/GBP",
+      bid: 52000,
+      ask: 52010,
+      bidVol: 1.0,
+      askVol: 1.2,
+      timestamp: Date.now(),
+    });
+
+    expect(engine.totalTicks).toBe(1);
+    expect(engine.getLatestTicks().length).toBe(1);
+
+    const status = engine.getStatus();
+    expect(status.running).toBe(true);
+    expect(status.totalTicksReceived).toBe(1);
+
     engine.stop();
-    // No crash, no hanging intervals
+    expect(engine.isRunning).toBe(false);
+  });
+
+  it("manages shared ingestion singleton", () => {
+    const engine = getSharedIngestEngine();
+    expect(engine).toBeDefined();
+
+    const started = startSharedIngestEngine(["BTC/GBP"]);
+    expect(started.isRunning).toBe(true);
+
+    const status = getSharedIngestStatus();
+    expect(status.running).toBe(true);
+
+    stopSharedIngestEngine();
+    expect(engine.isRunning).toBe(false);
   });
 });
