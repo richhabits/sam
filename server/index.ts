@@ -1655,7 +1655,8 @@ app.post("/api/revenue/hunt", async (req, res) => {
 
 // ── Secure Event Webhooks & Inbound Signals ──
 app.get("/api/webhooks", (_req, res) => {
-  res.json(loadWebhookEndpoints());
+  // Signing secrets never leave the machine — only loopback callers get the raw registration flow.
+  res.json(loadWebhookEndpoints().map(({ secret: _secret, ...safe }) => safe));
 });
 app.post("/api/webhooks", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "Webhooks can only be managed on this computer, not remotely." });
