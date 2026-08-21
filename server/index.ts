@@ -134,7 +134,9 @@ import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { getModelSelectorCatalogue, saveModelSelection } from "./model-selector.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
 import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
-import { getAutoProvisionStatus, executeAutoProvisioning } from "./auto-provision.ts";
+import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
+import { huntRevenueOpportunities } from "./revenue-hunter.ts";
+import { generateExecutiveDailyDeck } from "./executive-deck.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1610,16 +1612,42 @@ app.post("/api/code/repair", async (req, res) => {
   }
 });
 
-// ── 1-Click Auto-Key Butler & Identity Provisioner ──
+// ── Guided Key Setup & Validator Assistant ──
 app.get("/api/keys/auto-provision/status", (_req, res) => {
   res.json(getAutoProvisionStatus());
 });
 app.post("/api/keys/auto-provision", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "API keys can only be changed on this computer, not remotely." });
   try {
-    const result = await executeAutoProvisioning(req.body || {});
+    const { providerId, key } = req.body || {};
+    if (!providerId || !key) {
+      return res.status(400).json({ error: "Missing required fields 'providerId' and 'key'." });
+    }
+    const result = await validateAndSaveProviderKey(providerId, key);
+    if (!result.validFormat) {
+      return res.status(400).json(result);
+    }
     res.json(result);
   } catch (e: any) {
-    res.status(500).json({ error: e.message || "Failed to auto-provision keys" });
+    res.status(500).json({ error: e.message || "Failed to validate and save key" });
+  }
+});
+
+// ── Autonomous Revenue Hunter & Executive Briefing ──
+app.get("/api/executive/briefing", async (_req, res) => {
+  try {
+    const deck = await generateExecutiveDailyDeck();
+    res.json(deck);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to generate executive briefing" });
+  }
+});
+app.post("/api/revenue/hunt", async (req, res) => {
+  try {
+    const report = await huntRevenueOpportunities(req.body || {});
+    res.json(report);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to hunt revenue opportunities" });
   }
 });
 

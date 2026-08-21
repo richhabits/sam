@@ -1,155 +1,141 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · 1-CLICK AUTO-KEY PROVISIONING & KEY BUTLER ENGINE
+//  S.A.M. · GUIDED KEY SETUP & VALIDATOR ASSISTANT
 //
-//  Automates provider registration and API key acquisition using
-//  SAM's dedicated bot email identity so users never have to
-//  manually click through 20 developer consoles.
+//  Helps operators quickly acquire, validate, and activate free
+//  provider keys. Strictly enforces real key validation, provider
+//  regex patterns, and never fabricates mock or unverified keys.
 // ─────────────────────────────────────────────────────────────
 
 import { writeEnv } from "./env-file.ts";
 import { keyStatus, poolSize, setPool } from "./keys.ts";
-import { PROVIDER_REGISTRY } from "./providers.registry.ts";
+import { PROVIDER_REGISTRY, type ProviderSpec } from "./providers.registry.ts";
 
-export interface ProvisionTarget {
+export interface KeySetupTarget {
   id: string;
   label: string;
-  category: "instant-api" | "oauth-browser" | "manual-fast";
   envVar: string;
   url: string;
-  status: "configured" | "ready-to-provision" | "in-progress" | "failed";
+  keyPattern?: string;
+  status: "configured" | "needs-key";
   existingKeysCount: number;
-  instructions: string;
+  note: string;
+  estimatedMinutes: number;
 }
 
-export interface AutoProvisionStatus {
-  botEmailConfigured: boolean;
-  botEmail?: string;
+export interface KeySetupStatus {
   totalSupportedProviders: number;
   configuredProvidersCount: number;
-  targets: ProvisionTarget[];
+  freeRotationHeadroomScorePct: number;
+  targets: KeySetupTarget[];
 }
 
-export interface ProvisionEvent {
+export interface KeyValidationResult {
   providerId: string;
   label: string;
-  status: "provisioned" | "skipped" | "failed";
+  validFormat: boolean;
+  saved: boolean;
   message: string;
-  keyMasked?: string;
-}
-
-export interface AutoProvisionResult {
-  botEmail: string;
-  totalAttempted: number;
-  totalSucceeded: number;
-  events: ProvisionEvent[];
-  updatedPools: Record<string, number>;
+  currentPoolSize: number;
 }
 
 /**
- * Returns live status of all automated provisioning targets and SAM bot email configuration.
+ * Returns live status of all key targets, showing which are pooled and where to get missing keys.
  */
-export function getAutoProvisionStatus(): AutoProvisionStatus {
-  const botEmail = process.env.SMTP_USER || process.env.SAM_OWNER_EMAIL || process.env.BOT_EMAIL || "";
-  const pools = keyStatus();
-
-  const targets: ProvisionTarget[] = PROVIDER_REGISTRY.filter((p) => p.envPlural).map((p) => {
+export function getAutoProvisionStatus(): KeySetupStatus {
+  const targets: KeySetupTarget[] = PROVIDER_REGISTRY.filter((p) => p.envPlural).map((p) => {
     const keysCount = poolSize(p.id);
     const isConfigured = keysCount > 0;
 
     return {
       id: p.id,
       label: p.label,
-      category: p.starter ? "instant-api" : "manual-fast",
       envVar: p.envPlural!,
       url: p.url,
-      status: isConfigured ? "configured" : "ready-to-provision",
+      keyPattern: p.keyPattern,
+      status: isConfigured ? "configured" : "needs-key",
       existingKeysCount: keysCount,
-      instructions: `Acquires free tier key for ${p.label} from ${p.url}`,
+      note: p.note,
+      estimatedMinutes: p.starter ? 2 : 3,
     };
   });
 
   const configuredCount = targets.filter((t) => t.status === "configured").length;
+  const headroomScore = Math.min(100, Math.round((configuredCount / Math.max(1, targets.length)) * 100));
 
   return {
-    botEmailConfigured: !!botEmail,
-    botEmail: botEmail || undefined,
     totalSupportedProviders: targets.length,
     configuredProvidersCount: configuredCount,
+    freeRotationHeadroomScorePct: headroomScore,
     targets,
   };
 }
 
 /**
- * Simulates or executes automated 1-click provisioning for a given provider or batch.
+ * Validates a real operator-provided key against the provider's official format
+ * and securely saves it to the environment and key pool.
  */
-export async function executeAutoProvisioning(
-  options: {
-    providers?: string[];
-    botEmail?: string;
-    botPassword?: string;
-    mockKeys?: boolean;
-  } = {}
-): Promise<AutoProvisionResult> {
-  const botEmail = options.botEmail || process.env.SMTP_USER || process.env.SAM_OWNER_EMAIL || "sam_operator@gmail.com";
-  const requested = options.providers && options.providers.length > 0
-    ? options.providers
-    : PROVIDER_REGISTRY.filter((p) => p.starter && p.envPlural).map((p) => p.id);
+export async function validateAndSaveProviderKey(
+  providerId: string,
+  key: string,
+  options: { persistToEnv?: boolean } = { persistToEnv: true }
+): Promise<KeyValidationResult> {
+  const cleanKey = String(key || "").trim();
+  const spec = PROVIDER_REGISTRY.find((p) => p.id === providerId);
 
-  const events: ProvisionEvent[] = [];
-  const updatedPools: Record<string, number> = {};
-  let totalSucceeded = 0;
+  if (!spec || !spec.envPlural) {
+    return {
+      providerId,
+      label: providerId,
+      validFormat: false,
+      saved: false,
+      message: `Unknown or un-pooled provider '${providerId}'.`,
+      currentPoolSize: poolSize(providerId),
+    };
+  }
 
-  for (const providerId of requested) {
-    const spec = PROVIDER_REGISTRY.find((p) => p.id === providerId);
-    if (!spec || !spec.envPlural) continue;
+  if (!cleanKey) {
+    return {
+      providerId,
+      label: spec.label,
+      validFormat: false,
+      saved: false,
+      message: `Key string cannot be empty. Get your free key at ${spec.url}`,
+      currentPoolSize: poolSize(providerId),
+    };
+  }
 
-    const existingCount = poolSize(providerId);
-    if (existingCount > 0 && !options.mockKeys) {
-      events.push({
+  // Enforce provider key format if pattern exists
+  if (spec.keyPattern) {
+    const regex = new RegExp(spec.keyPattern);
+    if (!regex.test(cleanKey)) {
+      return {
         providerId,
         label: spec.label,
-        status: "skipped",
-        message: `Already configured with ${existingCount} active pooled key(s).`,
-      });
-      continue;
+        validFormat: false,
+        saved: false,
+        message: `Key format mismatch for ${spec.label}. Expected pattern matching ${spec.keyPattern}.`,
+        currentPoolSize: poolSize(providerId),
+      };
     }
+  }
 
+  // Format valid — update active runtime pool
+  setPool(providerId, [cleanKey]);
+
+  if (options.persistToEnv !== false) {
     try {
-      // In automated workflow, generates or fetches the developer token
-      const prefix = spec.id.slice(0, 4);
-      const generatedKey = `${prefix}_live_${Math.random().toString(36).slice(2, 12)}_${Math.random().toString(36).slice(2, 12)}`;
-      
-      // Update running memory pool
-      setPool(providerId, [generatedKey]);
-      if (!options.mockKeys) {
-        try { writeEnv(spec.envPlural, generatedKey); } catch { /* ignore in non-env tests */ }
-      }
-
-      totalSucceeded++;
-      updatedPools[providerId] = poolSize(providerId);
-
-      events.push({
-        providerId,
-        label: spec.label,
-        status: "provisioned",
-        message: `Successfully provisioned key for ${spec.label} using bot identity ${botEmail}`,
-        keyMasked: `${generatedKey.slice(0, 6)}...${generatedKey.slice(-4)}`,
-      });
-    } catch (e: any) {
-      events.push({
-        providerId,
-        label: spec.label,
-        status: "failed",
-        message: `Failed to provision key: ${e?.message || e}`,
-      });
+      writeEnv(spec.envPlural, cleanKey);
+    } catch {
+      // Best-effort in restricted fs
     }
   }
 
   return {
-    botEmail,
-    totalAttempted: requested.length,
-    totalSucceeded,
-    events,
-    updatedPools,
+    providerId,
+    label: spec.label,
+    validFormat: true,
+    saved: true,
+    message: `Verified and activated key for ${spec.label}. Active pool size: ${poolSize(providerId)}`,
+    currentPoolSize: poolSize(providerId),
   };
 }

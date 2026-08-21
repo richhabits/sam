@@ -125,7 +125,9 @@ import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
 import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
-import { getAutoProvisionStatus, executeAutoProvisioning } from "./auto-provision.ts";
+import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
+import { huntRevenueOpportunities } from "./revenue-hunter.ts";
+import { generateExecutiveDailyDeck } from "./executive-deck.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1940,32 +1942,58 @@ export async function codeRepairPatcherTool(input: { compilerOutput?: string; fi
   return lines.join("\n");
 }
 
-export async function autoKeyProvisionerTool(input?: { action?: "status" | "provision"; providers?: string[]; botEmail?: string }): Promise<string> {
+export async function autoKeyProvisionerTool(input?: { action?: "status" | "save_key"; providerId?: string; key?: string }): Promise<string> {
   const action = input?.action || "status";
 
-  if (action === "status") {
+  if (action === "status" || !input?.providerId || !input?.key) {
     const s = getAutoProvisionStatus();
     return [
-      `🔑 1-Click Key Butler Status:`,
-      `· Bot Identity Configured: ${s.botEmailConfigured ? `YES (${s.botEmail})` : "NO (Set SMTP_USER or SAM_OWNER_EMAIL)"}`,
-      `· Configured Providers: ${s.configuredProvidersCount} of ${s.totalSupportedProviders}`,
-      `\nSupported Automation Targets:`,
-      ...s.targets.slice(0, 10).map((t) => `  - ${t.label} (${t.id}): [${t.status.toUpperCase()}] → ${t.existingKeysCount} active key(s)`),
+      `🔑 SAM Guided Key Setup & Headroom Status (${s.freeRotationHeadroomScorePct}% Headroom):`,
+      `· Active Providers: ${s.configuredProvidersCount} of ${s.totalSupportedProviders} configured`,
+      `\nFree Providers Available:`,
+      ...s.targets.map((t) => `  - [${t.status.toUpperCase()}] ${t.label} (${t.id}): ${t.existingKeysCount} active key(s) · ~${t.estimatedMinutes} min setup → ${t.url}`),
+      `\nTo activate a key: pass { action: "save_key", providerId: "<id>", key: "<key>" }`,
     ].join("\n");
   }
 
-  const res = await executeAutoProvisioning({
-    providers: input?.providers,
-    botEmail: input?.botEmail,
-  });
+  const res = await validateAndSaveProviderKey(input.providerId, input.key);
 
   return [
-    `🚀 1-Click Key Butler Auto-Provisioning Completed:`,
-    `· Bot Email: ${res.botEmail}`,
-    `· Results: ${res.totalSucceeded}/${res.totalAttempted} providers provisioned`,
-    `\nEvents:`,
-    ...res.events.map((e) => `  - [${e.status.toUpperCase()}] ${e.label}: ${e.message} ${e.keyMasked ? `(${e.keyMasked})` : ""}`),
+    `🔑 Key Verification & Activation:`,
+    `· Provider: ${res.label} (${res.providerId})`,
+    `· Valid Format: ${res.validFormat ? "YES" : "NO"}`,
+    `· Status: ${res.saved ? "SAVED & ACTIVATED" : "REJECTED"}`,
+    `· Details: ${res.message}`,
   ].join("\n");
+}
+
+export async function revenueHunterAlphaTool(input?: { focusCategory?: any; minConfidencePct?: number }): Promise<string> {
+  const rep = await huntRevenueOpportunities(input || {});
+
+  const lines = [
+    `💰 Autonomous Revenue & Opportunity Report:`,
+    `· Total Alpha Identified: $${rep.totalEstimatedValueUSD.toLocaleString()} USD across ${rep.totalOpportunitiesFound} opportunities`,
+    `· Executive Strategy: ${rep.executiveStrategy}`,
+    `\nTop Opportunities:`,
+    ...rep.items.map((o) => `  - [${o.category.toUpperCase()}] ${o.title}: +$${o.estimatedValueUSD} (${o.confidenceScorePct}% conf, ${o.riskLevel} risk)`),
+  ];
+
+  return lines.join("\n");
+}
+
+export async function executiveDailyBriefTool(): Promise<string> {
+  const deck = await generateExecutiveDailyDeck();
+
+  const lines = [
+    `👑 Executive Daily Action Brief:`,
+    `· ${deck.executiveHeadline}`,
+    `· Readiness Score: ${deck.systemReadinessScorePct}% | Total Pending Actions: ${deck.totalPendingActions}`,
+    `· Quick Metrics: ${deck.quickMetrics.onlineServices} tools online, ${deck.quickMetrics.activeKeyPools} active key pools`,
+    `\nAction Cards:`,
+    ...deck.cards.map((c) => `  - [${c.priority.toUpperCase()}] ${c.title}: ${c.description} → Action: ${c.suggestedAction}`),
+  ];
+
+  return lines.join("\n");
 }
 
 async function listDir(path: string): Promise<string> {
@@ -3098,6 +3126,16 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `${i?.action === "provision" ? "Auto-provisioning" : "Checking status of"} free provider API keys`,
     run: (i) => autoKeyProvisionerTool(i) },
+  { name: "revenue_hunter_alpha", safe: true, description: "Scans cross-market arbitrage, AI cost-reduction vectors, and high-yield automated contract opportunities. input: { focusCategory?, minConfidencePct? }.", params: "{focusCategory?, minConfidencePct?}",
+    args: {
+      focusCategory: { type: "string", desc: "'market-arbitrage', 'cost-reduction', 'deal-flow', 'automation-roi'" },
+      minConfidencePct: { type: "number", desc: "Minimum confidence score (0-100)" }
+    },
+    activity: () => "Scanning autonomous revenue opportunities and market alpha",
+    run: (i) => revenueHunterAlphaTool(i) },
+  { name: "executive_daily_brief", safe: true, description: "Generates high-value C-suite daily action deck consolidating connectors, system health, revenue alpha, and pending decisions. input: {}.", params: "{}",
+    activity: () => "Assembling Executive Daily Action Deck",
+    run: () => executiveDailyBriefTool() },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
