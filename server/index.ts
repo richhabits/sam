@@ -100,6 +100,7 @@ import { registerCompanionRoutes } from "./routes.companion.ts";
 import { seedStarterPlaybooks } from "./starter-playbooks.ts";
 import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
+import { registerAntigravityRoutes } from "./routes.antigravity.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
 import { embedOne } from "./embeddings.ts";
 import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
@@ -1282,6 +1283,7 @@ registerSpeedRoutes(app);
 registerCompanionRoutes(app, { resolvePending: executePendingConfirmation });
 registerAdminCostRoutes(app);
 registerStudioDirectorRoutes(app);
+registerAntigravityRoutes(app);
 
 
 // ── HUD DATA ENDPOINTS ───────────────────────────────────────

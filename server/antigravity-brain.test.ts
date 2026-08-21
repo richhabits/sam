@@ -3,6 +3,9 @@ import {
   verifyFactualGrounding,
   executeAntigravityCognition,
   runAntigravitySilentVerifier,
+  verifySymbolDeclaration,
+  runCognitiveReflectionLoop,
+  getCognitiveTelemetry,
 } from "./antigravity-brain.ts";
 
 describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => {
@@ -39,13 +42,45 @@ describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => 
     expect(reportBad.score).toBeLessThanOrEqual(75);
   });
 
+  it("verifies symbol declarations in real TypeScript files", () => {
+    // Real exported function in server/antigravity-brain.ts
+    const symValid = verifySymbolDeclaration("server/antigravity-brain.ts", "verifyFactualGrounding");
+    expect(symValid.found).toBe(true);
+    expect(symValid.exported).toBe(true);
+    expect(symValid.line).toBeGreaterThan(0);
+
+    // Non-existent symbol
+    const symInvalid = verifySymbolDeclaration("server/antigravity-brain.ts", "fakeNonExistentSymbol12345");
+    expect(symInvalid.found).toBe(false);
+    expect(symInvalid.exported).toBe(false);
+  });
+
+  it("executes autonomous cognitive reflection loop and auto-repairs discrepancies", () => {
+    const textWithFlawedMath = `During benchmark evaluation, 10 out of 50 (80%) tests passed in server/agent.ts.`;
+    const reflection = runCognitiveReflectionLoop(textWithFlawedMath, { maxIterations: 3 });
+
+    expect(reflection.iterationsExecuted).toBeGreaterThanOrEqual(1);
+    expect(reflection.repairsApplied.length).toBeGreaterThan(0);
+    expect(reflection.reflectedText).toContain("10 out of 50 (20%)");
+    expect(reflection.finalScore).toBe(100);
+    expect(reflection.converged).toBe(true);
+  });
+
+  it("tracks and accumulates real-time cognitive telemetry", () => {
+    const telemetry = getCognitiveTelemetry();
+    expect(telemetry.totalInvocations).toBeGreaterThanOrEqual(0);
+    expect(telemetry.totalGroundingChecks).toBeGreaterThan(0);
+    expect(telemetry.averageGroundingScore).toBeGreaterThan(0);
+    expect(telemetry.reflectionsExecuted).toBeGreaterThan(0);
+  });
+
   it("executes speculative multi-branch cognition and returns optimal strategy", () => {
     const cognition = executeAntigravityCognition("Refactor and fix compiler errors in server/p2p-mesh.ts", {
-      maxBranches: 3,
+      maxBranches: 4,
     });
 
     expect(cognition.taskId).toMatch(/^antigravity-/);
-    expect(cognition.candidateHypotheses.length).toBe(3);
+    expect(cognition.candidateHypotheses.length).toBe(4);
     expect(cognition.synthesizedConfidence).toBeGreaterThanOrEqual(0.9);
     expect(cognition.recommendedToolSequence).toContain("edit_file");
     expect(cognition.groundingReport).toBeDefined();

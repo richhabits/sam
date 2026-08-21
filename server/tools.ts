@@ -133,7 +133,7 @@ import { compileProductionTimeline } from "./studio-master-timeline.ts";
 import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
 import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
-import { executeAntigravityCognition, verifyFactualGrounding } from "./antigravity-brain.ts";
+import { executeAntigravityCognition, verifyFactualGrounding, verifySymbolDeclaration, runCognitiveReflectionLoop } from "./antigravity-brain.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -2185,6 +2185,49 @@ export async function antigravityCognitionTool(input: {
   return lines.join("\n");
 }
 
+export async function antigravityReflectionLoopTool(input: {
+  text: string;
+  maxIterations?: number;
+}): Promise<string> {
+  const t = String(input?.text || "").trim();
+  if (!t) return "Error: text is required for reflection loop execution.";
+
+  const loop = runCognitiveReflectionLoop(t, { maxIterations: input.maxIterations || 3 });
+
+  const lines = [
+    `🔄 Antigravity Cognitive Reflection Loop:`,
+    `· Status: ${loop.converged ? "✅ Converged to 100% Grounded Truth" : "⚠️ Partial Convergence"}`,
+    `· Score Improvement: ${loop.initialScore}% ➔ ${loop.finalScore}% (${loop.iterationsExecuted} iteration(s))`,
+    `· Verified File Refs: ${loop.finalReport.verifiedFilePaths.join(", ") || "None"}`,
+    `· Verified Symbols: ${loop.finalReport.verifiedSymbols.join(", ") || "None"}`,
+  ];
+
+  if (loop.repairsApplied.length > 0) {
+    lines.push(`· 🛠️ Autonomous Repairs Applied:`);
+    for (const r of loop.repairsApplied) {
+      lines.push(`  - ${r}`);
+    }
+  }
+
+  lines.push(`\n[Reflected Output]\n${loop.reflectedText}`);
+  return lines.join("\n");
+}
+
+export async function antigravitySymbolVerifierTool(input: {
+  filePath: string;
+  symbolName: string;
+}): Promise<string> {
+  const fp = String(input?.filePath || "").trim();
+  const sym = String(input?.symbolName || "").trim();
+  if (!fp || !sym) return "Error: filePath and symbolName are required.";
+
+  const res = verifySymbolDeclaration(fp, sym);
+  if (!res.found) {
+    return `❌ Symbol '${sym}' NOT found in '${fp}'.`;
+  }
+  return `✅ Symbol '${sym}' is verified declared in '${fp}' (Line ${res.line || "?"}, Kind: ${res.kind || "symbol"}, Exported: ${res.exported ? "YES" : "NO"}).`;
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3463,6 +3506,20 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Running Antigravity speculative cognition for "${String(i?.taskPrompt || "").slice(0, 30)}…"`,
     run: (i) => antigravityCognitionTool(i) },
+  { name: "antigravity_reflection_loop", safe: true, description: "Runs autonomous iterative self-correction reflection to repair factual discrepancies, math errors, and invalid symbol references. input: { text, maxIterations? }.", params: "{text, maxIterations?}",
+    args: {
+      text: { type: "string", required: true, desc: "Reasoning output or code plan to self-correct" },
+      maxIterations: { type: "number", desc: "Maximum reflection passes (default: 3)" }
+    },
+    activity: (i) => `Executing cognitive reflection loop on reasoning plan`,
+    run: (i) => antigravityReflectionLoopTool(i) },
+  { name: "antigravity_symbol_verifier", safe: true, description: "Empirically verifies whether a TypeScript function, type, class, or variable is declared and exported in a specific workspace file. input: { filePath, symbolName }.", params: "{filePath, symbolName}",
+    args: {
+      filePath: { type: "string", required: true, desc: "Path to TypeScript file (e.g. 'server/agent.ts')" },
+      symbolName: { type: "string", required: true, desc: "Symbol identifier to verify (e.g. 'runAgent')" }
+    },
+    activity: (i) => `Verifying symbol "${i?.symbolName}" in "${i?.filePath}"`,
+    run: (i) => antigravitySymbolVerifierTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },
