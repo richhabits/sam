@@ -8,6 +8,7 @@ import { keyStatus, poolSize, setPool } from "./keys.ts";
 import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts";
 import { deviceId, GATEWAY_URL, type Tier } from "./models.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 
 // ADMIN — manage API keys & config from inside the app. Every write here is loopback-gated:
 // these endpoints write credentials to .env, so a remote device (a phone on the shared token)
@@ -174,5 +175,16 @@ export function registerAdminRoutes(app: Express) {
     const { on } = req.body as { on: boolean };
     setElonMode(on);
     res.json({ ok: true, elonMode: isElonMode() });
+  });
+
+  // Memory & Heap Space Audit
+  app.get("/api/admin/space", (_req, res) => {
+    res.json(auditSpaceConsumption());
+  });
+
+  // Trigger Cache Compaction & V8 Heap Sweep
+  app.post("/api/admin/compact", (req, res) => {
+    if (!isLoopback(req)) return res.status(403).json({ error: "Compaction can only be triggered locally." });
+    res.json(compactSpaceAndMemory());
   });
 }
