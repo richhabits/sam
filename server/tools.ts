@@ -122,6 +122,7 @@ import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
+import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1861,6 +1862,33 @@ export async function studioDirectorStoryboardTool(input: {
   return lines.join("\n").trim();
 }
 
+export async function agentic100xWorkflowTool(input: {
+  goal: string;
+  concurrency?: number;
+  synthesize?: boolean;
+}): Promise<string> {
+  const g = String(input?.goal || "").trim();
+  if (!g) return "Error: goal is required for 100x agentic workflow execution.";
+
+  const res = await execute100xAgenticWorkflow(g, {
+    concurrency: input?.concurrency,
+    synthesize: input?.synthesize ?? true,
+    generateArtifacts: true,
+  });
+
+  const lines = [
+    `🚀 100X ANTIGRAVITY AGENTIC WORKFLOW EXECUTED [${res.workflowId}]:`,
+    `· Goal: "${res.goal}"`,
+    `· Nodes: ${res.completedNodes}/${res.totalNodes} completed in ${res.wallClockDurationMs}ms (${res.speedupFactor}x parallel speedup)`,
+    `· Execution Waves: ${res.waves.length} topological waves`,
+    `· Generated Artifacts: ${res.artifacts.length} deliverable artifacts`,
+    `\nExecutive Synthesis:`,
+    res.finalSynthesis,
+  ];
+
+  return lines.join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2961,6 +2989,14 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Directing cinematic storyboard for: "${i?.prompt ?? i}"`,
     run: (i) => studioDirectorStoryboardTool(i) },
+  { name: "agentic_100x_workflow", safe: true, description: "Executes 100x Antigravity autonomous multi-agent DAG workflows with topological wave scheduling, parallel subagent dispatch, artifact generation, and executive synthesis. input: { goal, concurrency?, synthesize? }.", params: "{goal, concurrency?, synthesize?}",
+    args: {
+      goal: { type: "string", desc: "High level project goal or complex task to execute" },
+      concurrency: { type: "number", desc: "Maximum parallel subagent concurrency (default 8)" },
+      synthesize: { type: "boolean", desc: "Whether to run an executive synthesis reduction pass" }
+    },
+    activity: (i) => `Executing 100x Antigravity DAG workflow: "${i?.goal ?? i}"`,
+    run: (i) => agentic100xWorkflowTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {

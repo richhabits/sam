@@ -130,6 +130,8 @@ import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { executeSmartAction } from "./smart-actions.ts";
 import { prewarmContext } from "./prefetch.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
+import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
+import { getModelSelectorCatalogue, saveModelSelection } from "./model-selector.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1547,6 +1549,29 @@ app.post("/api/swarms/pipeline", async (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message || "Failed to execute swarm pipeline" });
   }
+});
+app.post("/api/agent/100x", async (req, res) => {
+  try {
+    const goalOrGraph = req.body?.graph || req.body?.goal || req.body?.prompt;
+    if (!goalOrGraph) return res.status(400).json({ error: "Missing goal, prompt, or graph" });
+    const result = await execute100xAgenticWorkflow(goalOrGraph, req.body?.options || req.body);
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to execute 100x agentic workflow" });
+  }
+});
+
+// ── Antigravity-Style Dynamic Model Selector & Zero-Cost Catalog ──
+app.get("/api/models/selector", (_req, res) => {
+  res.json(getModelSelectorCatalogue());
+});
+app.post("/api/models/selector", (req, res) => {
+  const { activeModelId, autoFallbackEnabled } = req.body || {};
+  const updated = saveModelSelection({
+    ...(activeModelId ? { activeModelId } : {}),
+    ...(autoFallbackEnabled !== undefined ? { autoFallbackEnabled: !!autoFallbackEnabled } : {}),
+  });
+  res.json(updated);
 });
 
 // ── Scheduled Tasks ──
