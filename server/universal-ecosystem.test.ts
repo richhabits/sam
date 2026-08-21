@@ -6,6 +6,12 @@ import {
   getDeviceHandoff,
 } from "./universal-ecosystem.ts";
 
+const { mockExecFile } = vi.hoisted(() => ({ mockExecFile: vi.fn() }));
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return { ...actual, execFile: mockExecFile };
+});
+
 describe("Universal Multi-Device Ecosystem (Android, Wear OS, Windows, Linux, PWA)", () => {
   it("processes Wear OS smartwatch prompts with concise wrist formatting", async () => {
     const res = await processUniversalPrompt({
@@ -100,6 +106,44 @@ describe("Universal Multi-Device Ecosystem (Android, Wear OS, Windows, Linux, PW
       const res = await openCrossPlatformUri("https://github.com");
       expect(res.success).toBe(true);
       expect(res.command).toMatch(/(open|start|xdg-open)/);
+    });
+
+    describe("shell-injection resistance (real dispatch path, not the test-mode short-circuit)", () => {
+      const realEnv = { VITEST: process.env.VITEST, NODE_ENV: process.env.NODE_ENV };
+      beforeEach(() => {
+        mockExecFile.mockReset();
+        delete process.env.VITEST;
+        process.env.NODE_ENV = "production";
+      });
+      afterEach(() => {
+        if (realEnv.VITEST !== undefined) process.env.VITEST = realEnv.VITEST;
+        process.env.NODE_ENV = realEnv.NODE_ENV;
+      });
+
+      it("passes notification content as argv, never as a shell-interpolated string — a payload with shell/PowerShell metacharacters never reaches a shell", async () => {
+        const { dispatchNativeNotification } = await import("./universal-ecosystem.ts");
+        const payload = 'Alert `$(touch /tmp/pwned)` $(rm -rf ~) "; evil #';
+        await dispatchNativeNotification(payload, "body");
+
+        expect(mockExecFile).toHaveBeenCalledTimes(1);
+        const [cmd, args] = mockExecFile.mock.calls[0];
+        expect(typeof cmd).toBe("string");
+        expect(Array.isArray(args)).toBe(true);
+        // Never a single pre-built shell command string — that's the whole point of execFile.
+        expect(cmd).not.toContain(" ");
+      });
+
+      it("passes URI content as argv, never as a shell-interpolated string — a malicious URI can't break out and inject commands", async () => {
+        const { openCrossPlatformUri } = await import("./universal-ecosystem.ts");
+        const payload = 'https://example.com/x"; rm -rf ~ #';
+        await openCrossPlatformUri(payload);
+
+        expect(mockExecFile).toHaveBeenCalledTimes(1);
+        const [cmd, args] = mockExecFile.mock.calls[0];
+        expect(Array.isArray(args)).toBe(true);
+        expect(args).toContain(payload);
+        expect(cmd).not.toContain(" ");
+      });
     });
   });
 });

@@ -265,25 +265,37 @@ export async function dispatchNativeNotification(
   }
 
   try {
-    const { exec } = await import("node:child_process");
+    const { execFile } = await import("node:child_process");
     if (info.isMac) {
+      // execFile passes argv directly to the OS — no shell parses this string, so there is no
+      // outer shell-injection surface regardless of content. The AppleScript string literal
+      // itself still needs its own quote/backslash stripped (already done above) so the payload
+      // can't close the quoted string and inject new AppleScript statements.
       const soundArg = sound ? 'sound name "default"' : "";
       const subArg = cleanSub ? `subtitle "${cleanSub}"` : "";
       const script = `display notification "${cleanMsg}" with title "${cleanTitle}" ${subArg} ${soundArg}`;
-      exec(`osascript -e '${script}'`);
+      execFile("osascript", ["-e", script]);
     } else if (info.isWindows) {
+      // PowerShell double-quoted strings evaluate $(...) subexpressions on their own, regardless
+      // of the outer process having no shell — quote-stripping alone can't stop that. Escape
+      // PowerShell's own interpolation triggers (backtick, $) before the string ever reaches it.
+      const psEscape = (s: string) => s.replace(/`/g, "``").replace(/\$/g, "`$");
+      const psTitle = psEscape(cleanTitle);
+      const psMsg = psEscape(cleanMsg);
       const psScript = `
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
 $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
 $textNodes = $template.GetElementsByTagName("text")
-$textNodes.Item(0).AppendChild($template.CreateTextNode("${cleanTitle}")) > $null
-$textNodes.Item(1).AppendChild($template.CreateTextNode("${cleanMsg}")) > $null
+$textNodes.Item(0).AppendChild($template.CreateTextNode("${psTitle}")) > $null
+$textNodes.Item(1).AppendChild($template.CreateTextNode("${psMsg}")) > $null
 $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("S.A.M.").Show($toast)
       `.trim().replace(/\n/g, "; ");
-      exec(`powershell -Command "${psScript}"`);
+      execFile("powershell", ["-NoProfile", "-Command", psScript]);
     } else if (info.isLinux) {
-      exec(`notify-send "${cleanTitle}" "${cleanMsg}"`);
+      // Separate argv elements — notify-send never sees a shell, so $()/backticks in the
+      // content are inert literal text, not command substitution.
+      execFile("notify-send", [cleanTitle, cleanMsg]);
     }
     return {
       dispatched: true,
@@ -307,17 +319,26 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 export async function openCrossPlatformUri(uri: string): Promise<{ success: boolean; command: string }> {
   const cleanUri = String(uri || "").trim();
   const info = getSystemPlatformInfo();
-  let cmd = "open";
-  if (info.isWindows) cmd = "cmd.exe /c start";
-  else if (info.isLinux) cmd = "xdg-open";
+  const cmd = info.isWindows ? "cmd.exe /c start" : info.isLinux ? "xdg-open" : "open";
 
   if (process.env.NODE_ENV === "test" || process.env.VITEST) {
     return { success: true, command: `${cmd} ${cleanUri}` };
   }
 
   try {
-    const { exec } = await import("node:child_process");
-    exec(`${cmd} "${cleanUri}"`);
+    // uri was previously interpolated straight into a shell string with no sanitization at
+    // all — `x"; rm -rf ~ #` was a direct shell-injection payload. execFile with an argv array
+    // never invokes a shell, so the content of cleanUri can never be parsed as shell syntax.
+    const { execFile } = await import("node:child_process");
+    if (info.isWindows) {
+      // `start` treats its first quoted arg as a window title, not the target — the empty
+      // string placeholder is the standard workaround.
+      execFile("cmd.exe", ["/c", "start", "", cleanUri]);
+    } else if (info.isLinux) {
+      execFile("xdg-open", [cleanUri]);
+    } else {
+      execFile("open", [cleanUri]);
+    }
     return { success: true, command: `${cmd} ${cleanUri}` };
   } catch {
     return { success: false, command: `${cmd} ${cleanUri}` };
