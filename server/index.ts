@@ -129,6 +129,7 @@ import { getMobileBridgeStatus } from "./mobile-bridge.ts";
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { executeSmartAction } from "./smart-actions.ts";
 import { prewarmContext } from "./prefetch.ts";
+import { getMasterDashboard } from "./orchestrator.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1280,6 +1281,9 @@ app.post("/api/smart-action", async (req, res) => {
 app.post("/api/context/prewarm", (req, res) => {
   const { topics } = req.body as { topics?: string[] };
   res.json(prewarmContext(topics));
+});
+app.get("/api/orchestrator/dashboard", (_req, res) => {
+  res.json(getMasterDashboard({ activeToolsCount: TOOLS.length }));
 });
 app.post("/api/device/handoff", (req, res) => {
   const session = registerDeviceHandoff(req.body);
