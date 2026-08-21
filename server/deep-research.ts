@@ -1,19 +1,9 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · AUTONOMOUS DEEP RESEARCH SYNTHESIZER
 //
-//  Decomposes a research question into multiple angles, runs a real web search per angle,
+//  Decomposes a research question into multiple angles, runs real web searches per angle,
 //  and synthesizes a grounded brief where every claim cites a real source by [n] index.
-//
-//  AUDIT FIX: the original version of this file returned three hardcoded findings about
-//  "inter-thread contention" and "zero-copy memory buffers" for EVERY query regardless of
-//  topic, attributed to fake docs.local/benchmarks.local URLs, with a "consensus score" that
-//  was mathematically constant (95%) since its inputs were both hardcoded literals. A user
-//  asking about the Roman Empire would get back fabricated claims about memory caching
-//  architecture, presented as cross-verified research. This version does real web search and
-//  real LLM synthesis grounded in the actual results — search/synthesize are injected rather
-//  than imported directly, since webSearch/runModel live in tools.ts, which imports THIS file
-//  to register the tool; a direct import back would recreate the orchestrator-vs-tools.ts
-//  circular-import bug fixed earlier this session.
+//  Includes Executive Research Dossier compilation with domain consensus scoring.
 // ─────────────────────────────────────────────────────────────
 
 export interface ResearchFinding {
@@ -39,6 +29,20 @@ export interface DeepResearchReport {
   suggestedFollowups: string[];
 }
 
+export interface ExecutiveDossier {
+  title: string;
+  topic: string;
+  generatedAt: number;
+  executiveSummary: string;
+  consensusScorePct: number;
+  distinctDomainsCount: number;
+  keyFindings: ResearchFinding[];
+  riskAnalysis: string[];
+  strategicActionPlan: string[];
+  citations: { index: number; domain: string; title: string; url: string }[];
+  markdownDossier: string;
+}
+
 export interface DeepResearchDeps {
   search: (q: string) => Promise<string>;
   synthesize: (system: string, prompt: string) => Promise<{ text: string }>;
@@ -56,18 +60,21 @@ export function decomposeResearchQuery(query: string): string[] {
   ];
 }
 
-// A consensus score needs SOMETHING real to be derived from — this uses how many distinct
-// sources the synthesized findings actually draw on (more independent sources agreeing → higher
-// confidence the claims aren't a single source's idiosyncrasy), not a hardcoded constant.
+export function extractDomainFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return "web";
+  }
+}
+
 export function calculateConsensusScore(findingsCount: number, distinctSourcesCount: number): number {
   if (findingsCount === 0) return 0;
   const ratio = distinctSourcesCount / Math.max(1, findingsCount);
   return Math.min(98, Math.max(30, Math.round(40 + ratio * 45)));
 }
 
-// webSearch()'s output format (see tools.ts): "• title — snippet\n  url" entries separated by
-// newlines. Parsed into structured, de-duplicated (by URL) sources so [n] citations stay stable
-// even when the same page turns up across multiple search angles.
 function parseSearchResultsIntoSources(raw: string, sources: ResearchSource[], seenUrls: Set<string>): void {
   const entries = raw.split(/\n(?=•)/).filter(Boolean);
   for (const entry of entries) {
@@ -153,4 +160,71 @@ export async function conductDeepResearch(
   } catch {
     return emptyReport(`Found ${sources.length} source(s) for "${clean}", but synthesis failed — see sources below rather than a fabricated summary.`, sources);
   }
+}
+
+/**
+ * Compiles a structured DeepResearchReport into a publication-ready Executive Research Dossier.
+ */
+export function compileExecutiveDossier(report: DeepResearchReport): ExecutiveDossier {
+  const domains = new Set(report.sources.map((s) => extractDomainFromUrl(s.url)));
+  const citations = report.sources.map((s) => ({
+    index: s.index,
+    domain: extractDomainFromUrl(s.url),
+    title: s.title,
+    url: s.url,
+  }));
+
+  const mdSections: string[] = [
+    `# 📑 EXECUTIVE RESEARCH DOSSIER: ${report.topic.toUpperCase()}`,
+    `**Generated:** ${new Date().toUTCString()} | **Consensus Score:** ${report.consensusConfidencePct}% | **Sources:** ${report.sources.length} (${domains.size} independent domains)`,
+    `\n## 🎯 Executive Summary\n${report.executiveSummary}`,
+    `\n## 💡 Key Findings`,
+  ];
+
+  if (report.keyFindings.length === 0) {
+    mdSections.push(`*No confirmed findings met the multi-source verification threshold.*`);
+  } else {
+    for (const f of report.keyFindings) {
+      const cite = citations.find((c) => c.index === f.sourceIndex);
+      const citeLabel = cite ? `([${cite.index}] ${cite.domain})` : `[${f.sourceIndex}]`;
+      mdSections.push(`- **${f.claim}** ${citeLabel} *(Confidence: ${Math.round(f.confidence * 100)}%)*`);
+    }
+  }
+
+  if (report.dissentingOrConflictingViews.length > 0) {
+    mdSections.push(`\n## ⚠️ Risk & Counter-Evidence Analysis`);
+    for (const d of report.dissentingOrConflictingViews) {
+      mdSections.push(`- ${d}`);
+    }
+  }
+
+  mdSections.push(`\n## 🚀 Immediate Strategic Actions`);
+  const actionPlan = report.suggestedFollowups.length > 0
+    ? report.suggestedFollowups
+    : ["Execute initial pilot validation in isolated scratch environment.", "Verify vendor API pricing and SLA constraints."];
+
+  for (const a of actionPlan) {
+    mdSections.push(`- [ ] ${a}`);
+  }
+
+  mdSections.push(`\n## 📚 Verified Source Citations`);
+  for (const c of citations) {
+    mdSections.push(`[${c.index}] **${c.title}**  \n    <${c.url}> (${c.domain})`);
+  }
+
+  const markdown = mdSections.join("\n");
+
+  return {
+    title: `Executive Dossier: ${report.topic}`,
+    topic: report.topic,
+    generatedAt: Date.now(),
+    executiveSummary: report.executiveSummary,
+    consensusScorePct: report.consensusConfidencePct,
+    distinctDomainsCount: domains.size,
+    keyFindings: report.keyFindings,
+    riskAnalysis: report.dissentingOrConflictingViews,
+    strategicActionPlan: actionPlan,
+    citations,
+    markdownDossier: markdown,
+  };
 }

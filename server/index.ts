@@ -94,6 +94,8 @@ import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
 import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
+import { registerSpeedRoutes } from "./routes.speed.ts";
+import { seedStarterPlaybooks } from "./starter-playbooks.ts";
 import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { searchDocsWith, docsStats } from "./ingest.ts";
@@ -501,6 +503,7 @@ initContext();
 // walks in already knowing his world. Non-blocking; details load on demand via tools.
 if (!BENCH_MODE) void grabWorld().then((s) => console.log(`  ${s}\n`)).catch(() => {/* optional world snapshot — boot continues without it */});
 if (!BENCH_MODE) resumeOrphanedSwarms();
+if (!BENCH_MODE) seedStarterPlaybooks();
 // The Threshold — CROSS IN: restore the last session's context so SAM resumes knowing what it was
 // doing. On by default (SAM_THRESHOLD=0 to disable). The matching CROSS OUT (persist a summary) is
 // registered on the stop signals below. CROSS IN only reads+logs; CROSS OUT is fail-loud + bounded.
@@ -1242,6 +1245,7 @@ registerAdminRoutes(app);
 registerVoiceRoutes(app);
 registerCreativeRoutes(app);
 registerFlipItScaleRoutes(app);
+registerSpeedRoutes(app);
 registerAdminCostRoutes(app);
 registerStudioDirectorRoutes(app);
 

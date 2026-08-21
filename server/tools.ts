@@ -112,7 +112,6 @@ import { generateSpeechAudio } from "./audio-engine.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { generateMobileFeed } from "./mobile-feed.ts";
-import { conductDeepResearch } from "./deep-research.ts";
 import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import { executeSimdToolBatch } from "./simd-tools.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
@@ -122,6 +121,10 @@ import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
+import { getStarterPlaybookDef, STARTER_PLAYBOOKS } from "./starter-playbooks.ts";
+import { getPlaybook, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
+import { getSpeedLeaderboard } from "./speed.ts";
+import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -1868,6 +1871,62 @@ export async function flipitMarketStreamTool(input?: {
   return lines.join("\n");
 }
 
+export async function yardLaunchPlaybookTool(input?: {
+  playbookId?: string;
+  values?: Record<string, string>;
+}): Promise<string> {
+  const id = input?.playbookId || "fullstack-saas-core";
+  const pb = getPlaybook(id) || getStarterPlaybookDef(id);
+  if (!pb) {
+    const available = [...listPlaybooks().map((p) => p.id), ...STARTER_PLAYBOOKS.map((p) => p.id)];
+    return `Playbook "${id}" not found. Available playbooks: ${[...new Set(available)].join(", ")}`;
+  }
+  const defaultVals = ("defaultValues" in pb ? pb.defaultValues : pb.lastValues) || {};
+  const mergedVals = { ...defaultVals, ...(input?.values || {}) };
+  const rendered = renderTemplate(pb.template, mergedVals);
+
+  return [
+    `📋 Yard Playbook [${pb.name}] (v${"version" in pb ? pb.version : 1}):`,
+    `· ID: ${pb.id}`,
+    `\n--- Rendered Master Prompt ---\n${rendered}`,
+  ].join("\n");
+}
+
+export async function modelSpeedBenchmarkTool(): Promise<string> {
+  const board = getSpeedLeaderboard();
+  const lines = [
+    `⚡ S.A.M. Model Speed & Latency Benchmark Leaderboard:`,
+    `· Active Providers: ${board.activeCount}/${board.probedCount} · Fastest Leader: [${board.fastestProvider || "Auto-detected"}]`,
+  ];
+  if (board.results.length > 0) {
+    lines.push(`\nProvider Performance Ranking:`);
+    for (const r of board.results) {
+      const statusIcon = r.ok ? "🟢" : "🔴";
+      const throughput = r.tokensPerSec ? ` · ${r.tokensPerSec} tok/sec` : "";
+      lines.push(`  ${statusIcon} [${r.providerId}] Total Latency: ${r.totalMs}ms (TTFT: ~${r.ttftMs}ms)${throughput}`);
+    }
+  } else {
+    lines.push(`\nNo probe results recorded yet. Trigger active latency probing via POST /api/models/probe-speeds.`);
+  }
+  return lines.join("\n");
+}
+
+export async function deepResearchDossierTool(input: {
+  topic: string;
+  depth?: "quick" | "deep" | "exhaustive";
+}): Promise<string> {
+  const topic = String(input?.topic || "").trim();
+  if (!topic) return "Error: topic is required for executive deep research dossier.";
+
+  const report = await conductDeepResearch(topic, {
+    search: (q) => webSearch(q),
+    synthesize: (sys, pr) => runModel("free", sys, pr, "deep"),
+  }, { depth: input?.depth || "deep" });
+
+  const dossier = compileExecutiveDossier(report);
+  return dossier.markdownDossier;
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3070,6 +3129,23 @@ export const TOOLS: Tool[] = [
     },
     activity: () => "Optimizing prompt tokens and stripping context redundancy",
     run: (i) => optimizePromptTokensTool(i) },
+  { name: "yard_launch_playbook", safe: true, description: "Launches and renders autonomous project master playbooks (Full-Stack SaaS, Prediction Market Bot, Deep Research, 3D Studio, Zero-Cost AI Proxy). input: { playbookId?, values? }.", params: "{playbookId?, values?}",
+    args: {
+      playbookId: { type: "string", desc: "Playbook ID (e.g. 'fullstack-saas-core', 'prediction-market-bot', 'executive-deep-research', 'studio-video-pipeline', 'zero-cost-ai-proxy')" },
+      values: { type: "object", desc: "Optional template parameters dictionary to fill into prompt" }
+    },
+    activity: (i) => `Rendering Yard playbook: [${i?.playbookId || "fullstack-saas-core"}]`,
+    run: (i) => yardLaunchPlaybookTool(i) },
+  { name: "model_speed_benchmark", safe: true, description: "Displays live TTFT (Time-to-First-Token) and token throughput speed leaderboard across configured model providers. input: {}.", params: "{}",
+    activity: () => "Inspecting model speed and throughput benchmark leaderboard",
+    run: () => modelSpeedBenchmarkTool() },
+  { name: "deep_research_dossier", safe: true, description: "Gathers multi-angle live web intelligence, calculates source consensus score, and compiles a cited markdown Executive Research Dossier. input: { topic, depth? }.", params: "{topic, depth?}",
+    args: {
+      topic: { type: "string", desc: "Research question, industry sector, or market topic to investigate" },
+      depth: { type: "string", desc: "'quick' (1 pass), 'deep' (2 passes, default), or 'exhaustive' (4 passes)" }
+    },
+    activity: (i) => `Compiling executive research dossier for: "${i?.topic ?? i}"`,
+    run: (i) => deepResearchDossierTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },

@@ -88,8 +88,9 @@ export function savePlaybook(input: { id?: string; name: string; template: strin
   const now = Date.now();
   const existing = input.id ? getPlaybook(input.id) : null;
   const templateChanged = !existing || existing.template !== input.template;
+  const targetId = (input.id && safeId(input.id)) ? safeId(input.id) : (existing?.id ?? randomUUID());
   const pb: Playbook = {
-    id: existing?.id ?? randomUUID(),
+    id: targetId,
     name: String(input.name || "").trim().slice(0, 120) || "Untitled playbook",
     template: String(input.template || ""),
     params: extractParams(input.template),
