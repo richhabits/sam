@@ -114,7 +114,7 @@ import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload, postTel
 import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
 import { runDoctor } from "./doctor.ts";
 import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
-import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms } from "./swarm.ts";
+import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms, swarmFanout, swarmPipeline } from "./swarm.ts";
 import { recover as recoverPreviewCommit } from "./preview-commit.ts";
 import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { knackEnabled, recentInfluences } from "./knack.ts";
@@ -1526,6 +1526,26 @@ app.post("/api/swarms/approve", async (req, res) => {
     res.json({ ok: true });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
+  }
+});
+app.post("/api/swarms/fanout", async (req, res) => {
+  try {
+    const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+    const options = req.body?.options || req.body || {};
+    const result = await swarmFanout(tasks, options);
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to execute swarm fanout" });
+  }
+});
+app.post("/api/swarms/pipeline", async (req, res) => {
+  try {
+    const stages = Array.isArray(req.body?.stages) ? req.body.stages : [];
+    const options = req.body?.options || req.body || {};
+    const result = await swarmPipeline(stages, options);
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to execute swarm pipeline" });
   }
 });
 
