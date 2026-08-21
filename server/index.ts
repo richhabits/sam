@@ -126,6 +126,9 @@ import { generateMobileFeed } from "./mobile-feed.ts";
 import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
 import { getMobileBridgeStatus } from "./mobile-bridge.ts";
+import { disambiguateUserIntent } from "./intent-disambiguator.ts";
+import { executeSmartAction } from "./smart-actions.ts";
+import { prewarmContext } from "./prefetch.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1264,6 +1267,19 @@ app.get("/api/brain/arbitrage", (_req, res) => {
 app.post("/api/router/speculate", (req, res) => {
   const prompt = String(req.body?.prompt || "");
   res.json(resolveOptimalRoute(prompt));
+});
+app.post("/api/intent/disambiguate", (req, res) => {
+  const { prompt, contextHints } = req.body as { prompt: string; contextHints?: { activeFile?: string; recentAction?: string } };
+  res.json(disambiguateUserIntent(prompt || "", contextHints));
+});
+app.post("/api/smart-action", async (req, res) => {
+  const { intent } = req.body as { intent: string };
+  const result = await executeSmartAction(intent || "");
+  res.json(result);
+});
+app.post("/api/context/prewarm", (req, res) => {
+  const { topics } = req.body as { topics?: string[] };
+  res.json(prewarmContext(topics));
 });
 app.post("/api/device/handoff", (req, res) => {
   const session = registerDeviceHandoff(req.body);
