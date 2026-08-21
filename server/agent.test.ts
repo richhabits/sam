@@ -359,4 +359,15 @@ describe("the Curtain — scaffolding never reaches the user, whichever brain an
     expect(done).toContain("list_dir");
     delete process.env.SAM_CURTAIN;
   });
+
+  it("LOCAL MICRO-SOLVER: solves arithmetic locally without calling model", async () => {
+    const r = await runAgent("SYS", "calculate 100 * 25", "local");
+    expect(r.kind).toBe("final");
+    expect(r.text).toContain("2500");
+    expect(r.provider).toBe("local-micro-solver");
+
+    const { tokens, done } = await stream("1024 mb in gb");
+    expect(done).toContain("1 GB");
+    expect(tokens).toContain("1 GB");
+  });
 });

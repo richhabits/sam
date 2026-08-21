@@ -18,6 +18,7 @@ import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
 import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
 import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
+import { trySolveLocally } from "./local-micro-solver.ts";
 
 // Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
 // get up to 12 steps, and massive/50x multi-stage workflows get up to 50 steps. Never a flat ceiling —
@@ -419,7 +420,7 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     try { 
       result = await tool.run(call.input); 
       // THE ANTIGRAVITY SILENT VERIFIER LOOP
-      if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
+      if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file" || tool.name === "edit_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
         try {
           execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
         } catch (tscError: any) {
@@ -460,6 +461,15 @@ export function needsLiveInfo(message: string): boolean {
 export function runAgent(system: string, message: string, tier: Tier, toolNames?: string[], forceFast = false, swarm = false, reason?: string, history?: string, allow?: string[]): Promise<AgentResult> {
   // Prior turns (already formatted "User: …/SAM: …") so "proceed"/"continue" have context.
   const convo = history ? `${history}\n\n` : "";
+
+  // 1. Zero-Token Local Micro-Solver fast path (<1ms, 0 tokens) for standalone turns
+  if (!history) {
+    const local = trySolveLocally(message);
+    if (local.solvedLocally) {
+      return Promise.resolve({ kind: "final" as const, text: local.answer, trace: [], provider: "local-micro-solver" });
+    }
+  }
+
   // Fast path ONLY when it's clearly generation AND has no live-info signal — or Turbo.
   if (forceFast || isFastPath(message)) {
     return runModel(tier, system, `${convo}User: ${message}\n\nAnswer directly.`, undefined, reason ? { reason } : undefined)
@@ -480,6 +490,16 @@ export async function runAgentStream(system: string, message: string, tier: Tier
   const trace: string[] = [];
   // Prior turns (already formatted "User: …/SAM: …") so "proceed"/"continue" have context.
   const convo = history ? `${history}\n\n` : "";
+
+  // 1. Zero-Token Local Micro-Solver fast path (<1ms, 0 tokens) for standalone turns
+  if (!history) {
+    const local = trySolveLocally(message);
+    if (local.solvedLocally) {
+      emit({ type: "token", t: local.answer });
+      emit({ type: "done", text: local.answer, provider: "local-micro-solver", trace: [] });
+      return;
+    }
+  }
 
   // Fast path — only clearly self-contained generation (no live-info signal) — or Turbo.
   if (forceFast || isFastPath(message)) {
