@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
-import { createStripeCheckoutSession, handleStripeWebhookSuccess } from "./stripe-payments.ts";
+import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWebhookSignature } from "./stripe-payments.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
   app.post("/api/flipit/rebalance", (req, res) => {
@@ -62,29 +62,43 @@ export function registerFlipItScaleRoutes(app: Express) {
   });
 
   // Stripe Checkout Flow
-  app.post("/api/flipit/checkout", (req, res) => {
+  app.post("/api/flipit/checkout", async (req, res) => {
     try {
-      const { amount, paymentMethod } = req.body || {};
+      const { amount, paymentMethod, customerEmail } = req.body || {};
       if (!amount || amount <= 0) {
         return res.status(400).json({ error: "Invalid deposit amount" });
       }
-      const session = createStripeCheckoutSession(Number(amount), paymentMethod || "visa");
-      res.json({ url: session.url });
+      const session = await createStripeCheckoutSession({
+        amountGbp: Number(amount),
+        paymentMethod: paymentMethod || "card",
+        customerEmail,
+      });
+      if (session.status === "failed") {
+        return res.status(400).json({ error: session.error });
+      }
+      res.json(session);
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Checkout failed" });
     }
   });
 
-  // Mock Stripe processing endpoint that simulates the checkout screen
-  app.get("/api/flipit/mock-checkout-process", (req, res) => {
-    const sessionId = req.query.session_id as string;
-    if (!sessionId) return res.send("Invalid session");
-    
-    // Simulate web hook firing
-    handleStripeWebhookSuccess(sessionId);
-    
-    // Redirect back to flipit desk with success
-    res.redirect("/?app=flipit&deposit=success");
+  // Stripe Webhook Endpoint
+  app.post("/api/flipit/stripe-webhook", (req, res) => {
+    const signature = (req.headers["stripe-signature"] as string) || "";
+    const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
+    const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+
+    if (secret && !verifyStripeWebhookSignature(rawBody, signature, secret)) {
+      return res.status(400).json({ error: "Invalid Stripe webhook signature." });
+    }
+
+    try {
+      const event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const result = processStripeWebhookEvent(event);
+      res.json(result);
+    } catch (e: any) {
+      res.status(400).json({ error: e?.message || "Webhook processing error" });
+    }
   });
 
   // Arbitrage Execute Route

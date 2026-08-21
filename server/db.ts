@@ -34,4 +34,35 @@ export function openDb(file: string): Database.Database {
   return db;
 }
 
+export interface SqlMigration {
+  version: number;
+  name: string;
+  up: (db: Database.Database) => void;
+}
+
+/**
+ * Runs versioned SQLite schema migrations idempotently using PRAGMA user_version.
+ */
+export function runMigrations(db: Database.Database, migrations: SqlMigration[]): number {
+  const currentVersionRow = db.pragma("user_version", { simple: true }) as number;
+  let currentVersion = typeof currentVersionRow === "number" ? currentVersionRow : 0;
+
+  const pending = migrations
+    .filter((m) => m.version > currentVersion)
+    .sort((a, b) => a.version - b.version);
+
+  if (!pending.length) return currentVersion;
+
+  for (const m of pending) {
+    const tx = db.transaction(() => {
+      m.up(db);
+      db.pragma(`user_version = ${m.version}`);
+    });
+    tx();
+    currentVersion = m.version;
+  }
+
+  return currentVersion;
+}
+
 export type { Database };

@@ -59,17 +59,32 @@ export function summarize(label: string, maxLen = 100): string {
 }
 
 // Fire-and-forget push to every subscribed device; prunes dead endpoints (404/410).
-export async function pushNotify(title: string, body: string, url = "/"): Promise<void> {
+export async function pushNotify(
+  title: string,
+  body: string,
+  url = "/",
+  options: { priority?: "default" | "high" | "critical"; category?: string; badge?: number } = {}
+): Promise<void> {
   if (!subs.length) return;
   const safeBody = collapseHomes(scrub((body || "").replace(/[#*`>]/g, ""))).slice(0, 220);
-  const payload = JSON.stringify({ title, body: safeBody, url });
+  const payload = JSON.stringify({ title, body: safeBody, url, category: options.category });
   const dead: string[] = [];
+
   await Promise.all(subs.map(async (s) => {
     if ("expoPushToken" in s) {
       try {
         const res = await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: s.expoPushToken, title, body: safeBody, data: { url } })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: s.expoPushToken,
+            title,
+            body: safeBody,
+            sound: options.priority === "critical" ? "default" : "default",
+            priority: options.priority === "critical" ? "high" : "default",
+            badge: options.badge,
+            data: { url, category: options.category },
+          }),
         });
         const d = await res.json();
         if (d?.data?.status === "error" && d?.data?.details?.error === "DeviceNotRegistered") {
@@ -81,6 +96,7 @@ export async function pushNotify(title: string, body: string, url = "/"): Promis
       catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) dead.push(s.endpoint); }
     }
   }));
+
   if (dead.length) { 
     subs = subs.filter((s) => !("expoPushToken" in s && dead.includes(s.expoPushToken)) && !("endpoint" in s && dead.includes(s.endpoint))); 
     saveJson(SUBS, subs); 

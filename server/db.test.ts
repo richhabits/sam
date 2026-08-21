@@ -104,4 +104,36 @@ describe("openDb", () => {
       else process.env.SAM_SQLITE_BINDING = saved;
     }
   });
+
+  it("applies ordered schema migrations idempotently using PRAGMA user_version", async () => {
+    const { openDb, runMigrations } = await import("./db.ts");
+    const db = openDb(":memory:");
+
+    const migrations = [
+      {
+        version: 1,
+        name: "create_users",
+        up: (d: any) => d.exec("CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT);"),
+      },
+      {
+        version: 2,
+        name: "add_email",
+        up: (d: any) => d.exec("ALTER TABLE users ADD COLUMN email TEXT;"),
+      },
+    ];
+
+    const v1 = runMigrations(db, migrations);
+    expect(v1).toBe(2);
+
+    // Verify columns exist
+    db.prepare("INSERT INTO users (id, name, email) VALUES ('u1', 'Romeo', 'romeo@hectic.com')").run();
+    const user = db.prepare("SELECT * FROM users WHERE id = 'u1'").get() as any;
+    expect(user.email).toBe("romeo@hectic.com");
+
+    // Re-running applied migrations should be idempotent
+    const v2 = runMigrations(db, migrations);
+    expect(v2).toBe(2);
+
+    db.close();
+  });
 });
