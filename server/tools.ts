@@ -133,7 +133,7 @@ import { compileProductionTimeline } from "./studio-master-timeline.ts";
 import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
 import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
-import { executeAntigravityCognition, verifyFactualGrounding, verifySymbolDeclaration, runCognitiveReflectionLoop } from "./antigravity-brain.ts";
+import { executeAntigravityCognition, verifyFactualGrounding, verifySymbolDeclaration, runCognitiveReflectionLoop, generatePremiumDesignSystem } from "./antigravity-brain.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -2228,6 +2228,30 @@ export async function antigravitySymbolVerifierTool(input: {
   return `✅ Symbol '${sym}' is verified declared in '${fp}' (Line ${res.line || "?"}, Kind: ${res.kind || "symbol"}, Exported: ${res.exported ? "YES" : "NO"}).`;
 }
 
+export async function antigravityUiCompilerTool(input: {
+  brandName: string;
+  theme?: "obsidian" | "midnight-slate" | "cyberpunk" | "luxury-gold";
+  fontDisplay?: string;
+}): Promise<string> {
+  const brand = String(input?.brandName || "Alpha").trim();
+  const res = generatePremiumDesignSystem({
+    brandName: brand,
+    theme: input?.theme,
+    fontDisplay: input?.fontDisplay,
+  });
+
+  const lines = [
+    `🎨 Antigravity 100x Ultra-Premium Design System Compiled [${res.brandName}]:`,
+    `· Theme: ${res.theme.toUpperCase()} (Background: ${res.colorTokens.bg}, Primary: ${res.colorTokens.primary}, Accent: ${res.colorTokens.accent})`,
+    `· Typography: Display: ${res.fontFamily.display} | Body: ${res.fontFamily.body}`,
+    `· Glassmorphism Tokens: ${Object.keys(res.colorTokens).length} design variables configured`,
+    `\n[Ready-to-Use Glassmorphism CSS Stylesheet]\n${res.glassmorphismCss}`,
+    `\n[Ready-to-Use Hero Component Blueprint]\n${res.heroComponentHtml}`,
+    `\n[Ready-to-Use Feature Card Blueprint]\n${res.cardComponentHtml}`,
+  ];
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3520,6 +3544,14 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Verifying symbol "${i?.symbolName}" in "${i?.filePath}"`,
     run: (i) => antigravitySymbolVerifierTool(i) },
+  { name: "antigravity_ui_compiler", safe: true, description: "Compiles 100x ultra-premium design tokens, glassmorphism CSS, and bespoke component blueprints for websites and web apps. input: { brandName, theme?: 'obsidian'|'midnight-slate'|'cyberpunk'|'luxury-gold', fontDisplay? }.", params: "{brandName, theme?, fontDisplay?}",
+    args: {
+      brandName: { type: "string", required: true, desc: "Brand or application name" },
+      theme: { type: "string", desc: "Design theme: 'obsidian', 'midnight-slate', 'cyberpunk', or 'luxury-gold'" },
+      fontDisplay: { type: "string", desc: "Display font family" }
+    },
+    activity: (i) => `Compiling 100x ultra-premium design system for "${i?.brandName}"`,
+    run: (i) => antigravityUiCompilerTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },

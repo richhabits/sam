@@ -5,6 +5,7 @@ import {
   verifySymbolDeclaration,
   runCognitiveReflectionLoop,
   getCognitiveTelemetry,
+  generatePremiumDesignSystem,
 } from "./antigravity-brain.ts";
 import { isLoopback } from "./http-guards.ts";
 
@@ -60,7 +61,18 @@ export function registerAntigravityRoutes(app: Express) {
     res.json(outcome);
   });
 
-  // 5. Get real-time cognitive brain telemetry
+  // 5. Compile 100x Ultra-Premium UI Design System & Blueprints
+  app.post("/api/brain/ui/compile", (req: Request, res: Response) => {
+    const { brandName, theme, fontDisplay } = req.body || {};
+    const result = generatePremiumDesignSystem({
+      brandName: typeof brandName === "string" ? brandName : "Alpha",
+      theme,
+      fontDisplay,
+    });
+    res.json(result);
+  });
+
+  // 6. Get real-time cognitive brain telemetry
   app.get("/api/brain/cognition/telemetry", (_req: Request, res: Response) => {
     const telemetry = getCognitiveTelemetry();
     res.json(telemetry);

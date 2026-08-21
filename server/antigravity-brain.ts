@@ -7,7 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 import { execSync } from "node:child_process";
 import { parseCompilerDiagnostics } from "./code-repair.ts";
 
@@ -117,6 +117,16 @@ export function verifySymbolDeclaration(
   cwd = process.cwd()
 ): SymbolVerificationResult {
   const cleanPath = filePath.startsWith("/") ? filePath : resolve(cwd, filePath);
+
+  // This is reachable with attacker-controlled paths from three routes/tools (direct filePath,
+  // and import paths regex-extracted out of arbitrary submitted text in verifyFactualGrounding),
+  // none of which are gated — without this, "../../../.env" or an absolute path reads any file
+  // the server process can see. Fail the same way as "not found" so existence can't be probed.
+  const root = resolve(cwd) + sep;
+  if (!cleanPath.startsWith(root)) {
+    return { symbolName, filePath, found: false, exported: false };
+  }
+
   if (!existsSync(cleanPath)) {
     return { symbolName, filePath, found: false, exported: false };
   }
@@ -490,4 +500,214 @@ export function runAntigravitySilentVerifier(
   }
 
   return toolResult;
+}
+
+export interface PremiumDesignSystemResult {
+  brandName: string;
+  theme: "obsidian" | "midnight-slate" | "cyberpunk" | "luxury-gold";
+  colorTokens: Record<string, string>;
+  fontFamily: { display: string; body: string; mono: string };
+  glassmorphismCss: string;
+  heroComponentHtml: string;
+  cardComponentHtml: string;
+  buttonComponentHtml: string;
+}
+
+/**
+ * 100x Ultra-Premium Design System & Glassmorphism Compiler:
+ * Generates bespoke, production-ready design tokens, CSS variables, and HTML/React component blueprints.
+ */
+export function generatePremiumDesignSystem(input: {
+  brandName: string;
+  theme?: "obsidian" | "midnight-slate" | "cyberpunk" | "luxury-gold";
+  fontDisplay?: string;
+}): PremiumDesignSystemResult {
+  const brand = String(input?.brandName || "Alpha").trim();
+  const theme = input?.theme || "obsidian";
+  const displayFont = input?.fontDisplay || "Plus Jakarta Sans, sans-serif";
+
+  const themeConfigs = {
+    obsidian: {
+      bg: "#0B0F19",
+      surface: "rgba(15, 23, 42, 0.65)",
+      primary: "#6366F1",
+      accent: "#06B6D4",
+      border: "rgba(255, 255, 255, 0.08)",
+      glow: "rgba(99, 102, 241, 0.25)",
+      textPrimary: "#F8FAFC",
+      textMuted: "#94A3B8",
+    },
+    "midnight-slate": {
+      bg: "#0F172A",
+      surface: "rgba(30, 41, 59, 0.70)",
+      primary: "#0284C7",
+      accent: "#10B981",
+      border: "rgba(255, 255, 255, 0.10)",
+      glow: "rgba(2, 132, 199, 0.25)",
+      textPrimary: "#F1F5F9",
+      textMuted: "#64748B",
+    },
+    cyberpunk: {
+      bg: "#05050A",
+      surface: "rgba(20, 10, 35, 0.75)",
+      primary: "#8B5CF6",
+      accent: "#EC4899",
+      border: "rgba(236, 72, 153, 0.20)",
+      glow: "rgba(139, 92, 246, 0.35)",
+      textPrimary: "#FAFAFA",
+      textMuted: "#A78BFA",
+    },
+    "luxury-gold": {
+      bg: "#0A0A0B",
+      surface: "rgba(24, 24, 27, 0.75)",
+      primary: "#F59E0B",
+      accent: "#D97706",
+      border: "rgba(245, 158, 11, 0.20)",
+      glow: "rgba(245, 158, 11, 0.25)",
+      textPrimary: "#FFFBEB",
+      textMuted: "#A1A1AA",
+    },
+  };
+
+  const c = themeConfigs[theme];
+
+  const glassmorphismCss = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  --bg-base: ${c.bg};
+  --bg-surface: ${c.surface};
+  --primary-accent: ${c.primary};
+  --secondary-accent: ${c.accent};
+  --border-glass: ${c.border};
+  --glow-shadow: ${c.glow};
+  --text-main: ${c.textPrimary};
+  --text-sub: ${c.textMuted};
+  --font-display: ${displayFont};
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--bg-base);
+  background-image: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(99, 102, 241, 0.15), transparent 70%);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.glass-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 25px 50px -12px var(--glow-shadow);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.glow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -4px var(--glow-shadow);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glow-btn:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.badge-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-accent);
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--secondary-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--secondary-accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+`.trim();
+
+  const heroComponentHtml = `
+<section class="hero-section" style="padding: 80px 24px; text-align: center; max-width: 1100px; margin: 0 auto;">
+  <div class="badge-pulse" style="margin-bottom: 24px;">
+    <span class="pulse-dot"></span> 100x Ultra-Premium Architecture Active
+  </div>
+  <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 20px 0; background: linear-gradient(135deg, #FFFFFF 0%, #94A3B8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    ${brand} Built for Maximum Impact.
+  </h1>
+  <p style="font-size: 1.2rem; color: var(--text-sub); max-width: 680px; margin: 0 auto 36px auto; line-height: 1.6;">
+    Uncompromising design aesthetics, real-time speed, and state-of-the-art glassmorphism craftsmanship.
+  </p>
+  <div style="display: flex; justify-content: center; gap: 16px;">
+    <button class="glow-btn">Launch Application ➔</button>
+  </div>
+</section>
+`.trim();
+
+  const cardComponentHtml = `
+<div class="glass-card" style="padding: 32px; max-width: 380px;">
+  <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--secondary-accent); margin-bottom: 12px;">SYSTEM TELEMETRY</div>
+  <h3 style="font-family: var(--font-display); font-size: 1.5rem; margin: 0 0 8px 0;">Ultra-Fast Execution</h3>
+  <p style="color: var(--text-sub); font-size: 0.95rem; line-height: 1.5; margin: 0 0 20px 0;">
+    Sub-millisecond analytical resolution with zero external latency and mathematically verified state.
+  </p>
+  <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.9rem; border-top: 1px solid var(--border-glass); padding-top: 16px;">
+    <span style="color: var(--text-sub);">Throughput</span>
+    <span style="color: #10B981; font-weight: 700;">10,000 req/sec</span>
+  </div>
+</div>
+`.trim();
+
+  const buttonComponentHtml = `<button class="glow-btn"><span>Get Started</span> <span style="font-size: 1.1em;">➔</span></button>`;
+
+  return {
+    brandName: brand,
+    theme,
+    colorTokens: c,
+    fontFamily: {
+      display: displayFont,
+      body: "Inter, sans-serif",
+      mono: "JetBrains Mono, monospace",
+    },
+    glassmorphismCss,
+    heroComponentHtml,
+    cardComponentHtml,
+    buttonComponentHtml,
+  };
 }

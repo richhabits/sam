@@ -87,6 +87,21 @@ describe("S.A.M. Antigravity Cognitive Brain REST Routes", () => {
     expect(body.reflectedText).toContain("10 out of 20 (50%)");
   });
 
+  it("POST /api/brain/ui/compile compiles 100x ultra-premium design tokens and components", async () => {
+    const res = await fetch(`${baseUrl}/api/brain/ui/compile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandName: "Aetheria", theme: "cyberpunk" }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.brandName).toBe("Aetheria");
+    expect(body.theme).toBe("cyberpunk");
+    expect(body.glassmorphismCss).toContain("backdrop-filter: blur");
+    expect(body.heroComponentHtml).toContain("Aetheria");
+  });
+
   it("GET /api/brain/cognition/telemetry returns metrics report", async () => {
     const res = await fetch(`${baseUrl}/api/brain/cognition/telemetry`);
     expect(res.status).toBe(200);

@@ -6,6 +6,7 @@ import {
   verifySymbolDeclaration,
   runCognitiveReflectionLoop,
   getCognitiveTelemetry,
+  generatePremiumDesignSystem,
 } from "./antigravity-brain.ts";
 
 describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => {
@@ -55,6 +56,17 @@ describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => 
     expect(symInvalid.exported).toBe(false);
   });
 
+  it("refuses to read files outside the workspace root — no arbitrary-file-read via ../ or absolute paths", () => {
+    // Reachable from three unauthenticated routes/tools; must fail closed the same way "not found" does.
+    const traversal = verifySymbolDeclaration("../../../../../../etc/passwd", "root");
+    expect(traversal.found).toBe(false);
+    expect(traversal.exported).toBe(false);
+
+    const absolute = verifySymbolDeclaration("/etc/passwd", "root");
+    expect(absolute.found).toBe(false);
+    expect(absolute.exported).toBe(false);
+  });
+
   it("executes autonomous cognitive reflection loop and auto-repairs discrepancies", () => {
     const textWithFlawedMath = `During benchmark evaluation, 10 out of 50 (80%) tests passed in server/agent.ts.`;
     const reflection = runCognitiveReflectionLoop(textWithFlawedMath, { maxIterations: 3 });
@@ -93,5 +105,15 @@ describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => 
       "File written successfully."
     );
     expect(res).toBe("File written successfully.");
+  });
+
+  it("compiles 100x ultra-premium design system tokens, glassmorphism CSS, and blueprints", () => {
+    const ds = generatePremiumDesignSystem({ brandName: "OmniCraft", theme: "obsidian" });
+    expect(ds.brandName).toBe("OmniCraft");
+    expect(ds.theme).toBe("obsidian");
+    expect(ds.colorTokens.bg).toBe("#0B0F19");
+    expect(ds.glassmorphismCss).toContain("--border-glass");
+    expect(ds.heroComponentHtml).toContain("OmniCraft");
+    expect(ds.cardComponentHtml).toContain("glass-card");
   });
 });

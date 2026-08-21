@@ -42,3 +42,16 @@ describe("validateSkillTools — catch typos at boot", () => {
     expect(validateSkillTools([skill(undefined)], valid)).toHaveLength(0);
   });
 });
+
+describe("loadSkills & routeSkill — WebDesign integration", () => {
+  it("loads the ultra-premium webdesign skill and routes properly", async () => {
+    const { loadSkills, routeSkill } = await import("./skills.ts");
+    const skills = loadSkills();
+    const webdesign = skills.find((s) => s.id === "webdesign");
+    expect(webdesign).toBeDefined();
+    expect(webdesign?.name).toBe("WebDesign");
+
+    const routed = routeSkill("build me a luxury glassmorphism website and landing page", skills);
+    expect(routed?.id).toBe("webdesign");
+  });
+});
