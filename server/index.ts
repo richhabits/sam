@@ -122,6 +122,9 @@ import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoa
 import { startDropWatcher, dropFolderPath } from "./ios.ts";
 import { processWatchPrompt, APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
 import { processUniversalPrompt, UNIVERSAL_SHORTCUTS, registerDeviceHandoff, getDeviceHandoff } from "./universal-ecosystem.ts";
+import { generateMobileFeed } from "./mobile-feed.ts";
+import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
+import { resolveOptimalRoute } from "./speculative-router.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1247,6 +1250,16 @@ app.post("/api/universal/prompt", async (req, res) => {
 });
 app.get("/api/universal/shortcuts", (_req, res) => {
   res.json({ shortcuts: UNIVERSAL_SHORTCUTS });
+});
+app.get("/api/mobile/feed", (_req, res) => {
+  res.json(generateMobileFeed());
+});
+app.get("/api/brain/arbitrage", (_req, res) => {
+  res.json(getBrainPerformanceMatrix());
+});
+app.post("/api/router/speculate", (req, res) => {
+  const prompt = String(req.body?.prompt || "");
+  res.json(resolveOptimalRoute(prompt));
 });
 app.post("/api/device/handoff", (req, res) => {
   const session = registerDeviceHandoff(req.body);
