@@ -54,28 +54,36 @@ export function registerCompanionRoutes(app: Express, options?: CompanionRouteOp
       return res.status(400).json({ error: "actionId is required for companion approval." });
     }
 
-    // 1. If options.resolvePending is injected, execute real confirmation and resume agent loop
+    // 1. If options.resolvePending is injected, try the real pending-tool-approval store first.
+    // "expired" here just means takePending() found nothing for this id — it doesn't mean the
+    // actionId is invalid, since Asks live in a completely separate store (ask.ts). Falling
+    // through to step 2 instead of 410-ing here is what lets an unattended Ask still resolve
+    // once a real resolver is wired — without it, this branch always wins and Ask resolution
+    // becomes permanently unreachable in the running app (resolvePending is always injected).
+    let pendingToolExpired = false;
     if (options?.resolvePending) {
       const outcome = await options.resolvePending(String(actionId), true, !!always);
-      if (outcome.expired) {
-        return res.status(410).json({ success: false, error: outcome.text || "Approval expired or not found" });
-      }
       if (outcome.error) {
         return res.status(500).json({ success: false, error: outcome.error });
       }
-      const entry = recordAuditEvent(
-        actor === "watch" ? "watch_companion" : "operator",
-        `COMPANION_APPROVE_${String(actionId).toUpperCase()}`,
-        { actionId, resolvedType: "PENDING_TOOL_EXECUTION", details: details || {} },
-        "SUCCESS"
-      );
-      return res.json({
-        success: true,
-        actionId,
-        resolvedType: "PENDING_TOOL_EXECUTION",
-        result: outcome,
-        auditEntry: entry,
-      });
+      if (!outcome.expired) {
+        const entry = recordAuditEvent(
+          actor === "watch" ? "watch_companion" : "operator",
+          `COMPANION_APPROVE_${String(actionId).toUpperCase()}`,
+          { actionId, resolvedType: "PENDING_TOOL_EXECUTION", details: details || {} },
+          "SUCCESS"
+        );
+        return res.json({
+          success: true,
+          actionId,
+          resolvedType: "PENDING_TOOL_EXECUTION",
+          result: outcome,
+          auditEntry: entry,
+        });
+      }
+      // outcome.expired → no pending-tool record for this id; fall through to the Ask check below,
+      // but remember it so a genuinely-unknown id still 410s instead of silently "succeeding" below.
+      pendingToolExpired = true;
     }
 
     // 2. Check if this actionId resolves an unattended Ask
@@ -97,7 +105,12 @@ export function registerCompanionRoutes(app: Express, options?: CompanionRouteOp
       });
     }
 
-    // 3. Fallback generic companion confirmation
+    if (pendingToolExpired) {
+      recordAuditEvent("operator", `COMPANION_APPROVE_EXPIRED_${String(actionId).toUpperCase()}`, { actionId }, "DENIED");
+      return res.status(410).json({ success: false, error: "Approval expired or not found." });
+    }
+
+    // 3. Fallback generic companion confirmation (only when no resolver was injected at all)
     const entry = recordAuditEvent(
       actor === "watch" ? "watch_companion" : "operator",
       `COMPANION_APPROVE_${String(actionId).toUpperCase()}`,

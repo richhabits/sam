@@ -81,6 +81,48 @@ describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
     expect(body.error).toContain("expired");
   });
 
+  it("still resolves an unattended Ask when resolvePending is injected but finds no pending record", async () => {
+    // Real production wiring always injects resolvePending (index.ts → registerCompanionRoutes).
+    // If step 1 stopped at "expired" instead of falling through, Ask resolution would be
+    // unreachable outside of the separate no-resolver test app below.
+    const askRecord = raiseAsk({
+      pending: { tool: "run_shell", input: { cmd: "echo hi" } },
+      tier: "dangerous",
+      source: "test",
+    });
+    const askId = askRecord.id;
+    expect(getAsk(askId)).toBeDefined();
+
+    mockResolver.mockResolvedValueOnce({ expired: true, text: "no such pending action" });
+
+    const res = await fetch(`${baseUrl}/api/companion/action/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionId: askId, actor: "watch" }),
+    });
+
+    expect(mockResolver).toHaveBeenCalledWith(askId, true, false);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.resolvedType).toBe("UNATTENDED_ASK_RESOLUTION");
+    expect(body.tool).toBe("run_shell");
+  });
+
+  it("returns 410 when neither a pending record nor an Ask exists for the id, even with resolvePending injected", async () => {
+    mockResolver.mockResolvedValueOnce({ expired: true, text: "no such pending action" });
+
+    const res = await fetch(`${baseUrl}/api/companion/action/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionId: "totally-unknown-id", actor: "watch" }),
+    });
+
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+  });
+
   it("resolves unattended Ask escalation when no pending action exists", async () => {
     const askRecord = raiseAsk({
       pending: { tool: "delete_file", input: { path: "scratch.tmp" } },
