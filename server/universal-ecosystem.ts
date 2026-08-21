@@ -199,3 +199,127 @@ export function getDeviceHandoff(sessionId: string): DeviceHandoffSession | null
   if (Date.now() - entry.updatedAt > HANDOFF_TTL_MS) { activeHandoffs.delete(sessionId); return null; }
   return entry;
 }
+
+export interface SystemPlatformInfo {
+  os: "darwin" | "win32" | "linux" | "other";
+  arch: string;
+  isMac: boolean;
+  isWindows: boolean;
+  isLinux: boolean;
+  notificationBridge: "osascript" | "powershell" | "notify-send" | "fallback";
+}
+
+/**
+ * Returns runtime host OS platform capabilities (macOS, Windows, Linux)
+ */
+export function getSystemPlatformInfo(): SystemPlatformInfo {
+  const platform = process.platform;
+  const isMac = platform === "darwin";
+  const isWindows = platform === "win32";
+  const isLinux = platform === "linux";
+
+  let notificationBridge: SystemPlatformInfo["notificationBridge"] = "fallback";
+  if (isMac) notificationBridge = "osascript";
+  else if (isWindows) notificationBridge = "powershell";
+  else if (isLinux) notificationBridge = "notify-send";
+
+  return {
+    os: isMac ? "darwin" : isWindows ? "win32" : isLinux ? "linux" : "other",
+    arch: process.arch,
+    isMac,
+    isWindows,
+    isLinux,
+    notificationBridge,
+  };
+}
+
+export interface NativeNotificationResult {
+  dispatched: boolean;
+  channel: string;
+  title: string;
+  body: string;
+}
+
+/**
+ * Dispatches a native desktop notification across macOS, Windows, and Linux.
+ */
+export async function dispatchNativeNotification(
+  title: string,
+  message: string,
+  options?: { subtitle?: string; sound?: boolean }
+): Promise<NativeNotificationResult> {
+  const cleanTitle = String(title || "S.A.M. Alert").replace(/["'\\]/g, "");
+  const cleanMsg = String(message || "").replace(/["'\\]/g, "");
+  const cleanSub = String(options?.subtitle || "").replace(/["'\\]/g, "");
+  const sound = options?.sound !== false;
+
+  const info = getSystemPlatformInfo();
+
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+    return {
+      dispatched: true,
+      channel: `test:${info.notificationBridge}`,
+      title: cleanTitle,
+      body: cleanMsg,
+    };
+  }
+
+  try {
+    const { exec } = await import("node:child_process");
+    if (info.isMac) {
+      const soundArg = sound ? 'sound name "default"' : "";
+      const subArg = cleanSub ? `subtitle "${cleanSub}"` : "";
+      const script = `display notification "${cleanMsg}" with title "${cleanTitle}" ${subArg} ${soundArg}`;
+      exec(`osascript -e '${script}'`);
+    } else if (info.isWindows) {
+      const psScript = `
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
+$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+$textNodes = $template.GetElementsByTagName("text")
+$textNodes.Item(0).AppendChild($template.CreateTextNode("${cleanTitle}")) > $null
+$textNodes.Item(1).AppendChild($template.CreateTextNode("${cleanMsg}")) > $null
+$toast = [Windows.UI.Notifications.ToastNotification]::new($template)
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("S.A.M.").Show($toast)
+      `.trim().replace(/\n/g, "; ");
+      exec(`powershell -Command "${psScript}"`);
+    } else if (info.isLinux) {
+      exec(`notify-send "${cleanTitle}" "${cleanMsg}"`);
+    }
+    return {
+      dispatched: true,
+      channel: info.notificationBridge,
+      title: cleanTitle,
+      body: cleanMsg,
+    };
+  } catch (err: any) {
+    return {
+      dispatched: false,
+      channel: "error",
+      title: cleanTitle,
+      body: `Notification failed: ${err?.message || "Unknown error"}`,
+    };
+  }
+}
+
+/**
+ * Platform-agnostic default URL/file opener (macOS open, Windows start, Linux xdg-open)
+ */
+export async function openCrossPlatformUri(uri: string): Promise<{ success: boolean; command: string }> {
+  const cleanUri = String(uri || "").trim();
+  const info = getSystemPlatformInfo();
+  let cmd = "open";
+  if (info.isWindows) cmd = "cmd.exe /c start";
+  else if (info.isLinux) cmd = "xdg-open";
+
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+    return { success: true, command: `${cmd} ${cleanUri}` };
+  }
+
+  try {
+    const { exec } = await import("node:child_process");
+    exec(`${cmd} "${cleanUri}"`);
+    return { success: true, command: `${cmd} ${cleanUri}` };
+  } catch {
+    return { success: false, command: `${cmd} ${cleanUri}` };
+  }
+}

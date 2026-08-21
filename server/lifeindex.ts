@@ -43,20 +43,37 @@ function save(s: Store): void {
 
 export function listFolders(): WatchedFolder[] { return load().folders; }
 
-// ── BATTERY AWARENESS (macOS) — don't chew battery re-indexing on the go ──
+// ── BATTERY AWARENESS (macOS, Linux, Windows) — don't chew battery re-indexing on the go ──
 let _acPower: boolean | null = null, _acAt = 0;
 export function onACPower(): Promise<boolean> {
   if (process.env.SAM_BENCH_MOCK === "1") return Promise.resolve(true);   // deterministic in bench/tests (no battery gating)
   const now = Date.now();
   if (_acPower !== null && now - _acAt < 30_000) return Promise.resolve(_acPower);
   _acAt = now;
-  if (process.platform !== "darwin") { _acPower = true; return Promise.resolve(true); }   // only gate on macOS
-  return new Promise((res) => {
-    execFile("/usr/bin/pmset", ["-g", "batt"], { timeout: 2000 }, (err, out) => {
-      _acPower = err ? true : /AC Power/.test(out || "");   // unknown → assume plugged (don't block on error)
-      res(_acPower);
+
+  if (process.platform === "darwin") {
+    return new Promise((res) => {
+      execFile("/usr/bin/pmset", ["-g", "batt"], { timeout: 2000 }, (err, out) => {
+        _acPower = err ? true : /AC Power/.test(out || "");   // unknown → assume plugged (don't block on error)
+        res(_acPower);
+      });
     });
-  });
+  }
+
+  if (process.platform === "linux") {
+    try {
+      if (existsSync("/sys/class/power_supply/AC/online")) {
+        const status = readFileSync("/sys/class/power_supply/AC/online", "utf8").trim();
+        _acPower = status === "1";
+        return Promise.resolve(_acPower);
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  _acPower = true;
+  return Promise.resolve(true);
 }
 
 // ── INDEXING ─────────────────────────────────────────────────

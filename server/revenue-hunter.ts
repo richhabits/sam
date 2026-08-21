@@ -172,3 +172,64 @@ export async function huntRevenueOpportunities(options: {
     executiveStrategy,
   };
 }
+
+export interface SaasReplacementItem {
+  toolName: string;
+  monthlyCostUsd: number;
+  annualSavingsUsd: number;
+  inHouseSamModule: string;
+  setupTimeHours: number;
+}
+
+export const SAAS_REPLACEMENT_CATALOGUE: SaasReplacementItem[] = [
+  { toolName: "Zapier / Make (Workflow Automation)", monthlyCostUsd: 60, annualSavingsUsd: 720, inHouseSamModule: "SAM Yard Playbooks & Cron Daemon", setupTimeHours: 0.5 },
+  { toolName: "Typeform / Formstack (Data Ingestion)", monthlyCostUsd: 35, annualSavingsUsd: 420, inHouseSamModule: "SAM 100x Glassmorphic Forms", setupTimeHours: 0.2 },
+  { toolName: "Segment / Mixpanel (Telemetry & Analytics)", monthlyCostUsd: 120, annualSavingsUsd: 1440, inHouseSamModule: "server/analytics.ts + SQLite WAL", setupTimeHours: 0.5 },
+  { toolName: "ElevenLabs (AI Voice Generation)", monthlyCostUsd: 40, annualSavingsUsd: 480, inHouseSamModule: "SAM Local TTS & Web Audio Streamer", setupTimeHours: 0.1 },
+  { toolName: "Perplexity Pro (Deep Search & Citations)", monthlyCostUsd: 20, annualSavingsUsd: 240, inHouseSamModule: "SAM Executive Deep Research Engine", setupTimeHours: 0.1 },
+  { toolName: "Runway / Luma (AI Video Generation)", monthlyCostUsd: 95, annualSavingsUsd: 1140, inHouseSamModule: "SAM Cinematic 3D Studio & fal.ai Mesh", setupTimeHours: 0.5 },
+];
+
+/**
+ * Calculates total annual savings from replacing external SaaS with in-house SAM modules.
+ */
+export function calculateSaasArbitrage(): {
+  totalMonthlySavingsUsd: number;
+  totalAnnualSavingsUsd: number;
+  items: SaasReplacementItem[];
+} {
+  const totalMonthly = SAAS_REPLACEMENT_CATALOGUE.reduce((sum, item) => sum + item.monthlyCostUsd, 0);
+  const totalAnnual = SAAS_REPLACEMENT_CATALOGUE.reduce((sum, item) => sum + item.annualSavingsUsd, 0);
+  return {
+    totalMonthlySavingsUsd: totalMonthly,
+    totalAnnualSavingsUsd: totalAnnual,
+    items: SAAS_REPLACEMENT_CATALOGUE,
+  };
+}
+
+/**
+ * Mathematical ROI & Payback calculator for automated revenue operations.
+ */
+export function calculateOpportunityRoi(
+  costUsd: number,
+  yieldUsd: number,
+  timeframeDays = 30
+): {
+  netProfitUsd: number;
+  roiPct: number;
+  annualizedRoiPct: number;
+  paybackDays: number;
+} {
+  const netProfit = Math.max(0, yieldUsd - costUsd);
+  const roiPct = costUsd > 0 ? Math.round((netProfit / costUsd) * 100) : 100;
+  const annualizedMultiplier = 365 / Math.max(1, timeframeDays);
+  const annualizedRoiPct = Math.round(roiPct * annualizedMultiplier);
+  const paybackDays = costUsd > 0 && yieldUsd > 0 ? Math.round((costUsd / yieldUsd) * timeframeDays) : 0;
+
+  return {
+    netProfitUsd: netProfit,
+    roiPct,
+    annualizedRoiPct,
+    paybackDays,
+  };
+}

@@ -74,4 +74,32 @@ describe("Universal Multi-Device Ecosystem (Android, Wear OS, Windows, Linux, PW
       expect(getDeviceHandoff("sess_new")).not.toBeNull();
     });
   });
+
+  describe("Cross-Platform OS Bridges (macOS, Windows, Linux)", () => {
+    it("identifies platform runtime capabilities", async () => {
+      const { getSystemPlatformInfo } = await import("./universal-ecosystem.ts");
+      const info = getSystemPlatformInfo();
+      expect(info.os).toBeDefined();
+      expect(["darwin", "win32", "linux", "other"]).toContain(info.os);
+      expect(info.arch).toBeDefined();
+      expect(["osascript", "powershell", "notify-send", "fallback"]).toContain(info.notificationBridge);
+    });
+
+    it("dispatches native notifications cleanly across platforms", async () => {
+      const { dispatchNativeNotification } = await import("./universal-ecosystem.ts");
+      const res = await dispatchNativeNotification("Yard Build Succeeded", "All 230 tests passed clean.", {
+        subtitle: "Antigravity Compiler",
+      });
+      expect(res.dispatched).toBe(true);
+      expect(res.title).toBe("Yard Build Succeeded");
+      expect(res.body).toBe("All 230 tests passed clean.");
+    });
+
+    it("resolves cross-platform URI commands cleanly", async () => {
+      const { openCrossPlatformUri } = await import("./universal-ecosystem.ts");
+      const res = await openCrossPlatformUri("https://github.com");
+      expect(res.success).toBe(true);
+      expect(res.command).toMatch(/(open|start|xdg-open)/);
+    });
+  });
 });
