@@ -4,6 +4,7 @@ import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocatio
 import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWebhookSignature } from "./stripe-payments.ts";
 import { getSharedExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
 import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
+import { scanEvArbitrageSignals } from "./flipit-signals.ts";
 import { isLoopback } from "./http-guards.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
@@ -184,6 +185,22 @@ export function registerFlipItScaleRoutes(app: Express) {
       res.json({ success: true, activeRegime: regime, message: `System re-tuned to ${regime} mode.` });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Failed to switch regime" });
+    }
+  });
+
+  // +EV Prediction Market Signals Feed
+  app.get("/api/flipit/signals", (req, res) => {
+    try {
+      const portfolioGbp = req.query.portfolio ? Number(req.query.portfolio) : 1000;
+      const signals = scanEvArbitrageSignals([], portfolioGbp);
+      res.json({
+        success: true,
+        timestamp: Date.now(),
+        portfolioGbp,
+        signals,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to scan +EV signals" });
     }
   });
 }

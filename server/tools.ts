@@ -127,6 +127,9 @@ import { getSpeedLeaderboard } from "./speed.ts";
 import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
 import { getHardwareVitals } from "./hardware-monitor.ts";
 import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
+import { scanEvArbitrageSignals } from "./flipit-signals.ts";
+import { startSandboxApp, stopSandboxApp, getSandboxSession, listSandboxSessions } from "./yard/sandbox-daemon.ts";
+import { compileProductionTimeline } from "./studio-master-timeline.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -1957,6 +1960,102 @@ export async function auditLedgerVerifyTool(): Promise<string> {
   return lines.join("\n");
 }
 
+export async function flipitEvSignalsTool(input?: { portfolioGbp?: number }): Promise<string> {
+  const cap = input?.portfolioGbp || 1000;
+  const signals = scanEvArbitrageSignals([], cap);
+  const positive = signals.filter((s) => s.isPositiveEv);
+
+  const lines = [
+    `📈 FlipIt Quantitative +EV Prediction Market Signals (Capital: £${cap}):`,
+    `· Total Opportunities Scanned: ${signals.length} · Positive Expected Value: ${positive.length}`,
+  ];
+
+  if (positive.length > 0) {
+    lines.push(`\nActionable +EV Signals:`);
+    for (const s of positive) {
+      lines.push(
+        `  🚀 [${s.recommendedPosition}] "${s.title}" (${s.underlying})` +
+        `\n     · Edge: +${s.edgePct}% (Model: ${Math.round(s.modelTrueProbability * 100)}% vs Market: ${Math.round(s.marketImpliedProbability * 100)}%)` +
+        `\n     · Half-Kelly Allocation: £${s.halfKellyAllocationGbp} · Expected ROI: +${s.expectedRoiPct}% · Confidence: ${s.confidenceScore}%`
+      );
+    }
+  } else {
+    lines.push(`\nNo +EV signals found meeting the 4%+ edge threshold right now.`);
+  }
+  return lines.join("\n");
+}
+
+export async function yardSandboxDaemonTool(input: {
+  action: "start" | "stop" | "status" | "list";
+  projectId?: string;
+  command?: string;
+  sessionId?: string;
+}): Promise<string> {
+  const act = input.action || "list";
+  if (act === "list") {
+    const list = listSandboxSessions();
+    if (list.length === 0) return "No active Yard sandbox sessions currently running.";
+    return `Active Yard Sandboxes:\n` + list.map((s) => `· [${s.status}] ID: ${s.sessionId} (Project: ${s.projectId}, Port: http://127.0.0.1:${s.port}, PID: ${s.pid})`).join("\n");
+  }
+
+  if (act === "start") {
+    if (!input.command) return "Error: command is required to start a sandbox process.";
+    const s = await startSandboxApp({
+      projectId: input.projectId || "yard-app",
+      cwd: process.cwd(),
+      command: input.command,
+    });
+    return `🚀 Started Yard Sandbox "${s.sessionId}" on port http://127.0.0.1:${s.port} (PID: ${s.pid}). Status: ${s.status}`;
+  }
+
+  if (act === "stop") {
+    if (!input.sessionId) return "Error: sessionId is required to stop sandbox.";
+    const res = stopSandboxApp(input.sessionId);
+    return res.message;
+  }
+
+  if (act === "status") {
+    if (!input.sessionId) return "Error: sessionId is required for status.";
+    const s = getSandboxSession(input.sessionId);
+    if (!s) return `No sandbox found with ID "${input.sessionId}".`;
+    const lines = [
+      `Yard Sandbox Status: [${s.sessionId}]`,
+      `· Project: ${s.projectId} · Status: ${s.status} · Port: http://127.0.0.1:${s.port}`,
+      `· Recent Logs (${s.recentLogs.length} lines):`,
+      ...s.recentLogs.slice(-10).map((l) => `  ${l}`),
+    ];
+    if (s.crashError) lines.push(`⚠️ Crash Error: ${s.crashError}`);
+    if (s.repairPlan) lines.push(`🔧 Self-Healing Repair Plan: ${s.repairPlan.summary}`);
+    return lines.join("\n");
+  }
+
+  return "Unknown action.";
+}
+
+export async function studioMasterTimelineTool(input: {
+  concept: string;
+  sceneCount?: number;
+  aspectRatio?: "16:9" | "9:16" | "2.39:1" | "1:1";
+}): Promise<string> {
+  const c = String(input.concept || "").trim();
+  if (!c) return "Error: concept is required for master timeline compilation.";
+
+  const timeline = compileProductionTimeline({
+    conceptPrompt: c,
+    sceneCount: input.sceneCount,
+    aspectRatio: input.aspectRatio,
+  });
+
+  const lines = [
+    `🎬 Studio Master Production Timeline: "${timeline.title}"`,
+    `· Format: ${timeline.aspectRatio} @ ${timeline.framerateFps}fps · Total Duration: ${timeline.smpteDuration} (${timeline.totalDurationSec}s, ${timeline.totalFrames} frames)`,
+    `· Character Anchor: ${timeline.characterSeedAnchor}`,
+    `· Video Shots: ${timeline.videoShots.length} · Audio Stems/Tracks: ${timeline.audioTracks.length}`,
+    `\n--- Standard SMPTE Edit Decision List (EDL) ---\n${timeline.edlManifestText}`,
+  ];
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3182,6 +3281,27 @@ export const TOOLS: Tool[] = [
   { name: "audit_ledger_verify", safe: true, description: "Verifies the cryptographic SHA-256 Merkle chain integrity of all logged approvals and sensitive agent operations. input: {}.", params: "{}",
     activity: () => "Verifying cryptographic audit chain integrity",
     run: () => auditLedgerVerifyTool() },
+  { name: "flipit_ev_signals", safe: true, description: "Scans live Binance and Kraken market feeds against Polymarket binary prediction odds to flag positive expected value (+EV) arbitrage trades with Kelly sizing. input: { portfolioGbp? }.", params: "{portfolioGbp?}",
+    args: { portfolioGbp: { type: "number", desc: "Total portfolio capital in GBP (default: 1000)" } },
+    activity: (i) => `Scanning +EV prediction market signals (Capital: £${i?.portfolioGbp || 1000})`,
+    run: (i) => flipitEvSignalsTool(i) },
+  { name: "yard_sandbox_daemon", safe: false, description: "Controls isolated background sandbox runtime processes for Yard scaffolded apps with dynamic port allocation and self-healing crash diagnostics. input: { action: 'start'|'stop'|'status'|'list', projectId?, command?, sessionId? }.", params: "{action, projectId?, command?, sessionId?}",
+    args: {
+      action: { type: "string", required: true, desc: "'start', 'stop', 'status', or 'list'" },
+      projectId: { type: "string", desc: "Project name (e.g. 'AlphaLaunch')" },
+      command: { type: "string", desc: "Command string to run (e.g. 'npm run dev')" },
+      sessionId: { type: "string", desc: "Session ID for stop or status inspection" }
+    },
+    activity: (i) => `Managing Yard sandbox daemon (${i?.action || "list"})`,
+    run: (i) => yardSandboxDaemonTool(i) },
+  { name: "studio_master_timeline", safe: true, description: "Compiles Hollywood/Higgsfield 3D camera vector rigs, storyboards, and AI speech narration tracks into synchronized 24fps SMPTE EDL manifests. input: { concept, sceneCount?, aspectRatio? }.", params: "{concept, sceneCount?, aspectRatio?}",
+    args: {
+      concept: { type: "string", required: true, desc: "Cinematic story narrative concept" },
+      sceneCount: { type: "number", desc: "Number of sequential shots (3-8)" },
+      aspectRatio: { type: "string", desc: "Aspect ratio ('16:9', '9:16', '2.39:1', '1:1')" }
+    },
+    activity: (i) => `Compiling master 24fps production timeline for: "${String(i?.concept || "").slice(0, 30)}…"`,
+    run: (i) => studioMasterTimelineTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },
