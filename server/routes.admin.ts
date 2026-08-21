@@ -9,6 +9,7 @@ import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts
 import { deviceId, GATEWAY_URL, type Tier } from "./models.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { report as brainHealthReport, _reset as resetBrainHealth } from "./speed.ts";
 
 // ADMIN — manage API keys & config from inside the app. Every write here is loopback-gated:
 // these endpoints write credentials to .env, so a remote device (a phone on the shared token)
@@ -186,5 +187,17 @@ export function registerAdminRoutes(app: Express) {
   app.post("/api/admin/compact", (req, res) => {
     if (!isLoopback(req)) return res.status(403).json({ error: "Compaction can only be triggered locally." });
     res.json(compactSpaceAndMemory());
+  });
+
+  // Real-Time Brain Health & Latency Report
+  app.get("/api/admin/brain-health", (_req, res) => {
+    res.json({ report: brainHealthReport() });
+  });
+
+  // Reset Brain Health & Sunk Latency Memory
+  app.post("/api/admin/brain-health/reset", (req, res) => {
+    if (!isLoopback(req)) return res.status(403).json({ error: "Brain health memory can only be reset locally." });
+    resetBrainHealth();
+    res.json({ ok: true, report: brainHealthReport() });
   });
 }
