@@ -10,7 +10,22 @@ import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip }
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
 import { isLoopback } from "./http-guards.ts";
 
-export function registerCompanionRoutes(app: Express) {
+export type PendingActionResolver = (
+  pendingId: string,
+  approved: boolean,
+  always?: boolean
+) => Promise<{
+  expired?: boolean;
+  result?: any;
+  error?: string;
+  [k: string]: any;
+}>;
+
+export interface CompanionRouteOptions {
+  resolvePending?: PendingActionResolver;
+}
+
+export function registerCompanionRoutes(app: Express, options?: CompanionRouteOptions) {
   // Companion Vitals Endpoint (Apple Watch / Wear OS / Mobile PWA)
   app.get("/api/companion/vitals", (_req, res) => {
     const vitals = getHardwareVitals();
@@ -39,44 +54,60 @@ export function registerCompanionRoutes(app: Express) {
       return res.status(400).json({ error: "actionId is required for companion approval." });
     }
 
-    // Check if this actionId resolves a server-held pending tool approval
-    const pending = takePending(String(actionId));
-    let resolvedType = "GENERIC_ACTION";
-    let toolName: string | undefined;
-
-    if (pending) {
-      resolvedType = "PENDING_TOOL_APPROVAL";
-      toolName = pending.tool;
-      if (always && toolName) {
-        allow(toolName);
+    // 1. If options.resolvePending is injected, execute real confirmation and resume agent loop
+    if (options?.resolvePending) {
+      const outcome = await options.resolvePending(String(actionId), true, !!always);
+      if (outcome.expired) {
+        return res.status(410).json({ success: false, error: outcome.text || "Approval expired or not found" });
       }
-    } else {
-      // Check if this actionId resolves an unattended Ask
-      const ask = getAsk(String(actionId));
-      if (ask) {
-        resolvedType = "UNATTENDED_ASK_RESOLUTION";
-        toolName = ask.tool;
-        resolveAsk(String(actionId), true);
+      if (outcome.error) {
+        return res.status(500).json({ success: false, error: outcome.error });
       }
+      const entry = recordAuditEvent(
+        actor === "watch" ? "watch_companion" : "operator",
+        `COMPANION_APPROVE_${String(actionId).toUpperCase()}`,
+        { actionId, resolvedType: "PENDING_TOOL_EXECUTION", details: details || {} },
+        "SUCCESS"
+      );
+      return res.json({
+        success: true,
+        actionId,
+        resolvedType: "PENDING_TOOL_EXECUTION",
+        result: outcome,
+        auditEntry: entry,
+      });
     }
 
+    // 2. Check if this actionId resolves an unattended Ask
+    const ask = getAsk(String(actionId));
+    if (ask) {
+      resolveAsk(String(actionId), true);
+      const entry = recordAuditEvent(
+        actor === "watch" ? "watch_companion" : "operator",
+        `COMPANION_APPROVE_ASK_${String(actionId).toUpperCase()}`,
+        { actionId, resolvedType: "UNATTENDED_ASK_RESOLUTION", tool: ask.tool, details: details || {} },
+        "SUCCESS"
+      );
+      return res.json({
+        success: true,
+        actionId,
+        resolvedType: "UNATTENDED_ASK_RESOLUTION",
+        tool: ask.tool,
+        auditEntry: entry,
+      });
+    }
+
+    // 3. Fallback generic companion confirmation
     const entry = recordAuditEvent(
       actor === "watch" ? "watch_companion" : "operator",
       `COMPANION_APPROVE_${String(actionId).toUpperCase()}`,
-      {
-        actionId,
-        resolvedType,
-        tool: toolName,
-        details: details || {},
-      },
+      { actionId, resolvedType: "GENERIC_ACTION", details: details || {} },
       "SUCCESS"
     );
-
-    res.json({
+    return res.json({
       success: true,
       actionId,
-      resolvedType,
-      tool: toolName,
+      resolvedType: "GENERIC_ACTION",
       auditEntry: entry,
     });
   });
