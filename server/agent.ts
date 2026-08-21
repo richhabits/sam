@@ -611,8 +611,11 @@ export async function runAgentStream(system: string, message: string, tier: Tier
       trace.push(tool.activity(call.input));
       emit({ type: "tool", activity: tool.activity(call.input) });
       let result: string;
-      try { 
-      result = await tool.run(call.input); 
+      try {
+      if (!tool.safe) {
+        recordAuditEvent("sam_agent", "EXECUTE_TOOL", { tool: tool.name, input: call.input }, "SUCCESS");
+      }
+      result = await tool.run(call.input);
       // THE ANTIGRAVITY SILENT VERIFIER LOOP
       if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
         try {
