@@ -68,12 +68,17 @@ describe("FlipIt Execution Engine & Polymarket CLOB Adapter", () => {
     expect(emittedOrder).toBeDefined();
   });
 
-  it("marks live execution CONFIG_REQUIRED when keys are absent", () => {
-    const engine = new FlipItExecutionEngine({ startingCapitalGbp: 1000, mode: "live" });
+  it("marks live cross-exchange execution CONFIG_REQUIRED — no Binance/Kraken order client exists, regardless of Polymarket keys", () => {
+    const engine = new FlipItExecutionEngine({
+      startingCapitalGbp: 1000,
+      mode: "live",
+      polymarketAddress: "0xabc",
+      polymarketApiKey: "test_key",
+    });
     const order = engine.executeArbitrage("BTC/GBP", "binance", "kraken", 0.005, 52000, 51740);
     expect(order).toBeDefined();
     expect(order?.status).toBe("CONFIG_REQUIRED");
-    expect(order?.error).toContain("requires API keys");
+    expect(order?.error).toContain("Binance/Kraken trading clients");
   });
 
   it("wires shared execution engine to shared ingestion singleton", () => {

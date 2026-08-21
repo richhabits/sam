@@ -199,14 +199,14 @@ export class FlipItExecutionEngine extends EventEmitter {
     const orderId = `ARB-${Date.now()}`;
     const isLive = this.mode === "live";
 
-    // In live mode, verify exchange credentials before marking executed
-    const hasLiveCreds = !!(this.polymarketCredentials.address && this.polymarketCredentials.apiKey);
-    const status = isLive
-      ? (hasLiveCreds ? "SUBMITTED" : "CONFIG_REQUIRED")
-      : "PAPER_SIMULATED";
+    // Polymarket credentials authenticate the CLOB (prediction-market shares), not spot
+    // exchanges — there is no authenticated Binance/Kraken order client in this codebase,
+    // so a Binance/Kraken spread can never actually be "SUBMITTED" regardless of which
+    // keys are configured. Claiming otherwise would be a fabricated fill on a real-money path.
+    const status = isLive ? "CONFIG_REQUIRED" : "PAPER_SIMULATED";
 
-    const error = (isLive && !hasLiveCreds)
-      ? `Live trade execution requires API keys for ${buyEx}/${sellEx} in Settings or .env`
+    const error = isLive
+      ? `Live cross-exchange execution on ${buyEx}/${sellEx} requires authenticated Binance/Kraken trading clients, which are not implemented — Polymarket credentials only authorize CLOB prediction-market orders, not spot exchange trades.`
       : undefined;
 
     const order: TradeOrder = {
