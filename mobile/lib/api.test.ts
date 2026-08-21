@@ -49,4 +49,25 @@ describe('claim() actually completes a pairing request', () => {
       message: 'bad code',
     });
   });
+
+  it('fetchBrainTelemetry fetches live cognition telemetry through authenticated api()', async () => {
+    const { fetchBrainTelemetry, setHost } = await import('./api');
+    await setHost('http://127.0.0.1:8787');
+    store.set('sam.token', 'test_token');
+
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ totalInvocations: 42, isFullyGrounded: true }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const data = await fetchBrainTelemetry();
+    expect(data.totalInvocations).toBe(42);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/api/brain/cognition/telemetry',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer test_token' }),
+      })
+    );
+  });
 });

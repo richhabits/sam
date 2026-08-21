@@ -127,3 +127,38 @@ export async function api(path: string, init: RequestInit = {}): Promise<any> {
   if (!res.ok) throw new ApiError(res.status, body?.error || `request failed (${res.status})`);
   return body;
 }
+
+/**
+ * Live Mobile Telemetry & Cognitive Health
+ */
+export async function fetchBrainTelemetry(): Promise<any> {
+  return api("/api/brain/cognition/telemetry");
+}
+
+/**
+ * Mobile FlipIt Portfolio & Risk Shield Monitor
+ */
+export async function fetchFlipItRiskShield(): Promise<any> {
+  return api("/api/flipit/scale/risk");
+}
+
+/**
+ * Mobile Revenue & Commercial Opportunities Radar
+ */
+export async function fetchRevenueOpportunities(): Promise<any> {
+  return api("/api/revenue/opportunities");
+}
+
+/**
+ * Mobile Yard Tasks & Pending Builds
+ */
+export async function fetchYardTasks(): Promise<any> {
+  return api("/api/yard/tasks");
+}
+
+/**
+ * Mobile Voice Session Status
+ */
+export async function fetchVoiceSessionState(): Promise<any> {
+  return api("/api/voice/session");
+}
