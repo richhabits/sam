@@ -43,7 +43,7 @@ describe("validateSkillTools — catch typos at boot", () => {
   });
 });
 
-describe("loadSkills & routeSkill — WebDesign integration", () => {
+describe("loadSkills & routeSkill — WebDesign & Sovereign Skills integration", () => {
   it("loads the ultra-premium webdesign skill and routes properly", async () => {
     const { loadSkills, routeSkill } = await import("./skills.ts");
     const skills = loadSkills();
@@ -54,4 +54,27 @@ describe("loadSkills & routeSkill — WebDesign integration", () => {
     const routed = routeSkill("build me a luxury glassmorphism website and landing page", skills);
     expect(routed?.id).toBe("webdesign");
   });
+
+  it("loads the full sovereign skill suite (graphify, fullstack, dataviz, performance)", async () => {
+    const { loadSkills, routeSkill } = await import("./skills.ts");
+    const skills = loadSkills();
+
+    const graphify = skills.find((s) => s.id === "graphify");
+    expect(graphify).toBeDefined();
+
+    const fullstack = skills.find((s) => s.id === "fullstack");
+    expect(fullstack).toBeDefined();
+
+    const dataviz = skills.find((s) => s.id === "dataviz");
+    expect(dataviz).toBeDefined();
+
+    const performance = skills.find((s) => s.id === "performance");
+    expect(performance).toBeDefined();
+
+    expect(routeSkill("analyze codebase architecture and god nodes", skills)?.id).toBe("graphify");
+    expect(routeSkill("build fullstack react app with vite", skills)?.id).toBe("fullstack");
+    expect(routeSkill("generate telemetry dashboard with sparklines", skills)?.id).toBe("dataviz");
+    expect(routeSkill("optimize bundle size for zero lag", skills)?.id).toBe("performance");
+  });
 });
+
