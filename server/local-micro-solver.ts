@@ -95,8 +95,7 @@ export function trySolveLocally(input: string): MicroSolverResult {
     };
   }
 
-  // 4. Distance conversions (miles/km/m/ft/in/cm) — no weight (lbs/kg) conversion is actually
-  // implemented below, despite what an earlier version of this comment claimed.
+  // 4. Distance conversions (miles/km/m/ft/in/cm)
   const distMatch = p.match(/^(\d+(?:\.\d+)?)\s*(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)\s+(?:to|in)\s+(miles|mile|mi|km|kilometers|kilometer|m|meters|meter|ft|feet|in|inches|cm)$/);
   if (distMatch) {
     const val = parseFloat(distMatch[1]);
@@ -116,6 +115,110 @@ export function trySolveLocally(input: string): MicroSolverResult {
       solvedLocally: true,
       type: "unit_conversion",
       answer: `${val} ${from} = ${converted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${to}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
+  // 5. Weight & Mass Conversions (kg/g/mg/lbs/pounds/oz/ounces/stone)
+  const weightMatch = p.match(/^(\d+(?:\.\d+)?)\s*(kg|kilograms|kilogram|g|grams|gram|mg|lbs|pounds|pound|lb|oz|ounces|ounce|stone)\s+(?:to|in)\s+(kg|kilograms|kilogram|g|grams|gram|mg|lbs|pounds|pound|lb|oz|ounces|ounce|stone)$/);
+  if (weightMatch) {
+    const val = parseFloat(weightMatch[1]);
+    const from = weightMatch[2];
+    const to = weightMatch[3];
+    const toGrams: Record<string, number> = {
+      g: 1, gram: 1, grams: 1,
+      mg: 0.001,
+      kg: 1000, kilogram: 1000, kilograms: 1000,
+      oz: 28.3495, ounce: 28.3495, ounces: 28.3495,
+      lb: 453.592, lbs: 453.592, pound: 453.592, pounds: 453.592,
+      stone: 6350.29,
+    };
+    const grams = val * (toGrams[from] || 1);
+    const converted = grams / (toGrams[to] || 1);
+    return {
+      solvedLocally: true,
+      type: "unit_conversion",
+      answer: `${val} ${from} = ${converted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${to}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
+  // 6. Temperature Conversions (Celsius, Fahrenheit, Kelvin)
+  const tempMatch = p.match(/^(\-?\d+(?:\.\d+)?)\s*(c|celsius|f|fahrenheit|k|kelvin)\s+(?:to|in)\s+(c|celsius|f|fahrenheit|k|kelvin)$/);
+  if (tempMatch) {
+    const val = parseFloat(tempMatch[1]);
+    const from = tempMatch[2][0]; // 'c', 'f', or 'k'
+    const to = tempMatch[3][0];
+    let celsius = val;
+    if (from === "f") celsius = (val - 32) * (5 / 9);
+    else if (from === "k") celsius = val - 273.15;
+
+    let target = celsius;
+    if (to === "f") target = celsius * (9 / 5) + 32;
+    else if (to === "k") target = celsius + 273.15;
+
+    const unitNames: Record<string, string> = { c: "°C", f: "°F", k: "K" };
+    return {
+      solvedLocally: true,
+      type: "unit_conversion",
+      answer: `${val}${unitNames[from]} = ${target.toFixed(2)}${unitNames[to]}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
+  // 7. Time & Duration Conversions (seconds, minutes, hours, days, weeks)
+  const timeMatch = p.match(/^(\d+(?:\.\d+)?)\s*(s|sec|seconds|second|min|minutes|minute|h|hr|hours|hour|d|days|day|w|weeks|week)\s+(?:to|in)\s+(s|sec|seconds|second|min|minutes|minute|h|hr|hours|hour|d|days|day|w|weeks|week)$/);
+  if (timeMatch) {
+    const val = parseFloat(timeMatch[1]);
+    const from = timeMatch[2];
+    const to = timeMatch[3];
+    const toSeconds: Record<string, number> = {
+      s: 1, sec: 1, second: 1, seconds: 1,
+      min: 60, minute: 60, minutes: 60,
+      h: 3600, hr: 3600, hour: 3600, hours: 3600,
+      d: 86400, day: 86400, days: 86400,
+      w: 604800, week: 604800, weeks: 604800,
+    };
+    const secs = val * (toSeconds[from] || 1);
+    const converted = secs / (toSeconds[to] || 1);
+    return {
+      solvedLocally: true,
+      type: "unit_conversion",
+      answer: `${val} ${from} = ${converted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${to}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
+  // 8. Radix/Base Conversions (hex, bin, dec)
+  const hexToDec = p.match(/^(?:0x([0-9a-f]+)|([0-9a-f]+)\s*hex)\s+(?:to|in)\s+(?:dec|decimal)$/);
+  if (hexToDec) {
+    const hex = hexToDec[1] || hexToDec[2];
+    const dec = parseInt(hex, 16);
+    return {
+      solvedLocally: true,
+      type: "math",
+      answer: `0x${hex} in decimal = ${dec}`,
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Math.max(1, Date.now() - t0),
+    };
+  }
+
+  const decToHex = p.match(/^(\d+)\s+(?:to|in)\s+hex$/);
+  if (decToHex) {
+    const dec = parseInt(decToHex[1], 10);
+    return {
+      solvedLocally: true,
+      type: "math",
+      answer: `${dec} in hex = 0x${dec.toString(16).toUpperCase()}`,
       tokensUsed: 0,
       costUsd: 0,
       durationMs: Math.max(1, Date.now() - t0),

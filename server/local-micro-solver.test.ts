@@ -30,6 +30,37 @@ describe("Local Zero-Token Micro Solver", () => {
     expect(res.answer).toContain("1 GB");
   });
 
+  it("converts weight units accurately", () => {
+    const res = trySolveLocally("1 kg in lbs");
+    expect(res.solvedLocally).toBe(true);
+    expect(res.type).toBe("unit_conversion");
+    expect(res.answer).toContain("2.2046");
+  });
+
+  it("converts temperature accurately", () => {
+    const res = trySolveLocally("100 c in f");
+    expect(res.solvedLocally).toBe(true);
+    expect(res.type).toBe("unit_conversion");
+    expect(res.answer).toContain("212.00°F");
+  });
+
+  it("converts time durations accurately", () => {
+    const res = trySolveLocally("3600 seconds in hours");
+    expect(res.solvedLocally).toBe(true);
+    expect(res.type).toBe("unit_conversion");
+    expect(res.answer).toContain("1 hours");
+  });
+
+  it("converts radix/bases accurately", () => {
+    const resHex = trySolveLocally("0xff to dec");
+    expect(resHex.solvedLocally).toBe(true);
+    expect(resHex.answer).toContain("255");
+
+    const resDec = trySolveLocally("255 to hex");
+    expect(resDec.solvedLocally).toBe(true);
+    expect(resDec.answer).toContain("0xFF");
+  });
+
   it("falls back cleanly on complex natural language queries", () => {
     const res = trySolveLocally("write an essay about artificial intelligence");
     expect(res.solvedLocally).toBe(false);
