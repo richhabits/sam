@@ -3,6 +3,7 @@ import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.t
 import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
 import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWebhookSignature } from "./stripe-payments.ts";
 import { FlipItExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
+import { isLoopback } from "./http-guards.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
   app.post("/api/flipit/rebalance", (req, res) => {
@@ -110,6 +111,9 @@ export function registerFlipItScaleRoutes(app: Express) {
 
   // Arbitrage & Market Order Execute Route
   app.post("/api/flipit/execute", async (req, res) => {
+    // This can dispatch a real, signed Polymarket order using whatever credentials are
+    // configured in env — same trust bar as every other credential-linked route in this file.
+    if (!isLoopback(req)) return res.status(403).json({ error: "Trade execution can only be triggered on this computer, not remotely." });
     try {
       const { spreadId, pair, sellEx, buyEx, spreadPct, sellPrice, buyPrice, tokenId, price, size, side } = req.body || {};
 
