@@ -130,6 +130,9 @@ import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
 import { scanEvArbitrageSignals } from "./flipit-signals.ts";
 import { startSandboxApp, stopSandboxApp, getSandboxSession, listSandboxSessions } from "./yard/sandbox-daemon.ts";
 import { compileProductionTimeline } from "./studio-master-timeline.ts";
+import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
+import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
+import { getOrCreateVoiceSession } from "./voice-agent.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -2056,6 +2059,99 @@ export async function studioMasterTimelineTool(input: {
   return lines.join("\n");
 }
 
+export async function flipitMarketMakerTool(input: {
+  spotPrice: number;
+  strikePrice: number;
+  expiryDays: number;
+  inventory?: number;
+  targetSpread?: number;
+}): Promise<string> {
+  const spot = Number(input.spotPrice || 100000);
+  const strike = Number(input.strikePrice || 100000);
+  const days = Number(input.expiryDays || 14);
+  const inv = Number(input.inventory || 0);
+  const spread = input.targetSpread ? Number(input.targetSpread) : 0.04;
+
+  const quotes = generateMarketMakerQuotes({
+    spotPriceUsd: spot,
+    strikePriceUsd: strike,
+    expiryDays: days,
+    currentYesInventory: inv,
+    targetSpreadPct: spread,
+  });
+
+  const hedge = calculateDeltaHedge(spot, strike, days, inv);
+
+  const lines = [
+    `📊 FlipIt Statistical Market Maker & Delta Hedger:`,
+    `· Underlying: Spot $${spot.toLocaleString()} vs Strike $${strike.toLocaleString()} (${days}d expiry)`,
+    `· Fair Value: ${(quotes.fairValue * 100).toFixed(1)}% · Reservation Price: ${(quotes.reservationPrice * 100).toFixed(1)}% (Skew: ${quotes.skewDirection})`,
+    `· Two-Sided Quotes: BID ${(quotes.bidPrice * 100).toFixed(1)}¢ (£${quotes.bidSizeGbp}) | ASK ${(quotes.askPrice * 100).toFixed(1)}¢ (£${quotes.askSizeGbp}) · Spread: ${(quotes.spreadPct * 100).toFixed(1)}¢`,
+    `· Net Delta Exposure: $${hedge.totalPortfolioDeltaUsd} (${hedge.binaryDelta.toFixed(6)} per contract)`,
+    `· Spot Rebalance: ${hedge.isHedgeRequired ? `⚡ ${hedge.requiredSpotHedgeAction} $${hedge.hedgeAmountSpotUsd} (${hedge.hedgeAmountCryptoUnits} units)` : "✅ Delta Neutral (No hedge required)"}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function p2pMeshNetworkTool(input?: {
+  action?: "status" | "broadcast";
+  channel?: string;
+  payload?: any;
+}): Promise<string> {
+  const act = input?.action || "status";
+  const topology = getMeshTopologyReport();
+
+  if (act === "broadcast" && input?.channel && input?.payload) {
+    const msg = createGossipMessage(input.channel as any, input.payload);
+    const res = processIncomingMeshGossip(msg);
+    return `📡 P2P Mesh Broadcast dispatched on channel [${input.channel}] (Message ID: ${msg.messageId}, Accepted: ${res.accepted}, Hops: ${msg.hopsRemaining})`;
+  }
+
+  const lines = [
+    `🌐 SAM Local P2P Swarm Mesh Topology:`,
+    `· Local Node: ${topology.localNodeId} · Total Discovered Peers: ${topology.totalActivePeers}`,
+    `· Active Channels: ${topology.recentChannels.join(", ")}`,
+  ];
+
+  if (topology.peerNodes.length > 0) {
+    lines.push(`· Connected LAN Nodes:`);
+    for (const p of topology.peerNodes) {
+      lines.push(`  - [${p.status}] "${p.deviceName}" (${p.platform}) at ${p.address}:${p.port} [${p.capabilities.join(", ")}]`);
+    }
+  } else {
+    lines.push(`· Listening on local LAN for mDNS / WebSocket peer discovery.`);
+  }
+
+  return lines.join("\n");
+}
+
+export async function voiceAgentStreamTool(input?: {
+  sessionId?: string;
+  action?: "status" | "speaking" | "reset";
+}): Promise<string> {
+  const sid = input?.sessionId || "default-mic";
+  const session = getOrCreateVoiceSession(sid);
+
+  if (input?.action === "speaking") {
+    session.setSpeaking();
+    return `🎙️ Voice session [${sid}] state set to SPEAKING.`;
+  }
+  if (input?.action === "reset") {
+    session.reset();
+    return `🎙️ Voice session [${sid}] reset to IDLE.`;
+  }
+
+  const st = session.getStatus();
+  const lines = [
+    `🎙️ SAM Real-Time Streaming Voice Agent:`,
+    `· Session ID: ${st.sessionId} · State: [${st.state}]`,
+    `· Audio Format: 16kHz 16-bit Mono PCM · Total Processed: ${st.totalAudioProcessedMs}ms`,
+    `· VAD Telemetry: Last Energy RMS: ${st.lastRmsEnergy} (Speech Frames: ${st.speechFramesCount}, Silent: ${st.silentFramesCount})`,
+    `· Buffer Queue: ${st.bufferedChunksCount} chunks`,
+  ];
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3302,6 +3398,31 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Compiling master 24fps production timeline for: "${String(i?.concept || "").slice(0, 30)}…"`,
     run: (i) => studioMasterTimelineTool(i) },
+  { name: "flipit_market_maker", safe: true, description: "Generates optimal two-sided bid/ask quotes and spot delta-hedging recommendations for prediction markets. input: { spotPrice, strikePrice, expiryDays, inventory?, targetSpread? }.", params: "{spotPrice, strikePrice, expiryDays, inventory?, targetSpread?}",
+    args: {
+      spotPrice: { type: "number", required: true, desc: "Current spot asset price (USD)" },
+      strikePrice: { type: "number", required: true, desc: "Prediction market target strike price (USD)" },
+      expiryDays: { type: "number", required: true, desc: "Days until market resolution" },
+      inventory: { type: "number", desc: "Current net YES contracts held (+ for long, - for short)" },
+      targetSpread: { type: "number", desc: "Base bid-ask spread fraction (default: 0.04)" }
+    },
+    activity: (i) => `Calculating delta-neutral market making quotes for $${i?.spotPrice} vs strike $${i?.strikePrice}`,
+    run: (i) => flipitMarketMakerTool(i) },
+  { name: "p2p_mesh_network", safe: true, description: "Inspects zero-cloud local LAN peer mesh network topology and broadcasts vector-clock state gossip. input: { action?: 'status'|'broadcast', channel?, payload? }.", params: "{action?, channel?, payload?}",
+    args: {
+      action: { type: "string", desc: "'status' or 'broadcast'" },
+      channel: { type: "string", desc: "'vault_sync', 'yard_manifest', 'companion_vitals', or 'agent_task'" },
+      payload: { type: "object", desc: "Data payload to broadcast" }
+    },
+    activity: (i) => `Inspecting P2P LAN mesh network (${i?.action || "status"})`,
+    run: (i) => p2pMeshNetworkTool(i) },
+  { name: "voice_agent_stream", safe: true, description: "Inspects and controls SAM streaming voice agent state, VAD energy threshold, and audio session buffer. input: { sessionId?, action?: 'status'|'speaking'|'reset' }.", params: "{sessionId?, action?}",
+    args: {
+      sessionId: { type: "string", desc: "Voice session ID (default: 'default-mic')" },
+      action: { type: "string", desc: "'status', 'speaking', or 'reset'" }
+    },
+    activity: (i) => `Inspecting real-time streaming voice agent [${i?.sessionId || "default-mic"}]`,
+    run: (i) => voiceAgentStreamTool(i) },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },

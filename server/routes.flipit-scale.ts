@@ -5,6 +5,7 @@ import { createStripeCheckoutSession, processStripeWebhookEvent, verifyStripeWeb
 import { getSharedExecutionEngine, submitPolymarketClobOrder } from "./flipit-execution.ts";
 import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
 import { scanEvArbitrageSignals } from "./flipit-signals.ts";
+import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
 import { isLoopback } from "./http-guards.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
@@ -201,6 +202,52 @@ export function registerFlipItScaleRoutes(app: Express) {
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Failed to scan +EV signals" });
+    }
+  });
+
+  // Market Maker Quoting
+  app.post("/api/flipit/market-maker/quote", (req, res) => {
+    try {
+      const { spotPriceUsd, strikePriceUsd, expiryDays, currentYesInventory, targetSpreadPct, maxOrderSizeGbp, portfolioCapitalGbp } = req.body || {};
+      if (!spotPriceUsd || !strikePriceUsd || !expiryDays) {
+        return res.status(400).json({ error: "spotPriceUsd, strikePriceUsd, and expiryDays are required." });
+      }
+
+      const quotes = generateMarketMakerQuotes({
+        spotPriceUsd: Number(spotPriceUsd),
+        strikePriceUsd: Number(strikePriceUsd),
+        expiryDays: Number(expiryDays),
+        currentYesInventory: currentYesInventory != null ? Number(currentYesInventory) : 0,
+        targetSpreadPct: targetSpreadPct != null ? Number(targetSpreadPct) : undefined,
+        maxOrderSizeGbp: maxOrderSizeGbp != null ? Number(maxOrderSizeGbp) : undefined,
+        portfolioCapitalGbp: portfolioCapitalGbp != null ? Number(portfolioCapitalGbp) : undefined,
+      });
+
+      res.json({ success: true, quotes });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to generate market maker quotes" });
+    }
+  });
+
+  // Delta Hedge Calculation
+  app.post("/api/flipit/market-maker/hedge", (req, res) => {
+    try {
+      const { spotPriceUsd, strikePriceUsd, expiryDays, inventoryContracts, deltaToleranceUsd } = req.body || {};
+      if (!spotPriceUsd || !strikePriceUsd || !expiryDays || inventoryContracts == null) {
+        return res.status(400).json({ error: "spotPriceUsd, strikePriceUsd, expiryDays, and inventoryContracts are required." });
+      }
+
+      const hedge = calculateDeltaHedge(
+        Number(spotPriceUsd),
+        Number(strikePriceUsd),
+        Number(expiryDays),
+        Number(inventoryContracts),
+        deltaToleranceUsd != null ? Number(deltaToleranceUsd) : undefined
+      );
+
+      res.json({ success: true, hedge });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to compute delta hedge" });
     }
   });
 }

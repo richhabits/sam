@@ -6,6 +6,8 @@ import { UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
 import { takePending } from "./pending.ts";
 import { resolveAsk, getAsk } from "./ask.ts";
 import { allow } from "./authz.ts";
+import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
+import { getOrCreateVoiceSession } from "./voice-agent.ts";
 import { isLoopback } from "./http-guards.ts";
 
 export function registerCompanionRoutes(app: Express) {
@@ -84,6 +86,45 @@ export function registerCompanionRoutes(app: Express) {
     res.json({
       appleAppIntents: APPLE_APP_INTENTS,
       universalShortcuts: UNIVERSAL_SHORTCUTS,
+    });
+  });
+
+  // P2P Swarm Mesh Topology
+  app.get("/api/p2p/mesh/nodes", (_req, res) => {
+    res.json({
+      success: true,
+      timestamp: Date.now(),
+      topology: getMeshTopologyReport(),
+    });
+  });
+
+  // P2P Gossip Broadcast
+  app.post("/api/p2p/mesh/broadcast", (req, res) => {
+    if (!isLoopback(req)) {
+      return res.status(403).json({ error: "Mesh broadcast can only originate from local bridges." });
+    }
+    const { channel, payload, vectorClock, maxHops } = req.body || {};
+    if (!channel || !payload) {
+      return res.status(400).json({ error: "channel and payload are required." });
+    }
+
+    const msg = createGossipMessage(channel, payload, vectorClock, maxHops);
+    const result = processIncomingMeshGossip(msg);
+
+    res.json({
+      success: true,
+      message: msg,
+      result,
+    });
+  });
+
+  // Voice Agent Session Status
+  app.get("/api/voice/status", (req, res) => {
+    const sessionId = (req.query.sessionId as string) || "default-mic";
+    const session = getOrCreateVoiceSession(sessionId);
+    res.json({
+      success: true,
+      session: session.getStatus(),
     });
   });
 }
