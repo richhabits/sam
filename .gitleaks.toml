@@ -26,4 +26,6 @@ paths = [
   '''(^|/)server/issues\.test\.ts$''',    # the Black Box redaction test — FAKE key-shaped fixtures by design (proves redact() scrubs)
   '''(^|/)server/warden\.test\.ts$''',    # the Warden security gate — FAKE key-shaped fixtures by design (adversarial redaction/SSRF inputs)
   '''(^|/)server/auto-provision\.test\.ts$''', # key-format validator test — FAKE key-shaped fixtures by design (proves the regex validator)
+  '''(^|/)server/flipit-execution\.test\.ts$''', # Polymarket CLOB test — FAKE token id fixture (0x1234...)
+  '''(^|/)server/stripe-payments\.test\.ts$''',  # Stripe webhook test — FAKE whsec_ fixture, used to compute a test HMAC
 ]

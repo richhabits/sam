@@ -88,7 +88,13 @@ export function registerFlipItScaleRoutes(app: Express) {
     const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
     const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    if (secret && !verifyStripeWebhookSignature(rawBody, signature, secret)) {
+    // Fail closed: an unconfigured secret must reject the event, not skip verification —
+    // this endpoint is necessarily internet-reachable (Stripe calls it from the outside),
+    // so a missing secret would otherwise let anyone credit the wallet with a forged payload.
+    if (!secret) {
+      return res.status(503).json({ error: "STRIPE_WEBHOOK_SECRET is not configured — webhook cannot be verified." });
+    }
+    if (!verifyStripeWebhookSignature(rawBody, signature, secret)) {
       return res.status(400).json({ error: "Invalid Stripe webhook signature." });
     }
 
