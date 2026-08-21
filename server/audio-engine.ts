@@ -66,8 +66,21 @@ export interface DialogueExchange {
   text: string;
 }
 
+export interface AudioTimelineCue {
+  cueIndex: number;
+  speaker: string;
+  voice: VoiceProfile;
+  startSec: number;
+  endSec: number;
+  durationSec: number;
+  text: string;
+  waveform: number[];
+}
+
 export interface PodcastSynthesisResult {
   title: string;
+  topic?: string;
+  cues: AudioTimelineCue[];
   exchanges: {
     speaker: string;
     voiceId: string;
@@ -75,16 +88,37 @@ export interface PodcastSynthesisResult {
     durationSec: number;
   }[];
   totalDurationSeconds: number;
+  backgroundMusicTrack?: string;
 }
 
 export function synthesizeDialogueAudio(
   title: string,
-  exchanges: DialogueExchange[]
+  exchanges: DialogueExchange[],
+  options: { topic?: string; backgroundMusic?: string } = {}
 ): PodcastSynthesisResult {
-  const renderedExchanges = exchanges.map((ex) => {
+  let currentTime = 0;
+  const cues: AudioTimelineCue[] = [];
+
+  const renderedExchanges = exchanges.map((ex, index) => {
     const isAlex = ex.speaker.toLowerCase().includes("alex");
     const voiceId = isAlex ? "alex_cohost" : "sam_host";
     const speech = generateSpeechAudio(ex.text, voiceId);
+
+    const startSec = Number(currentTime.toFixed(2));
+    const endSec = Number((currentTime + speech.durationSeconds).toFixed(2));
+    currentTime = endSec + 0.3; // 300ms natural conversational pause
+
+    cues.push({
+      cueIndex: index + 1,
+      speaker: ex.speaker,
+      voice: speech.voice,
+      startSec,
+      endSec,
+      durationSec: speech.durationSeconds,
+      text: ex.text,
+      waveform: speech.waveformSample,
+    });
+
     return {
       speaker: ex.speaker,
       voiceId,
@@ -93,11 +127,12 @@ export function synthesizeDialogueAudio(
     };
   });
 
-  const total = renderedExchanges.reduce((sum, e) => sum + e.durationSec, 0);
-
   return {
     title: title || "Audio Overview Dialogue",
+    topic: options.topic,
+    cues,
     exchanges: renderedExchanges,
-    totalDurationSeconds: Number(total.toFixed(2)),
+    totalDurationSeconds: Number(currentTime.toFixed(2)),
+    backgroundMusicTrack: options.backgroundMusic,
   };
 }

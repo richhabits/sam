@@ -26,6 +26,9 @@ describe("Streaming Voice & Audio Engine", () => {
     expect(dialogue.exchanges.length).toBe(2);
     expect(dialogue.exchanges[0].voiceId).toBe("alex_cohost");
     expect(dialogue.exchanges[1].voiceId).toBe("sam_host");
+    expect(dialogue.cues.length).toBe(2);
+    expect(dialogue.cues[0].startSec).toBe(0);
+    expect(dialogue.cues[1].startSec).toBeGreaterThan(dialogue.cues[0].endSec);
     expect(dialogue.totalDurationSeconds).toBeGreaterThan(0);
   });
 
