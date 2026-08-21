@@ -95,6 +95,7 @@ import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
 import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
 import { registerSpeedRoutes } from "./routes.speed.ts";
+import { registerCompanionRoutes } from "./routes.companion.ts";
 import { seedStarterPlaybooks } from "./starter-playbooks.ts";
 import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
@@ -1246,6 +1247,7 @@ registerVoiceRoutes(app);
 registerCreativeRoutes(app);
 registerFlipItScaleRoutes(app);
 registerSpeedRoutes(app);
+registerCompanionRoutes(app);
 registerAdminCostRoutes(app);
 registerStudioDirectorRoutes(app);
 

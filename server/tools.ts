@@ -125,6 +125,8 @@ import { getStarterPlaybookDef, STARTER_PLAYBOOKS } from "./starter-playbooks.ts
 import { getPlaybook, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
 import { getSpeedLeaderboard } from "./speed.ts";
 import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
+import { getHardwareVitals } from "./hardware-monitor.ts";
+import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { runMultiModelConsensus } from "./consensus.ts";
@@ -1927,6 +1929,34 @@ export async function deepResearchDossierTool(input: {
   return dossier.markdownDossier;
 }
 
+export async function hardwareVitalsTelemetryTool(): Promise<string> {
+  const v = getHardwareVitals();
+  const batt = v.battery.hasBattery
+    ? `${v.battery.percent}% (${v.battery.powerSource.toUpperCase()}${v.battery.isCharging ? " ⚡ Charging" : ""}${v.battery.timeRemainingMinutes ? ` · ${v.battery.timeRemainingMinutes}m left` : ""})`
+    : "AC Power (Desktop/Virtual)";
+
+  const lines = [
+    `🖥️ S.A.M. Host Hardware & Power Telemetry:`,
+    `· Host: ${v.hostname} (${v.platform} ${v.arch}) · Uptime: ${Math.round(v.uptimeSeconds / 3600)}h ${Math.round((v.uptimeSeconds % 3600) / 60)}m`,
+    `· CPU: ${v.cpuCount} cores · Load Avg: [1m: ${v.loadAverage1m}, 5m: ${v.loadAverage5m}, 15m: ${v.loadAverage15m}]`,
+    `· Memory: ${Math.round((v.totalMemoryBytes - v.freeMemoryBytes) / (1024 * 1024 * 1024) * 10) / 10}GB / ${Math.round(v.totalMemoryBytes / (1024 * 1024 * 1024) * 10) / 10}GB (${v.memorySaturationPct}% saturated)`,
+    `· Battery / Power: ${batt}`,
+    `· Task Throttle Status: ${v.isThrottled ? `⚠️ THROTTLED (${v.throttleReason})` : "🟢 NORMAL (Unthrottled)"}`,
+  ];
+  return lines.join("\n");
+}
+
+export async function auditLedgerVerifyTool(): Promise<string> {
+  const res = verifyAuditChainIntegrity();
+  const lines = [
+    `🛡️ S.A.M. Cryptographic Audit Chain Integrity:`,
+    `· Status: ${res.valid ? "🟢 100% VERIFIED (Unbroken Merkle Chain)" : `🔴 INTEGRITY FAILED (Broken at #${res.brokenAtIndex}: ${res.error})`}`,
+    `· Total Recorded Events: ${res.totalEntries}`,
+    `· Latest Block Hash: ${res.latestHash || "N/A"}`,
+  ];
+  return lines.join("\n");
+}
+
 export async function studioDirectorStoryboardTool(input: {
   prompt: string;
   sceneCount?: number;
@@ -3146,6 +3176,12 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Compiling executive research dossier for: "${i?.topic ?? i}"`,
     run: (i) => deepResearchDossierTool(i) },
+  { name: "hardware_vitals_telemetry", safe: true, description: "Retrieves native CPU load, memory saturation, battery level/charging status, and task throttle pressure. input: {}.", params: "{}",
+    activity: () => "Inspecting native host hardware vitals & power telemetry",
+    run: () => hardwareVitalsTelemetryTool() },
+  { name: "audit_ledger_verify", safe: true, description: "Verifies the cryptographic SHA-256 Merkle chain integrity of all logged approvals and sensitive agent operations. input: {}.", params: "{}",
+    activity: () => "Verifying cryptographic audit chain integrity",
+    run: () => auditLedgerVerifyTool() },
   { name: "capital_protection_audit", safe: true, description: "Audits trading portfolio drawdown risk, stop-loss triggers, and Kelly-optimal bet sizing to prevent capital ruin. input: { equity?, highWaterMark?, maxDrawdownLimit? }.", params: "{equity?, highWaterMark?, maxDrawdownLimit?}",
     args: {
       equity: { type: "number", desc: "Current account equity (default: £5.0)" },
@@ -3254,7 +3290,7 @@ export const TOOLS: Tool[] = [
     },
     activity: () => "Calculating FlipIt dynamic risk shield & Kelly allocation",
     run: (i) => flipitScaleShieldTool(i) },
-  { name: "flipit_market_stream", safe: true, description: "Inspects and controls real-time Binance and Kraken WebSocket order book ticker streams. input: { action?: 'status' | 'start' | 'stop', pairs?: string[] }.", params: "{action?, pairs?}",
+  { name: "flipit_market_stream", safe: false, description: "Inspects and controls real-time Binance and Kraken WebSocket order book ticker streams. input: { action?: 'status' | 'start' | 'stop', pairs?: string[] }.", params: "{action?, pairs?}",
     args: {
       action: { type: "string", desc: "Action to perform: 'status' (default), 'start', or 'stop'" },
       pairs: { type: "array", desc: "Optional currency pairs to monitor (e.g. ['BTC/GBP', 'ETH/GBP'])" }
