@@ -128,6 +128,8 @@ import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { generateExecutiveDailyDeck } from "./executive-deck.ts";
+import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
+import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1996,6 +1998,61 @@ export async function executiveDailyBriefTool(): Promise<string> {
   return lines.join("\n");
 }
 
+export async function eventWebhookDispatcherTool(input?: { action?: "list" | "register" | "dispatch"; name?: string; url?: string; event?: string; events?: string[]; payload?: Record<string, unknown> }): Promise<string> {
+  const action = input?.action || "list";
+
+  if (action === "register" && input?.name && input?.url) {
+    const ep = registerWebhookEndpoint(input.name, input.url, input.events || ["*"]);
+    return [
+      `🌐 Registered Webhook Endpoint:`,
+      `· ID: ${ep.id}`,
+      `· Name: ${ep.name}`,
+      `· Target URL: ${ep.url}`,
+      `· Events: ${ep.events.join(", ")}`,
+      `· Signing Secret: ${ep.secret.slice(0, 8)}... (HMAC-SHA256 active)`,
+    ].join("\n");
+  }
+
+  if (action === "dispatch" && input?.event) {
+    const deliveries = await dispatchWebhookEvent(input.event, input.payload || {});
+    return [
+      `📡 Dispatched Event '${input.event}':`,
+      `· Targets Notified: ${deliveries.length}`,
+      ...deliveries.map((d) => `  - [${d.status.toUpperCase()}] Endpoint ${d.endpointId} (${d.statusCode || d.error}) in ${d.durationMs}ms`),
+    ].join("\n");
+  }
+
+  const endpoints = loadWebhookEndpoints();
+  return [
+    `🌐 Registered Webhook Endpoints (${endpoints.length}):`,
+    ...endpoints.map((ep) => `  - [${ep.enabled ? "ACTIVE" : "DISABLED"}] ${ep.name} (${ep.id}) → ${ep.url} [Events: ${ep.events.join(", ")}] (Last: ${ep.lastDeliveryStatus || "never"})`),
+  ].join("\n");
+}
+
+export async function vaultSnapshotBackupTool(input?: { action?: "export" | "restore"; manifest?: any }): Promise<string> {
+  const action = input?.action || "export";
+
+  if (action === "restore" && input?.manifest) {
+    const res = restoreVaultSnapshot(input.manifest);
+    return [
+      `🔄 Vault Snapshot Restored:`,
+      `· Restored Files: ${res.restoredCount}`,
+      `· Skipped/Invalid: ${res.skippedCount}`,
+      ...res.restoredFiles.map((f) => `  - ✅ ${f}`),
+      ...(res.errors.length > 0 ? [`\nErrors:`, ...res.errors.map((e) => `  - ⚠️ ${e}`)] : []),
+    ].join("\n");
+  }
+
+  const snapshot = createVaultSnapshot();
+  return [
+    `📦 Vault Snapshot Exported (${snapshot.totalFiles} files · ${snapshot.totalSizeBytes} bytes):`,
+    `· Exported At: ${new Date(snapshot.exportedAt).toISOString()}`,
+    `· Manifest SHA-256 Checksum: ${snapshot.manifestChecksum}`,
+    `· Files Packed:`,
+    ...snapshot.files.map((f) => `  - ${f.relativePath} (${f.sizeBytes} bytes · sha256: ${f.sha256.slice(0, 8)}...)`),
+  ].join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -3136,6 +3193,24 @@ export const TOOLS: Tool[] = [
   { name: "executive_daily_brief", safe: true, description: "Generates high-value C-suite daily action deck consolidating connectors, system health, revenue alpha, and pending decisions. input: {}.", params: "{}",
     activity: () => "Assembling Executive Daily Action Deck",
     run: () => executiveDailyBriefTool() },
+  { name: "event_webhook_dispatcher", safe: false, description: "Manages outbound and inbound webhook subscriptions with HMAC-SHA256 signatures for external integrations (TradingView, Stripe, GitHub, Shopify). input: { action? ('list'|'register'|'dispatch'), name?, url?, event?, events?, payload? }.", params: "{action?, name?, url?, event?, events?, payload?}",
+    args: {
+      action: { type: "string", desc: "'list' to view endpoints, 'register' to add, 'dispatch' to trigger" },
+      name: { type: "string", desc: "Endpoint friendly name" },
+      url: { type: "string", desc: "Target webhook URL" },
+      event: { type: "string", desc: "Event name for dispatch" },
+      events: { type: "array", desc: "List of event patterns to listen to" },
+      payload: { type: "object", desc: "Payload dictionary to send" }
+    },
+    activity: (i) => `${i?.action === "dispatch" ? "Dispatching" : "Managing"} event webhook subscriptions`,
+    run: (i) => eventWebhookDispatcherTool(i) },
+  { name: "vault_snapshot_backup", safe: false, description: "Generates or restores verified SHA-256 encrypted snapshots of the operator's SAM vault. input: { action? ('export'|'restore'), manifest? }.", params: "{action?, manifest?}",
+    args: {
+      action: { type: "string", desc: "'export' to package snapshot or 'restore' to unpack" },
+      manifest: { type: "object", desc: "Parsed snapshot manifest for restoration" }
+    },
+    activity: (i) => `${i?.action === "restore" ? "Restoring" : "Exporting"} SAM vault snapshot`,
+    run: (i) => vaultSnapshotBackupTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {

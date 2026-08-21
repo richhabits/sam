@@ -20,6 +20,7 @@ import { relayBrain } from "./relay.ts";
 import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 import { healthOrder } from "./speed.ts";
 import { classifyPromptTier } from "./speculative-router.ts";
+import { recordCostSavings } from "./cost-optimizer.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -667,6 +668,13 @@ export async function runModel(tier: Tier, system: string, prompt: string, laneH
   const promptTokens = estTokens(system) + estTokens(prompt);
   const outputTokens = estTokens(r.text);
   recordModelCall({ tier: r.tier, provider: r.provider, promptTokens, outputTokens, ms, reason: meta?.reason, escalated: meta?.escalated });
+  recordCostSavings({
+    provider: r.provider,
+    isFreeTier: r.tier === "free" || r.tier === "local",
+    inputTokens: promptTokens,
+    outputTokens,
+    actualCostUsd: costUSD({ tier: r.tier, promptTokens, outputTokens }),
+  });
   // The Pulse — self-observability, strictly local.
   count("brain.calls", 1, { tier: r.tier });
   observe("brain.latency_ms", ms, { tier: r.tier });

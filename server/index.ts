@@ -137,6 +137,8 @@ import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { generateExecutiveDailyDeck } from "./executive-deck.ts";
+import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
+import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1648,6 +1650,41 @@ app.post("/api/revenue/hunt", async (req, res) => {
     res.json(report);
   } catch (e: any) {
     res.status(500).json({ error: e.message || "Failed to hunt revenue opportunities" });
+  }
+});
+
+// ── Secure Event Webhooks & Inbound Signals ──
+app.get("/api/webhooks", (_req, res) => {
+  res.json(loadWebhookEndpoints());
+});
+app.post("/api/webhooks", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "Webhooks can only be managed on this computer, not remotely." });
+  const { name, url, events } = req.body || {};
+  if (!name || !url) return res.status(400).json({ error: "Missing required fields 'name' and 'url'." });
+  const endpoint = registerWebhookEndpoint(name, url, events || ["*"]);
+  res.json(endpoint);
+});
+app.post("/api/webhooks/dispatch", async (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "Webhook dispatch can only be triggered on this computer, not remotely." });
+  const { event, payload } = req.body || {};
+  if (!event) return res.status(400).json({ error: "Missing required field 'event'." });
+  const deliveries = await dispatchWebhookEvent(event, payload || {});
+  res.json({ event, dispatchedTo: deliveries.length, deliveries });
+});
+
+// ── Universal Vault Snapshot & Encrypted Backup ──
+app.get("/api/vault/snapshot", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your vault snapshot");
+  if (!isLoopback(req)) return res.status(403).json({ error: "Vault snapshots can only be exported on this computer, not remotely." });
+  res.json(createVaultSnapshot());
+});
+app.post("/api/vault/snapshot/restore", (req, res) => {
+  if (!isLoopback(req)) return res.status(403).json({ error: "Vault snapshots can only be restored on this computer, not remotely." });
+  try {
+    const result = restoreVaultSnapshot(req.body?.manifest || req.body);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || "Invalid snapshot manifest" });
   }
 });
 
