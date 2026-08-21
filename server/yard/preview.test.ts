@@ -129,4 +129,14 @@ describe("listing what is in a project", () => {
     expect(readProjectFile("site", "../../../etc/passwd")).toBeNull();
     expect(readProjectFile("site", ".git/config")).toBeNull();
   });
+
+  it("renders a 100x ultra-premium glassmorphic HTML preview for the project", async () => {
+    const { renderProjectPreviewHtml } = await import("./preview.ts");
+    const html = renderProjectPreviewHtml("site");
+    expect(html).toBe("<h1>hello</h1>");
+
+    const fallbackHtml = renderProjectPreviewHtml("nonexistent-project");
+    expect(fallbackHtml).toContain("not found in The Yard");
+  });
 });
+

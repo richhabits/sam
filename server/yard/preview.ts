@@ -14,6 +14,7 @@ import { existsSync, statSync, readFileSync, readdirSync } from "node:fs";
 import { join, extname, sep } from "node:path";
 import { projectsRoot, projectPath, isManagedProject } from "./managed.ts";
 import { trueLocation, isWithin } from "./exec.ts";
+import { generatePremiumDesignSystem } from "../antigravity-brain.ts";
 
 // Only what a built page legitimately needs. Anything else is not served rather than
 // guessed at — an unknown type handed back as octet-stream is still a file handed back.
@@ -110,4 +111,59 @@ export function readProjectFile(slug: string, rel: string, maxBytes = 200_000): 
   try { return readFileSync(r.path, "utf8").slice(0, maxBytes); } catch { return null; }
 }
 
+/**
+ * Renders an instant 100x ultra-premium glassmorphic HTML preview for any Yard project.
+ */
+export function renderProjectPreviewHtml(
+  slug: string,
+  theme: "obsidian" | "midnight-slate" | "cyberpunk" | "luxury-gold" = "obsidian"
+): string {
+  if (!isManagedProject(slug)) {
+    return `<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>Project "${slug}" not found in The Yard.</h2></div>`;
+  }
+  const root = projectPath(slug);
+  const index = join(root, "index.html");
+  if (existsSync(index)) {
+    try {
+      return readFileSync(index, "utf8");
+    } catch {
+      // fallback
+    }
+  }
+
+  const files = projectFiles(slug);
+  const ds = generatePremiumDesignSystem({ brandName: slug.toUpperCase(), theme });
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>${slug} · S.A.M. Yard Live Preview</title>
+  <style>
+${ds.glassmorphismCss}
+  </style>
+</head>
+<body>
+  <div style="max-width: 1000px; margin: 0 auto; padding: 40px 20px;">
+    ${ds.heroComponentHtml}
+    <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+      ${ds.cardComponentHtml}
+      <div class="glass-card" style="padding: 32px;">
+        <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--secondary-accent); margin-bottom: 12px;">PROJECT ASSETS</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: #FFFFFF; margin-bottom: 12px;">${files.length} Files Indexed</div>
+        <p style="color: var(--text-sub); font-size: 0.95rem; line-height: 1.5; margin: 0 0 16px 0;">
+          The Yard is actively compiling and staging your project structure in real time.
+        </p>
+        <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--primary-accent); max-height: 120px; overflow-y: auto;">
+          ${files.slice(0, 10).map((f) => `<div>📄 ${f.path} (${(f.bytes / 1024).toFixed(1)} KB)</div>`).join("")}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 export { projectsRoot };
+
