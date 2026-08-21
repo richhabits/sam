@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────
 import type { Express } from "express";
 import { getKey, } from "./keys.ts";
+import { VOICES, synthesizeDialogueAudio } from "./audio-engine.ts";
 
 export function registerVoiceRoutes(app: Express): void {
   // ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──
@@ -52,5 +53,20 @@ export function registerVoiceRoutes(app: Express): void {
       if (r.ok && (r.headers.get("content-type") || "").includes("audio")) return sendAudio(await r.arrayBuffer(), r.headers.get("content-type") || "audio/mpeg");
     } catch { /* nothing left */ }
     res.status(503).json({ error: "no tts lane available" });
+  });
+
+  // Audio Engine Voice Catalog
+  app.get("/api/audio/voices", (_req, res) => {
+    res.json({ voices: VOICES });
+  });
+
+  // Multi-Speaker Dialogue / Podcast Synthesis
+  app.post("/api/audio/dialogue", (req, res) => {
+    const { title, exchanges } = req.body as { title?: string; exchanges: Array<{ speaker: string; text: string }> };
+    if (!Array.isArray(exchanges) || exchanges.length === 0) {
+      return res.status(400).json({ error: "exchanges array is required" });
+    }
+    const result = synthesizeDialogueAudio(title || "Audio Overview Dialogue", exchanges);
+    res.json(result);
   });
 }

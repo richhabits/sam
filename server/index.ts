@@ -125,6 +125,7 @@ import { processUniversalPrompt, UNIVERSAL_SHORTCUTS, registerDeviceHandoff, get
 import { generateMobileFeed } from "./mobile-feed.ts";
 import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
+import { getMobileBridgeStatus } from "./mobile-bridge.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1253,6 +1254,9 @@ app.get("/api/universal/shortcuts", (_req, res) => {
 });
 app.get("/api/mobile/feed", (_req, res) => {
   res.json(generateMobileFeed());
+});
+app.get("/api/mobile/bridge/status", (_req, res) => {
+  res.json(getMobileBridgeStatus());
 });
 app.get("/api/brain/arbitrage", (_req, res) => {
   res.json(getBrainPerformanceMatrix());
