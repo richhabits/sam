@@ -123,6 +123,9 @@ import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
+import { runMultiModelConsensus } from "./consensus.ts";
+import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
+import { getAutoProvisionStatus, executeAutoProvisioning } from "./auto-provision.ts";
 import * as nb from "./notebook.ts";
 import { retrieveFullOutput } from "./compress.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
@@ -1889,6 +1892,82 @@ export async function agentic100xWorkflowTool(input: {
   return lines.join("\n");
 }
 
+export async function multiModelConsensusTool(input: { prompt: string; modelsCount?: number }): Promise<string> {
+  const p = String(input?.prompt || "").trim();
+  if (!p) return "Error: prompt is required for multi-model consensus.";
+
+  const rep = await runMultiModelConsensus(p, { modelsCount: input?.modelsCount });
+
+  const lines = [
+    `🧠 Multi-Model Consensus Report (${rep.participatingCount} models polled in ${rep.wallClockDurationMs}ms):`,
+    `· Confidence Score: ${rep.confidenceScorePct}% [${rep.agreementSummary}]`,
+    `\nConsensus Answer:`,
+    rep.consensusAnswer,
+    `\nParticipating Models:`,
+    ...rep.opinions.map((o) => `  - ${o.provider}: [${o.status.toUpperCase()}] in ${o.durationMs}ms`),
+  ];
+
+  return lines.join("\n");
+}
+
+export async function codeRepairPatcherTool(input: { compilerOutput?: string; filePath?: string }): Promise<string> {
+  let raw = String(input?.compilerOutput || "").trim();
+  if (!raw) {
+    try {
+      const { execSync } = await import("node:child_process");
+      execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
+      raw = "";
+    } catch (e: any) {
+      raw = e?.stdout || e?.stderr || e?.message || "";
+    }
+  }
+
+  const diagnostics = parseCompilerDiagnostics(raw);
+  const plan = generateRepairPlan(diagnostics);
+
+  const lines = [
+    `🛠️ Code Repair & AST Diagnostic Report:`,
+    plan.summary,
+  ];
+
+  if (plan.candidates.length > 0) {
+    lines.push(`\nActionable Repair Candidates:`);
+    for (const c of plan.candidates) {
+      lines.push(`  - [${c.filePath}:${c.startLine}–${c.endLine}] ${c.instruction} (${c.confidenceScorePct}% confidence)`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export async function autoKeyProvisionerTool(input?: { action?: "status" | "provision"; providers?: string[]; botEmail?: string }): Promise<string> {
+  const action = input?.action || "status";
+
+  if (action === "status") {
+    const s = getAutoProvisionStatus();
+    return [
+      `🔑 1-Click Key Butler Status:`,
+      `· Bot Identity Configured: ${s.botEmailConfigured ? `YES (${s.botEmail})` : "NO (Set SMTP_USER or SAM_OWNER_EMAIL)"}`,
+      `· Configured Providers: ${s.configuredProvidersCount} of ${s.totalSupportedProviders}`,
+      `\nSupported Automation Targets:`,
+      ...s.targets.slice(0, 10).map((t) => `  - ${t.label} (${t.id}): [${t.status.toUpperCase()}] → ${t.existingKeysCount} active key(s)`),
+    ].join("\n");
+  }
+
+  const res = await executeAutoProvisioning({
+    providers: input?.providers,
+    botEmail: input?.botEmail,
+  });
+
+  return [
+    `🚀 1-Click Key Butler Auto-Provisioning Completed:`,
+    `· Bot Email: ${res.botEmail}`,
+    `· Results: ${res.totalSucceeded}/${res.totalAttempted} providers provisioned`,
+    `\nEvents:`,
+    ...res.events.map((e) => `  - [${e.status.toUpperCase()}] ${e.label}: ${e.message} ${e.keyMasked ? `(${e.keyMasked})` : ""}`),
+  ].join("\n");
+}
+
 async function listDir(path: string): Promise<string> {
   try {
     const dir = safePath(path || "~");
@@ -2997,6 +3076,28 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Executing 100x Antigravity DAG workflow: "${i?.goal ?? i}"`,
     run: (i) => agentic100xWorkflowTool(i) },
+  { name: "multi_model_consensus", safe: true, description: "Queries diverse free models (Cerebras, Groq, Gemini, Mistral) in parallel and synthesizes the highest-confidence consensus truth. input: { prompt, modelsCount? }.", params: "{prompt, modelsCount?}",
+    args: {
+      prompt: { type: "string", desc: "Question, algorithm, or architectural prompt to cross-examine" },
+      modelsCount: { type: "number", desc: "Number of free models to query (2-4)" }
+    },
+    activity: (i) => `Querying multi-model consensus panel for: "${i?.prompt ?? i}"`,
+    run: (i) => multiModelConsensusTool(i) },
+  { name: "code_repair_patcher", safe: true, description: "Parses TypeScript/JavaScript compiler diagnostic errors and produces targeted AST patch candidates. input: { compilerOutput?, filePath? }.", params: "{compilerOutput?, filePath?}",
+    args: {
+      compilerOutput: { type: "string", desc: "Optional raw tsc or linter error output" },
+      filePath: { type: "string", desc: "Optional file path being diagnosed" }
+    },
+    activity: () => "Analyzing compiler diagnostics and generating AST repair plan",
+    run: (i) => codeRepairPatcherTool(i) },
+  { name: "auto_key_provisioner", safe: false, description: "Manages 1-click automatic API key acquisition using SAM's dedicated bot identity so operators don't have to manually configure 20 developer portals. input: { action? ('status'|'provision'), providers?, botEmail? }.", params: "{action?, providers?, botEmail?}",
+    args: {
+      action: { type: "string", desc: "'status' to inspect targets or 'provision' to execute" },
+      providers: { type: "array", desc: "Optional subset of provider IDs to provision" },
+      botEmail: { type: "string", desc: "Optional dedicated bot email identity" }
+    },
+    activity: (i) => `${i?.action === "provision" ? "Auto-provisioning" : "Checking status of"} free provider API keys`,
+    run: (i) => autoKeyProvisionerTool(i) },
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {

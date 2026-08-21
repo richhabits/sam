@@ -132,6 +132,9 @@ import { prewarmContext } from "./prefetch.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { getModelSelectorCatalogue, saveModelSelection } from "./model-selector.ts";
+import { runMultiModelConsensus } from "./consensus.ts";
+import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
+import { getAutoProvisionStatus, executeAutoProvisioning } from "./auto-provision.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
 import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
 import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
@@ -1572,6 +1575,52 @@ app.post("/api/models/selector", (req, res) => {
     ...(autoFallbackEnabled !== undefined ? { autoFallbackEnabled: !!autoFallbackEnabled } : {}),
   });
   res.json(updated);
+});
+
+// ── Multi-Model Free Brain Ensemble Consensus ──
+app.post("/api/consensus", async (req, res) => {
+  try {
+    const prompt = req.body?.prompt || req.body?.goal;
+    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+    const result = await runMultiModelConsensus(prompt, req.body?.options || req.body);
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to execute consensus panel" });
+  }
+});
+
+// ── Autonomous AST Code Repair & Diagnostic Patcher ──
+app.post("/api/code/repair", async (req, res) => {
+  try {
+    let raw = String(req.body?.compilerOutput || "").trim();
+    if (!raw && req.body?.runTsc) {
+      const { execSync } = await import("node:child_process");
+      try {
+        execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
+        raw = "";
+      } catch (e: any) {
+        raw = e?.stdout || e?.stderr || e?.message || "";
+      }
+    }
+    const diagnostics = parseCompilerDiagnostics(raw);
+    const plan = generateRepairPlan(diagnostics);
+    res.json(plan);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to generate repair plan" });
+  }
+});
+
+// ── 1-Click Auto-Key Butler & Identity Provisioner ──
+app.get("/api/keys/auto-provision/status", (_req, res) => {
+  res.json(getAutoProvisionStatus());
+});
+app.post("/api/keys/auto-provision", async (req, res) => {
+  try {
+    const result = await executeAutoProvisioning(req.body || {});
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to auto-provision keys" });
+  }
 });
 
 // ── Scheduled Tasks ──
