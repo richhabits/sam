@@ -313,7 +313,27 @@ async function webSearch(q: string): Promise<string> {
   const out: string[] = [];
   const strip = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
 
-  // Try SearxNG Public Node First
+  // Lane 1: DuckDuckGo HTML Scrape
+  try {
+    const r = await tfetch("https://html.duckduckgo.com/html/?q=" + query, {
+      headers: { "User-Agent": randomUA() }, signal: webSignal(),
+    });
+    const html = await r.text();
+    const re = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/g;
+    const realUrl = (href: string) => {
+      const m = href.match(/[?&]uddg=([^&]+)/);
+      if (m) { try { return decodeURIComponent(m[1]); } catch { /* keep raw */ } }
+      return href.startsWith("//") ? "https:" + href : href;
+    };
+    for (let m = re.exec(html); m && out.length < 6; m = re.exec(html)) {
+      const link = realUrl(m[1]);
+      if (link.includes("duckduckgo.com/y.js") || link.includes("bing.com/aclick")) continue;
+      out.push(`• ${strip(m[2])} — ${strip(m[3])}\n  ${link}`);
+    }
+    if (out.length) return out.join("\n");
+  } catch { /* fallback */ }
+
+  // Lane 2: SearxNG Public Node Fallback
   try {
     const sr = await tfetch("https://searx.be/search?q=" + query + "&format=json", {
       headers: { "User-Agent": randomUA() }, signal: webSignal(),
@@ -325,24 +345,6 @@ async function webSearch(q: string): Promise<string> {
       }
       if (out.length) return out.join("\n");
     }
-  } catch { /* fallback */ }
-
-  // Fallback 1: DuckDuckGo HTML Scrape
-  try {
-    const r = await tfetch("https://duckduckgo.com/html/?q=" + query, {
-      headers: { "User-Agent": randomUA() }, signal: webSignal(),
-    });
-    const html = await r.text();
-    const re = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/g;
-    const realUrl = (href: string) => {
-      const m = href.match(/[?&]uddg=([^&]+)/);
-      if (m) { try { return decodeURIComponent(m[1]); } catch { /* keep raw */ } }
-      return href.startsWith("//") ? "https:" + href : href;
-    };
-    for (let m = re.exec(html); m && out.length < 6; m = re.exec(html)) {
-      out.push(`• ${strip(m[2])} — ${strip(m[3])}\n  ${realUrl(m[1])}`);
-    }
-    if (out.length) return out.join("\n");
   } catch { /* fallback */ }
 
   // Fallback 2: Yahoo Search Scrape

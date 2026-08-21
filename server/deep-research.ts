@@ -124,7 +124,9 @@ export async function conductDeepResearch(
 
   try {
     const res = await deps.synthesize(system, prompt);
-    const jsonText = (res.text || "").replace(/```json\n?|```/g, "").trim();
+    const raw = (res.text || "").trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    const jsonText = match ? match[0] : raw.replace(/```json\n?|```/g, "").trim();
     const parsed = JSON.parse(jsonText);
 
     const keyFindings: ResearchFinding[] = (Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [])
