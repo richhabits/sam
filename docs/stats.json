@@ -1,9 +1,9 @@
 {
-  "tools": 254,
+  "tools": 255,
   "agents": 78,
   "specialists": 64,
   "ninjas": 14,
-  "skills": 29,
+  "skills": 30,
   "brains": 40,
   "providers": 44
 }
