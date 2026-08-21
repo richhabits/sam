@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { capture } from "./issues.ts";
 import { sweepStaleLatches, staleLatches } from "./latch.ts";
 import { count, mark } from "./pulse.ts";
+import { getHardwareVitals } from "./hardware-monitor.ts";
 
 export interface GuardResult { ok: boolean; detail?: string }
 export interface Guard {
@@ -102,6 +103,17 @@ export function defaultGuards(): Guard[] {
           const free = Number(s.bavail) * Number(s.bsize);
           return { ok: free >= DISK_FLOOR_BYTES, detail: `${Math.round(free / 1024 / 1024)} MB free` };
         } catch { return { ok: true }; }   // can't measure → don't cry drift
+      },
+    },
+    {
+      // Hardware saturation (battery <20% on DC or memory >92%) must throttle background tasks.
+      name: "hardware.throttle",
+      autoHeal: false,
+      observe: () => {
+        try {
+          const v = getHardwareVitals();
+          return { ok: !v.isThrottled, detail: v.isThrottled ? v.throttleReason : undefined };
+        } catch { return { ok: true }; }
       },
     },
   ];

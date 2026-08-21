@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { _reset as resetIssues, listIssues } from "./issues.ts";
 import { _reset as resetPulse, snapshot } from "./pulse.ts";
-import { type Guard, startKeeper, stopKeeper, tick } from "./keeper.ts";
+import { type Guard, startKeeper, stopKeeper, tick, defaultGuards } from "./keeper.ts";
 
 // The Keeper: one pass observes actual vs intent, corrects SAFE drift, and records every correction
 // (Black Box issue + Pulse metric). Injected guards drive the scenarios so nothing real is touched.
@@ -64,6 +64,14 @@ describe("tick — drift, heal, record", () => {
 });
 
 describe("the loop — on by default, kill-switch off", () => {
+  it("defaultGuards includes latch, disk, and hardware.throttle", () => {
+    const guards = defaultGuards();
+    const names = guards.map((g) => g.name);
+    expect(names).toContain("latch.clean");
+    expect(names).toContain("disk.ok");
+    expect(names).toContain("hardware.throttle");
+  });
+
   it("starts by default and SAM_KEEPER=0 disables it", () => {
     process.env.SAM_KEEPER = "0";
     expect(startKeeper([], 10)).toBe(false);   // kill-switch → no loop
@@ -73,3 +81,4 @@ describe("the loop — on by default, kill-switch off", () => {
     stopKeeper();
   });
 });
+

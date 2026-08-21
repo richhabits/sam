@@ -15,6 +15,7 @@ import { timingSafeEqual, } from "node:crypto";
 import { readFileSync, existsSync, } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
+import { recordAuditEvent } from "./audit-ledger.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -1195,7 +1196,11 @@ app.post("/api/confirm", async (req, res) => {
   // the server-held record, so a caller can't approve a tool/input we never proposed.
   const { pendingId, approved, always } = req.body as { pendingId?: string; approved?: boolean; always?: boolean };
   const p = takePendingApproval(pendingId ? String(pendingId) : undefined);
-  if (!p) return res.status(410).json({ kind: "final", text: "That approval expired — ask me again and I'll re-propose it.", trace: [] });
+  if (!p) {
+    recordAuditEvent("operator", "CONFIRM_EXPIRED", { pendingId }, "DENIED");
+    return res.status(410).json({ kind: "final", text: "That approval expired — ask me again and I'll re-propose it.", trace: [] });
+  }
+  recordAuditEvent("operator", approved ? "CONFIRM_APPROVE" : "CONFIRM_DECLINE", { tool: p.tool, input: p.input, always }, approved ? "SUCCESS" : "DENIED");
   if (approved && always && p.tool) allow(p.tool);   // "yes, and always allow this"
   try {
     const system = buildSystem(p.skillBody, p.projectId, p.user, undefined, true);

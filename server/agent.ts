@@ -19,6 +19,7 @@ import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
 import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
 import { capture } from "./issues.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
+import { recordAuditEvent } from "./audit-ledger.ts";
 
 // Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
 // get up to 12 steps, and massive/50x multi-stage workflows get up to 50 steps. Never a flat ceiling —
@@ -418,6 +419,9 @@ async function loop(system: string, prompt: string, tier: Tier, trace: string[],
     trace.push(tool.activity(call.input));
     let result: string;
     try { 
+      if (!tool.safe) {
+        recordAuditEvent("sam_agent", "EXECUTE_TOOL", { tool: tool.name, input: call.input }, "SUCCESS");
+      }
       result = await tool.run(call.input); 
       // THE ANTIGRAVITY SILENT VERIFIER LOOP
       if (process.env.NODE_ENV !== "test" && !process.env.VITEST && (tool.name === "write_file" || tool.name === "append_file" || tool.name === "edit_file") && typeof call.input?.path === "string" && call.input.path.endsWith(".ts")) {
@@ -660,12 +664,14 @@ export async function resumeAgent(
   const tool = toolByName(toolName);
   let prompt = transcript;
   if (approved && tool) {
+    recordAuditEvent("operator", "CONFIRM_RESUME", { tool: toolName, input }, "SUCCESS");
     trace.push(tool.activity(input));
     let result: string;
     try { result = await tool.run(input); }
     catch (e: any) { result = `that didn't work (${e?.message || e})`; }
     prompt = trimPrompt(prompt + `\n\n[ran ${tool.name}] → ${fenceToolResult(tool.name, result)}`);
   } else {
+    recordAuditEvent("operator", "CONFIRM_DECLINE", { tool: toolName, input }, "DENIED");
     prompt += `\n\n[The user declined to run ${toolName}. Do not do it. Continue without it or explain what you'd need.]`;
   }
   return loop(sys, prompt, tier, trace, swarm);

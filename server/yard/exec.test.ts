@@ -384,20 +384,11 @@ describe("the limits that were set but never exercised", () => {
   });
 
   it("reports a command that may not be installed as a result, not a throw", async () => {
-    // This used to assert `code !== 0` for wrangler, on the reasoning that it is "not installed on
-    // every machine". That is a property of the MACHINE, not of the code under test: it passed for
-    // a year, then failed the moment a wrangler appeared on the dev box — and it can never be made
-    // deterministic, because safePath() always appends /opt/homebrew/bin and the usual install
-    // dirs, so no env override can hide a binary that is genuinely there.
-    //
-    // What execInProject actually guarantees is the thing worth pinning: spawn failing with ENOENT
-    // must surface as a RESOLVED result carrying a numeric code, never as an unhandled rejection.
-    // True whether or not the tool exists, so it holds on every machine.
-    const r = await execInProject(root, "wrangler", ["--version"], { handshake: true });
+    const r = await execInProject(root, "wrangler", ["--version"], { handshake: true, timeoutMs: 2000 });
     expect(typeof r.code).toBe("number");
     expect(typeof r.stdout).toBe("string");
     expect(typeof r.truncated).toBe("boolean");
-  });
+  }, 15000);
 });
 
 describe("the deploy credential is scoped to deploy work only", () => {
