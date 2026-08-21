@@ -141,3 +141,5 @@ graphify-out/
 
 # vault-reconciliation backups (local only — holds push-notification private keys)
 vault-amnesia-backup-*/
+
+design-reference/
