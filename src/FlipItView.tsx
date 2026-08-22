@@ -284,8 +284,11 @@ export default function FlipItView() {
       
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.error && data.error.includes("STRIPE_SECRET_KEY")) {
+        triggerToast("⚠️ Stripe Key missing. Sign up at dashboard.stripe.com to enable live deposits.");
+        setTimeout(() => window.open("https://dashboard.stripe.com/register", "_blank"), 2000);
       } else {
-        triggerToast("Failed to initialize checkout.");
+        triggerToast(data.error || "Failed to initialize checkout.");
       }
     } catch (err) {
       triggerToast("Network error connecting to payment gateway.");
@@ -625,22 +628,24 @@ export default function FlipItView() {
       <h1 style={{ fontSize: 28, color: "var(--text)", marginTop: 0, fontWeight: 900, letterSpacing: "-.02em" }}>Platform Settings</h1>
       <div style={{ maxWidth: 600, display: "flex", flexDirection: "column", gap: 24 }}>
         <section style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
-          <h2 style={{ fontSize: 14, color: "var(--muted)", marginTop: 0, textTransform: "uppercase", fontWeight: 800 }}>API Connections</h2>
+          <h2 style={{ fontSize: 14, color: "var(--muted)", marginTop: 0, textTransform: "uppercase", fontWeight: 800 }}>Real Market Integrations</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "12px 16px", borderRadius: 8 }}>
-              <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 13 }}>Binance API Key</span>
-              <span style={{ color: "var(--accent)", fontSize: 11, fontWeight: 800 }}>CONNECTED</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "12px 16px", borderRadius: 8 }}>
-              <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 13 }}>Stripe Webhook Secret</span>
-              <span style={{ color: "var(--accent)", fontSize: 11, fontWeight: 800 }}>CONNECTED</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "12px 16px", borderRadius: 8 }}>
-              <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 13 }}>Kraken API Key</span>
-              <button 
-                onClick={() => triggerToast("⚠️ Kraken API integration requires OAuth setup.")}
-                style={{ background: "#2563EB", border: "none", color: "var(--text)", padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>LINK</button>
-            </div>
+            {[
+              { name: "Binance API (Spot/Margin)", url: "https://www.binance.com/en/register", color: "#FCD535", textCol: "#000" },
+              { name: "Stripe Billing (Deposits)", url: "https://dashboard.stripe.com/register", color: "#635BFF", textCol: "#FFF" },
+              { name: "Kraken Pro (Arbitrage)", url: "https://pro.kraken.com/app/onboarding", color: "#5841D8", textCol: "#FFF" },
+              { name: "Polymarket (+EV Signals)", url: "https://polymarket.com/signup", color: "#0055FF", textCol: "#FFF" },
+              { name: "Kalshi (US Regulated)", url: "https://kalshi.com/sign-up", color: "#000000", textCol: "#FFF", border: "1px solid #333" }
+            ].map((api, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "12px 16px", borderRadius: 8 }}>
+                <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 13 }}>{api.name}</span>
+                <button 
+                  onClick={() => window.open(api.url, "_blank")}
+                  style={{ background: api.color, border: api.border || "none", color: api.textCol, padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 900, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                  SIGN UP / LINK ↗
+                </button>
+              </div>
+            ))}
           </div>
         </section>
         
