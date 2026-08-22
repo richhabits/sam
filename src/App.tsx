@@ -1586,7 +1586,7 @@ export default function App() {
         {/* Left: logo + live pulse beacon */}
         <div className="brandmark" style={{ display: "flex", alignItems: "center", gap: 10, justifySelf: "start" }}>
           <span className="wordmark" style={{ fontSize: 17 }}>SAM<span className="wm-dot">.</span></span>
-          <span className="dot-live" title="Connected" aria-label="Connected" />
+          <span className="dot-live" role="status" title="Connected" aria-label="Connected" />
         </div>
 
         {/* Center: Agent / Yard / Studio / FlipIt segmented control */}
