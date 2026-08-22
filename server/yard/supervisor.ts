@@ -1,38 +1,24 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · THE YARD — the supervisor
 //
-//  Keeps a POOL of worker processes alive alongside the server, each an independent
-//  slot restarted on its own backoff when it dies — one slow-to-start worker never
-//  holds the others back. Job claims are settled by the job store itself (a race-safe
-//  conditional UPDATE under WAL + busy_timeout, see yard/store.ts), so any number of
-//  workers can pull from the same queue safely; the supervisor doesn't coordinate that.
-//
-//  Pool size defaults to CPU cores minus one, leaving a core free so background jobs
-//  can never make the desktop UI/main process lag. Override with SAM_YARD_WORKERS.
+//  Keeps exactly one worker process alive alongside the server. Restarts it when it
+//  dies, backing off so a worker that cannot start does not become a spawn loop that
+//  costs more than the work would have.
 //
 //  The supervisor never does the work and never inspects a job. It only owns the
-//  processes, so that a crash in a build is a crash in something disposable.
+//  process, so that a crash in a build is a crash in something disposable.
 // ─────────────────────────────────────────────────────────────
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cpus } from "node:os";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
 
 const MIN_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30_000;
-
-// CPU cores minus one, floor of 1 — never zero even on a single-core box, never so many
-// that the pool crowds out the process actually answering the user.
-export function defaultPoolSize(): number {
-  const override = Number(process.env.SAM_YARD_WORKERS);
-  if (Number.isFinite(override) && override > 0) return Math.floor(override);
-  return Math.max(1, cpus().length - 1);
-}
 
 // The bundled worker when SAM is built, the source when running from a checkout.
 //
@@ -93,17 +79,23 @@ export function workerEntry(): { cmd: string; args: string[] } | null {
   return source ? { cmd: process.execPath, args: [source] } : null;
 }
 
-// One independently-restarted slot in the pool. Its own backoff so a single worker
-// that keeps crashing (bad job, corrupt state) never throttles its healthy siblings.
-class Slot {
-  child: ChildProcess | null = null;
-  stopping = false;
-  backoff = MIN_BACKOFF_MS;
-  timer: NodeJS.Timeout | null = null;
-  starts = 0;
-  lastExit: string | null = null;
+export class Supervisor {
+  private child: ChildProcess | null = null;
+  private stopping = false;
+  private backoff = MIN_BACKOFF_MS;
+  private timer: NodeJS.Timeout | null = null;
+  private starts = 0;
+  private lastExit: string | null = null;
 
-  spawn(entry: { cmd: string; args: string[] }) {
+  start(): boolean {
+    const entry = workerEntry();
+    if (!entry) { this.lastExit = "no worker entrypoint found"; return false; }
+    this.stopping = false;
+    this.spawnOnce(entry);
+    return true;
+  }
+
+  private spawnOnce(entry: { cmd: string; args: string[] }) {
     if (this.stopping) return;
     this.starts++;
     // ELECTRON_RUN_AS_NODE keeps process.execPath behaving as node inside the packaged
@@ -122,7 +114,7 @@ class Slot {
       if (this.stopping) return;
       // A clean exit still gets restarted: the worker standing down because another
       // holds the lock is normal, and the delay stops that becoming a tight loop.
-      this.timer = setTimeout(() => this.spawn(entry), this.backoff);
+      this.timer = setTimeout(() => this.spawnOnce(entry), this.backoff);
       this.backoff = Math.min(this.backoff * 2, MAX_BACKOFF_MS);
     });
     // A worker that survives a while is healthy; forget the previous trouble.
@@ -139,40 +131,9 @@ class Slot {
     try { c.kill("SIGTERM"); } catch { /* already gone */ }
     setTimeout(() => { try { c.kill("SIGKILL"); } catch { /* already gone */ } }, 5000).unref?.();
   }
-}
-
-export class Supervisor {
-  private slots: Slot[] = [];
-
-  start(poolSize = defaultPoolSize()): boolean {
-    const entry = workerEntry();
-    if (!entry) {
-      const empty = new Slot();
-      empty.lastExit = "no worker entrypoint found";
-      this.slots = [empty];
-      return false;
-    }
-    this.slots = Array.from({ length: Math.max(1, poolSize) }, () => new Slot());
-    for (const slot of this.slots) slot.spawn(entry);
-    return true;
-  }
-
-  stop() {
-    for (const slot of this.slots) slot.stop();
-  }
 
   status() {
-    const up = this.slots.filter((s) => s.child);
-    // up/pid stay single-value for the existing dashboard dot (any worker alive, first pid);
-    // pids/count/poolSize are the pool-aware view for anything that wants the full picture.
-    return {
-      up: up.length > 0,
-      pid: up[0]?.child?.pid ?? null,
-      starts: this.slots.reduce((n, s) => n + s.starts, 0),
-      lastExit: this.slots.find((s) => s.lastExit)?.lastExit ?? null,
-      poolSize: this.slots.length,
-      pids: up.map((s) => s.child!.pid),
-    };
+    return { up: !!this.child, pid: this.child?.pid ?? null, starts: this.starts, lastExit: this.lastExit };
   }
 }
 

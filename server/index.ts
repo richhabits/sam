@@ -2728,7 +2728,7 @@ app.listen(Number(PORT), HOST, () => {
   // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
   if (process.env.SAM_YARD === "1") {
     yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
-    console.log(supervisor.start() ? `  the yard      · ${supervisor.status().poolSize} worker(s) starting` : "  the yard      · no worker entrypoint — staying down");
+    console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
     // Take the worker down with us. Without this the child is reparented to init and
     // keeps running: one orphan per restart, each still claiming jobs.
     for (const sig of ["SIGTERM", "SIGINT"] as const) {
