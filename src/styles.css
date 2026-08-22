@@ -2159,48 +2159,51 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* Bento UI Refactor for Settings (Big Boy Tier) */
 .bento-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding-bottom: 8px;
-}
-.bento-card {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 14px 16px;
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  overflow: hidden;
+}
+.bento-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
   text-align: left;
   position: relative;
-  overflow: hidden;
-  gap: 8px;
-  transition: all var(--dur) var(--ease);
+  gap: 12px;
+  transition: background var(--dur) var(--ease);
+}
+.bento-card:last-child {
+  border-bottom: none;
 }
 .bento-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.06);
-  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  transform: none;
+  box-shadow: none;
 }
-.bento-card:active { transform: scale(0.97) translateY(0); }
+.bento-card:active { transform: none; background: color-mix(in srgb, var(--text) 6%, transparent); }
 .bento-card.on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  background: transparent;
 }
 .bento-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  color: var(--text);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
 }
-.bento-card.on .bento-icon { background: var(--accent); color: var(--on-accent); }
-.bento-name { font-weight: 600; font-size: var(--fs-md); line-height: 1.2; margin-top: 4px; }
-.bento-sub { font-size: var(--fs-caption); color: var(--muted); line-height: 1.3; }
-.bento-action { position: absolute; top: 14px; right: 14px; }
+.bento-card.on .bento-icon { background: transparent; color: var(--accent); }
+.bento-name { font-weight: 500; font-size: var(--fs-body); flex: 1; margin: 0; }
+.bento-sub { font-size: var(--fs-caption); color: var(--muted); position: absolute; right: 50px; }
+.bento-action { position: relative; top: auto; right: auto; margin-left: auto; }
 
 /* Settings tabs — same shape as the Control Centre's, so the two panels feel like one app.
    Bumped padding/font with the wider popover — 12px labels in a 6px-padded strip were the
@@ -2574,7 +2577,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button
 
 /* ── UI Stripdown Overrides (Apple White) ── */
 .composer { background: transparent !important; padding: 24px 16px !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-top: none !important; display: flex; flex-direction: column; align-items: center; z-index: 100; }
-.composer-inner { width: 100%; max-width: 800px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(20, 24, 32, 0.75); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); padding: 4px; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+.composer-inner { width: 100%; max-width: 800px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--paper); box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); padding: 8px 12px; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .composer-context { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; justify-content: center; opacity: 0.9; }
 .composer-context select { background: transparent; border: none; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; }
 .composer-context select:hover { color: var(--text); }
