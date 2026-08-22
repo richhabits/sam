@@ -78,7 +78,7 @@ function countCodebaseInventory() {
   const serverModules = countFiles(serverDir, isSourceTs) + countFiles(yardDir, isSourceTs);
   const testFiles = countFiles(serverDir, isTestTs) + countFiles(yardDir, isTestTs);
 
-  // Skills: count subdirectories in server/skills/ (each skill is a directory)
+  // Skills: count subdirectories in skills/ at repo root (each skill is a directory)
   let skillsLinked = 0;
   try {
     if (existsSync(skillsDir)) {

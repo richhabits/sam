@@ -10,6 +10,17 @@ vi.mock("./models.ts", () => ({
   runModel: vi.fn().mockResolvedValue("Mocked executive strategy summary."),
 }));
 
+// buildDynamicOpportunities() calls the real Yahoo Finance quotes() unconditionally, regardless
+// of synthesizeStrategy — this was the actual source of the slowness/flakiness (6+ seconds for
+// tests that should be instant): a live network call to a third party on every run, mocking the
+// LLM layer alone didn't touch it.
+vi.mock("./markets.ts", () => ({
+  quotes: vi.fn().mockResolvedValue([
+    { symbol: "BTC-USD", ok: true, price: 65000, currency: "USD", prevClose: 64000, change: 1000, changePct: 1.56, exchange: "CCC" },
+    { symbol: "ETH-USD", ok: true, price: 3500, currency: "USD", prevClose: 3400, change: 100, changePct: 2.94, exchange: "CCC" },
+  ]),
+}));
+
 describe("AUTONOMOUS REVENUE & OPPORTUNITY HUNTER", () => {
   it("returns prioritized revenue opportunities with estimated ROI", async () => {
     const rep = await huntRevenueOpportunities({ synthesizeStrategy: false });
