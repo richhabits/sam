@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · ANTIGRAVITY COGNITIVE BRAIN & FACTUAL GROUNDING ENGINE
+//  S.A.M. · COGNITIVE SYNTHESIS ENGINE
 //
-//  Ultra-fast speculative reasoning, zero-hallucination factual grounding,
+//  Ultra-fast speculative reasoning, factual grounding,
 //  multi-branch cognitive synthesis, AST symbol verification,
 //  autonomous self-correcting reflection loops, and silent verification.
 // ─────────────────────────────────────────────────────────────

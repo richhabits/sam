@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · AUTONOMOUS AI DIRECTOR & MULTI-TRACK STORYBOARD ENGINE
+//  S.A.M. · STUDIO STORYBOARD ENGINE
 //
-//  Directs cinematic multi-shot storyboards with 3D camera vector rigs,
+//  Builds JSON metadata for storyboards with camera vector rigs,
 //  lighting palettes, consistent character seeds, and SMPTE frame timing.
 // ─────────────────────────────────────────────────────────────
 

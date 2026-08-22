@@ -3465,7 +3465,7 @@ export const TOOLS: Tool[] = [
     activity: (i) => `Refactoring symbol '${i.oldSymbol}' → '${i.newSymbol}' in ${i.path}`,
     preview: (i) => `Replace symbol '${i.oldSymbol}' with '${i.newSymbol}' in ${i.path}${i.dryRun ? " (dry run)" : ""}`,
     run: (i) => astReplaceSymbolTool(i) },
-  { name: "flipit_monte_carlo", safe: true, description: "Runs high-speed 100x Monte Carlo simulation (up to 100,000 paths) on a trading strategy, calculating quantiles, Value at Risk (VaR 95/99), CVaR Expected Shortfall, Sharpe, and ruin risk. input: { initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold? }.", params: "{initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold?}",
+  { name: "flipit_monte_carlo", safe: true, description: "Runs Monte Carlo simulation (up to 100,000 paths) on a trading strategy, calculating quantiles, Value at Risk (VaR 95/99), CVaR Expected Shortfall, Sharpe, and ruin risk. input: { initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold? }.", params: "{initialCapital?, mu?, sigma?, days?, paths?, ruinThreshold?}",
     args: {
       initialCapital: { type: "number", desc: "Starting capital (default: £1.0)" },
       mu: { type: "number", desc: "Expected daily drift rate (default: 0.001 = 0.1%/day)" },
@@ -3474,7 +3474,7 @@ export const TOOLS: Tool[] = [
       paths: { type: "number", desc: "Number of simulated paths (default: 10,000, up to 100,000)" },
       ruinThreshold: { type: "number", desc: "Drawdown fraction defining ruin (default: 0.5)" }
     },
-    activity: (i) => `Running 100x Monte Carlo simulation (${Number(i?.paths || 10000).toLocaleString()} paths)`,
+    activity: (i) => `Running Monte Carlo simulation (${Number(i?.paths || 10000).toLocaleString()} paths)`,
     run: (i) => flipitMonteCarloTool(i) },
   { name: "flipit_multi_strategy", safe: true, description: "Analyzes multi-strategy / multi-asset portfolio covariance, risk-parity weight allocation, diversification ratio, and target volatility scaling. input: { assets?, targetDailyVol?, assumedCorrelation? }.", params: "{assets?, targetDailyVol?, assumedCorrelation?}",
     args: {
@@ -3628,13 +3628,13 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Verifying symbol "${i?.symbolName}" in "${i?.filePath}"`,
     run: (i) => antigravitySymbolVerifierTool(i) },
-  { name: "antigravity_ui_compiler", safe: true, description: "Compiles 100x ultra-premium design tokens, glassmorphism CSS, and bespoke component blueprints for websites and web apps. input: { brandName, theme?: 'obsidian'|'midnight-slate'|'cyberpunk'|'luxury-gold', fontDisplay? }.", params: "{brandName, theme?, fontDisplay?}",
+  { name: "antigravity_ui_compiler", safe: true, description: "Compiles design tokens, glassmorphism CSS, and component blueprints for websites and web apps. input: { brandName, theme?: 'obsidian'|'midnight-slate'|'cyberpunk'|'luxury-gold', fontDisplay? }.", params: "{brandName, theme?, fontDisplay?}",
     args: {
       brandName: { type: "string", required: true, desc: "Brand or application name" },
       theme: { type: "string", desc: "Design theme: 'obsidian', 'midnight-slate', 'cyberpunk', or 'luxury-gold'" },
       fontDisplay: { type: "string", desc: "Display font family" }
     },
-    activity: (i) => `Compiling 100x ultra-premium design system for "${i?.brandName}"`,
+    activity: (i) => `Compiling UI design system for "${i?.brandName}"`,
     run: (i) => antigravityUiCompilerTool(i) },
   { name: "antigravity_knowledge_graph", safe: true, description: "Queries SAM's Graphify knowledge graph to instantly discover god nodes, architectural hubs, subgraphs, and module connections without blind grep. input: { query?, mode?: 'god_nodes'|'query'|'stats', limit? }.", params: "{query?, mode?, limit?}",
     args: {
@@ -3700,7 +3700,7 @@ export const TOOLS: Tool[] = [
     },
     activity: () => "Calculating autonomous Risk-Parity portfolio rebalance",
     run: (i) => flipitRebalancePortfolioTool(i) },
-  { name: "sam_master_dashboard", safe: true, description: "Displays single-screen executive telemetry and status across all SAM subsystems (Swarms, Doctor, Caches, FlipIt 100x, Studio, Cost Optimizer, Mobile Bridge). input: {}.", params: "{}",
+  { name: "sam_master_dashboard", safe: true, description: "Displays single-screen executive telemetry and status across all SAM subsystems (Swarms, Doctor, Caches, FlipIt, Studio, Cost Optimizer, Mobile Bridge). input: {}.", params: "{}",
     args: {},
     activity: () => "Compiling SAM master executive dashboard",
     run: () => samMasterDashboardTool() },
@@ -3773,13 +3773,13 @@ export const TOOLS: Tool[] = [
     },
     activity: (i) => `Directing cinematic storyboard for: "${i?.prompt ?? i}"`,
     run: (i) => studioDirectorStoryboardTool(i) },
-  { name: "agentic_100x_workflow", safe: true, description: "Executes 100x Antigravity autonomous multi-agent DAG workflows with topological wave scheduling, parallel subagent dispatch, artifact generation, and executive synthesis. input: { goal, concurrency?, synthesize? }.", params: "{goal, concurrency?, synthesize?}",
+  { name: "agentic_100x_workflow", safe: true, description: "Executes autonomous multi-agent DAG workflows with topological wave scheduling, parallel subagent dispatch, artifact generation, and executive synthesis. input: { goal, concurrency?, synthesize? }.", params: "{goal, concurrency?, synthesize?}",
     args: {
       goal: { type: "string", desc: "High level project goal or complex task to execute" },
       concurrency: { type: "number", desc: "Maximum parallel subagent concurrency (default 8)" },
       synthesize: { type: "boolean", desc: "Whether to run an executive synthesis reduction pass" }
     },
-    activity: (i) => `Executing 100x Antigravity DAG workflow: "${i?.goal ?? i}"`,
+    activity: (i) => `Executing DAG workflow: "${i?.goal ?? i}"`,
     run: (i) => agentic100xWorkflowTool(i) },
   { name: "multi_model_consensus", safe: true, description: "Queries diverse free models (Cerebras, Groq, Gemini, Mistral) in parallel and synthesizes the highest-confidence consensus truth. input: { prompt, modelsCount? }.", params: "{prompt, modelsCount?}",
     args: {
@@ -3958,7 +3958,7 @@ export const TOOLS: Tool[] = [
         return "Give me a url, file path, or text to add.";
       } catch (e: any) { return `Couldn't add that source: ${e?.message || e}`; }
     } },
-  { name: "notebook_ask", safe: true, description: "Ask a question answered ONLY from a notebook's sources, with citations. The world-class 'grounded' mode — no hallucination, every claim traceable. input: {notebook, question}.", params: "{notebook, question}",
+  { name: "notebook_ask", safe: true, description: "Ask a question answered ONLY from a notebook's sources, with citations. Grounded mode — every claim traceable. input: {notebook, question}.", params: "{notebook, question}",
     activity: (i) => `Consulting notebook “${i.notebook}”`, run: async (i) => {
       const found = nb.ensureNotebook(i.notebook || "Research");
       const passages = await nb.retrieve(found.id, String(i.question || i), 8);

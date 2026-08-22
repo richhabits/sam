@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · AUTONOMOUS REVENUE & OPPORTUNITY HUNTER (ALPHA ENGINE)
+//  S.A.M. · REVENUE OPPORTUNITY ESTIMATOR
 //
 //  Continuous market intelligence, SaaS cost-reduction, cross-exchange
 //  spread identification, and automated contract opportunity scanner
-//  that turns SAM into a measurable profit-generating engine.
+//  that generates hypothetical savings and ROI metrics.
 // ─────────────────────────────────────────────────────────────
 
 import { runModel } from "./models.ts";

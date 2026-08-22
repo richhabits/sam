@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 //  S.A.M. · FLIPIT EXECUTION & POLYMARKET CLOB ADAPTER
 //
-//  Cross-market arbitrage execution, Kelly-sized order routing,
-//  and direct Polymarket CLOB integration with paper/live modes.
+//  Basic order routing and Polymarket CLOB integration stub
+//  with paper/live modes.
 // ─────────────────────────────────────────────────────────────
 
 import { EventEmitter } from "node:events";

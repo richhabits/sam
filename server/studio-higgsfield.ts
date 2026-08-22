@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · HIGGSFIELD STUDIO ENGINE (100x Cinematic AI Video & Motion)
+//  S.A.M. · HIGGSFIELD STUDIO ENGINE
 //
-//  Full parity with Higgsfield AI: 3D camera trajectory vectors,
+//  Data structures for camera trajectory vectors and API client,
 //  multi-shot storyboard sequencing, SoulID consistent character
 //  anchoring, physics motion simulation, and cinematic lens optics.
 // ─────────────────────────────────────────────────────────────

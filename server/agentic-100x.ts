@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · 100X ANTIGRAVITY AGENTIC SUPER-ENGINE
+//  S.A.M. · AGENTIC DAG ENGINE
 //
-//  Elevates SAM to 100x Antigravity capabilities:
+//  Provides DAG task decomposition capabilities:
 //   1. Autonomous DAG Task Decomposition & Parallel Wave Execution
 //   2. Multi-Branch Speculative Specialist Competition
 //   3. Structured Artifact Generation & Validation Hub
