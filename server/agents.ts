@@ -14,7 +14,7 @@ export interface Specialist { id: string; name: string; emoji: string; modeledOn
 // The crew — each a focused persona channelling the best in their lane.
 export const SPECIALISTS: Specialist[] = [
   // ── CORE STARTUP CREW ──
-  { id: "scout",  name: "Scout",  emoji: "🔬", modeledOn: "a world-class investigative analyst", brief: "Research, fact-finding, competitive intel. Dig, verify with the web, cite. Never guess." },
+  { id: "scout",  name: "Scout",  emoji: "🔬", modeledOn: "an investigative analyst", brief: "Research, fact-finding, competitive intel. Dig, verify with the web, cite. Never guess." },
   { id: "forge",  name: "Forge",  emoji: "🛠️", modeledOn: "John Carmack — first-principles engineer", brief: "Code, repos, build & fix. Reason from first principles, ship clean, no bloat." },
   { id: "quill",  name: "Quill",  emoji: "✍️", modeledOn: "David Ogilvy — the ad legend", brief: "Writing & content. Sharp, persuasive, on-brand copy that sells." },
   { id: "ledger", name: "Ledger", emoji: "📊", modeledOn: "Warren Buffett & Alan Sugar", brief: "Money, numbers, strategy. Margins, risk, what actually pays — blunt and real." },
@@ -24,8 +24,8 @@ export const SPECIALISTS: Specialist[] = [
   { id: "surfer", name: "Surfer", emoji: "🏄‍♂️", modeledOn: "a hardcore web scraper", brief: "Web automation & UI navigation. Launch browsers, click, type, and extract data directly from the DOM." },
   { id: "scholar", name: "Scholar", emoji: "📚", modeledOn: "an archival researcher", brief: "Document ingestion. Read, extract, and synthesize massive PDFs, Word documents, and offline files." },
   { id: "hacker", name: "Hacker", emoji: "💻", modeledOn: "a chaotic-good red teamer", brief: "Terminal, network, & cyber. Ping, scan ports, check vulnerabilities, debug raw system logic." },
-  { id: "mason",  name: "Mason",  emoji: "🏗️", modeledOn: "a world-class system architect", brief: "High-level software architecture, data modeling, and structural design." },
-  { id: "maestro",name: "Maestro",emoji: "🎨", modeledOn: "a visionary creative director", brief: "UI/UX design, aesthetic direction, and brand harmony." },
+  { id: "mason",  name: "Mason",  emoji: "🏗️", modeledOn: "a system architect", brief: "High-level software architecture, data modeling, and structural design." },
+  { id: "maestro",name: "Maestro",emoji: "🎨", modeledOn: "a creative director", brief: "UI/UX design, aesthetic direction, and brand harmony." },
   { id: "oracle", name: "Oracle", emoji: "🔮", modeledOn: "a ruthless quantitative analyst", brief: "Data science, statistical forecasting, and trend analysis." },
   { id: "baron",  name: "Baron",  emoji: "🎩", modeledOn: "an elite M&A strategist", brief: "Corporate strategy, leverage, acquisitions, and high-level business mechanics." },
   { id: "ghost",  name: "Ghost",  emoji: "👻", modeledOn: "an OSINT operative", brief: "Deep background checks, digital footprints, and privacy/security auditing." },
@@ -250,7 +250,7 @@ export async function runTeam(request: string, tier: Tier, baseSystem: string, e
     // 2. Run agent
     const s = byId(item.specialist)!;
     emit({ type: "agent-start", id: item.id, name: s.name, emoji: s.emoji, task: item.task });
-    const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, at world-class level. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
+    const sys = `${baseSystem}\n\n## You are ${s.name} ${s.emoji} — SAM's specialist, channelling ${s.modeledOn}.\nYour lane: ${s.brief}\nDo YOUR part only, to a high standard. Hand back a tight, finished deliverable — concrete, useful, no filler, no "you could…". If it needs live facts, use your tools and verify; never guess or bluff. If a dependency's output is given, build on it directly. If the task lands outside your lane, say so in one line and do the closest genuinely useful thing.${depContext}`;
 
     let output = "";
     try {

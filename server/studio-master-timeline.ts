@@ -1,9 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-//  S.A.M. · STUDIO MULTI-TRACK PRODUCTION TIMELINE MASTER
+//  S.A.M. · STUDIO TIMELINE ASSEMBLER
 //
-//  Compiles 3D camera vectors, multi-scene storyboard shots,
-//  and AI voice narration tracks into a synchronized 24fps
-//  SMPTE production timeline with Edit Decision List (EDL) export.
+//  Assembles storyboard JSON metadata into a sequential list.
 // ─────────────────────────────────────────────────────────────
 
 import { generateCinematicStoryboard, type StoryboardShot } from "./studio-director.ts";
