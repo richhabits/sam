@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { existsSync } from "node:fs";
-import { workerEntry } from "./supervisor.ts";
+import { cpus } from "node:os";
+import { workerEntry, defaultPoolSize } from "./supervisor.ts";
 
 // This exists because the first drive of the yard found the worker "missing" on a built
 // SAM: the entrypoint was derived from this module's own location, which moves when the
@@ -40,5 +41,37 @@ describe("recognising the entrypoint", () => {
     expect(isWorkerEntrypoint("/Users/x/sam/dist/yard-worker.mjs")).toBe(true);   // the bundled name
     expect(isWorkerEntrypoint("/Users/x/sam/dist/server.mjs")).toBe(false);       // the SERVER must never self-start a worker
     expect(isWorkerEntrypoint(undefined)).toBe(false);
+  });
+});
+
+// Pool size is CPU cores minus one so background jobs can never crowd out the process
+// answering the user — checked directly since a wrong default silently over- or
+// under-subscribes every machine SAM runs on.
+describe("sizing the worker pool", () => {
+  const ORIGINAL = process.env.SAM_YARD_WORKERS;
+  afterEach(() => {
+    if (ORIGINAL === undefined) delete process.env.SAM_YARD_WORKERS; else process.env.SAM_YARD_WORKERS = ORIGINAL;
+  });
+
+  it("defaults to CPU cores minus one", () => {
+    delete process.env.SAM_YARD_WORKERS;
+    expect(defaultPoolSize()).toBe(Math.max(1, cpus().length - 1));
+  });
+
+  it("never returns zero, even on a single-core box", () => {
+    delete process.env.SAM_YARD_WORKERS;
+    expect(defaultPoolSize()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("honours SAM_YARD_WORKERS when set to a positive number", () => {
+    process.env.SAM_YARD_WORKERS = "3";
+    expect(defaultPoolSize()).toBe(3);
+  });
+
+  it("ignores a non-positive or non-numeric override and falls back to the default", () => {
+    process.env.SAM_YARD_WORKERS = "0";
+    expect(defaultPoolSize()).toBe(Math.max(1, cpus().length - 1));
+    process.env.SAM_YARD_WORKERS = "not-a-number";
+    expect(defaultPoolSize()).toBe(Math.max(1, cpus().length - 1));
   });
 });
