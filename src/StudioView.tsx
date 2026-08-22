@@ -215,7 +215,7 @@ export default function StudioView() {
   return (
     <div style={{
       background: "#1E1E1E",
-      color: "#FFFFFF",
+      color: "var(--text)",
       minHeight: "100vh",
       display: "flex",
       flexDirection: "column",
@@ -357,24 +357,24 @@ export default function StudioView() {
             {!genUrl && (
               <>
                 <div style={{ position: "absolute", inset: "40px", border: "1px solid rgba(255,255,255,0.4)" }}>
-                  <div style={{ position: "absolute", top: -1, left: -1, width: 20, height: 20, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-                  <div style={{ position: "absolute", top: -1, right: -1, width: 20, height: 20, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
-                  <div style={{ position: "absolute", bottom: -1, left: -1, width: 20, height: 20, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-                  <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", top: -1, left: -1, width: 20, height: 20, borderTop: "2px solid var(--text)", borderLeft: "2px solid var(--text)" }} />
+                  <div style={{ position: "absolute", top: -1, right: -1, width: 20, height: 20, borderTop: "2px solid var(--text)", borderRight: "2px solid var(--text)" }} />
+                  <div style={{ position: "absolute", bottom: -1, left: -1, width: 20, height: 20, borderBottom: "2px solid var(--text)", borderLeft: "2px solid var(--text)" }} />
+                  <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "2px solid var(--text)", borderRight: "2px solid var(--text)" }} />
                 </div>
 
                 <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(30,30,30,0.8)", padding: "10px 16px", borderRadius: 6, backdropFilter: "blur(4px)" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#FFF", marginBottom: 6 }}>CRANE PEDESTAL UP</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>CRANE PEDESTAL UP</div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 10, color: "#D9A05B" }}>MOTION</span>
                     <div onClick={() => setMotionToggle(!motionToggle)} style={{ width: 28, height: 14, background: motionToggle ? "#D9A05B" : "#555", borderRadius: 7, position: "relative", cursor: "pointer" }}>
-                        <div style={{ position: "absolute", top: 2, left: motionToggle ? 16 : 2, width: 10, height: 10, background: "#FFF", borderRadius: "50%", transition: "left 0.2s" }} />
+                        <div style={{ position: "absolute", top: 2, left: motionToggle ? 16 : 2, width: 10, height: 10, background: "var(--text)", borderRadius: "50%", transition: "left 0.2s" }} />
                     </div>
                   </div>
                 </div>
 
                 <div style={{ position: "absolute", bottom: 20, right: 20, textAlign: "right" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#FFF", letterSpacing: "1px" }}>ANAMORPHIC</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", letterSpacing: "1px" }}>ANAMORPHIC</div>
                   <div style={{ fontSize: 11, color: "#AAA" }}>{lens ? `${lens.name.split(" ")[0].toUpperCase()} ${lens.focalLength.toUpperCase()} ${lens.aperture}` : "PANAVISION 35MM T2.1"}</div>
                 </div>
               </>
@@ -394,7 +394,7 @@ export default function StudioView() {
             <div style={{ display: "flex", gap: 12, color: "#888", alignItems: "center" }}>
               <span onClick={() => showToast("⏮ Jump to start")} style={{ fontSize: 14, cursor: "pointer" }}>⏮</span>
               <span onClick={() => showToast("⏪ Rewind")} style={{ fontSize: 14, cursor: "pointer" }}>⏪</span>
-              <span onClick={() => showToast(genUrl && genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? "⚠️ Cannot play static image. Add an API key for video!" : "▶️ Play")} style={{ color: "#FFF", cursor: "pointer" }}><Icon name="play" size={18} /></span>
+              <span onClick={() => showToast(genUrl && genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? "⚠️ Cannot play static image. Add an API key for video!" : "▶️ Play")} style={{ color: "var(--text)", cursor: "pointer" }}><Icon name="play" size={18} /></span>
               <span onClick={() => showToast("⏩ Fast Forward")} style={{ fontSize: 14, cursor: "pointer" }}>⏩</span>
               <span onClick={() => showToast("⏭ Jump to end")} style={{ fontSize: 14, cursor: "pointer" }}>⏭</span>
             </div>
@@ -420,7 +420,7 @@ export default function StudioView() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {isGenerating ? (
                 <div style={{ background: "#141414", border: "1px solid #444", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#FFF" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text)" }}>
                     <div style={{ width: 6, height: 6, background: "#D9A05B", borderRadius: "50%" }} /> Rendering ({genProgress}%)
                   </div>
                   <span style={{ color: "#888", cursor: "pointer" }} onClick={() => showToast("Cancel render")}><Icon name="refresh" size={14} /></span>
@@ -500,7 +500,7 @@ export default function StudioView() {
                 border: i === timeline.length - 1 ? "2px solid #D9A05B" : undefined,
                 backgroundImage: `url(${clip.img})`
               }}>
-                <div style={{ position: "absolute", bottom: 4, left: 6, fontSize: 10, color: "#FFF", background: "rgba(0,0,0,0.6)", padding: "2px 4px", borderRadius: 2 }}>{clip.time}</div>
+                <div style={{ position: "absolute", bottom: 4, left: 6, fontSize: 10, color: "var(--text)", background: "rgba(0,0,0,0.6)", padding: "2px 4px", borderRadius: 2 }}>{clip.time}</div>
                  {i < timeline.length -1 && <span style={{ color: "#D9A05B", position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)", zIndex: 5 }}><Icon name="play" size={10} /></span>}
               </div>
             ))}
