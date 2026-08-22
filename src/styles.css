@@ -171,68 +171,55 @@
   overflow-y: auto;
   max-height: calc(100vh - 48px);
 }:root {
-  --bg: #FDFBF9;          /* warm off-white app background */
-  --surface: #FFFFFF;     /* cards / bubbles */
-  --text: #1C1917;        /* warm near-black — AAA on bg */
-  --muted: #78716C;       /* secondary text — AA */
-  --border: #E7E5E4;      /* subtle dividers */
-  --border-strong: #D6D3D1;
-  --accent: #E8673A;      /* terracotta — fills / active (large text/icons only) */
-  --accent-text: #C2410C; /* darkened terracotta — AA for small text on white */
-  --accent-soft: #FBEDE7; /* tinted accent background */
-  --user-bubble: #F5F0EB; /* your messages */
-  /* Semantic colors (swarm panel, dashboard) — legible on light AND dark grounds */
-  --c-blue: #3B82F6; --c-ok: #22C55E; --c-err: #EF4444; --c-err-bg: rgba(239,68,68,.12); --c-bg2: var(--surface);
-  --c-warn: #F59E0B; /* amber — status token (was hardcoded in the dashboard/panels) */
+  --bg: #F5F5F7;          /* apple classic background */
+  --surface: #FFFFFF;     /* clean white */
+  --text: #1D1D1F;        /* crisp near-black */
+  --muted: #86868B;       /* pure gray */
+  --border: rgba(0, 0, 0, 0.08); /* subtle dividers */
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --accent: #000000;      /* stark black */
+  --accent-text: #000000; /* stark black */
+  --accent-soft: #E5E5EA; /* cool gray */
+  --user-bubble: #E5E5EA; /* cool gray */
+  /* Semantic colors */
+  --c-blue: #0A84FF; --c-ok: #30D158; --c-err: #FF453A; --c-err-bg: rgba(255,69,58,.12); --c-bg2: var(--surface);
+  --c-warn: #FF9F0A; 
   --sans: "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "Satoshi", "Geist", "Outfit", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
   --display: "SF Pro Display", "SF Pro", var(--sans);
-  --radius: 22px;
-  /* Apple-tier: shadows you feel but don't see — tight ambient + soft lift */
+  --radius: 12px;
+  /* Apple-tier shadows */
   --shadow: 0 1px 3px rgba(0,0,0,.03), 0 4px 12px rgba(0,0,0,.04);
   --shadow-lg: 0 10px 40px rgba(0,0,0,.08);
-  /* DESIGN FIX: was hardcoded terracotta rgba(232,103,58,.22). 7 of 9 skins never override
-     --shadow-accent, so the send button glowed terracotta under a cyan/green/purple accent.
-     Derived from --accent, so every skin now gets its own glow with no per-skin override. */
-  --shadow-accent: 0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent);
-  /* Glass rim: the light catching the top edge of a translucent surface. Every "glass" panel
-     (popover, drawer, composer, pinned bar) already had blur + a see-through fill, but their
-     lift still came from a plain black box-shadow — invisible once --bg goes near-black, which
-     is why dark mode read as flat cutouts rather than panes of glass floating above content. */
+  --shadow-accent: 0 4px 16px rgba(0, 0, 0, 0.15);
   --glass-rim: rgba(255,255,255,.55);
   --shadow-glass: var(--shadow-lg), inset 0 1px 0 var(--glass-rim);
-  --accent-2: #F0824E;
+  --accent-2: #333333;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  /* Ink for text/icons sitting ON --accent. White by default (correct for the warm-accent
-     skins); skins whose accent is too bright for white override it below. */
-  --on-accent: #fff;
+  --on-accent: #FFFFFF;
   --ring: 0 0 0 3.5px var(--accent-soft);
-  /* Motion — one signature easing across the app so interactions feel of a piece.
-     Apple-tier: quick, slightly overshooting settle. Everything reads from these. */
-  --ease: cubic-bezier(.25, 1, .5, 1);
-  /* A springier settle for physical moments (send, panel open) — overshoots a touch then rests. */
+  /* Motion */
+  --ease: cubic-bezier(.16, 1, .3, 1);
   --ease-spring: cubic-bezier(.175, .885, .32, 1.275);
   --dur: .17s;
   --dur-slow: .32s;
 
-  /* ── Design scales — one deliberate ladder each, so nothing is a magic number ──
-     Type: snapped from 26 ad-hoc sizes to 9 purposeful steps + a hero.
-     Every step earns its place; new UI reads from these, never invents a size. */
-  --fs-micro: 11px;    /* uppercase eyebrows / tiny meta */
-  --fs-caption: 12px;  /* captions, timestamps, sub-labels */
-  --fs-sm: 13px;       /* dense / secondary UI text */
-  --fs-md: 14px;       /* controls, chips */
-  --fs-body: 15px;     /* default UI + message text */
-  --fs-base: 16px;     /* comfortable reading / composer */
-  --fs-lg: 18px;       /* section titles */
-  --fs-xl: 22px;       /* headings */
-  --fs-2xl: 28px;      /* view titles */
-  --fs-3xl: 34px;      /* hero numbers */
-  --fs-display: 44px;  /* onboarding splash */
-  /* Space: a 4px rhythm — consistent gaps/padding read as intentional. */
+  /* Design scales */
+  --fs-micro: 11px;
+  --fs-caption: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-body: 15px;
+  --fs-base: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --fs-3xl: 34px;
+  --fs-display: 44px;
+  /* Space */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
-  /* Radius: snapped from 10 ad-hoc values to 4 + a pill. --radius (22) kept for back-compat. */
-  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
+  /* Radius */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 999px;
   /* Elevation ladder — depth you feel; every raised surface picks a rung, not a bespoke shadow. */
   --elev-1: var(--shadow);
   --elev-2: var(--shadow-lg);
@@ -262,22 +249,23 @@ button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active,
    base :root's (0,1,0), so !important was never actually needed for that half of the bug —
    dropping it is what lets skins win again as their own rules intend. */
 :root[data-theme="dark"] {
-  --bg: #0B0F19;
-  --surface: rgba(15, 23, 42, 0.75);
-  --paper: #12172A;
-  --text: #F3F4F6;
-  --muted: #8A909D;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --accent: #6366F1;
-  --accent-text: #A5B4FC;
-  --accent-soft: rgba(99, 102, 241, 0.15);
-  --accent-2: #06B6D4;
-  --user-bubble: rgba(30, 41, 59, 0.7);
-  --shadow: 0 4px 20px rgba(0,0,0,0.4);
-  --shadow-lg: 0 16px 48px rgba(0,0,0,0.6);
-  --shadow-accent: 0 4px 16px rgba(99, 102, 241, 0.15);
+  --bg: #000000;
+  --surface: #0A0A0A;
+  --paper: #121212;
+  --text: #F5F5F7;
+  --muted: #86868B;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --accent: #FFFFFF;
+  --accent-text: #FFFFFF;
+  --accent-soft: rgba(255, 255, 255, 0.1);
+  --accent-2: #E5E5EA;
+  --user-bubble: #1C1C1E;
+  --shadow: 0 4px 20px rgba(0,0,0,0.8);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.9);
+  --shadow-accent: 0 4px 16px rgba(255, 255, 255, 0.15);
   --glass-rim: rgba(255,255,255,0.08);
+  --on-accent: #000000;
 }
 :root[data-theme="dark"] .app { background: var(--bg); }
 
