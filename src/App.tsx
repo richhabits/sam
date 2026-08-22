@@ -324,7 +324,7 @@ export default function App() {
   const [memQuery, setMemQuery] = useState("");
   const loadMemory = () => getMemory().then(setMem).catch(() => setMem({ groups: {}, count: 0, note: "" }));
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
   const [rightTab, setRightTab] = useState<"context" | "menu">("context");
   const [ctxOpen, setCtxOpen] = useState(false);   // mobile: Context/Quick-actions slide-in drawer
   // ── Markets panel: a keyless live watchlist ──
@@ -1548,13 +1548,13 @@ export default function App() {
         </div>
       ) : (
       <>
-      <aside className="side">
-        <div className="side-header" style={{ height: 60, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderBottom: "1px solid #232730", background: "#121418" }}>
+      <aside className={`side ${historyOpen ? "" : "collapsed"}`} style={{ borderRight: "1px solid var(--border)", background: "var(--bg)" }}>
+        <div className="side-header" style={{ height: 60, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/brand/sam-192.png" alt="SAM" width="28" height="28" style={{ borderRadius: 8, boxShadow: "0 2px 9px rgba(217,83,31,.28)", flex: "0 0 auto" }} />
-            <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 16, color: "#F3F4F6" }}>SAM</span>
+            <img src="/brand/sam-192.png" alt="SAM" width="28" height="28" style={{ borderRadius: 8, flex: "0 0 auto" }} />
+            <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 16, color: "var(--text)" }}>SAM</span>
           </div>
-          <button type="button" onClick={newChat} title="New chat" aria-label="New chat" style={{ display: "flex", alignItems: "center", gap: 6, background: "#1A1C22", border: "1px solid #282C36", borderRadius: "8px", padding: "6px 10px", color: "#F3F4F6", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          <button type="button" onClick={newChat} title="New chat" aria-label="New chat" style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "6px 10px", color: "var(--text)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
             <Icon name="plus" size={13} />
             <span>New</span>
           </button>
@@ -1607,8 +1607,8 @@ export default function App() {
 
         {/* Right: utility icons */}
         <div className="bar-right" style={{ display: "flex", alignItems: "center", gap: "8px", justifySelf: "end" }}>
-          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
-            ❮
+          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(!historyOpen)} title="Toggle Sidebar (⌘K for new)" aria-label="Toggle Sidebar" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
+            <Icon name="grid" size={15} />
           </button>
 
           {/* Phone Pairing QR Button */}
@@ -2213,35 +2213,6 @@ export default function App() {
               <div className="lb-steer">🧭 <b>{arena.leaderboard[0].label}</b> now answers first — this ranking steers SAM's free-tier routing.</div>
             )}
             {arena?.log && <div className="mkt-note">{arena.log.length} matches judged · winner by helpfulness, correctness &amp; clarity</div>}
-          </aside>
-        </div>
-      )}
-      {historyOpen && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close handled by Esc
-        // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close handled by Esc
-        <div className="drawer-wrap left" onClick={() => setHistoryOpen(false)}>
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
-          <aside className="drawer drawer-l" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-head">
-              <div><div className="drawer-title">Chats</div><div className="drawer-sub">Your conversations, saved on this computer.</div></div>
-              <button type="button" className="icon-btn" onClick={() => { newChat(); setHistoryOpen(false); }} title="New chat">＋</button>
-            </div>
-            {convos.length > 4 && (
-              <input className="convo-search" value={convoSearch} onChange={(e) => setConvoSearch(e.target.value)} placeholder="Search chats…" />
-            )}
-            {/* Same titling + content search as the desktop sidebar — this drawer is the
-                only chat list on narrow screens, where `.side` is hidden. */}
-            <ul className="convo-list">
-              {convos.filter((c) => matchesQuery(convoSearch, displayTitle(c), c.messages.map((m) => m.text))).map((c) => (
-                <li key={c.id} className={c.id === activeId ? "active" : ""}>
-                  <button type="button" className="convo-open" onClick={() => openConvo(c.id)}>{displayTitle(c)}</button>
-                  <button type="button" className="convo-del" onClick={() => deleteConvo(c.id)} aria-label="Delete">✕</button>
-                </li>
-              ))}
-              {convoSearch.trim() && convos.filter((c) => matchesQuery(convoSearch, displayTitle(c), c.messages.map((m) => m.text))).length === 0 && (
-                <li className="convo-empty">No chats match “{convoSearch}”.</li>
-              )}
-            </ul>
           </aside>
         </div>
       )}
