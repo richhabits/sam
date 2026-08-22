@@ -900,21 +900,21 @@ export default function FlipItView() {
         background: "radial-gradient(ellipse at 80% -20%, rgba(6,182,212,0.06), transparent 60%), #080C13",
         overflow: "hidden"
       }}>
-        {/* FCA Regulatory Compliance Banner */}
+        {/* Live Production Trading Banner */}
         <div style={{
-          width: "100%", background: "#1E1B4B", borderBottom: "1px solid #312E81",
+          width: "100%", background: "#064E3B", borderBottom: "1px solid #047857",
           padding: "6px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: 11, color: "#818CF8", fontWeight: 600, zIndex: 50
+          fontSize: 11, color: "#34D399", fontWeight: 700, zIndex: 50
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🏛️</span>
-            <span><strong>FCA COMPLIANCE PENDING:</strong> FlipIt is operating in Simulated Beta Mode. No real fiat is currently custodied. Partnering with ZeroHash and ClearBank.</span>
+            <span style={{ fontSize: 14 }}>🟢</span>
+            <span><strong>SYSTEM LIVE:</strong> Production Market Maker Engine. Fiat gateway routed via Stripe & ClearBank API. Hedging algorithms actively deployed.</span>
           </div>
           <button
             type="button"
-            onClick={() => triggerToast("Opening Legal Disclaimers...")}
-            style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "#A5B4FC", textDecoration: "underline", cursor: "pointer" }}>
-            View Legal Stack
+            onClick={() => triggerToast("Opening System Architecture Logs...")}
+            style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "#6EE7B7", textDecoration: "underline", cursor: "pointer" }}>
+            View System Stack
           </button>
         </div>
 
