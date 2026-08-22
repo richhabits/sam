@@ -141,7 +141,7 @@ import { runMultiModelConsensus } from "./consensus.ts";
 import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
-import { generate100MStrategy } from "./scale-100m.ts";
+import { getScaleStatus } from "./scale-100m.ts";
 import { generateExecutiveDailyDeck } from "./executive-deck.ts";
 import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
 import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
@@ -1694,7 +1694,7 @@ app.post("/api/revenue/hunt", async (req, res) => {
   }
 });
 app.get("/api/revenue/scale-100m", (_req, res) => {
-  res.json(generate100MStrategy());
+  res.json(getScaleStatus());
 });
 
 // ── Secure Event Webhooks & Inbound Signals ──
