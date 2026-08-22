@@ -341,7 +341,7 @@ export default function StudioView() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#0A0A0A", border: "1px solid #282828", padding: "3px 12px", borderRadius: 6, fontFamily: "monospace", fontSize: 12 }}>
           <span style={{ color: isPlaying ? "#27C93F" : "#D9A05B", fontWeight: 800 }}>{isPlaying ? "● REC" : "■ STBY"}</span>
           <span style={{ color: "#FFF", fontWeight: 700 }}>{formatTimecode(currentTimeSec)}</span>
-          <span style={{ color: "#666" }}>/ 00:01:15</span>
+          <span style={{ color: "#666" }}>/ {formatTimecode(TOTAL_DURATION_SEC)}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#888" }}>
