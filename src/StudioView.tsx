@@ -51,7 +51,7 @@ const TIMELINE_CLIPS = [
 ];
 
 export default function StudioView() {
-  const [prompt, setPrompt] = useState("Scene description - then inastering into this cinematic enenatics, innema to the newromanans and futvorare dohering of cyber-drone, hovear the futurity scene.\n\nPrompt: your saten-went rise include on the, right noother omanoure and showame.");
+  const [prompt, setPrompt] = useState("A cinematic establishing shot of a futuristic metropolis at dusk. Neon lights reflect off wet obsidian streets, while autonomous drones glide silently between towering skyscrapers. High contrast, volumetric lighting, photorealistic.");
   const [motion, setMotion] = useState("dolly");
   const [motionIntensity, setMotionIntensity] = useState(75);
   const [style, setStyle] = useState("dusk");
