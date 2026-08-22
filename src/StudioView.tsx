@@ -29,6 +29,16 @@ const MOTIONS = [
   { id: "bullet_time", label: "BULLET TIME", rigId: "bullet_time_freeze", icon: "clock", desc: "Matrix freeze" },
 ];
 
+const ENGINES = ["Wan 2.1 / HappyHorse", "Flux.1 Cinematic", "Higgsfield V2", "OpenAI Sora"];
+const RESOLUTIONS = ["4K UHD (3840x2160)", "1080p Full HD", "8K Cinema", "720p Mobile"];
+const FRAME_RATES = ["24 fps (Cinema)", "30 fps (Broadcast)", "60 fps (Smooth)", "120 fps (Slow-Mo)"];
+const ASPECT_RATIOS = [
+  { id: "16:9", label: "16:9 Cinema", css: "16 / 9" },
+  { id: "9:16", label: "9:16 Reels/TikTok", css: "9 / 16" },
+  { id: "1:1", label: "1:1 Square", css: "1 / 1" },
+  { id: "2.39:1", label: "2.39:1 Anamorphic", css: "2.39 / 1" },
+];
+
 const DEFAULT_LENS_ID = "anamorphic_panavision";
 const TOTAL_DURATION_SEC = 75; // 01:15 total timeline duration
 
@@ -49,6 +59,9 @@ export default function StudioView() {
   const [style, setStyle] = useState("dusk");
   const [styleCategory, setStyleCategory] = useState<string>("ALL");
   const [motionToggle, setMotionToggle] = useState(true);
+  const [aspectIndex, setAspectIndex] = useState(0);
+  const [showFraming, setShowFraming] = useState(true);
+  const [theaterMode, setTheaterMode] = useState(false);
 
   // Playback & Interactive Timeline Engine
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,9 +69,9 @@ export default function StudioView() {
   const [selectedClipId, setSelectedClipId] = useState<string>("c1");
 
   // Render Settings State
-  const [engine, setEngine] = useState("Wan 2.1 / HappyHorse");
-  const [resolution, setResolution] = useState("4K UHD (3840x2160)");
-  const [fps, setFps] = useState("24 fps (Cinema)");
+  const [engineIndex, setEngineIndex] = useState(0);
+  const [resIndex, setResIndex] = useState(0);
+  const [fpsIndex, setFpsIndex] = useState(0);
 
   const [toast, setToast] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -74,6 +87,11 @@ export default function StudioView() {
   const [lens, setLens] = useState<{ id: string; name: string; focalLength: string; aperture: string } | null>(null);
 
   const timelineTrackRef = useRef<HTMLDivElement | null>(null);
+
+  const activeAspect = ASPECT_RATIOS[aspectIndex];
+  const engine = ENGINES[engineIndex];
+  const resolution = RESOLUTIONS[resIndex];
+  const fps = FRAME_RATES[fpsIndex];
 
   useEffect(() => {
     localStorage.setItem("studio_timeline", JSON.stringify(timeline));
@@ -177,6 +195,44 @@ export default function StudioView() {
   const handleJumpEnd = () => {
     handleSeek(TOTAL_DURATION_SEC - 0.5);
     showToast("⏭ Jumped to end");
+  };
+
+  const cycleAspect = () => {
+    const nextIdx = (aspectIndex + 1) % ASPECT_RATIOS.length;
+    setAspectIndex(nextIdx);
+    showToast(`📐 Aspect Ratio set to ${ASPECT_RATIOS[nextIdx].label}`);
+  };
+
+  const toggleFraming = () => {
+    setShowFraming(!showFraming);
+    showToast(!showFraming ? "⛶ Viewfinder overlay ON" : "⛶ Viewfinder overlay OFF");
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      showToast("⛶ Entered Fullscreen mode");
+    } else {
+      document.exitFullscreen().catch(() => {});
+      showToast("Exit Fullscreen");
+    }
+  };
+
+  const duplicateActiveClip = () => {
+    if (!activeClip) return;
+    const duplicated: TimelineClip = {
+      ...activeClip,
+      id: `copy-${Date.now()}`,
+      name: `${activeClip.name} (Copy)`,
+    };
+    setTimeline((prev) => [...prev, duplicated]);
+    setSelectedClipId(duplicated.id);
+    showToast(`✓ Duplicated "${activeClip.name}"`);
+  };
+
+  const clearQueue = () => {
+    setGenUrl(null);
+    showToast("✓ Queue cleared");
   };
 
   const showToast = (msg: string) => {
@@ -330,9 +386,9 @@ export default function StudioView() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ display: "flex", gap: 6 }}>
-            <div onClick={back} style={{ width: 11, height: 11, borderRadius: "50%", background: "#FF5F56", cursor: "pointer" }} />
-            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FFBD2E" }} />
-            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#27C93F" }} />
+            <div onClick={back} title="Close Studio" style={{ width: 11, height: 11, borderRadius: "50%", background: "#FF5F56", cursor: "pointer" }} />
+            <div onClick={() => showToast("Studio window minimized")} title="Minimize" style={{ width: 11, height: 11, borderRadius: "50%", background: "#FFBD2E", cursor: "pointer" }} />
+            <div onClick={toggleFullscreen} title="Toggle Fullscreen" style={{ width: 11, height: 11, borderRadius: "50%", background: "#27C93F", cursor: "pointer" }} />
           </div>
           <span style={{ fontSize: 12, fontWeight: 700, color: "#EEE", letterSpacing: "0.5px" }}>SAM Studio Director Pro</span>
         </div>
@@ -345,26 +401,43 @@ export default function StudioView() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#888" }}>
-          <button onClick={() => setIsPlaying((p) => !p)} style={{ background: isPlaying ? "#27C93F" : "var(--accent)", color: "#000", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setIsPlaying((p) => !p)}
+            style={{
+              background: isPlaying ? "#27C93F" : "linear-gradient(135deg, #EDBE7D 0%, #D9A05B 100%)",
+              color: "#000", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 800,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.5)"
+            }}>
             <Icon name={isPlaying ? "pause" : "play"} size={12} /> {isPlaying ? "PAUSE" : "PLAY (SPACE)"}
           </button>
-          <span style={{ cursor: "pointer" }} onClick={() => showToast("Cloud Sync Active")}><Icon name="cloud" size={14} /></span>
-          <span style={{ cursor: "pointer" }} onClick={() => showToast("Grid Layout Default")}><Icon name="grid" size={14} /></span>
+          <span style={{ cursor: "pointer" }} onClick={() => showToast("Cloud Render Hub Connected (12 nodes ready)")} title="Cloud Render Status">
+            <Icon name="cloud" size={14} />
+          </span>
+          <span style={{ cursor: "pointer", color: theaterMode ? "#D9A05B" : "#888" }} onClick={() => { setTheaterMode(!theaterMode); showToast(theaterMode ? "Director View" : "Cinema Canvas View"); }} title="Toggle Cinema Layout">
+            <Icon name="grid" size={14} />
+          </span>
         </div>
       </header>
 
       {/* Main Content Workspace */}
       <div style={{
-        display: "grid", gridTemplateColumns: "310px 1fr 280px", flex: 1, minHeight: 0, padding: "8px 10px", gap: "10px", background: "#0A0A0A", overflow: "hidden"
+        display: "grid",
+        gridTemplateColumns: theaterMode ? "0px 1fr 0px" : "310px 1fr 280px",
+        flex: 1, minHeight: 0, padding: "8px 10px", gap: theaterMode ? "0px" : "10px",
+        background: "#0A0A0A", overflow: "hidden", transition: "grid-template-columns 0.3s ease"
       }}>
         {/* LEFT COLUMN: Script, Camera Rig & Lighting Controls */}
-        <div style={{ background: "#141414", borderRadius: 8, border: "1px solid #242424", padding: "12px", display: "flex", flexDirection: "column", gap: "10px", overflowY: "auto", minHeight: 0 }}>
+        <div style={{
+          background: "#141414", borderRadius: 8, border: "1px solid #242424", padding: "12px",
+          display: theaterMode ? "none" : "flex", flexDirection: "column", gap: "10px", overflowY: "auto", minHeight: 0
+        }}>
           
           {/* Prompt Director */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>AI SCRIPT & PROMPT DIRECTOR</span>
-              <button onClick={handleAutoEnhance} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
+              <button type="button" onClick={handleAutoEnhance} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ color: "#D9A05B", fontSize: 11, fontWeight: 700 }}><Icon name="sparkle" size={12} /> Enhance</span>
               </button>
             </div>
@@ -407,9 +480,9 @@ export default function StudioView() {
                 const on = motion === m.id;
                 return (
                   <button
-                    key={m.id} onClick={() => {
+                    key={m.id} type="button" onClick={() => {
                       setMotion(m.id);
-                      showToast(`🎥 Camera switched to ${m.label} (${m.desc})`);
+                      showToast(`🎥 Camera set to ${m.label} (${m.desc})`);
                     }}
                     style={{
                       background: on ? "rgba(217,160,91,0.15)" : "#0A0A0A",
@@ -486,7 +559,7 @@ export default function StudioView() {
           {/* Main Video Monitor */}
           <div style={{ flex: 1, minHeight: 0, background: "#000", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
             
-            {/* Active scene rendering (switches smoothly as timeline plays) */}
+            {/* Active scene rendering */}
             {genUrl ? (
               genUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? (
                 <img src={genUrl} alt="Generated scene" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
@@ -503,13 +576,15 @@ export default function StudioView() {
               }} />
             )}
 
-            {/* Viewfinder Overlay & Framing Box */}
-            <div style={{ position: "absolute", inset: "20px", border: "1px solid rgba(255,255,255,0.25)", pointerEvents: "none" }}>
-              <div style={{ position: "absolute", top: -1, left: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-              <div style={{ position: "absolute", top: -1, right: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
-              <div style={{ position: "absolute", bottom: -1, left: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-              <div style={{ position: "absolute", bottom: -1, right: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
-            </div>
+            {/* Viewfinder Framing Box */}
+            {showFraming && (
+              <div style={{ position: "absolute", inset: "20px", border: "1px solid rgba(255,255,255,0.25)", pointerEvents: "none" }}>
+                <div style={{ position: "absolute", top: -1, left: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                <div style={{ position: "absolute", top: -1, right: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                <div style={{ position: "absolute", bottom: -1, left: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                <div style={{ position: "absolute", bottom: -1, right: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+              </div>
+            )}
 
             {/* Top Right Motion HUD */}
             <div style={{ position: "absolute", top: 14, right: 14, background: "rgba(10,10,10,0.85)", padding: "6px 12px", borderRadius: 6, backdropFilter: "blur(6px)", border: "1px solid #333" }}>
@@ -527,7 +602,7 @@ export default function StudioView() {
               <span style={{ fontSize: 10, background: "rgba(0,0,0,0.7)", border: "1px solid #444", padding: "2px 6px", borderRadius: 4, color: "#D9A05B", fontWeight: 700 }}>
                 {activeClip?.name || "Scene Preview"}
               </span>
-              <span style={{ fontSize: 10, color: "#AAA" }}>16:9 · 3840x2160 UHD</span>
+              <span style={{ fontSize: 10, color: "#AAA" }}>{activeAspect.id} · {resolution.split(" ")[0]}</span>
             </div>
 
             <div style={{ position: "absolute", bottom: 12, right: 14, textAlign: "right" }}>
@@ -568,21 +643,33 @@ export default function StudioView() {
             </div>
 
             <div style={{ display: "flex", gap: 8, color: "#777", marginLeft: "auto" }}>
-              <span style={{ fontSize: 9, cursor: "pointer", color: "#AAA", border: "1px solid #333", padding: "2px 5px", borderRadius: 3 }} onClick={() => showToast("Aspect Ratio: 16:9 Cinema")}>16:9</span>
-              <span style={{ cursor: "pointer" }} onClick={() => showToast("Frame overlay toggled")}><Icon name="frame" size={13} /></span>
-              <span style={{ cursor: "pointer" }} onClick={() => showToast("Fullscreen mode enabled")}><Icon name="screen" size={13} /></span>
+              <button
+                type="button"
+                onClick={cycleAspect}
+                title="Click to cycle Aspect Ratio"
+                style={{ fontSize: 9, cursor: "pointer", color: "#D9A05B", background: "#1E1E1E", border: "1px solid #333", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
+                {activeAspect.id}
+              </button>
+              <span style={{ cursor: "pointer", color: showFraming ? "#D9A05B" : "#777" }} onClick={toggleFraming} title="Toggle Viewfinder Overlay">
+                <Icon name="frame" size={13} />
+              </span>
+              <span style={{ cursor: "pointer" }} onClick={toggleFullscreen} title="Toggle Fullscreen">
+                <Icon name="screen" size={13} />
+              </span>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Generation Queue & Scaled Render Settings */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", minHeight: 0, overflow: "hidden" }}>
+        <div style={{
+          display: theaterMode ? "none" : "flex", flexDirection: "column", gap: "10px", minHeight: 0, overflow: "hidden"
+        }}>
           
           {/* Generation Queue */}
           <div style={{ background: "#141414", borderRadius: 8, border: "1px solid #242424", padding: "10px 12px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>GENERATION QUEUE</span>
-              <span style={{ cursor: "pointer", color: "#666", fontSize: 10 }} onClick={() => showToast("Queue cleared")}><Icon name="trash" size={11} /></span>
+              <span style={{ cursor: "pointer", color: "#666", fontSize: 10 }} onClick={clearQueue} title="Clear Queue"><Icon name="trash" size={11} /></span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", flex: 1 }}>
@@ -602,7 +689,7 @@ export default function StudioView() {
                 </div>
               ) : null}
 
-              {timeline.map((clip, idx) => (
+              {timeline.map((clip) => (
                 <div
                   key={clip.id}
                   onClick={() => {
@@ -625,22 +712,23 @@ export default function StudioView() {
             </div>
           </div>
 
-          {/* Render Settings Card */}
+          {/* Render Settings Card with Clickable Cycle Pickers */}
           <div style={{ background: "#141414", borderRadius: 8, border: "1px solid #242424", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB", marginBottom: 2 }}>RENDER SPECIFICATIONS</div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {[
-                { label: "ENGINE", val: engine, opts: ["Wan 2.1 / HappyHorse", "Flux.1 Cinematic", "Higgsfield V2", "OpenAI Sora"] },
-                { label: "RESOLUTION", val: resolution, opts: ["4K UHD (3840x2160)", "1080p Full HD", "8K Cinema"] },
-                { label: "FRAME RATE", val: fps, opts: ["24 fps (Cinema)", "30 fps (Broadcast)", "60 fps (Smooth)"] },
+                { label: "ENGINE", val: engine, cycle: () => { const next = (engineIndex + 1) % ENGINES.length; setEngineIndex(next); showToast("Engine: " + ENGINES[next]); } },
+                { label: "RESOLUTION", val: resolution, cycle: () => { const next = (resIndex + 1) % RESOLUTIONS.length; setResIndex(next); showToast("Resolution: " + RESOLUTIONS[next]); } },
+                { label: "FRAME RATE", val: fps, cycle: () => { const next = (fpsIndex + 1) % FRAME_RATES.length; setFpsIndex(next); showToast("FPS: " + FRAME_RATES[next]); } },
               ].map((item, i) => (
                 <div
                   key={i}
-                  onClick={() => showToast(`Setting ${item.label}: ${item.val}`)}
+                  onClick={item.cycle}
+                  title="Click to cycle option"
                   style={{ cursor: "pointer", background: "#0A0A0A", border: "1px solid #282828", borderRadius: 5, padding: "5px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#BBB", fontSize: 10 }}>
                   <span style={{ fontSize: 9, color: "#666", fontWeight: 700 }}>{item.label}</span>
-                  <span style={{ fontWeight: 600 }}>{item.val.split(" ")[0]}</span>
+                  <span style={{ fontWeight: 600, color: "#D9A05B" }}>{item.val.split(" ")[0]} ▾</span>
                 </div>
               ))}
             </div>
@@ -672,8 +760,10 @@ export default function StudioView() {
         {/* Track Headers */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 60, flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", color: "#666", fontSize: 10 }}>
-            <span style={{ cursor: "pointer" }} onClick={handleJumpStart}>↰ 0:00</span>
-            <Icon name="copy" size={11} />
+            <span style={{ cursor: "pointer" }} onClick={handleJumpStart} title="Jump to 0:00">↰ 0:00</span>
+            <span style={{ cursor: "pointer", color: "#AAA" }} onClick={duplicateActiveClip} title="Duplicate Selected Clip">
+              <Icon name="copy" size={11} />
+            </span>
           </div>
           <div style={{ fontSize: 10, color: "#EEE", height: 38, display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
             <span style={{ color: "#D9A05B" }}><Icon name="camera" size={10} /></span> Video
@@ -704,7 +794,7 @@ export default function StudioView() {
 
           {/* Track 1: Video Clips (iMovie Magnetic Strip) */}
           <div style={{ display: "flex", gap: 4, height: 38, marginBottom: 6 }}>
-            {timeline.map((clip, i) => {
+            {timeline.map((clip) => {
               const isSelected = selectedClipId === clip.id;
               return (
                 <div
