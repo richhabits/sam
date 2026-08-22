@@ -69,7 +69,7 @@ function readJsonSafe(path: string): any {
 function countCodebaseInventory() {
   const serverDir = join(ROOT, "server");
   const yardDir = join(ROOT, "server", "yard");
-  const skillsDir = join(ROOT, "server", "skills");
+  const skillsDir = join(ROOT, "skills");
   const graphFile = join(ROOT, "graphify-out", "graph.json");
 
   const isSourceTs = (f: string) => f.endsWith(".ts") && !f.endsWith(".test.ts");
