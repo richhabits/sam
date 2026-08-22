@@ -500,7 +500,7 @@ export default function FlipItView() {
               <button type="button" onClick={() => setDepositOpen(false)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer" }}><Icon name="close" size={18} /></button>
             </div>
             <div style={{ fontSize: 13, color: "#94A3B8", marginBottom: 14 }}>
-              Inject capital into the autonomous FLIP IT trading rig &amp; arbitrage balance.
+              Inject capital into the FLIP IT trading rig & arbitrage balance.
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#161D2C", border: "1px solid #283548", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
               <span style={{ fontSize: 20, fontWeight: 800, color: "#10B981" }}>£</span>

@@ -730,7 +730,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   HIGH-RES POLISH — crafted, premium, not generic
+   HIGH-RES POLISH — crafted, not generic
    ═══════════════════════════════════════════════════════════════ */
 
 /* translucent header that floats over the backdrop */
@@ -2495,7 +2495,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .safe-btn:disabled,.safe-btn-primary:disabled,.safe-btn-danger:disabled{opacity:.5;cursor:not-allowed}
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PREMIUM LAYER — the "one hand touched everything" pass.
+   POLISH LAYER — the "one hand touched everything" pass.
    Apple precision · Kanye/Donda restraint (heavy type, calm tone, negative space)
    · one orange moment per surface. Primitive-level so it lifts every surface at once.
    ═══════════════════════════════════════════════════════════════════════════ */
