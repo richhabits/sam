@@ -390,7 +390,7 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
-  const [dark, setDark] = useState(() => { try { return localStorage.getItem("sam.dark") === "1"; } catch { return false; } });
+  const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); return v === null ? true : v === "1"; } catch { return true; } });
   const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "aurora"; } catch { return "aurora"; } });
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
   // Hands-free is ON by default now — SAM listens for a clap/whistle from the moment it opens
@@ -508,6 +508,11 @@ export default function App() {
     const sd = (window as any).samDesktop;
     if (sd?.openFlipit) sd.openFlipit();                              // dedicated Electron window (when wired)
     else window.open(location.pathname + "?app=flipit", "_blank");   // its own full view — like Studio
+  }
+  function openYard() {
+    const sd = (window as any).samDesktop;
+    if (sd?.openYard) sd.openYard();                                  // dedicated Electron window (when wired)
+    else window.open(location.pathname + "?app=yard", "_blank");     // its own full view — like Studio/FlipIt
   }
   // Open a server-served local view (the Console / the Scope). On file:// (packaged Electron) the
   // page lives on the local server's origin, not the app bundle, so point at it explicitly.
@@ -1577,19 +1582,35 @@ export default function App() {
           onMoveToFolder={moveToFolder} setDragChat={setDragChat} />
       </aside>
       <div className="center">
-      <header className="center-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px", height: 60, boxSizing: "border-box", borderBottom: "1px solid #232730", background: "#121418" }}>
-        <div className="brandmark" style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
-          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+      <header className="center-header" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "0 20px", height: 60, boxSizing: "border-box", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+        {/* Left: logo + live pulse beacon */}
+        <div className="brandmark" style={{ display: "flex", alignItems: "center", gap: 10, justifySelf: "start" }}>
+          <span className="wordmark" style={{ fontSize: 17 }}>SAM<span className="wm-dot">.</span></span>
+          <span className="dot-live" title="Connected" aria-label="Connected" />
+        </div>
+
+        {/* Center: Agent / Yard / Studio / FlipIt segmented control */}
+        <div className="header-tabs" style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: 3, justifySelf: "center" }}>
+          <button type="button" title="Agent — chat with SAM" aria-current="page" style={{ background: "var(--accent-soft)", color: "var(--accent-text)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "default" }}>
+            Agent
+          </button>
+          <button type="button" onClick={openYard} title="The Yard — what SAM has built" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            The Yard
+          </button>
+          <button type="button" onClick={openStudio} title="Studio — AI video director & timeline editor" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Studio
+          </button>
+          <button type="button" onClick={openFlipit} title="FlipIt — arbitrage desk & Kelly risk shield" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            FLIP IT
+          </button>
+        </div>
+
+        {/* Right: utility icons */}
+        <div className="bar-right" style={{ display: "flex", alignItems: "center", gap: "8px", justifySelf: "end" }}>
+          <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(true)} title="Chat history (⌘K for new)" aria-label="History" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
             ❮
           </button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#F3F4F6", letterSpacing: '-0.01em' }}>Chat with SAM</span>
-            <button type="button" onClick={() => setAdminOpen(true)} style={{ background: 'none', border: 'none', padding: 0, margin: 0, textAlign: 'left', cursor: 'pointer', fontSize: 12, color: "#8A909D", display: 'flex', alignItems: 'center', gap: 4 }}>
-              Auto Free Brains - Claude 3.5 Sonnet <span style={{ fontSize: 10, opacity: 0.7 }}>⌄</span>
-            </button>
-          </div>
-        </div>
-        <div className="bar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+
           {/* Phone Pairing QR Button */}
           <button type="button" className="icon-btn" onClick={() => { setAdminFocus("phone"); setAdminOpen(true); }} title="Phone Pairing & QR" aria-label="Phone Pairing" style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px', color: '#60A5FA', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
             <Icon name="phone" size={13} /> Phone
@@ -1601,17 +1622,17 @@ export default function App() {
           </button>
 
           {/* Settings Button */}
-          <button type="button" className="icon-btn ghost" onClick={() => setSettingsOpen(true)} title="System Settings" aria-label="Settings" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+          <button type="button" className="icon-btn ghost" onClick={() => setSettingsOpen(true)} title="System Settings" aria-label="Settings" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
             <Icon name="settings" size={15} />
           </button>
 
           {/* Dashboard Button */}
-          <button type="button" className="icon-btn ghost" onClick={() => setDashOpen(true)} title="Dashboard & History" aria-label="Dashboard" style={{ background: '#1A1C22', border: '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', cursor: 'pointer' }}>
+          <button type="button" className="icon-btn ghost" onClick={() => setDashOpen(true)} title="Dashboard & History" aria-label="Dashboard" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
             <Icon name="chat" size={15} />
           </button>
 
           {/* Menu / Context Toggle Button */}
-          <button type="button" className="icon-btn" onClick={() => setRightTab(prev => prev === "context" ? "menu" : "context")} title={rightTab === "context" ? "Open System Menus" : "Open Contextual Intelligence"} aria-label="Toggle Menus" style={{ background: rightTab === "menu" ? 'rgba(232, 103, 58, 0.2)' : '#1A1C22', border: rightTab === "menu" ? '1px solid var(--accent)' : '1px solid #282C36', borderRadius: '8px', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: rightTab === "menu" ? 'var(--accent)' : '#9CA3AF', cursor: 'pointer' }}>
+          <button type="button" className="icon-btn" onClick={() => setRightTab(prev => prev === "context" ? "menu" : "context")} title={rightTab === "context" ? "Open System Menus" : "Open Contextual Intelligence"} aria-label="Toggle Menus" style={{ background: rightTab === "menu" ? 'var(--accent-soft)' : "var(--bg)", border: rightTab === "menu" ? '1px solid var(--accent)' : "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: rightTab === "menu" ? 'var(--accent)' : "var(--muted)", cursor: 'pointer' }}>
             <Icon name="grid" size={15} />
           </button>
         </div>
@@ -1793,22 +1814,7 @@ export default function App() {
           <button type="button" className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
         </div>
       )}
-      <footer className="composer">
-        <div className="composer-context">
-            <button type="button" className="icon-btn ghost" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)" aria-label="Apps grid"><Icon name="grid" size={15} /></button>
-            <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")}>
-                <option value="personal">Personal</option>
-                <option value="business">Business</option>
-            </select>
-            <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={choosePersona} />
-            {mode === "business" && (
-                <select value={brand} onChange={(e) => setBrand(e.target.value)}>
-                    <option value="">All my businesses</option>
-                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-            )}
-        </div>
-
+      <footer className="composer" style={{ padding: "0 20px 16px" }}>
         {attachments.length > 0 && (
           <div className="attach-row">
             {attachments.map((a, i) => (
@@ -1830,41 +1836,57 @@ export default function App() {
             ))}
           </div>
         )}
-        <div className="composer-inner" style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '16px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+        <div className="composer-inner" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: "8px 10px 8px 14px", display: 'flex', alignItems: 'center', gap: '10px', boxShadow: "var(--shadow-glass, var(--shadow-lg))" }}>
           <input ref={fileRef} type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.log,.html,.css,.pdf" style={{ display: "none" }} onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-          
-          <button type="button" className="icon-btn" onClick={toggleVoice} title="Voice Mode" aria-label="Voice Mode" style={{ background: '#E8673A', color: '#FFF', border: 'none', borderRadius: '8px', padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+
+          {/* Integrated dropdowns — apps grid, mode, persona, business */}
+          <button type="button" className="icon-btn ghost" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)" aria-label="Apps grid" style={{ background: 'transparent', border: 'none', color: "var(--muted)", padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <Icon name="grid" size={15} />
+          </button>
+          <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+              <option value="personal">Personal</option>
+              <option value="business">Business</option>
+          </select>
+          <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={choosePersona} />
+          {mode === "business" && (
+              <select value={brand} onChange={(e) => setBrand(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                  <option value="">All my businesses</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+          )}
+          <span style={{ width: 1, alignSelf: "stretch", background: "var(--border)", flexShrink: 0 }} />
+
+          <button type="button" className="icon-btn" onClick={toggleVoice} title="Voice Mode" aria-label="Voice Mode" style={{ background: 'var(--accent)', color: "var(--on-accent, #FFF)", border: 'none', borderRadius: '8px', padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="voice" size={15} />
           </button>
-          
-          <button type="button" className="icon-btn ghost" onClick={() => fileRef.current?.click()} title="Attach file" aria-label="Attach file" style={{ background: 'transparent', border: 'none', color: '#8A909D', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+
+          <button type="button" className="icon-btn ghost" onClick={() => fileRef.current?.click()} title="Attach file" aria-label="Attach file" style={{ background: 'transparent', border: 'none', color: "var(--muted)", padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="link" size={16} />
           </button>
 
           <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             onPaste={(e) => { const imgs = Array.from(e.clipboardData.items).filter((it) => it.type.startsWith("image/")).map((it) => it.getAsFile()).filter(Boolean) as File[]; if (imgs.length) { e.preventDefault(); const dt = new DataTransfer(); imgs.forEach((f) => { dt.items.add(f); }); onFiles(dt.files); } }}
-            placeholder="Ask SAM anything..." rows={1} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#F3F4F6', fontSize: 14.5, resize: 'none', padding: '4px 0' }} />
-          
+            placeholder="Ask SAM anything..." rows={1} style={{ flex: 1, minWidth: 80, background: 'transparent', border: 'none', outline: 'none', color: "var(--text)", fontSize: 14.5, resize: 'none', padding: '4px 0' }} />
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: '#8A909D', fontWeight: 500 }}>Model</span>
-            <button type="button" onClick={() => setAdminOpen(true)} style={{ background: '#1F222A', border: '1px solid #282C36', color: '#E2E5EB', borderRadius: '999px', padding: '4px 12px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button type="button" onClick={() => setAdminOpen(true)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: '999px', padding: '4px 12px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
               Auto Free Brains <span style={{ fontSize: 10, opacity: 0.6 }}>⌄</span>
             </button>
           </div>
 
           {loading ? (
-            <button type="button" className="send stop" onClick={stop} aria-label="Stop" style={{ width: 34, height: 34, borderRadius: '8px', background: '#EF4444', color: '#FFF', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>■</button>
+            <button type="button" className="send stop" onClick={stop} aria-label="Stop" style={{ width: 34, height: 34, borderRadius: '999px', background: 'var(--c-err)', color: '#FFF', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>■</button>
           ) : (
-            <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send" style={{ width: 34, height: 34, borderRadius: '8px', background: '#252932', color: input.trim() ? '#E8673A' : '#6B7280', border: '1px solid #323846', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, cursor: input.trim() ? 'pointer' : 'default' }}>↑</button>
+            <button type="button" className="send" onClick={() => send()} disabled={!input.trim() && attachments.length === 0} aria-label="Send" style={{ width: 34, height: 34, borderRadius: '999px', background: "var(--accent)", color: "var(--on-accent, #FFF)", border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, cursor: input.trim() ? 'pointer' : 'default', opacity: input.trim() || attachments.length ? 1 : 0.5, flexShrink: 0 }}>↑</button>
           )}
         </div>
-        <div className="hint" style={{ color: '#6B7280', fontSize: 11.5, marginTop: 8, textAlign: 'center' }}>
+        <div className="hint" style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 8, textAlign: 'center' }}>
           SAM is private &amp; runs free on your computer · it asks before doing anything risky
         </div>
       </footer>
       </div>
-      <aside className="ctx" style={{ width: 300, minWidth: 300, background: '#121418', borderLeft: '1px solid #232730', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+      <aside className="ctx" style={{ width: 300, minWidth: 300, background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
         {rightTab === "context" ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
@@ -2451,7 +2473,7 @@ export default function App() {
       })()}
 
       <Suspense fallback={null}>
-        {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} />}
+        {voiceMode && <VoiceMode name={profile.name} ask={voiceAsk} onClose={() => setVoiceMode(false)} onTranscript={(t) => setInput(t)} />}
         {adminOpen && <Admin onClose={() => { setAdminOpen(false); setAdminFocus(undefined); }} focus={adminFocus} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}

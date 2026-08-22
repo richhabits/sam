@@ -12,9 +12,8 @@ function wakeGreeting(name?: string): string {
 
 type Size = "mini" | "full";
 
-export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: (q: string) => Promise<string>; onClose: () => void }) {
+export default function VoiceMode({ name, ask, onClose, onTranscript }: { name?: string; ask: (q: string) => Promise<string>; onClose: () => void; onTranscript?: (text: string) => void }) {
   const [state, setState] = useState<State>("connecting");
-  const [heard, setHeard] = useState("");
   const [said, setSaid] = useState("");
   // Compact by default — Romeo's rule: it must NOT swallow the whole screen while talking.
   // Persisted so a chosen size sticks. "full" is opt-in via the expand button.
@@ -55,13 +54,23 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   }, []);
 
   function stopAll() {
-    try { recRef.current?.stop(); } catch { /* teardown is idempotent — already stopped is success, not an error */ }
+    // recognizer .stop() is async (fires onend later) — abort() ends it immediately, and the
+    // onend handler already checks active.current before restarting, so a stray event after
+    // this runs is a no-op rather than a fresh listen loop.
+    try { recRef.current?.abort ? recRef.current.abort() : recRef.current?.stop(); } catch { /* teardown is idempotent — already stopped is success, not an error */ }
     stopSpeaking();
     pcRef.current?.close();
     // Closing the RTCPeerConnection does NOT stop the mic track — kill it explicitly
     // so the browser's recording indicator turns off.
     try { micStreamRef.current?.getTracks().forEach((t) => { t.stop(); }); } catch { /* best-effort — nothing user-visible depends on this succeeding */ }
     micStreamRef.current = null;
+    // Closing the peer connection stops new audio arriving, but whatever OpenAI's voice had
+    // already buffered into this element keeps playing until it's explicitly told to stop —
+    // this is the "stop doesn't stop the loop" symptom: the orb closes, SAM keeps talking.
+    if (audioElRef.current) {
+      try { audioElRef.current.pause(); audioElRef.current.srcObject = null; } catch { /* best-effort teardown */ }
+      audioElRef.current = null;
+    }
   }
 
   // ── OPENAI REALTIME WEBRTC ──
@@ -109,7 +118,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
            setState("listening");
         }
         if (msg.type === "conversation.item.input_audio_transcription.completed") {
-           setHeard(msg.transcript);
+           onTranscript?.(msg.transcript);
            setState("thinking");
            setSaid("");
         }
@@ -148,12 +157,12 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
     if (!SR) { setState("unsupported"); return; }
     const rec = new SR(); recRef.current = rec;
     rec.lang = navigator.language || "en-GB"; rec.interimResults = true; rec.continuous = false;
-    setState("listening"); setHeard("");
+    setState("listening");
     let final = "", blocked = false;
     rec.onresult = (e: any) => {
       let t = "";
       for (const r of e.results) { t += r[0].transcript; if (r.isFinal) final += r[0].transcript; }
-      setHeard(t);
+      onTranscript?.(t);
     };
     rec.onerror = (e: any) => {
       const err = e?.error;
@@ -166,7 +175,7 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
   }
 
   async function fallbackHandle(q: string) {
-    setState("thinking"); setHeard(q);
+    setState("thinking");
     let reply = "";
     try { reply = await ask(q); } catch { reply = "Sorry, I didn't catch that — try again."; }
     if (!active.current) return;
@@ -202,7 +211,9 @@ export default function VoiceMode({ name, ask, onClose }: { name?: string; ask: 
         </div>
       </div>
       <div className="vm-state">{label}</div>
-      <div className="vm-text">{state === "speaking" ? said : heard}</div>
+      {/* The user's own words now go straight to the composer (onTranscript) as they're heard —
+          this card stays a sleek ambient orb, only echoing SAM's own reply, not a duplicate transcript. */}
+      {state === "speaking" && said && <div className="vm-text">{said}</div>}
       {state === "blocked"
         ? <div className="vm-hint">🎤 Your mic is blocked. Click the 🔒/camera icon in the address bar → <b>Always allow</b> the microphone → reopen Voice. You can always type in the chat instead.</div>
         : state === "unsupported"

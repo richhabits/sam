@@ -253,24 +253,47 @@ button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active,
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
-/* dark theme — luxury dark mode matching Apple Pro & Bloomberg aesthetic */
-:root, :root[data-theme="dark"] {
-  --bg: #0D0F12 !important;
-  --surface: #16181D !important;
-  --paper: #1B1E24 !important;
-  --text: #F3F4F6 !important;
-  --muted: #8A909D !important;
-  --border: #232730 !important;
-  --border-strong: #323846 !important;
-  --accent: #E8673A !important;
-  --accent-text: #FF8F6B !important;
-  --accent-soft: rgba(232, 103, 58, 0.15) !important;
-  --user-bubble: #1F222A !important;
-  --shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
-  --shadow-lg: 0 16px 48px rgba(0,0,0,0.6) !important;
-  --glass-rim: rgba(255,255,255,0.08) !important;
+/* dark theme — Obsidian glassmorphic (Linear / Stripe / Vercel tier).
+   Was ":root, :root[data-theme=\"dark\"]" with every declaration !important — the bare
+   ":root" in that selector list matches unconditionally, so dark colours won across every
+   skin regardless of the light/dark toggle, and !important made it impossible for a named
+   skin (defined later, normally winning on source order) to override it. Scoping the
+   selector to [data-theme="dark"] alone is enough on its own: (0,1,1) already beats the
+   base :root's (0,1,0), so !important was never actually needed for that half of the bug —
+   dropping it is what lets skins win again as their own rules intend. */
+:root[data-theme="dark"] {
+  --bg: #0B0F19;
+  --surface: rgba(15, 23, 42, 0.75);
+  --paper: #12172A;
+  --text: #F3F4F6;
+  --muted: #8A909D;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --accent: #6366F1;
+  --accent-text: #A5B4FC;
+  --accent-soft: rgba(99, 102, 241, 0.15);
+  --accent-2: #06B6D4;
+  --user-bubble: rgba(30, 41, 59, 0.7);
+  --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.6);
+  --shadow-accent: 0 4px 16px rgba(99, 102, 241, 0.15);
+  --glass-rim: rgba(255,255,255,0.08);
 }
 :root[data-theme="dark"] .app { background: var(--bg); }
+
+/* Glassmorphism: cards/panels/bars whose background is now translucent (--surface's alpha
+   above) need the blur themselves, or "translucent" just reveals whatever's underneath with
+   no frosted effect. Scoped to dark mode — light mode's surfaces stay solid. */
+:root[data-theme="dark"] .popover,
+:root[data-theme="dark"] .onboard-card,
+:root[data-theme="dark"] .composer-inner,
+:root[data-theme="dark"] .composer,
+:root[data-theme="dark"] .center-header,
+:root[data-theme="dark"] .ctx,
+:root[data-theme="dark"] .drawer {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
