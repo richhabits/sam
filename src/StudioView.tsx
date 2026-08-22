@@ -434,38 +434,49 @@ export default function StudioView() {
         }}>
           
           {/* Prompt Director */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>AI SCRIPT & PROMPT DIRECTOR</span>
-              <button type="button" onClick={handleAutoEnhance} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: "#D9A05B", fontSize: 11, fontWeight: 700 }}><Icon name="sparkle" size={12} /> Enhance</span>
-              </button>
-            </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe your scene, camera angle, atmosphere, and action..."
-              style={{
-                width: "100%", background: "#0A0A0A", border: "1px solid #2E2E2E", borderRadius: 6,
-                padding: "8px 10px", color: "#E0E0E0", fontSize: 11, lineHeight: 1.5, resize: "none", outline: "none", boxSizing: "border-box", height: 84
-              }}
-            />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#666", marginTop: 4 }}>
-              <span>Tokens: ~{Math.round(prompt.length / 4)}</span>
-              <span>{prompt.length} chars</span>
+          <div style={{ position: "relative", padding: 1, borderRadius: 7, background: "linear-gradient(180deg, rgba(217,160,91,0.2) 0%, rgba(217,160,91,0) 100%)" }}>
+            <div style={{ background: "#141414", borderRadius: 6, padding: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>AI SCRIPT & PROMPT DIRECTOR</span>
+                <button type="button" onClick={handleAutoEnhance} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ color: "#D9A05B", fontSize: 11, fontWeight: 700, textShadow: "0 0 8px rgba(217,160,91,0.4)" }}><Icon name="sparkle" size={12} /> Enhance</span>
+                </button>
+              </div>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe your scene, camera angle, atmosphere, and action..."
+                style={{
+                  width: "100%", background: "#080808", border: "1px solid #2A2A2A", borderRadius: 6,
+                  padding: "10px 12px", color: "#E8E8E8", fontSize: 11, lineHeight: 1.5, resize: "none", outline: "none", boxSizing: "border-box", height: 84,
+                  boxShadow: "inset 0 2px 4px rgba(0,0,0,0.5)"
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#666", marginTop: 6 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 4, height: 4, borderRadius: "50%", background: "#27C93F" }} /> Tokens: ~{Math.round(prompt.length / 4)}</span>
+                <span>{prompt.length} chars</span>
+              </div>
             </div>
           </div>
 
-          {/* Motion Intensity Slider */}
+          {/* Motion Velocity Keyframe Visualizer */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>MOTION VELOCITY</span>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>MOTION VELOCITY CURVE</span>
               <span style={{ fontSize: 11, fontWeight: 800, color: "#D9A05B" }}>{motionIntensity}%</span>
+            </div>
+            <div style={{ position: "relative", height: 36, background: "#0A0A0A", border: "1px solid #222", borderRadius: 6, overflow: "hidden", marginBottom: 4 }}>
+              {/* Mock bezier curve SVG mapping to intensity */}
+              <svg width="100%" height="100%" viewBox="0 0 100 36" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+                <path d={`M 0,36 C 30,36 40,${36 - (motionIntensity / 100) * 28} 100,${36 - (motionIntensity / 100) * 32}`} fill="none" stroke="rgba(217,160,91,0.5)" strokeWidth="2" strokeDasharray="4,2" />
+                <path d={`M 0,36 C 40,36 50,${36 - (motionIntensity / 100) * 32} 100,${36 - (motionIntensity / 100) * 24}`} fill="none" stroke="#D9A05B" strokeWidth="2" />
+                <circle cx="100" cy={36 - (motionIntensity / 100) * 24} r="3" fill="#D9A05B" />
+              </svg>
             </div>
             <input
               type="range" min="10" max="100" value={motionIntensity}
               onChange={(e) => setMotionIntensity(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#D9A05B", height: 4, cursor: "pointer" }}
+              style={{ width: "100%", accentColor: "#D9A05B", height: 4, cursor: "pointer", background: "#333", borderRadius: 2, appearance: "none", outline: "none" }}
             />
           </div>
 
@@ -576,13 +587,26 @@ export default function StudioView() {
               }} />
             )}
 
-            {/* Viewfinder Framing Box */}
+            {/* Viewfinder Rule-of-Thirds Grid & ARRI Framing Box */}
             {showFraming && (
-              <div style={{ position: "absolute", inset: "20px", border: "1px solid rgba(255,255,255,0.25)", pointerEvents: "none" }}>
-                <div style={{ position: "absolute", top: -1, left: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-                <div style={{ position: "absolute", top: -1, right: -1, width: 12, height: 12, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
-                <div style={{ position: "absolute", bottom: -1, left: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
-                <div style={{ position: "absolute", bottom: -1, right: -1, width: 12, height: 12, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                {/* Rule of Thirds Grid */}
+                <div style={{ position: "absolute", inset: "20px", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  <div style={{ position: "absolute", left: "33.33%", top: 0, bottom: 0, borderLeft: "1px solid rgba(255,255,255,0.1)" }} />
+                  <div style={{ position: "absolute", left: "66.66%", top: 0, bottom: 0, borderLeft: "1px solid rgba(255,255,255,0.1)" }} />
+                  <div style={{ position: "absolute", top: "33.33%", left: 0, right: 0, borderTop: "1px solid rgba(255,255,255,0.1)" }} />
+                  <div style={{ position: "absolute", top: "66.66%", left: 0, right: 0, borderTop: "1px solid rgba(255,255,255,0.1)" }} />
+                  
+                  {/* Center Crosshair */}
+                  <div style={{ position: "absolute", top: "50%", left: "50%", width: 14, height: 1, background: "rgba(255,255,255,0.4)", transform: "translate(-50%, -50%)" }} />
+                  <div style={{ position: "absolute", top: "50%", left: "50%", width: 1, height: 14, background: "rgba(255,255,255,0.4)", transform: "translate(-50%, -50%)" }} />
+
+                  {/* Corner Reticles */}
+                  <div style={{ position: "absolute", top: -1, left: -1, width: 16, height: 16, borderTop: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", top: -1, right: -1, width: 16, height: 16, borderTop: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", bottom: -1, left: -1, width: 16, height: 16, borderBottom: "2px solid #FFF", borderLeft: "2px solid #FFF" }} />
+                  <div style={{ position: "absolute", bottom: -1, right: -1, width: 16, height: 16, borderBottom: "2px solid #FFF", borderRight: "2px solid #FFF" }} />
+                </div>
               </div>
             )}
 
@@ -598,16 +622,20 @@ export default function StudioView() {
             </div>
 
             {/* Bottom Info HUD */}
-            <div style={{ position: "absolute", bottom: 12, left: 14, display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 10, background: "rgba(0,0,0,0.7)", border: "1px solid #444", padding: "2px 6px", borderRadius: 4, color: "#D9A05B", fontWeight: 700 }}>
+            <div style={{ position: "absolute", bottom: 12, left: 14, display: "flex", gap: 10, alignItems: "center" }}>
+              <span style={{ fontSize: 10, background: "rgba(0,0,0,0.8)", border: "1px solid #444", padding: "3px 8px", borderRadius: 4, color: "#D9A05B", fontWeight: 800, letterSpacing: "0.5px" }}>
                 {activeClip?.name || "Scene Preview"}
               </span>
-              <span style={{ fontSize: 10, color: "#AAA" }}>{activeAspect.id} · {resolution.split(" ")[0]}</span>
+              <div style={{ display: "flex", gap: 8, fontSize: 9, color: "#AAA", fontWeight: 600, background: "rgba(0,0,0,0.5)", padding: "3px 8px", borderRadius: 4 }}>
+                <span>ISO 800</span><span>·</span>
+                <span>180°</span><span>·</span>
+                <span>5600K</span>
+              </div>
             </div>
 
             <div style={{ position: "absolute", bottom: 12, right: 14, textAlign: "right" }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#FFF", letterSpacing: "1px" }}>ANAMORPHIC</div>
-              <div style={{ fontSize: 9, color: "#888" }}>{lens ? `${lens.name.split(" ")[0].toUpperCase()} ${lens.focalLength.toUpperCase()} ${lens.aperture}` : "PANAVISION 40MM T2.0"}</div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "#FFF", letterSpacing: "1.5px", textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>{activeAspect.id === "2.39:1" ? "ANAMORPHIC" : "SPHERICAL"}</div>
+              <div style={{ fontSize: 9, color: "#BBB", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>{lens ? `${lens.name.split(" ")[0].toUpperCase()} ${lens.focalLength.toUpperCase()} ${lens.aperture}` : "PANAVISION 40MM T2.0"}</div>
             </div>
           </div>
           
@@ -758,21 +786,23 @@ export default function StudioView() {
         display: "flex", gap: "12px", boxSizing: "border-box", overflow: "hidden"
       }}>
         {/* Track Headers */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 60, flexShrink: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 75, flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", color: "#666", fontSize: 10 }}>
-            <span style={{ cursor: "pointer" }} onClick={handleJumpStart} title="Jump to 0:00">↰ 0:00</span>
-            <span style={{ cursor: "pointer", color: "#AAA" }} onClick={duplicateActiveClip} title="Duplicate Selected Clip">
+            <span style={{ cursor: "pointer", background: "#222", padding: "2px 4px", borderRadius: 3 }} onClick={handleJumpStart} title="Jump to 0:00">↰ 0:00</span>
+            <span style={{ cursor: "pointer", color: "#AAA", background: "#222", padding: "2px 4px", borderRadius: 3 }} onClick={duplicateActiveClip} title="Duplicate Selected Clip">
               <Icon name="copy" size={11} />
             </span>
           </div>
-          <div style={{ fontSize: 10, color: "#EEE", height: 38, display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
-            <span style={{ color: "#D9A05B" }}><Icon name="camera" size={10} /></span> Video
+          <div style={{ fontSize: 10, color: "#EEE", height: 38, display: "flex", alignItems: "center", gap: 6, fontWeight: 800 }}>
+            <span style={{ color: "#D9A05B" }}><Icon name="camera" size={12} /></span> V1
           </div>
-          <div style={{ fontSize: 9, color: "#888", height: 16, display: "flex", alignItems: "center", gap: 4 }}>
-            <span>♫</span> Audio 1
+          <div style={{ fontSize: 9, color: "#888", height: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 4 }}><span>♫</span> A1</div>
+            <div style={{ display: "flex", gap: 2 }}><span style={{ background: "#222", padding: "1px 3px", borderRadius: 2, fontSize: 7, fontWeight: 700, cursor: "pointer" }}>M</span><span style={{ background: "#222", padding: "1px 3px", borderRadius: 2, fontSize: 7, fontWeight: 700, cursor: "pointer" }}>S</span></div>
           </div>
-          <div style={{ fontSize: 9, color: "#888", height: 16, display: "flex", alignItems: "center", gap: 4 }}>
-            <span>♫</span> FX
+          <div style={{ fontSize: 9, color: "#888", height: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 4 }}><span>♫</span> A2</div>
+            <div style={{ display: "flex", gap: 2 }}><span style={{ background: "#222", padding: "1px 3px", borderRadius: 2, fontSize: 7, fontWeight: 700, cursor: "pointer" }}>M</span><span style={{ background: "#222", padding: "1px 3px", borderRadius: 2, fontSize: 7, fontWeight: 700, cursor: "pointer" }}>S</span></div>
           </div>
         </div>
 
