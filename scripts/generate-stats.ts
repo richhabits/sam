@@ -16,8 +16,8 @@ const skills = readdirSync(join(root, "skills"), { withFileTypes: true })
 
 // Free brains = distinct FREE providers SAM can route to. The no-key Pollinations lanes share one
 // backend (openai / openai-fast / get), so they count as a single brain. Parsed straight from the
-// provider registry in models.ts.
-const modelsSrc = readFileSync(join(root, "server/models.ts"), "utf8");
+// provider registry in model-providers.ts.
+const modelsSrc = readFileSync(join(root, "server/model-providers.ts"), "utf8");
 const freeIds = [...modelsSrc.matchAll(/\{\s*id:\s*"([^"]+)",\s*tier:\s*"free"/g)].map((m) => m[1]);
 const premiumIds = [...modelsSrc.matchAll(/\{\s*id:\s*"([^"]+)",\s*tier:\s*"premium"/g)].map((m) => m[1]);
 const collapse = (id: string) => id.replace(/-(fast|get|mistral|large|\d+)$/, "");   // pollinations-* → pollinations
