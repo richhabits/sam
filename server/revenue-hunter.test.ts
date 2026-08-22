@@ -1,9 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   huntRevenueOpportunities,
   calculateSaasArbitrage,
   calculateOpportunityRoi,
 } from "./revenue-hunter.ts";
+
+// Mock the model layer so tests don't hang waiting for an LLM
+vi.mock("./models.ts", () => ({
+  runModel: vi.fn().mockResolvedValue("Mocked executive strategy summary."),
+}));
 
 describe("AUTONOMOUS REVENUE & OPPORTUNITY HUNTER", () => {
   it("returns prioritized revenue opportunities with estimated ROI", async () => {
