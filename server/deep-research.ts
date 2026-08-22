@@ -144,14 +144,33 @@ export async function conductDeepResearch(
         confidence: Math.min(1, Math.max(0, Number(f.confidence) || 0.5)),
       }));
 
-    const distinctSources = new Set(keyFindings.map((f) => f.sourceIndex)).size;
-    const consensusPct = calculateConsensusScore(keyFindings.length, distinctSources);
+    // VERIFICATION LOOP: Strict fact-checking to prune hallucinations
+    let verifiedFindings = keyFindings;
+    if (keyFindings.length > 0) {
+      const vSystem = `You are a strict fact-checker. You will be given a list of claims and the original source text. Verify if each claim is explicitly supported by the source text. Return ONLY a JSON array of boolean values (true if supported, false if hallucinated or unsupported), in the exact same order as the claims.`;
+      const vPrompt = `CLAIMS:\n${keyFindings.map((f, i) => `[${i}] ${f.claim} (Source: [${f.sourceIndex}])`).join('\\n')}\n\nSOURCE TEXT:\n${rawContext}`;
+      try {
+        const vRes = await deps.synthesize(vSystem, vPrompt);
+        const vRaw = (vRes.text || "").trim();
+        const vMatch = vRaw.match(/\\[[\\s\\S]*\\]/);
+        const vJsonText = vMatch ? vMatch[0] : vRaw.replace(/\`\`\`json\\n?|\`\`\`/g, "").trim();
+        const vParsed = JSON.parse(vJsonText);
+        if (Array.isArray(vParsed) && vParsed.length === keyFindings.length) {
+          verifiedFindings = keyFindings.filter((_, i) => vParsed[i] === true);
+        }
+      } catch {
+        // If verification parsing fails, proceed with the original findings to avoid breaking the pipeline
+      }
+    }
+
+    const distinctSources = new Set(verifiedFindings.map((f) => f.sourceIndex)).size;
+    const consensusPct = calculateConsensusScore(verifiedFindings.length, distinctSources);
 
     return {
       topic: clean,
       depth,
       executiveSummary: String(parsed.executiveSummary || `Research synthesis for "${clean}", grounded in ${sources.length} source(s).`),
-      keyFindings,
+      keyFindings: verifiedFindings,
       consensusConfidencePct: consensusPct,
       dissentingOrConflictingViews: (Array.isArray(parsed.dissentingOrConflictingViews) ? parsed.dissentingOrConflictingViews : []).map(String),
       sources,

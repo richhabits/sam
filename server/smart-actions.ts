@@ -126,15 +126,49 @@ export function buildSimpleFlipItSummary(): SimpleFlipItCard {
 }
 
 export interface SmartActionResult {
-  category: "STUDIO" | "INVESTMENT" | "SYSTEM";
+  category: "STUDIO" | "INVESTMENT" | "SYSTEM" | "WORKSPACE";
   title: string;
   summary: string;
   details: string[];
   nextSuggestedAction: string;
 }
 
+import { execSync } from "node:child_process";
+
 export async function executeSmartAction(intent: string): Promise<SmartActionResult> {
   const lower = String(intent || "").toLowerCase();
+
+  // 0. Workspace & Development Intent
+  if (lower.includes("workspace") || lower.includes("status") || lower.includes("git") || lower.includes("clean") || lower.includes("work")) {
+    let gitStatus = "";
+    try {
+      gitStatus = execSync("git status --short", { encoding: "utf8" }).trim();
+    } catch {
+      gitStatus = "Git repository not found or not accessible.";
+    }
+    
+    let hasStaleArtifacts = false;
+    try {
+      const distStat = execSync("ls -la dist/ 2>/dev/null || true", { encoding: "utf8" }).trim();
+      hasStaleArtifacts = distStat.length > 0;
+    } catch {
+      hasStaleArtifacts = false;
+    }
+
+    const modifiedCount = gitStatus ? gitStatus.split("\\n").length : 0;
+    
+    return {
+      category: "WORKSPACE",
+      title: "🛠 Workspace Autonomy Report",
+      summary: modifiedCount === 0 ? "Working tree is completely clean." : `${modifiedCount} uncommitted changes in working tree.`,
+      details: [
+        `Git Status: ${modifiedCount === 0 ? "Clean" : "Dirty"}`,
+        `Stale Build Artifacts: ${hasStaleArtifacts ? "Found (dist/)" : "None"}`,
+        ...(modifiedCount > 0 ? ["Modified Files:", ...gitStatus.split("\\n").slice(0, 3), modifiedCount > 3 ? "...and more" : ""] : [])
+      ],
+      nextSuggestedAction: modifiedCount > 0 ? "Commit outstanding changes." : (hasStaleArtifacts ? "Run clean command to clear dist/." : "Ready for new tasks."),
+    };
+  }
 
   // 1. Studio & Creative Intent
   if (lower.includes("video") || lower.includes("image") || lower.includes("film") || lower.includes("studio") || lower.includes("cinematic")) {

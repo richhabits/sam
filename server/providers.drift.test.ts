@@ -18,7 +18,7 @@ import { POOLED, PROVIDER_ENV, PROVIDER_REGISTRY, uiCatalogue } from "./provider
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
-const models = read("server/models.ts");
+const models = read("server/models.ts") + read("server/model-providers.ts");
 const admin = read("src/Admin.tsx");
 // The admin routes moved to routes.admin.ts (audit #2). This test asserted on index.ts alone, so
 // the extraction turned its assertions into "route not found" — the THIRD time a source-scanning

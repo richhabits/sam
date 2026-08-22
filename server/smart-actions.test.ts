@@ -69,7 +69,7 @@ describe("Smart Actions & Maximum UX Suite", () => {
     });
 
     it("routes general/system prompts to System Health Autopilot", async () => {
-      const act = await executeSmartAction("Check system status and cleanup");
+      const act = await executeSmartAction("Check system health and metrics");
       expect(act.category).toBe("SYSTEM");
       expect(act.title).toContain("SAM System Health");
     });
