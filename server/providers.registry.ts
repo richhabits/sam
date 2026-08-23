@@ -86,7 +86,7 @@ export const PROVIDER_REGISTRY: ProviderSpec[] = [
   { id: "ovh", label: "OVHcloud AI", tier: "free", envPlural: "OVH_API_KEYS", envSingular: "OVH_API_KEY", note: "💬 general chat — EU-hosted free tier", url: "https://endpoints.ai.cloud.ovh.net" },
   { id: "gmi", label: "GMI Cloud", tier: "free", envPlural: "GMI_API_KEYS", envSingular: "GMI_API_KEY", note: "🧠 DeepSeek/Llama/Qwen hosting", url: "https://console.gmicloud.ai" },
   { id: "leonardo", label: "Leonardo.Ai", tier: "free", envPlural: "LEONARDO_API_KEYS", envSingular: "LEONARDO_API_KEY", note: "🎨 images + img2video — $5 free credit", url: "https://app.leonardo.ai/settings" },
-  { id: "fal", label: "fal (HappyHorse)", tier: "free", envPlural: "FAL_API_KEYS", envSingular: "FAL_KEY", note: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)", url: "https://fal.ai/dashboard/keys" },
+  { id: "fal", label: "fal (HappyHorse)", tier: "free", envPlural: "FAL_API_KEYS", envSingular: "FAL_KEY", starter: true, note: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)", url: "https://fal.ai/dashboard/keys" },
   { id: "anthropic", label: "Anthropic (Claude)", tier: "premium", envPlural: "ANTHROPIC_API_KEYS", envSingular: "ANTHROPIC_API_KEY", premium: true, note: "👑 premium (paid) — best quality, only on 'Best'", url: "https://console.anthropic.com/settings/keys" },
   { id: "openai", label: "OpenAI", tier: "premium", envPlural: "OPENAI_API_KEYS", envSingular: "OPENAI_API_KEY", premium: true, note: "👑 premium (paid) — only on 'Best'", url: "https://platform.openai.com/api-keys" },
 ];

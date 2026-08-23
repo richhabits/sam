@@ -303,6 +303,44 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
         </div>
 
         <div className="admin-row">
+          <div className="admin-h">
+            <span className="admin-name"><Icon name="video" size={15} /> AI Video Generation</span>
+            <span className="admin-note">fal (HappyHorse), Novita, SiliconFlow — free credits</span>
+            <span className="admin-count">{(count("fal") + count("novita") + count("siliconflow")) > 0 ? `${count("fal") + count("novita") + count("siliconflow")} key(s)` : "off"}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            {PROVIDERS.filter((p) => ["fal", "novita", "siliconflow"].includes(p.id)).map((p) => (
+              <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  className="admin-input"
+                  style={{ flex: 1, margin: 0 }}
+                  type="password"
+                  placeholder={`${p.label} key ${count(p.id) > 0 ? `(${count(p.id)} saved)` : ""} — ${p.note}`}
+                  value={drafts[p.id] || ""}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="admin-save"
+                  style={{ width: "auto", padding: "6px 12px" }}
+                  onClick={() => saveProvider(p.id)}
+                >
+                  {saved === p.id ? "Saved ✓" : "Save"}
+                </button>
+                <a className="admin-getkey" href={p.url} target="_blank" rel="noreferrer">
+                  FREE key ↗
+                </a>
+              </div>
+            ))}
+            {saved && ["fal", "novita", "siliconflow"].includes(saved) && (
+              <div className="admin-note admin-ok">
+                ✓ saved — SAM can generate real AI videos with sound now.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-row">
           <div className="admin-h"><span className="admin-name"><Icon name="camera" size={15} /> Stock media &amp; assets</span><span className="admin-note">real photos, b-roll, GIFs, film info — free keys</span></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             {([["pexels","Pexels","https://www.pexels.com/api/","photos + video"],["pixabay","Pixabay","https://pixabay.com/api/docs/","photos + video + music"],["giphy","GIPHY","https://developers.giphy.com/","GIFs"],["tmdb","TMDb","https://www.themoviedb.org/settings/api","film info + posters"],["omdb","OMDb","https://www.omdbapi.com/apikey.aspx","film info (backup)"]] as const).map(([id,label,url,note]) => (
