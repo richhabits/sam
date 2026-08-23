@@ -3,7 +3,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { api } from './lib/api';
 import { type Attachment, pickFile, pickPhoto, takePhoto } from './lib/attach';
 import { GLYPHS } from './lib/glyphs';
-import { type IOS, metrics } from './lib/ios';
+import { type IOS, metrics, type } from './lib/ios';
 import { Row, Section } from './ui';
 
 // "ADD TO SAM" — the + in the composer.

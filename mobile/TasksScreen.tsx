@@ -4,7 +4,7 @@ import { api } from './lib/api';
 import { applyFilter, type Filter, taskFilters, windowNote } from './lib/filters';
 import { elapsed, type JobStep, runLine } from './lib/fold';
 import { GLYPHS } from './lib/glyphs';
-import { type IOS, metrics, stateToneText } from './lib/ios';
+import { type IOS, metrics, stateToneText, type } from './lib/ios';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import { ActionRow, Chips, Row, Screen, Section } from './ui';
 

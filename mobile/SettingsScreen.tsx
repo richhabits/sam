@@ -1,15 +1,15 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Switch, Text } from 'react-native';
+import { Linking, Switch, Text, } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
-import { GLYPHS } from './lib/glyphs';
-import type { IOS } from './lib/ios';
-import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { ActionRow, Field, Row, Screen, Section } from './ui';
 
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ...DIRECT_PROVIDERS];
+import { GLYPHS } from './lib/glyphs';
+import { type IOS, type } from './lib/ios';
+import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
+import { ActionRow, Field, Row, Screen, Section } from './ui';
 
 type Device = { id: string; label: string; lastSeen: number };
 
