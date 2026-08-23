@@ -2,7 +2,143 @@
    S.A.M. — clean, light, anyone-can-use assistant UI
    Warm-neutral light theme · single terracotta accent · WCAG AA
    ───────────────────────────────────────────────────────────── */
+/* ── SETTINGS MODAL REDESIGN ── */
+.popover {
+  position: fixed !important;
+  top: 50% !important; left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 850px !important;
+  height: 600px !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.15) !important;
+  border: 1px solid #EAEAEA !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  bottom: auto !important;
+}
 
+.pop-tabs {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 220px !important;
+  min-width: 220px !important;
+  background: #F9F9F9 !important;
+  border-right: 1px solid #EAEAEA !important;
+  border-bottom: none !important;
+  padding: 24px 16px !important;
+  gap: 8px !important;
+}
+
+.pop-tabs button {
+  text-align: left !important;
+  padding: 10px 16px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #111111 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.pop-tabs button:hover {
+  background: #EAEAEA !important;
+}
+
+.pop-tabs button.on {
+  background: #EAEAEA !important;
+  font-weight: 600 !important;
+}
+
+.pop-content {
+  flex: 1 !important;
+  padding: 40px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+}
+
+.pop-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #111111 !important;
+  border-bottom: 1px solid #EAEAEA !important;
+  padding-bottom: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+/* Nuke the Bento Grid styling to look like simple forms */
+.bento-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.bento-card {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: 1px solid #EAEAEA !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  gap: 16px !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.bento-card:hover {
+  background: #F9F9F9 !important;
+}
+
+.bento-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: #F4F4F4 !important;
+  color: #111111 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.bento-name {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: #111111 !important;
+}
+
+.bento-sub {
+  font-size: 13px !important;
+  color: #666666 !important;
+}
+
+.bento-action {
+  margin-left: auto !important;
+}
+
+/* ── SAM PREMIUM ORANGE ACCENTS ── */
+.status-indicator {
+  display: inline-block !important;
+  width: 8px !important; height: 8px !important;
+  border-radius: 50% !important;
+  background: #F26101 !important;
+  box-shadow: 0 0 8px rgba(242, 97, 1, 0.6) !important;
+  margin-left: 6px !important;
+}
+
+.composer-inner button[type="submit"] {
+  background: #F26101 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 36px !important; height: 36px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+}
+
+.side-title { color: #F26101 !important; }
 
 /* ── FLIP IT — layout only. Colour used to be duplicated here as hardcoded hex + !important
    (see git history: "LUXURY DARK MODE") fighting the component's own --ink/--surface/--paper
@@ -41,8 +177,8 @@
   --muted: #86868B;       /* pure gray */
   --border: rgba(0, 0, 0, 0.08); /* subtle dividers */
   --border-strong: rgba(0, 0, 0, 0.16);
-  --accent: #F26101;      /* terracotta orange */
-  --accent-text: #F26101; /* terracotta orange */
+  --accent: #000000;      /* stark black */
+  --accent-text: #000000; /* stark black */
   --accent-soft: #E5E5EA; /* cool gray */
   --user-bubble: #E5E5EA; /* cool gray */
   /* Semantic colors */
@@ -120,8 +256,8 @@ button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active,
   --muted: #86868B;
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.2);
-  --accent: #F26101;
-  --accent-text: #F26101;
+  --accent: #FFFFFF;
+  --accent-text: #FFFFFF;
   --accent-soft: rgba(255, 255, 255, 0.1);
   --accent-2: #E5E5EA;
   --user-bubble: #1C1C1E;
@@ -129,7 +265,7 @@ button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active,
   --shadow-lg: 0 16px 48px rgba(0,0,0,0.9);
   --shadow-accent: 0 4px 16px rgba(255, 255, 255, 0.15);
   --glass-rim: rgba(255,255,255,0.08);
-  --on-accent: #FFFFFF;
+  --on-accent: #000000;
 }
 :root[data-theme="dark"] .app { background: var(--bg); }
 
