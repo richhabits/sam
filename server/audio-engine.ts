@@ -30,11 +30,19 @@ export interface SpeechSynthesisResult {
   audioBase64Stub: string;
 }
 
-export function generateSpeechAudio(
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { readFile, unlink } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+
+const execFileAsync = promisify(execFile);
+
+export async function generateSpeechAudio(
   text: string,
   voiceId = "sam_host",
   options: { speed?: number; pitch?: number } = {}
-): SpeechSynthesisResult {
+): Promise<SpeechSynthesisResult> {
   const clean = String(text || "").trim();
   const v = VOICES.find(x => x.id === voiceId) || VOICES[0];
   const effectiveSpeed = options.speed ?? v.speed;
@@ -51,13 +59,40 @@ export function generateSpeechAudio(
     waveform.push(Number(val.toFixed(2)));
   }
 
+  let audioBase64Stub = `data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAA...`;
+
+  if (process.platform === "darwin") {
+    try {
+      const tempId = `say_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const outPath = join(tmpdir(), `${tempId}.m4a`);
+      
+      // Map voices to local macOS voices
+      let localVoice = "Daniel";
+      if (voiceId === "alex_cohost") localVoice = "Samantha";
+      if (voiceId === "nova_calm") localVoice = "Serena";
+      if (voiceId === "echo_deep") localVoice = "Alex";
+
+      // execFile with an argument array, not exec with an interpolated string: `clean` can
+      // contain attacker-controlled text (this runs from an agent tool call, reachable from
+      // whatever the agent just read off the web/an email), and no amount of quote-escaping
+      // stops shell metacharacters like $(...) or backticks from being interpreted inside a
+      // shell string. Passing args directly bypasses the shell, so there's nothing to escape.
+      await execFileAsync("say", ["-v", localVoice, clean, "-o", outPath, "--data-format=aac"]);
+      const audioBuffer = await readFile(outPath);
+      audioBase64Stub = `data:audio/mp4;base64,${audioBuffer.toString("base64")}`;
+      await unlink(outPath).catch(() => {});
+    } catch (error) {
+      console.warn("Failed to generate local TTS using say command:", error);
+    }
+  }
+
   return {
     text: clean,
     voice: v,
     audioFormat: "mp3",
     durationSeconds: duration,
     waveformSample: waveform,
-    audioBase64Stub: `data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAA...`,
+    audioBase64Stub,
   };
 }
 
@@ -91,18 +126,20 @@ export interface PodcastSynthesisResult {
   backgroundMusicTrack?: string;
 }
 
-export function synthesizeDialogueAudio(
+export async function synthesizeDialogueAudio(
   title: string,
   exchanges: DialogueExchange[],
   options: { topic?: string; backgroundMusic?: string } = {}
-): PodcastSynthesisResult {
+): Promise<PodcastSynthesisResult> {
   let currentTime = 0;
   const cues: AudioTimelineCue[] = [];
+  const renderedExchanges = [];
 
-  const renderedExchanges = exchanges.map((ex, index) => {
+  for (let index = 0; index < exchanges.length; index++) {
+    const ex = exchanges[index];
     const isAlex = ex.speaker.toLowerCase().includes("alex");
     const voiceId = isAlex ? "alex_cohost" : "sam_host";
-    const speech = generateSpeechAudio(ex.text, voiceId);
+    const speech = await generateSpeechAudio(ex.text, voiceId);
 
     const startSec = Number(currentTime.toFixed(2));
     const endSec = Number((currentTime + speech.durationSeconds).toFixed(2));
@@ -119,13 +156,13 @@ export function synthesizeDialogueAudio(
       waveform: speech.waveformSample,
     });
 
-    return {
+    renderedExchanges.push({
       speaker: ex.speaker,
       voiceId,
       text: ex.text,
       durationSec: speech.durationSeconds,
-    };
-  });
+    });
+  }
 
   return {
     title: title || "Audio Overview Dialogue",

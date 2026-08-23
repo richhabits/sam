@@ -61,12 +61,16 @@ export function registerVoiceRoutes(app: Express): void {
   });
 
   // Multi-Speaker Dialogue / Podcast Synthesis
-  app.post("/api/audio/dialogue", (req, res) => {
+  app.post("/api/audio/dialogue", async (req, res) => {
     const { title, exchanges } = req.body as { title?: string; exchanges: Array<{ speaker: string; text: string }> };
     if (!Array.isArray(exchanges) || exchanges.length === 0) {
       return res.status(400).json({ error: "exchanges array is required" });
     }
-    const result = synthesizeDialogueAudio(title || "Audio Overview Dialogue", exchanges);
-    res.json(result);
+    try {
+      const result = await synthesizeDialogueAudio(title || "Audio Overview Dialogue", exchanges);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to synthesize audio" });
+    }
   });
 }

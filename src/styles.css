@@ -630,6 +630,7 @@ button { font-family: inherit; cursor: pointer; }
 /* ── CONNECTED — the services SAM reads (ConnectorsPane). Tokens only, so every skin and both
    themes get it for free; the states borrow the same three colours the Doctor's checks use. ── */
 .drawer.cx { width: min(460px, 94vw); }
+.drawer.mem { width: min(600px, 96vw); padding: 24px; }
 .cx-head-acts { display: flex; align-items: center; gap: var(--space-2); }
 .cx-back { background: none; border: none; color: var(--accent-text); font-size: var(--fs-md); font-weight: 700; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
 .cx-back:hover { background: var(--accent-soft); }
@@ -850,8 +851,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-end:hover { border-color: var(--accent); color: var(--accent-text); }
 
 /* ── Admin: API keys & providers ─────────────── */
-.drawer.admin { width: min(720px, 96vw); padding: 24px 28px; }   /* wider + roomier — was cramped at 460px */
-.admin-row { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; background: transparent; }
+.drawer.admin { width: min(880px, 98vw); height: calc(100% - 24px); max-height: 800px; padding: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--border); }
+.admin-sidebar { padding: 24px 0 24px 12px; background: color-mix(in srgb, var(--surface) 50%, var(--bg)); }
+.admin-main { padding: 24px 28px 24px 0; }
+.admin-nav-item { padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--text); background: transparent; border: none; text-align: left; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background .15s ease; }
+.admin-nav-item:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.admin-nav-item.on { background: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: var(--shadow-sm); }
+.admin-row { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; background: var(--bg); transition: border-color .2s ease; }
 .admin-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .admin-name { font-size: 15px; font-weight: 700; }
 .admin-note { font-size: 12px; color: var(--muted); }

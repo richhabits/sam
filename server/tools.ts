@@ -1601,7 +1601,7 @@ export async function audioSynthesizeSpeechTool(input: {
   const text = String(input?.text || "").trim();
   if (!text) return "Error: text is required for audio speech synthesis.";
 
-  const speech = generateSpeechAudio(text, input?.voice, { speed: input?.speed });
+  const speech = await generateSpeechAudio(text, input?.voice, { speed: input?.speed });
 
   const lines = [
     `🎙️ Voice Audio Synthesis Ready:`,

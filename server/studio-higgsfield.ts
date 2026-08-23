@@ -266,6 +266,7 @@ export async function generateStoryboardDirector(input: {
   shotCount?: number;
   style?: string;
   character?: CharacterProfile;
+  localOnly?: boolean;
 }): Promise<StoryboardProject> {
   const count = Math.min(Math.max(2, input.shotCount || 4), 8);
   const style = input.style || "Cinematic Hollywood Film";
@@ -294,7 +295,8 @@ Return ONLY valid JSON matching this schema:
   const prompt = `Concept: "${input.concept}"\nVisual Style: ${style}\n${charPrompt ? `Character Anchor: ${charPrompt}` : ""}\nGenerate ${count} shots:`;
 
   try {
-    const res = await runModel("free", system, prompt);
+    const modelTier = input.localOnly ? "local" : "free";
+    const res = await runModel(modelTier, system, prompt);
     const jsonText = (res.text || "").replace(/```json\n?|```/g, "").trim();
     const parsed = JSON.parse(jsonText);
 

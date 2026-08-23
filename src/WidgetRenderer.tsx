@@ -46,6 +46,31 @@ function KanbanWidget({ data }: { data: any }) {
   );
 }
 
+function SmartActionWidget({ data }: { data: any }) {
+  return (
+    <div className="widget-smart-action" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px", marginTop: "12px" }}>
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", letterSpacing: "0.5px", marginBottom: "8px" }}>{data.category}</div>
+      <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }}>{data.title}</div>
+      <div style={{ fontSize: "14px", color: "var(--text)", marginBottom: "12px" }}>{data.summary}</div>
+      
+      {data.details && data.details.length > 0 && (
+        <ul style={{ margin: "0 0 16px 0", paddingLeft: "20px", fontSize: "13px", color: "var(--muted)" }}>
+          {data.details.map((d: string, i: number) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: simple list
+            <li key={i} style={{ marginBottom: "4px" }}>{d}</li>
+          ))}
+        </ul>
+      )}
+      
+      {data.nextSuggestedAction && (
+        <div style={{ fontSize: "13px", fontWeight: 500, color: "var(--accent)" }}>
+          ↳ {data.nextSuggestedAction}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── WIDGET RENDERER ──
 
 const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: { text: string; onFollowUp?: (q: string) => void }) {
@@ -96,6 +121,8 @@ const WidgetRenderer = React.memo(function WidgetRenderer({ text, onFollowUp }: 
             </div>
           </ErrorBoundary>
         );
+      } else if (w.type === "smart-action") {
+        out.push(<ErrorBoundary key={`w${i}`} label="smart-action widget"><SmartActionWidget data={w} /></ErrorBoundary>);
       } else {
         out.push(<div key={`w${i}`} className="widget-error">Unknown widget type: {w.type}</div>);
       }

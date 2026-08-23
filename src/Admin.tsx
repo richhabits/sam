@@ -25,7 +25,6 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
   const [saved, setSaved] = useState("");
   const [saveError, setSaveError] = useState<{ id: string; msg: string } | null>(null);
   const [allowed, setAllowed] = useState<string[]>([]);
-  const [showMore, setShowMore] = useState(false);
   const [integrations, setIntegrations] = useState({ notion: "", slack: "", discord: "", twitter: "", linear: "", vercel: "", linearTeam: "" });
   const [email, setEmail] = useState({ smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", smtpFrom: "", ownerEmail: "" });
   const [emailTest, setEmailTest] = useState("");
@@ -174,21 +173,48 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
     <div className="drawer-wrap" onClick={onClose}>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; onClick only stops backdrop-close propagation */}
       <aside className="drawer admin" onClick={(e) => e.stopPropagation()}>
-        <div className="drawer-head">
-          <div>
-            <div className="drawer-title">API keys &amp; providers</div>
-            <div className="drawer-sub">Paste your free keys — SAM rotates through them so you never hit a limit. Add as many as you like (comma or new line). {totalKeys} loaded.</div>
+        <div className="admin-layout" style={{ display: 'flex', height: '100%' }}>
+          {/* Sidebar */}
+          <div className="admin-sidebar" style={{ width: 220, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', paddingRight: 20 }}>
+            <div className="drawer-title" style={{ marginBottom: 24, paddingLeft: 12 }}>Settings</div>
+            <div className="admin-nav" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button type="button" aria-selected={atab === "brains"} className={`admin-nav-item ${atab === "brains" ? "on" : ""}`} onClick={() => setAtab("brains")}>
+                <Icon name="brain" size={16} /> Brains
+              </button>
+              <button type="button" aria-selected={atab === "media"} className={`admin-nav-item ${atab === "media" ? "on" : ""}`} onClick={() => setAtab("media")}>
+                <Icon name="studio" size={16} /> Media
+              </button>
+              <button type="button" aria-selected={atab === "apps"} className={`admin-nav-item ${atab === "apps" ? "on" : ""}`} onClick={() => setAtab("apps")}>
+                <Icon name="link" size={16} /> Apps
+              </button>
+              <button type="button" aria-selected={atab === "devices"} className={`admin-nav-item ${atab === "devices" ? "on" : ""}`} onClick={() => setAtab("devices")}>
+                <Icon name="phone" size={16} /> Devices
+              </button>
+              <button type="button" aria-selected={atab === "safety"} className={`admin-nav-item ${atab === "safety" ? "on" : ""}`} onClick={() => setAtab("safety")}>
+                <Icon name="lock" size={16} /> Safety
+              </button>
+            </div>
+            <div style={{ marginTop: 'auto', paddingLeft: 12 }}>
+              <UsageTracker pools={cfg?.pools || []} />
+            </div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
-        </div>
-
-        <div className="pop-tabs adm-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={atab === "brains"} className={atab === "brains" ? "on" : ""} onClick={() => setAtab("brains")}>Brains</button>
-          <button type="button" role="tab" aria-selected={atab === "media"} className={atab === "media" ? "on" : ""} onClick={() => setAtab("media")}>Media</button>
-          <button type="button" role="tab" aria-selected={atab === "apps"} className={atab === "apps" ? "on" : ""} onClick={() => setAtab("apps")}>Apps</button>
-          <button type="button" role="tab" aria-selected={atab === "devices"} className={atab === "devices" ? "on" : ""} onClick={() => setAtab("devices")}>Devices</button>
-          <button type="button" role="tab" aria-selected={atab === "safety"} className={atab === "safety" ? "on" : ""} onClick={() => setAtab("safety")}>Safety</button>
-        </div>
+          
+          {/* Main Content */}
+          <div className="admin-main" style={{ flex: 1, paddingLeft: 30, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div className="drawer-head" style={{ marginBottom: 24 }}>
+              <div>
+                <div className="drawer-title">
+                  {atab === "brains" ? "API keys & providers" : 
+                   atab === "media" ? "Media & Canvas" : 
+                   atab === "apps" ? "Connected Apps" : 
+                   atab === "devices" ? "Paired Devices" : "Safety & System"}
+                </div>
+                <div className="drawer-sub">
+                  {atab === "brains" ? `Paste your free keys — SAM rotates through them. ${totalKeys} loaded.` : ""}
+                </div>
+              </div>
+              <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+            </div>
         {atab === "brains" && (() => {
           const row = (p: Prov) => (
             <div key={p.id} className={`admin-row${openRow === p.id ? " open" : ""}`}>
@@ -246,15 +272,14 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
                   </div>
                 ))}
               </div>
-              <UsageTracker pools={cfg?.pools || []} />
               <div className="admin-lead"><b>All free.</b> Grab a key from as many as you like — SAM spreads work across them all (sipping each lightly so your free quotas last), and hops on when one's busy. {activeKeys > 0 ? `You've got ${activeKeys} provider${activeKeys === 1 ? "" : "s"} connected.` : "Start with one — 2 minutes."} <span style={{ opacity: .8 }}>Even with zero keys, SAM falls back to a no-key free brain + local Ollama — so it never goes dark.</span></div>
-              {starters.map(row)}
-              <button type="button" className="admin-more" onClick={() => setShowMore((v) => !v)}>
-                {showMore ? "▾ Hide extra free brains" : `▸ ＋ ${moreFree.length} more FREE brains — stack them for more free capacity`}
-              </button>
-              {showMore && moreFree.map(row)}
-              <div className="admin-sub">Premium (paid — optional, only used if you pick “Best”)</div>
-              {premium.map(row)}
+              <div className="admin-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {starters.map(row)}
+                <div className="admin-cat">More free brains</div>
+                {moreFree.map(row)}
+                <div className="admin-cat" style={{ marginTop: 30 }}>Premium brains (require paid credits)</div>
+                {premium.map(row)}
+              </div>
             </>
           );
         })()}
@@ -475,6 +500,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
 
         </>)}
         <div className="admin-foot">Keys are stored only on this computer (your .env). SAM never shows them back.</div>
+          </div>
+        </div>
       </aside>
     </div>
   );

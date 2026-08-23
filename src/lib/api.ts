@@ -39,6 +39,16 @@ export async function command(message: string, projectId?: string, tier?: string
   return res.json();
 }
 
+export async function executeSmartAction(intent: string): Promise<any> {
+  const res = await fetch("/api/smart-action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ intent }),
+  });
+  if (!res.ok) throw await apiError(res);
+  return res.json();
+}
+
 // Turn a failed response into a typed error so the UI can tell auth failures apart from provider or
 // network failures — instead of every catch guessing (the camera's old "need a Gemini key" blamed the
 // key for ANY failure and nearly got a security gate turned off). `locked` = this device isn't paired.

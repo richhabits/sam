@@ -1006,6 +1006,8 @@ export default function App() {
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
     if (cmd === "/share") { try { navigator.clipboard.writeText("SAM — a free, private AI with a team of agents that runs on your Mac. https://richhabits.github.io/sam/"); sysNote("📣 Copied the SAM pitch + link — paste it anywhere to share."); } catch { sysNote("Couldn't copy — the link is: https://richhabits.github.io/sam/"); } return true; }
+    if (v.toLowerCase().startsWith("/smart ")) { send(v); return true; }
+    if (cmd === "/smart") { sysNote("Run a Smart Action: /smart <intent> — e.g. /smart workspace status or /smart cinematic video"); return true; }
     if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6), "team"); return true; }
     if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
     if (v.toLowerCase().startsWith("/ninjas ")) { runTheTeam(v.slice(8), "ninjas"); return true; }
