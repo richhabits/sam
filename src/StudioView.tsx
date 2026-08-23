@@ -414,12 +414,14 @@ export default function StudioView() {
             }}>
             <Icon name={isPlaying ? "pause" : "play"} size={12} /> {isPlaying ? "PAUSE" : "PLAY (SPACE)"}
           </button>
-          <span style={{ cursor: "pointer" }} onClick={() => showToast("Cloud Render Hub Connected (12 nodes ready)")} title="Cloud Render Status">
-            <Icon name="cloud" size={14} />
-          </span>
-          <span style={{ cursor: "pointer", color: theaterMode ? "#D9A05B" : "#888" }} onClick={() => { setTheaterMode(!theaterMode); showToast(theaterMode ? "Director View" : "Cinema Canvas View"); }} title="Toggle Cinema Layout">
+          <button
+            type="button"
+            style={{ background: "transparent", color: theaterMode ? "#D9A05B" : "#888", border: "none", cursor: "pointer", padding: 0 }}
+            onClick={() => { setTheaterMode(!theaterMode); showToast(theaterMode ? "Director View" : "Cinema Canvas View"); }}
+            title="Toggle Cinema Layout"
+          >
             <Icon name="grid" size={14} />
-          </span>
+          </button>
         </div>
       </header>
 

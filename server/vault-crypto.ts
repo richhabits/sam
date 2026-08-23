@@ -51,10 +51,12 @@ function keychainStore(keyHex: string): boolean {
     }
     if (process.platform === "win32") {
       // DPAPI-protected file (per-user). Best-effort; a real build may use a native module.
+      const pathB64 = Buffer.from(join(VAULT_DIR, "keychain.dpapi")).toString("base64");
       execFileSync("powershell", ["-NoProfile", "-Command",
+        `$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${pathB64}'));` +
         `$b=[Text.Encoding]::UTF8.GetBytes('${keyHex}');` +
         `$p=[Security.Cryptography.ProtectedData]::Protect($b,$null,'CurrentUser');` +
-        `[IO.File]::WriteAllBytes('${join(VAULT_DIR, "keychain.dpapi").replace(/\\/g, "\\\\")}',$p)`], { stdio: "ignore" });
+        `[IO.File]::WriteAllBytes($path,$p)`], { stdio: "ignore" });
       return true;
     }
   } catch { /* keychain unavailable */ }
@@ -69,8 +71,10 @@ function keychainRetrieve(): string | null {
     if (process.platform === "win32") {
       const f = join(VAULT_DIR, "keychain.dpapi");
       if (!existsSync(f)) return null;
+      const pathB64 = Buffer.from(f).toString("base64");
       return execFileSync("powershell", ["-NoProfile", "-Command",
-        `$p=[IO.File]::ReadAllBytes('${f.replace(/\\/g, "\\\\")}');` +
+        `$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${pathB64}'));` +
+        `$p=[IO.File]::ReadAllBytes($path);` +
         `$b=[Security.Cryptography.ProtectedData]::Unprotect($p,$null,'CurrentUser');` +
         `[Text.Encoding]::UTF8.GetString($b)`], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
     }

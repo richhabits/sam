@@ -7,6 +7,7 @@ import { startWakeListener } from "./lib/wake";
 import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
 import { isStopCommand } from "./lib/stopIntent";
 import WidgetRenderer from "./WidgetRenderer";
+import { ErrorBoundary } from "./ErrorBoundary";
 import ChatList, { displayTitle } from "./ChatList";
 import { matchesQuery } from "./lib/chatTitle";
 import { type Capability, GROUP_LABELS, groupCapabilities } from "./lib/capabilities";
@@ -167,7 +168,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
               <Icon name="brain" size={13} />
             </div>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>
-              Auto Free Brains - Claude 3.5 Sonnet
+              SAM{m.how ? ` · ${m.how}` : ""}
             </span>
           </div>
 
@@ -2105,31 +2106,7 @@ export default function App() {
           </>
         )}
 
-        {/* Live AI Routing Engine Telemetry Card */}
-        <div style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 'auto', flexShrink: 0 }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#F3F4F6' }}>Live AI Routing Engine Status</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0' }}>
-            <div className="siren-glow-container" style={{ position: 'relative', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="siren-glow" style={{ width: 22, height: 22, borderRadius: '50%', background: 'radial-gradient(circle, #4ADE80 20%, #22C55E 80%)', boxShadow: '0 0 16px #4ADE80, inset 0 2px 4px rgba(255,255,255,0.8)' }} />
-            </div>
-            <svg width="130" height="28" viewBox="0 0 130 28" fill="none">
-              <title>AI routing engine activity waveform</title>
-              <path d="M0 14 C30 14 40 4 75 4 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />
-              <path d="M0 14 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.6" />
-              <path d="M0 14 C30 14 40 24 75 24 H130" stroke="#22C55E" strokeWidth="1.5" strokeOpacity="0.8" />
-              <circle cx="128" cy="4" r="2.5" fill="#4ADE80" />
-              <circle cx="128" cy="14" r="2.5" fill="#4ADE80" />
-              <circle cx="128" cy="24" r="2.5" fill="#4ADE80" />
-            </svg>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#F3F4F6' }}>Processing Request</div>
-            <div style={{ fontSize: '12px', color: '#8A909D' }}>Model: Claude 3.5 Sonnet</div>
-            <div style={{ fontSize: '12px', color: '#22C55E', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px #22C55E' }} /> Status: Online
-            </div>
-          </div>
-        </div>
+
       </aside>
       {ctxOpen && (
         // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close on Escape below
@@ -2471,7 +2448,7 @@ export default function App() {
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} onAllProviders={() => { setWizardOpen(false); setAdminOpen(true); }} />}
-        {dashOpen && <Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} />}
+        {dashOpen && <ErrorBoundary label="dashboard"><Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} /></ErrorBoundary>}
         {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}
         {learnedOpen && <LearnedPane onClose={() => setLearnedOpen(false)} />}
         {workflowsOpen && <WorkflowsPane onClose={() => setWorkflowsOpen(false)} />}

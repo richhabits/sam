@@ -1330,7 +1330,25 @@ app.post("/api/intent/disambiguate", (req, res) => {
   res.json(disambiguateUserIntent(prompt || "", contextHints));
 });
 
-app.post("/api/research/deep", async (req, res) => {
+const aiRateLimitCounts = new Map<string, { count: number; windowStart: number }>();
+const AI_RATE_LIMIT_WINDOW_MS = 60_000;
+const AI_RATE_LIMIT_MAX = 30;
+function basicRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || req.socket?.remoteAddress || "unknown";
+  const now = Date.now();
+  const record = aiRateLimitCounts.get(ip);
+  if (!record || now - record.windowStart > AI_RATE_LIMIT_WINDOW_MS) {
+    aiRateLimitCounts.set(ip, { count: 1, windowStart: now });
+    return next();
+  }
+  if (record.count >= AI_RATE_LIMIT_MAX) {
+    return res.status(429).json({ error: "Too many requests to this unauthenticated route. Please slow down." });
+  }
+  record.count++;
+  next();
+}
+
+app.post("/api/research/deep", basicRateLimit, async (req, res) => {
   const { query, mode } = req.body as { query: string; mode?: "fast" | "comprehensive" };
   const depth = mode === "comprehensive" ? "exhaustive" : "quick";
   const result = await conductDeepResearch(
@@ -1341,20 +1359,20 @@ app.post("/api/research/deep", async (req, res) => {
   res.json({ report: result, dossier: compileExecutiveDossier(result) });
 });
 
-app.post("/api/micro-solver", (req, res) => {
+app.post("/api/micro-solver", basicRateLimit, (req, res) => {
   const { input } = req.body as { input: string };
   res.json(trySolveLocally(input || ""));
 });
 
-app.get("/api/system/space-audit", (req, res) => {
+app.get("/api/system/space-audit", basicRateLimit, (req, res) => {
   res.json(auditSpaceConsumption());
 });
 
-app.post("/api/system/space-compact", (req, res) => {
+app.post("/api/system/space-compact", basicRateLimit, (req, res) => {
   res.json(compactSpaceAndMemory());
 });
 
-app.get("/api/system/savings", (req, res) => {
+app.get("/api/system/savings", basicRateLimit, (req, res) => {
   res.json(getSavingsSummary());
 });
 app.post("/api/context/prewarm", (req, res) => {

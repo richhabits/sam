@@ -87,9 +87,9 @@ const rootFallback = (
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary label="app root" fallback={rootFallback}>
-    {whichApp === "studio" ? <Suspense fallback={null}><StudioView /></Suspense>
-    : whichApp === "flipit" ? <Suspense fallback={null}><FlipItView /></Suspense>
-    : whichApp === "yard" ? <Suspense fallback={null}><YardView /></Suspense>
+    {whichApp === "studio" ? <Suspense fallback={null}><ErrorBoundary label="studio"><StudioView /></ErrorBoundary></Suspense>
+    : whichApp === "flipit" ? <Suspense fallback={null}><ErrorBoundary label="flipit"><FlipItView /></ErrorBoundary></Suspense>
+    : whichApp === "yard" ? <Suspense fallback={null}><ErrorBoundary label="yard"><YardView /></ErrorBoundary></Suspense>
     : <App />}
   </ErrorBoundary>
 );

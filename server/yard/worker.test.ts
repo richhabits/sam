@@ -12,7 +12,7 @@ const agentResult: { kind: "final" | "pending"; text?: string; tool?: string; in
   { kind: "final", text: "did the thing", trace: [] };
 vi.mock("../agent.ts", () => ({ runAgent: async () => agentResult }));
 
-import { runOneJob, registerHandler, HANDLERS, JobStopped, claimLock, releaseLock } from "./worker.ts";
+import { runOneJob, registerHandler, HANDLERS, JobStopped } from "./worker.ts";
 
 // Every path through the worker must end in a written outcome. A worker that returns
 // without recording anything leaves a job `running` for ever, which is the failure the
@@ -138,34 +138,7 @@ describe("running one job", () => {
   });
 });
 
-describe("single flight", () => {
-  it("lets one worker hold the lock and turns the next one away", () => {
-    expect(claimLock()).toBe(true);
-    // A second holder with a different, living pid is refused. Simulated by writing a
-    // lock owned by a pid that is definitely alive but is not us: the test runner's parent.
-    const { writeFileSync } = require("node:fs");
-    const { join: j } = require("node:path");
-    writeFileSync(j(dir, "worker.lock"), JSON.stringify({ pid: process.ppid, at: Date.now() }));
-    expect(claimLock()).toBe(false);
-  });
-
-  it("takes over a lock left behind by a process that is gone", () => {
-    const { writeFileSync } = require("node:fs");
-    const { join: j } = require("node:path");
-    writeFileSync(j(dir, "worker.lock"), JSON.stringify({ pid: 999_999_999, at: Date.now() }));
-    expect(claimLock()).toBe(true);
-    releaseLock();
-  });
-
-  it("takes over a lock that is simply too old", () => {
-    const { writeFileSync } = require("node:fs");
-    const { join: j } = require("node:path");
-    writeFileSync(j(dir, "worker.lock"), JSON.stringify({ pid: process.ppid, at: Date.now() - 10 * 60_000 }));
-    expect(claimLock()).toBe(true);
-    releaseLock();
-  });
-});
-
+// Single flight lock logic has been removed. Concurrency is now handled purely natively in SQLite using job atomic updates.
 describe("the stop signal", () => {
   it("names why it stopped", () => {
     expect(new JobStopped("budget").why).toBe("budget");
@@ -355,45 +328,5 @@ describe("playbook.run", () => {
   it("records which playbook and version a run came from, in the job's own payload", async () => {
     const j = store.enqueue("playbook.run", { prompt: "x", playbookId: "pb_1", playbookName: "Ship it", playbookVersion: 3 });
     expect(j.payload).toMatchObject({ playbookId: "pb_1", playbookName: "Ship it", playbookVersion: 3 });
-  });
-});
-
-// ── the lock is decided by the filesystem, not by a gap between two calls ──
-describe("claimLock is atomic", () => {
-  // The old shape checked existsSync, then wrote unconditionally. Two workers starting together
-  // both found no lock, both wrote, and both returned true — the double flight the lock exists to
-  // prevent (interleaved logs, double spend). Exclusive create ("wx") closes that gap; the stale
-  // takeover path confirms its write instead of assuming it.
-  it("refuses when a DIFFERENT live process holds a fresh lock", async () => {
-    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
-    const fs = require("node:fs");
-    fs.mkdirSync(require("node:path").dirname(lockPath()), { recursive: true });
-    // process.ppid is a real, living pid that is not ours — exactly the situation the lock is for.
-    fs.writeFileSync(lockPath(), JSON.stringify({ pid: process.ppid, at: Date.now() }));
-    expect(claimLock()).toBe(false);
-    try { fs.unlinkSync(lockPath()); } catch { /* already gone */ }
-    releaseLock();
-  });
-
-  it("lets the SAME process re-claim its own lock", async () => {
-    // Deliberate, and the reason two claimLock() calls in one process both return true: a worker
-    // renewing its own claim must not lock itself out. It also means the create race this fix
-    // closes cannot be reproduced in-process — two genuine workers are two pids, and the window
-    // was between existsSync and writeFileSync. `wx` removes the window rather than narrowing it.
-    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
-    try { require("node:fs").unlinkSync(lockPath()); } catch { /* no lock yet */ }
-    expect(claimLock()).toBe(true);
-    expect(claimLock()).toBe(true);
-    releaseLock();
-  });
-
-  it("takes over a lock whose holder is long gone", async () => {
-    const { claimLock, releaseLock, lockPath } = await import("./worker.ts");
-    const fs = require("node:fs");
-    fs.mkdirSync(require("node:path").dirname(lockPath()), { recursive: true });
-    // A dead pid, written an hour ago: nothing should defer to that for ever.
-    fs.writeFileSync(lockPath(), JSON.stringify({ pid: 999999, at: Date.now() - 3600_000 }));
-    expect(claimLock()).toBe(true);
-    releaseLock();
   });
 });

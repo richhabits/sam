@@ -107,19 +107,23 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
 
   useEffect(() => {
     const load = () => {
-      getStatus().then(setS).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-      getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-      getSecurity().then((d) => setSec(d.status)).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-      getSwarms().then(setSwarms).catch(() => {/* background poll — the next tick retries */});
-      getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-      getSchedules().then(setSchedules).catch(() => {/* best-effort — nothing user-visible depends on this succeeding */});
-      getYard().then(setYard).catch(() => {/* the yard may be off, or this SAM may not have it — the tile simply stays hidden */});
-      // Only the app gets a list back; a browser is told nothing about who else is waiting.
-      yardPairPending().then(setPairInbox).catch(() => {/* not the app — nothing to approve here */});
-      refreshDevices();
-      refreshActivity();
+      if (tab === "overview" || tab === "brains") getStatus().then(setS).catch(() => {});
+      if (tab === "overview") getSecurity().then((d) => setSec(d.status)).catch(() => {});
+      
       if (tab === "auto") {
+        getSwarms().then(setSwarms).catch(() => {});
+        getSchedules().then(setSchedules).catch(() => {});
+        getYard().then(setYard).catch(() => {});
+        yardPairPending().then(setPairInbox).catch(() => {});
         Promise.all([getSpaceAudit(), getSavings()]).then(([audit, savings]) => setSysHealth({ audit, savings })).catch(() => {});
+      }
+
+      if (tab === "people") getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {});
+      if (tab === "devices") refreshDevices();
+      
+      if (tab === "activity" || tab === "overview") {
+        getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
+        refreshActivity();
       }
     };
     load();

@@ -33,55 +33,9 @@ import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 const IDLE_POLL_MS = 1000;
 const LOCK_STALE_MS = 60_000;
 
-// ── Single flight ───────────────────────────────────────────────────────────
-// Two workers would both make progress and both be right, but the operator would
-// see interleaved logs and double spend. A lock file with a pid is enough: a stale
-// one (dead pid, or simply too old) is taken over rather than deferred to for ever.
-export function lockPath(): string { return join(yardDir(), "worker.lock"); }
-
-function pidAlive(pid: number): boolean {
-  try { process.kill(pid, 0); return true; } catch { return false; }
-}
-
-export function claimLock(now = Date.now()): boolean {
-  const dir = yardDir();
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const p = lockPath();
-  const mine = JSON.stringify({ pid: process.pid, at: now });
-
-  // EXCLUSIVE CREATE, not check-then-write. The old shape was:
-  //     if (existsSync(p)) { …decide… }
-  //     writeFileSync(p, mine); return true;
-  // Two workers starting together both found no lock, both wrote, and both returned true —
-  // the exact double flight this lock exists to prevent, and the one the comment above
-  // describes: interleaved logs and double spend. `wx` fails if the file exists, so the
-  // create is decided by the filesystem instead of by a gap between two calls.
-  try {
-    writeFileSync(p, mine, { flag: "wx" });
-    return true;
-  } catch { /* someone holds it — fall through and judge whether they still deserve to */ }
-
-  try {
-    const held = JSON.parse(readFileSync(p, "utf8"));
-    const fresh = now - Number(held.at || 0) < LOCK_STALE_MS;
-    if (fresh && held.pid !== process.pid && pidAlive(Number(held.pid))) return false;
-  } catch { /* unreadable lock is a dead lock — take it */ }
-
-  // Taking over a stale lock. Two workers can still decide that at the same instant, so the
-  // write is CONFIRMED rather than assumed: whoever's pid is on disk afterwards is the holder,
-  // and the loser backs off instead of both proceeding on a claim neither checked.
-  writeFileSync(p, mine);
-  try { return JSON.parse(readFileSync(p, "utf8")).pid === process.pid; } catch { return false; }
-}
-export function refreshLock(now = Date.now()) {
-  try { writeFileSync(lockPath(), JSON.stringify({ pid: process.pid, at: now })); } catch { /* best effort */ }
-}
-export function releaseLock() {
-  try {
-    const held = JSON.parse(readFileSync(lockPath(), "utf8"));
-    if (held.pid === process.pid) unlinkSync(lockPath());
-  } catch { /* not ours, or already gone */ }
-}
+// ── Single flight (Removed) ──────────────────────────────────────────────────
+// Concurrency is now safely handled natively via store.claim's atomic UPDATE
+// (WHERE id=? AND state='queued') and SQLite's ACID guarantees around store.meter().
 
 // ── Job logs ────────────────────────────────────────────────────────────────
 const LOG_CAP = 2 * 1024 * 1024;
@@ -622,7 +576,7 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
   if (!job) return null;
 
   const log = new JobLog(job.logPath ?? jobLogPath(job.id));
-  const beat = setInterval(() => { store.heartbeat(job.id); refreshLock(); }, HEARTBEAT_MS);
+  const beat = setInterval(() => { store.heartbeat(job.id); }, HEARTBEAT_MS);
 
   // Steps this attempt has declared, in order. Starts empty even on a retry (the store
   // clears steps_json when it requeues a failed job) — a fresh attempt gets a fresh
@@ -692,9 +646,9 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
 }
 
 // A worker exists to serve one supervisor. If that supervisor dies, this process is
-// reparented to init and would otherwise keep running for ever — claiming jobs, holding
-// the lock, and quietly accumulating one orphan per restart until something looks at the
-// process list. Noticing is cheap, so it is checked every time round the loop.
+// reparented to init and would otherwise keep running for ever — claiming jobs and
+// quietly accumulating one orphan per restart until something looks at the process list.
+// Noticing is cheap, so it is checked every time round the loop.
 export function orphaned(): boolean {
   return process.ppid === 1;
 }
@@ -705,7 +659,6 @@ export async function workerLoop(store: JobStore, opts: { stop?: () => boolean; 
   while (!stop()) {
     if (alone()) {
       console.log("the yard: the server that started this worker is gone — standing down");
-      releaseLock();
       return;
     }
     store.reapAbandoned();
@@ -726,19 +679,14 @@ export function isWorkerEntrypoint(argv1: string | undefined): boolean {
 }
 const runDirectly = isWorkerEntrypoint(process.argv[1]);
 if (runDirectly) {
-  if (!claimLock()) {
-    console.log("the yard: another worker already holds the lock — standing down");
-    process.exit(0);
-  }
   const store = new JobStore();
   let stopping = false;
-  const shutdown = () => { stopping = true; releaseLock(); store.close(); process.exit(0); };
+  const shutdown = () => { stopping = true; store.close(); process.exit(0); };
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
   console.log(`the yard: worker up (pid ${process.pid})`);
   workerLoop(store, { stop: () => stopping }).catch((e) => {
     console.error("the yard: worker loop died —", e?.message || e);
-    releaseLock();
     process.exit(1);
   });
 }

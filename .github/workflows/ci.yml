@@ -35,6 +35,8 @@ jobs:
       # Lint gate — Biome. Fails the build on ERROR-level rules only (warnings are advisory and
       # don't block). Keeps the codebase born-clean without churning the intentional dense style.
       - run: npm run lint
+      # Orphan check — fails if any exports in the codebase are unimported elsewhere.
+      - run: npm run check:orphans
       # The Warden — SAM's security-regression gate. Runs FIRST and by name so a guardrail regression
       # (SSRF/Handshake/Safe-at-rest/redaction/local→cloud/CORS/Host/denylist/pending) fails the build
       # unmistakably, not buried in the full suite. Deterministic, defensive — SAM tested against SAM.
