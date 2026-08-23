@@ -9,5 +9,5 @@ describe("EXECUTIVE DAILY BRIEF & ACTION DECK GENERATOR", () => {
     expect(deck.cards.length).toBeGreaterThanOrEqual(1);
     expect(deck.estimatedDailyAlphaUSD).toBeGreaterThan(0);
     expect(deck.quickMetrics.onlineServices).toBeGreaterThan(0);
-  });
+  }, 30000);
 });

@@ -67,12 +67,11 @@ export async function processNextStudioJob() {
   console.log(`[Studio Queue] Processing job ${job.id}: "${job.concept}"`);
 
   try {
-    // Run the actual generation (using localOnly override to save money)
+    // Run the actual generation
     const storyboard = await generateStoryboardDirector({
       concept: job.concept,
       style: job.style,
       shotCount: 4,
-      localOnly: true, // Crucial for zero-cost automation
     });
 
     // Compile into timeline

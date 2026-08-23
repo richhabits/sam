@@ -59,31 +59,36 @@ export async function generateSpeechAudio(
     waveform.push(Number(val.toFixed(2)));
   }
 
-  let audioBase64Stub = `data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAA...`;
-
-  if (process.platform === "darwin") {
-    try {
-      const tempId = `say_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-      const outPath = join(tmpdir(), `${tempId}.m4a`);
-      
-      // Map voices to local macOS voices
-      let localVoice = "Daniel";
-      if (voiceId === "alex_cohost") localVoice = "Samantha";
-      if (voiceId === "nova_calm") localVoice = "Serena";
-      if (voiceId === "echo_deep") localVoice = "Alex";
-
-      // execFile with an argument array, not exec with an interpolated string: `clean` can
-      // contain attacker-controlled text (this runs from an agent tool call, reachable from
-      // whatever the agent just read off the web/an email), and no amount of quote-escaping
-      // stops shell metacharacters like $(...) or backticks from being interpreted inside a
-      // shell string. Passing args directly bypasses the shell, so there's nothing to escape.
-      await execFileAsync("say", ["-v", localVoice, clean, "-o", outPath, "--data-format=aac"]);
-      const audioBuffer = await readFile(outPath);
-      audioBase64Stub = `data:audio/mp4;base64,${audioBuffer.toString("base64")}`;
-      await unlink(outPath).catch(() => {});
-    } catch (error) {
-      console.warn("Failed to generate local TTS using say command:", error);
+  let audioBase64Stub = "";
+  try {
+    const EL_KEY = process.env.ELEVENLABS_API_KEY || "";
+    if (EL_KEY) {
+      const EL_VOICE = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+      const EL_MODEL = process.env.ELEVENLABS_MODEL || "eleven_turbo_v2_5";
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}?output_format=mp3_44100_128`, {
+        method: "POST", headers: { "xi-api-key": EL_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, model_id: EL_MODEL, voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35 } }),
+      });
+      if (r.ok) {
+        const buf = await r.arrayBuffer();
+        audioBase64Stub = `data:audio/mp3;base64,${Buffer.from(buf).toString("base64")}`;
+      }
     }
+    
+    // Fallback to real Pollinations TTS if no ElevenLabs key
+    if (!audioBase64Stub) {
+      const r = await fetch(`https://text.pollinations.ai/${encodeURIComponent(clean)}?model=openai-audio&voice=nova`, { signal: AbortSignal.timeout(30000) });
+      if (r.ok) {
+        const buf = await r.arrayBuffer();
+        audioBase64Stub = `data:audio/mp3;base64,${Buffer.from(buf).toString("base64")}`;
+      }
+    }
+  } catch (err) {
+    console.error("Live TTS failed:", err);
+  }
+
+  if (!audioBase64Stub) {
+     audioBase64Stub = `data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAA...`;
   }
 
   return {

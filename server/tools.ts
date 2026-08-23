@@ -329,7 +329,7 @@ const ROTATING_UAS = [
 function randomUA() { return ROTATING_UAS[Math.floor(Math.random() * ROTATING_UAS.length)]; }
 
 // A fully keyless, free, rotating search pool that bypasses rate limits automatically.
-async function webSearch(q: string): Promise<string> {
+export async function webSearch(q: string): Promise<string> {
   const query = encodeURIComponent(q);
   const out: string[] = [];
   const strip = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();

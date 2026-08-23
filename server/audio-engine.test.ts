@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   generateSpeechAudio,
   synthesizeDialogueAudio,
@@ -7,13 +7,25 @@ import {
 import { audioSynthesizeSpeechTool } from "./tools.ts";
 
 describe("Streaming Voice & Audio Engine", () => {
+  // generateSpeechAudio calls out to ElevenLabs/Pollinations over the real network.
+  // A test suite must not depend on a live third-party service — slow, flaky, and it
+  // hits Pollinations' free tier on every CI run and every contributor's `npm test`.
+  // Stub fetch so these exercise the function's own logic (voice selection, cue timing,
+  // fallback-to-stub-on-no-key), not a network round trip.
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3, 4]).buffer, { status: 200 })
+    );
+  });
+  afterEach(() => { fetchSpy.mockRestore(); });
+
   it("generates speech audio with simulated waveform and duration", async () => {
     const res = await generateSpeechAudio("Welcome back to SAM. All trading ladders are operational.", "sam_host");
     expect(res.voice.id).toBe("sam_host");
     expect(res.durationSeconds).toBeGreaterThan(0);
     expect(res.waveformSample.length).toBe(32);
     expect(res.audioFormat).toBe("mp3");
-    // Since we're on mac, this might be mp4 instead of mp3 now, so we check for base64 generally
     expect(res.audioBase64Stub).toContain(";base64,");
   });
 
@@ -33,7 +45,7 @@ describe("Streaming Voice & Audio Engine", () => {
     expect(dialogue.totalDurationSeconds).toBeGreaterThan(0);
   });
 
-  it("runs audioSynthesizeSpeechTool", async () => {
+  it("audioSynthesizeSpeechTool returns expected action format", async () => {
     const out = await audioSynthesizeSpeechTool({
       text: "System status check complete.",
       voice: "echo_deep",
@@ -41,5 +53,11 @@ describe("Streaming Voice & Audio Engine", () => {
     expect(out).toContain("Voice Audio Synthesis Ready");
     expect(out).toContain("Echo");
     expect(out).toContain("32-Bin Waveform:");
+  });
+
+  it("falls back to the stub when the network is unavailable", async () => {
+    fetchSpy.mockRejectedValue(new Error("network unreachable"));
+    const res = await generateSpeechAudio("Offline fallback check.", "sam_host");
+    expect(res.audioBase64Stub).toContain(";base64,");
   });
 });

@@ -1,6 +1,4 @@
 import { checkFlipItAlerts } from "../server/flipit.ts";
-import { FlipItLocalSimulator } from "../server/flipit-local-simulator.ts";
-import { submitPolymarketClobOrder } from "../server/flipit-execution.ts";
 import { processNextStudioJob } from "../server/studio-queue.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "../server/space-compactor.ts";
 import { prewarmContext } from "../server/prefetch.ts";
@@ -20,23 +18,9 @@ async function daemonTick() {
       console.log(`[FlipIt] Triggered alert: ${alert}`);
     }
 
-    // 2. Simulated Portfolio Auto-Rebalancer (Paper/Simulated Mode)
-    console.log(`[FlipIt Simulator] Generating mock heartbeat transactions to emulate 24/7 market activity...`);
-    const sim = new FlipItLocalSimulator();
-    
-    // Simulate price fluctuation
-    sim.simulateOrderBookTick("binance", "BTC/GBP", 60000 + Math.random() * 500, 60010 + Math.random() * 500);
-    
-    // Actually submit a mock clob order to exercise the execution engine locally and write history
-    const res = await submitPolymarketClobOrder(
-      { tokenId: "BTC_MOCK_TOKEN", price: 0.5, size: Math.floor(Math.random() * 10) + 1, side: "BUY" },
-      { address: "0xSimulatedPaperWallet", apiKey: "SimulatedApiKey" },
-      { fetcher: sim.getMockFetcher() as any }
-    );
-    
-    if (res.success) {
-       console.log(`[FlipIt Simulator] Successfully injected paper trade: ${res.orderId}`);
-    }
+    // 2. Real Market Alerts (Polymarket CLOB)
+    // Removed local simulator: Daemon only runs live data pipelines.
+
 
     // 3. Studio Queue processing (Local Only)
     const studioJobId = await processNextStudioJob();

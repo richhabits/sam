@@ -48,7 +48,7 @@ import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
 import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
 import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
 import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
-import { TOOLS, benchmarkBrains } from "./tools.ts";
+import { TOOLS, benchmarkBrains, webSearch } from "./tools.ts";
 import { quotes as marketQuotes } from "./markets.ts";
 import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colosseum.ts";
 import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./memory.ts";
@@ -143,6 +143,10 @@ import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provi
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { getScaleStatus } from "./scale-100m.ts";
 import { generateExecutiveDailyDeck } from "./executive-deck.ts";
+import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
+import { trySolveLocally } from "./local-micro-solver.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { getSavingsSummary } from "./cost-optimizer.ts";
 import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
 import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
@@ -1327,6 +1331,34 @@ app.post("/api/smart-action", async (req, res) => {
   const { intent } = req.body as { intent: string };
   const result = await executeSmartAction(intent || "");
   res.json(result);
+});
+
+app.post("/api/research/deep", async (req, res) => {
+  const { query, mode } = req.body as { query: string; mode?: "fast" | "comprehensive" };
+  const depth = mode === "comprehensive" ? "exhaustive" : "quick";
+  const result = await conductDeepResearch(
+    query,
+    { search: webSearch, synthesize: (system, prompt) => runModel("free", system, prompt) },
+    { depth },
+  );
+  res.json({ report: result, dossier: compileExecutiveDossier(result) });
+});
+
+app.post("/api/micro-solver", (req, res) => {
+  const { input } = req.body as { input: string };
+  res.json(trySolveLocally(input || ""));
+});
+
+app.get("/api/system/space-audit", (req, res) => {
+  res.json(auditSpaceConsumption());
+});
+
+app.post("/api/system/space-compact", (req, res) => {
+  res.json(compactSpaceAndMemory());
+});
+
+app.get("/api/system/savings", (req, res) => {
+  res.json(getSavingsSummary());
 });
 app.post("/api/context/prewarm", (req, res) => {
   const { topics } = req.body as { topics?: string[] };
