@@ -4,7 +4,7 @@ import Icon from "./Icon";
 import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
   pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
   getPairedDevices, pairNew, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant,
-  getDeviceActivity, type ActivityEntry } from "./lib/api";
+  getDeviceActivity, type ActivityEntry, getSpaceAudit, getSavings, runSpaceCompact, runMicroSolver } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.
@@ -23,6 +23,13 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [people, setPeople] = useState<any[]>([]);
   const [yard, setYard] = useState<any>(null);
   const [yardErr, setYardErr] = useState<string>("");
+  const [sysHealth, setSysHealth] = useState<{ audit?: any; savings?: any }>({});
+  const [microSolverInput, setMicroSolverInput] = useState("");
+  const [microSolverRes, setMicroSolverRes] = useState<any>(null);
+  // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
+  // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
+  const [tab, setTab] = useState<"overview" | "brains" | "auto" | "devices" | "people" | "activity">("overview");
+  const [showAllLanes, setShowAllLanes] = useState(false);
   // Pairing has two sides and this one component is both, because it is the same bundle:
   // in a browser it ASKS, in the desktop app (which holds the passkey) it APPROVES.
   const [pairing, setPairing] = useState<{ id: string; code: string } | null>(null);
@@ -111,16 +118,15 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
       yardPairPending().then(setPairInbox).catch(() => {/* not the app — nothing to approve here */});
       refreshDevices();
       refreshActivity();
+      if (tab === "auto") {
+        Promise.all([getSpaceAudit(), getSavings()]).then(([audit, savings]) => setSysHealth({ audit, savings })).catch(() => {});
+      }
     };
     load();
     const iv = setInterval(load, 5000);
     return () => clearInterval(iv);
-  }, [refreshDevices, refreshActivity]);
+  }, [refreshDevices, refreshActivity, tab]);
 
-  // The drawer was one long scroll — stats, 42 brain lanes, security, swarms, schedules, people
-  // and the activity log stacked in a single column. Tabs keep each view about a screen tall.
-  const [tab, setTab] = useState<"overview" | "brains" | "auto" | "devices" | "people" | "activity">("overview");
-  const [showAllLanes, setShowAllLanes] = useState(false);
   const providers = s?.models?.providers || [];
   const freeLive = providers.filter((p: any) => p.tier === "free" && p.keys > 0);
   const freeTotal = providers.filter((p: any) => p.tier === "free").length;
@@ -571,6 +577,43 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                 ))}
               </div>
             )}
+            {/* system utilities */}
+            <div className="dash-sec" style={{ marginTop: 16 }}><Icon name="settings" /> System Utilities</div>
+            <div className="dash-lanes">
+              <div className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 600 }}>Space Consumption</span>
+                  <button type="button" className="mini" onClick={() => runSpaceCompact().then(() => Promise.all([getSpaceAudit(), getSavings()]).then(([audit, savings]) => setSysHealth({ audit, savings })))}>Compact Now</button>
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {sysHealth.audit ? (
+                    `Using ${(sysHealth.audit.consumptionBytes / 1e6).toFixed(1)} MB (${sysHealth.audit.heap} files, ${sysHealth.audit.cache} cache)`
+                  ) : "Loading..."}
+                </div>
+                {sysHealth.savings && sysHealth.savings.totalSavedBytes > 0 && (
+                  <div style={{ fontSize: 11, color: "var(--c-ok)" }}>
+                    {`Lifetime savings: ${(sysHealth.savings.totalSavedBytes / 1e6).toFixed(1)} MB (Compact run ${sysHealth.savings.compactCount} times)`}
+                  </div>
+                )}
+              </div>
+
+              <div className="dash-lane on" style={{ flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
+                <div style={{ fontWeight: 600 }}>Micro-Solver</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input type="text" placeholder="Local logic test..." value={microSolverInput} onChange={(e) => setMicroSolverInput(e.target.value)} style={{ flex: 1, padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text)" }} onKeyDown={(e) => { if (e.key === "Enter" && microSolverInput) runMicroSolver(microSolverInput).then(setMicroSolverRes); }} />
+                  <button type="button" className="mini" onClick={() => microSolverInput && runMicroSolver(microSolverInput).then(setMicroSolverRes)}>Solve</button>
+                </div>
+                {microSolverRes && (
+                  <div style={{ fontSize: 12, marginTop: 4, padding: 8, background: "rgba(255,255,255,0.05)", borderRadius: 6, whiteSpace: "pre-wrap", border: "1px solid var(--border)" }}>
+                    {microSolverRes.error ? (
+                      <span style={{ color: "var(--c-err)" }}>{microSolverRes.error}</span>
+                    ) : (
+                      <span>{microSolverRes.solution || microSolverRes.result || JSON.stringify(microSolverRes)}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             </>)}
             {tab === "people" && (<>

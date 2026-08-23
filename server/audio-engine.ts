@@ -115,6 +115,7 @@ export interface AudioTimelineCue {
   durationSec: number;
   text: string;
   waveform: number[];
+  audioBase64Stub: string;
 }
 
 export interface PodcastSynthesisResult {
@@ -159,6 +160,7 @@ export async function synthesizeDialogueAudio(
       durationSec: speech.durationSeconds,
       text: ex.text,
       waveform: speech.waveformSample,
+      audioBase64Stub: speech.audioBase64Stub,
     });
 
     renderedExchanges.push({

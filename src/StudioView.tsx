@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "./Icon";
+import { queueStudioJob } from "./lib/api";
 
 type TimelineClip = { id: string; time: string; startSec: number; durationSec: number; img: string; name: string };
 
@@ -72,6 +73,7 @@ export default function StudioView() {
   const [engineIndex, setEngineIndex] = useState(0);
   const [resIndex, setResIndex] = useState(0);
   const [fpsIndex, setFpsIndex] = useState(0);
+  const [localOnly, setLocalOnly] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -302,6 +304,7 @@ export default function StudioView() {
         };
         setTimeline((prev) => [...prev, newClip]);
         setSelectedClipId(newClip.id);
+        queueStudioJob(prompt, style, localOnly);
         showToast("✓ Scene rendered successfully and inserted into timeline!");
       } else {
         showToast("⚠️ Render failed: " + (data.error || "Unknown error"));
@@ -749,6 +752,7 @@ export default function StudioView() {
                 { label: "ENGINE", val: engine, cycle: () => { const next = (engineIndex + 1) % ENGINES.length; setEngineIndex(next); showToast("Engine: " + ENGINES[next]); } },
                 { label: "RESOLUTION", val: resolution, cycle: () => { const next = (resIndex + 1) % RESOLUTIONS.length; setResIndex(next); showToast("Resolution: " + RESOLUTIONS[next]); } },
                 { label: "FRAME RATE", val: fps, cycle: () => { const next = (fpsIndex + 1) % FRAME_RATES.length; setFpsIndex(next); showToast("FPS: " + FRAME_RATES[next]); } },
+                { label: "RUN LOCAL", val: localOnly ? "YES" : "NO", cycle: () => { setLocalOnly(!localOnly); showToast(localOnly ? "Cloud Generation Enabled" : "Local Model Forced"); } }
               ].map((item, i) => (
                 <div
                   key={i}

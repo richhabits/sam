@@ -895,7 +895,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .matrix-cell.on { opacity: 1; border-color: rgba(95,208,138,.35); }
 .matrix-ic { font-size: 15px; }
 .matrix-name { font-weight: 600; color: var(--text); white-space: nowrap; }
-.matrix-via { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.matrix-via { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .admin-lead { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 2px 0 14px; }
 .admin-lead b { color: var(--text); }
 .admin-more { width: 100%; text-align: left; background: none; border: 1px dashed var(--border); border-radius: 10px; color: var(--accent-text); font-size: 13px; font-weight: 600; padding: 10px 14px; margin: 6px 0 4px; cursor: pointer; }

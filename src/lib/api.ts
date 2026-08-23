@@ -39,11 +39,11 @@ export async function command(message: string, projectId?: string, tier?: string
   return res.json();
 }
 
-export async function executeSmartAction(intent: string): Promise<any> {
-  const res = await fetch("/api/smart-action", {
+export async function queueStudioJob(concept: string, style?: string, localOnly?: boolean): Promise<{ id: string; concept: string; status: string }> {
+  const res = await fetch("/api/studio/queue", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ intent }),
+    body: JSON.stringify({ concept, style, localOnly }),
   });
   if (!res.ok) throw await apiError(res);
   return res.json();
@@ -232,6 +232,8 @@ export const notebookSources = (id: string) => get(`/api/notebooks/${encodeURICo
 export const addNotebookSource = (id: string, body: { url?: string; file?: string; text?: string; title?: string }) => post(`/api/notebooks/${encodeURIComponent(id)}/source`, body);
 export const askNotebook = (id: string, question: string) => post(`/api/notebooks/${encodeURIComponent(id)}/ask`, { question });
 export const notebookAudio = (id: string) => post(`/api/notebooks/${encodeURIComponent(id)}/audio`);
+export const synthesizeDialogue = (title: string, exchanges: { speaker: string, text: string }[]) => 
+  fetch("/api/audio/dialogue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, exchanges }) }).then(r => r.json());
 export const deleteNotebook = (id: string) => del(`/api/notebooks/${encodeURIComponent(id)}`);
 
 // 🚀 Sign & ship
@@ -307,6 +309,7 @@ export const standingArm = (specialistId: string, task: string, cron: string) =>
 export const standingDisarm = (id: string) => post("/api/standing/disarm", { id });
 export const standingRearm = (id: string) => post("/api/standing/rearm", { id });
 export const standingRemove = (id: string) => post("/api/standing/remove", { id });
+export const deepResearch = (query: string, mode?: "fast" | "comprehensive") => post("/api/research/deep", { query, mode });
 
 // ── the Chime — alarms + named timers ──
 export const getChimes = () => get("/api/chimes");
@@ -498,3 +501,8 @@ export const getConnectorRows = (id: string, kind: string, param?: string) => {
     return (j?.rows || []) as ConnectorRow[];
   });
 };
+
+export const getSpaceAudit = () => get("/api/system/space-audit");
+export const runSpaceCompact = () => fetch("/api/system/space-compact", { method: "POST" }).then(r => r.json());
+export const getSavings = () => get("/api/system/savings");
+export const runMicroSolver = (input: string) => fetch("/api/micro-solver", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input }) }).then(r => r.json());

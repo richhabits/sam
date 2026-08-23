@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys, getPreferences, learnPreference } from "./lib/api";
+import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys, getPreferences, learnPreference, queueStudioJob, deepResearch } from "./lib/api";
 import { createPortal } from "react-dom";
 import { renderMarkdown } from "./lib/md";
 import { startWakeListener } from "./lib/wake";
@@ -1006,8 +1006,11 @@ export default function App() {
     if (cmd === "/history") { setHistoryOpen(true); return true; }
     if (cmd === "/export") { exportChat(); return true; }
     if (cmd === "/share") { try { navigator.clipboard.writeText("SAM — a free, private AI with a team of agents that runs on your Mac. https://richhabits.github.io/sam/"); sysNote("📣 Copied the SAM pitch + link — paste it anywhere to share."); } catch { sysNote("Couldn't copy — the link is: https://richhabits.github.io/sam/"); } return true; }
-    if (v.toLowerCase().startsWith("/smart ")) { send(v); return true; }
-    if (cmd === "/smart") { sysNote("Run a Smart Action: /smart <intent> — e.g. /smart workspace status or /smart cinematic video"); return true; }
+    if (v.toLowerCase().startsWith("/studio ")) {
+      queueStudioJob(v.slice(8)).then(r => sysNote(`🎬 Queued Studio job: ${r.concept}`)).catch(e => sysNote(`Studio error: ${e.message}`));
+      setInput(""); return true;
+    }
+    if (cmd === "/studio") { sysNote("Queue a background cinematic video: /studio <concept> — e.g. /studio a sweeping shot of mars"); return true; }
     if (v.toLowerCase().startsWith("/team ")) { runTheTeam(v.slice(6), "team"); return true; }
     if (cmd === "/team") { sysNote("Assemble the crew: /team <a big request> — e.g. /team research my 3 competitors and draft a launch post"); return true; }
     if (v.toLowerCase().startsWith("/ninjas ")) { runTheTeam(v.slice(8), "ninjas"); return true; }
@@ -1016,7 +1019,9 @@ export default function App() {
     if (cmd === "/swarm") { sysNote("Start a persistent background swarm: /swarm <massive goal>"); return true; }
     if (v.toLowerCase().startsWith("/schedule ")) { runSchedule(v.slice(10)); return true; }
     if (cmd === "/schedule") { sysNote("Schedule a recurring task: /schedule <cron> | <command> — e.g. /schedule daily 09:00 | check my email"); return true; }
-    if (cmd === "/help") { sysNote("Commands: /team, /ninjas, /swarm, /schedule, /new, /turbo, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
+    if (v.toLowerCase().startsWith("/deep ")) { runDeepResearch(v.slice(6)); return true; }
+    if (cmd === "/deep") { sysNote("Run a deep comprehensive research job: /deep <topic>"); return true; }
+    if (cmd === "/help") { sysNote("Commands: /deep, /team, /ninjas, /swarm, /schedule, /new, /turbo, /private, /best, /auto, /tools, /history, /export. ⌘K new chat, Esc stop."); return true; }
     return false;
   }
 
@@ -1068,6 +1073,21 @@ export default function App() {
       sysNote(`Scheduled task added: "${commandText}" (${cron}). See the Dashboard to manage your schedules.`);
     } catch {
       sysNote("Couldn't add the schedule. Make sure SAM is running.");
+    }
+    inputRef.current?.focus();
+  }
+
+  async function runDeepResearch(query: string) {
+    const q = query.trim();
+    if (!q) { sysNote("Please provide a topic. Example: /deep hybrid swarm architectures"); return; }
+    setInput(""); setPending(null);
+    setMessages((m) => [...m, { role: "user", text: "🔬 Deep research: " + q, at: now() }]);
+    sysNote(`Researching "${q}"… this can take a moment.`);
+    try {
+      const result = await deepResearch(q);
+      sysNote(result?.dossier?.markdownDossier || result?.report?.executiveSummary || "No research findings came back.");
+    } catch {
+      sysNote("Couldn't complete the research. Make sure SAM is running.");
     }
     inputRef.current?.focus();
   }

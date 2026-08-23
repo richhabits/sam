@@ -132,7 +132,7 @@ import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
 import { getMobileBridgeStatus } from "./mobile-bridge.ts";
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
-import { executeSmartAction } from "./smart-actions.ts";
+
 import { prewarmContext } from "./prefetch.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
@@ -1328,11 +1328,6 @@ app.post("/api/router/speculate", (req, res) => {
 app.post("/api/intent/disambiguate", (req, res) => {
   const { prompt, contextHints } = req.body as { prompt: string; contextHints?: { activeFile?: string; recentAction?: string } };
   res.json(disambiguateUserIntent(prompt || "", contextHints));
-});
-app.post("/api/smart-action", async (req, res) => {
-  const { intent } = req.body as { intent: string };
-  const result = await executeSmartAction(intent || "");
-  res.json(result);
 });
 
 app.post("/api/research/deep", async (req, res) => {

@@ -17,6 +17,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { enqueueStudioJob } from "./studio-queue.ts";
 
 // STUDIO + NOTEBOOKS — image/video generation, and the vault media cache that serves generated
 // images SAME-ORIGIN so no service-worker or CSP quirk can break them.
@@ -75,6 +76,16 @@ export function registerStudioRoutes(app: Express) {
       return name;
     } catch (e: any) { console.error("[studio] cacheStudioMedia failed:", e?.message || e); return null; }
   }
+
+  app.post("/api/studio/queue", (req, res) => {
+    const { concept, style, localOnly } = req.body;
+    if (!concept || typeof concept !== "string") {
+      return res.status(400).json({ error: "concept is required and must be a string" });
+    }
+    const id = enqueueStudioJob(concept, style || "", !!localOnly);
+    return res.json({ id, concept, status: "queued" });
+  });
+
   app.get("/api/studio/media/:id", async (req, res) => {
     const id = String(req.params.id).replace(/[^a-zA-Z0-9._-]/g, "");   // strip any path-traversal
     const file = join(GEN_DIR, id);

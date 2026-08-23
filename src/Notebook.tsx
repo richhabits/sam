@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { listNotebooks, createNotebook, notebookSources, addNotebookSource, askNotebook, notebookAudio, deleteNotebook } from "./lib/api";
+import { listNotebooks, createNotebook, notebookSources, addNotebookSource, askNotebook, notebookAudio, deleteNotebook, synthesizeDialogue } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { useEscape } from "./lib/useOverlay";
 import Icon from "./Icon";
@@ -22,13 +22,16 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
   const [addMode, setAddMode] = useState<"url" | "text">("url");
   const [busy, setBusy] = useState("");
   const [audio, setAudio] = useState("");
+  const [dialogueData, setDialogueData] = useState<any>(null);
+  const [playingDialogue, setPlayingDialogue] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const activeBook = books.find((b) => b.id === active);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh once on mount
   useEffect(() => { refresh(); }, []);
-  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => setSources([]) /* sources failed to load → show none; an empty source list is a valid, non-error state */); setTurns([]); setAudio(""); }, [active]);
+  useEffect(() => { if (active) notebookSources(active).then((r) => setSources(r.sources || [])).catch(() => setSources([]) /* sources failed to load → show none; an empty source list is a valid, non-error state */); setTurns([]); setAudio(""); setDialogueData(null); }, [active]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to newest on turns change
   useEffect(() => { chatRef.current?.scrollTo(0, chatRef.current.scrollHeight); }, [turns]);
 
@@ -67,10 +70,55 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
 
   async function makeAudio() {
     if (!active || busy) return;
-    setBusy("Producing audio overview…"); setAudio("");
+    setBusy("Producing audio overview…"); setAudio(""); setDialogueData(null);
     const r = await notebookAudio(active).catch(() => ({ script: "" }));
+    if (r.script) {
+      setAudio(r.script);
+      setBusy("Synthesizing voices…");
+      const lines = r.script.split("\n").filter((l: string) => l.trim().length > 0);
+      const exchanges = lines.map((l: string) => {
+        const match = l.match(/^(Alex|Sam):\s*(.*)/i);
+        return match ? { speaker: match[1], text: match[2] } : { speaker: "Sam", text: l };
+      });
+      const res = await synthesizeDialogue(activeBook?.title || "Audio Overview", exchanges).catch(() => null);
+      setDialogueData(res);
+    } else {
+      setAudio("No material yet — add sources first.");
+    }
     setBusy("");
-    setAudio(r.script || "No material yet — add sources first.");
+  }
+
+  function togglePlayDialogue() {
+    if (playingDialogue) {
+      audioRef.current?.pause();
+      setPlayingDialogue(false);
+    } else {
+      if (dialogueData?.cues?.length > 0) {
+        let cueIdx = 0;
+        const playCue = (idx: number) => {
+          if (idx >= dialogueData.cues.length) {
+            setPlayingDialogue(false);
+            return;
+          }
+          const cue = dialogueData.cues[idx];
+          if (cue.audioBase64Stub) {
+            const a = new Audio(cue.audioBase64Stub);
+            audioRef.current = a;
+            a.onended = () => playCue(idx + 1);
+            a.onerror = () => { console.error("failed to play cue"); setPlayingDialogue(false); };
+            a.play().catch(e => { console.error(e); setPlayingDialogue(false); });
+          } else {
+            // fallback if no audio data
+            playCue(idx + 1);
+          }
+        };
+        setPlayingDialogue(true);
+        playCue(0);
+      } else {
+         // fallback to normal text-to-speech if synthesis failed
+         if (audio) speak?.(audio.replace(/^(Alex|Sam):/gm, ""));
+      }
+    }
   }
 
   return (
@@ -140,7 +188,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
                   {turns.length === 0 && !audio && <div className="nb-empty" style={{ padding: 24 }}>Ask anything about your sources. Every answer is cited.</div>}
                   {audio && (
                     <div className="nb-audio">
-                      <div className="nb-audio-head"><Icon name="voice" size={15} /> Audio Overview <button type="button" className="nb-play" onClick={() => speak?.(audio.replace(/^(Alex|Sam):/gm, ""))}><Icon name="play" size={13} /> Play</button></div>
+                      <div className="nb-audio-head"><Icon name="voice" size={15} /> Audio Overview <button type="button" className="nb-play" onClick={togglePlayDialogue}><Icon name={playingDialogue ? "pause" : "play"} size={13} /> {playingDialogue ? "Stop" : "Play"}</button></div>
                       <div className="nb-audio-script" dangerouslySetInnerHTML={{ __html: renderMarkdown(audio) }} />
                     </div>
                   )}

@@ -3834,19 +3834,27 @@ export const TOOLS: Tool[] = [
   // safe · read-only
   { name: "computer", safe: false, description: "Control the physical computer. Action can be 'key', 'type', 'mouse_move', 'left_click', 'left_click_drag', 'right_click', 'middle_click', 'double_click', 'screenshot', 'cursor_position'.", params: "{action, text?, coordinate?}", activity: (i) => `Computer: ${i?.action}`, run: async (i) => {
     try {
-      const { execSync } = await import("node:child_process");
+      const { execFileSync } = await import("node:child_process");
       const action = i?.action;
       if (action === "screenshot") return "Screenshot not supported in stub.";
+      // execFileSync with the AppleScript source as a separate argument, not string-interpolated
+      // into a shell command: i.text/i.coordinate are agent tool-call input, reachable from
+      // whatever the agent most recently read (a webpage, an email) via prompt injection. Quoting
+      // inside a shell string never fully neutralizes backticks/$(...), and this previously built
+      // the whole `osascript -e '...'` line as one interpolated string. Passing args separately
+      // means there is no shell to break out of.
       if (action === "mouse_move" && i?.coordinate) {
-        execSync(`osascript -e 'tell application "System Events" to click at {${i.coordinate[0]}, ${i.coordinate[1]}}'`);
+        const x = Number(i.coordinate[0]), y = Number(i.coordinate[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return "Computer use error: coordinate must be numeric.";
+        execFileSync("osascript", ["-e", `tell application "System Events" to click at {${x}, ${y}}`]);
         return `Moved mouse to ${i.coordinate}`;
       }
       if (action === "type" && i?.text) {
-        execSync(`osascript -e 'tell application "System Events" to keystroke "${i.text.replace(/"/g, '\\"')}"'`);
+        execFileSync("osascript", ["-e", "on run argv", "-e", "tell application \"System Events\" to keystroke (item 1 of argv)", "-e", "end run", String(i.text)]);
         return `Typed: ${i.text}`;
       }
       if (action === "key" && i?.text) {
-        if (i.text === "Return") execSync(`osascript -e 'tell application "System Events" to key code 36'`);
+        if (i.text === "Return") execFileSync("osascript", ["-e", "tell application \"System Events\" to key code 36"]);
         return `Pressed key: ${i.text}`;
       }
       return `Action ${action} executed via AppleScript stub.`;

@@ -129,7 +129,8 @@ export class Supervisor {
     if (!c) return;
     // Ask first so the worker can record its job's outcome; insist only if it won't go.
     try { c.kill("SIGTERM"); } catch { /* already gone */ }
-    setTimeout(() => { try { c.kill("SIGKILL"); } catch { /* already gone */ } }, 5000).unref?.();
+    console.log("  yard · supervisor stopping worker (grace period 2000ms)");
+    setTimeout(() => { try { c.kill("SIGKILL"); } catch { /* already gone */ } }, 2000).unref?.();
   }
 
   status() {

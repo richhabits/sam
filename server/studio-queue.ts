@@ -19,11 +19,19 @@ const migrations: SqlMigration[] = [
           status TEXT NOT NULL,
           concept TEXT NOT NULL,
           style TEXT,
+          local_only INTEGER DEFAULT 0,
           result TEXT,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         )
       `);
+    },
+  },
+  {
+    version: 2,
+    name: "add_local_only",
+    up: (db) => {
+      db.exec("ALTER TABLE studio_jobs ADD COLUMN local_only INTEGER DEFAULT 0");
     },
   },
 ];
@@ -37,12 +45,12 @@ function getDb() {
   return dbCache;
 }
 
-export function enqueueStudioJob(concept: string, style?: string): string {
+export function enqueueStudioJob(concept: string, style?: string, localOnly?: boolean): string {
   const db = getDb();
   const id = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   db.prepare(
-    "INSERT INTO studio_jobs (id, status, concept, style, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, "pending", concept, style || null, Date.now(), Date.now());
+    "INSERT INTO studio_jobs (id, status, concept, style, local_only, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(id, "pending", concept, style || null, localOnly ? 1 : 0, Date.now(), Date.now());
   return id;
 }
 
@@ -72,6 +80,7 @@ export async function processNextStudioJob() {
       concept: job.concept,
       style: job.style,
       shotCount: 4,
+      localOnly: !!job.local_only,
     });
 
     // Compile into timeline
