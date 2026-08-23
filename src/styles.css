@@ -447,7 +447,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .row.sam .bubble {
   max-width: 100%; /* Edge-to-edge document style */
-  color: var(--text);
+  color: inherit;
 }
 .row.user .bubble {
   max-width: 75%; padding: 14px 18px;
@@ -709,6 +709,11 @@ button { font-family: inherit; cursor: pointer; }
   .admin-matrix { grid-template-columns: 1fr; }
   .md-img { max-width: 100%; }
   .side { width: 84vw; }                        /* history drawer */
+  
+  /* Full screen standalone views (Studio, FlipIt, Yard) collapse to column on mobile */
+  .flipit-view { flex-direction: column; padding: 12px; gap: 16px; height: auto; min-height: 100vh; overflow-y: auto; }
+  .flipit-side { width: 100%; min-width: 100%; height: auto; max-height: none; overflow: visible; padding: 0; }
+  .flipit-main { padding: 0; max-height: none; overflow: visible; }
 }
 /* PWA installed (standalone) — use the full screen height incl. safe areas */
 @media (display-mode: standalone) {
@@ -1222,6 +1227,13 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 :root[data-theme="dark"]:not([data-skin="linen"]) .tok-s { color: #7ee787; }
 :root[data-theme="dark"]:not([data-skin="linen"]) .tok-k { color: #ff9d5c; }
 :root[data-theme="dark"]:not([data-skin="linen"]) .tok-n { color: #d19a66; }
+
+/* Force dark-mode syntax highlighting inside SAM cards, which are always dark */
+.row.sam .tok-c { color: #6b737c; }
+.row.sam .tok-s { color: #7ee787; }
+.row.sam .tok-k { color: #ff9d5c; }
+.row.sam .tok-n { color: #d19a66; }
+
 :root[data-skin="jarvis"] .tok-s { color: #6bd6ff; }
 :root[data-skin="jarvis"] .tok-k { color: #29C6F6; }
 :root[data-skin="stealth"] .tok-k { color: #4ADE80; }

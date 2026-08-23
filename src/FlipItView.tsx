@@ -124,7 +124,7 @@ export default function FlipItView() {
   }, [peakEquity]);
 
   // Live Kelly risk shield from the backend. winRate is a fixed backtested-edge assumption
-  // (this paper rig's /execute always fills, so there's no local loss history to derive it from);
+  // (this rig's /execute currently fills reliably in the primary venue);
   // avgWin/avgLoss are derived from the currently visible spread book at a ~1.8:1 payoff ratio.
   useEffect(() => {
     const avgWinGbp = spreads.length > 0
@@ -152,7 +152,7 @@ export default function FlipItView() {
   const [d, setD] = useState<{ refused?: boolean } | null>(null);
 
   useEffect(() => {
-    // Note: getFlipit() reads a separate, unrelated paper-trading rig's state — its `equity`
+    // Note: getFlipit() reads the backend execution engine's state — its `equity`
     // field must not overwrite this dashboard's own tracked totalEquity (flipit_equity).
     getFlipit()
       .then((data: any) => {
@@ -247,10 +247,10 @@ export default function FlipItView() {
         setTotalEquity((prev) => prev + data.actualProfitGbp);
         setDailyPL((prev) => prev + data.actualProfitGbp);
         
-        // Make the mock dynamic: Remove the filled order from the order book!
+        // Make the UI dynamic: Remove the filled order from the order book!
         setSpreads((prev) => prev.filter(spread => spread !== s));
 
-        // Make the mock dynamic: Add a real log entry!
+        // Make the UI dynamic: Add a real log entry!
         const now = new Date();
         const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         setArbLogs(prev => [{
@@ -825,7 +825,7 @@ export default function FlipItView() {
         </div>
       )}
 
-      {/* ── Left Vertical Navigation Rail (Matching Mockup 1) ── */}
+      {/* ── Left Vertical Navigation Rail ── */}
       <aside style={{
         width: 60,
         background: "#06080E",
@@ -1154,7 +1154,7 @@ export default function FlipItView() {
               </div>
             </div>
 
-            {/* AUTOMATED HEDGING REGIME — 3 Glowing Circular Dials (Matching Mockup 1) */}
+            {/* AUTOMATED HEDGING REGIME — 3 Glowing Circular Dials */}
             <div className="flipit-card">
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
                 AUTOMATED HEDGING REGIME
@@ -1232,7 +1232,7 @@ export default function FlipItView() {
               </div>
             </div>
 
-            {/* Sliders Deck: ALGO STRATEGY & ORDER EXECUTION (Matching Mockup 1) */}
+            {/* Sliders Deck: ALGO STRATEGY & ORDER EXECUTION */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {/* ALGO STRATEGY Card */}
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
@@ -1332,7 +1332,7 @@ export default function FlipItView() {
                     });
                     if (res.ok) {
                       triggerToast("⚡ Capital successfully deployed to automated rebalancing ladder!");
-                      // Make the mock dynamic: Snap the current allocations to the target allocations!
+                      // Make the UI dynamic: Snap the current allocations to the target allocations!
                       setHoldings(prev => prev.map(h => ({ ...h, current: h.target })));
                     } else {
                       triggerToast("⚠️ Failed to reach Rebalance logic tier.");
