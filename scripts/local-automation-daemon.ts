@@ -2,6 +2,8 @@ import { checkFlipItAlerts } from "../server/flipit.ts";
 import { FlipItLocalSimulator } from "../server/flipit-local-simulator.ts";
 import { submitPolymarketClobOrder } from "../server/flipit-execution.ts";
 import { processNextStudioJob } from "../server/studio-queue.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "../server/space-compactor.ts";
+import { prewarmContext } from "../server/prefetch.ts";
 
 console.log("🚀 Starting Local Automation Daemon (Zero-Cost Mode)...");
 
@@ -41,6 +43,16 @@ async function daemonTick() {
     if (studioJobId) {
        console.log(`[Studio] Automatically processed queued job: ${studioJobId}`);
     }
+
+    // 4. Autonomous Memory Management (Keep heap clean 24/7)
+    const spaceReport = auditSpaceConsumption();
+    if (spaceReport.status === "COMPACT_RECOMMENDED") {
+      const comp = compactSpaceAndMemory();
+      console.log(`[Memory] Auto-compacted heap. Freed ${comp.freedCacheEntries} L1 items. Heap: ${comp.currentHeapUsedMb}MB`);
+    }
+
+    // 5. Pre-warm AI context
+    prewarmContext();
 
   } catch (error) {
     console.error(`[Daemon Error]`, error);

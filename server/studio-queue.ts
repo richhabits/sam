@@ -52,13 +52,18 @@ export function getStudioJob(id: string) {
 
 export async function processNextStudioJob() {
   const db = getDb();
-  
+
   // Find a pending job
   const job = db.prepare("SELECT * FROM studio_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1").get();
   if (!job) return null; // Queue is empty
 
-  // Mark as processing
-  db.prepare("UPDATE studio_jobs SET status = 'processing', updated_at = ? WHERE id = ?").run(Date.now(), job.id);
+  // Conditional claim, not an unconditional UPDATE after the SELECT above: two callers (this
+  // was found running as two duplicate daemon processes at once) can both SELECT the same
+  // pending row before either UPDATEs. Only the caller whose UPDATE actually matched a still-
+  // 'pending' row proceeds — the loser sees changes === 0 and backs off, so a job is never
+  // processed twice. Mirrors yard/store.ts's claim().
+  const claim = db.prepare("UPDATE studio_jobs SET status = 'processing', updated_at = ? WHERE id = ? AND status = 'pending'").run(Date.now(), job.id);
+  if (claim.changes === 0) return null; // another caller claimed it first
   console.log(`[Studio Queue] Processing job ${job.id}: "${job.concept}"`);
 
   try {
