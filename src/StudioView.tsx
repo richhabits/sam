@@ -466,7 +466,7 @@ export default function StudioView() {
               <span style={{ fontSize: 11, fontWeight: 800, color: "#D9A05B" }}>{motionIntensity}%</span>
             </div>
             <div style={{ position: "relative", height: 36, background: "#0A0A0A", border: "1px solid #222", borderRadius: 6, overflow: "hidden", marginBottom: 4 }}>
-              {/* Mock bezier curve SVG mapping to intensity */}
+              {/* Dynamic bezier curve SVG mapping to intensity */}
               <svg width="100%" height="100%" viewBox="0 0 100 36" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
                 <path d={`M 0,36 C 30,36 40,${36 - (motionIntensity / 100) * 28} 100,${36 - (motionIntensity / 100) * 32}`} fill="none" stroke="rgba(217,160,91,0.5)" strokeWidth="2" strokeDasharray="4,2" />
                 <path d={`M 0,36 C 40,36 50,${36 - (motionIntensity / 100) * 32} 100,${36 - (motionIntensity / 100) * 24}`} fill="none" stroke="#D9A05B" strokeWidth="2" />

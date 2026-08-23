@@ -247,10 +247,10 @@ export default function FlipItView() {
         setTotalEquity((prev) => prev + data.actualProfitGbp);
         setDailyPL((prev) => prev + data.actualProfitGbp);
         
-        // Make the mock dynamic: Remove the filled order from the order book!
+        // Remove the filled order from the order book!
         setSpreads((prev) => prev.filter(spread => spread !== s));
 
-        // Make the mock dynamic: Add a real log entry!
+        // Add a real log entry!
         const now = new Date();
         const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         setArbLogs(prev => [{
@@ -1332,7 +1332,7 @@ export default function FlipItView() {
                     });
                     if (res.ok) {
                       triggerToast("⚡ Capital successfully deployed to automated rebalancing ladder!");
-                      // Make the mock dynamic: Snap the current allocations to the target allocations!
+                      // Snap the current allocations to the target allocations!
                       setHoldings(prev => prev.map(h => ({ ...h, current: h.target })));
                     } else {
                       triggerToast("⚠️ Failed to reach Rebalance logic tier.");

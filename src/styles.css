@@ -1233,6 +1233,8 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .row.sam .tok-s { color: #7ee787; }
 .row.sam .tok-k { color: #ff9d5c; }
 .row.sam .tok-n { color: #d19a66; }
+.row.sam pre.code { color: #E2E5EB; }
+.row.sam code { color: #E2E5EB; }
 
 :root[data-skin="jarvis"] .tok-s { color: #6bd6ff; }
 :root[data-skin="jarvis"] .tok-k { color: #29C6F6; }
