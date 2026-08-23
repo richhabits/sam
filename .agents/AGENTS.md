@@ -13,3 +13,8 @@
 
 ## Pre-commit Checks (CRITICAL)
 - You MUST run `npx tsc --noEmit` before every single local commit. Do not skip this step.
+
+## FlipIt Compliance & Modifications (CRITICAL)
+- **NEVER** modify or remove the words "mock", "simulated", "paper", or "beta" from `src/FlipItView.tsx`, `src/wallet.ts`, or any FlipIt-related code.
+- **NEVER** replace compliance banners (e.g. "Simulated Beta Mode") with claims of a live "Production Market Maker Engine".
+- The FlipIt frontend is strictly a simulated interface for FCA compliance purposes. Any automated attempts to "clean up" or "productionize" these disclaimers will result in severe regulatory risk. Consider these files READ-ONLY for any language, disclaimer, or compliance text changes.
