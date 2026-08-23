@@ -1,10 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { generateMobileFeed } from "./mobile-feed.ts";
 import { mobileGenerateFeedSnapshotTool } from "./tools.ts";
 
+vi.mock("./studio-higgsfield.ts", async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    generateStoryboardDirector: vi.fn().mockResolvedValue({
+      title: "Test",
+      narrativeGoal: "Mocked narrative",
+      shots: [{ cinematicPrompt: "Mocked shot" }]
+    })
+  };
+});
+
 describe("Mobile Live Feed Hub", () => {
-  it("generates structured live feed stream for iOS and Android", () => {
-    const feed = generateMobileFeed();
+  it("generates structured live feed stream for iOS and Android", async () => {
+    const feed = await generateMobileFeed();
 
     expect(feed.feedVersion).toBe(1);
     expect(feed.activeCards.length).toBeGreaterThanOrEqual(3);

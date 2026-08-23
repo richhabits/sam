@@ -1661,7 +1661,7 @@ export async function samMasterDashboardTool(): Promise<string> {
 }
 
 export async function mobileGenerateFeedSnapshotTool(): Promise<string> {
-  const feed = generateMobileFeed({ activeToolsCount: TOOLS.length });
+  const feed = await generateMobileFeed({ activeToolsCount: TOOLS.length });
 
   const lines = [
     `📱 Mobile Live Feed Stream Snapshot (${feed.activeCards.length} active cards):`,

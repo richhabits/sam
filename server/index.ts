@@ -709,10 +709,11 @@ startProactive(async () => {
     const t = toolByName(n);
     return t ? t.run(i).then((r) => fenceToolResult(n, r)).catch(() => "") : Promise.resolve("");
   };
-  const [calendarData, emailData, weatherData] = await Promise.all([
+  const [calendarData, emailData, weatherData, deck] = await Promise.all([
     runTool("read_calendar", {}),
     runTool("read_emails", {}),
     runTool("get_weather", { place: locationText() || "" }),
+    generateExecutiveDailyDeck().catch(() => null),
   ]);
 
   const prompt = `Give me my morning brief — short, warm, punchy (5-8 lines). It's ${nowText()}.` +
@@ -722,6 +723,7 @@ startProactive(async () => {
     `\n\n## Weather\n${weatherData || "Couldn't get the weather."}` +
     `${nudges.length ? `\n\n## Pending Nudges\n${nudges.map((n) => `- ${n.text}${n.due ? ` (due ${n.due})` : ""}`).join("\n")}` : "\n\nNo pending nudges."}` +
     `${capacityNudge() ? `\n\n## Free AI capacity\n${capacityNudge()}` : ""}` +
+    `${deck ? `\n\n## Executive Daily Deck\nHeadline: ${deck.executiveHeadline}\nSystem Readiness: ${deck.systemReadinessScorePct}%\nAlpha: $${deck.estimatedDailyAlphaUSD}\nAction Cards:\n${deck.cards.map(c => `- [${c.priority.toUpperCase()}] ${c.title}: ${c.description}`).join("\n")}` : ""}` +
     `\n\nSynthesise all of this into a single, warm, punchy morning brief. Lead with the most important thing. Don't just list — weave it into a narrative. If free AI capacity is thin, mention it and the one key to add.`;
   try {
     const qvec = await embedOne(prompt, true);
@@ -1310,8 +1312,8 @@ app.post("/api/universal/prompt", async (req, res) => {
 app.get("/api/universal/shortcuts", (_req, res) => {
   res.json({ shortcuts: UNIVERSAL_SHORTCUTS });
 });
-app.get("/api/mobile/feed", (_req, res) => {
-  res.json(generateMobileFeed());
+app.get("/api/mobile/feed", async (_req, res) => {
+  res.json(await generateMobileFeed());
 });
 app.get("/api/mobile/bridge/status", (_req, res) => {
   res.json(getMobileBridgeStatus());

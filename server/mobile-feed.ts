@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { desk, project100xLadder } from "./flipit.ts";
-import { HIGGSFIELD_CAMERA_RIGS } from "./studio-higgsfield.ts";
+import { HIGGSFIELD_CAMERA_RIGS, generateStoryboardDirector } from "./studio-higgsfield.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 
 export interface MobileFeedCard {
@@ -27,13 +27,18 @@ export interface MobileLiveFeed {
   unreadCount: number;
 }
 
-export function generateMobileFeed(options: { activeToolsCount?: number } = {}): MobileLiveFeed {
+export async function generateMobileFeed(options: { activeToolsCount?: number } = {}): Promise<MobileLiveFeed> {
   // activeToolsCount is threaded through rather than importing TOOLS from tools.ts directly —
   // tools.ts imports generateMobileFeed to register mobile_generate_feed_snapshot, so importing
   // TOOLS here would recreate the exact orchestrator ⇄ tools import cycle getMasterDashboard's
   // own activeToolsCount parameter exists to avoid.
   const dash = getMasterDashboard({ activeToolsCount: options.activeToolsCount });
   const d = desk();
+  
+  const studioStoryboard = await generateStoryboardDirector({
+    concept: "High-octane cinematic intro to the SAM AI motion studio",
+    shotCount: 2,
+  }).catch(() => null);
   const eq = d.now?.equity ?? 5.0;
   const ladder = project100xLadder(eq);
 
@@ -63,7 +68,9 @@ export function generateMobileFeed(options: { activeToolsCount?: number } = {}):
       timestamp: Date.now() - 60000,
       deepLink: "/studio",
       metadata: {
-        presetsAvailable: HIGGSFIELD_CAMERA_RIGS.length,
+        activeRigs: HIGGSFIELD_CAMERA_RIGS.length,
+        visualCues: studioStoryboard ? studioStoryboard.shots.map(s => s.cinematicPrompt) : [],
+        storyArc: studioStoryboard?.narrativeGoal,
       },
     },
     // 3. System Health & Savings Card
