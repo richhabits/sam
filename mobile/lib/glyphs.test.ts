@@ -31,7 +31,7 @@ describe('the glyph vocabulary', () => {
 
   it('keeps the text-presentation selector on the emoji-capable marks that need it', () => {
     const TEXT = String.fromCharCode(0xfe0e);
-    for (const name of ['build', 'create', 'edit', 'checkpoint', 'tools'] as const) {
+    for (const name of ['build', 'create', 'edit', 'checkpoint', 'tools', 'videoGen'] as const) {
       expect(GLYPHS[name], `GLYPHS.${name} lost its U+FE0E`).toContain(TEXT);
     }
   });

@@ -64,6 +64,7 @@ const QUICK_ACTIONS: { id: string; title: string; hint: string; glyph: string; p
   { id: 'slides', title: 'Create slides', hint: 'A structured deck on any topic', glyph: GLYPHS.slides, prompt: 'Create a 5-slide deck on ' },
   { id: 'research', title: 'Deep research', hint: 'Multi-angle, cited findings', glyph: GLYPHS.research, prompt: 'Conduct deep research on ' },
   { id: 'image', title: 'Create image', hint: 'Generate an image from a description', glyph: GLYPHS.imageGen, prompt: 'Generate a high-res image of ' },
+  { id: 'video', title: 'Create video', hint: 'Generate a short AI video with sound', glyph: GLYPHS.videoGen, prompt: 'Generate a short video of ' },
 ];
 
 /** SAM's own endpoints each name their own array; normalise to one row so the list stays dumb. */

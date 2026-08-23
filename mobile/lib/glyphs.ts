@@ -93,6 +93,7 @@ export const GLYPHS = {
   research: '◍', // circle with vertical fill — a focused pass over sources
   imageGen: '◑', // circle, right half black — distinct shape family from Photos (▨) on purpose,
   // since a generated image is not an attached one and the two rows must not read as the same idea
+  videoGen: `▶${TEXT}`, // right-pointing triangle with text presentation — video playback / camera action
 
   // Jobs. taskGlyph() owns the kind→mark mapping; these are its vocabulary, here so the
   // emoji rule walks them too.
