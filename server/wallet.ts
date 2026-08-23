@@ -3,8 +3,8 @@
 //
 //  "If the user wants to invest £5, make it possible that they do it legally
 //  and cover our ass."
-//  This module manages the local wallet ledger, KYC/AML state, and 
-//  deposits. In production, this bridges to Stripe Identity/Issuing or Plaid.
+//  This module manages the local wallet ledger, mock KYC/AML state, and simulated
+//  deposits. In production, this would bridge to Stripe Identity/Issuing or Plaid.
 // ─────────────────────────────────────────────────────────────
 
 import { join } from "node:path";
@@ -71,7 +71,7 @@ export function requestKYC(): WalletState {
   return state;
 }
 
-// Webhook for KYC approval
+// Mock webhook for KYC approval
 export function approveKYC(): WalletState {
   const state = getWallet();
   state.kyc = "verified";

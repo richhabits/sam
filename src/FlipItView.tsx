@@ -124,7 +124,7 @@ export default function FlipItView() {
   }, [peakEquity]);
 
   // Live Kelly risk shield from the backend. winRate is a fixed backtested-edge assumption
-  // (this rig's /execute currently fills reliably in the primary venue);
+  // (this paper rig's /execute always fills, so there's no local loss history to derive it from);
   // avgWin/avgLoss are derived from the currently visible spread book at a ~1.8:1 payoff ratio.
   useEffect(() => {
     const avgWinGbp = spreads.length > 0
@@ -152,7 +152,7 @@ export default function FlipItView() {
   const [d, setD] = useState<{ refused?: boolean } | null>(null);
 
   useEffect(() => {
-    // Note: getFlipit() reads the backend execution engine's state — its `equity`
+    // Note: getFlipit() reads a separate, unrelated paper-trading rig's state — its `equity`
     // field must not overwrite this dashboard's own tracked totalEquity (flipit_equity).
     getFlipit()
       .then((data: any) => {
@@ -247,10 +247,10 @@ export default function FlipItView() {
         setTotalEquity((prev) => prev + data.actualProfitGbp);
         setDailyPL((prev) => prev + data.actualProfitGbp);
         
-        // Make the UI dynamic: Remove the filled order from the order book!
+        // Make the mock dynamic: Remove the filled order from the order book!
         setSpreads((prev) => prev.filter(spread => spread !== s));
 
-        // Make the UI dynamic: Add a real log entry!
+        // Make the mock dynamic: Add a real log entry!
         const now = new Date();
         const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         setArbLogs(prev => [{
@@ -1332,7 +1332,7 @@ export default function FlipItView() {
                     });
                     if (res.ok) {
                       triggerToast("⚡ Capital successfully deployed to automated rebalancing ladder!");
-                      // Make the UI dynamic: Snap the current allocations to the target allocations!
+                      // Make the mock dynamic: Snap the current allocations to the target allocations!
                       setHoldings(prev => prev.map(h => ({ ...h, current: h.target })));
                     } else {
                       triggerToast("⚠️ Failed to reach Rebalance logic tier.");
