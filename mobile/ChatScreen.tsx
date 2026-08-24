@@ -73,34 +73,68 @@ const BRAINS = [
   { key: 'turbo' as const, name: 'Turbo', why: 'The best model available. Uses paid credit when it has to.' },
 ];
 
+import * as Clipboard from 'expo-clipboard';
+
+function CodeBlockView({ text, lang, s, ios }: { text: string; lang?: string; s: any; ios: IOS }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await Clipboard.setStringAsync(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+
+  const displayLang = (lang || 'code').toUpperCase();
+
+  return (
+    <View style={s.codeblock}>
+      <View style={s.codeblockHeader}>
+        <Text style={s.codeblockLang}>{displayLang}</Text>
+        <Pressable
+          onPress={handleCopy}
+          hitSlop={8}
+          style={({ pressed }) => [s.copyBtn, pressed && { opacity: 0.6 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Copy code"
+        >
+          <Text style={[s.copyBtnText, copied && { color: ios.tintText }]}>
+            {copied ? '✓ Copied' : 'Copy'}
+          </Text>
+        </Pressable>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ minWidth: '100%' }}>
+        <Text style={s.codeblockText} selectable>{text}</Text>
+      </ScrollView>
+    </View>
+  );
+}
+
 /** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
  *  lazy port looks like. Blocks re-parse on every token, which is cheap and keeps a code fence
  *  from flashing as prose before its closing ``` arrives. */
-function Rendered({ text, s }: { text: string; s: any }) {
+function Rendered({ text, s, ios }: { text: string; s: any; ios: IOS }) {
   return (
     <>
       {parseMarkdown(text).map((b, i) =>
         b.kind === 'codeblock' ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
-          <View key={i} style={s.codeblock}>
-            <Text style={s.codeblockText}>{b.text}</Text>
-          </View>
+          // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
+          <CodeBlockView key={i} text={b.text} lang={b.lang} s={s} ios={ios} />
         ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
+          // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
           <Text key={i} style={s.samText}>
             {b.segments.map((seg, j) =>
               seg.kind === 'bold' ? (
-                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
+                // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
                 <Text key={j} style={{ fontWeight: '700' }}>
                   {seg.text}
                 </Text>
               ) : seg.kind === 'code' ? (
-                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
+                // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
                 <Text key={j} style={s.inlineCode}>
                   {seg.text}
                 </Text>
               ) : (
-                // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
+                // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
                 <Text key={j}>{seg.text}</Text>
               ),
             )}
@@ -515,7 +549,7 @@ export default function ChatScreen({
                   {m.pending && !m.text ? (
                     <ActivityIndicator color={ios.tint} />
                   ) : (
-                    <Rendered text={m.text} s={s} />
+                    <Rendered text={m.text} s={s} ios={ios} />
                   )}
                 </View>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
@@ -844,11 +878,47 @@ function makeStyles(ios: IOS) {
     inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tintText },
     codeblock: {
       backgroundColor: ios.groupedBg,
-      borderRadius: 8,
-      padding: 10,
-      marginTop: 6,
+      borderRadius: 10,
+      marginTop: 8,
+      overflow: 'hidden',
+      borderWidth: metrics.hairline,
+      borderColor: ios.separator,
     },
-    codeblockText: { fontFamily: 'Menlo', fontSize: 13, color: ios.label, lineHeight: 18 },
+    codeblockHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: ios.card,
+      borderBottomWidth: metrics.hairline,
+      borderBottomColor: ios.separator,
+    },
+    codeblockLang: {
+      fontFamily: 'Menlo',
+      fontSize: 11,
+      fontWeight: '700',
+      color: ios.secondaryLabel,
+      letterSpacing: 0.5,
+    },
+    copyBtn: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: ios.groupedBg,
+    },
+    copyBtnText: {
+      ...iosType.caption,
+      fontWeight: '600',
+      color: ios.secondaryLabel,
+    },
+    codeblockText: {
+      fontFamily: 'Menlo',
+      fontSize: 13,
+      color: ios.label,
+      lineHeight: 19,
+      padding: 12,
+    },
     route: { ...iosType.caption, color: ios.secondaryLabel, paddingLeft: 6 },
     error: { ...iosType.footnote, color: ios.destructive, textAlign: 'center', paddingTop: 8 },
     composer: {

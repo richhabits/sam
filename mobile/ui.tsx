@@ -241,6 +241,7 @@ export function Field({
   onChangeText,
   placeholder,
   mono,
+  accessory,
   last,
   ...input
 }: {
@@ -250,6 +251,7 @@ export function Field({
   onChangeText: (v: string) => void;
   placeholder?: string;
   mono?: boolean;
+  accessory?: ReactNode;
   last?: boolean;
 } & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
   return (
@@ -275,6 +277,7 @@ export function Field({
           accessibilityLabel={label}
           {...input}
         />
+        {accessory ? <View style={{ marginLeft: 8 }}>{accessory}</View> : null}
       </View>
       {!last ? (
         <View

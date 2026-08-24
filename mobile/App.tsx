@@ -3,8 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  BackHandler,
   Image,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -154,6 +156,32 @@ export default function App() {
     const sub = Linking.addEventListener('url', (e) => handleUrl(e.url));
     return () => sub.remove();
   }, [handleUrl]);
+
+  // Android Hardware Back Button lifecycle handling
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const onBackPress = () => {
+      if (showScanner) {
+        setShowScanner(false);
+        return true;
+      }
+      if (showPairModal) {
+        setShowPairModal(false);
+        return true;
+      }
+      if (menu) {
+        setMenu(false);
+        return true;
+      }
+      if (surface !== 'agent') {
+        setSurface('agent');
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [showScanner, showPairModal, menu, surface]);
 
   const onNeedsPairing = useCallback(() => {
     setPaired(false);

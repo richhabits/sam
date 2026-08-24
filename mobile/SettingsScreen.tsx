@@ -1,6 +1,6 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Switch, Text, } from 'react-native';
+import { Linking, Pressable, Switch, Text } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
@@ -125,6 +125,20 @@ export default function SettingsScreen({
                 }}
                 autoCapitalize="none"
                 autoCorrect={false}
+                accessory={
+                  p.getKeyUrl ? (
+                    <Pressable
+                      onPress={() => void Linking.openURL(p.getKeyUrl)}
+                      hitSlop={6}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Get ${p.label} API key`}
+                    >
+                      <Text style={[type.footnote, { color: ios.tintText, fontWeight: '600' }]}>
+                        Get Key ↗
+                      </Text>
+                    </Pressable>
+                  ) : null
+                }
                 last={i === ALL_PROVIDERS.length - 1}
               />
             ))
