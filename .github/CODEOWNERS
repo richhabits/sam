@@ -5,6 +5,10 @@
 /server/authz.ts        @richhabits
 /server/forge.ts        @richhabits
 /server/remote-tokens.ts @richhabits
+/server/flipit-execution.ts @richhabits
+/server/flipit-auto.ts  @richhabits
+/server/vault-crypto.ts @richhabits
+/server/warden.ts       @richhabits
 /gateway/               @richhabits
 /SECURITY.md            @richhabits
 /docs/SECURITY-AUDIT.md @richhabits

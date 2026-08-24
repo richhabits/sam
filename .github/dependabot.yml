@@ -39,3 +39,17 @@ updates:
       actions-major:
         patterns: ["*"]
         update-types: ["major"]
+
+  - package-ecosystem: "npm"
+    directory: "/mobile"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "mobile"]
+    groups:
+      mobile-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      mobile-major:
+        patterns: ["*"]
+        update-types: ["major"]
