@@ -103,7 +103,7 @@ export default function SettingsScreen({
       <Section
         ios={ios}
         header="Cloud AI Engine"
-        footer="SAM comes with ready-to-use cloud brains and an instant neural core out of the box. Add any free API key for unlimited direct personal quotas."
+        footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas."
       >
         <ActionRow
           ios={ios}

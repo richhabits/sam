@@ -29,23 +29,28 @@ beforeEach(() => {
   fetchSpy.mockReset();
 });
 
-describe('streamDirectAI — Zero-Config Instant Core Fallback', () => {
-  it('generates rich, working code when public endpoints are unreachable', async () => {
+describe('streamDirectAI — honest fallback when nothing is reachable', () => {
+  it('says so plainly instead of fabricating a response, when every lane fails', async () => {
     fetchSpy.mockResolvedValue({ ok: false, status: 402, body: null });
 
     const tokens: string[] = [];
     const result = await streamDirectAI('build me a dog website', [], { onToken: (t) => tokens.push(t) });
 
-    expect(result).toContain('Paws & Play');
-    expect(result).toContain('```html');
+    // Must NOT claim to have generated a real result — no fabricated code, no canned
+    // templates. See the doctrine note on streamHonestFallback in direct.ts: this behavior
+    // (keyword-matched fake responses, once even streamed word-by-word to look live) was
+    // reverted twice already after being caught pre-push.
+    expect(result).not.toContain('```');
+    expect(result).toContain("can't reach an AI brain");
+    expect(result).toContain('Groq');
     expect(tokens.length).toBeGreaterThan(0);
   });
 
-  it('generates structured assistance for general questions when offline', async () => {
+  it('gives the same honest message for any prompt shape, not a keyword-matched canned reply', async () => {
     fetchSpy.mockResolvedValue({ ok: false, status: 500, body: null });
     const result = await streamDirectAI('what can you do?', []);
-    expect(result).toContain('S.A.M.');
-    expect(result).toContain('Fast Direct AI');
+    expect(result).toContain("can't reach an AI brain");
+    expect(result).not.toContain('Fast Direct AI');
   });
 });
 

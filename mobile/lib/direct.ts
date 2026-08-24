@@ -9,9 +9,10 @@ import type { Turn, StreamHandlers } from './chat';
 // the desktop's local yard/tools; when on 5G or standalone, SAM streams from cloud brains.
 //
 // Every compatible OpenAI provider + Google Gemini + Anthropic Claude is supported directly
-// on device. When opened fresh without any keys, SAM runs an autonomous zero-config cascade
-// across multiple keyless lanes, backed by an instant on-device neural core so the user
-// gets immediate, smooth, high-quality responses straight out of the box with zero setup.
+// on device. When opened fresh without any keys, SAM tries a cascade of real keyless public
+// lanes (Pollinations, OpenRouter's free tier); if every one of them genuinely fails, SAM says
+// so honestly (streamHonestFallback) rather than fabricating a response — see the doctrine note
+// on that function.
 
 export type DirectProvider = {
   id: string;
@@ -308,78 +309,32 @@ async function callAnthropicDirect(
   }
 }
 
-// ── BUILT-IN ON-DEVICE INSTANT SYNTHESIS (SMART SAM CORE) ───────────────────
-// When offline, on airplane mode, or when all remote public free endpoints are
-// throttling/down, SAM's instant on-device engine generates structured, rich,
-// production-ready answers so the app NEVER locks the user out or fails.
-async function streamInstantCore(
-  prompt: string,
-  history: Turn[],
-  handlers: StreamHandlers = {},
-  signal?: AbortSignal,
-): Promise<string> {
-  const p = prompt.trim();
-  const lower = p.toLowerCase();
-
-  let reply = '';
-
-  // Code / Website / App Requests
-  if (/build|create|write|code|website|app|html|game|dashboard|calculator|todo|landing|component/i.test(lower)) {
-    if (/dog|pet|puppy/i.test(lower)) {
-      reply = `# 🐾 Paws & Play · Premium Pet Care\n\n` +
-        `Here is a complete, modern single-page website ready to deploy:\n\n` +
-        `\`\`\`html\n<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <title>Paws & Play | Boutique Dog Daycare</title>\n  <script src="https://cdn.tailwindcss.com"></script>\n</head>\n<body class="bg-slate-950 text-slate-100 font-sans min-h-screen">\n  <header class="p-6 border-b border-slate-800 flex justify-between items-center max-w-6xl mx-auto">\n    <h1 class="text-2xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">PAWS & PLAY</h1>\n    <nav class="space-x-6 text-sm text-slate-400">\n      <a href="#services" class="hover:text-white transition">Services</a>\n      <a href="#about" class="hover:text-white transition">About</a>\n      <a href="#book" class="px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-full hover:bg-amber-400 transition">Book Daycare</a>\n    </nav>\n  </header>\n  <main class="max-w-4xl mx-auto px-6 py-16 text-center">\n    <span class="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-xs font-semibold tracking-wide uppercase">Caring for your best friend</span>\n    <h2 class="text-5xl font-extrabold mt-6 tracking-tight">Luxury Dog Care & Training</h2>\n    <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">Cage-free indoor agility parks, real-time HD webcams, and certified canine trainers.</p>\n  </main>\n</body>\n</html>\n\`\`\`\n\n` +
-        `**Features included:**\n- TailwindCSS modern responsive dark mode layout\n- Mobile-optimized navigation and CTA buttons\n- Clean semantic structure`;
-    } else if (/calculator|calc/i.test(lower)) {
-      reply = `# 🧮 Interactive Glassmorphic Calculator\n\n` +
-        `\`\`\`html\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>SAM Glass Calculator</title>\n  <script src="https://cdn.tailwindcss.com"></script>\n</head>\n<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">\n  <div class="bg-slate-800/80 backdrop-blur-xl border border-slate-700 p-6 rounded-3xl w-80 shadow-2xl">\n    <div id="display" class="bg-slate-950/60 p-4 rounded-2xl text-right text-3xl font-mono text-emerald-400 mb-6 overflow-x-auto min-h-[60px] flex items-center justify-end">0</div>\n    <div class="grid grid-cols-4 gap-3 text-lg font-semibold">\n      <button onclick="clearDisplay()" class="p-4 rounded-xl bg-rose-500/20 text-rose-300 active:scale-95">C</button>\n      <button onclick="append('/')" class="p-4 rounded-xl bg-slate-700 text-amber-400">÷</button>\n      <button onclick="append('*')" class="p-4 rounded-xl bg-slate-700 text-amber-400">×</button>\n      <button onclick="append('-')" class="p-4 rounded-xl bg-slate-700 text-amber-400">−</button>\n      <button onclick="append('7')" class="p-4 rounded-xl bg-slate-700/60 text-white">7</button>\n      <button onclick="append('8')" class="p-4 rounded-xl bg-slate-700/60 text-white">8</button>\n      <button onclick="append('9')" class="p-4 rounded-xl bg-slate-700/60 text-white">9</button>\n      <button onclick="append('+')" class="p-4 rounded-xl bg-slate-700 text-amber-400">+</button>\n      <button onclick="append('4')" class="p-4 rounded-xl bg-slate-700/60 text-white">4</button>\n      <button onclick="append('5')" class="p-4 rounded-xl bg-slate-700/60 text-white">5</button>\n      <button onclick="append('6')" class="p-4 rounded-xl bg-slate-700/60 text-white">6</button>\n      <button onclick="calculate()" class="row-span-2 p-4 rounded-xl bg-emerald-500 text-slate-950 font-bold flex items-center justify-center">=</button>\n      <button onclick="append('1')" class="p-4 rounded-xl bg-slate-700/60 text-white">1</button>\n      <button onclick="append('2')" class="p-4 rounded-xl bg-slate-700/60 text-white">2</button>\n      <button onclick="append('3')" class="p-4 rounded-xl bg-slate-700/60 text-white">3</button>\n      <button onclick="append('0')" class="col-span-2 p-4 rounded-xl bg-slate-700/60 text-white">0</button>\n      <button onclick="append('.')" class="p-4 rounded-xl bg-slate-700/60 text-white">.</button>\n    </div>\n  </div>\n  <script>\n    let expr = '';\n    const d = document.getElementById('display');\n    function append(ch) { expr += ch; d.innerText = expr; }\n    function clearDisplay() { expr = ''; d.innerText = '0'; }\n    function calculate() { try { expr = String(eval(expr) || 0); d.innerText = expr; } catch { d.innerText = 'Error'; expr = ''; } }\n  </script>\n</body>\n</html>\n\`\`\``;
-    } else {
-      reply = `Here is a complete, production-ready solution:\n\n` +
-        `\`\`\`typescript\n// SAM Core Implementation\nexport interface AppConfig {\n  title: string;\n  version: string;\n  features: string[];\n}\n\nexport class SystemCore {\n  private config: AppConfig;\n\n  constructor(config: AppConfig) {\n    this.config = config;\n  }\n\n  public async initialize(): Promise<boolean> {\n    console.log(\`[SAM] Initialized \${this.config.title} v\${this.config.version}\`);\n    return true;\n  }\n\n  public executeTask(name: string, payload: Record<string, unknown>): { status: string; ts: number } {\n    return {\n      status: 'completed',\n      ts: Date.now(),\n      task: name,\n      payload,\n    };\n  }\n}\n\`\`\`\n\n` +
-        `**Key architectural highlights:**\n1. Type-safe configuration with explicit interfaces\n2. Clean separation of concerns and asynchronous initialization\n3. Ready to drop into your application bundle.`;
-    }
-  } else if (/what can you do|who are you|help|capabilities/i.test(lower)) {
-    reply = `I am **S.A.M. (Smart Artificial Mind)** — an autonomous, high-performance AI assistant operating on mobile and desktop.\n\n` +
-      `### What I Can Do For You:\n` +
-      `1. **⚡ Fast Direct AI**: Chat, reasoning, math, and writing directly on your phone with zero lag.\n` +
-      `2. **💻 Production Code Generation**: Complete single-page apps, HTML/Tailwind templates, React components, and TypeScript architectures.\n` +
-      `3. **🔗 Mac/PC Yard Worker Linking**: Pair with your desktop to run autonomous terminal tools, browse files, execute scripts, and inspect git repos.\n` +
-      `4. **🌐 Multi-Cloud Engine**: Instant failover across 30+ free & premium AI providers (Groq, Cerebras, Gemini, Mistral, Together, DeepSeek, OpenRouter).\n\n` +
-      `*Tip: Go to Settings → Cloud AI Engine to add custom free API keys for unlimited direct personal quotas, or tap "Connect to Mac / PC" to unlock local computer tools.*`;
-  } else {
-    // General structured reasoning reply
-    reply = `Here is a direct, comprehensive breakdown for **"${p}"**:\n\n` +
-      `### 1. Key Principles & Overview\n` +
-      `- **Objective**: Efficient, resilient execution with clean structure.\n` +
-      `- **Primary Factors**: Speed, accuracy, and robust fallback handling.\n\n` +
-      `### 2. Practical Action Plan\n` +
-      `1. **Verify Requirements**: Identify critical paths and dependencies.\n` +
-      `2. **Streamlined Execution**: Implement the solution with minimal overhead.\n` +
-      `3. **Validation & Monitoring**: Check boundaries and edge cases.\n\n` +
-      `> *SAM Standalone Core is online and ready. For live yard workers and local file tools, link your phone to your Mac or PC in Settings.*`;
-  }
-
-  // Fluid token streaming simulation (fast typing velocity)
-  const words = reply.split(' ');
-  let accumulated = '';
-  for (let i = 0; i < words.length; i++) {
-    if (signal?.aborted) throw new Error('Aborted');
-    accumulated += (i > 0 ? ' ' : '') + words[i];
-    handlers.onToken?.(accumulated);
-    // Yield microtask so UI renders smoothly
-    await new Promise((r) => setTimeout(r, 12));
-  }
-
-  handlers.onDone?.(reply);
-  return reply;
+// ── HONEST FALLBACK ──────────────────────────────────────────────────────
+// Nothing reachable — no custom key worked, every keyless public lane failed, no desktop
+// paired. Say so plainly and give the two real ways to fix it, instead of fabricating a
+// plausible-looking answer. This used to keyword-match the prompt ("site"/"build"/"html" → a
+// hardcoded dog-website template, anything else → a canned "I'm SAM, ready to help" blurb) and
+// stream it word-by-word with an artificial delay to look like a real generation — twice, once
+// under the name "Instant Core" — and both times it was reverted. That's the one thing SAM's
+// own doctrine rules out by name — PROVE IT: never claim a result you don't actually have —
+// and it meant "no AI is currently reachable" was invisible to the user, indistinguishable
+// from a real (if generic) reply.
+async function streamHonestFallback(handlers: StreamHandlers = {}): Promise<string> {
+  const message =
+    "I can't reach an AI brain right now — no free key is set up on this phone, and the keyless " +
+    'public lanes just failed too. Two ways to fix it: add a free key in Settings → Cloud AI Engine ' +
+    "(Groq's takes about 30 seconds), or pair this phone with your Mac/PC and use its brains instead.";
+  handlers.onToken?.(message);
+  handlers.onDone?.(message);
+  return message;
 }
 
 /**
  * Stream an AI completion directly on mobile.
  *
  * 1. Checks user's custom configured keys in priority order (fastest/generous free tiers first).
- * 2. If no custom keys (or all fail), runs an autonomous multi-lane keyless cascade (Pollinations, OpenRouter Free).
- * 3. If offline or remote public lanes are saturated, smoothly runs SAM's Instant On-Device Neural Core.
+ * 2. If no custom keys (or all fail), tries a multi-lane keyless cascade (Pollinations, OpenRouter Free).
+ * 3. If every real lane genuinely fails, says so honestly instead of fabricating a response.
  */
 export async function streamDirectAI(
   message: string,
@@ -508,8 +463,6 @@ export async function streamDirectAI(
   ).catch(() => null);
   if (openRouterFree) { handlers.onDone?.(openRouterFree); return openRouterFree; }
 
-  // 4. INSTANT SMART ON-DEVICE NEURAL CORE
-  // Ensures 100% smooth, continuous operation under any condition without dead walls
-  handlers.onRoute?.({ type: 'route', tier: 'free · direct', reason: 'SAM Instant Core' });
-  return await streamInstantCore(message, history, handlers, signal);
+  // 4. Nothing reachable — say so honestly rather than fabricate a response.
+  return streamHonestFallback(handlers);
 }
