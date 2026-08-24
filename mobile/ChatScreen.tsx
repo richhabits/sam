@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -216,6 +218,29 @@ export default function ChatScreen({
 
   // A stream left running when the screen goes away keeps a socket and a setState alive.
   useEffect(() => () => abort.current?.abort(), []);
+
+  const onMessageLongPress = useCallback((m: Msg) => {
+    if (!m.text) return;
+    haptic.heavy();
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Copy Full Text', 'Share Message', 'Cancel'],
+          cancelButtonIndex: 2,
+        },
+        async (idx) => {
+          if (idx === 0) {
+            await Clipboard.setStringAsync(m.text);
+            haptic.success();
+          } else if (idx === 1) {
+            void Share.share({ message: m.text });
+          }
+        },
+      );
+    } else {
+      void Share.share({ message: m.text });
+    }
+  }, []);
 
   // Restore the thread on launch. Losing every conversation on app switch is the most
   // "unfinished" thing a chat client can do, and SAM's pitch is a memory that compounds.
@@ -548,20 +573,29 @@ export default function ChatScreen({
         ) : (
           msgs.map((m, i) =>
             m.role === 'user' ? (
-              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
-              <View key={i} style={s.bubbleUser}>
+              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render
+              <Pressable
+                key={i}
+                onLongPress={() => onMessageLongPress(m)}
+                delayLongPress={300}
+                style={s.bubbleUser}
+              >
                 <Text style={s.userText}>{m.text}</Text>
-              </View>
+              </Pressable>
             ) : (
-              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render, never reorders and holds no per-item state, so the index IS the stable identity.
+              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render
               <View key={i} style={s.samWrap}>
-                <View style={s.bubbleSam}>
+                <Pressable
+                  onLongPress={() => onMessageLongPress(m)}
+                  delayLongPress={300}
+                  style={s.bubbleSam}
+                >
                   {m.pending && !m.text ? (
                     <ActivityIndicator color={ios.tint} />
                   ) : (
                     <Rendered text={m.text} s={s} ios={ios} />
                   )}
-                </View>
+                </Pressable>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
               </View>
             ),

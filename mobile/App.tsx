@@ -209,7 +209,20 @@ export default function App() {
     <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
       {/* 44pt Navigation Bar */}
       <View style={[s.navbar, { backgroundColor: ios.card, borderBottomColor: ios.separator }]}>
-        <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
+        <Pressable
+          onPress={() => {
+            haptic.light();
+            if (_paired) setShowPairModal(true);
+            else setSurface('settings');
+          }}
+          hitSlop={8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          accessibilityRole="button"
+          accessibilityLabel={_paired ? 'Desktop paired' : 'Standalone mode'}
+        >
+          <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
+          <View style={[s.statusDot, { backgroundColor: _paired ? '#30D158' : ios.tint }]} />
+        </Pressable>
 
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
           <Segmented
@@ -412,6 +425,7 @@ const makeStyles = (ios: IOS) =>
       borderBottomWidth: metrics.hairline,
     },
     markSmall: { width: 28, height: 28, borderRadius: 6 },
+    statusDot: { width: 8, height: 8, borderRadius: 4 },
     scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
     menu: {
       position: 'absolute',

@@ -254,7 +254,7 @@ export function Field({
   mono?: boolean;
   accessory?: ReactNode;
   last?: boolean;
-} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
+} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType' | 'secureTextEntry'>) {
   return (
     <View>
       <View style={s.row}>

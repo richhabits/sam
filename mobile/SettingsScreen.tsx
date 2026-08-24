@@ -1,6 +1,6 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, Switch, Text } from 'react-native';
+import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
@@ -31,6 +31,7 @@ export default function SettingsScreen({
   const [consent, setConsentState] = useState<SpendConsent>('ask');
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState(false);
+  const [showPlainKeys, setShowPlainKeys] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -104,49 +105,78 @@ export default function SettingsScreen({
       <Section
         ios={ios}
         header="Cloud AI Engine"
-        footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas."
+        footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas. Keys are stored encrypted in Keychain / Keystore."
       >
         <ActionRow
           ios={ios}
           title={showKeys ? 'Hide API Keys' : 'Configure Custom API Keys (30+ Providers)'}
-          onPress={() => setShowKeys(!showKeys)}
+          onPress={() => {
+            haptic.light();
+            setShowKeys(!showKeys);
+          }}
           last={!showKeys}
         />
-        {showKeys
-          ? ALL_PROVIDERS.map((p, i) => (
-              <Field
-                key={p.id}
-                ios={ios}
-                label={`${p.label}${p.starter ? ' (Free Starter)' : ''}`}
-                placeholder={p.keyPlaceholder}
-                value={keys[p.id] || ''}
-                onChangeText={(val) => {
-                  setKeys((k) => ({ ...k, [p.id]: val }));
-                  void setCustomKey(p.id, val);
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessory={
-                  p.getKeyUrl ? (
-                    <Pressable
-                      onPress={() => {
-                        haptic.medium();
-                        void Linking.openURL(p.getKeyUrl);
-                      }}
-                      hitSlop={6}
-                      accessibilityRole="link"
-                      accessibilityLabel={`Get ${p.label} API key`}
-                    >
-                      <Text style={[type.footnote, { color: ios.tintText, fontWeight: '600' }]}>
-                        Get Key ↗
-                      </Text>
-                    </Pressable>
-                  ) : null
-                }
-                last={i === ALL_PROVIDERS.length - 1}
-              />
-            ))
-          : null}
+        {showKeys ? (
+          <>
+            <Row
+              ios={ios}
+              title="Mask API Keys"
+              subtitle="Hide key text on screen to prevent shoulder surfing"
+              accessory={
+                <Switch
+                  value={!showPlainKeys}
+                  onValueChange={(val) => {
+                    haptic.light();
+                    setShowPlainKeys(!val);
+                  }}
+                  trackColor={{ false: ios.cardPressed, true: ios.tint }}
+                />
+              }
+            />
+            {ALL_PROVIDERS.map((p, i) => {
+              const isSet = !!keys[p.id]?.trim();
+              return (
+                <Field
+                  key={p.id}
+                  ios={ios}
+                  label={`${p.label}${p.starter ? ' (Free)' : ''}`}
+                  placeholder={isSet ? '••••••••••••••••' : p.keyPlaceholder}
+                  value={keys[p.id] || ''}
+                  secureTextEntry={!showPlainKeys}
+                  onChangeText={(val) => {
+                    setKeys((k) => ({ ...k, [p.id]: val }));
+                    void setCustomKey(p.id, val);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessory={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {isSet ? (
+                        <Text style={[type.caption, { color: '#30D158', fontWeight: '700' }]}>✓ Set</Text>
+                      ) : null}
+                      {p.getKeyUrl ? (
+                        <Pressable
+                          onPress={() => {
+                            haptic.medium();
+                            void Linking.openURL(p.getKeyUrl);
+                          }}
+                          hitSlop={6}
+                          accessibilityRole="link"
+                          accessibilityLabel={`Get ${p.label} API key`}
+                        >
+                          <Text style={[type.footnote, { color: ios.tintText, fontWeight: '600' }]}>
+                            Get Key ↗
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  }
+                  last={i === ALL_PROVIDERS.length - 1}
+                />
+              );
+            })}
+          </>
+        ) : null}
       </Section>
 
       {/* SPENDING */}
