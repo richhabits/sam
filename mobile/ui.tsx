@@ -11,6 +11,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { haptic } from './lib/haptics';
 import { type IOS, metrics, type } from './lib/ios';
 
 // The four native primitives every screen here is built from. Written once so a row in
@@ -329,7 +330,10 @@ export function ActionRow({
   );
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptic.light();
+        onPress?.();
+      }}
       disabled={disabled || busy}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled, busy: !!busy }}
@@ -358,7 +362,10 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={o.key}
-            onPress={() => onChange(o.key)}
+            onPress={() => {
+              haptic.selection();
+              onChange(o.key);
+            }}
             accessibilityRole="tab"
             accessibilityLabel={o.label}
             accessibilityState={{ selected: on }}
@@ -432,7 +439,10 @@ export function Chips<T extends string>({
         return (
           <Pressable
             key={o.key}
-            onPress={() => onChange(o.key)}
+            onPress={() => {
+              haptic.selection();
+              onChange(o.key);
+            }}
             accessibilityRole="tab"
             // Spoken, not read off the chip: "Failed, 3" beats "Failed 3" run together, and the
             // count is meaningless to a screen reader without the noun attached to it.

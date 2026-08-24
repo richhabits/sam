@@ -74,12 +74,14 @@ const BRAINS = [
 ];
 
 import * as Clipboard from 'expo-clipboard';
+import { haptic } from './lib/haptics';
 
 function CodeBlockView({ text, lang, s, ios }: { text: string; lang?: string; s: any; ios: IOS }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(text);
+    haptic.success();
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [text]);
@@ -389,6 +391,7 @@ export default function ChatScreen({
     setComposerKey((k) => k + 1);
     setError('');
     setBusy(true);
+    haptic.medium();
     setAttached([]);
     setMsgs((prev) => [
       ...prev,
@@ -409,6 +412,7 @@ export default function ChatScreen({
         // /api/stream ignores `attachments`; /api/command reads them and runs vision. One
         // request, one finished answer — faking a stream over a completed reply is theatre.
         const r = await sendWithAttachments(outbound, attachments, history);
+        haptic.light();
         patch((m) => ({
           ...m,
           text: r.text || '(no answer)',
@@ -426,7 +430,10 @@ export default function ChatScreen({
             patch((m) => ({ ...m, route: label }));
           },
           onToken: (text) => patch((m) => ({ ...m, text, pending: false })),
-          onDone: (text) => patch((m) => ({ ...m, text, pending: false })),
+          onDone: (text) => {
+            haptic.light();
+            patch((m) => ({ ...m, text, pending: false }));
+          },
         },
         ctrl.signal,
         tier === 'auto' ? undefined : tier,
@@ -480,7 +487,10 @@ export default function ChatScreen({
               {STARTERS.map((t) => (
                 <Pressable
                   key={t}
-                  onPress={() => setDraft(t)}
+                  onPress={() => {
+                    haptic.light();
+                    setDraft(t);
+                  }}
                   style={({ pressed }) => [
                     s.starter,
                     { backgroundColor: ios.fill, borderColor: ios.separator, opacity: pressed ? 0.6 : 1 },

@@ -22,6 +22,7 @@ import { clearThread } from './lib/history';
 import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { ensurePermission, notify } from './lib/notify';
+import { haptic } from './lib/haptics';
 import { parsePairLink, type PairLink } from './lib/pairlink';
 import { normalizeHost, pairedDespiteError } from './lib/pairstate';
 import { parseQuickLink } from './lib/quicklink';
@@ -99,6 +100,7 @@ export default function App() {
         await claim(withHost, withCode);
         claimed.current = true;
         setPaired(true);
+        haptic.success();
         setShowPairModal(false);
         setSurface('agent');
         const status = await ensurePermission();
@@ -111,11 +113,13 @@ export default function App() {
           if (pairedDespiteError({ targetHost: base, storedHost, storedToken })) {
             claimed.current = true;
             setPaired(true);
+            haptic.success();
             setShowPairModal(false);
             setSurface('agent');
             return;
           }
         } catch { /* stored-token check failed — fall through to the original pairing error */ }
+        haptic.error();
         setError(e?.message || 'Pairing failed. Make sure SAM is running on your computer.');
       } finally {
         setBusy(false);
@@ -211,7 +215,10 @@ export default function App() {
           <Segmented
             ios={ios}
             value={surface === 'settings' ? 'agent' : surface}
-            onChange={(k) => setSurface(k)}
+            onChange={(k) => {
+              haptic.selection();
+              setSurface(k);
+            }}
             options={[
               { key: 'agent', label: 'Agent' },
               { key: 'tasks', label: 'Tasks' },
@@ -220,7 +227,10 @@ export default function App() {
         </View>
 
         <Pressable
-          onPress={() => setMenu((v) => !v)}
+          onPress={() => {
+            haptic.light();
+            setMenu((v) => !v);
+          }}
           hitSlop={10}
           style={{ minWidth: 28, alignItems: 'flex-end' }}
           accessibilityRole="button"
@@ -238,6 +248,7 @@ export default function App() {
           <View style={[s.menu, { backgroundColor: ios.card }]}>
             <Pressable
               onPress={() => {
+                haptic.light();
                 setMenu(false);
                 setSurface('agent');
                 void clearThread().then(() => setResetKey((k) => k + 1));
@@ -249,6 +260,7 @@ export default function App() {
             <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.margin }} />
             <Pressable
               onPress={() => {
+                haptic.light();
                 setMenu(false);
                 setShowPairModal(true);
               }}
@@ -259,6 +271,7 @@ export default function App() {
             <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.margin }} />
             <Pressable
               onPress={() => {
+                haptic.light();
                 setMenu(false);
                 setSurface('settings');
               }}

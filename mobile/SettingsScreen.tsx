@@ -4,6 +4,7 @@ import { Linking, Pressable, Switch, Text } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
+import { haptic } from './lib/haptics';
 
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
 import { GLYPHS } from './lib/glyphs';
@@ -128,7 +129,10 @@ export default function SettingsScreen({
                 accessory={
                   p.getKeyUrl ? (
                     <Pressable
-                      onPress={() => void Linking.openURL(p.getKeyUrl)}
+                      onPress={() => {
+                        haptic.medium();
+                        void Linking.openURL(p.getKeyUrl);
+                      }}
                       hitSlop={6}
                       accessibilityRole="link"
                       accessibilityLabel={`Get ${p.label} API key`}
