@@ -11,26 +11,31 @@ ever. Runtime behaviour is identical.
 
 ## 1. The review note that decides this submission
 
-SAM functions both as a 100% standalone AI assistant directly on mobile and as a companion for SAM running on a Mac/PC.
+SAM functions both as a direct AI assistant and as a companion for SAM running on a user's own Mac/PC.
 
-The app works immediately out of the box with built-in cloud brains (and supports 30+ free/premium AI providers like Groq, Cerebras, Mistral, Gemini, Anthropic, DeepSeek, etc., configurable in Settings). When paired over the local network with a user's Mac/PC, it additionally unlocks local file access and desktop tasks.
+Because Apple App Store reviewers test in isolated network environments and will not have a running desktop node or custom API keys, **Demo Mode** is the primary, deterministic path provided specifically for App Review. Under the top menu (•••) → Connect to Mac/PC → **"Explore the demo"**, every screen runs from a fixed local script with zero network dependencies.
 
 Paste into **App Review Information → Notes**:
 
 ```
-SAM is a direct AI assistant with optional local desktop pairing (free, open source: https://github.com/richhabits/sam).
+SAM is an AI assistant with optional local desktop pairing (free, open source: https://github.com/richhabits/sam).
 
-You can use and review the full AI chat immediately on launch without any computer or account.
+You do not need a Mac or an API key to review this app.
 
-• Direct AI Chat: Works out-of-the-box using direct cloud brains and supports 30+ custom AI providers in Settings → Cloud AI Engine.
-• Local Desktop Link: Optionally connects over local network to a running desktop node to monitor tasks and background yard builds.
-• Demo Mode: In the Settings / Pairing menu, "Explore the demo" lets you tour all screens with local sample data.
+To review the full app deterministically:
+1. On launch, tap the top-right menu (•••) → "Connect to Mac / PC".
+2. Under "No SAM yet?", tap "Explore the demo".
+3. Every screen (Agent chat, Tasks list, Attachments, and Settings) runs from a fixed local script. A banner marks it as a demo throughout and you can exit at any time. No network requests are made in this mode.
+
+Direct AI & Custom Keys:
+• The app also supports direct cloud brains and 30+ custom provider keys (Groq, Cerebras, Mistral, Gemini, Anthropic, etc.) in Settings → Cloud AI Engine.
 
 No sign-in or account is required. No telemetry or user prompts pass through any intermediate proxy server we operate.
 
 Permissions:
 • Camera / Photos — only when attaching an image or scanning a local pairing QR code.
 • Local network — only when pairing with a local desktop node.
+Neither is requested during the demo.
 ```
 
 **Sign-in required: No.** Say so in App Review Information — do not leave a demo account blank without answering the question.
@@ -64,6 +69,18 @@ Because `supportsTablet` is true, **both** sets are required:
 |---|---|---|
 | `screenshots/iphone-6.9/` | 1320 × 2868 | agent, tasks, chat, settings |
 | `screenshots/ipad-13/` | 2064 × 2752 | pairing, agent, tasks, settings |
+
+Taken from a Release build on iPhone 17 Pro Max and iPad Pro 13-inch simulators, which Apple
+accepts. The iPhone set carries a clean 9:41 status bar; the iPad status-bar override did not take,
+so those show the real clock — cosmetic, and not something Apple requires.
+
+**Note on current screenshots:** Every shot currently in `mobile/screenshots/` was captured in demo mode and carries the orange `Demo · sample data, not connected to a SAM` banner.
+
+Two honest options:
+1. **Ship these.** Accurate, no personal data, zero risk of leaking anything. The banner is odd marketing but nobody is misled.
+2. **Recapture while paired or in standalone chat** with SAM, which removes the demo banner and shows live chat responses.
+
+Worth keeping option 1 as the safe baseline and doing option 2 before public marketing push.
 
 ## 5. Draft metadata
 
