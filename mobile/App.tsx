@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import ChatScreen from './ChatScreen';
 import { claim, getHost, getToken } from './lib/api';
-import { enterDemo } from './lib/demo';
+import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
 import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
@@ -76,14 +76,19 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [showPairModal, setShowPairModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [token, saved] = await Promise.all([getToken(), getHost()]);
+        // Restored in the same breath as the token: every transport reads the demo flag
+        // synchronously, so setting it late would let the first render's requests race ahead
+        // of it and hit the real network.
+        const [token, saved, inDemo] = await Promise.all([getToken(), getHost(), loadDemo()]);
         if (claimed.current) return;
         if (saved) setHostInput(saved);
-        setPaired(!!token);
+        setDemo(inDemo);
+        setPaired(!!token || inDemo);
       } catch {
         setPaired(false);
       }
@@ -192,6 +197,16 @@ export default function App() {
     setPaired(false);
   }, []);
 
+  // The demo never held a token, so leaving only drops the flag and the chat thread — there is
+  // nothing on a Mac to revoke. Reachable both from the banner's own "Leave" link and from
+  // Settings → Forget this device (forgetDevice() calls leaveDemo() internally either way).
+  const doLeaveDemo = useCallback(async () => {
+    await leaveDemo();
+    setDemo(false);
+    setPaired(false);
+    setResetKey((k) => k + 1);
+  }, []);
+
   const onScanned = useCallback(
     (link: PairLink) => {
       setShowScanner(false);
@@ -297,6 +312,17 @@ export default function App() {
         </>
       ) : null}
 
+      {/* Not dismissible, and it names the way out. A demo mistaken for a live connection is
+          worse than no demo: someone would read the sample jobs as their own. */}
+      {demo ? (
+        <View style={[s.demoBar, { backgroundColor: ios.tintFill }]}>
+          <Text style={[s.demoBarText, { color: ios.onTint }]}>Demo · sample data, not connected to a SAM</Text>
+          <Pressable onPress={() => void doLeaveDemo()} hitSlop={8}>
+            <Text style={[s.demoBarLink, { color: ios.onTint }]}>Leave</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* Main Surfaces View */}
       <View style={[{ flex: 1 }, column]}>
         {surface === 'agent' ? (
@@ -312,6 +338,7 @@ export default function App() {
             ios={ios}
             onForgotten={(_note) => {
               claimed.current = false;
+              setDemo(false);
               setPaired(false);
             }}
             onOpenPairing={() => setShowPairModal(true)}
@@ -405,6 +432,7 @@ export default function App() {
                   haptic.light();
                   setShowPairModal(false);
                   void enterDemo().then(() => {
+                    setDemo(true);
                     setPaired(true);
                     setSurface('agent');
                   });
@@ -460,6 +488,16 @@ const makeStyles = (ios: IOS) =>
       shadowOffset: { width: 0, height: 8 },
     },
     menuRow: { paddingHorizontal: metrics.margin, paddingVertical: 14 },
+    demoBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: metrics.margin,
+      paddingVertical: 7,
+      paddingHorizontal: metrics.margin,
+    },
+    demoBarText: { fontSize: 12, fontWeight: '700' },
+    demoBarLink: { fontSize: 12, fontWeight: '800', textDecorationLine: 'underline' },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
