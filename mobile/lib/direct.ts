@@ -94,6 +94,7 @@ async function callOpenAICompatDirect(
   messages: ChatMessage[],
   handlers: StreamHandlers,
   signal?: AbortSignal,
+  extraBody: Record<string, unknown> = { temperature: 0.7, max_tokens: 2048 },
 ): Promise<string | null> {
   try {
     const res = await streamingFetch(`${baseURL}/chat/completions`, {
@@ -104,7 +105,7 @@ async function callOpenAICompatDirect(
         'HTTP-Referer': 'https://github.com/richhabits/sam',
         'X-Title': 'SAM Mobile',
       },
-      body: JSON.stringify({ model, messages, stream: true, temperature: 0.7, max_tokens: 2048 }),
+      body: JSON.stringify({ model, messages, stream: true, ...extraBody }),
       signal,
     });
     if (!res.ok || !res.body) return null;
@@ -225,22 +226,63 @@ export async function streamDirectAI(
   }
 
   // Nothing configured (or every configured key failed) — try the anonymous public lane before
-  // giving up. No auth header, so it only ever works while OpenRouter's free tier allows it.
+  // giving up. OpenRouter's keyless anonymous endpoint is permanently dead (401, cookie-auth
+  // required as of 2026-08). Pollinations' text API is genuinely keyless for anonymous callers
+  // ("user_tier":"anonymous") and is the same fallback the desktop server already relies on
+  // (server/model-providers.ts) — mobile gets the same free lane.
+  //
+  // Constraint isolated by bisecting the payload (2026-08-24): a system-role message in the
+  // request triggers Pollinations' paid-billing path — 402 "API key budget too low... has 0.0000"
+  // — even though the same request with only user/assistant turns is free. Extra params
+  // (temperature, max_tokens) correlated with failures too. The bare minimum that works reliably:
+  // model + user/assistant messages only, no system role, no extra generation params.
+  // Fold SAM_SYSTEM_PROMPT into the latest user turn instead of sending it as a system message.
+  const anonMessages: ChatMessage[] = messages[0]?.role === 'system' && messages.length > 1
+    ? [...messages.slice(1, -1), { role: 'user', content: `${messages[0].content}\n\n${messages[messages.length - 1].content}` }]
+    : messages;
+
+  // Lane 1: POST /openai (streaming, same as keyed providers but with no system role + no extras)
   const anon = await callOpenAICompatDirect(
-    'https://openrouter.ai/api/v1',
-    'meta-llama/llama-3.3-70b-instruct:free',
+    'https://text.pollinations.ai/openai',
+    'openai-fast',
     '',
-    messages,
+    anonMessages,
     handlers,
     signal,
+    {},
   ).catch(() => null);
   if (anon) { handlers.onDone?.(anon); return anon; }
+
+  // Lane 2: GET endpoint — a completely independent code path (different URL, non-streaming).
+  // Desktop server already uses this as a separate fallback (callPollinationsGet). If the POST
+  // endpoint hiccups, this independent lane can still answer.
+  try {
+    const getPrompt = `${SAM_SYSTEM_PROMPT}\n\nUser: ${message}\nSAM:`.slice(0, 3000);
+    const getRes = await streamingFetch(
+      `https://text.pollinations.ai/${encodeURIComponent(getPrompt)}?model=openai`,
+      { method: 'GET', signal: signal ?? AbortSignal.timeout(30000) },
+    );
+    if (getRes.ok) {
+      const reader = getRes.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        let text = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
+          handlers.onToken?.(text);
+        }
+        if (text.trim()) { handlers.onDone?.(text.trim()); return text.trim(); }
+      }
+    }
+  } catch { /* GET lane failed — fall through to honest fallback */ }
 
   return streamHonestFallback(handlers);
 }
 
 /**
- * Nothing reachable — no custom key worked, the keyless OpenRouter call failed, no desktop
+ * Nothing reachable — no custom key worked, the keyless Pollinations call failed, no desktop
  * paired. Say so plainly and give the two real ways to fix it, instead of fabricating a
  * plausible-looking answer. This used to keyword-match the prompt ("site"/"build"/"html" → a
  * hardcoded dog-website template, anything else → a canned "I'm SAM, ready to help" blurb) and
