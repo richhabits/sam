@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import ChatScreen from './ChatScreen';
 import { claim, getHost, getToken } from './lib/api';
+import { enterDemo } from './lib/demo';
 import { clearThread } from './lib/history';
 import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
@@ -392,6 +393,22 @@ export default function App() {
                 onPress={() => doClaim()}
                 disabled={!host || !code}
                 busy={busy}
+                last
+              />
+            </Section>
+
+            <Section ios={ios} header="No SAM desktop yet?">
+              <ActionRow
+                ios={ios}
+                title="Explore the demo"
+                onPress={() => {
+                  haptic.light();
+                  setShowPairModal(false);
+                  void enterDemo().then(() => {
+                    setPaired(true);
+                    setSurface('agent');
+                  });
+                }}
                 last
               />
             </Section>
