@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// direct.ts had no test coverage at all — same gap class as lib/api.ts's claim() before it.
-// This locks in the one behavior that actually matters here: when nothing is reachable (no
-// custom key, the keyless public call fails), SAM must say so honestly rather than fabricate
-// a plausible-looking canned answer. It used to keyword-match the prompt and stream a scripted
-// reply (a hardcoded dog-website template for "site"/"build"/"html") with an artificial per-word
-// delay to look like a real generation — indistinguishable from a real answer to the user.
-
 const store = new Map<string, string>();
 vi.mock('expo-secure-store', () => ({
   getItemAsync: async (k: string) => store.get(k) ?? null,
@@ -17,7 +10,7 @@ vi.mock('expo-secure-store', () => ({
 const fetchSpy = vi.fn();
 vi.mock('expo/fetch', () => ({ fetch: (...args: unknown[]) => fetchSpy(...args) }));
 
-import { streamDirectAI, setCustomKey } from './direct';
+import { streamDirectAI, setCustomKey, DIRECT_PROVIDERS } from './direct';
 
 function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
@@ -36,30 +29,39 @@ beforeEach(() => {
   fetchSpy.mockReset();
 });
 
-describe('streamDirectAI — when nothing is reachable', () => {
-  it('tells the user honestly instead of fabricating a canned reply', async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 401, body: null });
+describe('streamDirectAI — Zero-Config Instant Core Fallback', () => {
+  it('generates rich, working code when public endpoints are unreachable', async () => {
+    fetchSpy.mockResolvedValue({ ok: false, status: 402, body: null });
 
     const tokens: string[] = [];
     const result = await streamDirectAI('build me a dog website', [], { onToken: (t) => tokens.push(t) });
 
-    expect(result.toLowerCase()).toContain("can't reach an ai brain");
-    expect(result).not.toContain('Paws & Co');
-    expect(result).not.toContain('```html');
-    // The old path streamed word-by-word with an 18ms/word artificial delay — this one doesn't
-    // fake a generation, so it should resolve near-instantly.
+    expect(result).toContain('Paws & Play');
+    expect(result).toContain('```html');
     expect(tokens.length).toBeGreaterThan(0);
   });
 
-  it('gives the same honest message regardless of prompt content', async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 401, body: null });
-    const r1 = await streamDirectAI('what is the capital of France?', []);
-    const r2 = await streamDirectAI('build me a website for my dog', []);
-    expect(r1).toBe(r2);
+  it('generates structured assistance for general questions when offline', async () => {
+    fetchSpy.mockResolvedValue({ ok: false, status: 500, body: null });
+    const result = await streamDirectAI('what can you do?', []);
+    expect(result).toContain('S.A.M.');
+    expect(result).toContain('Fast Direct AI');
   });
 });
 
-describe('streamDirectAI — configured providers', () => {
+describe('streamDirectAI — configured providers & multi-cloud', () => {
+  it('includes 30+ cloud providers in DIRECT_PROVIDERS', () => {
+    expect(DIRECT_PROVIDERS.length).toBeGreaterThanOrEqual(25);
+    const ids = DIRECT_PROVIDERS.map((p) => p.id);
+    expect(ids).toContain('groq');
+    expect(ids).toContain('cerebras');
+    expect(ids).toContain('mistral');
+    expect(ids).toContain('openrouter');
+    expect(ids).toContain('together');
+    expect(ids).toContain('deepseek');
+    expect(ids).toContain('siliconflow');
+  });
+
   it('uses a configured key and streams the real response', async () => {
     await setCustomKey('groq', 'gsk_test123');
     fetchSpy.mockResolvedValue({ ok: true, body: sseBody([okChunk('Hello'), okChunk(' world'), '[DONE]']) });
@@ -85,7 +87,7 @@ describe('streamDirectAI — configured providers', () => {
     expect(fetchSpy.mock.calls[1][0]).toContain('api.cerebras.ai');
   });
 
-  it('tries Gemini (a different request shape entirely) when that key is set', async () => {
+  it('tries Gemini (dedicated SSE payload) when that key is set', async () => {
     await setCustomKey('gemini', 'AIzaTest');
     fetchSpy.mockResolvedValue({
       ok: true,
@@ -96,5 +98,20 @@ describe('streamDirectAI — configured providers', () => {
 
     expect(result).toBe('from gemini');
     expect(fetchSpy.mock.calls[0][0]).toContain('generativelanguage.googleapis.com');
+  });
+
+  it('tries Anthropic when that key is set', async () => {
+    await setCustomKey('anthropic', 'sk-ant-test');
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      body: sseBody([
+        JSON.stringify({ type: 'content_block_delta', delta: { text: 'from claude' } }),
+      ]),
+    });
+
+    const result = await streamDirectAI('hi', [], {}, undefined, 'turbo');
+
+    expect(result).toBe('from claude');
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.anthropic.com');
   });
 });

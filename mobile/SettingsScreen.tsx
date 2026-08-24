@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Switch, Text, } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
-import { DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
+import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
 
-const ALL_PROVIDERS = [GEMINI_PROVIDER, ...DIRECT_PROVIDERS];
+const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
 import { GLYPHS } from './lib/glyphs';
 import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
@@ -103,11 +103,11 @@ export default function SettingsScreen({
       <Section
         ios={ios}
         header="Cloud AI Engine"
-        footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas."
+        footer="SAM comes with ready-to-use cloud brains and an instant neural core out of the box. Add any free API key for unlimited direct personal quotas."
       >
         <ActionRow
           ios={ios}
-          title={showKeys ? 'Hide API Keys' : 'Configure Custom API Keys'}
+          title={showKeys ? 'Hide API Keys' : 'Configure Custom API Keys (30+ Providers)'}
           onPress={() => setShowKeys(!showKeys)}
           last={!showKeys}
         />
@@ -116,7 +116,7 @@ export default function SettingsScreen({
               <Field
                 key={p.id}
                 ios={ios}
-                label={p.label}
+                label={`${p.label}${p.starter ? ' (Free Starter)' : ''}`}
                 placeholder={p.keyPlaceholder}
                 value={keys[p.id] || ''}
                 onChangeText={(val) => {
