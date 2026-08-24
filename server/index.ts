@@ -1579,7 +1579,7 @@ app.post("/api/preferences/learn", (req, res) => {
 app.post("/api/preferences/forget", (req, res) => res.json({ ok: forgetPreference(String(req.body?.key || "")) }));
 app.post("/api/preferences/reset", (_req, res) => { resetPreferences(); res.json({ ok: true }); });
 
-registerPeopleRoutes(app, PORT);
+registerPeopleRoutes(app, PORT, () => rebindListener());
 
 
 // ── The Team + The Ninjas: parallel specialists, synthesised (SSE) ──
@@ -2755,56 +2755,88 @@ function meshAddress(): string | null {
 // Takes priority over SAM_REMOTE when both are set. Fails CLOSED to loopback — never
 // silently widens to 0.0.0.0 — if the mesh interface isn't actually present; a missing
 // mesh must never become a wider exposure than intended.
-const MESH_IP = process.env.SAM_MESH === "1" ? meshAddress() : null;
-const MESH = !!MESH_IP && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
-if (process.env.SAM_MESH === "1" && !MESH_IP) console.log("  ⚠️ SAM_MESH ignored — no mesh interface found (100.64.0.0/10). Is the mesh client installed and connected?\n");
-else if (process.env.SAM_MESH === "1" && !MESH) console.log("  ⚠️ SAM_MESH ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
-const REMOTE = !MESH && process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
-if (!MESH && process.env.SAM_REMOTE === "1" && !REMOTE) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
-const HOST = MESH ? MESH_IP! : REMOTE ? "0.0.0.0" : "127.0.0.1";
-app.listen(Number(PORT), HOST, () => {
-  console.log(`  SAM online · http://localhost:${PORT}\n`);
-  // THE PAIRING — when the Handshake is enforced and NO browser is paired yet, print a one-time
-  // link so the Chrome-App / phone can earn a session. Printed only when needed (no sessions), so a
-  // usable code isn't left in the log every boot. The desktop app never needs this (it has the passkey).
-  if (handshakeEnforced() && sessionCount() === 0) {
-    const code = mintPairingCode(Date.now());
-    console.log(`  🔗 pair a browser · open  http://localhost:${PORT}/pair?code=${code}  (valid 15 min, one-time)\n`);
-  }
-  // THE YARD — long work runs in its own process so a build can never make chat or voice
-  // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
-  if (process.env.SAM_YARD === "1") {
-    yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
-    console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
-    // Take the worker down with us. Without this the child is reparented to init and
-    // keeps running: one orphan per restart, each still claiming jobs.
-    for (const sig of ["SIGTERM", "SIGINT"] as const) {
-      process.on(sig, () => { supervisor.stop(); process.exit(0); });
+// Recomputed on every (re)bind rather than once at boot, so toggling phone/mesh access can take
+// effect on a live socket instead of requiring a full app restart — see startListening() below.
+function resolveHost(): { host: string; mesh: boolean; meshIp: string | null; remote: boolean } {
+  const meshIp = process.env.SAM_MESH === "1" ? meshAddress() : null;
+  const mesh = !!meshIp && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+  if (process.env.SAM_MESH === "1" && !meshIp) console.log("  ⚠️ SAM_MESH ignored — no mesh interface found (100.64.0.0/10). Is the mesh client installed and connected?\n");
+  else if (process.env.SAM_MESH === "1" && !mesh) console.log("  ⚠️ SAM_MESH ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
+  const remote = !mesh && process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
+  if (!mesh && process.env.SAM_REMOTE === "1" && !remote) console.log("  ⚠️ SAM_REMOTE ignored — set SAM_REMOTE_TOKEN to a secret of 16+ chars first.\n");
+  return { host: mesh ? meshIp! : remote ? "0.0.0.0" : "127.0.0.1", mesh, meshIp, remote };
+}
+
+let httpServer: ReturnType<typeof app.listen> | null = null;
+
+function startListening(isRebind: boolean) {
+  const { host, mesh, meshIp, remote } = resolveHost();
+  httpServer = app.listen(Number(PORT), host, () => {
+    console.log(isRebind ? `  SAM re-bound  · http://localhost:${PORT}  (${mesh ? "mesh" : remote ? "LAN" : "loopback"})\n` : `  SAM online · http://localhost:${PORT}\n`);
+    if (!isRebind) {
+      // THE PAIRING — when the Handshake is enforced and NO browser is paired yet, print a one-time
+      // link so the Chrome-App / phone can earn a session. Printed only when needed (no sessions), so a
+      // usable code isn't left in the log every boot. The desktop app never needs this (it has the passkey).
+      if (handshakeEnforced() && sessionCount() === 0) {
+        const code = mintPairingCode(Date.now());
+        console.log(`  🔗 pair a browser · open  http://localhost:${PORT}/pair?code=${code}  (valid 15 min, one-time)\n`);
+      }
+      // THE YARD — long work runs in its own process so a build can never make chat or voice
+      // wait. Flag-gated OFF: nothing about SAM changes until it is switched on deliberately.
+      if (process.env.SAM_YARD === "1") {
+        yardStore().reapAbandoned();   // anything left `running` by a previous life fails honestly
+        console.log(supervisor.start() ? "  the yard      · worker starting" : "  the yard      · no worker entrypoint — staying down");
+        // Take the worker down with us. Without this the child is reparented to init and
+        // keeps running: one orphan per restart, each still claiming jobs.
+        for (const sig of ["SIGTERM", "SIGINT"] as const) {
+          process.on(sig, () => { supervisor.stop(); process.exit(0); });
+        }
+        process.on("exit", () => supervisor.stop());
+      }
+      // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
+      // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
+      void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())
+        .then((r) => { if (r === "sent" || r === "failed") console.log(`  telemetry heartbeat · ${r}`); });
     }
-    process.on("exit", () => supervisor.stop());
-  }
-  // Opt-in aggregate heartbeat (v2.0). Fire-and-forget, both-gates-closed by default: sends only if the
-  // user opted in AND a TELEMETRY_ENDPOINT is configured. Undeployed builds return "no-endpoint" ⇒ inert.
-  void postTelemetry(getAnalytics(), process.env.SAM_APP_VERSION || "dev", process.platform, new Date().toISOString())
-    .then((r) => { if (r === "sent" || r === "failed") console.log(`  telemetry heartbeat · ${r}`); });
-  if (MESH) {
-    console.log(`  🔒 mesh access  · open http://${MESH_IP}:${PORT}/?token=YOUR_TOKEN on any device joined to the mesh (works off Wi-Fi, over cellular)\n`);
-  } else if (REMOTE) {
-    // lanIP(), not a third hand-rolled copy of "first non-internal IPv4". That expression is the
-    // bug fixed earlier in this file's own history: it answers "what does the OS list first",
-    // which on a Mac with an idle Ethernet port or dongle is a self-assigned 169.254.x.x — an
-    // address that looks like a LAN IP and routes nowhere.
-    //
-    // /api/pair/new was fixed to use lanIP(); THIS line was not, and it is the more visible of the
-    // two — it is what a first-time operator reads off the console to point their phone at. The
-    // same wrong answer, printed in the one place someone is definitely looking.
-    const lan = lanIP();
-    if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);
-    else console.log(`  ⚠️ phone access is on, but this Mac has no network address a phone could reach — connect it to the same Wi-Fi as your phone.\n`);
-  }
-}).on("error", (e: any) => {
-  // Port already taken — almost always another SAM (or a stale one) already serving on it. Don't
-  // crash: the window will just connect to whatever's already there. Log it plainly.
-  if (e?.code === "EADDRINUSE") console.error(`  ⚠️ Port ${PORT} is already in use — SAM may already be running. Using the existing instance.`);
-  else console.error("  ⚠️ Server listen error:", e?.message || e);
-});
+    if (mesh) {
+      console.log(`  🔒 mesh access  · open http://${meshIp}:${PORT}/?token=YOUR_TOKEN on any device joined to the mesh (works off Wi-Fi, over cellular)\n`);
+    } else if (remote) {
+      // lanIP(), not a third hand-rolled copy of "first non-internal IPv4". That expression is the
+      // bug fixed earlier in this file's own history: it answers "what does the OS list first",
+      // which on a Mac with an idle Ethernet port or dongle is a self-assigned 169.254.x.x — an
+      // address that looks like a LAN IP and routes nowhere.
+      //
+      // /api/pair/new was fixed to use lanIP(); THIS line was not, and it is the more visible of the
+      // two — it is what a first-time operator reads off the console to point their phone at. The
+      // same wrong answer, printed in the one place someone is definitely looking.
+      const lan = lanIP();
+      if (lan) console.log(`  📱 phone access · open http://${lan}:${PORT}/?token=YOUR_TOKEN on your phone (same Wi-Fi)\n`);
+      else console.log(`  ⚠️ phone access is on, but this Mac has no network address a phone could reach — connect it to the same Wi-Fi as your phone.\n`);
+    }
+  }).on("error", (e: any) => {
+    // Port already taken — almost always another SAM (or a stale one) already serving on it. Don't
+    // crash: the window will just connect to whatever's already there. Log it plainly.
+    if (e?.code === "EADDRINUSE") console.error(`  ⚠️ Port ${PORT} is already in use — SAM may already be running. Using the existing instance.`);
+    else console.error("  ⚠️ Server listen error:", e?.message || e);
+  });
+}
+
+startListening(false);
+
+// Lets the phone-enable/disable/mesh routes flip SAM_REMOTE/SAM_MESH and take effect on THIS
+// running process — close the current listener (force-draining any lingering keep-alive/SSE
+// sockets so close() can't hang) and re-bind fresh from resolveHost(), same fail-closed logic
+// as boot. No app restart required.
+export function rebindListener(): Promise<void> {
+  return new Promise((resolve) => {
+    const old = httpServer;
+    if (!old) { startListening(true); return resolve(); }
+    let settled = false;
+    old.close(() => { if (settled) return; settled = true; startListening(true); resolve(); });
+    // Give in-flight requests (including the one that triggered this rebind, which replies
+    // BEFORE calling this — see the res.on("finish") callers) a moment to finish naturally.
+    // Force-close only the stragglers, so a stale keep-alive/SSE connection can't block the
+    // rebind indefinitely without also killing every concurrent request the instant we toggle.
+    setTimeout(() => { if (!settled) old.closeAllConnections(); }, 1500);
+  });
+}

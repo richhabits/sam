@@ -59,7 +59,7 @@ export function lanIP(nets: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkI
 // `port` is INJECTED rather than read from a shared module: it is needed once, to build the
 // LAN URL shown for phone access. Passing it keeps index.ts the single place the port is
 // decided, instead of two modules independently reading process.env.PORT and disagreeing.
-export function registerPeopleRoutes(app: Express, port: string | number) {
+export function registerPeopleRoutes(app: Express, port: string | number, rebindListener?: () => Promise<void>) {
   // ── People SAM knows by sight (local, private) ──
   app.get("/api/people", (_req, res) => res.json(listPeople()));
   app.post("/api/people", (req, res) => { const { name, look, relation, face } = req.body || {}; if (!name) return res.status(400).json({ error: "name required" }); res.json(addPerson(name, look || "", relation, Array.isArray(face) ? face : undefined)); });
@@ -117,14 +117,19 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
     const url = remoteOn && lan ? `http://${lan}:${port}/?token=${encodeURIComponent(process.env.SAM_REMOTE_TOKEN!)}` : null;
     res.json({ remoteOn, lan, url });
   });
-  // One-click enable: generate a strong token, persist SAM_REMOTE=1 + token (takes effect on restart).
+  // One-click enable: generate a strong token, persist SAM_REMOTE=1 + token, then re-bind the
+  // live listener onto the LAN — no restart needed (falls back to needsRestart if no rebind fn
+  // was injected, e.g. an older host calling this route).
   app.post("/api/phone-enable", (req, res) => {
     if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
     const token = randomBytes(32).toString("base64url");   // 256-bit — quantum-safe symmetric secret (128-bit effective under Grover)
     writeEnv("SAM_REMOTE", "1");
     writeEnv("SAM_REMOTE_TOKEN", token);
     process.env.SAM_REMOTE = "1"; process.env.SAM_REMOTE_TOKEN = token;
-    res.json({ ok: true, needsRestart: true });
+    // Rebind AFTER the response is fully flushed — closing the old listener's connections
+    // before that would kill the very socket carrying this reply.
+    if (rebindListener) res.on("finish", () => { rebindListener!().catch((e) => console.error("  ⚠️ rebind after phone-enable failed:", e)); });
+    res.json({ ok: true, needsRestart: !rebindListener });
   });
   // 🔁 Rotate the token — instantly revokes every device (they must re-scan). No restart needed; the
   // gate reads SAM_REMOTE_TOKEN live. Loopback-only so a remote device can never rotate you out.
@@ -136,8 +141,8 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
     logSecurity("info", "phone-token-rotated", "Phone access token regenerated — all devices must re-connect", "owner");
     res.json({ ok: true, rotated: true });
   });
-  // 🔴 Turn phone access OFF — closes the LAN entirely (binds back to loopback on next restart) and
-  // invalidates the token now.
+  // 🔴 Turn phone access OFF — closes the LAN entirely (re-binds to loopback immediately via
+  // rebindListener) and invalidates the token now.
   // 🚀 Sign & ship — SAM checks your signing readiness and does the mechanical bits (owner-only).
   app.get("/api/signing/status", async (req, res) => {
     if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
@@ -153,7 +158,8 @@ export function registerPeopleRoutes(app: Express, port: string | number) {
     writeEnv("SAM_REMOTE", "0");
     process.env.SAM_REMOTE = "0";
     logSecurity("info", "phone-disabled", "Phone/remote access turned off", "owner");
-    res.json({ ok: true, needsRestart: true });
+    if (rebindListener) res.on("finish", () => { rebindListener!().catch((e) => console.error("  ⚠️ rebind after phone-disable failed:", e)); });
+    res.json({ ok: true, needsRestart: !rebindListener });
   });
 
   // 📸 Save a camera snapshot into the vault (local only — vault/photos is gitignored).
