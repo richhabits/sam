@@ -9,6 +9,7 @@
     "expo-clipboard": "~57.0.1",
     "expo-device": "~57.0.1",
     "expo-document-picker": "~57.0.1",
+    "expo-haptics": "~57.0.1",
     "expo-image-picker": "~57.0.7",
     "expo-linking": "~57.0.4",
     "expo-notifications": "~57.0.8",
