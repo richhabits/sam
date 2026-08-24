@@ -96,6 +96,24 @@ export async function callOpenAICompat(
   return d?.choices?.[0]?.message?.content?.trim() || "";
 }
 
+// Pollinations anonymous POST caller — folds system into user message and omits generation params
+// (max_tokens, temperature) to stay on Pollinations' free anonymous lane without triggering 402 billing gates.
+export async function callPollinationsAnon(model: string, system: string, prompt: string): Promise<string> {
+  const combined = system ? `${system}\n\n${prompt}` : prompt;
+  const r = await fetch("https://text.pollinations.ai/openai/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: combined }],
+    }),
+  });
+  if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  const d = await r.json();
+  return d?.choices?.[0]?.message?.content?.trim() || "";
+}
+
 // Pollinations' simple GET endpoint — a DIFFERENT code path/URL to the POST /openai one above, so if
 // that endpoint hiccups this independent lane can still answer. Keeps SAM working out of the box.
 export async function callPollinationsGet(system: string, prompt: string): Promise<string> {
@@ -336,8 +354,8 @@ export const PROVIDERS: Provider[] = [
   //    keyless user half a minute to say no. Left in place because a cached hit is still a free
   //    answer and the endpoint may re-open, but the health memory demotes it the moment it 402s,
   //    and SAM's real zero-key story is now local Ollama. See docs/FREE-ROUTES.md.
-  { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", POLLINATIONS_MODEL, s, p, "") },
-  { id: "pollinations-fast", tier: "free", noKey: true, label: "pollinations:openai-fast", run: (s, p) => callOpenAICompat("https://text.pollinations.ai/openai", "openai-fast", s, p, "") },
+  { id: "pollinations", tier: "free", noKey: true, label: `pollinations:${POLLINATIONS_MODEL}`, run: (s, p) => callPollinationsAnon(POLLINATIONS_MODEL, s, p) },
+  { id: "pollinations-fast", tier: "free", noKey: true, label: "pollinations:openai-fast", run: (s, p) => callPollinationsAnon("openai-fast", s, p) },
   { id: "pollinations-get", tier: "free", noKey: true, label: "pollinations:get", run: (s, p) => callPollinationsGet(s, p) },
 
   // ── TIER 4: Premium (paid, last resort) ────────────────────
