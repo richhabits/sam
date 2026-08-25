@@ -38,9 +38,9 @@ irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex
 graph TD
     User([You: Phone, Laptop, or PC])
     
-    subgraph Mobile ["📱 SAM Mobile (iOS & Android) — Coming Soon"]
-        MobileAI[Standalone Direct Cloud AI]
-        MobilePair[Zero-Config Desktop QR Pairing]
+    subgraph Mobile ["📱 SAM Mobile (iOS) — Live on TestFlight · App Store review pending"]
+        MobileAI[Standalone Direct AI · 30+ Cloud Providers, Zero Setup]
+        MobilePair[Optional Desktop Pairing · QR / Local Network]
         MobileYard[Remote Task, Feed & Yard Monitor]
     end
     
@@ -82,10 +82,10 @@ graph TD
 * **Mathematical Kelly Criterion Engine**: Automated capital allocation and real-time risk regime calculation (`POST /api/flipit/shield`).
 * **Resilient Watchdogs**: Continuous schedule monitoring, forward execution metrics, and market data telemetry.
 
-### 📱 5. Mobile Companion (iOS & Android) — *In Active Beta / Coming Soon*
-* **Standalone AI on the Go**: Chat directly with cloud-routed AI models from your mobile device with zero desktop prerequisites.
-* **Instant LAN QR Pairing**: Scan a single QR code from your desktop dashboard to pair your phone securely via LAN tokens.
-* **Live Feeds & Remote Yard Control**: Receive push moments, trigger remote tasks, and monitor active workflows in real time.
+### 📱 5. Mobile (iOS) — *Live on TestFlight, App Store review submitted*
+* **100% Standalone, Zero Setup**: Chat immediately on install — no pairing, no account. Routes through 30+ direct cloud AI providers (Groq, Cerebras, Mistral, Gemini, Anthropic, DeepSeek, and more), each addable with your own free key in Settings.
+* **Optional Desktop Link**: Pair with your Mac/PC over local network to unlock local files, automation, and yard workers — never required, only unlocked when you want it.
+* **Native Feel**: Haptics throughout, 1-tap code copy/share, live connection status, and an honest fallback if every AI lane genuinely fails — SAM never fabricates a response.
 
 ---
 
@@ -123,13 +123,14 @@ Open **http://localhost:8787** — free, local, and ready immediately.
 
 ---
 
-### 📱 Mobile Companion App (iOS & Android)
+### 📱 Mobile App (iOS)
 
-> **Status: 🚀 In Active Development / App Store & Google Play Coming Soon**
+> **Status: Live on TestFlight · Submitted for App Store review**
 
-* **iOS**: Native Swift / Expo companion coming to TestFlight and Apple App Store.
-* **Android**: Native APK and Google Play release coming soon.
-* **LAN Pairing**: Once installed, navigate to **Dashboard → Devices → Pair a phone** in SAM Desktop and point your camera at the screen for instant zero-config pairing.
+* **Try it now**: [Join the TestFlight beta](https://testflight.apple.com/join/htr4htvY) — works immediately, standalone, no desktop required.
+* **App Store**: Submitted and awaiting Apple's review; this README will be updated the moment it's live.
+* **Android**: Not yet started.
+* **Optional desktop pairing**: In the app, tap **Connect to Mac / PC** (or in SAM Desktop, **Dashboard → Devices → Pair a phone**) to unlock local files and automation — entirely optional.
 
 ---
 
