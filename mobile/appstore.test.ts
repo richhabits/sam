@@ -13,18 +13,21 @@ const app = JSON.parse(
 const plist = app.ios.infoPlist;
 
 describe("App Transport Security", () => {
-  it("exempts LOCAL networking only — never the whole internet", () => {
-    // NSAllowsArbitraryLoads turns ATS off for every host on earth. App Review asks you to
-    // justify it, and "we talk to a server on your desk" does not justify a global exemption —
-    // NSAllowsLocalNetworking is the narrow key for exactly that and needs no justification.
-    // Every fetch in this app goes to the operator's own SAM or a local file URI; the one
-    // outbound link opens Safari, which ATS does not govern. So the broad key bought nothing.
-    expect(plist.NSAppTransportSecurity.NSAllowsLocalNetworking).toBe(true);
-    expect(plist.NSAppTransportSecurity.NSAllowsArbitraryLoads).toBeUndefined();
+  it("keeps the broad exemption — NSAllowsLocalNetworking alone breaks Tailscale users", () => {
+    // A 2026-08-11 commit narrowed this to NSAllowsLocalNetworking to dodge an App Review
+    // question, reasoning every fetch stays on the LAN. That's false: NSAllowsLocalNetworking
+    // only covers .local, link-local and RFC1918 (10/8, 172.16/12, 192.168/16) — Tailscale's
+    // 100.64.0.0/10 is CGNAT (RFC 6598) and is NOT in that set, and the server this app talks to
+    // has no TLS to fall back on (plain HTTP only, see server/index.ts + mobile/lib/pairlink.ts's
+    // `http://<host>:<port>/pair` link format). Narrowing it silently broke every away-from-home
+    // user. See docs/APP-REVIEW.md, which pre-argued exactly this and says to keep it broad —
+    // the 08-11 commit didn't update or reference that doc.
+    expect(plist.NSAppTransportSecurity.NSAllowsArbitraryLoads).toBe(true);
   });
 
-  it("does not carry the other blanket escape hatches either", () => {
-    // The same exemption wearing different hats — each one is its own review question.
+  it("does not carry the other blanket escape hatches", () => {
+    // The same exemption wearing different hats — each one is its own review question, and
+    // none of them are needed: only plain fetch() to the user's own SAM, never web content or media.
     expect(plist.NSAppTransportSecurity.NSAllowsArbitraryLoadsInWebContent).toBeUndefined();
     expect(plist.NSAppTransportSecurity.NSAllowsArbitraryLoadsForMedia).toBeUndefined();
     expect(plist.NSAppTransportSecurity.NSExceptionDomains).toBeUndefined();

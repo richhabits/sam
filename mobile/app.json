@@ -14,7 +14,7 @@
       "buildNumber": "106",
       "infoPlist": {
         "NSAppTransportSecurity": {
-          "NSAllowsLocalNetworking": true
+          "NSAllowsArbitraryLoads": true
         },
         "NSCameraUsageDescription": "SAM uses the camera to attach a photo to a message, or to scan the QR code that pairs this phone with your Mac/PC — nothing leaves your own SAM.",
         "NSPhotoLibraryUsageDescription": "SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else.",
