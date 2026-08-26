@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { resolvePreview, projectFiles, readProjectFile } from "./preview.ts";
 import { createProject, projectPath } from "./managed.ts";
 
@@ -70,7 +70,10 @@ describe("a real build output takes over the whole project once one exists", () 
     writeFileSync(join(dir, "dist", "index.html"), "<h1>built</h1>");
     const r = resolvePreview("site", "");
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.path).toMatch(/dist\/index\.html$/);
+    // join(), not a forward-slash regex — resolvePreview builds its path with join() too,
+    // which is backslash-separated on Windows; a "/dist/index.html$" regex never matched
+    // there and this test passed on every platform except the one CI actually runs it on.
+    if (r.ok) expect(r.path.endsWith(join("dist", "index.html"))).toBe(true);
     expect(readProjectFile("site", "")).toContain("built");
   });
 
@@ -81,14 +84,14 @@ describe("a real build output takes over the whole project once one exists", () 
     writeFileSync(join(dir, "dist", "assets", "index-abc123.js"), "console.log(1)");
     const r = resolvePreview("site", "assets/index-abc123.js");
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.path).toMatch(/dist\/assets\/index-abc123\.js$/);
+    if (r.ok) expect(r.path.endsWith(join("dist", "assets", "index-abc123.js"))).toBe(true);
   });
 
   it("a plain static site with no dist/ is completely unaffected", () => {
     // No dist/ written this time — the default fixture's own index.html must still be what serves.
     const r = resolvePreview("site", "");
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.path).not.toMatch(/\/dist\//);
+    if (r.ok) expect(r.path.includes(`${sep}dist${sep}`)).toBe(false);
   });
 
   it("a traversal still can't escape once root has shifted to dist/", () => {
