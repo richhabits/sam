@@ -46,11 +46,11 @@ export function trySolveLocally(input: string): MicroSolverResult {
   }
 
   // 2. Pure Arithmetic (Safe regex whitelist: numbers, +, -, *, /, %, (, ), ^, .)
-  const mathPattern = /^(?:calculate|compute|solve|eval)?\s*([0-9\s\+\-\*\/\%\(\)\.\^]+)$/i;
+  const mathPattern = /^(?:calculate|compute|solve|eval)?\s*([0-9\s+\-*/%().^]+)$/i;
   const mathMatch = raw.match(mathPattern);
   if (mathMatch && mathMatch[1]) {
     const expr = mathMatch[1].trim();
-    if (/[\+\-\*\/\%\^]/.test(expr) && !/[a-zA-Z_$]/.test(expr)) {
+    if (/[+\-*/%^]/.test(expr) && !/[a-zA-Z_$]/.test(expr)) {
       try {
         const sanitized = expr.replace(/\^/g, "**");
         const val = Function(`"use strict"; return (${sanitized});`)();
@@ -148,7 +148,7 @@ export function trySolveLocally(input: string): MicroSolverResult {
   }
 
   // 6. Temperature Conversions (Celsius, Fahrenheit, Kelvin)
-  const tempMatch = p.match(/^(\-?\d+(?:\.\d+)?)\s*(c|celsius|f|fahrenheit|k|kelvin)\s+(?:to|in)\s+(c|celsius|f|fahrenheit|k|kelvin)$/);
+  const tempMatch = p.match(/^(-?\d+(?:\.\d+)?)\s*(c|celsius|f|fahrenheit|k|kelvin)\s+(?:to|in)\s+(c|celsius|f|fahrenheit|k|kelvin)$/);
   if (tempMatch) {
     const val = parseFloat(tempMatch[1]);
     const from = tempMatch[2][0]; // 'c', 'f', or 'k'
