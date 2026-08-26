@@ -1,6 +1,7 @@
 import os from "node:os";
 import type { Express } from "express";
 import * as notebook from "./notebook.ts";
+import { safeFetch } from "./url-guard.ts";
 import { runModel } from "./models.ts";
 import { TOOLS } from "./tools.ts";
 import {
@@ -33,8 +34,12 @@ export function registerStudioRoutes(app: Express) {
   const mediaFromMarkdown = (md: string) => { const m = String(md||"").match(/\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/); return m ? m[1] : ""; };
 
   // ── Generated images are cached to the vault and served SAME-ORIGIN (/api/studio/media/…) so no
-  //    service-worker or CSP cross-origin quirk can ever break them. The `ref` always comes from SAM's
-  //    own media matrix (never user input), so this is not an open proxy.
+  //    service-worker or CSP cross-origin quirk can ever break them. `ref` is a URL from a
+  //    generation provider's own API response (Pollinations/Cloudflare/HF/NVIDIA/…), never typed by
+  //    the user directly — but it's still server-side fetching a URL this process doesn't fully
+  //    control, so it goes through the same SSRF guard as every other outbound fetch of
+  //    externally-sourced URLs (a compromised or misbehaving provider is exactly the case this
+  //    defends against; safeFetch just returns a normal failure here, caught below).
   const GEN_DIR = join(process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault"), "studio-gen");
   async function cacheStudioMedia(ref: string): Promise<string | null> {
     try {
@@ -49,7 +54,7 @@ export function registerStudioRoutes(app: Express) {
         let ct = "";
         for (let attempt = 0; attempt < 4 && !buf.length; attempt++) {
           if (attempt) await new Promise((r) => setTimeout(r, 1500));
-          const r = await fetch(ref, { signal: AbortSignal.timeout(8000) });
+          const r = await safeFetch(ref, { signal: AbortSignal.timeout(8000) });
           if (!r.ok) continue;
           buf = Buffer.from(await r.arrayBuffer());
           ct = r.headers.get("content-type") || "";
