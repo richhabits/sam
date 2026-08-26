@@ -2452,6 +2452,17 @@ function servePreview(req: any, res: any) {
   // OWN preview. Relaxed to same-origin here, and ONLY here.
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
 
+  // The opaque origin below (CSP sandbox, no allow-same-origin) means this document's
+  // Origin is "null". A real build (Vite, etc.) marks its own module script `crossorigin`
+  // — for SRI, not by request here — which puts that fetch in CORS mode; without this
+  // header the browser silently refuses to hand the script to the module loader, even
+  // though the exact same request succeeds outside a browser (curl, no CORS enforced).
+  // Found live: index.html and every asset returned 200, yet the page rendered blank.
+  // `*` costs nothing here — this is the same static file a direct navigation already
+  // serves with no auth beyond the isYardReadTrusted check above, and connect-src 'none'
+  // still stops the page reaching SAM's real API regardless of this header.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
   // The important half. This page was written by a model and is served from SAM's own
   // origin, so on its own it could call SAM's API with the browser's full authority. The
   // CSP `sandbox` directive puts the document in an opaque origin whatever loads it —
