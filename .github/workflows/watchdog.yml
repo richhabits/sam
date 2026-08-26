@@ -18,8 +18,19 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # mobile/ has its own package.json/node_modules — its tests extend expo/tsconfig.base,
+      # which only resolves once mobile/'s own deps are installed. Same fix as ci.yml's
+      # `npm ci --prefix mobile` step; this workflow never got it, so every mobile/* test file
+      # failed to even load here (20 suites), independently of whatever this run was checking.
+      - run: npm ci --prefix mobile
       - name: Lint · types · tests · build
         run: npm run lint && npx tsc --noEmit && npm test && npm run build
+      # Same reason as ci.yml's identical step: mobile/ has its own tsconfig (extends
+      # expo/tsconfig.base) and was never in the root config's `include`, so the line above
+      # never checked it.
+      - name: Type-check the mobile app (its own tsconfig — root doesn't cover it)
+        run: npx tsc --noEmit
+        working-directory: mobile
       - name: Dependency audit (high/critical fail) — RUNTIME deps only
         # AUDIT FIX: scope to what actually SHIPS. --omit=dev excludes build-only tooling
         # (electron-builder & co., whose transitive advisories like ejs/brace-expansion run only in
