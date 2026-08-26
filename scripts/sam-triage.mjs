@@ -18,7 +18,16 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const KEY = process.env.GROQ_API_KEY;
-const MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+// AUDITED LIVE 2026-08-26 against Groq's own /v1/models: llama-3.1-8b-instant is retired, same
+// pattern as GROQ_MODEL elsewhere. This script already fails soft on an empty/error response
+// (SKIP, exit 0) so a stale model here never broke CI — it just silently posted no triage comment
+// on any issue for however long this has been wrong, with nothing anywhere to notice by.
+// qwen/qwen3.8-27b over the gpt-oss family deliberately: gpt-oss reasons into a separate budget
+// before answering (confirmed live: empty content at a 20-token cap, fine by 500) and qwen3.6
+// dumps its <think> block INTO content, which this script's plain string output isn't set up to
+// strip. qwen3.8 answered a same-shape test prompt in 2 completion tokens, no visible reasoning
+// overhead — the safest fit for a fixed 500-token budget.
+const MODEL = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
 const TITLE = (process.env.ISSUE_TITLE || "").slice(0, 300);
 const BODY = (process.env.ISSUE_BODY || "").slice(0, 4000);   // cap → bounds tokens spent
 const NUMBER = process.env.ISSUE_NUMBER || "?";
