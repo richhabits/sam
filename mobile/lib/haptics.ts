@@ -12,42 +12,42 @@ export const haptic = {
   /** Subtle crisp tap for chips, toggles, plus button */
   light: () => {
     try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 
   /** Solid tactile punch for sending messages, opening sheets */
   medium: () => {
     try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 
   /** Rigid impact for modals and destructive confirmations */
   heavy: () => {
     try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 
   /** Mechanical selection tick for tabs and segmented controls */
   selection: () => {
     try {
-      void Haptics.selectionAsync().catch(() => {});
+      void Haptics.selectionAsync().catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 
   /** Double-pulse celebration for pairing, stream completion, code copy */
   success: () => {
     try {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 
   /** Warning/error vibration for failed actions */
   error: () => {
     try {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => { /* best-effort; a dropped haptic isn't worth surfacing */ });
     } catch { /* unsupported platform */ }
   },
 };

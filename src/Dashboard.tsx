@@ -107,22 +107,22 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
 
   useEffect(() => {
     const load = () => {
-      if (tab === "overview" || tab === "brains") getStatus().then(setS).catch(() => {});
-      if (tab === "overview") getSecurity().then((d) => setSec(d.status)).catch(() => {});
+      if (tab === "overview" || tab === "brains") getStatus().then(setS).catch(() => {/* polling loop; the next tick retries */});
+      if (tab === "overview") getSecurity().then((d) => setSec(d.status)).catch(() => {/* polling loop; the next tick retries */});
       
       if (tab === "auto") {
-        getSwarms().then(setSwarms).catch(() => {});
-        getSchedules().then(setSchedules).catch(() => {});
-        getYard().then(setYard).catch(() => {});
-        yardPairPending().then(setPairInbox).catch(() => {});
-        Promise.all([getSpaceAudit(), getSavings()]).then(([audit, savings]) => setSysHealth({ audit, savings })).catch(() => {});
+        getSwarms().then(setSwarms).catch(() => {/* polling loop; the next tick retries */});
+        getSchedules().then(setSchedules).catch(() => {/* polling loop; the next tick retries */});
+        getYard().then(setYard).catch(() => {/* polling loop; the next tick retries */});
+        yardPairPending().then(setPairInbox).catch(() => {/* polling loop; the next tick retries */});
+        Promise.all([getSpaceAudit(), getSavings()]).then(([audit, savings]) => setSysHealth({ audit, savings })).catch(() => {/* polling loop; the next tick retries */});
       }
 
-      if (tab === "people") getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {});
+      if (tab === "people") getPeople().then((p) => setPeople(Array.isArray(p) ? p : [])).catch(() => {/* polling loop; the next tick retries */});
       if (tab === "devices") refreshDevices();
       
       if (tab === "activity" || tab === "overview") {
-        getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {});
+        getLog().then((l) => setLog(l.slice(-8).reverse())).catch(() => {/* polling loop; the next tick retries */});
         refreshActivity();
       }
     };

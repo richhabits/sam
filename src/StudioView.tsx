@@ -103,7 +103,7 @@ export default function StudioView() {
     fetch("/api/studio/presets/motion")
       .then((res) => res.json())
       .then((data) => { if (Array.isArray(data?.cameras)) setCameraRigs(data.cameras); })
-      .catch(() => {});
+      .catch(() => {/* best-effort; keep whatever default was already set */});
 
     fetch("/api/studio/presets/lenses")
       .then((res) => res.json())
@@ -111,7 +111,7 @@ export default function StudioView() {
         const found = Array.isArray(data?.lenses) ? data.lenses.find((l: any) => l.id === DEFAULT_LENS_ID) : null;
         if (found) setLens(found);
       })
-      .catch(() => {});
+      .catch(() => {/* best-effort; keep whatever default was already set */});
   }, []);
 
   // Playback Timer Loop
@@ -212,10 +212,10 @@ export default function StudioView() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => {/* best-effort; keep whatever default was already set */});
       showToast("⛶ Entered Fullscreen mode");
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => {/* best-effort; keep whatever default was already set */});
       showToast("Exit Fullscreen");
     }
   };
@@ -270,7 +270,7 @@ export default function StudioView() {
         });
         const motionData = await motionRes.json();
         if (motionData?.compiledPrompt) compiledPrompt = motionData.compiledPrompt;
-      } catch {}
+      } catch {/* motion-prompt enrichment is optional; fall back to the base prompt */}
 
       let res = await fetch("/api/studio/video", {
         method: "POST",
@@ -472,7 +472,7 @@ export default function StudioView() {
             </div>
             <div style={{ position: "relative", height: 36, background: "#0A0A0A", border: "1px solid #222", borderRadius: 6, overflow: "hidden", marginBottom: 4 }}>
               {/* Dynamic bezier curve SVG mapping to intensity */}
-              <svg width="100%" height="100%" viewBox="0 0 100 36" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+              <svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 100 36" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
                 <path d={`M 0,36 C 30,36 40,${36 - (motionIntensity / 100) * 28} 100,${36 - (motionIntensity / 100) * 32}`} fill="none" stroke="rgba(217,160,91,0.5)" strokeWidth="2" strokeDasharray="4,2" />
                 <path d={`M 0,36 C 40,36 50,${36 - (motionIntensity / 100) * 32} 100,${36 - (motionIntensity / 100) * 24}`} fill="none" stroke="#D9A05B" strokeWidth="2" />
                 <circle cx="100" cy={36 - (motionIntensity / 100) * 24} r="3" fill="#D9A05B" />

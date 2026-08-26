@@ -178,19 +178,19 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           <div className="admin-sidebar" style={{ width: 220, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', paddingRight: 20 }}>
             <div className="drawer-title" style={{ marginBottom: 24, paddingLeft: 12 }}>Settings</div>
             <div className="admin-nav" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <button type="button" aria-selected={atab === "brains"} className={`admin-nav-item ${atab === "brains" ? "on" : ""}`} onClick={() => setAtab("brains")}>
+              <button type="button" aria-current={atab === "brains" ? "true" : undefined} className={`admin-nav-item ${atab === "brains" ? "on" : ""}`} onClick={() => setAtab("brains")}>
                 <Icon name="brain" size={16} /> Brains
               </button>
-              <button type="button" aria-selected={atab === "media"} className={`admin-nav-item ${atab === "media" ? "on" : ""}`} onClick={() => setAtab("media")}>
+              <button type="button" aria-current={atab === "media" ? "true" : undefined} className={`admin-nav-item ${atab === "media" ? "on" : ""}`} onClick={() => setAtab("media")}>
                 <Icon name="studio" size={16} /> Media
               </button>
-              <button type="button" aria-selected={atab === "apps"} className={`admin-nav-item ${atab === "apps" ? "on" : ""}`} onClick={() => setAtab("apps")}>
+              <button type="button" aria-current={atab === "apps" ? "true" : undefined} className={`admin-nav-item ${atab === "apps" ? "on" : ""}`} onClick={() => setAtab("apps")}>
                 <Icon name="link" size={16} /> Apps
               </button>
-              <button type="button" aria-selected={atab === "devices"} className={`admin-nav-item ${atab === "devices" ? "on" : ""}`} onClick={() => setAtab("devices")}>
+              <button type="button" aria-current={atab === "devices" ? "true" : undefined} className={`admin-nav-item ${atab === "devices" ? "on" : ""}`} onClick={() => setAtab("devices")}>
                 <Icon name="phone" size={16} /> Devices
               </button>
-              <button type="button" aria-selected={atab === "safety"} className={`admin-nav-item ${atab === "safety" ? "on" : ""}`} onClick={() => setAtab("safety")}>
+              <button type="button" aria-current={atab === "safety" ? "true" : undefined} className={`admin-nav-item ${atab === "safety" ? "on" : ""}`} onClick={() => setAtab("safety")}>
                 <Icon name="lock" size={16} /> Safety
               </button>
             </div>

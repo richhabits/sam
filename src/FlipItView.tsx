@@ -176,7 +176,7 @@ export default function FlipItView() {
           setEvSignals(data.signals);
         }
       })
-      .catch(() => {});
+      .catch(() => {/* signals refresh on the next tab/equity change */});
   }, [totalEquity, activeTab]);
 
   const handleExecuteEvSignal = async (sig: EvSignal) => {
