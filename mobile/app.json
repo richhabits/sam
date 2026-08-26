@@ -84,7 +84,15 @@
       ],
       "expo-notifications",
       "./plugins/with-space-safe-pods",
-      "./plugins/with-ios-widget"
+      "./plugins/with-ios-widget",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

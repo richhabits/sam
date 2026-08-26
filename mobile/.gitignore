@@ -37,7 +37,13 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
-/android
+/android/build/
+/android/app/build/
+/android/.gradle/
+/android/local.properties
+/android/keystore.properties
+/android/*.jks
+/android/*.keystore
 /ios/Pods/
 /ios/build/
 /ios/DerivedData/
