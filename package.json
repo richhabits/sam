@@ -65,7 +65,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "undici": "^7.29.0",
+    "undici": "^8.10.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
