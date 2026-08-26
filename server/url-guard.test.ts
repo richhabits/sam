@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { checkOutboundUrl, isPrivateAddress, safeFetch, BlockedFetch } from "./url-guard.ts";
+import { createServer, type Server } from "node:http";
+import { fetch as undiciFetch } from "undici";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { checkOutboundUrl, isPrivateAddress, pinnedDispatcher, safeFetch, BlockedFetch } from "./url-guard.ts";
 
 // Hermetic resolver — no real DNS, so these tests pass offline and never flake in CI.
 const resolves = (map: Record<string, string[]>) => async (host: string) => {
@@ -175,5 +177,66 @@ describe("safeFetch — the guard survives redirects", () => {
     const fetchImpl = fakeFetch({ "http://a.example/": { status: 302, location: "http://a.example/" } });
     await expect(safeFetch("http://a.example/", {}, { resolve: dns, fetchImpl, maxHops: 3 }))
       .rejects.toThrow(/too many redirects/);
+  });
+});
+
+// Every test above injects fetchImpl, which deliberately skips the pinned dispatcher (see
+// safeFetch's `pinning` comment) — necessary for those tests to stay hermetic, but it means the
+// actual DNS-rebinding defense (an undici Agent whose connect.lookup always returns the one IP
+// the guard validated) has never been exercised against a REAL socket. A dependency bump could
+// silently break Agent's connect.lookup override and every test above would stay green.
+//
+// This proves it the only way that means anything: a hostname that cannot possibly really resolve
+// to the test server (it's not registered anywhere) still reaches that server, because the
+// dispatcher's lookup override — not real DNS — decided where the socket connects. If undici ever
+// stops honoring connect.lookup, real DNS resolution of the bogus hostname fails and this test
+// fails with it, on that undici version, before the guard ships with a rebinding hole nobody knew
+// reopened.
+describe("pinnedDispatcher — the actual rebinding defense, against a real socket", () => {
+  let server: Server;
+  let port: number;
+  let hits = 0;
+
+  beforeAll(async () => {
+    server = createServer((_req, res) => { hits++; res.end("ok"); });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address();
+    if (addr && typeof addr === "object") port = addr.port;
+  });
+
+  afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
+
+  it("connects to the pinned IP even though the hostname has no real DNS record at all", async () => {
+    hits = 0;
+    const dispatcher = pinnedDispatcher("127.0.0.1");
+    try {
+      // sam-url-guard-pin-test.invalid is not a real domain — if the dispatcher's lookup override
+      // did nothing, undici would try real DNS for it and this fetch would throw ENOTFOUND/EAI_AGAIN,
+      // never reach the assertion below.
+      const res = await undiciFetch(`http://sam-url-guard-pin-test.invalid:${port}/`, { dispatcher });
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe("ok");
+      expect(hits).toBe(1);
+    } finally {
+      await dispatcher.close();
+    }
+  });
+
+  it("keeps the original hostname for the Host header — pinning changes where the socket goes, not what the server sees", async () => {
+    hits = 0;
+    const dispatcher = pinnedDispatcher("127.0.0.1");
+    let seenHost = "";
+    const hostServer = createServer((req, res) => { seenHost = req.headers.host || ""; res.end("ok"); });
+    await new Promise<void>((resolve) => hostServer.listen(0, "127.0.0.1", resolve));
+    const hostAddr = hostServer.address();
+    const hostPort = hostAddr && typeof hostAddr === "object" ? hostAddr.port : 0;
+    try {
+      const res = await undiciFetch(`http://sam-url-guard-pin-test.invalid:${hostPort}/`, { dispatcher });
+      expect(res.status).toBe(200);
+      expect(seenHost).toBe(`sam-url-guard-pin-test.invalid:${hostPort}`);
+    } finally {
+      await dispatcher.close();
+      await new Promise<void>((resolve) => hostServer.close(() => resolve()));
+    }
   });
 });

@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { Agent } from "undici";
+import { Agent, fetch as undiciFetch } from "undici";
 import { carriesKnownCredential } from "./scrub.ts";
 
 // Guard for OUTBOUND fetches of URLs SAM did not choose itself.
@@ -142,7 +142,12 @@ export async function safeFetch(
 ): Promise<Response> {
   const maxHops = opts.maxHops ?? 5;
   const resolve = opts.resolve ?? dnsResolver;
-  const doFetch = opts.fetchImpl ?? fetch;
+  // NOT the ambient global fetch: Node's built-in fetch bundles its OWN undici internally, a
+  // different instance from the `undici` package this file imports Agent from. Handing a
+  // dispatcher built by one to a fetch implementation from the other throws
+  // "invalid onRequestStart method" on undici 8 — their internal request-handler shapes don't
+  // match. Using undici's own fetch keeps the dispatcher and the fetch call on the same instance.
+  const doFetch = opts.fetchImpl ?? (undiciFetch as unknown as typeof fetch);
   // A test that injects fetchImpl is exercising the redirect/guard logic, not real sockets, so it
   // gets no pinned dispatcher — pinning only matters against the real, re-resolving fetch.
   const pinning = !opts.fetchImpl;
@@ -172,7 +177,11 @@ export async function safeFetch(
 
 // An undici Agent whose DNS lookup always returns the one IP we validated. net.connect-style
 // `lookup(host, options, cb)`: the callback shape depends on options.all, so answer both forms.
-function pinnedDispatcher(ip: string): Agent {
+// Exported for url-guard.test.ts: this is the actual DNS-rebinding defense, and the rest of this
+// file's tests inject fetchImpl specifically to AVOID exercising it (see safeFetch's `pinning`
+// comment) — so without a direct test, an undici upgrade that silently breaks Agent's
+// `connect.lookup` override would stay green forever.
+export function pinnedDispatcher(ip: string): Agent {
   const family = ip.includes(":") ? 6 : 4;
   return new Agent({
     connect: {
