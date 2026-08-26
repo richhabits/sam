@@ -485,35 +485,48 @@ describe("isPackagedPath — asked of the module, not of the normalised root", (
 // database its own worker never opened. Found live: two real jobs stuck `queued` for 5+ minutes
 // with the worker reporting healthy, because it correctly wasn't looking at the file they were in.
 describe("guessRoot — the same normalise-eats-a-level bug, for a checkout instead of a package", () => {
+  // guessRoot builds every candidate it checks with join()/dirname() — on Windows those
+  // emit backslash-separated paths, so a fixture hardcoded with forward slashes never
+  // structurally matches what guessRoot actually asks exists() about, and every guess
+  // silently falls through to the last resort. Found on Windows CI: all four of these
+  // passed locally (macOS) and failed there, not because the fix was wrong but because
+  // the TEST hardcoded a separator. Built with join()/dirname() throughout so the fixture
+  // and the expectation both track whatever this platform's own path module produces.
+  // join() even on its own still normalises separators — needed so root, used verbatim as a
+  // `cwd` return value below, already matches the native separator every join()-derived
+  // candidate comes back with (a raw literal wouldn't, and cwd is returned as-is on a fallback).
+  const root = join("/Volumes/ROMEO HQ/SAM");
+  const marker = (dir: string) => join(dir, "server", "yard", "store.ts");
   const exists = (real: Set<string>) => (p: string) => real.has(p);
 
   it("uses the module-relative guess when it actually lands on a real checkout", () => {
-    const modulePath = "/Volumes/ROMEO HQ/SAM/server/yard/store.ts"; // unbundled: worker.ts's world
-    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]);
-    expect(guessRoot(modulePath, "/irrelevant", exists(real))).toBe("/Volumes/ROMEO HQ/SAM");
+    const modulePath = marker(root); // unbundled: worker.ts's world
+    const real = new Set([marker(root)]);
+    expect(guessRoot(modulePath, "/irrelevant", exists(real))).toBe(join(dirname(modulePath), "..", ".."));
   });
 
   it("falls back to cwd when the module-relative guess overshoots — the daemon's real case", () => {
     // dist/server.mjs sits ONE level down, not two, so join(dirname(m), "..", "..") overshoots
     // past the checkout root entirely. This is exactly what the real daemon computes.
-    const modulePath = "/Volumes/ROMEO HQ/SAM/dist/server.mjs";
-    const cwd = "/Volumes/ROMEO HQ/SAM"; // sam-server-supervisor.sh cd's here before starting
-    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]); // only the real root has it
+    const modulePath = join(root, "dist", "server.mjs");
+    const cwd = root; // sam-server-supervisor.sh cd's here before starting
+    const real = new Set([marker(root)]); // only the real root has it
     expect(guessRoot(modulePath, cwd, exists(real))).toBe(cwd);
   });
 
   it("the daemon (bundled) and its worker (unbundled) now agree on the same root", () => {
-    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]);
-    const daemonRoot = guessRoot("/Volumes/ROMEO HQ/SAM/dist/server.mjs", "/Volumes/ROMEO HQ/SAM", exists(real));
-    const workerRoot = guessRoot("/Volumes/ROMEO HQ/SAM/server/yard/store.ts", "/Volumes/ROMEO HQ/SAM", exists(real));
+    const real = new Set([marker(root)]);
+    const daemonRoot = guessRoot(join(root, "dist", "server.mjs"), root, exists(real));
+    const workerRoot = guessRoot(marker(root), root, exists(real));
     expect(daemonRoot).toBe(workerRoot); // this is the actual bug: these disagreed before the fix
   });
 
   it("neither guess panics when nothing on disk matches — last resort, not a throw", () => {
-    // join(dirname("/wherever/dist/server.mjs"), "..", "..") normalises all the way to "/" —
-    // the exact "overshoots past everything" failure mode this function exists to route around
-    // when a real checkout marker IS findable; here nothing exists anywhere, so the last resort
-    // (the old, unguarded behaviour) is what's left, not a throw.
-    expect(guessRoot("/wherever/dist/server.mjs", "/also/nowhere", () => false)).toBe("/");
+    // join(dirname("/wherever/dist/server.mjs"), "..", "..") normalises all the way to the
+    // filesystem root — the exact "overshoots past everything" failure mode this function
+    // exists to route around when a real checkout marker IS findable; here nothing exists
+    // anywhere, so the last resort (the old, unguarded behaviour) is what's left, not a throw.
+    const modulePath = "/wherever/dist/server.mjs";
+    expect(guessRoot(modulePath, "/also/nowhere", () => false)).toBe(join(dirname(modulePath), "..", ".."));
   });
 });

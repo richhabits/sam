@@ -213,8 +213,8 @@ describe("a worker whose server has gone", () => {
 describe("running more than one job at once", () => {
   it("starts a second project's job before the first one finishes", async () => {
     const order: string[] = [];
-    let releaseA: () => void = () => {};
-    let releaseB: () => void = () => {};
+    let releaseA!: () => void;
+    let releaseB!: () => void;
     const gateA = new Promise<void>((r) => { releaseA = r; });
     const gateB = new Promise<void>((r) => { releaseB = r; });
     registerHandler("slow-a", async () => { order.push("a-start"); await gateA; order.push("a-end"); });
@@ -239,7 +239,7 @@ describe("running more than one job at once", () => {
 
   it("never runs two jobs of the same project at once, even with slots free", async () => {
     const order: string[] = [];
-    let release: () => void = () => {};
+    let release!: () => void;
     const gate = new Promise<void>((r) => { release = r; });
     registerHandler("same-project-1", async () => { order.push("1-start"); await gate; order.push("1-end"); });
     registerHandler("same-project-2", async () => { order.push("2-start"); });
