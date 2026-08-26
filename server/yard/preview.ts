@@ -45,7 +45,16 @@ export type Served = { ok: true; path: string; type: string } | { ok: false; sta
 export function resolvePreview(slug: string, rel: string): Served {
   if (!isManagedProject(slug)) return { ok: false, status: 404, reason: "no such project" };
 
-  const root = projectPath(slug);
+  let root = projectPath(slug);
+  // A project with a real build step (Vite, etc.) ships an index.html that references unbuilt
+  // source — <script src="/src/main.jsx"> — which this server correctly refuses rather than
+  // serving broken (wrong extension, and raw JSX isn't valid browser JS regardless). If a build
+  // has actually been run, dist/ is the real, viewable, deployable artifact: prefer it for the
+  // WHOLE project, not just the front page, since its own assets are referenced relative to
+  // itself. A project with no dist/ (a plain static site, the common case) is unaffected — this
+  // only ever changes behaviour when a real build output exists to show instead.
+  const distRoot = join(root, "dist");
+  if (existsSync(join(distRoot, "index.html"))) root = distRoot;
   // A request for the project root means its front page.
   const wanted = !rel || rel === "/" ? "index.html" : rel.replace(/^\/+/, "");
 

@@ -55,6 +55,53 @@ describe("serving a project's own files", () => {
   });
 });
 
+// A real build step (Vite, etc.) ships an index.html referencing unbuilt source —
+// <script src="/src/main.jsx"> — which this server correctly refuses (wrong extension, and raw
+// JSX isn't valid browser JS regardless). Found live: a genuinely finished React+Vite+Tailwind
+// site, built and verified working in a real browser via `vite preview`, still showed a blank
+// page through the Yard's own Builder preview — the exact "watch it happen" promise the Yard
+// exists for, broken for any project using the stack its own project plans recommend.
+describe("a real build output takes over the whole project once one exists", () => {
+  it("prefers dist/index.html over a source index.html that references unbuilt files", () => {
+    const dir = projectPath("site");
+    // The broken case as found live: source index.html points at unbuilt JSX.
+    writeFileSync(join(dir, "index.html"), '<script type="module" src="/src/main.jsx"></script>');
+    mkdirSync(join(dir, "dist"), { recursive: true });
+    writeFileSync(join(dir, "dist", "index.html"), "<h1>built</h1>");
+    const r = resolvePreview("site", "");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.path).toMatch(/dist\/index\.html$/);
+    expect(readProjectFile("site", "")).toContain("built");
+  });
+
+  it("resolves the built assets relative to dist/, not the project root", () => {
+    const dir = projectPath("site");
+    mkdirSync(join(dir, "dist", "assets"), { recursive: true });
+    writeFileSync(join(dir, "dist", "index.html"), "<h1>built</h1>");
+    writeFileSync(join(dir, "dist", "assets", "index-abc123.js"), "console.log(1)");
+    const r = resolvePreview("site", "assets/index-abc123.js");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.path).toMatch(/dist\/assets\/index-abc123\.js$/);
+  });
+
+  it("a plain static site with no dist/ is completely unaffected", () => {
+    // No dist/ written this time — the default fixture's own index.html must still be what serves.
+    const r = resolvePreview("site", "");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.path).not.toMatch(/\/dist\//);
+  });
+
+  it("a traversal still can't escape once root has shifted to dist/", () => {
+    const dir = projectPath("site");
+    mkdirSync(join(dir, "dist"), { recursive: true });
+    writeFileSync(join(dir, "dist", "index.html"), "<h1>built</h1>");
+    // The un-built index.html at the project root must not be reachable once dist/ is root —
+    // proves the shift is a real root change, not just a front-page special case.
+    const r = resolvePreview("site", "../index.html");
+    expect(r.ok).toBe(false);
+  });
+});
+
 describe("what must never be served", () => {
   it("refuses a traversal, however it is spelled", () => {
     for (const p of ["../../../etc/passwd", "..%2F..%2Fetc", "assets/../../../../etc/hosts", "/etc/passwd"]) {
