@@ -15,7 +15,8 @@
 
 import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { JobStore, yardDir, type JobStep } from "./store.ts";
+import os from "node:os";
+import { JobStore, yardDir, type JobStep, type Job } from "./store.ts";
 import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
 import { execInProject, writeInProject, resolveProjectWrite, isWithin } from "./exec.ts";
 import { scrub } from "../scrub.ts";
@@ -31,11 +32,31 @@ import { saveDiffs } from "./glass.ts";
 import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
-const LOCK_STALE_MS = 60_000;
 
 // ── Single flight (Removed) ──────────────────────────────────────────────────
 // Concurrency is now safely handled natively via store.claim's atomic UPDATE
 // (WHERE id=? AND state='queued') and SQLite's ACID guarantees around store.meter().
+// That covers two slots racing for the same ROW; it never covered two slots each
+// claiming a DIFFERENT queued job that happen to share a project, which is a real
+// collision (two git checkpoints, two writers) once anything actually runs jobs
+// concurrently — nothing did, until the pool below. store.claim() now also excludes a
+// project that already has a running job, which is the part this comment's "natively
+// handled" never actually meant.
+
+// How many jobs this one worker process runs at once. A build job mostly waits on an
+// LLM call or a child process (npm install, a build) rather than pegging this process's
+// own event loop, so several genuinely overlap rather than fighting each other — but each
+// one that DOES spend real CPU or spawns real child processes is still work this one
+// machine has to do, so the ceiling stays well under the raw number the queue could
+// throw at it. SAM_YARD_CONCURRENCY raises it for a machine that can take more; the
+// default scales with cores instead of guessing a fixed number for every machine.
+export const DEFAULT_CONCURRENCY = Math.max(1, Math.min(8, os.cpus().length || 4));
+const MAX_CONCURRENCY = 50;
+export function resolveConcurrency(env = process.env): number {
+  const raw = Number(env.SAM_YARD_CONCURRENCY);
+  if (!Number.isFinite(raw) || raw < 1) return DEFAULT_CONCURRENCY;
+  return Math.min(MAX_CONCURRENCY, Math.floor(raw));
+}
 
 // ── Job logs ────────────────────────────────────────────────────────────────
 const LOG_CAP = 2 * 1024 * 1024;
@@ -571,10 +592,21 @@ export function registerHandler(kind: string, fn: Handler) { HANDLERS[kind] = fn
 
 // ── The loop ────────────────────────────────────────────────────────────────
 
-export async function runOneJob(store: JobStore, now = () => Date.now()): Promise<string | null> {
-  const job = store.claim(now(), jobLogPath);
-  if (!job) return null;
+// The claim is the only part of running a job that must happen synchronously relative to
+// every other slot in the pool: store.claim() is a synchronous better-sqlite3 call, so a
+// tight loop of these (with no `await` between them) claims a distinct job — or correctly
+// finds none — on every call, with no chance of two slots racing onto the same row. Split
+// out so workerLoop can fill several slots before any of them starts doing async work,
+// which is exactly the point where a job's own handler can be awaited without blocking the
+// next slot's claim.
+function claimNext(store: JobStore, now = () => Date.now()): Job | null {
+  return store.claim(now(), jobLogPath);
+}
 
+// Run a job that has already been claimed. Kept separate from runOneJob's claim step so
+// the pool below can hold several of these in flight; runOneJob composes the two for every
+// existing caller (tests, and any single-job use) that never needed to know the split exists.
+async function executeJob(store: JobStore, job: Job): Promise<string | null> {
   const log = new JobLog(job.logPath ?? jobLogPath(job.id));
   const beat = setInterval(() => { store.heartbeat(job.id); }, HEARTBEAT_MS);
 
@@ -645,6 +677,12 @@ export async function runOneJob(store: JobStore, now = () => Date.now()): Promis
   }
 }
 
+export async function runOneJob(store: JobStore, now = () => Date.now()): Promise<string | null> {
+  const job = claimNext(store, now);
+  if (!job) return null;
+  return executeJob(store, job);
+}
+
 // A worker exists to serve one supervisor. If that supervisor dies, this process is
 // reparented to init and would otherwise keep running for ever — claiming jobs and
 // quietly accumulating one orphan per restart until something looks at the process list.
@@ -653,18 +691,54 @@ export function orphaned(): boolean {
   return process.ppid === 1;
 }
 
-export async function workerLoop(store: JobStore, opts: { stop?: () => boolean; isOrphaned?: () => boolean } = {}) {
+// A bounded pool, not one job at a time: with the queue's own per-project exclusion
+// (store.claim() never hands out two running jobs for the same project — see store.ts),
+// jobs against DIFFERENT projects genuinely have nothing to collide over, so there is no
+// reason a queue of fifty sits behind one at a time when the machine has room for more of
+// them at once. concurrency is resolved once per loop start (env, not re-read mid-run) so
+// a fixed pool size stays predictable for the life of this process.
+export async function workerLoop(
+  store: JobStore,
+  opts: { stop?: () => boolean; isOrphaned?: () => boolean; concurrency?: number } = {},
+) {
   const stop = opts.stop ?? (() => false);
   const alone = opts.isOrphaned ?? orphaned;
+  const concurrency = Math.max(1, opts.concurrency ?? resolveConcurrency());
+  const inflight = new Set<Promise<string | null>>();
+  let leftOrphaned = false;
+
   while (!stop()) {
     if (alone()) {
       console.log("the yard: the server that started this worker is gone — standing down");
-      return;
+      leftOrphaned = true;
+      break;
     }
     store.reapAbandoned();
-    const did = await runOneJob(store);
-    if (!did && !stop()) await new Promise((r) => setTimeout(r, IDLE_POLL_MS));
+
+    // Fill every open slot. Each claimNext() is synchronous and runs to completion before
+    // the next one is even called, so this cannot claim the same row — or two rows of the
+    // same project — twice, however many slots are free.
+    while (inflight.size < concurrency) {
+      const job = claimNext(store);
+      if (!job) break;   // nothing left ready to claim right now
+      const p: Promise<string | null> = executeJob(store, job).finally(() => { inflight.delete(p); });
+      inflight.add(p);
+    }
+
+    if (inflight.size === 0) {
+      if (!stop()) await new Promise((r) => setTimeout(r, IDLE_POLL_MS));
+      continue;
+    }
+    // Wake as soon as a slot frees up (to refill it immediately) or after the poll
+    // interval (to notice newly-queued or newly-ready work), whichever comes first —
+    // never busy-spins, and never sits idle longer than one poll tick while jobs run.
+    await Promise.race([...inflight, new Promise((r) => setTimeout(r, IDLE_POLL_MS))]);
   }
+  // A caller that asked us to stop still wants every job it started accounted for —
+  // going orphaned is the one case that means "walk away", not "wind down". leftOrphaned
+  // records what the loop already decided rather than calling isOrphaned() again, which
+  // would double-count a caller tracking how many times it was asked.
+  if (!leftOrphaned) await Promise.allSettled(inflight);
 }
 
 // ── Entrypoint ──────────────────────────────────────────────────────────────

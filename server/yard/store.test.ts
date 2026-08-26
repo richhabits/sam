@@ -119,6 +119,44 @@ describe("the job table", () => {
     expect(s.claim()).toBeNull();
   });
 
+  // Concurrency (see workerLoop) means claim() is called again while a job is still
+  // running, not only after it finishes — a queued job for a project that already has a
+  // running job must never be handed out, or two jobs would write to the same working
+  // tree at once.
+  describe("a running job blocks its own project, not the whole queue", () => {
+    it("skips a second queued job for a project that already has one running", () => {
+      s.enqueue("build", {}, { project: "site-a" });
+      s.enqueue("build", {}, { project: "site-a" });
+      const first = s.claim()!;
+      expect(first.project).toBe("site-a");
+      expect(s.claim()).toBeNull();   // the second is for the same project — not yet
+    });
+
+    it("still claims a different project while one project is running", () => {
+      s.enqueue("build", {}, { project: "site-a" });
+      const forB = s.enqueue("build", {}, { project: "site-b" });
+      s.claim();   // takes site-a
+      const second = s.claim();
+      expect(second?.id).toBe(forB.id);
+    });
+
+    it("releases the project once its running job finishes", () => {
+      const j1 = s.enqueue("build", {}, { project: "site-a" });
+      s.enqueue("build", {}, { project: "site-a" });
+      s.claim();
+      expect(s.claim()).toBeNull();
+      s.finish(j1.id);
+      expect(s.claim()?.project).toBe("site-a");
+    });
+
+    it("never blocks on a job with no project — nothing to collide over", () => {
+      s.enqueue("chat");
+      s.enqueue("chat");
+      expect(s.claim()).not.toBeNull();
+      expect(s.claim()).not.toBeNull();   // both claimable — projectless jobs don't exclude each other
+    });
+  });
+
   it("runs a job through to done", () => {
     const j = s.enqueue("k");
     s.claim();

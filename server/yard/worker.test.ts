@@ -205,6 +205,71 @@ describe("a worker whose server has gone", () => {
   });
 });
 
+// The queue used to run exactly one job at a time regardless of how many were waiting —
+// a job against a project nobody else was touching still sat behind whatever else happened
+// to be running first. These prove the pool actually overlaps jobs rather than just
+// accepting a concurrency number and running them sequentially anyway, and that the one
+// thing that must never overlap (two jobs on the same project) still doesn't.
+describe("running more than one job at once", () => {
+  it("starts a second project's job before the first one finishes", async () => {
+    const order: string[] = [];
+    let releaseA: () => void = () => {};
+    let releaseB: () => void = () => {};
+    const gateA = new Promise<void>((r) => { releaseA = r; });
+    const gateB = new Promise<void>((r) => { releaseB = r; });
+    registerHandler("slow-a", async () => { order.push("a-start"); await gateA; order.push("a-end"); });
+    registerHandler("slow-b", async () => { order.push("b-start"); await gateB; order.push("b-end"); });
+    store.enqueue("slow-a", {}, { project: "proj-a" });
+    store.enqueue("slow-b", {}, { project: "proj-b" });
+
+    const { workerLoop } = await import("./worker.ts");
+    const done = workerLoop(store, { concurrency: 2, stop: () => order.length >= 4 });
+
+    // Both slots fill synchronously (claiming is synchronous, and neither handler awaits
+    // anything but its own gate before yielding) — no polling needed: by the time control
+    // would next reach a real await, both have already logged their start.
+    await Promise.resolve();
+    expect(order).toEqual(["a-start", "b-start"]);   // b started WITHOUT waiting for a to finish
+
+    releaseA(); releaseB();
+    await done;
+    expect(order).toEqual(["a-start", "b-start", "a-end", "b-end"]);
+    expect(store.list("done").map((j) => j.kind).sort()).toEqual(["slow-a", "slow-b"]);
+  });
+
+  it("never runs two jobs of the same project at once, even with slots free", async () => {
+    const order: string[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    registerHandler("same-project-1", async () => { order.push("1-start"); await gate; order.push("1-end"); });
+    registerHandler("same-project-2", async () => { order.push("2-start"); });
+    store.enqueue("same-project-1", {}, { project: "shared" });
+    store.enqueue("same-project-2", {}, { project: "shared" });
+
+    const { workerLoop } = await import("./worker.ts");
+    const done = workerLoop(store, { concurrency: 4, stop: () => order.includes("2-start") });
+
+    // Several idle-poll ticks pass with only job 1 claimable — job 2 must stay queued
+    // the whole time, however many free slots the pool has.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(order).toEqual(["1-start"]);
+    expect(store.list("queued")[0]?.kind).toBe("same-project-2");
+
+    release();
+    await done;
+    expect(order).toEqual(["1-start", "1-end", "2-start"]);
+  });
+
+  it("resolveConcurrency reads and clamps SAM_YARD_CONCURRENCY", async () => {
+    const { resolveConcurrency, DEFAULT_CONCURRENCY } = await import("./worker.ts");
+    expect(resolveConcurrency({})).toBe(DEFAULT_CONCURRENCY);              // unset — the per-core default
+    expect(resolveConcurrency({ SAM_YARD_CONCURRENCY: "0" })).toBe(DEFAULT_CONCURRENCY);
+    expect(resolveConcurrency({ SAM_YARD_CONCURRENCY: "not-a-number" })).toBe(DEFAULT_CONCURRENCY);
+    expect(resolveConcurrency({ SAM_YARD_CONCURRENCY: "12" })).toBe(12);
+    expect(resolveConcurrency({ SAM_YARD_CONCURRENCY: "9999" })).toBe(50);  // clamped, not unlimited
+  });
+});
+
 // A3 — the live plan/checklist. Steps come from the job itself (ctx.step), never a model
 // guessing after the fact; these prove the state transitions the UI's checklist depends on.
 describe("the checklist (ctx.step)", () => {

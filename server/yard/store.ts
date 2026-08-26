@@ -234,9 +234,20 @@ export class JobStore {
   // Claim the oldest ready job. The WHERE clause carries the state test, so if two
   // workers call this at once exactly one gets a row and the other gets nothing —
   // settled by the database rather than by hoping.
+  //
+  // Excludes a project that already has a job running: concurrency (more than one job
+  // in flight at once, see workerLoop) means "no other worker is touching this project"
+  // is no longer true by construction, and two jobs racing git commits or file writes in
+  // the same working tree is real corruption, not a hypothetical. A NULL project (nothing
+  // to collide over) is never excluded. This makes claim() itself the single place that
+  // guarantees per-project single-flight, so it holds regardless of how many concurrent
+  // slots — or, later, how many separate worker processes — call it.
   claim(now = Date.now(), logPath?: (id: string) => string): Job | null {
     const row: any = this.db.prepare(
-      `SELECT id FROM jobs WHERE state='queued' AND run_after <= ? AND cancel_requested = 0
+      `SELECT id FROM jobs j WHERE state='queued' AND run_after <= ? AND cancel_requested = 0
+       AND (j.project IS NULL OR NOT EXISTS (
+         SELECT 1 FROM jobs r WHERE r.state='running' AND r.project = j.project
+       ))
        ORDER BY created_at ASC LIMIT 1`,
     ).get(now);
     if (!row) return null;
@@ -361,21 +372,26 @@ export class JobStore {
     return reaped;
   }
 
-  // What the ops tile reads.
+  // What the ops tile reads. Concurrency means "running" is no longer at most one job —
+  // `current` stays for callers that only ever showed a single job (the oldest still
+  // running, same as before concurrency existed), and `running` is the full list so a
+  // panel can show every job actually in flight instead of silently hiding the rest.
   summary(now = Date.now()) {
     const count = (s: JobState) => (this.db.prepare("SELECT COUNT(*) c FROM jobs WHERE state=?").get(s) as any).c as number;
-    const running = this.list("running", 5);
-    const live = running[0] ?? null;
+    const runningJobs = this.list("running", 20).sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
+    const live = runningJobs[0] ?? null;
+    const brief = (j: Job) => ({
+      id: j.id, kind: j.kind, project: j.project,
+      costTokens: j.costTokens, costBudget: j.costBudget,
+      startedAt: j.startedAt, heartbeatAt: j.heartbeatAt,
+      stale: isClaimForfeit(j, now),
+    });
     return {
       queued: count("queued"), running: count("running"), done: count("done"),
       failed: count("failed"), cancelled: count("cancelled"),
       depth: this.queueDepth(now),
-      current: live && {
-        id: live.id, kind: live.kind, project: live.project,
-        costTokens: live.costTokens, costBudget: live.costBudget,
-        startedAt: live.startedAt, heartbeatAt: live.heartbeatAt,
-        stale: isClaimForfeit(live, now),
-      },
+      current: live && brief(live),
+      runningJobs: runningJobs.map(brief),
       lastFailure: this.list("failed", 1)[0]
         ? { id: this.list("failed", 1)[0].id, error: this.list("failed", 1)[0].lastError, kind: this.list("failed", 1)[0].failureKind }
         : null,

@@ -253,39 +253,44 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                     </span>
                   </div>
 
-                  {yard.current ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13 }}>
-                          {yard.current.stale ? "⚠️ " : ""}{yard.current.kind}
-                          {yard.current.project ? ` · ${yard.current.project}` : ""}
-                          {yard.current.stale && <span style={{ color: "var(--c-err)", fontWeight: 600 }}> — stopped reporting</span>}
-                        </span>
-                        {/* The one write on this panel. It signals the yard and nothing else on
-                            the machine: the job settles between steps rather than being shot. */}
-                        <button
-                          type="button"
-                          onClick={() => { setYardErr(""); cancelYardJob(yard.current.id).then(refreshYard).catch((e) => setYardErr(String(e?.message || e))); }}
-                          style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--c-err)", background: "transparent", color: "var(--c-err)", cursor: "pointer", fontWeight: 600 }}
-                        >Kill</button>
-                      </div>
-                      {/* the meter — only shown when a ceiling was actually set */}
-                      {yard.current.costBudget ? (
-                        <div>
-                          <div style={{ height: 5, borderRadius: 999, background: "var(--surface)", overflow: "hidden", border: "1px solid var(--border)" }}>
-                            <div style={{
-                              width: `${Math.min(100, (yard.current.costTokens / yard.current.costBudget) * 100)}%`, height: "100%",
-                              background: yard.current.costTokens / yard.current.costBudget > 0.8 ? "var(--c-warn)" : "var(--c-blue)",
-                            }} />
-                          </div>
-                          <div style={{ fontSize: 11, opacity: .6, marginTop: 3 }}>
-                            {yard.current.costTokens.toLocaleString()} / {yard.current.costBudget.toLocaleString()} tokens
-                          </div>
+                  {/* The pool can run several jobs at once now (see workerLoop) — runningJobs is
+                      every one of them, not just the oldest. Falls back to the single `current`
+                      job for anything still reading an older response shape. */}
+                  {(yard.runningJobs ?? (yard.current ? [yard.current] : [])).length > 0 ? (
+                    (yard.runningJobs ?? [yard.current]).map((job: any) => (
+                      <div key={job.id} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13 }}>
+                            {job.stale ? "⚠️ " : ""}{job.kind}
+                            {job.project ? ` · ${job.project}` : ""}
+                            {job.stale && <span style={{ color: "var(--c-err)", fontWeight: 600 }}> — stopped reporting</span>}
+                          </span>
+                          {/* The one write on this panel. It signals the yard and nothing else on
+                              the machine: the job settles between steps rather than being shot. */}
+                          <button
+                            type="button"
+                            onClick={() => { setYardErr(""); cancelYardJob(job.id).then(refreshYard).catch((e) => setYardErr(String(e?.message || e))); }}
+                            style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--c-err)", background: "transparent", color: "var(--c-err)", cursor: "pointer", fontWeight: 600 }}
+                          >Kill</button>
                         </div>
-                      ) : (
-                        <div style={{ fontSize: 11, opacity: .6 }}>{yard.current.costTokens.toLocaleString()} tokens · no ceiling set</div>
-                      )}
-                    </div>
+                        {/* the meter — only shown when a ceiling was actually set */}
+                        {job.costBudget ? (
+                          <div>
+                            <div style={{ height: 5, borderRadius: 999, background: "var(--surface)", overflow: "hidden", border: "1px solid var(--border)" }}>
+                              <div style={{
+                                width: `${Math.min(100, (job.costTokens / job.costBudget) * 100)}%`, height: "100%",
+                                background: job.costTokens / job.costBudget > 0.8 ? "var(--c-warn)" : "var(--c-blue)",
+                              }} />
+                            </div>
+                            <div style={{ fontSize: 11, opacity: .6, marginTop: 3 }}>
+                              {job.costTokens.toLocaleString()} / {job.costBudget.toLocaleString()} tokens
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, opacity: .6 }}>{job.costTokens.toLocaleString()} tokens · no ceiling set</div>
+                        )}
+                      </div>
+                    ))
                   ) : (
                     <div style={{ fontSize: 12, opacity: .6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
                       {yard.depth > 0 ? `${yard.depth} waiting to start` : "Idle — nothing building."}
