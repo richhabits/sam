@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -166,7 +166,10 @@ export default function ChatScreen({
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const scroller = useRef<ScrollView>(null);
+  // RN 0.87 separated the component type (a forwardRef function) from its instance type —
+  // useRef<ScrollView> no longer types the ref as something with scrollToEnd(). ComponentRef
+  // derives the actual instance type from the component itself, so it can't drift again.
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
   // A quick-action link PRE-FILLS the composer; it does not send. The parser only accepts our own
   // scheme and bounds the text, but "any app on this phone can open a URL" is still the threat
@@ -178,7 +181,7 @@ export default function ChatScreen({
     setDraft((d) => (d.trim() ? `${d.trim()} ${prompt}` : prompt));
   }, [prompt]);
   const abort = useRef<AbortController | null>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   const [sheet, setSheet] = useState(false);
   const [tier, setTier] = useState<'auto' | 'free' | 'turbo'>('auto');
   // Whether SAM may reach for a paid brain without asking. Restored on mount, because a grant
