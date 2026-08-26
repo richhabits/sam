@@ -20,8 +20,17 @@ jobs:
         with: { node-version: 22, cache: npm }
       - name: Install LATEST of everything
         run: npm install --no-audit --no-fund
+      # mobile/ has its own package.json — without installing ITS latest too, all 20
+      # mobile/*.test.ts files fail to even load (separate tsconfig/node_modules), which is
+      # exactly what's been happening here since at least 2026-07-27 (every weekly run failing
+      # on this, not on an actual dependency break) — the one thing this canary exists to catch.
+      - name: Install LATEST of mobile's own deps too
+        run: npm install --no-audit --no-fund --prefix mobile
       - name: Full suite against latest
         run: npm run lint && npx tsc --noEmit && npm test && npm run build
+      - name: Type-check the mobile app against latest (its own tsconfig — root doesn't cover it)
+        run: npx tsc --noEmit
+        working-directory: mobile
       - name: Report a break on latest deps
         if: failure()
         uses: actions/github-script@v9
