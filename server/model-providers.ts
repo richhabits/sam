@@ -209,7 +209,13 @@ export interface Provider {
   noKey?: boolean;   // works with no API key at all (e.g. Pollinations) — the never-dry fallback
 }
 
-export const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+// AUDITED LIVE 2026-08-26 against Groq's own /v1/models with SAM's real pooled key:
+// `llama-3.3-70b-versatile` isn't in the response at all — retired, same as Cerebras's own
+// llama-3.3-70b below. Found live: every "sam-fix.mjs" self-fix run 404'd on this exact model
+// and silently skipped every issue it was ever labeled onto. openai/gpt-oss-120b is the
+// largest general-purpose model actually present ([groq/compound, qwen/qwen3.8-27b,
+// openai/gpt-oss-120b, openai/gpt-oss-20b, ...] — no other 70B-class instruct model listed).
+export const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct";
 export const MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
 // AUDITED LIVE 2026-08-01 against the providers' own /v1/models. `llama-3.3-70b` was RETIRED by

@@ -20,7 +20,11 @@ import { readdirSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const KEY = process.env.GROQ_API_KEY;
-const MODEL = process.env.GROQ_FIX_MODEL || "llama-3.3-70b-versatile";   // the bigger free model for code
+// AUDITED LIVE 2026-08-26 against Groq's own /v1/models: llama-3.3-70b-versatile is retired —
+// every run of this script 404'd here and skip-commented every issue, silently, for over a
+// month (see server/model-providers.ts's GROQ_MODEL for the fuller audit). gpt-oss-120b is the
+// largest general-purpose model this account's key can actually reach.
+const MODEL = process.env.GROQ_FIX_MODEL || "openai/gpt-oss-120b";   // the bigger free model for code
 const TITLE = (process.env.ISSUE_TITLE || "").slice(0, 300);
 const BODY = (process.env.ISSUE_BODY || "").slice(0, 4000);
 const NUMBER = process.env.ISSUE_NUMBER || "?";
