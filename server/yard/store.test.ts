@@ -7,7 +7,7 @@ import {assertTransition, backoffMs,
   canTransition, HEARTBEAT_GRACE_MS, isClaimForfeit, isRetryable, isTerminal, MAX_ATTEMPTS,
   overBudget, 
 } from "./state.ts";
-import { isPackagedPath, JobStore } from "./store.ts";
+import { guessRoot, isPackagedPath, JobStore } from "./store.ts";
 
 // Same 17-column shape as pre-A3's COLUMNS in store.ts, minus steps_json — a hand-built
 // stand-in for a jobs.db that predates the migration, since there's no fixture on disk.
@@ -436,5 +436,46 @@ describe("isPackagedPath — asked of the module, not of the normalised root", (
     expect(rootOf(`${RES}/app.asar/dist-electron/src-abc123.js`).includes("app.asar")).toBe(false);
     // …and true only for the unbundled source layout, which is the one a packaged app never uses.
     expect(rootOf(`${RES}/app.asar/server/yard/store.ts`).includes("app.asar")).toBe(true);
+  });
+});
+
+// THE SEQUEL: isPackagedPath fixed "am I packaged?"; this is the same normalise-eats-a-directory
+// bug for the case that ISN'T packaged at all — a checkout whose daemon runs the bundled
+// dist/server.mjs (which sam-server-supervisor.sh always does) while its own worker runs
+// unbundled server/yard/worker.ts. Both call yardDir(); the module-relative guess disagreed with
+// itself across the two processes, so jobs enqueued via the real daemon silently piled up in a
+// database its own worker never opened. Found live: two real jobs stuck `queued` for 5+ minutes
+// with the worker reporting healthy, because it correctly wasn't looking at the file they were in.
+describe("guessRoot — the same normalise-eats-a-level bug, for a checkout instead of a package", () => {
+  const exists = (real: Set<string>) => (p: string) => real.has(p);
+
+  it("uses the module-relative guess when it actually lands on a real checkout", () => {
+    const modulePath = "/Volumes/ROMEO HQ/SAM/server/yard/store.ts"; // unbundled: worker.ts's world
+    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]);
+    expect(guessRoot(modulePath, "/irrelevant", exists(real))).toBe("/Volumes/ROMEO HQ/SAM");
+  });
+
+  it("falls back to cwd when the module-relative guess overshoots — the daemon's real case", () => {
+    // dist/server.mjs sits ONE level down, not two, so join(dirname(m), "..", "..") overshoots
+    // past the checkout root entirely. This is exactly what the real daemon computes.
+    const modulePath = "/Volumes/ROMEO HQ/SAM/dist/server.mjs";
+    const cwd = "/Volumes/ROMEO HQ/SAM"; // sam-server-supervisor.sh cd's here before starting
+    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]); // only the real root has it
+    expect(guessRoot(modulePath, cwd, exists(real))).toBe(cwd);
+  });
+
+  it("the daemon (bundled) and its worker (unbundled) now agree on the same root", () => {
+    const real = new Set(["/Volumes/ROMEO HQ/SAM/server/yard/store.ts"]);
+    const daemonRoot = guessRoot("/Volumes/ROMEO HQ/SAM/dist/server.mjs", "/Volumes/ROMEO HQ/SAM", exists(real));
+    const workerRoot = guessRoot("/Volumes/ROMEO HQ/SAM/server/yard/store.ts", "/Volumes/ROMEO HQ/SAM", exists(real));
+    expect(daemonRoot).toBe(workerRoot); // this is the actual bug: these disagreed before the fix
+  });
+
+  it("neither guess panics when nothing on disk matches — last resort, not a throw", () => {
+    // join(dirname("/wherever/dist/server.mjs"), "..", "..") normalises all the way to "/" —
+    // the exact "overshoots past everything" failure mode this function exists to route around
+    // when a real checkout marker IS findable; here nothing exists anywhere, so the last resort
+    // (the old, unguarded behaviour) is what's left, not a throw.
+    expect(guessRoot("/wherever/dist/server.mjs", "/also/nowhere", () => false)).toBe("/");
   });
 });

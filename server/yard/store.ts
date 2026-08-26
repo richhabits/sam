@@ -29,7 +29,35 @@ import {
 } from "./state.ts";
 
 const MODULE = fileURLToPath(import.meta.url);
-const ROOT = join(dirname(MODULE), "..", "..");
+
+// join() NORMALISES, so a ROOT computed purely from this module's own path is only correct when
+// the module sits exactly two directories below the checkout root — true for unbundled
+// server/yard/store.ts, false the moment this file is bundled into a single dist/server.mjs
+// sitting only ONE level down: the daemon (which always runs dist/server.mjs — see
+// sam-server-supervisor.sh) then computes yardDir() one directory too high, while its own worker
+// (spawned unbundled, so its guess is unaffected) computes the correct one. Two processes, same
+// source, different answers — jobs enqueued via the real running daemon silently piled up
+// unclaimed in the wrong file forever, and nothing errored because both paths are perfectly
+// valid, writable directories. Same bug class isPackagedPath already fixes for app.asar; this is
+// the parallel case for a bundled-but-unpacked checkout, which is how the daemon always runs.
+//
+// Verified against this exact file, not guessed: existsSync confirms whether the module-relative
+// walk actually landed on a real checkout. process.cwd() is the fallback because the daemon
+// always cd's into the repo root before starting (sam-server-supervisor.sh) — a second real
+// signal, not another guess. modulePath/cwd/exists are injected so the bundled-vs-unbundled
+// scenario is directly testable — the real bug only reproduces under a bundler, which a normal
+// (unbundled) test run can never trigger by simply importing this file and calling the function.
+export function guessRoot(
+  modulePath: string = MODULE,
+  cwd: string = process.cwd(),
+  exists: (p: string) => boolean = existsSync,
+): string {
+  const fromModule = join(dirname(modulePath), "..", "..");
+  if (exists(join(fromModule, "server", "yard", "store.ts"))) return fromModule;
+  if (exists(join(cwd, "server", "yard", "store.ts"))) return cwd;
+  return fromModule; // last resort — at least matches the old (buggy) behaviour, not silently different
+}
+const ROOT = guessRoot();
 
 /**
  * Is this module running from inside a packaged app bundle?
