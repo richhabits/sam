@@ -48,6 +48,9 @@ describe("signingStatus", () => {
 });
 
 describe("generateAndroidKeystore", () => {
+  // Two real `keytool -genkeypair` subprocess spawns in one test — vitest's 5s default is tight
+  // for that on a loaded CI runner (observed flaking in CI, never locally); 20s gives real
+  // headroom without slowing down a genuine hang's feedback by much.
   it("refuses to overwrite an existing keystore", async () => {
     // Generate first
     const first = await S.generateAndroidKeystore();
@@ -63,7 +66,7 @@ describe("generateAndroidKeystore", () => {
     const second = await S.generateAndroidKeystore();
     expect(second.ok).toBe(false);
     expect(second.error).toContain("already exists");
-  });
+  }, 20000);
 
   it("creates the keystore in vault/signing/", async () => {
     const result = await S.generateAndroidKeystore();
