@@ -445,6 +445,10 @@ export const cancelYardJob = async (id: string) => {
   return body;
 };
 export const retryYardJob = (id: string) => post("/api/yard/retry", { id });
+// The published registry — "nothing public that isn't on this list."
+export const getPublishedSites = () => get("/api/yard/published") as Promise<{ sites: { slug: string; name: string; url: string; publishedAt: number; qr: string | null }[] }>;
+export const getDnsGuide = (slug: string, domain: string) =>
+  get(`/api/yard/dns-guide?slug=${encodeURIComponent(slug)}&domain=${encodeURIComponent(domain)}`) as Promise<{ steps: string[] }>;
 export const raiseYardJobBudget = async (id: string, budget: number) => {
   const pair = pairToken();
   const r = await fetch("/api/yard/raise-budget", {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, RefreshControl, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { applyFilter, type Filter, taskFilters, windowNote } from './lib/filters';
 import { elapsed, type JobStep, runLine } from './lib/fold';
@@ -35,6 +35,8 @@ type Yard = {
   meter?: { todayTokens?: number; weekTokens?: number };
 };
 
+type PublishedSite = { slug: string; name: string; url: string; publishedAt: number; qr: string | null };
+
 export default function TasksScreen({
   ios,
   onNeedsPairing,
@@ -45,6 +47,7 @@ export default function TasksScreen({
   onOpenPairing?: () => void;
 }) {
   const [yard, setYard] = useState<Yard | null>(null);
+  const [published, setPublished] = useState<PublishedSite[]>([]);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
@@ -55,6 +58,7 @@ export default function TasksScreen({
       const data = await api('/api/yard');
       setYard(data);
       setError('');
+      api('/api/yard/published').then((r: any) => setPublished(r?.sites ?? [])).catch(() => {});
     } catch (e: any) {
       if (e?.status === 401) {
         setYard(null);
@@ -63,6 +67,43 @@ export default function TasksScreen({
       setError(e?.message || 'Standalone Mode');
     }
   }, []);
+
+  // Rung 1 — THE PRESS. One tap → a real confirm dialog → the public internet. The confirm
+  // is native (Alert), so a slow network or a double-tap can never publish silently — the
+  // dialog has to actually be answered before enqueue() is ever called.
+  const publishOrUnpublish = useCallback(
+    (slug: string, live: PublishedSite | undefined) => {
+      if (live) {
+        Alert.alert('Unpublish this project?', `${live.url} will stop working.`, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unpublish',
+            style: 'destructive',
+            onPress: () =>
+              api('/api/yard/enqueue', { method: 'POST', body: JSON.stringify({ kind: 'project.unpublish', payload: { slug }, confirm: true }) })
+                .then(load)
+                .catch((e: any) => Alert.alert('Couldn’t unpublish', e?.message || 'Try again from the Mac.')),
+          },
+        ]);
+        return;
+      }
+      Alert.alert(
+        'Publish to the internet?',
+        'Anyone with the link will be able to reach it — no login. This is not automatic anywhere else in SAM; you asked for this one, right now.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Publish',
+            onPress: () =>
+              api('/api/yard/enqueue', { method: 'POST', body: JSON.stringify({ kind: 'project.deploy', payload: { slug }, confirm: true }) })
+                .then(load)
+                .catch((e: any) => Alert.alert('Couldn’t publish', e?.message || 'This device may need the deploy grant — set it from SAM on the Mac.')),
+          },
+        ],
+      );
+    },
+    [load],
+  );
 
   useEffect(() => {
     load();
@@ -146,10 +187,26 @@ export default function TasksScreen({
                   subtitle={subtitleFor(j, now)}
                   accessory={<StateAccessory ios={ios} state={j.state} />}
                   last={i === rows.length - 1}
+                  onPress={j.project ? () => publishOrUnpublish(j.project as string, published.find((s) => s.slug === j.project)) : undefined}
                 />
               ))
             )}
           </Section>
+
+          {published.length ? (
+            <Section ios={ios} header="Published" footer="Every project of yours currently live on the internet. Tap a task above to publish or unpublish it.">
+              {published.map((s, i) => (
+                <Row
+                  key={s.slug}
+                  ios={ios}
+                  title={s.name}
+                  subtitle={s.url}
+                  accessory={s.qr ? <Image source={{ uri: s.qr }} style={{ width: 36, height: 36, borderRadius: 6, marginLeft: 8, backgroundColor: '#fff' }} /> : undefined}
+                  last={i === published.length - 1}
+                />
+              ))}
+            </Section>
+          ) : null}
 
           {yard.meter ? (
             <Section

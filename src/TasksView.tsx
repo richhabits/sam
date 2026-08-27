@@ -4,6 +4,7 @@ import {
   getYard, getYardJob, enqueueYardJob, cancelYardJob, retryYardJob, raiseYardJobBudget, getYardProjects,
   getPlaybooks, savePlaybook, deletePlaybook, importPlaybook, runPlaybook,
   getYardProject, getYardProjectFile, yardFileUrl,
+  getPublishedSites, getDnsGuide,
 } from "./lib/api";
 import Icon from "./Icon";
 import PairPrompt from "./PairPrompt";
@@ -37,7 +38,8 @@ function titleFor(j: Job): string {
     case "project.build": return `Build: ${p.name || j.project || j.id}`;
     case "project.create": return `Create: ${p.name || j.id}`;
     case "project.edit": return `Edit ${p.slug || j.project || "project"}: ${String(p.what || "").slice(0, 60)}`;
-    case "project.deploy": return `Deploy ${p.slug || j.project || j.id}`;
+    case "project.deploy": return `Publish ${p.slug || j.project || j.id}`;
+    case "project.unpublish": return `Unpublish ${p.slug || j.project || j.id}`;
     case "project.checkpoint": return `Checkpoint ${p.slug || j.project || j.id}`;
     case "project.restore": return `Restore ${p.slug || j.project || j.id}`;
     default: return j.project ? `${j.kind} · ${j.project}` : j.kind;
@@ -93,6 +95,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   const [now, setNow] = useState(Date.now());
   const [newOpen, setNewOpen] = useState(false);
   const [playbooksOpen, setPlaybooksOpen] = useState(false);
+  const [publishedOpen, setPublishedOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -208,6 +211,9 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
         <button type="button" style={btn} onClick={() => setPlaybooksOpen(true)}>
           <Icon name="book" size={12} /> Playbooks
         </button>
+        <button type="button" style={btn} onClick={() => setPublishedOpen(true)}>
+          <Icon name="globe" size={12} /> Published
+        </button>
         <button type="button" style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => setNewOpen(true)}>
           <Icon name="plus" size={12} /> New task
         </button>
@@ -277,6 +283,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
 
       {newOpen && <NewTaskSheet onClose={() => setNewOpen(false)} onCreated={() => { setNewOpen(false); refresh(); }} busy={busy} setBusy={setBusy} setErr={setErr} />}
       {playbooksOpen && <PlaybookSheet onClose={() => setPlaybooksOpen(false)} onRan={() => { setPlaybooksOpen(false); refresh(); }} setErr={setErr} />}
+      {publishedOpen && <PublishedSheet onClose={() => setPublishedOpen(false)} setErr={setErr} />}
     </div>
   );
 }
@@ -316,6 +323,7 @@ function TaskDetail({ job, log, onKill, onRetry, onRaiseBudget }: { job: Job; lo
       <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
       </div>
+      {job.project && <ProjectPublish slug={job.project} />}
       {job.project && <TaskFiles slug={job.project} />}
     </div>
   );
@@ -402,6 +410,89 @@ function TaskFiles({ slug }: { slug: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Rung 1 — THE PRESS. One tap turns a project into a live, public URL — and one tap takes it
+// back down. Every publish/unpublish goes through the SAME trust gate as Stop/Retry above
+// (the yard's own device-grant system, server/pairing.ts) and needs an explicit confirm
+// dialog every time: this is the one action in the whole app that reaches the public
+// internet, unauthenticated, so it is never automatic and never a side effect of anything else.
+function ProjectPublish({ slug }: { slug: string }) {
+  const [sites, setSites] = useState<{ url: string; publishedAt: number; qr: string | null }[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [domain, setDomain] = useState("");
+  const [dnsSteps, setDnsSteps] = useState<string[] | null>(null);
+  const [err, setErr] = useState("");
+
+  const load = useCallback(() => {
+    getPublishedSites()
+      .then((r) => setSites(r.sites.filter((s: any) => s.slug === slug)))
+      .catch(() => setSites([]));
+  }, [slug]);
+  useEffect(() => { load(); }, [load]);
+
+  const live = sites?.[0] ?? null;
+
+  const publish = async () => {
+    setErr("");
+    const ok = window.confirm(
+      `Publish this to the public internet?\n\nAnyone with the link will be able to reach it — no login, no confirmation after this one. This is not reversible by accident: you'll need to explicitly unpublish it to take it back down.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    try { await enqueueYardJob("project.deploy", { slug }, { confirm: true } as any); }
+    catch (e: any) { setErr(e?.message || "couldn't start the publish"); }
+    finally { setBusy(false); }
+  };
+  const unpublish = async () => {
+    if (!live) return;
+    setErr("");
+    if (!window.confirm(`Take ${live.url} off the internet?\n\nThe URL will stop working.`)) return;
+    setBusy(true);
+    try { await enqueueYardJob("project.unpublish", { slug }, { confirm: true } as any); load(); }
+    catch (e: any) { setErr(e?.message || "couldn't unpublish"); }
+    finally { setBusy(false); }
+  };
+  const showDns = async () => {
+    if (!domain.trim()) return;
+    setErr("");
+    try { const r = await getDnsGuide(slug, domain.trim()); setDnsSteps(r.steps); }
+    catch (e: any) { setErr(e?.message || "couldn't build DNS instructions — is this project actually published?"); }
+  };
+
+  if (sites === null) return null;
+
+  return (
+    <div style={{ ...card, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--muted)" }}>Publishing</div>
+      {err && <div style={{ color: "#E5484D", fontSize: 12 }}>{err}</div>}
+      {live ? (
+        <>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            {live.qr && <img src={live.qr} width={96} height={96} alt="QR code linking to the live site" style={{ borderRadius: 6, background: "#fff" }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <a href={live.url} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: "var(--accent)", wordBreak: "break-all" }}>{live.url}</a>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>published {when(live.publishedAt)}</div>
+              <button type="button" disabled={busy} style={{ ...btn, marginTop: 8 }} onClick={unpublish}>{busy ? "…" : "Unpublish"}</button>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input placeholder="yourdomain.com" value={domain} onChange={(e) => setDomain(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+            <button type="button" style={btn} onClick={showDns}>Add custom domain</button>
+          </div>
+          {dnsSteps && (
+            <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+              {dnsSteps.map((s) => <li key={s}>{s}</li>)}
+            </ol>
+          )}
+        </>
+      ) : (
+        <button type="button" disabled={busy} style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={publish}>
+          {busy ? "Starting…" : "Publish to the internet"}
+        </button>
+      )}
     </div>
   );
 }
@@ -672,6 +763,60 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
             </button>
           </div>
         </>)}
+      </aside>
+    </div>
+  );
+}
+
+// The published registry — "nothing public that isn't on this list." The ops view over
+// everything The Press has ever put on the internet, and the one place to take it back down.
+function PublishedSheet({ onClose, setErr }: { onClose: () => void; setErr: (s: string) => void }) {
+  const [sites, setSites] = useState<{ slug: string; name: string; url: string; publishedAt: number; qr: string | null }[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    getPublishedSites().then((r) => setSites(r.sites)).catch((e: any) => setErr(e?.message || "couldn't load the published sites"));
+  }, [setErr]);
+  useEffect(() => { load(); }, [load]);
+
+  const unpublish = async (site: { slug: string; url: string }) => {
+    if (!window.confirm(`Take ${site.url} off the internet?\n\nThe URL will stop working.`)) return;
+    setBusy(site.slug);
+    try { await enqueueYardJob("project.unpublish", { slug: site.slug }, { confirm: true } as any); load(); }
+    catch (e: any) { setErr(e?.message || "couldn't unpublish"); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; click-outside close
+    // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; click-outside close
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80 }} onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: content pane; stops backdrop-close propagation only */}
+      <aside style={{ ...card, width: "min(560px,92vw)", maxHeight: "80vh", padding: 20, display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Published sites</div>
+        {sites === null ? (
+          <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: 24 }}>Looking…</div>
+        ) : !sites.length ? (
+          <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: 24 }}>
+            Nothing published yet. Open a task for a project with a web output and hit Publish.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sites.map((s) => (
+              <div key={s.slug} style={{ ...card, padding: 10, display: "flex", gap: 10, alignItems: "center" }}>
+                {s.qr && <img src={s.qr} width={56} height={56} alt="" style={{ borderRadius: 6, background: "#fff", flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{s.name}</div>
+                  <a href={s.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--accent)", wordBreak: "break-all" }}>{s.url}</a>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>published {when(s.publishedAt)}</div>
+                </div>
+                <button type="button" disabled={busy === s.slug} style={{ ...btn, padding: "4px 9px" }} onClick={() => unpublish(s)}>
+                  {busy === s.slug ? "…" : "Unpublish"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </aside>
     </div>
   );
