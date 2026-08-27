@@ -58,7 +58,7 @@ export default function TasksScreen({
       const data = await api('/api/yard');
       setYard(data);
       setError('');
-      api('/api/yard/published').then((r: any) => setPublished(r?.sites ?? [])).catch(() => {});
+      api('/api/yard/published').then((r: any) => setPublished(r?.sites ?? [])).catch(() => { /* the registry is a nice-to-have; a failed fetch just leaves the section hidden */ });
     } catch (e: any) {
       if (e?.status === 401) {
         setYard(null);
