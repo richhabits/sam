@@ -444,6 +444,43 @@ describe("meter (A6 — today/this-week totals + tier split)", () => {
   });
 });
 
+describe("taskMinutesThisMonth (Rung 3 — The Ledger)", () => {
+  let s: JobStore;
+  beforeEach(() => { s = new JobStore(":memory:"); });
+  afterEach(() => s.close());
+
+  const NOW = new Date(2026, 0, 15, 14, 30).getTime();   // a fixed January afternoon
+  const MONTH_START = new Date(2026, 0, 1).getTime();
+
+  // claim() then finish() at explicit times — real elapsed wall-clock, the same thing a
+  // human tapping "publish" actually waited through.
+  const jobFor = (startedAt: number, durationMs: number) => {
+    const j = s.enqueue("k", {}, { now: startedAt });
+    s.claim(startedAt);
+    s.finish(j.id, startedAt + durationMs);
+    return j;
+  };
+
+  it("sums real elapsed minutes from jobs that finished this month, not the whole table", () => {
+    jobFor(MONTH_START + 3600_000, 5 * 60_000);     // 5 real minutes, this month
+    jobFor(NOW - 2 * 24 * 60 * 60_000, 3 * 60_000);  // 3 real minutes, also this month
+    jobFor(new Date(2025, 11, 20).getTime(), 999 * 60_000);  // last month — must not count
+
+    expect(s.taskMinutesThisMonth(NOW)).toBe(8);
+  });
+
+  it("never counts a job that's still running or was cancelled — only real completed work", () => {
+    const running = s.enqueue("k", {}, { now: NOW });
+    s.claim(NOW);   // claimed, never finished
+    void running;
+    expect(s.taskMinutesThisMonth(NOW)).toBe(0);
+  });
+
+  it("a quiet month is a real zero, not a missing field", () => {
+    expect(s.taskMinutesThisMonth(NOW)).toBe(0);
+  });
+});
+
 // THE DETECTION THAT WAS FALSE IN EXACTLY THE CASE IT WAS WRITTEN FOR.
 //
 // yardDir() decided "am I packaged?" by asking whether ROOT contained "app.asar". ROOT is

@@ -149,6 +149,7 @@ import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts
 import { trySolveLocally } from "./local-micro-solver.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
+import { meterFreeSummary } from "./meter-free-ledger.ts";
 import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
 import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
@@ -2299,7 +2300,7 @@ app.get("/api/yard", (req, res) => {
   try {
     const store = yardStore();
     store.reapAbandoned();
-    res.json({ on: true, worker: supervisor.status(), ...store.summary(), meter: store.meter(), recent: store.list(undefined, 20) });
+    res.json({ on: true, worker: supervisor.status(), ...store.summary(), meter: store.meter(), meterFree: meterFreeSummary(store), recent: store.list(undefined, 20) });
   } catch (e: any) {
     logSecurity("warn", "yard-unavailable", `The yard is on but its store could not be read at ${yardDir()}: ${e?.message || e}`, req.socket.remoteAddress || "");
     // 200 with an explanation, not 500: the yard being unreadable is a state the caller can

@@ -88,6 +88,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   const [refused, setRefused] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [meter, setMeter] = useState<{ todayTokens: number; weekTokens: number; byTier: Record<string, number> } | null>(null);
+  const [meterFree, setMeterFree] = useState<{ monthTaskMinutes: number; wouldHaveCostElsewhereUsd: number; actualSpendLifetimeUsd: number } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ job: Job; log: string[] } | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -113,6 +114,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
       setRefused(false);
       setJobs(r.recent || []);
       setMeter(r.meter || null);
+      setMeterFree(r.meterFree || null);
       setNow(Date.now());
     }).catch((e: any) => {
       // A REFUSAL IS NOT A TRANSIENT FAILURE. /api/yard answers an untrusted browser with 403 and
@@ -219,7 +221,7 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
         </button>
       </div>
 
-      {meter && <TaskMeter meter={meter} />}
+      {meter && <TaskMeter meter={meter} meterFree={meterFree} />}
 
       {err && <div style={{ margin: "10px 16px 0", color: "#E5484D", fontSize: 12.5 }}>{err}</div>}
 
@@ -506,7 +508,10 @@ function ProjectPublish({ slug }: { slug: string }) {
 // invented currency: a job kind that never spends against a model (project.create,
 // checkpoint, restore) simply never tags a tier, and shows up as "unattributed", not
 // silently folded into "free".
-function TaskMeter({ meter }: { meter: { todayTokens: number; weekTokens: number; byTier: Record<string, number> } }) {
+function TaskMeter({ meter, meterFree }: {
+  meter: { todayTokens: number; weekTokens: number; byTier: Record<string, number> };
+  meterFree?: { monthTaskMinutes: number; wouldHaveCostElsewhereUsd: number; actualSpendLifetimeUsd: number } | null;
+}) {
   const tiers = Object.entries(meter.byTier);
   const weekTotal = tiers.reduce((s, [, n]) => s + n, 0);
   const freeTokens = meter.byTier.free || 0;
@@ -516,6 +521,18 @@ function TaskMeter({ meter }: { meter: { todayTokens: number; weekTokens: number
       <span><Icon name="chart" size={12} /> Today <strong style={{ color: "var(--text)" }}>{meter.todayTokens.toLocaleString()}</strong></span>
       <span>This week <strong style={{ color: "var(--text)" }}>{meter.weekTokens.toLocaleString()}</strong></span>
       {freePct !== null && <span>{freePct}% free tier this week</span>}
+      {/* Rung 3 — The Ledger. Real elapsed minutes of agent work this month × an editable
+          reference rate (vault/meter-free-rates.json, never committed) for what a metered
+          cloud agent typically charges per minute — the thesis made visible, not claimed.
+          Only shown once there's real usage to show; a $0.00 month reads as noise, not proof. */}
+      {meterFree && meterFree.wouldHaveCostElsewhereUsd > 0 && (
+        <span
+          title={`${meterFree.monthTaskMinutes.toLocaleString()} real minutes of agent work this month. On a typical metered cloud agent, that's roughly what's shown — SAM's own real provider spend, lifetime, is $${meterFree.actualSpendLifetimeUsd.toLocaleString()}.`}
+          style={{ color: "var(--live, #3FAE5C)" }}
+        >
+          ~${meterFree.wouldHaveCostElsewhereUsd.toLocaleString()} this month, elsewhere
+        </span>
+      )}
     </div>
   );
 }

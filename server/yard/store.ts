@@ -414,4 +414,17 @@ export class JobStore {
     for (const r of rows) byTier[r.tier ?? "unattributed"] = r.c;
     return { todayTokens: sumSince(todayStart), weekTokens: sumSince(weekStart), byTier };
   }
+
+  // Rung 3 (The Ledger) — real elapsed wall-clock minutes of agent work this calendar
+  // month, from jobs that actually finished. Same "whole table, not the recent-20 list"
+  // and "local calendar boundary" discipline as meter() above — this number feeds a public
+  // cost claim, so it gets no less rigour than the token meter does.
+  taskMinutesThisMonth(now = Date.now()): number {
+    const d = new Date(now);
+    const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const row = this.db.prepare(
+      "SELECT COALESCE(SUM(finished_at - started_at), 0) ms FROM jobs WHERE state='done' AND started_at IS NOT NULL AND finished_at IS NOT NULL AND started_at >= ?",
+    ).get(monthStart) as { ms: number };
+    return row.ms / 60_000;
+  }
 }
