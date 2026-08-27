@@ -2,8 +2,18 @@
 // The live crawl+map (60 URLs mapped, 3 Wikipedia pages crawled, robots honoured) is in
 // webintel-crawl.verify.mjs (6/6). CI shouldn't hammer the network, so we test the glue: a
 // crawl of unreachable URLs must terminate cleanly with empty pages, and map of a dead URL is ok:false.
-import { describe, it, expect } from "vitest";
+//
+// fetchClean is mocked rather than actually hit: mapSite's robots.txt fetch uses a hardcoded
+// 6000ms timeout regardless of the caller's opts.timeoutMs, so two real DNS lookups against an
+// invalid TLD could exceed vitest's 5000ms test timeout depending on the resolver's mood —
+// flaked red in CI. Mocking removes the network dependency entirely, matching this file's own
+// "no live crawl in CI" premise instead of quietly violating it.
+import { describe, it, expect, vi } from "vitest";
 import { crawl, mapSite } from "./webintel-crawl.ts";
+
+vi.mock("./webintel.ts", () => ({
+  fetchClean: vi.fn(async () => ({ ok: false, text: "", title: "", error: "getaddrinfo ENOTFOUND (mocked)" })),
+}));
 
 describe("crawl bounds & safety", () => {
   it("terminates cleanly when the start URL is unreachable (no throw, empty pages)", async () => {

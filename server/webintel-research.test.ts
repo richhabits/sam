@@ -1,8 +1,16 @@
 // webintel-research — CI-safe unit tests (mock LLM + mock search, no network).
 // The live multi-page pipeline (real fetches → aggregate) is in webintel-research.verify.mjs (4/4).
-import { describe, it, expect } from "vitest";
+//
+// fetchClean (the network boundary extract() sits on) is mocked too: real DNS lookups against
+// invalid TLDs are resolver-timing-dependent and flaked this suite red in CI more than once —
+// mocking makes the "no network" claim in this header actually true.
+import { describe, it, expect, vi } from "vitest";
 import { extractMany, searchAndExtract, type SearchFn } from "./webintel-research.ts";
 import type { ExtractSchema, LlmFn } from "./webintel-extract.ts";
+
+vi.mock("./webintel.ts", () => ({
+  fetchClean: vi.fn(async () => ({ ok: false, text: "", title: "", error: "getaddrinfo ENOTFOUND (mocked)" })),
+}));
 
 const schema: ExtractSchema = { title: "string" };
 
