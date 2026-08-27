@@ -155,6 +155,14 @@ export function parseCron(cron: string): ParsedSchedule | null {
   }
 
   // "daily 09:00" / "daily 14:30" — a WALL-CLOCK time, so BST/GMT-correct from here down.
+  //
+  // CATCH-UP, not a narrow window: this used to require `now` within 30s of the scheduled
+  // instant, so a schedule checked only while SAM is running would be skipped for the whole
+  // day — silently, forever — if the app wasn't open and polling in that exact half-minute
+  // (asleep, not yet launched, mid-restart). A real standing agent went two days stale this
+  // way before this was found. Now it fires the first time `now` reaches or passes today's
+  // scheduled instant, whenever that poll happens to land — late is a real run; skipped is a
+  // silent miss. The same-zone-day dedup below is still what stops it firing twice in one day.
   const dailyMatch = c.match(/^daily\s+(\d{1,2}):(\d{2})$/);
   if (dailyMatch) {
     const hour = parseInt(dailyMatch[1], 10);
@@ -165,7 +173,7 @@ export function parseCron(cron: string): ParsedSchedule | null {
       shouldRun: (now, last) => {
         const w = wallAt(now.getTime());
         const scheduledToday = instantForWall(w.y, w.mo, w.d, hour, minute);
-        if (Math.abs(now.getTime() - scheduledToday) > 30_000) return false;   // not this minute's window, in the zone's own clock
+        if (now.getTime() < scheduledToday) return false;   // not due yet today, in the zone's own clock
         if (last) { const lw = wallAt(last.getTime()); if (lw.y === w.y && lw.mo === w.mo && lw.d === w.d) return false; }  // already ran today (zone-local date)
         return true;
       },
@@ -174,7 +182,8 @@ export function parseCron(cron: string): ParsedSchedule | null {
     };
   }
 
-  // "weekly mon 09:00" — same zone-correctness, restricted to one weekday.
+  // "weekly mon 09:00" — same zone-correctness and same catch-up reasoning as daily above,
+  // restricted to one weekday.
   const weeklyMatch = c.match(/^weekly\s+(sun|mon|tue|wed|thu|fri|sat)\s+(\d{1,2}):(\d{2})$/);
   if (weeklyMatch) {
     const day = DAYS[weeklyMatch[1]];
@@ -187,8 +196,11 @@ export function parseCron(cron: string): ParsedSchedule | null {
         const w = wallAt(now.getTime());
         if (w.dow !== day) return false;
         const scheduledToday = instantForWall(w.y, w.mo, w.d, hour, minute);
-        if (Math.abs(now.getTime() - scheduledToday) > 30_000) return false;
-        if (last && Date.now() - last.getTime() < 6 * 24 * 3600_000) return false;   // ran within the last 6 days ⇒ this week is done
+        if (now.getTime() < scheduledToday) return false;
+        // now.getTime(), not Date.now(): the latter ignored the injected `now` entirely, a
+        // real bug that just happened to be invisible in production (real time and Date.now()
+        // agree there) but broke any test injecting a fake "now" for the weekly path.
+        if (last && now.getTime() - last.getTime() < 6 * 24 * 3600_000) return false;   // ran within the last 6 days ⇒ this week is done
         return true;
       },
       nextAfter: (after) => walkDays(after, hour, minute, thisDay, (at) => at > after, 1),

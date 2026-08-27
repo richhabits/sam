@@ -53,14 +53,19 @@ describe("cosine similarity — the core of memory recall", () => {
 
 // ── SCHEDULER: cron parsing + shouldRun timing (BUG#6 area) ──
 describe("scheduler cron parsing + shouldRun", () => {
-  it("daily fires at the exact minute, once per day", () => {
+  it("daily fires at the scheduled time and catches up if the window was missed, once per day", () => {
+    // A narrow "exact minute" window used to mean a schedule checked only while SAM is
+    // running would be silently skipped for the whole day if the app wasn't open right then
+    // — found live via a real standing agent stuck two days stale. Now it's due from the
+    // scheduled instant onward until it's actually run that zone-local day.
     const p = parseCron("daily 09:00")!;
     expect(p).toBeTruthy();
     const at9 = new Date(2026, 0, 1, 9, 0, 30);     // local 09:00:30
     const at10 = new Date(2026, 0, 1, 10, 0, 0);
     expect(p.shouldRun(at9, null)).toBe(true);       // due, never ran
-    expect(p.shouldRun(at10, null)).toBe(false);     // wrong minute
+    expect(p.shouldRun(at10, null)).toBe(true);      // an hour late — CATCH-UP, still due, hasn't run today
     expect(p.shouldRun(at9, at9)).toBe(false);       // already ran today
+    expect(p.shouldRun(at10, at9)).toBe(false);      // ran earlier today (even if late) — not again
   });
   it("weekly fires only on its day", () => {
     const p = parseCron("weekly mon 09:00")!;

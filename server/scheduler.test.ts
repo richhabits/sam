@@ -105,10 +105,44 @@ describe("parseCron — zone-correct daily/weekly (the desk's BST/GMT maths, reu
 
   it("shouldRun answers by the zone's own clock, not the host's raw getHours()", () => {
     // The bug this replaces: Date#getHours() reads the HOST's local time. This proves the
-    // contract directly — due exactly at the zone's 09:00, not at 09:00 in some other zone.
+    // contract directly — due at and after the zone's 09:00, not at 09:00 in some other zone.
     const p = parseCron("daily 09:00")!;
+    expect(p.shouldRun(new Date(Date.parse("2026-07-20T07:59:00Z")), null)).toBe(false);   // 08:59 BST — not due yet
     expect(p.shouldRun(new Date(Date.parse("2026-07-20T08:00:00Z")), null)).toBe(true);    // 09:00 BST
-    expect(p.shouldRun(new Date(Date.parse("2026-07-20T09:00:00Z")), null)).toBe(false);   // 10:00 BST — not the minute
+    expect(p.shouldRun(new Date(Date.parse("2026-07-20T09:00:00Z")), null)).toBe(true);    // 10:00 BST — CATCH-UP: still due, nothing has run today
+  });
+
+  // The real bug this rung fixed: a daily/weekly standing agent that missed its narrow firing
+  // window (app closed, asleep, mid-restart) used to be skipped SILENTLY for the whole day,
+  // with no catch-up — found live via an armed standing agent stuck two days stale.
+  describe("catch-up — a missed window fires late instead of being silently skipped", () => {
+    it("daily: still due hours after the scheduled time if it hasn't run today", () => {
+      const p = parseCron("daily 09:00")!;
+      const hoursLate = new Date(Date.parse("2026-07-20T14:00:00Z"));   // 15:00 BST — 6h past 09:00
+      expect(p.shouldRun(hoursLate, null)).toBe(true);
+    });
+
+    it("daily: once it HAS run today (even late), it does not fire again the same day", () => {
+      const p = parseCron("daily 09:00")!;
+      const ranLateToday = new Date(Date.parse("2026-07-20T14:05:00Z"));   // just ran at 15:05 BST
+      const laterSameDay = new Date(Date.parse("2026-07-20T20:00:00Z"));  // 21:00 BST, same day
+      expect(p.shouldRun(laterSameDay, ranLateToday)).toBe(false);
+    });
+
+    it("weekly: still due hours after the scheduled time on its named weekday", () => {
+      const p = parseCron("weekly mon 09:00")!;
+      const mondayAfternoon = new Date(Date.parse("2026-07-20T16:00:00Z"));   // Mon, 17:00 BST
+      expect(p.shouldRun(mondayAfternoon, null)).toBe(true);
+    });
+
+    it("weekly: does not fire twice for the same week once it's caught up late", () => {
+      const p = parseCron("weekly mon 09:00")!;
+      const ranMondayAfternoon = new Date(Date.parse("2026-07-20T16:00:00Z"));
+      const nextMondayMorning = new Date(Date.parse("2026-07-27T08:30:00Z"));   // next Mon, 09:30 BST — a real week later
+      const wednesdaySameWeek = new Date(Date.parse("2026-07-22T10:00:00Z"));   // Wed, same week — wrong day anyway
+      expect(p.shouldRun(wednesdaySameWeek, ranMondayAfternoon)).toBe(false);
+      expect(p.shouldRun(nextMondayMorning, ranMondayAfternoon)).toBe(true);
+    });
   });
 });
 
