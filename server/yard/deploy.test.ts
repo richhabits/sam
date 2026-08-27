@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planDeploy, readShape, urlFrom, smokeTest, deployToken } from "./deploy.ts";
+import { planDeploy, planUnpublish, dnsInstructions, readShape, urlFrom, smokeTest, deployToken } from "./deploy.ts";
 
 // Deploying is the one thing the yard does that the outside world can see, so these
 // tests are mostly about refusing rather than shipping.
@@ -141,5 +141,58 @@ describe("checking it is really live", () => {
     const r = await smokeTest("https://x.vercel.app", (async () => { throw new Error("getaddrinfo ENOTFOUND"); }) as any);
     expect(r.ok).toBe(false);
     expect(r.detail).toMatch(/could not reach/);
+  });
+});
+
+describe("taking a project back off the internet", () => {
+  it("refuses without a token", () => {
+    const r = planUnpublish("hello-site", { token: null });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/no VERCEL_TOKEN/);
+  });
+
+  it("refuses a blank slug — nothing on record to take down", () => {
+    const r = planUnpublish("", { token: TOKEN });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/nothing to unpublish/);
+  });
+
+  // Verified live against the real Vercel API: `vercel rm` only accepts a project name or
+  // deployment ID — passing the assigned production alias (what planDeploy returns and the
+  // registry shows) 404s without removing anything. The slug is the project name.
+  it("removes by project SLUG, never by the public alias URL", () => {
+    const r = planUnpublish("hello-site", { token: TOKEN });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.args).toEqual(["rm", "hello-site", "--yes"]);
+      expect(r.args.join(" ")).not.toContain("vercel.app");
+    }
+  });
+
+  it("never puts the token on the command line, and never waits on a prompt", () => {
+    const r = planUnpublish("hello-site", { token: TOKEN });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.args.join(" ")).not.toContain(TOKEN);
+      expect(r.env.VERCEL_TOKEN).toBe(TOKEN);
+      expect(r.args).toContain("--yes");
+    }
+  });
+});
+
+describe("guided DNS instructions", () => {
+  it("gives an A record for an apex domain", () => {
+    const steps = dnsInstructions("example.com", "https://hello-site.vercel.app");
+    expect(steps.some((s) => /A record/.test(s) && /76\.76\.21\.21/.test(s))).toBe(true);
+  });
+
+  it("gives a CNAME for a subdomain", () => {
+    const steps = dnsInstructions("app.example.com", "https://hello-site.vercel.app");
+    expect(steps.some((s) => /CNAME/.test(s) && /cname\.vercel-dns\.com/.test(s))).toBe(true);
+  });
+
+  it("never touches a registrar — it only names records to add by hand", () => {
+    const steps = dnsInstructions("example.com", "https://hello-site.vercel.app").join(" ");
+    expect(steps).not.toMatch(/api\.(godaddy|namecheap|cloudflare)/i);
   });
 });

@@ -106,6 +106,44 @@ export function urlFrom(output: string): string | null {
   return matches[matches.length - 1];
 }
 
+// A published site refusing to die quietly would defeat the whole point of the registry —
+// "one-tap unpublish" only means something if it actually takes the URL down. Same rule as
+// deploying: the token goes through the environment, never the argument list.
+//
+// Takes the PROJECT SLUG, not the live URL — verified live against the real API: `vercel rm`
+// only accepts a project name or a deployment ID, never the assigned production alias
+// (`hello-site.vercel.app`). The alias is what `planDeploy` returns and what the registry shows
+// a human, but it is not a valid removal target — passing it 404s with "no such project"
+// rather than taking anything down, which would have made "one-tap unpublish" a lie.
+export type UnpublishRefusal = { ok: false; reason: string };
+export type UnpublishPlan = { ok: true; args: string[]; env: Record<string, string> };
+
+export function planUnpublish(slug: string, opts: { target?: Target; token?: string | null } = {}): UnpublishPlan | UnpublishRefusal {
+  const target = opts.target ?? "vercel";
+  const token = opts.token === undefined ? deployToken(target) : opts.token;
+  if (!token) return { ok: false, reason: "there is no VERCEL_TOKEN in the vault, so the yard cannot unpublish anything." };
+  if (!slug) return { ok: false, reason: "there is no project on record here — nothing to unpublish" };
+  return { ok: true, args: ["rm", slug, "--yes"], env: { VERCEL_TOKEN: token } };
+}
+
+// Guided, not automated: SAM names the exact records to add and where, but never touches a
+// registrar account on the operator's behalf — that stays a human clicking a real "save" button
+// on a service SAM has no credential for and should not want one for.
+export function dnsInstructions(domain: string, projectUrl: string): string[] {
+  const d = String(domain || "").trim().toLowerCase();
+  const isApex = d.split(".").length === 2;   // "example.com" (apex) vs "www.example.com" / "app.example.com" (subdomain)
+  const lines = [
+    `1. In Vercel → your project (${projectUrl.replace(/^https?:\/\//, "")}) → Settings → Domains, add "${d}".`,
+  ];
+  if (isApex) {
+    lines.push(`2. At your domain registrar, add an A record: ${d} → 76.76.21.21`);
+  } else {
+    lines.push(`2. At your domain registrar, add a CNAME record: ${d} → cname.vercel-dns.com`);
+  }
+  lines.push("3. DNS can take a few minutes to a few hours to propagate. Vercel issues the HTTPS certificate automatically once it sees the record.");
+  return lines;
+}
+
 export interface SmokeResult { ok: boolean; status: number | null; detail: string }
 
 // A deploy that returns a URL is not the same as a deploy that WORKS. Fetching it is the

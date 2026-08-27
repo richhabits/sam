@@ -39,6 +39,7 @@ export interface Manifest {
   issues: string[];                                // known problems, stated rather than forgotten
   createdAt: number;
   updatedAt: number;
+  live?: { url: string; publishedAt: number };     // set on a successful publish, absent otherwise — the registry's source of truth
 }
 
 // A slug becomes a directory name, so it is built rather than accepted: anything that
@@ -139,6 +140,19 @@ export function listProjects(): { slug: string; name: string; updatedAt: number 
       .filter((m): m is Manifest => !!m)
       .map((m) => ({ slug: m.slug, name: m.name, updatedAt: m.updatedAt }))
       .sort((a, b) => b.updatedAt - a.updatedAt);
+  } catch { return []; }
+}
+
+// The published registry: every project currently live, and nothing that isn't. The manifest's
+// `live` field is the single source of truth — a project only appears here between a deploy
+// that actually smoke-tested green and an unpublish that actually succeeded.
+export function listPublished(): { slug: string; name: string; url: string; publishedAt: number }[] {
+  try {
+    return readdirSync(projectsRoot())
+      .map((slug) => readManifest(slug))
+      .filter((m): m is Manifest => !!m?.live)
+      .map((m) => ({ slug: m.slug, name: m.name, url: m.live!.url, publishedAt: m.live!.publishedAt }))
+      .sort((a, b) => b.publishedAt - a.publishedAt);
   } catch { return []; }
 }
 

@@ -69,7 +69,9 @@ import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
 import { answerRouted } from "./yard/dispatch.ts";
 import { buildSpec, specSummary } from "./yard/spec.ts";
 import { withSelect, wantsSelect, loadDiffs, previewCsp } from "./yard/glass.ts";
-import { listProjects, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
+import { listProjects, listPublished, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
+import { dnsInstructions } from "./yard/deploy.ts";
+import QRCode from "qrcode";
 import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
 import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
 import {
@@ -2321,7 +2323,7 @@ const SPEND_FLOOR_TOKENS = 5000;   // a few average tasks' worth — above this,
 function missingGrant(req: any, kind: string, budget: number | null): Grant | null {
   if (isLoopback(req)) return null;
   const id = sessionIdFromToken(sessionTokenFromRequest(req));
-  if (kind === "project.deploy" && !hasGrant(id, "deploy")) return "deploy";
+  if ((kind === "project.deploy" || kind === "project.unpublish") && !hasGrant(id, "deploy")) return "deploy";
   if (kind === "run" && !hasGrant(id, "shellExec")) return "shellExec";
   if (budget !== null && budget > SPEND_FLOOR_TOKENS && !hasGrant(id, "spendAbove")) return "spendAbove";
   return null;
@@ -2356,6 +2358,13 @@ app.post("/api/yard/enqueue", (req, res) => {
   if (process.env.SAM_YARD !== "1") { res.status(409).json({ error: "the yard is off" }); return; }
   const { kind, payload, budget, project } = req.body || {};
   if (!kind || typeof kind !== "string") { res.status(400).json({ error: "a job needs a kind" }); return; }
+  // Publishing goes to the public internet, unauthenticated, at a real URL. The grant below
+  // gates WHICH devices may ever do it; this gates whether THIS specific tap meant it — a UI bug
+  // that fires the request without showing the confirm dialog must not be able to publish either.
+  if ((kind === "project.deploy" || kind === "project.unpublish") && req.body?.confirm !== true) {
+    res.status(400).json({ error: `"${kind}" needs explicit confirmation — pass { confirm: true } once the operator has actually agreed this goes public` });
+    return;
+  }
   const needs = missingGrant(req, kind, budget ?? null);
   if (needs) { res.status(403).json({ error: `this device needs the "${needs}" grant for that — set it from the SAM app on the Mac`, needsGrant: needs }); return; }
   const job = yardStore().enqueue(kind, payload ?? {}, { budget: budget ?? null, project: project ?? null });
@@ -2419,6 +2428,28 @@ app.get("/api/yard/projects/:slug/file", (req, res) => {
   if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   const text = readProjectFile(String(req.params.slug), String(req.query?.path || ""));
   text === null ? res.status(404).json({ error: "no such file" }) : res.json({ text });
+});
+// The published registry — "nothing public that isn't on this list." A QR alongside each URL
+// so a phone that just published something can hand the link to another device by camera
+// rather than by typing it — generated here, server-side, so mobile needs zero new dependencies.
+app.get("/api/yard/published", async (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  const sites = await Promise.all(listPublished().map(async (s) => ({
+    ...s,
+    qr: await QRCode.toDataURL(s.url, { width: 240, margin: 1 }).catch(() => null),
+  })));
+  res.json({ sites });
+});
+// Guided custom-domain instructions — informational only. SAM names the exact DNS record to
+// add; it never touches a registrar account, on purpose (house law: document, don't automate).
+app.get("/api/yard/dns-guide", (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  const slug = String(req.query?.slug || "");
+  const domain = String(req.query?.domain || "").trim();
+  const manifest = readManifest(slug);
+  if (!manifest?.live?.url) { res.status(404).json({ error: "this project is not currently published" }); return; }
+  if (!domain || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) { res.status(400).json({ error: "give a real domain, e.g. example.com or app.example.com" }); return; }
+  res.json({ steps: dnsInstructions(domain, manifest.live.url) });
 });
 
 // The preview itself. Under /api like every other route (the house contract, and it is

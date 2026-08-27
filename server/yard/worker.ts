@@ -23,13 +23,13 @@ import { scrub } from "../scrub.ts";
 import { runModel, type Tier } from "../models.ts";
 import { runAgent } from "../agent.ts";
 import { handleUnattended } from "../ask.ts";
-import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, MANIFEST } from "./managed.ts";
+import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, readManifest, MANIFEST } from "./managed.ts";
 import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
 import { applyEdits } from "./edits.ts";
 import { normaliseSpec, specSummary } from "./spec.ts";
 import { buildUntilGreen, describeOutcome } from "./loop.ts";
 import { saveDiffs } from "./glass.ts";
-import { planDeploy, urlFrom, smokeTest } from "./deploy.ts";
+import { planDeploy, planUnpublish, urlFrom, smokeTest } from "./deploy.ts";
 
 const IDLE_POLL_MS = 1000;
 
@@ -563,11 +563,39 @@ HANDLERS["project.deploy"] = async (ctx) => {
   ctx.log(`checking ${url} is really there…`);
   const smoke = await smokeTest(url);
   ctx.log(`  ${smoke.detail}`);
-  updateManifest(slug, { issues: smoke.ok ? [] : [`the last deploy answered badly: ${smoke.detail}`] });
-  if (!smoke.ok) throw new Error(`deployed to ${url}, but it is not serving properly — ${smoke.detail}`);
+  if (!smoke.ok) {
+    updateManifest(slug, { issues: [`the last deploy answered badly: ${smoke.detail}`] });
+    throw new Error(`deployed to ${url}, but it is not serving properly — ${smoke.detail}`);
+  }
+  updateManifest(slug, { issues: [], live: { url, publishedAt: Date.now() } });
 
   await checkpoint(slug, `deployed ${slug}`);
   return `live at ${url}`;
+};
+
+// Taking a project back off the internet. Same confinement as deploying: the token never
+// touches the argument list, and a missing credential or a project that was never published
+// is a permanent refusal, not something a retry could fix.
+HANDLERS["project.unpublish"] = async (ctx) => {
+  const slug = String(ctx.payload?.slug || "");
+  if (!slug || !isManagedProject(slug)) throw Object.assign(new Error(`"${slug}" is not a managed project`), { kind: "permanent" as FailureKind });
+  const dir = projectPath(slug);
+  const manifest = readManifest(slug);
+  const url = manifest?.live?.url;
+  if (!url) throw Object.assign(new Error(`"${slug}" is not currently published — nothing to unpublish`), { kind: "permanent" as FailureKind });
+
+  ctx.step("checking unpublish is possible");
+  const plan = planUnpublish(slug);
+  if (!plan.ok) throw Object.assign(new Error(plan.reason), { kind: "permanent" as FailureKind });
+
+  ctx.step(`unpublishing ${url}`);
+  ctx.log(`unpublishing: vercel ${plan.args.join(" ")}`);
+  const out = await execInProject(dir, "vercel", plan.args, { env: plan.env, timeoutMs: 5 * 60_000 });
+  for (const line of `${out.stdout}${out.stderr}`.split("\n").filter(Boolean).slice(-40)) ctx.log(`  ${line}`);
+  if (out.code !== 0) throw new Error(`unpublishing failed (exit ${out.code}) — ${url} may still be live`);
+
+  updateManifest(slug, { live: undefined });
+  return `unpublished ${url}`;
 };
 
 HANDLERS["project.checkpoint"] = async (ctx) => {
