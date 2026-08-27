@@ -57,3 +57,43 @@ jobs:
             if (existing.data.length === 0) {
               await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ["watchdog", "ci"] });
             }
+
+  # Born from a real incident: two weeks of verified fixes shipped to main and sat there —
+  # nobody was told, so nobody cut a release, and every installed app stayed two weeks stale
+  # on auto-update. This only NAGS; cutting a release stays a human act (npm run release:app).
+  release-staleness:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }   # needs full tag + commit history, not the default shallow clone
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      - name: Check commits-since-last-tag
+        id: check
+        run: |
+          node scripts/release-staleness.mjs > staleness.json
+          cat staleness.json
+          echo "json=$(cat staleness.json)" >> "$GITHUB_OUTPUT"
+      - name: Nag (or clear the nag) via a labeled issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const s = JSON.parse(${{ toJSON(steps.check.outputs.json) }});
+            const existing = await github.rest.issues.listForRepo({ owner: context.repo.owner, repo: context.repo.repo, state: "open", labels: "release-stale" });
+            if (s.stale) {
+              const title = `📦 Release overdue — ${s.userVisibleCommits} commits, ${s.days} days since ${s.tag}`;
+              const body = `\`main\` has ${s.userVisibleCommits} user-visible commits (${s.totalCommits} total) since the last tagged release, \`${s.tag}\`, cut ${s.days} days ago. Installed apps on auto-update are ${s.days} days behind what's actually on main.\n\nThis issue only nags — cutting the release is still a human call: \`npm run release:app\` (or tag + \`gh release create\` for the full signed matrix). Closes itself automatically once a new tag lands.`;
+              if (existing.data.length === 0) {
+                await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ["release-stale", "ci"] });
+              } else {
+                await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.data[0].number, title, body });
+              }
+            } else {
+              for (const issue of existing.data) {
+                await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, state: "closed" });
+                await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, body: `Resolved — \`${s.tag}\` is now current.` });
+              }
+            }
