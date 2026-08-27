@@ -6,9 +6,9 @@
 <title>S.A.M. — Smart Artificial Mind</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-<meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. No subscription — runs free on rotating cloud tiers, or 100% offline on Ollama.">
+<meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. Your machine does the compute, so there's no meter running underneath — no subscription, no credits, no per-minute bill. Runs free on rotating cloud tiers, or 100% offline on Ollama.">
 <meta property="og:title" content="S.A.M. — a free, private team of AI agents on your machine">
-<meta property="og:description" content="It doesn't just answer, it handles it. Free, local, yours — .">
+<meta property="og:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://richhabits.github.io/sam/">
 <meta property="og:image" content="https://richhabits.github.io/sam/og.png">
@@ -16,7 +16,7 @@
 <meta property="og:image:height" content="1260">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="S.A.M. — a free, private team of AI agents on your machine">
-<meta name="twitter:description" content="It doesn't just answer, it handles it. Free, local, yours.">
+<meta name="twitter:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta name="twitter:image" content="https://richhabits.github.io/sam/og.png">
 <style>html,body{margin:0;padding:0}
     /* Icons — one sprite generated from src/Icon.tsx (scripts/build-icon-sprite.mjs), so the
@@ -237,6 +237,13 @@
   /* steps */
   .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; counter-reset:s}
   @media(max-width:720px){.steps{grid-template-columns:1fr}}
+
+  /* the yard's publish demo — terminal beside its own single-column step list, same
+     breakpoint logic as .hero (a dedicated class rather than an inline override on .hero,
+     which would have out-specificity'd .hero's own mobile media query at narrow widths) */
+  .press{display:grid; grid-template-columns:.9fr 1fr; gap:64px; align-items:center}
+  .press .steps{grid-template-columns:1fr}
+  @media(max-width:860px){.press{grid-template-columns:1fr; gap:32px}}
   .step{background:var(--ink-2); border:1px solid var(--line-soft); border-radius:16px; padding:24px}
   .step .num{counter-increment:s; font-family:var(--mono); font-size:13px; color:var(--ember); font-weight:700}
   .step .num::before{content:"0" counter(s)}
@@ -291,7 +298,7 @@
     </div>
     <div class="hero">
       <div>
-        <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code — for <b>£0 a month.</b></p>
+        <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code. No credits to burn through, no meter running while you think. <b>£0 a month</b> — because there's no bill to send.</p>
         <div class="oneliner">
           <div class="ol-tabs">
             <button class="ol-tab on" data-os="unix">macOS / Linux</button>
@@ -359,9 +366,9 @@
           <div class="vs">Them: gives you text to copy · <b>SAM: does the task</b></div>
         </div>
         <div class="card">
-          <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-markets"/></svg></span>Free, on {{BRAINS}} rotating brains</h3>
-          <p>Runs on free models (NVIDIA, Groq, Cerebras, Mistral…) that auto-rotate, so you never hit a limit or a bill.</p>
-          <div class="vs">Them: £20/mo · <b>SAM: £0, and it never goes dark</b></div>
+          <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-markets"/></svg></span>Free — because there's no meter to run</h3>
+          <p>Runs on free models (NVIDIA, Groq, Cerebras, Mistral…) that auto-rotate, so you never hit a limit or a bill. Every cloud agent on the market prices by the minute or the credit — which is exactly why their #1 complaint is always the same complaint: the bill. SAM structurally can't have that one.</p>
+          <div class="vs">Them: bills the clock · <b>SAM: doesn't have one</b></div>
         </div>
         <div class="card">
           <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg></span>It reaches out first</h3>
@@ -388,6 +395,25 @@
         <span><svg class="i" aria-hidden="true"><use href="#i-voice"/></svg> Your language</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg> Self-updating — evolves for free</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-brain"/></svg> Remembers everything</span>
+      </div>
+    </section>
+
+    <!-- THE PRESS — task in, live URL out. Shown, not claimed: the same terminal treatment as
+         the hero demo above, just a different real capability (the yard's one-tap publish). -->
+    <section>
+      <div class="kicker">The yard</div>
+      <h2>Ask for a site. Get a real, live link.</h2>
+      <p class="section-lede">SAM builds real projects in a sandboxed folder, checkpointed with real git — and one tap puts one on the actual internet. Every publish is smoke-tested before SAM calls it done; nothing goes public without you confirming it, and one tap takes it back down.</p>
+      <div class="press">
+        <div class="term" aria-hidden="true">
+          <div class="term-bar"><i></i><i></i><i></i><span>sam — the yard</span></div>
+          <div class="term-body" id="term2"></div>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="num"></div><h4>Ask, from anywhere</h4><p>Your Mac does the actual work — the build, the deploy, the checking. Your phone is just how you tell it what to do, and where the finished link lands.</p></div>
+          <div class="step"><div class="num"></div><h4>Watch it happen</h4><p>A live preview updates as SAM builds. Say what to change and it rebuilds — shows you, doesn't just tell you.</p></div>
+          <div class="step"><div class="num"></div><h4>One tap, real consent</h4><p>Publish asks first, names exactly what it's about to do, and hands back a URL SAM has actually checked is live — with a QR code to open it on your phone.</p></div>
+        </div>
       </div>
     </section>
 
@@ -466,10 +492,14 @@
   // live terminal — SAM doing a real task, Uber-style
   const term = document.getElementById("term");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // PRE-EXISTING BUG, fixed here: these three ic strings had unescaped double quotes inside a
+  // double-quoted JS string literal — a real syntax error that killed this ENTIRE inline
+  // <script> block, silently, in every browser. The hero's flagship "live terminal" demo (and
+  // everything after it in this script) has never actually run. Escaped now.
   const steps = [
-    { ic:"<svg class="i" aria-hidden="true"><use href="#i-location"/></svg>", t:"Checking your location", ms:700 },
-    { ic:"<svg class="i" aria-hidden="true"><use href="#i-cloud"/></svg>️", t:"Checking the weather", ms:900 },
-    { ic:"<svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>", t:"Reading today's calendar", ms:800 },
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-location\"/></svg>", t:"Checking your location", ms:700 },
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-cloud\"/></svg>️", t:"Checking the weather", ms:900 },
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-calendar\"/></svg>", t:"Reading today's calendar", ms:800 },
   ];
   const answer = 'Morning. Clear skies, 21°C — good one. You\'ve got <span class="tag">2 meetings</span> today and a follow-up due with the accountant. Want me to draft it?';
 
@@ -492,6 +522,38 @@
     setTimeout(run, delay + 5200); // loop
   }
   run();
+
+  // second terminal — the yard's publish loop. Same treatment, a different real capability:
+  // task in, a smoke-tested URL out. Independent loop timer so the two demos don't sync up
+  // and read as one repeating beat.
+  const term2 = document.getElementById("term2");
+  const steps2 = [
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-doc\"/></svg>", t:"Scaffolding the project", ms:750 },
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-terminal\"/></svg>", t:"Building", ms:1000 },
+    { ic:"<svg class=\"i\" aria-hidden=\"true\"><use href=\"#i-eye\"/></svg>", t:"Checking it's really there", ms:850 },
+  ];
+  const answer2 = 'Live at <span class="tag">your-coffee-shop.vercel.app</span> — checked, not just claimed. Unpublish any time, same one tap.';
+
+  function run2(){
+    if (!term2) return;
+    term2.innerHTML = '<div class="t-you">you › <span class="u">build a one-page site for my coffee shop\'s opening hours</span></div>';
+    if (reduce){
+      steps2.forEach(s=>{ const d=document.createElement("div"); d.className="t-step done"; d.innerHTML=`<span class="ic">✓</span>${s.t}`; term2.appendChild(d);});
+      const a=document.createElement("div"); a.className="t-answer"; a.style.animation="none"; a.style.opacity=1; a.innerHTML=answer2; term2.appendChild(a); return;
+    }
+    let delay2 = 500;
+    steps2.forEach((s,i)=>{
+      setTimeout(()=>{
+        const d=document.createElement("div"); d.className="t-step"; d.innerHTML=`<span class="ic">${s.ic}</span>${s.t}<span class="caret"></span>`;
+        term2.appendChild(d);
+        setTimeout(()=>{ d.classList.add("done"); d.querySelector(".ic").textContent="✓"; const c=d.querySelector(".caret"); if(c)c.remove(); }, s.ms);
+      }, delay2);
+      delay2 += s.ms + 350;
+    });
+    setTimeout(()=>{ const a=document.createElement("div"); a.className="t-answer"; a.innerHTML=answer2; term2.appendChild(a); }, delay2 + 200);
+    setTimeout(run2, delay2 + 5600); // loop
+  }
+  run2();
 </script>
 
 </body>
