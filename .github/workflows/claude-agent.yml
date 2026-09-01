@@ -63,7 +63,7 @@ jobs:
         # runs with contents:write + the Anthropic API key, so a compromised/retagged @beta could
         # push code or exfiltrate the key. SHA = anthropics/claude-code-action v1.0.181.
         # To update: check the repo's releases, then repin `<sha>  # vX.Y.Z`.
-        uses: anthropics/claude-code-action@c81e3bc69d1b18badbb63ba39581218f02421678  # v1.0.201
+        uses: anthropics/claude-code-action@a874e9ecd7bb36efdad65429c6b35815f5a08f10  # v1.0.210
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # When triggered by the label, give Claude a clear brief. On an @claude
