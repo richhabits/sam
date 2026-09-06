@@ -227,7 +227,30 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
+
+// Right-click Cut/Copy/Paste/Select All for every window (Windows packaged users had no context
+// menu at all — #94). Role items use Chromium's built-in edit commands; only show what applies.
+function attachEditContextMenu(contents: Electron.WebContents) {
+  contents.on("context-menu", (_e, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    if (params.isEditable) {
+      items.push(
+        { role: "cut", enabled: params.editFlags.canCut },
+        { role: "copy", enabled: params.editFlags.canCopy },
+        { role: "paste", enabled: params.editFlags.canPaste },
+        { type: "separator" },
+        { role: "selectAll", enabled: params.editFlags.canSelectAll },
+      );
+    } else if (params.selectionText) {
+      items.push({ role: "copy", enabled: params.editFlags.canCopy });
+    }
+    if (!items.length) return;
+    Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(contents) ?? undefined });
+  });
+}
+
 app.whenReady().then(() => {
+  app.on("web-contents-created", (_e, contents) => attachEditContextMenu(contents));
   // E2E surface FIRST — install it before any GUI call that could throw in a headless CI, so the
   // Playwright spec can always reach it. summonOverlay() lazily creates the overlay on first use.
   if (E2E) (globalThis as any).__samE2E = {
