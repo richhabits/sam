@@ -317,6 +317,30 @@ app.whenReady().then(() => {
     }
   });
 
+  // FlipIt — preload already exposes samDesktop.openFlipit → "open-flipit", but this listener was
+  // never registered. In Electron the renderer takes the sd.openFlipit branch (truthy), IPC goes
+  // nowhere, and the window.open fallback never runs — so the FLIP IT button does nothing (#94).
+  ipcMain.on("open-flipit", () => {
+    const flipitWin = new BrowserWindow({
+      width: 1400,
+      height: 900,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.mjs"),
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+      titleBarStyle: "hiddenInset",
+      vibrancy: "sidebar",
+      backgroundColor: "#00000000",
+    });
+    hardenNavigation(flipitWin);
+    if (process.env.VITE_DEV_SERVER_URL) {
+      flipitWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=flipit`);
+    } else {
+      flipitWin.loadFile(path.join(__dirname, "../dist/index.html"), { search: "app=flipit" });
+    }
+  });
+
   // ── Overlay wiring (Phase 4) ──
   createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)
   // AUDIT FIX (finding 7): these handlers were global — ANY renderer (the main or studio window,
