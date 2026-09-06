@@ -81,10 +81,20 @@ function keychainStore(keyHex: string): boolean {
       return true;
     }
     if (process.platform === "win32") {
-      execFileSync("powershell", ["-NoProfile", "-Command",
-        `$b=[Text.Encoding]::UTF8.GetBytes('${keyHex}');` +
-        `$p=[Security.Cryptography.ProtectedData]::Protect($b,$null,'CurrentUser');` +
-        `[IO.File]::WriteAllBytes('${join(safeDir(), "safe.keychain.dpapi").replace(/\\/g, "\\\\")}',$p)`], { stdio: "ignore" });
+      // DPAPI via PowerShell. Must Add-Type System.Security (not always loaded), and must quote
+      // paths with JSON.stringify so usernames with spaces (real Windows installs) don't break
+      // the -Command string. Old single-quoted path interpolation failed for those users and
+      // silently returned false → Safe set up without a recoverable keychain unlock.
+      const dpapiPath = join(safeDir(), "safe.keychain.dpapi");
+      mkdirSync(safeDir(), { recursive: true });
+      const cmd = [
+        "Add-Type -AssemblyName System.Security",
+        `$path = ${JSON.stringify(dpapiPath)}`,
+        `$b = [Text.Encoding]::UTF8.GetBytes(${JSON.stringify(keyHex)})`,
+        "$p = [Security.Cryptography.ProtectedData]::Protect($b, $null, 'CurrentUser')",
+        "[IO.File]::WriteAllBytes($path, $p)",
+      ].join("; ");
+      execFileSync("powershell", ["-NoProfile", "-Command", cmd], { stdio: "ignore" });
       return true;
     }
   } catch { /* keychain unavailable → passphrase path */ }
@@ -99,10 +109,14 @@ function keychainRetrieve(): string | null {
     if (process.platform === "win32") {
       const f = join(safeDir(), "safe.keychain.dpapi");
       if (!existsSync(f)) return null;
-      return execFileSync("powershell", ["-NoProfile", "-Command",
-        `$p=[IO.File]::ReadAllBytes('${f.replace(/\\/g, "\\\\")}');` +
-        `$b=[Security.Cryptography.ProtectedData]::Unprotect($p,$null,'CurrentUser');` +
-        `[Text.Encoding]::UTF8.GetString($b)`], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
+      const cmd = [
+        "Add-Type -AssemblyName System.Security",
+        `$path = ${JSON.stringify(f)}`,
+        "$p = [IO.File]::ReadAllBytes($path)",
+        "$b = [Security.Cryptography.ProtectedData]::Unprotect($p, $null, 'CurrentUser')",
+        "[Text.Encoding]::UTF8.GetString($b)",
+      ].join("; ");
+      return execFileSync("powershell", ["-NoProfile", "-Command", cmd], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
     }
   } catch { /* not stored / keychain unavailable */ }
   return null;
