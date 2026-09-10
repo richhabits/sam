@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import AddSheet from './AddSheet';
-import { api } from './lib/api';
+import { api, confirmPending } from './lib/api';
 import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
 import { consentCopy, loadConsent, needsConsent, type SpendConsent, setConsent } from './lib/consent';
@@ -37,6 +37,7 @@ import {
   taskWhen,
 } from './lib/mentions';
 import { Glyph } from './ui';
+import { PermissionGate, RunLog, type RunStep } from './samKit';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -50,7 +51,13 @@ import { Glyph } from './ui';
 // attaches its context to the next message — the phone's version of `@` in an editor. The
 // parsing lives in lib/mentions.ts; everything below is fetching and pixels.
 
-type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean };
+// `gate` turns this bubble into a PermissionGate instead of rendered text — a risky tool call
+// the desktop paused on (see lib/api.ts's confirmPending()). `status` starts 'open' and moves
+// to 'approved'/'declined' the moment a button is tapped, so a double-tap while the confirm
+// request is in flight can't resend it and the buttons visibly go away rather than sitting
+// there implying they still do something.
+type Gate = { pendingId: string; activity: string; preview?: string; trace: string[]; status: 'open' | 'approved' | 'declined' };
+type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean; gate?: Gate };
 
 // The opening screen's starting points. Kept SHORT — these are prompts to edit, not menu items,
 // and a chip you cannot read at a glance is a chip nobody taps. Each one names something SAM
@@ -462,6 +469,15 @@ export default function ChatScreen({
             haptic.light();
             patch((m) => ({ ...m, text, pending: false }));
           },
+          onPending: (e) => {
+            haptic.light();
+            patch((m) => ({
+              ...m,
+              text: '',
+              pending: false,
+              gate: { pendingId: e.pendingId || '', activity: e.activity, preview: e.preview, trace: e.trace || [], status: 'open' },
+            }));
+          },
         },
         ctrl.signal,
         tier === 'auto' ? undefined : tier,
@@ -483,6 +499,36 @@ export default function ChatScreen({
   }, [draft, busy, msgs, onNeedsPairing, tier, attached, refs, consent]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
+
+  // Resolve a PermissionGate. `index` is captured at render, not re-derived from the list, so
+  // a message appended while the confirm request is in flight (the operator kept typing) can't
+  // shift which bubble this answer lands on.
+  const decideGate = useCallback(async (index: number, gate: Gate, approved: boolean) => {
+    setMsgs((prev) => prev.map((m, i) => (i === index && m.gate ? { ...m, gate: { ...m.gate, status: approved ? 'approved' : 'declined' } } : m)));
+    try {
+      const r = await confirmPending(gate.pendingId, approved);
+      if (r.expired) {
+        setMsgs((prev) => [...prev, { role: 'sam', text: r.text || "That approval expired — ask me again and I'll re-propose it." }]);
+        return;
+      }
+      if (r.kind === 'pending' && r.pendingId) {
+        // Chained: the resumed turn hit ANOTHER risky call. Same bubble stays a gate, updated
+        // in place, rather than stacking a second identical-looking card underneath.
+        setMsgs((prev) =>
+          prev.map((m, i) =>
+            i === index
+              ? { role: 'sam', text: '', gate: { pendingId: r.pendingId as string, activity: r.activity || gate.activity, preview: r.preview, trace: r.trace || gate.trace, status: 'open' } }
+              : m,
+          ),
+        );
+        return;
+      }
+      setMsgs((prev) => [...prev, { role: 'sam', text: r.text || (approved ? 'Done.' : "Okay, I won't."), route: r.provider }]);
+    } catch (e: any) {
+      if (e?.status === 401) return onNeedsPairing();
+      setMsgs((prev) => [...prev, { role: 'sam', text: `That action didn't finish: ${e?.message || e}` }]);
+    }
+  }, [onNeedsPairing]);
 
   return (
     <KeyboardAvoidingView
@@ -585,6 +631,35 @@ export default function ChatScreen({
               >
                 <Text style={s.userText}>{m.text}</Text>
               </Pressable>
+            ) : m.gate ? (
+              // The permission gate is IN THE STREAM, never a modal (design_handoff_sam_clients
+              // /README.md, "The fourteen parts" #6) — its own dark, amber-bordered card, not
+              // ios's grouped-list bubble, because it's carrying the handoff's visual language
+              // rather than the native one the rest of chat still uses.
+              // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render
+              <View key={i} style={s.samWrap}>
+                {m.gate.trace.length > 0 ? (
+                  <View style={{ marginBottom: 8 }}>
+                    <RunLog
+                      state="working"
+                      cost="£0.00"
+                      steps={m.gate.trace.map((label, si): RunStep => ({ id: String(si), label, kind: 'normal' }))}
+                    />
+                  </View>
+                ) : null}
+                {m.gate.status === 'open' ? (
+                  <PermissionGate
+                    title={m.gate.activity}
+                    scopes={m.gate.preview ? [m.gate.preview] : []}
+                    onAllow={() => decideGate(i, m.gate as Gate, true)}
+                    onNotNow={() => decideGate(i, m.gate as Gate, false)}
+                  />
+                ) : (
+                  <Text style={[s.route, { marginTop: 0 }]}>
+                    {m.gate.status === 'approved' ? 'Approved — continuing…' : 'Declined.'}
+                  </Text>
+                )}
+              </View>
             ) : (
               // biome-ignore lint/suspicious/noArrayIndexKey: this list is re-derived in full on every render
               <View key={i} style={s.samWrap}>

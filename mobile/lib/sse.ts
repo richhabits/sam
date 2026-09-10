@@ -10,6 +10,11 @@ export type StreamEvent =
   | { type: 'token'; t: string }
   | { type: 'done'; text?: string; provider?: string; cached?: boolean }
   | { type: 'end'; projectId?: string }
+  // A risky tool call the desktop paused on — see server/pending.ts's withPending(), which is
+  // what stamps `pendingId` onto the bare `{type:"pending",...}` server/agent.ts emits. The
+  // client approves by that id only; `input`/`transcript` never round-trip (see lib/api.ts's
+  // confirmPending()).
+  | { type: 'pending'; pendingId?: string; tool: string; input?: unknown; preview?: string; activity: string; trace: string[]; provider?: string }
   | { type: string; [k: string]: unknown };
 
 /**

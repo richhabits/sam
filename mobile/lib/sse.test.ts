@@ -42,4 +42,13 @@ describe('parseFrames — SSE framing', () => {
     expect(events).toEqual([]);
     expect(rest).toBe('data: {"type":"token","t":"x"}\n');
   });
+
+  it('parses a pending (permission-gate) frame with its pendingId, per server/pending.ts withPending()', () => {
+    const { events } = parseFrames(
+      'data: {"type":"pending","pendingId":"abc123","tool":"fs.write","activity":"Write to notes.md","trace":["searched notes"]}\n\n',
+    );
+    expect(events).toEqual([
+      { type: 'pending', pendingId: 'abc123', tool: 'fs.write', activity: 'Write to notes.md', trace: ['searched notes'] },
+    ]);
+  });
 });
