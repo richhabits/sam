@@ -20,7 +20,7 @@
 //  Run after any `npm install` that rebuilds better-sqlite3:  npm run electron:sqlite
 // ─────────────────────────────────────────────────────────────
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -34,14 +34,24 @@ const NODE_BUILT = existsSync(join(PKG, "build", "Release", "better_sqlite3.node
   ? PREBUILT
   : null;
 const PARKED = join(ROOT, "build", "Release", "better_sqlite3.node");
+// Stamped with the Electron version the parked binary was built against. Without this, bumping
+// Electron (e.g. a Dependabot major bump) left a dev machine that had already parked a binary for
+// the OLD version silently stuck on it — `existsSync(PARKED)` is true either way, so the app
+// crashed on launch with "Cannot find module .../better_sqlite3.node" (really a stale-ABI mismatch,
+// which Node doesn't distinguish from a missing file) with nothing here to say why.
+const PARKED_VERSION = join(ROOT, "build", "Release", ".electron-version");
 const BACKUP = join(tmpdir(), "sam-better_sqlite3.node-abi.bak");
 
 const electronVersion = JSON.parse(readFileSync(join(ROOT, "node_modules", "electron", "package.json"), "utf8")).version;
 const force = process.argv.includes("--force");
 
-if (existsSync(PARKED) && !force) {
-  console.log("✓ Electron-ABI better_sqlite3 already parked at build/Release — nothing to do (--force to rebuild).");
+const parkedVersion = existsSync(PARKED_VERSION) ? readFileSync(PARKED_VERSION, "utf8").trim() : null;
+if (existsSync(PARKED) && parkedVersion === electronVersion && !force) {
+  console.log(`✓ Electron-ABI better_sqlite3 already parked at build/Release for ${electronVersion} — nothing to do (--force to rebuild).`);
   process.exit(0);
+}
+if (existsSync(PARKED) && parkedVersion !== electronVersion) {
+  console.log(`• parked binary was built for Electron ${parkedVersion || "an unknown version"}, but node_modules/electron is now ${electronVersion} — rebuilding.`);
 }
 if (!NODE_BUILT || !existsSync(NODE_BUILT)) {
   console.error("✗ node_modules/better-sqlite3 has no Node build or prebuild to protect. Run `npm install` first.");
@@ -60,6 +70,7 @@ try {
   );
   mkdirSync(dirname(PARKED), { recursive: true });
   copyFileSync(NODE_BUILT, PARKED);
+  writeFileSync(PARKED_VERSION, electronVersion);
   console.log("• parked the Electron-ABI copy at build/Release/better_sqlite3.node");
 } finally {
   // Always hand the server back its own binary, compile succeeded or not. node-gyp may

@@ -10,7 +10,7 @@ import { useEscape } from "./lib/useOverlay";
 // place those patterns lived. They now sit in server/providers.registry.ts as `keyPattern`, so
 // the wizard and Settings can never disagree about what a provider is called or where to get it.
 type WizProv = { id: string; label: string; note: string; url: string; keyPattern?: string; starter?: boolean };
-type St = "idle" | "checking" | "ok" | "bad";
+type St = "idle" | "checking" | "ok" | "bad" | "error";
 
 export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => void; onAllProviders?: () => void }) {
   useEscape(onClose);
@@ -19,6 +19,7 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
   const [clip, setClip] = useState<{ id: string; key: string } | null>(null);
   const [PROVIDERS, setProviders] = useState<WizProv[]>([]);
   const [loadErr, setLoadErr] = useState("");
+  const [saveErr, setSaveErr] = useState<Record<string, string>>({});
   useEffect(() => {
     // Show the curated "starter" set — the handful that between them cover every job (fast chat,
     // vision, reasoning, writing, code). That's all you need to run SAM nicely; the rest are for
@@ -49,10 +50,19 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
     setStatus((s) => ({ ...s, [id]: "checking" }));
     try {
       const r = await fetch("/api/admin/validate-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: id, key: v }) }).then((x) => x.json());
-      if (r.valid === false) { setStatus((s) => ({ ...s, [id]: "bad" })); return; }
-      await fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: id, keys: v }) });
+      if (r.valid === false) { setSaveErr((e) => ({ ...e, [id]: "" })); setStatus((s) => ({ ...s, [id]: "bad" })); return; }
+      // A valid-format key can still fail to SAVE (e.g. the Safe is locked, HTTP 409) — that used to
+      // be swallowed here and shown as a green checkmark even though nothing was persisted or pooled.
+      const saveRes = await fetch("/api/admin/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: id, keys: v }) });
+      if (!saveRes.ok) {
+        const body = await saveRes.json().catch(() => ({}));
+        setSaveErr((e) => ({ ...e, [id]: body?.error || "Couldn't save the key." }));
+        setStatus((s) => ({ ...s, [id]: "error" }));
+        return;
+      }
+      setSaveErr((e) => ({ ...e, [id]: "" }));
       setStatus((s) => ({ ...s, [id]: "ok" }));
-    } catch { setStatus((s) => ({ ...s, [id]: "bad" })); }
+    } catch { setSaveErr((e) => ({ ...e, [id]: "" })); setStatus((s) => ({ ...s, [id]: "bad" })); }
   }
 
   // Clipboard watcher — if a key-shaped string is copied, offer to slot it into the right provider.
@@ -110,8 +120,9 @@ export default function KeyWizard({ onClose, onAllProviders }: { onClose: () => 
                 <div className="wiz-note">{p.note}</div>
                 <div className="wiz-inp">
                   <input type="password" placeholder={st === "ok" ? "pooled ✓" : "paste your key here"} value={keys[p.id] || ""} onChange={(e) => onKeyChange(p.id, e.target.value)} />
-                  <span className={"wiz-tick " + st}>{st === "checking" ? "…" : st === "ok" ? "✓" : st === "bad" ? "✗ invalid" : ""}</span>
+                  <span className={"wiz-tick " + st}>{st === "checking" ? "…" : st === "ok" ? "✓" : st === "bad" ? "✗ invalid" : st === "error" ? "✗" : ""}</span>
                 </div>
+                {st === "error" && saveErr[p.id] && <div className="wiz-note" style={{ color: "#e06c6c" }}>✗ {saveErr[p.id]}</div>}
               </div>
             );
           })}

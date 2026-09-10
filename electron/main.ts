@@ -227,7 +227,30 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
+
+// Right-click Cut/Copy/Paste/Select All for every window (Windows packaged users had no context
+// menu at all — #94). Role items use Chromium's built-in edit commands; only show what applies.
+function attachEditContextMenu(contents: Electron.WebContents) {
+  contents.on("context-menu", (_e, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    if (params.isEditable) {
+      items.push(
+        { role: "cut", enabled: params.editFlags.canCut },
+        { role: "copy", enabled: params.editFlags.canCopy },
+        { role: "paste", enabled: params.editFlags.canPaste },
+        { type: "separator" },
+        { role: "selectAll", enabled: params.editFlags.canSelectAll },
+      );
+    } else if (params.selectionText) {
+      items.push({ role: "copy", enabled: params.editFlags.canCopy });
+    }
+    if (!items.length) return;
+    Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(contents) ?? undefined });
+  });
+}
+
 app.whenReady().then(() => {
+  app.on("web-contents-created", (_e, contents) => attachEditContextMenu(contents));
   // E2E surface FIRST — install it before any GUI call that could throw in a headless CI, so the
   // Playwright spec can always reach it. summonOverlay() lazily creates the overlay on first use.
   if (E2E) (globalThis as any).__samE2E = {
@@ -295,8 +318,11 @@ app.whenReady().then(() => {
     app.quit();
   });
 
-  ipcMain.on("open-studio", () => {
-    const studioWin = new BrowserWindow({
+  // Shared by every secondary app window (Studio, FlipIt, …) — same size, same hardening, same
+  // dist/index.html?app=NAME loading. Kept as one factory so a future fix to these options (a new
+  // webPreferences flag, a titlebar/vibrancy change) lands once instead of drifting across copies.
+  function openAppWindow(appName: string): void {
+    const win = new BrowserWindow({
       width: 1400,
       height: 900,
       webPreferences: {
@@ -304,18 +330,25 @@ app.whenReady().then(() => {
         nodeIntegration: false,
         contextIsolation: true,
       },
-      titleBarStyle: 'hiddenInset',
-      vibrancy: 'sidebar',
-      backgroundColor: '#00000000', // transparent for vibrancy
+      titleBarStyle: "hiddenInset",
+      vibrancy: "sidebar",
+      backgroundColor: "#00000000", // transparent for vibrancy
     });
 
-    hardenNavigation(studioWin);
+    hardenNavigation(win);
     if (process.env.VITE_DEV_SERVER_URL) {
-      studioWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=studio`);
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=${appName}`);
     } else {
-      studioWin.loadFile(path.join(__dirname, "../dist/index.html"), { search: "app=studio" });
+      win.loadFile(path.join(__dirname, "../dist/index.html"), { search: `app=${appName}` });
     }
-  });
+  }
+
+  ipcMain.on("open-studio", () => openAppWindow("studio"));
+
+  // FlipIt — preload already exposes samDesktop.openFlipit → "open-flipit", but this listener was
+  // never registered. In Electron the renderer takes the sd.openFlipit branch (truthy), IPC goes
+  // nowhere, and the window.open fallback never runs — so the FLIP IT button does nothing (#94).
+  ipcMain.on("open-flipit", () => openAppWindow("flipit"));
 
   // ── Overlay wiring (Phase 4) ──
   createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)
@@ -327,7 +360,7 @@ app.whenReady().then(() => {
     !!overlay && !overlay.isDestroyed() && e.sender === overlay.webContents;
 
   ipcMain.handle("overlay:run", (e, payload) => { if (!fromOverlay(e)) throw new Error("not the overlay"); return runOverlayAction(payload); });
-  ipcMain.handle("overlay:copy", (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); clipboard.writeText(String(text || "")); return true; });
+  ipcMain.handle("overlay:copy", async (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); await clipboard.writeText(String(text || "")); return true; });
   ipcMain.handle("overlay:paste", async (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); overlay?.hide(); await pasteBack(String(text || "")); return true; });
   ipcMain.handle("overlay:run-as-task", (e, task: string) => {
     if (!fromOverlay(e)) throw new Error("not the overlay");

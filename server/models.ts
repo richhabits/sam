@@ -554,7 +554,7 @@ export async function runVision(system: string, prompt: string, images: ImagePar
       // Fall through to the offline message below if Ollama fails/isn't running
     }
 
-  return { text: "To read photos, SAM needs a free Gemini key (add GEMINI_API_KEYS to .env) or Ollama running with the 'llava' model locally. Everything else works without it.", provider: "none", tier: "free" };
+  return { text: "To read photos, SAM needs a free Gemini key (add it in Settings → API keys) or Ollama running with the 'llava' model locally. Everything else works without it.", provider: "none", tier: "free" };
 }
 
 // For the HUD / status endpoint: which providers are wired.

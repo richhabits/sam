@@ -188,11 +188,11 @@ export function verifyFactualGrounding(
   const verifiedSymbols: string[] = [];
 
   // 1. Scan for file paths: `server/...`, `src/...`, `/Volumes/...`
-  const pathRegex = /(?:(?:\/Volumes\/[^\s`"'\)\],]+)|(?:\b(?:server|src|mobile|scripts|docs)\/[a-zA-Z0-9_\-\.\/]+(?:\.[a-zA-Z0-9]+)\b))/g;
+  const pathRegex = /(?:(?:\/Volumes\/[^\s`"')\],]+)|(?:\b(?:server|src|mobile|scripts|docs)\/[a-zA-Z0-9_\-./]+(?:\.[a-zA-Z0-9]+)\b))/g;
   const matchedPaths = [...new Set(text.match(pathRegex) || [])];
 
   for (const rawPath of matchedPaths) {
-    const cleanPath = rawPath.replace(/[,\.\:\;]+$/, "");
+    const cleanPath = rawPath.replace(/[,.:;]+$/, "");
     const absolutePath = cleanPath.startsWith("/") ? cleanPath : resolve(root, cleanPath);
 
     if (existsSync(absolutePath)) {
