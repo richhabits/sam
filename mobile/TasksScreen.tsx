@@ -6,6 +6,7 @@ import { elapsed, type JobStep, runLine } from './lib/fold';
 import { GLYPHS } from './lib/glyphs';
 import { type IOS, metrics, stateToneText, type } from './lib/ios';
 import { taskGlyph, taskTitle } from './lib/mentions';
+import JobDetailSheet from './JobDetailSheet';
 import { ActionRow, Chips, Row, Screen, Section } from './ui';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
@@ -52,6 +53,9 @@ export default function TasksScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [now, setNow] = useState(() => Date.now());
+  // The one thing every row now opens — "failures currently have nowhere to go" (build order
+  // step 5). null closes the sheet.
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -187,7 +191,7 @@ export default function TasksScreen({
                   subtitle={subtitleFor(j, now)}
                   accessory={<StateAccessory ios={ios} state={j.state} />}
                   last={i === rows.length - 1}
-                  onPress={j.project ? () => publishOrUnpublish(j.project as string, published.find((s) => s.slug === j.project)) : undefined}
+                  onPress={() => setOpenJobId(j.id)}
                 />
               ))
             )}
@@ -222,6 +226,17 @@ export default function TasksScreen({
       ) : null}
 
       <View style={{ height: metrics.margin }} />
+      <JobDetailSheet
+        jobId={openJobId}
+        onClose={() => setOpenJobId(null)}
+        onNeedsPairing={onNeedsPairing}
+        onChanged={load}
+        publishedUrl={(() => {
+          const j = yard?.recent.find((r) => r.id === openJobId);
+          return j?.project ? published.find((s) => s.slug === j.project)?.url : undefined;
+        })()}
+        onTogglePublish={(slug) => publishOrUnpublish(slug, published.find((s) => s.slug === slug))}
+      />
     </Screen>
   );
 }

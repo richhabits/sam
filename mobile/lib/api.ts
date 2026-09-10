@@ -161,6 +161,31 @@ export async function fetchYardTasks(): Promise<any> {
   return api("/api/yard");
 }
 
+/** One job's full detail — the same route the web app's TaskDetail reads (src/TasksView.tsx),
+ *  {job, log}. Powers the job detail sheet: "failures currently have nowhere to go" (build
+ *  order step 5) means this was fetched by NOTHING on mobile before now. */
+export async function fetchJobDetail(id: string): Promise<{ job: any; log: string[] }> {
+  return api(`/api/yard/job/${encodeURIComponent(id)}`);
+}
+
+/** Stop a queued/running job. Same contract as the web app's cancelYardJob. */
+export async function cancelJob(id: string): Promise<any> {
+  return api("/api/yard/cancel", { method: "POST", body: JSON.stringify({ id }) });
+}
+
+/** Retry a failed job — same job kind and payload, a fresh attempt. server/index.ts's
+ *  /api/yard/retry refuses (409) a budget stop or a cancel: those are decisions, not faults. */
+export async function retryJob(id: string): Promise<any> {
+  return api("/api/yard/retry", { method: "POST", body: JSON.stringify({ id }) });
+}
+
+/** "Raise budget & resume" — the meter's own unstick action for a budget-stopped job.
+ *  Deliberately separate from retry (server/index.ts's comment on the route): a fresh ceiling
+ *  has to be typed, not applied by reflex. */
+export async function raiseJobBudget(id: string, budget: number): Promise<any> {
+  return api("/api/yard/raise-budget", { method: "POST", body: JSON.stringify({ id, budget }) });
+}
+
 /**
  * Mobile Voice Session Status
  */
