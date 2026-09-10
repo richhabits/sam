@@ -161,9 +161,84 @@ export async function fetchYardTasks(): Promise<any> {
   return api("/api/yard");
 }
 
+/** One job's full detail — the same route the web app's TaskDetail reads (src/TasksView.tsx),
+ *  {job, log}. Powers the job detail sheet: "failures currently have nowhere to go" (build
+ *  order step 5) means this was fetched by NOTHING on mobile before now. */
+export async function fetchJobDetail(id: string): Promise<{ job: any; log: string[] }> {
+  return api(`/api/yard/job/${encodeURIComponent(id)}`);
+}
+
+/** Stop a queued/running job. Same contract as the web app's cancelYardJob. */
+export async function cancelJob(id: string): Promise<any> {
+  return api("/api/yard/cancel", { method: "POST", body: JSON.stringify({ id }) });
+}
+
+/** Retry a failed job — same job kind and payload, a fresh attempt. server/index.ts's
+ *  /api/yard/retry refuses (409) a budget stop or a cancel: those are decisions, not faults. */
+export async function retryJob(id: string): Promise<any> {
+  return api("/api/yard/retry", { method: "POST", body: JSON.stringify({ id }) });
+}
+
+/** "Raise budget & resume" — the meter's own unstick action for a budget-stopped job.
+ *  Deliberately separate from retry (server/index.ts's comment on the route): a fresh ceiling
+ *  has to be typed, not applied by reflex. */
+export async function raiseJobBudget(id: string, budget: number): Promise<any> {
+  return api("/api/yard/raise-budget", { method: "POST", body: JSON.stringify({ id, budget }) });
+}
+
 /**
  * Mobile Voice Session Status
  */
 export async function fetchVoiceSessionState(): Promise<any> {
   return api("/api/voice/status");
+}
+
+/** The result of resolving a pending approval — same shape lib/chat.ts's StreamEvent 'pending'
+ *  carries, because a chained tool call can hand back ANOTHER pending (server/index.ts's
+ *  executePendingConfirmation, via withPending). `kind: "final"` means the turn is done. */
+export interface ConfirmResult {
+  kind?: "final" | "pending";
+  text?: string;
+  trace?: string[];
+  provider?: string;
+  pendingId?: string;
+  tool?: string;
+  preview?: string;
+  activity?: string;
+  expired?: boolean;
+  error?: string;
+}
+
+/**
+ * Approve or decline a risky tool call the desktop paused on (see PermissionGate in
+ * samKit.tsx). `always` stands the tool up as pre-approved for future turns — same server-side
+ * effect as the web app's "Always allow" (server/index.ts's `/api/confirm`).
+ *
+ * NOT routed through api(): this needs the plain fetch shape lib/chat.ts's stream call uses
+ * (host + bearer token, no demo branch — a demo session never produces a pendingId to confirm,
+ * since demoApi() has no tools to gate).
+ */
+export async function confirmPending(pendingId: string, approved: boolean, always = false): Promise<ConfirmResult> {
+  const [host, token] = await Promise.all([getHost(), getToken()]);
+  if (!host || !token) throw new ApiError(401, "not paired");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000); // a resumed tool call can run long
+  let res: Response;
+  try {
+    res = await fetch(`${host}/api/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ pendingId, approved, always }),
+      signal: controller.signal,
+    });
+  } catch (e: any) {
+    clearTimeout(timer);
+    throw new ApiError(0, e?.name === "AbortError" ? "connection timed out" : e?.message || "network request failed");
+  }
+  clearTimeout(timer);
+  const body = await res.json().catch(() => ({}));
+  // 410 = the approval expired server-side (server/pending.ts's 15-minute TTL) — still a body
+  // worth returning (it carries the "ask me again" text), not an error to throw past.
+  if (!res.ok && res.status !== 410) throw new ApiError(res.status, body?.error || `confirm failed (${res.status})`);
+  return body;
 }

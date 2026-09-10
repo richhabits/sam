@@ -392,7 +392,14 @@ export default function App() {
   const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
   const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); return v === null ? true : v === "1"; } catch { return true; } });
-  const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "aurora"; } catch { return "aurora"; } });
+  const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
+  // The eight alternate skins (everything but the one true accent, "classic") are opt-in —
+  // see docs/DESIGN-SYSTEM.md: nine skins each redefining --accent was the root cause of the
+  // contrast bugs there, not any one skin's colours.
+  const [altSkins, setAltSkins] = useState(() => { try { return localStorage.getItem("sam.altSkins") === "1"; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem("sam.altSkins", altSkins ? "1" : "0"); } catch { /* storage full, disabled or corrupt */ } }, [altSkins]);
+  // A skin picked before this toggle existed shouldn't keep rendering once alt skins are off.
+  useEffect(() => { if (!altSkins && skin !== "classic") setSkin("classic"); }, [altSkins, skin]);
   const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("sam.speak") === "1"; } catch { return false; } });
   // Hands-free is ON by default now — SAM listens for a clap/whistle from the moment it opens
   // (private, on-device Web Audio, every browser). Set localStorage "sam.wake"="0" to opt out.
@@ -1417,6 +1424,15 @@ export default function App() {
               </button>
             </div>
             <div className="pop-title">Skin</div>
+            <div className="bento-grid">
+              <button type="button" className={`bento-card ${altSkins ? "on" : ""}`} onClick={() => setAltSkins((v) => { const next = !v; if (!next && skin !== "classic") setSkin("classic"); return next; })}>
+                <div className="bento-icon"><Icon name="sparkle" size={18} /></div>
+                <span className="bento-name">Alternate skins</span>
+                <span className="bento-sub">Eight extra colour schemes</span>
+                <div className="bento-action"><span className={`sw ${altSkins ? "on" : ""}`} aria-hidden="true"><i /></span></div>
+              </button>
+            </div>
+            {altSkins && (
             <div className="skin-row">
               {[["classic", "Classic"], ["jarvis", "Jarvis"], ["ember", "Ember"], ["stealth", "Stealth"], ["midnight", "Midnight"], ["nord", "Nord"], ["dracula", "Dracula"], ["linen", "Linen"], ["aurora", "Aurora"]].map(([id, label]) => (
                 <button type="button" key={id} className={`skin-chip ${skin === id ? "on" : ""}`} onClick={() => setSkin(id)} aria-label={`Theme: ${label}`} title={`Theme: ${label}`}>
@@ -1425,6 +1441,7 @@ export default function App() {
                 </button>
               ))}
             </div>
+            )}
             </>)}
             {stab === "data" && (<>
             <div className="pop-title">Your data</div>
@@ -2399,14 +2416,16 @@ export default function App() {
           { icon: "pencil", label: "Text size: Normal", run: () => setFontSize("normal") },
           { icon: "chart", label: "Text size: Compact", run: () => setFontSize("compact") },
           { icon: "studio", label: "Skin: Classic", run: () => setSkin("classic") },
-          { icon: "sliders", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
-          { icon: "sparkle", label: "Skin: Ember", run: () => setSkin("ember") },
-          { icon: "ninja", label: "Skin: Stealth", run: () => setSkin("stealth") },
-          { icon: "moon", label: "Skin: Midnight", run: () => setSkin("midnight") },
-          { icon: "sparkle", label: "Skin: Nord", run: () => setSkin("nord") },
-          { icon: "sparkle", label: "Skin: Dracula", run: () => setSkin("dracula") },
-          { icon: "book", label: "Skin: Linen", run: () => setSkin("linen") },
-          { icon: "sparkle", label: "Skin: Aurora (dark glass)", run: () => setSkin("aurora") },
+          ...(altSkins ? [
+            { icon: "sliders", label: "Skin: Jarvis", run: () => setSkin("jarvis") },
+            { icon: "sparkle", label: "Skin: Ember", run: () => setSkin("ember") },
+            { icon: "ninja", label: "Skin: Stealth", run: () => setSkin("stealth") },
+            { icon: "moon", label: "Skin: Midnight", run: () => setSkin("midnight") },
+            { icon: "sparkle", label: "Skin: Nord", run: () => setSkin("nord") },
+            { icon: "sparkle", label: "Skin: Dracula", run: () => setSkin("dracula") },
+            { icon: "book", label: "Skin: Linen", run: () => setSkin("linen") },
+            { icon: "sparkle", label: "Skin: Aurora (dark glass)", run: () => setSkin("aurora") },
+          ] : []),
           { icon: mode === "business" ? "home" : "briefcase", label: mode === "business" ? "Switch to Personal" : "Switch to Business", run: () => setMode((m) => (m === "business" ? "personal" : "business")) },
         ];
         const q = pq.trim().toLowerCase();

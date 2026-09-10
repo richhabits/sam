@@ -8,34 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		28391FF524CE4AFAB87C623F /* SAMWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4AB6CF91EF465895B35C38 /* SAMWidget.swift */; };
+		32BE3EF9947C4C8FA70D0965 /* SAMWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 950D1CB1203944A98E0C551E /* SAMWidget.appex */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		6A49A32295F3DF01E2C6813D /* libPods-SAM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EC9DAB8A8E997BFBF71F8991 /* libPods-SAM.a */; };
-		77DD60FDB83F18C07169D6F0 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93D852763E4B7ECC148CB703 /* ExpoModulesProvider.swift */; };
-		898B2513A62B43C7BF9BFCF7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 149E6A54D89240D9B42BE02E /* PrivacyInfo.xcprivacy */; };
-		AC6C5164D70744CFB969EB36 /* SAMWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BD2A38F7FE9D4C9782BF2EEE /* SAMWidget.appex */; };
+		4CF23015CB76473BA967CB89 /* SAMWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0CBA11ED5643C3939D7353 /* SAMWidget.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C474D53E1B352D3A9A5AFBAA /* libPods-SAM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2EF8941139BA16D748059625 /* libPods-SAM.a */; };
+		DC04A153AEC1EFFFA7DBCB4B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2369FDF98A9BC76279B8801E /* ExpoModulesProvider.swift */; };
+		E698F2960FD24F529617B9C6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 304F9B3520DA4084A47338C9 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		F9E0D3725F4F480F9A21B18B /* PBXContainerItemProxy */ = {
+		0D89BFB5BFED4408969D504A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = D0580D13ADDD4AD2946CC5A3;
+			remoteGlobalIDString = 0E2DF88CFC914A0285023203;
 			remoteInfo = SAMWidget;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		75214005757E45AAAAC13098 /* Embed Foundation Extensions */ = {
+		94EE27DEE26E4FC0B65CE65E /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				AC6C5164D70744CFB969EB36 /* SAMWidget.appex in Embed Foundation Extensions */,
+				32BE3EF9947C4C8FA70D0965 /* SAMWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -43,37 +43,37 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1041C5E93F0045DC96EE6805 /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = SAMWidget/Info.plist; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* SAM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SAM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SAM/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SAM/Info.plist; sourceTree = "<group>"; };
-		149E6A54D89240D9B42BE02E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = SAM/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		3E4AB6CF91EF465895B35C38 /* SAMWidget.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = SAMWidget.swift; path = SAMWidget/SAMWidget.swift; sourceTree = "<group>"; };
-		4C42A4EEAD1924789D2D2B87 /* Pods-SAM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SAM.release.xcconfig"; path = "Target Support Files/Pods-SAM/Pods-SAM.release.xcconfig"; sourceTree = "<group>"; };
-		8C00DD690A364CF299B18EEC /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = SAMWidget/Info.plist; sourceTree = "<group>"; };
-		91298CFFC29CA1D142366686 /* Pods-SAM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SAM.debug.xcconfig"; path = "Target Support Files/Pods-SAM/Pods-SAM.debug.xcconfig"; sourceTree = "<group>"; };
-		93D852763E4B7ECC148CB703 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SAM/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		2369FDF98A9BC76279B8801E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SAM/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		237581CF32A5846E082B5A5A /* Pods-SAM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SAM.debug.xcconfig"; path = "Target Support Files/Pods-SAM/Pods-SAM.debug.xcconfig"; sourceTree = "<group>"; };
+		2EF8941139BA16D748059625 /* libPods-SAM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SAM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		304F9B3520DA4084A47338C9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = SAM/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		950D1CB1203944A98E0C551E /* SAMWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = SAMWidget.appex; path = SAMWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SAM/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BD2A38F7FE9D4C9782BF2EEE /* SAMWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = SAMWidget.appex; path = SAMWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		EC9DAB8A8E997BFBF71F8991 /* libPods-SAM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SAM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SAM/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* SAM-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SAM-Bridging-Header.h"; path = "SAM/SAM-Bridging-Header.h"; sourceTree = "<group>"; };
+		FD484A343753A1140DACA41A /* Pods-SAM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SAM.release.xcconfig"; path = "Target Support Files/Pods-SAM/Pods-SAM.release.xcconfig"; sourceTree = "<group>"; };
+		FF0CBA11ED5643C3939D7353 /* SAMWidget.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = SAMWidget.swift; path = SAMWidget/SAMWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0207F4EC789442A5BCA50FC9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6A49A32295F3DF01E2C6813D /* libPods-SAM.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		3CE1AAA51EA64B66B4D212AE /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				C474D53E1B352D3A9A5AFBAA /* libPods-SAM.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,43 +89,44 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				149E6A54D89240D9B42BE02E /* PrivacyInfo.xcprivacy */,
+				304F9B3520DA4084A47338C9 /* PrivacyInfo.xcprivacy */,
 			);
 			name = SAM;
 			sourceTree = "<group>";
 		};
-		1A7A32DA024F225DD3A38C03 /* SAM */ = {
+		2273F3B5665CB0AA0873482F /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				93D852763E4B7ECC148CB703 /* ExpoModulesProvider.swift */,
+				6EE5BDFD11D4EEFEC0B30C93 /* SAM */,
 			);
-			name = SAM;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				EC9DAB8A8E997BFBF71F8991 /* libPods-SAM.a */,
+				2EF8941139BA16D748059625 /* libPods-SAM.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		50DE3CEA8724DCDA9B23BC75 /* ExpoModulesProviders */ = {
+		67A883C513D9CD5E28C3832B /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				1A7A32DA024F225DD3A38C03 /* SAM */,
+				237581CF32A5846E082B5A5A /* Pods-SAM.debug.xcconfig */,
+				FD484A343753A1140DACA41A /* Pods-SAM.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
-		6BC140B106684BA2978E5CBC /* SAMWidget */ = {
+		6EE5BDFD11D4EEFEC0B30C93 /* SAM */ = {
 			isa = PBXGroup;
 			children = (
-				3E4AB6CF91EF465895B35C38 /* SAMWidget.swift */,
-				8C00DD690A364CF299B18EEC /* Info.plist */,
+				2369FDF98A9BC76279B8801E /* ExpoModulesProvider.swift */,
 			);
-			name = SAMWidget;
+			name = SAM;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -142,9 +143,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				6BC140B106684BA2978E5CBC /* SAMWidget */,
-				DEE17351A32678BA8D588F2F /* Pods */,
-				50DE3CEA8724DCDA9B23BC75 /* ExpoModulesProviders */,
+				EC5B8FF3A5F34D8385CE0B8B /* SAMWidget */,
+				67A883C513D9CD5E28C3832B /* Pods */,
+				2273F3B5665CB0AA0873482F /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -155,7 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* SAM.app */,
-				BD2A38F7FE9D4C9782BF2EEE /* SAMWidget.appex */,
+				950D1CB1203944A98E0C551E /* SAMWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -169,50 +170,25 @@
 			path = SAM/Supporting;
 			sourceTree = "<group>";
 		};
-		DEE17351A32678BA8D588F2F /* Pods */ = {
+		EC5B8FF3A5F34D8385CE0B8B /* SAMWidget */ = {
 			isa = PBXGroup;
 			children = (
-				91298CFFC29CA1D142366686 /* Pods-SAM.debug.xcconfig */,
-				4C42A4EEAD1924789D2D2B87 /* Pods-SAM.release.xcconfig */,
+				FF0CBA11ED5643C3939D7353 /* SAMWidget.swift */,
+				1041C5E93F0045DC96EE6805 /* Info.plist */,
 			);
-			name = Pods;
-			path = Pods;
+			name = SAMWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* SAM */ = {
+		0E2DF88CFC914A0285023203 /* SAMWidget */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SAM" */;
+			buildConfigurationList = 5F366F9363D54823BD99AEC7 /* Build configuration list for PBXNativeTarget "SAMWidget" */;
 			buildPhases = (
-				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				D480B99AC9A08BA97E276CC3 /* [Expo] Configure project */,
-				13B07F871A680F5B00A75B9A /* Sources */,
-				13B07F8C1A680F5B00A75B9A /* Frameworks */,
-				13B07F8E1A680F5B00A75B9A /* Resources */,
-				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				75214005757E45AAAAC13098 /* Embed Foundation Extensions */,
-				8888382EA22A13EA864B2720 /* [CP] Embed Pods Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				BABFEDDED23D4FC8A073BDCC /* PBXTargetDependency */,
-			);
-			name = SAM;
-			productName = SAM;
-			productReference = 13B07F961A680F5B00A75B9A /* SAM.app */;
-			productType = "com.apple.product-type.application";
-		};
-		D0580D13ADDD4AD2946CC5A3 /* SAMWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FEDA79D8D5E84BADB5C33D8F /* Build configuration list for PBXNativeTarget "SAMWidget" */;
-			buildPhases = (
-				7266271918444961B60601CD /* Sources */,
-				3CE1AAA51EA64B66B4D212AE /* Frameworks */,
-				16939E486EBB4C208DC4DE30 /* Resources */,
+				761B16616B1F4787A4EECE07 /* Sources */,
+				0207F4EC789442A5BCA50FC9 /* Frameworks */,
+				AD8141F960064D8282DC5B1C /* Resources */,
 			);
 			buildRules = (
 			);
@@ -220,8 +196,32 @@
 			);
 			name = SAMWidget;
 			productName = SAMWidget;
-			productReference = BD2A38F7FE9D4C9782BF2EEE /* SAMWidget.appex */;
+			productReference = 950D1CB1203944A98E0C551E /* SAMWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		13B07F861A680F5B00A75B9A /* SAM */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SAM" */;
+			buildPhases = (
+				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				59F0D79E4DB158F5B44750DD /* [Expo] Configure project */,
+				13B07F871A680F5B00A75B9A /* Sources */,
+				13B07F8C1A680F5B00A75B9A /* Frameworks */,
+				13B07F8E1A680F5B00A75B9A /* Resources */,
+				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
+				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
+				94EE27DEE26E4FC0B65CE65E /* Embed Foundation Extensions */,
+				AFAF2C55055F64AFC036B422 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8D8F4171A24046C096C31BBA /* PBXTargetDependency */,
+			);
+			name = SAM;
+			productName = SAM;
+			productReference = 13B07F961A680F5B00A75B9A /* SAM.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -250,7 +250,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* SAM */,
-				D0580D13ADDD4AD2946CC5A3 /* SAMWidget */,
+				0E2DF88CFC914A0285023203 /* SAMWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -263,11 +263,11 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				898B2513A62B43C7BF9BFCF7 /* PrivacyInfo.xcprivacy in Resources */,
+				E698F2960FD24F529617B9C6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		16939E486EBB4C208DC4DE30 /* Resources */ = {
+		AD8141F960064D8282DC5B1C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -316,6 +316,30 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		59F0D79E4DB158F5B44750DD /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/SAM/SAM.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-SAM/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-SAM/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SAM/expo-configure-project.sh\"\n";
+		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -350,7 +374,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SAM/Pods-SAM-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8888382EA22A13EA864B2720 /* [CP] Embed Pods Frameworks */ = {
+		AFAF2C55055F64AFC036B422 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -388,30 +412,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SAM/Pods-SAM-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		D480B99AC9A08BA97E276CC3 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/SAM/SAM.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-SAM/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-SAM/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SAM/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -420,60 +420,32 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				77DD60FDB83F18C07169D6F0 /* ExpoModulesProvider.swift in Sources */,
+				DC04A153AEC1EFFFA7DBCB4B /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		7266271918444961B60601CD /* Sources */ = {
+		761B16616B1F4787A4EECE07 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				28391FF524CE4AFAB87C623F /* SAMWidget.swift in Sources */,
+				4CF23015CB76473BA967CB89 /* SAMWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		BABFEDDED23D4FC8A073BDCC /* PBXTargetDependency */ = {
+		8D8F4171A24046C096C31BBA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D0580D13ADDD4AD2946CC5A3 /* SAMWidget */;
-			targetProxy = F9E0D3725F4F480F9A21B18B /* PBXContainerItemProxy */;
+			target = 0E2DF88CFC914A0285023203 /* SAMWidget */;
+			targetProxy = 0D89BFB5BFED4408969D504A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		097942E60F54460A9ED22396 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 107;
-				DEVELOPMENT_TEAM = CC9Q9BH5NT;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SAMWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0.0;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 91298CFFC29CA1D142366686 /* Pods-SAM.debug.xcconfig */;
+			baseConfigurationReference = 237581CF32A5846E082B5A5A /* Pods-SAM.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -511,7 +483,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4C42A4EEAD1924789D2D2B87 /* Pods-SAM.release.xcconfig */;
+			baseConfigurationReference = FD484A343753A1140DACA41A /* Pods-SAM.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -540,38 +512,6 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
-		};
-		8206E5743BCF451F8D7D0D86 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 107;
-				DEVELOPMENT_TEAM = CC9Q9BH5NT;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SAMWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0.0;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
 		};
 		83CBBA201A601CBA00E9B192 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -709,6 +649,66 @@
 			};
 			name = Release;
 		};
+		A5D239B158824F4C90BFAD2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 107;
+				DEVELOPMENT_TEAM = CC9Q9BH5NT;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SAMWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				MTL_FAST_MATH = YES;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CE353198136F47CCB5058482 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 107;
+				DEVELOPMENT_TEAM = CC9Q9BH5NT;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SAMWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				MTL_FAST_MATH = YES;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -721,20 +721,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		5F366F9363D54823BD99AEC7 /* Build configuration list for PBXNativeTarget "SAMWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE353198136F47CCB5058482 /* Debug */,
+				A5D239B158824F4C90BFAD2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "SAM" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		FEDA79D8D5E84BADB5C33D8F /* Build configuration list for PBXNativeTarget "SAMWidget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				8206E5743BCF451F8D7D0D86 /* Debug */,
-				097942E60F54460A9ED22396 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

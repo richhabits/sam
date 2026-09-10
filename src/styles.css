@@ -177,9 +177,9 @@
   --muted: #86868B;       /* pure gray */
   --border: rgba(0, 0, 0, 0.08); /* subtle dividers */
   --border-strong: rgba(0, 0, 0, 0.16);
-  --accent: #000000;      /* stark black */
-  --accent-text: #000000; /* stark black */
-  --accent-soft: #E5E5EA; /* cool gray */
+  --accent: #F0824E;      /* the one accent — see docs/DESIGN-SYSTEM.md */
+  --accent-text: #D9531F;
+  --accent-soft: #FBE4D5;
   --user-bubble: #E5E5EA; /* cool gray */
   /* Semantic colors */
   --c-blue: #0A84FF; --c-ok: #30D158; --c-err: #FF453A; --c-err-bg: rgba(255,69,58,.12); --c-bg2: var(--surface);
@@ -190,12 +190,12 @@
   /* Apple-tier shadows */
   --shadow: 0 1px 3px rgba(0,0,0,.03), 0 4px 12px rgba(0,0,0,.04);
   --shadow-lg: 0 10px 40px rgba(0,0,0,.08);
-  --shadow-accent: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-accent: 0 4px 16px rgba(240, 130, 78, 0.35);
   --glass-rim: rgba(255,255,255,.55);
   --shadow-glass: var(--shadow-lg), inset 0 1px 0 var(--glass-rim);
-  --accent-2: #333333;
+  --accent-2: #D9531F;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --on-accent: #FFFFFF;
+  --on-accent: #0C0A09; /* white on #F0824E is 2.62:1 — unreadable. This ink is 7.53:1. */
   --ring: 0 0 0 3.5px var(--accent-soft);
   /* Motion */
   --ease: cubic-bezier(.16, 1, .3, 1);
@@ -256,16 +256,16 @@ button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active,
   --muted: #86868B;
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.2);
-  --accent: #FFFFFF;
-  --accent-text: #FFFFFF;
-  --accent-soft: rgba(255, 255, 255, 0.1);
-  --accent-2: #E5E5EA;
+  --accent: #F0824E;
+  --accent-text: #FFA075;
+  --accent-soft: rgba(240, 130, 78, 0.14);
+  --accent-2: #D9531F;
   --user-bubble: #1C1C1E;
   --shadow: 0 4px 20px rgba(0,0,0,0.8);
   --shadow-lg: 0 16px 48px rgba(0,0,0,0.9);
-  --shadow-accent: 0 4px 16px rgba(255, 255, 255, 0.15);
+  --shadow-accent: 0 4px 16px rgba(240, 130, 78, 0.35);
   --glass-rim: rgba(255,255,255,0.08);
-  --on-accent: #000000;
+  --on-accent: #0C0A09; /* white on #F0824E is 2.62:1 — unreadable. This ink is 7.53:1. */
 }
 :root[data-theme="dark"] .app { background: var(--bg); }
 

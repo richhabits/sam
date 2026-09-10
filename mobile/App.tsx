@@ -17,11 +17,14 @@ import {
   View,
 } from 'react-native';
 import ChatScreen from './ChatScreen';
+import HomeScreen from './HomeScreen';
+import VaultScreen from './VaultScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
 import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
+import { mentionLabel } from './lib/mentions';
 import { ensurePermission, notify } from './lib/notify';
 import { haptic } from './lib/haptics';
 import { parsePairLink, type PairLink } from './lib/pairlink';
@@ -30,7 +33,8 @@ import { parseQuickLink } from './lib/quicklink';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
 import TasksScreen from './TasksScreen';
-import { ActionRow, Field, Row, Section, Segmented } from './ui';
+import { SamTabBar, type SamTabKey } from './samKit';
+import { ActionRow, Field, Row, Section } from './ui';
 
 // THE POCKET — SAM, in your hand.
 //
@@ -38,7 +42,14 @@ import { ActionRow, Field, Row, Section, Segmented } from './ui';
 // Works immediately on mobile without requiring any desktop setup,
 // while unlocking computer control and yard tasks when paired with a Mac/PC.
 
-type Surface = 'agent' | 'tasks' | 'settings';
+type Surface = 'home' | 'agent' | 'tasks' | 'vault' | 'settings';
+
+function surfaceToTabKey(s: Surface): SamTabKey {
+  return s === 'agent' ? 'chat' : s === 'tasks' ? 'yard' : s;
+}
+function tabKeyToSurface(k: SamTabKey): Surface {
+  return k === 'chat' ? 'agent' : k === 'yard' ? 'tasks' : (k as Surface);
+}
 
 export default function App() {
   const scheme = useColorScheme();
@@ -66,7 +77,9 @@ export default function App() {
   const column = useMemo(() => contentColumn(layout), [layout]);
 
   const [_paired, setPaired] = useState<boolean>(false);
-  const [surface, setSurface] = useState<Surface>('agent');
+  // Home. New screen, becomes the launch tab (design_handoff_sam_clients/README.md, "Build
+  // order" step 4) — everything else here used to open straight into Agent.
+  const [surface, setSurface] = useState<Surface>('home');
   const [prompt, setPrompt] = useState<string | null>(null);
   const [host, setHostInput] = useState('http://127.0.0.1:8787');
   const [code, setCode] = useState('');
@@ -240,20 +253,7 @@ export default function App() {
           <View style={[s.statusDot, { backgroundColor: _paired ? '#30D158' : ios.tint }]} />
         </Pressable>
 
-        <View style={{ flex: 1, paddingHorizontal: 10 }}>
-          <Segmented
-            ios={ios}
-            value={surface === 'settings' ? 'agent' : surface}
-            onChange={(k) => {
-              haptic.selection();
-              setSurface(k);
-            }}
-            options={[
-              { key: 'agent', label: 'Agent' },
-              { key: 'tasks', label: 'Tasks' },
-            ]}
-          />
-        </View>
+        <View style={{ flex: 1 }} />
 
         <Pressable
           onPress={() => {
@@ -297,17 +297,6 @@ export default function App() {
             >
               <Text style={[iosType.body, { color: ios.label }]}>Connect to Mac / PC</Text>
             </Pressable>
-            <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.margin }} />
-            <Pressable
-              onPress={() => {
-                haptic.light();
-                setMenu(false);
-                setSurface('settings');
-              }}
-              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: ios.cardPressed }]}
-            >
-              <Text style={[iosType.body, { color: ios.label }]}>Settings</Text>
-            </Pressable>
           </View>
         </>
       ) : null}
@@ -325,8 +314,24 @@ export default function App() {
 
       {/* Main Surfaces View */}
       <View style={[{ flex: 1 }, column]}>
-        {surface === 'agent' ? (
+        {surface === 'home' ? (
+          <HomeScreen
+            paired={_paired}
+            onNeedsPairing={onNeedsPairing}
+            onOpenPairing={() => setShowPairModal(true)}
+            onOpenChat={() => setSurface('agent')}
+            onOpenVault={() => setSurface('vault')}
+            onResume={(task) => {
+              // Same reference the `@` picker builds (lib/mentions.ts's mentionLabel) — ChatScreen's
+              // `prompt` prop appends it to the composer, exactly like a sam://ask deep link.
+              setPrompt(`@${mentionLabel(task)} `);
+              setSurface('agent');
+            }}
+          />
+        ) : surface === 'agent' ? (
           <ChatScreen ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
+        ) : surface === 'vault' ? (
+          <VaultScreen onNeedsPairing={onNeedsPairing} />
         ) : surface === 'tasks' ? (
           <TasksScreen
             ios={ios}
@@ -345,6 +350,25 @@ export default function App() {
           />
         )}
       </View>
+
+      {/* Bottom tab bar — samKit's SamTabBar (the handoff's fourteen-part kit), replacing the
+          old top Segmented control. Surface keys differ slightly from SamTabKey's naming
+          ('agent'→'chat', 'tasks'→'yard'); the two small maps below translate between them. */}
+      <SamTabBar
+        platform={Platform.OS === 'android' ? 'android' : 'ios'}
+        value={surfaceToTabKey(surface)}
+        onChange={(k) => {
+          haptic.selection();
+          setSurface(tabKeyToSurface(k));
+        }}
+        tabs={[
+          { key: 'home', glyph: '◇', label: 'Home' },
+          { key: 'chat', glyph: '◈', label: 'Agent' },
+          { key: 'yard', glyph: '▤', label: 'Tasks' },
+          { key: 'vault', glyph: '▥', label: 'Vault' },
+          { key: 'settings', glyph: '⚙', label: 'Settings' },
+        ]}
+      />
 
       {/* Pairing Modal */}
       <Modal

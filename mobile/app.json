@@ -78,7 +78,7 @@
         "expo-image-picker",
         {
           "microphonePermission": false,
-          "cameraPermission": "SAM uses the camera when you attach a photo to a message — the image is sent to your own SAM on your machine, nowhere else.",
+          "cameraPermission": "SAM uses the camera to attach a photo to a message, or to scan the QR code that pairs this phone with your Mac/PC — nothing leaves your own SAM.",
           "photosPermission": "SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else."
         }
       ],

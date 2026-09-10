@@ -24,8 +24,6 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '16.4'
 
 prepare_react_native_project!
 
-project 'SAM.xcodeproj'
-
 target 'SAM' do
   use_expo_modules!
 

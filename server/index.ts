@@ -171,6 +171,7 @@ import {
   buildGraph,
   vaultStats,
   readProjectNote,
+  readVaultNote,
   pruneOldLogs,
 } from "./vault.ts";
 
@@ -1418,6 +1419,17 @@ app.get("/api/vault/graph", (req, res) => {
 app.get("/api/vault/stats", (req, res) => {
   if (!canReadPrivate(req)) return denyRead(res, "your notes");
   res.json(vaultStats());
+});
+// Same gate, same "it's only metadata is a judgement about today's payload" reasoning as the
+// three routes above — this one serves a note's actual CONTENT, so it is if anything the more
+// sensitive of the four. group/id are validated inside readVaultNote() before either touches a
+// filesystem path; this route only translates "not found" into the right status.
+app.get("/api/vault/note", (req, res) => {
+  if (!canReadPrivate(req)) return denyRead(res, "your notes");
+  const { group, id } = req.query as { group?: string; id?: string };
+  const note = readVaultNote(String(group || ""), String(id || ""));
+  if (!note) return res.status(404).json({ error: "no such note" });
+  res.json(note);
 });
 
 app.get("/api/voice/token", async (req, res) => {

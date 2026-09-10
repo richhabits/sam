@@ -17,6 +17,12 @@ export type StreamHandlers = {
   onRoute?: (e: Extract<StreamEvent, { type: 'route' }>) => void;
   onToken?: (text: string) => void;
   onDone?: (text: string) => void;
+  /** A risky tool call the desktop paused on, awaiting approval — see PermissionGate in
+   *  samKit.tsx and confirmPending() in lib/api.ts. Firing this is the LAST thing a stream
+   *  does: the server holds the action and closes the response without a `done` (see
+   *  server/agent.ts's `emit({type:"pending",...}); return;`), so onToken's accumulated text
+   *  up to here is commentary, not a finished answer — do not render it as one. */
+  onPending?: (e: Extract<StreamEvent, { type: 'pending' }>) => void;
 };
 
 /**
@@ -64,6 +70,11 @@ export async function streamChat(
             } else if (e.type === 'done') {
               finalText = (typeof (e as any).text === 'string' && (e as any).text) || text;
               handlers.onDone?.(finalText);
+            } else if (e.type === 'pending' && typeof (e as any).pendingId === 'string') {
+              // Terminal for this stream — the server returns without a `done` (see the
+              // StreamHandlers doc above). Reader loop below drains to `end`/close on its own;
+              // nothing left to accumulate.
+              handlers.onPending?.(e as any);
             }
           }
         }

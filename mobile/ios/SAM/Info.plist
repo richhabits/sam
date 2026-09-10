@@ -51,6 +51,8 @@
     <string>SAM talks to the SAM running on your own computer, usually over your home network. Nothing is sent anywhere else.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else.</string>
+    <key>RCTMetroPort</key>
+    <string>$(RCT_METRO_PORT)</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
