@@ -17,22 +17,24 @@ import { samColor, samInk, samSpace } from './lib/samTheme';
 // dishonest control the handoff's own copy rules ("failures say what happened") argue against.
 // "Ask it" — text, which already works — is the one CTA below.
 //
-// Studio and Vault are real destinations in the handoff but don't exist as screens yet (build
-// order steps 6 and 8) — their grid tiles are disabled rather than pointed at nothing. FlipIt is
-// locked to simulated/paper/beta per the handoff's own FlipIt section and has no mobile screen
-// either. "Your computer" is real today: it's the same pairing flow QRScanner.tsx already
-// drives, just reached from here too.
+// Vault is real (build order step 6, VaultScreen.tsx). Studio is a real destination in the
+// handoff but doesn't exist as a screen yet (step 8) — its grid tile is disabled rather than
+// pointed at nothing. FlipIt is locked to simulated/paper/beta per the handoff's own FlipIt
+// section and has no mobile screen either. "Your computer" is real: it's the same pairing flow
+// QRScanner.tsx already drives, just reached from here too.
 
 type YardSummary = { on: boolean; recent: RecentTask[]; meter?: { todayTokens: number; weekTokens: number; byTier?: Record<string, number> }; queued?: number; running?: number };
 
 export default function HomeScreen({
   onOpenChat,
+  onOpenVault,
   onResume,
   onOpenPairing,
   onNeedsPairing,
   paired,
 }: {
   onOpenChat: () => void;
+  onOpenVault: () => void;
   onResume: (task: RecentTask) => void;
   onOpenPairing: () => void;
   onNeedsPairing: () => void;
@@ -129,7 +131,14 @@ export default function HomeScreen({
         <SamSectionLabel>SURFACES</SamSectionLabel>
         <View style={{ marginHorizontal: samSpace.gutter, flexDirection: 'row', flexWrap: 'wrap', gap: samSpace.rowGap }}>
           <GridTile label="Studio" glyph="◆" comingSoon />
-          <GridTile label="Vault" glyph="▤" comingSoon />
+          <GridTile
+            label="Vault"
+            glyph="▤"
+            onPress={() => {
+              haptic.medium();
+              onOpenVault();
+            }}
+          />
           <GridTile label="FlipIt" glyph="↯" comingSoon />
           <GridTile
             label="Your computer"

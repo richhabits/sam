@@ -195,6 +195,36 @@ export function buildGraph() {
   return graphCache;
 }
 
+// A daily note's id is always today()'s format — never taken from user input at write time, so
+// this is the one place that format becomes a validation rule rather than an assumption.
+const DAILY_ID_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Read one note's raw Markdown by (group, id) — the Vault screen's note reader
+ * (design_handoff_sam_clients/README.md, "Vault"). Same shape of guard as isValidProjectId
+ * above, extended to the other two groups buildGraph() can name: every id is validated against
+ * an allowlist pattern BEFORE it touches a path, because an id here has already been through
+ * URL decoding and a `../../..` is exactly what these regexes exist to refuse. "link" nodes
+ * (a [[wikilink]] target with no file of its own) are deliberately not a readable group —
+ * there is nothing on disk to serve them, so they always return null rather than a path guess.
+ */
+export function readVaultNote(group: string, id: string): { content: string } | null {
+  let file: string;
+  if (group === "project") {
+    if (!isValidProjectId(id)) return null;
+    file = join(PROJECTS_DIR, `${id}.md`);
+  } else if (group === "daily") {
+    if (!DAILY_ID_RE.test(id)) return null;
+    file = join(DAILY_DIR, `${id}.md`);
+  } else if (group === "memory" && id === "facts") {
+    file = join(VAULT_DIR, "facts.md");
+  } else {
+    return null;
+  }
+  if (!existsSync(file)) return null;
+  return { content: readFileSync(file, "utf8") };
+}
+
 export function vaultStats() {
   const count = (d: string) =>
     existsSync(d) ? readdirSync(d).filter((f) => f.endsWith(".md")).length : 0;

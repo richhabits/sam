@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import ChatScreen from './ChatScreen';
 import HomeScreen from './HomeScreen';
+import VaultScreen from './VaultScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
@@ -40,7 +41,7 @@ import { ActionRow, Field, Row, Section, Segmented } from './ui';
 // Works immediately on mobile without requiring any desktop setup,
 // while unlocking computer control and yard tasks when paired with a Mac/PC.
 
-type Surface = 'home' | 'agent' | 'tasks' | 'settings';
+type Surface = 'home' | 'agent' | 'tasks' | 'vault' | 'settings';
 
 export default function App() {
   const scheme = useColorScheme();
@@ -247,7 +248,7 @@ export default function App() {
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
           <Segmented
             ios={ios}
-            value={surface === 'settings' ? 'home' : surface}
+            value={surface === 'settings' || surface === 'vault' ? 'home' : surface}
             onChange={(k) => {
               haptic.selection();
               setSurface(k);
@@ -336,6 +337,7 @@ export default function App() {
             onNeedsPairing={onNeedsPairing}
             onOpenPairing={() => setShowPairModal(true)}
             onOpenChat={() => setSurface('agent')}
+            onOpenVault={() => setSurface('vault')}
             onResume={(task) => {
               // Same reference the `@` picker builds (lib/mentions.ts's mentionLabel) — ChatScreen's
               // `prompt` prop appends it to the composer, exactly like a sam://ask deep link.
@@ -345,6 +347,8 @@ export default function App() {
           />
         ) : surface === 'agent' ? (
           <ChatScreen ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
+        ) : surface === 'vault' ? (
+          <VaultScreen onNeedsPairing={onNeedsPairing} />
         ) : surface === 'tasks' ? (
           <TasksScreen
             ios={ios}
