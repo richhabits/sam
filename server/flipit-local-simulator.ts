@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
-import { type OrderBookTick } from "./flipit-ingest.ts";
-import { type PolymarketOrderParams } from "./flipit-execution.ts";
+import type { OrderBookTick } from "./flipit-ingest.ts";
+import type { PolymarketOrderParams } from "./flipit-execution.ts";
 
 export class FlipItLocalSimulator extends EventEmitter {
   private mockDelayMs: number;

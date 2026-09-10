@@ -321,7 +321,7 @@ export function desk(now = Date.now()): Desk {
 }
 export function clearDeskCache() { cached = null; }
 
-let lastAlertedState = { rung: -1, stale: false };
+const lastAlertedState = { rung: -1, stale: false };
 export async function checkFlipItAlerts(now = Date.now()): Promise<string | null> {
   const d = desk(now);
   if (!d.present || !d.loop || !d.now) return null;
