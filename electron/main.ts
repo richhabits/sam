@@ -360,7 +360,7 @@ app.whenReady().then(() => {
     !!overlay && !overlay.isDestroyed() && e.sender === overlay.webContents;
 
   ipcMain.handle("overlay:run", (e, payload) => { if (!fromOverlay(e)) throw new Error("not the overlay"); return runOverlayAction(payload); });
-  ipcMain.handle("overlay:copy", (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); clipboard.writeText(String(text || "")); return true; });
+  ipcMain.handle("overlay:copy", async (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); await clipboard.writeText(String(text || "")); return true; });
   ipcMain.handle("overlay:paste", async (e, text: string) => { if (!fromOverlay(e)) throw new Error("not the overlay"); overlay?.hide(); await pasteBack(String(text || "")); return true; });
   ipcMain.handle("overlay:run-as-task", (e, task: string) => {
     if (!fromOverlay(e)) throw new Error("not the overlay");
