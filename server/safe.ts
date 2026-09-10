@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { decrypt, encrypt } from "./crypto-vault.ts";
 import { envKeysPresent, removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
+import { withLatchSync } from "./latch.ts";
 import { err, ok, type Outcome } from "./outcome.ts";
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
@@ -81,10 +82,20 @@ function keychainStore(keyHex: string): boolean {
       return true;
     }
     if (process.platform === "win32") {
-      execFileSync("powershell", ["-NoProfile", "-Command",
-        `$b=[Text.Encoding]::UTF8.GetBytes('${keyHex}');` +
-        `$p=[Security.Cryptography.ProtectedData]::Protect($b,$null,'CurrentUser');` +
-        `[IO.File]::WriteAllBytes('${join(safeDir(), "safe.keychain.dpapi").replace(/\\/g, "\\\\")}',$p)`], { stdio: "ignore" });
+      // DPAPI via PowerShell. Must Add-Type System.Security (not always loaded), and must quote
+      // paths with JSON.stringify so usernames with spaces (real Windows installs) don't break
+      // the -Command string. Old single-quoted path interpolation failed for those users and
+      // silently returned false → Safe set up without a recoverable keychain unlock.
+      const dpapiPath = join(safeDir(), "safe.keychain.dpapi");
+      mkdirSync(safeDir(), { recursive: true });
+      const cmd = [
+        "Add-Type -AssemblyName System.Security",
+        `$path = ${JSON.stringify(dpapiPath)}`,
+        `$b = [Text.Encoding]::UTF8.GetBytes(${JSON.stringify(keyHex)})`,
+        "$p = [Security.Cryptography.ProtectedData]::Protect($b, $null, 'CurrentUser')",
+        "[IO.File]::WriteAllBytes($path, $p)",
+      ].join("; ");
+      execFileSync("powershell", ["-NoProfile", "-Command", cmd], { stdio: "ignore" });
       return true;
     }
   } catch { /* keychain unavailable → passphrase path */ }
@@ -99,10 +110,14 @@ function keychainRetrieve(): string | null {
     if (process.platform === "win32") {
       const f = join(safeDir(), "safe.keychain.dpapi");
       if (!existsSync(f)) return null;
-      return execFileSync("powershell", ["-NoProfile", "-Command",
-        `$p=[IO.File]::ReadAllBytes('${f.replace(/\\/g, "\\\\")}');` +
-        `$b=[Security.Cryptography.ProtectedData]::Unprotect($p,$null,'CurrentUser');` +
-        `[Text.Encoding]::UTF8.GetString($b)`], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
+      const cmd = [
+        "Add-Type -AssemblyName System.Security",
+        `$path = ${JSON.stringify(f)}`,
+        "$p = [IO.File]::ReadAllBytes($path)",
+        "$b = [Security.Cryptography.ProtectedData]::Unprotect($p, $null, 'CurrentUser')",
+        "[Text.Encoding]::UTF8.GetString($b)",
+      ].join("; ");
+      return execFileSync("powershell", ["-NoProfile", "-Command", cmd], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
     }
   } catch { /* not stored / keychain unavailable */ }
   return null;
@@ -206,11 +221,16 @@ export function get(name: string): string | undefined {
   return value;
 }
 
-/** Store (or replace) a secret. */
+/** Store (or replace) a secret. Read-modify-write, so it runs under the same "safe" Latch
+ *  env-file.ts uses for its own writes — without it, two near-simultaneous saves (e.g. the
+ *  KeyWizard's per-provider debounced saves) can each read the store before the other writes,
+ *  and the second write silently drops the first caller's key. */
 export function put(name: string, value: string): void {
-  const map = readStore();
-  map[name] = value;
-  writeStore(map);
+  withLatchSync("safe", () => {
+    const map = readStore();
+    map[name] = value;
+    writeStore(map);
+  });
   trail("state", `Safe store: ${name}`, { secret: name });
 }
 

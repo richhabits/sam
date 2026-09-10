@@ -7,7 +7,11 @@ import * as safe from "./safe.ts";
 // at import time (before the Safe unlocks) is safe. After the Safe unlocks, reloadPools() re-reads and
 // the pools pick up the sealed keys — WITHOUT the plaintext ever needing to sit in process.env.
 function secretVal(name: string): string | undefined {
-  if (safe.isSetup() && safe.isUnlocked()) { const v = safe.get(name); if (v !== undefined && v !== "") return v; }
+  // Once the Safe HOLDS this name — even cleared to "" — it is authoritative and must not fall
+  // through to process.env: a key cleared via Settings writes "" here (removeEnvKeys() only
+  // scrubs the .env FILE, never the running process's env), and falling back on empty used to
+  // let that stale in-memory value silently revive a key the user just deleted.
+  if (safe.isSetup() && safe.isUnlocked() && safe.has(name)) return safe.get(name) || undefined;
   return process.env[name] || undefined;
 }
 

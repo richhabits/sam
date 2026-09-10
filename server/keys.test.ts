@@ -55,6 +55,18 @@ describe("keys.ts reads provider keys from the Safe", () => {
     expect(() => reloadPools()).not.toThrow();        // must not throw mid-boot
     expect(poolSize("groq")).toBe(1);                 // fell back to the env value
   });
+
+  it("clearing a key in the Safe stays cleared, even with a stale value still in process.env", () => {
+    // A key set via the old plaintext path before the Safe existed leaves process.env populated.
+    // Migrating to the Safe and then clearing the key from Settings writes "" into the Safe
+    // (removeEnvKeys only scrubs the .env FILE, never the running process's env) — a later
+    // reloadPools() must not let that leftover process.env value silently revive it.
+    process.env.GROQ_API_KEYS = "stale-pre-migration-value";
+    setup({ passphrase: PASS, useKeychain: false });
+    put("GROQ_API_KEYS", "");                          // the user cleared it via Settings
+    reloadPools();
+    expect(poolSize("groq")).toBe(0);                  // must NOT fall back to the stale env value
+  });
 });
 
 describe("the narrowing — provider keys are NOT bridged into process.env", () => {
