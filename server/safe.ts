@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { decrypt, encrypt } from "./crypto-vault.ts";
 import { envKeysPresent, removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
+import { withLatchSync } from "./latch.ts";
 import { err, ok, type Outcome } from "./outcome.ts";
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
@@ -220,11 +221,16 @@ export function get(name: string): string | undefined {
   return value;
 }
 
-/** Store (or replace) a secret. */
+/** Store (or replace) a secret. Read-modify-write, so it runs under the same "safe" Latch
+ *  env-file.ts uses for its own writes — without it, two near-simultaneous saves (e.g. the
+ *  KeyWizard's per-provider debounced saves) can each read the store before the other writes,
+ *  and the second write silently drops the first caller's key. */
 export function put(name: string, value: string): void {
-  const map = readStore();
-  map[name] = value;
-  writeStore(map);
+  withLatchSync("safe", () => {
+    const map = readStore();
+    map[name] = value;
+    writeStore(map);
+  });
   trail("state", `Safe store: ${name}`, { secret: name });
 }
 

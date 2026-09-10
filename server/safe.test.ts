@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { _reset as resetIssues, recentTrail } from "./issues.ts";
 import { get, isSetup, isUnlocked, lock, loadIntoProcessEnv, migratableNames, migrateFromEnv, names, put, secretNames, setup, status, unlock, _reset } from "./safe.ts";
+import { claim, LatchHeld, release } from "./latch.ts";
 
 // The Safe: secrets sealed at rest, readable only through get(); a locked read throws (never
 // plaintext); migration imports from .env, verifies, then strips the plaintext; and no secret VALUE
@@ -167,5 +168,27 @@ describe("the Safe — secretNames (the migration candidate list)", () => {
     writeFileSync(envFile, "FOO=keep\nGROQ_API_KEYS=sk-live-at-rest\n");
     expect(migratableNames()).toContain("GROQ_API_KEYS");       // now it's plaintext in the file
     delete process.env.GROQ_API_KEYS;
+  });
+});
+
+describe("the Safe — put() is latched against concurrent writers", () => {
+  it("fails loudly instead of losing an update when another writer holds the \"safe\" latch", () => {
+    // Mirrors env-file.ts's writeEnv/removeEnvKeys, which have used this same "fail loudly rather
+    // than silently lose a write" Latch for exactly this reason. Before this fix, put() had no
+    // lock: two near-simultaneous KeyWizard saves could each read the store before the other's
+    // write landed, and the second write would overwrite the first — dropping a provider's key
+    // with no error anywhere.
+    expect(setup({ passphrase: PASS, useKeychain: false }).ok).toBe(true);
+    put("GROQ_API_KEYS", "first");
+    const held = claim("safe");
+    try {
+      expect(() => put("GEMINI_API_KEY", SECRET)).toThrow(LatchHeld);
+    } finally {
+      release(held);
+    }
+    // Once released, put() works again and nothing from the failed attempt was persisted.
+    put("GEMINI_API_KEY", SECRET);
+    expect(get("GEMINI_API_KEY")).toBe(SECRET);
+    expect(get("GROQ_API_KEYS")).toBe("first"); // the original write is untouched
   });
 });

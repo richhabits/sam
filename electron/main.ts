@@ -318,33 +318,11 @@ app.whenReady().then(() => {
     app.quit();
   });
 
-  ipcMain.on("open-studio", () => {
-    const studioWin = new BrowserWindow({
-      width: 1400,
-      height: 900,
-      webPreferences: {
-        preload: path.join(__dirname, "preload.mjs"),
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-      titleBarStyle: 'hiddenInset',
-      vibrancy: 'sidebar',
-      backgroundColor: '#00000000', // transparent for vibrancy
-    });
-
-    hardenNavigation(studioWin);
-    if (process.env.VITE_DEV_SERVER_URL) {
-      studioWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=studio`);
-    } else {
-      studioWin.loadFile(path.join(__dirname, "../dist/index.html"), { search: "app=studio" });
-    }
-  });
-
-  // FlipIt — preload already exposes samDesktop.openFlipit → "open-flipit", but this listener was
-  // never registered. In Electron the renderer takes the sd.openFlipit branch (truthy), IPC goes
-  // nowhere, and the window.open fallback never runs — so the FLIP IT button does nothing (#94).
-  ipcMain.on("open-flipit", () => {
-    const flipitWin = new BrowserWindow({
+  // Shared by every secondary app window (Studio, FlipIt, …) — same size, same hardening, same
+  // dist/index.html?app=NAME loading. Kept as one factory so a future fix to these options (a new
+  // webPreferences flag, a titlebar/vibrancy change) lands once instead of drifting across copies.
+  function openAppWindow(appName: string): void {
+    const win = new BrowserWindow({
       width: 1400,
       height: 900,
       webPreferences: {
@@ -354,15 +332,23 @@ app.whenReady().then(() => {
       },
       titleBarStyle: "hiddenInset",
       vibrancy: "sidebar",
-      backgroundColor: "#00000000",
+      backgroundColor: "#00000000", // transparent for vibrancy
     });
-    hardenNavigation(flipitWin);
+
+    hardenNavigation(win);
     if (process.env.VITE_DEV_SERVER_URL) {
-      flipitWin.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=flipit`);
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}?app=${appName}`);
     } else {
-      flipitWin.loadFile(path.join(__dirname, "../dist/index.html"), { search: "app=flipit" });
+      win.loadFile(path.join(__dirname, "../dist/index.html"), { search: `app=${appName}` });
     }
-  });
+  }
+
+  ipcMain.on("open-studio", () => openAppWindow("studio"));
+
+  // FlipIt — preload already exposes samDesktop.openFlipit → "open-flipit", but this listener was
+  // never registered. In Electron the renderer takes the sd.openFlipit branch (truthy), IPC goes
+  // nowhere, and the window.open fallback never runs — so the FLIP IT button does nothing (#94).
+  ipcMain.on("open-flipit", () => openAppWindow("flipit"));
 
   // ── Overlay wiring (Phase 4) ──
   createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)

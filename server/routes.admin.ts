@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { isElonMode, setElonMode } from "./authz.ts";
 import { forgetStatuses as forgetConnectorStatuses } from "./connectors.ts";
 import { removeEnvKeys, writeEnv } from "./env-file.ts";
-import { isSetup as safeIsSetup, isUnlocked as safeIsUnlocked, put as safePut } from "./safe.ts";
+import { isSetup as safeIsSetup, isUnlocked as safeIsUnlocked, put as safePut, secretNames as safeSecretNames } from "./safe.ts";
 import { isLoopback } from "./http-guards.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { keyStatus, poolSize, setPool } from "./keys.ts";
@@ -149,7 +149,20 @@ export function registerAdminRoutes(app: Express) {
     const { key, value } = req.body as { key: string; value: string };
     const envVar = CONFIG_ENV[key];
     if (!envVar) return res.status(400).json({ error: "unknown config key" });
-    writeEnv(envVar, String(value || ""));
+    // Same Safe-aware write as /api/admin/keys, for the same reason: a handful of CONFIG_ENV vars
+    // (Cloudflare token, Apple app-specific password) are also in the Safe's tool-cred migration
+    // set (safe.secretNames()). Writing those to plaintext .env unconditionally would re-expose a
+    // sealed secret and leave the Safe holding a stale value — the exact bug fixed above for keys.
+    const joined = String(value || "");
+    if (safeIsSetup() && safeSecretNames().includes(envVar)) {
+      if (!safeIsUnlocked()) {
+        return res.status(409).json({ error: "Unlock the Safe in Settings before changing this — it's sealed and a locked Safe cannot store a new value." });
+      }
+      safePut(envVar, joined);
+      removeEnvKeys([envVar]);
+    } else {
+      writeEnv(envVar, joined);
+    }
     if (envVar.startsWith("SMTP_") || envVar === "SAM_OWNER_EMAIL") resetMailer();   // pick up the new email config
     // Connector status is memoised for 30s; without this, pasting a Slack token and watching the
     // row still say "not connected" reads as the paste having failed.
