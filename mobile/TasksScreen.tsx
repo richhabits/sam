@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { applyFilter, type Filter, taskFilters, windowNote } from './lib/filters';
 import { elapsed, type JobStep, runLine } from './lib/fold';
 import { GLYPHS } from './lib/glyphs';
-import { type IOS, metrics, stateToneText, type } from './lib/ios';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import JobDetailSheet from './JobDetailSheet';
-import { ActionRow, Chips, Row, Screen, Section } from './ui';
+import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection } from './samKit';
+import { samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
 
@@ -39,11 +39,9 @@ type Yard = {
 type PublishedSite = { slug: string; name: string; url: string; publishedAt: number; qr: string | null };
 
 export default function TasksScreen({
-  ios,
   onNeedsPairing,
   onOpenPairing,
 }: {
-  ios: IOS;
   onNeedsPairing: () => void;
   onOpenPairing?: () => void;
 }) {
@@ -136,96 +134,84 @@ export default function TasksScreen({
   const rows = applyFilter(yard?.recent ?? [], filter);
 
   return (
-    <Screen
-      ios={ios}
-      title="Tasks"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ios.secondaryLabel} />}
+    <ScrollView
+      style={{ flex: 1, backgroundColor: samColor.ground }}
+      contentContainerStyle={{ paddingTop: samSpace.section, paddingBottom: 40 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={samInk.metadata} />}
     >
+      <Text style={[{ fontSize: 33, fontWeight: '700', color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }]}>
+        Tasks
+      </Text>
+
       {!yard || error ? (
-        <Section
-          ios={ios}
+        <SamSection
           header="Desktop Yard"
           footer="Tasks, background builds, automated playbooks, and file sync run on your desktop hardware. Connect to your Mac or PC to monitor them live from your phone."
         >
-          <Row
-            ios={ios}
-            glyph={GLYPHS.device}
-            title="Desktop Node"
-            value="Not connected"
-          />
-          <ActionRow
-            ios={ios}
-            title="Connect to Mac / PC"
-            onPress={() => onOpenPairing?.()}
-            last
-          />
-        </Section>
+          <SamRow glyph={GLYPHS.device} title="Desktop Node" status={<Text style={[samType.mono, { color: samInk.metadata }]}>Not connected</Text>} />
+          <SamActionRow title="Connect to Mac / PC" onPress={() => onOpenPairing?.()} />
+        </SamSection>
       ) : null}
 
       {yard && !yard.on ? (
-        <Section ios={ios} footer="Turn the yard on from SAM on your Mac and jobs will appear here.">
-          <Row ios={ios} title="The yard is off" last />
-        </Section>
+        <SamSection footer="Turn the yard on from SAM on your Mac and jobs will appear here.">
+          <SamRow title="The yard is off" />
+        </SamSection>
       ) : null}
 
       {yard?.on ? (
         <>
           {rows.length || filter !== 'all' ? (
-            <View style={{ marginTop: 2, marginBottom: 12 }}>
-              <Chips ios={ios} options={chips} value={filter} onChange={setFilter} label="Filter tasks" />
+            <View style={{ marginBottom: samSpace.section }}>
+              <SamHScroll>
+                {chips.map((c) => (
+                  <SamChip key={c.key} label={c.count != null ? `${c.label} (${c.count})` : c.label} on={c.key === filter} onPress={() => setFilter(c.key)} />
+                ))}
+              </SamHScroll>
             </View>
           ) : null}
 
-          <Section ios={ios} footer={windowNote(yard.recent ?? [], yard) || undefined}>
+          <SamSection footer={windowNote(yard.recent ?? [], yard) || undefined}>
             {!yard.recent?.length ? (
-              <Row ios={ios} title="Nothing has run yet" last />
+              <SamRow title="Nothing has run yet" />
             ) : !rows.length ? (
-              <Row ios={ios} title={`No ${filter} tasks in the last ${yard.recent.length}`} last />
+              <SamRow title={`No ${filter} tasks in the last ${yard.recent.length}`} />
             ) : (
-              rows.map((j, i) => (
-                <Row
+              rows.map((j) => (
+                <SamRow
                   key={j.id}
-                  ios={ios}
                   title={taskTitle(j)}
                   glyph={taskGlyph(j.kind)}
-                  subtitle={subtitleFor(j, now)}
-                  accessory={<StateAccessory ios={ios} state={j.state} />}
-                  last={i === rows.length - 1}
+                  meta={subtitleFor(j, now)}
+                  status={<StateAccessory state={j.state} />}
                   onPress={() => setOpenJobId(j.id)}
                 />
               ))
             )}
-          </Section>
+          </SamSection>
 
           {published.length ? (
-            <Section ios={ios} header="Published" footer="Every project of yours currently live on the internet. Tap a task above to publish or unpublish it.">
-              {published.map((s, i) => (
-                <Row
+            <SamSection header="Published" footer="Every project of yours currently live on the internet. Tap a task above to publish or unpublish it.">
+              {published.map((s) => (
+                <SamRow
                   key={s.slug}
-                  ios={ios}
                   title={s.name}
-                  subtitle={s.url}
-                  accessory={s.qr ? <Image source={{ uri: s.qr }} style={{ width: 36, height: 36, borderRadius: 6, marginLeft: 8, backgroundColor: '#fff' }} /> : undefined}
-                  last={i === published.length - 1}
+                  meta={s.url}
+                  status={s.qr ? <Image source={{ uri: s.qr }} style={{ width: 36, height: 36, borderRadius: 6, backgroundColor: '#fff' }} /> : undefined}
                 />
               ))}
-            </Section>
+            </SamSection>
           ) : null}
 
           {yard.meter ? (
-            <Section
-              ios={ios}
-              header="Cost"
-              footer="SAM routes to a free or local brain first — this is what everything actually cost."
-            >
-              <Row ios={ios} title="Today" value={`${yard.meter.todayTokens ?? 0} tokens`} />
-              <Row ios={ios} title="This week" value={`${yard.meter.weekTokens ?? 0} tokens`} last />
-            </Section>
+            <SamSection header="Cost" footer="SAM routes to a free or local brain first — this is what everything actually cost.">
+              <SamRow title="Today" status={<Text style={[samType.mono, { color: samInk.metadata }]}>{yard.meter.todayTokens ?? 0} tokens</Text>} />
+              <SamRow title="This week" status={<Text style={[samType.mono, { color: samInk.metadata }]}>{yard.meter.weekTokens ?? 0} tokens</Text>} />
+            </SamSection>
           ) : null}
         </>
       ) : null}
 
-      <View style={{ height: metrics.margin }} />
       <JobDetailSheet
         jobId={openJobId}
         onClose={() => setOpenJobId(null)}
@@ -237,7 +223,7 @@ export default function TasksScreen({
         })()}
         onTogglePublish={(slug) => publishOrUnpublish(slug, published.find((s) => s.slug === slug))}
       />
-    </Screen>
+    </ScrollView>
   );
 }
 
@@ -256,14 +242,21 @@ function subtitleFor(j: Job, now: number): string {
   return parts.join(' · ');
 }
 
-function StateAccessory({ ios, state }: { ios: IOS; state: Job['state'] }) {
+// Same meanings as the old stateToneText: done -> green, failed -> red, everything else muted
+// (running is carried by the spinner, not colour).
+function stateTone(state: Job['state']): string {
+  if (state === 'done') return samColor.green;
+  if (state === 'failed') return samColor.red;
+  return samInk.metadata;
+}
+function StateAccessory({ state }: { state: Job['state'] }) {
   const running = state === 'running';
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 20, alignItems: 'center' }}>
-        {running ? <ActivityIndicator size="small" color={ios.secondaryLabel} /> : null}
+        {running ? <ActivityIndicator size="small" color={samInk.metadata} /> : null}
       </View>
-      <Text style={[type.footnote, { color: stateToneText(state, ios), fontWeight: '600' }]}>{state}</Text>
+      <Text style={[samType.monoXs, { color: stateTone(state) }]}>{state}</Text>
     </View>
   );
 }

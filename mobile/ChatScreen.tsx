@@ -3,7 +3,6 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -19,7 +18,6 @@ import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
 import { consentCopy, loadConsent, needsConsent, type SpendConsent, setConsent } from './lib/consent';
 import { loadThread, saveThread } from './lib/history';
-import { type IOS, type as iosType, metrics, stateTone } from './lib/ios';
 import { parseMarkdown } from './lib/markdown';
 import {
   activeReferences,
@@ -36,8 +34,8 @@ import {
   taskTitle,
   taskWhen,
 } from './lib/mentions';
-import { Glyph } from './ui';
-import { PermissionGate, RunLog, type RunStep } from './samKit';
+import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
+import { samBorder, samColor, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -85,7 +83,7 @@ const BRAINS = [
 import * as Clipboard from 'expo-clipboard';
 import { haptic } from './lib/haptics';
 
-function CodeBlockView({ text, lang, s, ios }: { text: string; lang?: string; s: any; ios: IOS }) {
+function CodeBlockView({ text, lang, s }: { text: string; lang?: string; s: any }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -108,7 +106,7 @@ function CodeBlockView({ text, lang, s, ios }: { text: string; lang?: string; s:
           accessibilityRole="button"
           accessibilityLabel="Copy code"
         >
-          <Text style={[s.copyBtnText, copied && { color: ios.tintText }]}>
+          <Text style={[s.copyBtnText, copied && { color: samColor.accent }]}>
             {copied ? '✓ Copied' : 'Copy'}
           </Text>
         </Pressable>
@@ -123,13 +121,13 @@ function CodeBlockView({ text, lang, s, ios }: { text: string; lang?: string; s:
 /** SAM answers in markdown, so render it as markdown — literal ** and ``` on screen is what a
  *  lazy port looks like. Blocks re-parse on every token, which is cheap and keeps a code fence
  *  from flashing as prose before its closing ``` arrives. */
-function Rendered({ text, s, ios }: { text: string; s: any; ios: IOS }) {
+function Rendered({ text, s }: { text: string; s: any }) {
   return (
     <>
       {parseMarkdown(text).map((b, i) =>
         b.kind === 'codeblock' ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
-          <CodeBlockView key={i} text={b.text} lang={b.lang} s={s} ios={ios} />
+          <CodeBlockView key={i} text={b.text} lang={b.lang} s={s} />
         ) : (
           // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
           <Text key={i} style={s.samText}>
@@ -157,18 +155,16 @@ function Rendered({ text, s, ios }: { text: string; s: any; ios: IOS }) {
 }
 
 export default function ChatScreen({
-  ios,
   onNeedsPairing,
   resetKey = 0,
   prompt = null,
 }: {
-  ios: IOS;
   onNeedsPairing: () => void;
   resetKey?: number;
   /** Text handed in by a `sam://ask?text=…` link — a widget tap, a Shortcut, a QR code. */
   prompt?: string | null;
 }) {
-  const s = useMemo(() => makeStyles(ios), [ios]);
+  const s = styles;
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -532,7 +528,7 @@ export default function ChatScreen({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: ios.groupedBg }}
+      style={{ flex: 1, backgroundColor: samColor.ground }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
@@ -565,12 +561,9 @@ export default function ChatScreen({
                     haptic.light();
                     setDraft(t);
                   }}
-                  style={({ pressed }) => [
-                    s.starter,
-                    { backgroundColor: ios.fill, borderColor: ios.separator, opacity: pressed ? 0.6 : 1 },
-                  ]}
+                  style={({ pressed }) => [s.starter, { opacity: pressed ? 0.6 : 1 }]}
                 >
-                  <Text style={[s.starterText, { color: ios.label }]}>{t}</Text>
+                  <Text style={s.starterText}>{t}</Text>
                 </Pressable>
               ))}
             </View>
@@ -585,36 +578,26 @@ export default function ChatScreen({
                 place to explain an outage, and the starters above still work without it. */}
             {yard?.on && yard.recent.length ? (
               <View style={s.resume}>
-                <Text style={[s.resumeHead, { color: ios.secondaryLabel }]}>PICK UP WHERE YOU LEFT OFF</Text>
+                <Text style={s.resumeHead}>PICK UP WHERE YOU LEFT OFF</Text>
                 {yard.recent.slice(0, 3).map((t) => (
-                  <Pressable
+                  <SamRow
                     key={t.id}
+                    glyph={taskGlyph(t.kind)}
+                    title={taskTitle(t)}
+                    meta={[t.state, taskWhen(t.createdAt)].filter(Boolean).join(' · ')}
                     onPress={() => void resume(t)}
-                    style={({ pressed }) => [
-                      s.resumeCard,
-                      { backgroundColor: ios.card, borderColor: ios.separator },
-                      pressed && { backgroundColor: ios.cardPressed },
-                    ]}
-                  >
-                    <Glyph ios={ios} glyph={taskGlyph(t.kind)} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.resumeTitle, { color: ios.label }]} numberOfLines={1}>
-                        {taskTitle(t)}
-                      </Text>
-                      <Text style={[s.resumeSub, { color: ios.secondaryLabel }]} numberOfLines={1}>
-                        {[t.state, taskWhen(t.createdAt)].filter(Boolean).join(' · ')}
-                      </Text>
-                    </View>
-                    {/* Same language as the Tasks list — a job must not read as green in one
-                        place and grey in another. Running is a SPINNER on both surfaces rather
-                        than a coloured dot: the tint stopped being a status (see stateTone),
-                        and a static dot cannot tell you whether a job is working or wedged. */}
-                    {t.state === 'running' ? (
-                      <ActivityIndicator size="small" color={ios.secondaryLabel} />
-                    ) : (
-                      <View style={[s.resumeDot, { backgroundColor: stateTone(t.state, ios) }]} />
-                    )}
-                  </Pressable>
+                    // Same language as the Tasks list — a job must not read as green in one
+                    // place and grey in another. Running is a SPINNER on both surfaces rather
+                    // than a coloured dot: a static dot cannot tell you whether a job is
+                    // working or wedged.
+                    status={
+                      t.state === 'running' ? (
+                        <ActivityIndicator size="small" color={samInk.metadata} />
+                      ) : (
+                        <View style={[s.resumeDot, { backgroundColor: stateTone(t.state) }]} />
+                      )
+                    }
+                  />
                 ))}
               </View>
             ) : null}
@@ -669,9 +652,9 @@ export default function ChatScreen({
                   style={s.bubbleSam}
                 >
                   {m.pending && !m.text ? (
-                    <ActivityIndicator color={ios.tint} />
+                    <ActivityIndicator color={samColor.accent} />
                   ) : (
-                    <Rendered text={m.text} s={s} ios={ios} />
+                    <Rendered text={m.text} s={s} />
                   )}
                 </Pressable>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
@@ -685,16 +668,12 @@ export default function ChatScreen({
       {attached.length ? (
         <View style={s.chipBar}>
           {attached.map((a, i) => (
-            <Pressable
+            <SamChip
               // biome-ignore lint/suspicious/noArrayIndexKey: removal is BY index (see onPress), so the index is the identity this list actually uses.
               key={i}
+              label={`${(a.name || 'attachment').slice(0, 22)}  ✕`}
               onPress={() => setAttached((prev) => prev.filter((_, j) => j !== i))}
-              style={[s.chip, { backgroundColor: ios.fill }]}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove attachment ${a.name || 'attachment'}`}
-            >
-              <Text style={[s.chipText, { color: ios.tintText }]}>{(a.name || 'attachment').slice(0, 22)}  ✕</Text>
-            </Pressable>
+            />
           ))}
         </View>
       ) : null}
@@ -704,18 +683,14 @@ export default function ChatScreen({
       {liveRefs.length ? (
         <View style={s.chipBar}>
           {liveRefs.map((r) => (
-            <Pressable
+            <SamChip
               key={r.id}
+              label={`@${r.label.slice(0, 22)}  ✕`}
               onPress={() => {
                 setRefs((prev) => prev.filter((x) => x.id !== r.id));
                 setDraft((d) => removeMention(d, r.label));
               }}
-              style={[s.chip, { backgroundColor: ios.fill }]}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove reference ${r.label}`}
-            >
-              <Text style={[s.chipText, { color: ios.tintText }]}>@{r.label.slice(0, 22)}  ✕</Text>
-            </Pressable>
+            />
           ))}
         </View>
       ) : null}
@@ -727,38 +702,22 @@ export default function ChatScreen({
           Now it is one control INSIDE the composer showing the current choice, and the sheet it
           opens explains each option in a line. The explanation is the point: "free" and "turbo"
           mean nothing until someone says one costs nothing and the other spends credit. */}
-      <Modal visible={brainPicker} transparent animationType="fade" onRequestClose={() => setBrainPicker(false)}>
-        <Pressable style={s.brainScrim} onPress={() => setBrainPicker(false)}>
-          {/* Claims the touch so a tap that lands on the sheet itself — the gap beside a row, the
-              title — does not fall through to the scrim behind it and dismiss what you are reading.
-              The responder prop rather than a Pressable with an empty handler: same effect, and it
-              says "stop here" instead of "there is a button here that does nothing". */}
-          <View
-            style={[s.brainSheet, { backgroundColor: ios.card }]}
-            onStartShouldSetResponder={() => true}
+      <SamSheet visible={brainPicker} onClose={() => setBrainPicker(false)}>
+        <Text style={s.brainTitle}>Which brain answers</Text>
+        {BRAINS.map((b) => (
+          <Pressable
+            key={b.key}
+            onPress={() => { setTier(b.key); setBrainPicker(false); }}
+            style={({ pressed }) => [s.brainRow, pressed && { backgroundColor: samColor.raise2 }]}
           >
-            <Text style={[s.brainTitle, { color: ios.label }]}>Which brain answers</Text>
-            {BRAINS.map((b, i) => (
-              <Pressable
-                key={b.key}
-                onPress={() => { setTier(b.key); setBrainPicker(false); }}
-                style={({ pressed }) => [
-                  s.brainRow,
-                  { borderBottomColor: ios.separator },
-                  i === BRAINS.length - 1 && { borderBottomWidth: 0 },
-                  pressed && { backgroundColor: ios.cardPressed },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.brainRowTitle, { color: ios.label }]}>{b.name}</Text>
-                  <Text style={[s.brainRowSub, { color: ios.secondaryLabel }]}>{b.why}</Text>
-                </View>
-                {tier === b.key ? <Text style={[s.brainTick, { color: ios.tintText }]}>✓</Text> : null}
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+            <View style={{ flex: 1 }}>
+              <Text style={s.brainRowTitle}>{b.name}</Text>
+              <Text style={s.brainRowSub}>{b.why}</Text>
+            </View>
+            {tier === b.key ? <Text style={s.brainTick}>✓</Text> : null}
+          </Pressable>
+        ))}
+      </SamSheet>
 
       {/* THE @ PICKER — recent tasks, right above the keyboard. Never a modal: the operator is
           mid-sentence, and a sheet that takes the screen would lose the sentence. */}
@@ -769,19 +728,19 @@ export default function ChatScreen({
             {/* Typing a space closes this on its own, but a control that says so is the
                 difference between "it went away" and "I put it away". */}
             <Pressable onPress={() => setDismissed(mention!.start)} hitSlop={10}>
-              <Text style={[s.pickerAction, { color: ios.tintText }]}>Dismiss</Text>
+              <Text style={s.pickerAction}>Dismiss</Text>
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 176 }}>
             {yardError ? (
               <Pressable onPress={() => setYardError('')} style={s.pickerRow}>
-                <Text style={[s.pickerRowTitle, { color: ios.destructive }]} numberOfLines={2}>
+                <Text style={[s.pickerRowTitle, { color: samColor.red }]} numberOfLines={2}>
                   {yardError}
                 </Text>
                 <Text style={s.pickerRowSub}>Tap to try again.</Text>
               </Pressable>
             ) : !yard ? (
-              <ActivityIndicator color={ios.tint} style={{ marginVertical: 18 }} />
+              <ActivityIndicator color={samColor.accent} style={{ marginVertical: 18 }} />
             ) : !yard.on ? (
               <View style={s.pickerRow}>
                 <Text style={s.pickerRowSub}>
@@ -800,20 +759,14 @@ export default function ChatScreen({
                     </View>
                   );
                 }
-                return hits.map((t, i) => (
-                  <Pressable
+                return hits.map((t) => (
+                  <SamRow
                     key={t.id}
+                    glyph={taskGlyph(t.kind)}
+                    title={taskTitle(t)}
+                    meta={[t.state, t.createdAt ? new Date(t.createdAt).toLocaleString() : null].filter(Boolean).join(' · ')}
                     onPress={() => void pick(t)}
-                    style={({ pressed }) => [s.pickerRow, s.pickerHit, pressed && { backgroundColor: ios.cardPressed }, i === hits.length - 1 && { borderBottomWidth: 0 }]}
-                  >
-                    <Glyph ios={ios} glyph={taskGlyph(t.kind)} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.pickerRowTitle} numberOfLines={1}>{taskTitle(t)}</Text>
-                      <Text style={s.pickerRowSub} numberOfLines={1}>
-                        {[t.state, t.createdAt ? new Date(t.createdAt).toLocaleString() : null].filter(Boolean).join(' · ')}
-                      </Text>
-                    </View>
-                  </Pressable>
+                  />
                 ));
               })()
             )}
@@ -822,7 +775,6 @@ export default function ChatScreen({
       ) : null}
 
       <AddSheet
-        ios={ios}
         visible={sheet}
         onClose={() => setSheet(false)}
         onPick={(x) => setDraft((d) => (d ? d + ' ' + x : x))}
@@ -835,11 +787,9 @@ export default function ChatScreen({
           same reason. Three actions, in Apple's order of increasing commitment, with the
           declining one first and unemphasised. */}
       {askingConsent ? (
-        <View style={[s.consent, { backgroundColor: ios.card, borderColor: ios.separator }]}>
-          <Text style={[iosType.headline, { color: ios.label }]}>{consentCopy().title}</Text>
-          <Text style={[iosType.footnote, { color: ios.secondaryLabel, marginTop: 4 }]}>
-            {consentCopy().body}
-          </Text>
+        <View style={s.consent}>
+          <Text style={s.consentTitle}>{consentCopy().title}</Text>
+          <Text style={s.consentBody}>{consentCopy().body}</Text>
           <View style={s.consentRow}>
             <Pressable
               onPress={() => {
@@ -850,9 +800,7 @@ export default function ChatScreen({
               accessibilityLabel="Not this time, use Auto"
               style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
             >
-              <Text style={[iosType.footnote, { color: ios.secondaryLabel, fontWeight: '600' }]}>
-                Use Auto instead
-              </Text>
+              <Text style={s.consentBtnTextMuted}>Use Auto instead</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -863,7 +811,7 @@ export default function ChatScreen({
               accessibilityRole="button"
               style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
             >
-              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Just this once</Text>
+              <Text style={s.consentBtnText}>Just this once</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -877,7 +825,7 @@ export default function ChatScreen({
               accessibilityHint="SAM will not ask again before using a paid brain"
               style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
             >
-              <Text style={[iosType.footnote, { color: ios.tintText, fontWeight: '600' }]}>Always allow</Text>
+              <Text style={s.consentBtnText}>Always allow</Text>
             </Pressable>
           </View>
         </View>
@@ -898,14 +846,14 @@ export default function ChatScreen({
             is a setting nobody connects to the message they are about to send. */}
         <Pressable
           onPress={() => setBrainPicker(true)}
-          style={({ pressed }) => [s.brainPill, { backgroundColor: ios.fill, opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [s.brainPill, { opacity: pressed ? 0.6 : 1 }]}
           hitSlop={6}
           accessibilityRole="button"
           // The pill's own text is "Auto ▾", which read aloud is a word and a punctuation mark.
           accessibilityLabel={`Brain: ${BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'}`}
           accessibilityHint="Choose which brain answers the next message"
         >
-          <Text style={[s.brainPillText, { color: tier === 'auto' ? ios.secondaryLabel : ios.tintText }]}>
+          <Text style={[s.brainPillText, { color: tier === 'auto' ? samInk.metadata : samColor.accent }]}>
             {BRAINS.find((b) => b.key === tier)?.name ?? 'Auto'} ▾
           </Text>
         </Pressable>
@@ -928,7 +876,7 @@ export default function ChatScreen({
           // otherwise going back to add a reference mid-sentence does nothing at all.
           onSelectionChange={(e) => setCaret(e.nativeEvent.selection.end)}
           placeholder="Message SAM"
-          placeholderTextColor={ios.secondaryLabel}
+          placeholderTextColor={samInk.metadata}
           multiline
           onSubmitEditing={send}
           returnKeyType="send"
@@ -940,7 +888,7 @@ export default function ChatScreen({
           style={({ pressed }) => [
             s.sendBtn,
             {
-              backgroundColor: busy ? ios.fill : draft.trim() || attached.length ? ios.tintFill : ios.fill,
+              backgroundColor: busy ? samColor.raise : draft.trim() || attached.length ? samColor.accent : samColor.raise,
               transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
@@ -952,11 +900,10 @@ export default function ChatScreen({
         >
           {/* allowFontScaling={false} on the GLYPH only. The circle is a fixed 32pt hit
               target by design and a growing character inside it clips; the control's meaning
-              travels in its accessibilityLabel, which Dynamic Type does not touch. Same call
-              the Glyph tile in ui.tsx already documents. */}
+              travels in its accessibilityLabel, which Dynamic Type does not touch. */}
           <Text
             allowFontScaling={false}
-            style={{ color: busy ? ios.label : draft.trim() || attached.length ? ios.onTint : ios.secondaryLabel, fontSize: 15, fontWeight: '700' }}
+            style={{ color: busy ? samInk.primary : draft.trim() || attached.length ? samColor.ground : samInk.metadata, fontSize: 15, fontWeight: '700' }}
           >
             {busy ? '■' : '↑'}
           </Text>
@@ -966,201 +913,183 @@ export default function ChatScreen({
   );
 }
 
-function makeStyles(ios: IOS) {
-  return StyleSheet.create({
-    list: { padding: metrics.margin, paddingBottom: 24, gap: 8 },
-    // iMessage geometry: 18pt radius, a squared corner on the sender's side, 17pt body.
-    bubbleUser: {
-      alignSelf: 'flex-end',
-      maxWidth: '78%',
-      backgroundColor: ios.cardPressed,
-      borderRadius: 24,
-      borderBottomRightRadius: 6,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-    },
-    userText: { ...iosType.body, color: ios.label, lineHeight: 22 },
-    samWrap: { alignSelf: 'flex-start', maxWidth: '86%', gap: 3 },
-    bubbleSam: {
-      alignSelf: 'flex-start',
-      maxWidth: '100%',
-      backgroundColor: 'transparent',
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    samText: { ...iosType.body, color: ios.label, lineHeight: 22 },
-    // The opening sits a little down the screen rather than jammed under the nav bar: on a tall
-    // phone, content pinned to the top with nothing beneath it is exactly what read as unfinished.
-    opening: { paddingTop: 40, paddingHorizontal: 4 },
-    openingTitle: { ...iosType.title2, color: ios.label, fontWeight: '700', marginBottom: 6 },
-    openingSub: { ...iosType.subhead, color: ios.secondaryLabel, lineHeight: 20, marginBottom: 18 },
-    starters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    starter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
-    starterText: { ...iosType.subhead },
-    inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: ios.tintText },
-    codeblock: {
-      backgroundColor: ios.groupedBg,
-      borderRadius: 10,
-      marginTop: 8,
-      overflow: 'hidden',
-      borderWidth: metrics.hairline,
-      borderColor: ios.separator,
-    },
-    codeblockHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: ios.card,
-      borderBottomWidth: metrics.hairline,
-      borderBottomColor: ios.separator,
-    },
-    codeblockLang: {
-      fontFamily: 'Menlo',
-      fontSize: 11,
-      fontWeight: '700',
-      color: ios.secondaryLabel,
-      letterSpacing: 0.5,
-    },
-    copyBtn: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-      backgroundColor: ios.groupedBg,
-    },
-    copyBtnText: {
-      ...iosType.caption,
-      fontWeight: '600',
-      color: ios.secondaryLabel,
-    },
-    codeblockText: {
-      fontFamily: 'Menlo',
-      fontSize: 13,
-      color: ios.label,
-      lineHeight: 19,
-      padding: 12,
-    },
-    route: { ...iosType.caption, color: ios.secondaryLabel, paddingLeft: 6 },
-    error: { ...iosType.footnote, color: ios.destructive, textAlign: 'center', paddingTop: 8 },
-    composer: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 8,
-      paddingHorizontal: metrics.margin,
-      paddingTop: 6,
-      paddingBottom: 8,
-      borderTopWidth: metrics.hairline,
-      borderTopColor: ios.separator,
-      backgroundColor: ios.card,
-    },
-    input: {
-      flex: 1,
-      maxHeight: 120,
-      minHeight: 36,
-      ...iosType.body,
-      color: ios.label,
-      backgroundColor: ios.groupedBg,
-      borderRadius: 18,
-      paddingHorizontal: 14,
-      paddingTop: 8,
-      paddingBottom: 8,
-    },
-    plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-    plusText: { fontSize: 26, color: ios.tintText, lineHeight: 30, fontWeight: '300' },
-    consent: {
-      marginHorizontal: metrics.margin,
-      marginBottom: 8,
-      padding: 14,
-      borderRadius: metrics.radius,
-      borderWidth: metrics.hairline,
-    },
-    // Wraps, because three labels at accessibility text sizes will not sit on one line and the
-    // declining option must never be the one that falls off the edge.
-    consentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 12 },
-    consentBtn: { paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
-    chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: metrics.margin, paddingBottom: 6, flexWrap: 'wrap' },
-    // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
-    // conversation stays visible above it, which is the point of not making this a sheet.
-    picker: {
-      marginHorizontal: metrics.margin,
-      marginBottom: 6,
-      backgroundColor: ios.card,
-      borderRadius: metrics.radius,
-      borderWidth: metrics.hairline,
-      borderColor: ios.separator,
-      overflow: 'hidden',
-    },
-    pickerHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingTop: 8,
-      paddingBottom: 4,
-    },
-    pickerTitle: { ...iosType.caption, color: ios.secondaryLabel, letterSpacing: 0.6 },
-    pickerAction: { ...iosType.footnote, fontWeight: '600' },
-    pickerRow: {
-      paddingHorizontal: 12,
-      paddingVertical: 9,
-      borderBottomWidth: metrics.hairline,
-      borderBottomColor: ios.separator,
-    },
-    // Only the rows that are actually a job lay out sideways. The picker's other rows — the
-    // error, "nothing has run yet" — are a single line of text and would be pushed off the
-    // right edge by a flex row they never asked to be in.
-    pickerHit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    pickerRowTitle: { ...iosType.body, color: ios.label },
-    pickerRowSub: { ...iosType.caption, color: ios.secondaryLabel, marginTop: 1 },
-    chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-    chipText: { ...iosType.caption, fontWeight: '600' },
-    resume: { marginTop: 28, gap: 8 },
-    resumeHead: { ...iosType.caption, fontWeight: '700', letterSpacing: 0.6, marginBottom: 2 },
-    // A card, not a list row: this sits in open space on the opening screen rather than inside a
-    // grouped table, so it needs its own edge to read as a thing you can press.
-    resumeCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderRadius: metrics.radius,
-      borderWidth: metrics.hairline,
-    },
-    resumeTitle: { ...iosType.body, fontWeight: '600' },
-    resumeSub: { ...iosType.caption, marginTop: 2 },
-    resumeDot: { width: 8, height: 8, borderRadius: 4 },
-    // The brain pill sits in the composer row, so it is sized to the 32pt controls either side of
-    // it rather than to its own text — a control that changes height when the label changes from
-    // 'Auto' to 'Turbo' makes the whole row twitch.
-    // minHeight, not height: this one carries a WORD ("Auto", "Free only"), so it has to be
-    // allowed to grow with the type the way metrics.rowMinHeight lets a row grow.
-    brainPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
-    brainPillText: { ...iosType.caption, fontWeight: '600' },
-    brainScrim: { flex: 1, backgroundColor: ios.scrim, justifyContent: 'flex-end' },
-    brainSheet: {
-      borderTopLeftRadius: 14,
-      borderTopRightRadius: 14,
-      paddingTop: 14,
-      paddingBottom: 34,
-      paddingHorizontal: 16,
-      // Its own top edge, so the sheet is bounded by something it owns rather than relying on
-      // the scrim to out-contrast it. In dark that difference is card-grey against near-black.
-      borderTopWidth: metrics.hairline,
-      borderTopColor: ios.separator,
-    },
-    brainTitle: { ...iosType.footnote, fontWeight: '700', marginBottom: 6 },
-    brainRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      borderBottomWidth: metrics.hairline,
-    },
-    brainRowTitle: { ...iosType.body, fontWeight: '600' },
-    brainRowSub: { ...iosType.caption, marginTop: 2 },
-    brainTick: { ...iosType.body, fontWeight: '700' },
-    sendBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  });
+// Same meanings as the old stateTone: done -> green, failed -> red, everything else muted
+// (running is carried by the spinner on both surfaces, not colour).
+function stateTone(state: string | undefined): string {
+  if (state === 'done') return samColor.green;
+  if (state === 'failed') return samColor.red;
+  return samInk.metadata;
 }
+
+// A fixed dark palette, not a light/dark pair — samTheme.ts has no light variant, so this no
+// longer needs to be recomputed per-render off a passed-in `ios` object the way makeStyles(ios)
+// did. One StyleSheet, created once.
+const styles = StyleSheet.create({
+  list: { padding: samSpace.gutter, paddingBottom: 24, gap: 8 },
+  // iMessage geometry: 18pt radius, a squared corner on the sender's side, 17pt body.
+  bubbleUser: {
+    alignSelf: 'flex-end',
+    maxWidth: '78%',
+    backgroundColor: samColor.raise2,
+    borderRadius: 24,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  userText: { ...samType.body, color: samInk.primary, lineHeight: 22 },
+  samWrap: { alignSelf: 'flex-start', maxWidth: '86%', gap: 3 },
+  bubbleSam: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  samText: { ...samType.body, color: samInk.primary, lineHeight: 22 },
+  // The opening sits a little down the screen rather than jammed under the nav bar: on a tall
+  // phone, content pinned to the top with nothing beneath it is exactly what read as unfinished.
+  opening: { paddingTop: 40, paddingHorizontal: samSpace.gutter - 14 },
+  openingTitle: { fontSize: 27, fontWeight: '700', color: samInk.primary, marginBottom: 6 },
+  openingSub: { ...samType.bodySm, color: samInk.support, lineHeight: 20, marginBottom: 18 },
+  starters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  starter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1, backgroundColor: samColor.raise, borderColor: samBorder.default },
+  starterText: { ...samType.bodySm, color: samInk.primary },
+  inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: samColor.accent },
+  codeblock: {
+    backgroundColor: samColor.ground,
+    borderRadius: 10,
+    marginTop: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: samBorder.default,
+  },
+  codeblockHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: samColor.raise,
+    borderBottomWidth: 1,
+    borderBottomColor: samBorder.default,
+  },
+  codeblockLang: {
+    fontFamily: 'Menlo',
+    fontSize: 11,
+    fontWeight: '700',
+    color: samInk.metadata,
+    letterSpacing: 0.5,
+  },
+  copyBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: samColor.ground,
+  },
+  copyBtnText: {
+    ...samType.monoXs,
+    color: samInk.metadata,
+  },
+  codeblockText: {
+    fontFamily: 'Menlo',
+    fontSize: 13,
+    color: samInk.primary,
+    lineHeight: 19,
+    padding: 12,
+  },
+  route: { ...samType.monoXs, color: samInk.metadata, paddingLeft: 6 },
+  error: { ...samType.bodySm, color: samColor.red, textAlign: 'center', paddingTop: 8 },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingHorizontal: samSpace.gutter,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: samBorder.default,
+    backgroundColor: samColor.raise,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 120,
+    minHeight: 36,
+    ...samType.body,
+    color: samInk.primary,
+    backgroundColor: samColor.input,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  plus: { width: samTouch.minTarget - 12, height: samTouch.minTarget - 12, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  plusText: { fontSize: 26, color: samColor.accent, lineHeight: 30, fontWeight: '300' },
+  consent: {
+    marginHorizontal: samSpace.gutter,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: samRadius.tile,
+    borderWidth: 1,
+    backgroundColor: samColor.raise2,
+    borderColor: samBorder.default,
+  },
+  consentTitle: { ...samType.rowTitle, color: samInk.primary },
+  consentBody: { ...samType.bodySm, color: samInk.support, marginTop: 4 },
+  // Wraps, because three labels at accessibility text sizes will not sit on one line and the
+  // declining option must never be the one that falls off the edge.
+  consentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 12 },
+  consentBtn: { paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
+  consentBtnText: { ...samType.bodySm, color: samColor.accent, fontWeight: '600' },
+  consentBtnTextMuted: { ...samType.bodySm, color: samInk.support, fontWeight: '600' },
+  chipBar: { flexDirection: 'row', gap: 6, paddingHorizontal: samSpace.gutter, paddingBottom: 6, flexWrap: 'wrap' },
+  // An inset card sitting on the composer, the way an iOS autocomplete bar does — the
+  // conversation stays visible above it, which is the point of not making this a sheet.
+  picker: {
+    marginHorizontal: samSpace.gutter,
+    marginBottom: 6,
+    backgroundColor: samColor.raise,
+    borderRadius: samRadius.tile,
+    borderWidth: 1,
+    borderColor: samBorder.default,
+    overflow: 'hidden',
+  },
+  pickerHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  pickerTitle: { ...samType.label, color: samInk.metadata },
+  pickerAction: { ...samType.bodySm, color: samColor.accent, fontWeight: '600' },
+  pickerRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: samBorder.default,
+  },
+  pickerRowTitle: { ...samType.body, color: samInk.primary },
+  pickerRowSub: { ...samType.monoXs, color: samInk.metadata, marginTop: 1 },
+  resume: { marginTop: 28, gap: samSpace.rowGap },
+  resumeHead: { ...samType.label, color: samInk.metadata, marginBottom: 2 },
+  resumeDot: { width: 8, height: 8, borderRadius: 4 },
+  // The brain pill sits in the composer row, so it is sized to the controls either side of it
+  // rather than to its own text — a control that changes height when the label changes from
+  // 'Auto' to 'Turbo' makes the whole row twitch. minHeight, not height, since it carries a WORD.
+  brainPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: samColor.raise2 },
+  brainPillText: { ...samType.monoXs, fontWeight: '600' },
+  brainTitle: { ...samType.rowTitle, color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: 6 },
+  brainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: samSpace.gutter,
+    borderRadius: samRadius.row,
+  },
+  brainRowTitle: { ...samType.rowTitle, color: samInk.primary },
+  brainRowSub: { ...samType.bodySm, color: samInk.support, marginTop: 2 },
+  brainTick: { ...samType.rowTitle, color: samColor.accent, fontWeight: '700' },
+  sendBtn: { width: samTouch.minTarget - 12, height: samTouch.minTarget - 12, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+});

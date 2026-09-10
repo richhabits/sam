@@ -1,6 +1,6 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
@@ -8,18 +8,16 @@ import { haptic } from './lib/haptics';
 
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
 import { GLYPHS } from './lib/glyphs';
-import { type IOS, type } from './lib/ios';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { ActionRow, Field, Row, Screen, Section } from './ui';
+import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ToggleRow } from './samKit';
+import { samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 type Device = { id: string; label: string; lastSeen: number };
 
 export default function SettingsScreen({
-  ios,
   onForgotten,
   onOpenPairing,
 }: {
-  ios: IOS;
   onForgotten: (note?: string) => void;
   onOpenPairing?: () => void;
 }) {
@@ -72,10 +70,16 @@ export default function SettingsScreen({
   const build = nativeBuildVersion ?? '9';
 
   return (
-    <Screen ios={ios} title="Settings">
+    <ScrollView
+      style={{ flex: 1, backgroundColor: samColor.ground }}
+      contentContainerStyle={{ paddingTop: samSpace.section, paddingBottom: 40 }}
+    >
+      <Text style={[{ fontSize: 33, fontWeight: '700', color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }]}>
+        Settings
+      </Text>
+
       {/* CONNECTION MODE */}
-      <Section
-        ios={ios}
+      <SamSection
         header="Connection Mode"
         footer={
           host
@@ -83,77 +87,52 @@ export default function SettingsScreen({
             : 'Running in Standalone Mode directly on your phone. Pair with your Mac/PC to unlock local files, automation, and yard workers.'
         }
       >
-        <Row
-          ios={ios}
-          glyph={GLYPHS.connection}
-          title="Mode"
-          value={host ? 'Desktop Link' : 'Standalone (Cloud AI)'}
-        />
+        <SamRow glyph={GLYPHS.connection} title="Mode" status={<StatusText text={host ? 'Desktop Link' : 'Standalone (Cloud AI)'} />} />
         {host ? (
-          <Row ios={ios} glyph={GLYPHS.device} title="Desktop Node" value={host.replace(/^https?:\/\//, '')} />
+          <SamRow glyph={GLYPHS.device} title="Desktop Node" status={<StatusText text={host.replace(/^https?:\/\//, '')} />} />
         ) : (
-          <ActionRow
-            ios={ios}
-            title="Connect to Mac / PC"
-            onPress={() => onOpenPairing?.()}
-            last
-          />
+          <SamActionRow title="Connect to Mac / PC" onPress={() => onOpenPairing?.()} />
         )}
-      </Section>
+      </SamSection>
 
       {/* CLOUD BRAINS & API KEYS */}
-      <Section
-        ios={ios}
+      <SamSection
         header="Cloud AI Engine"
         footer="SAM comes with ready-to-use cloud brains. Optionally add your own API keys for unlimited direct personal quotas. Keys are stored encrypted in Keychain / Keystore."
       >
-        <ActionRow
-          ios={ios}
+        <SamActionRow
           title={showKeys ? 'Hide API Keys' : 'Configure Custom API Keys (30+ Providers)'}
           onPress={() => {
             haptic.light();
             setShowKeys(!showKeys);
           }}
-          last={!showKeys}
         />
         {showKeys ? (
           <>
-            <Row
-              ios={ios}
+            <ToggleRow
               title="Mask API Keys"
-              subtitle="Hide key text on screen to prevent shoulder surfing"
-              accessory={
-                <Switch
-                  value={!showPlainKeys}
-                  onValueChange={(val) => {
-                    haptic.light();
-                    setShowPlainKeys(!val);
-                  }}
-                  trackColor={{ false: ios.cardPressed, true: ios.tint }}
-                />
-              }
+              sub="Hide key text on screen to prevent shoulder surfing"
+              value={!showPlainKeys}
+              onChange={(val) => setShowPlainKeys(!val)}
             />
-            {ALL_PROVIDERS.map((p, i) => {
+            {ALL_PROVIDERS.map((p) => {
               const isSet = !!keys[p.id]?.trim();
               return (
-                <Field
+                <SamField
                   key={p.id}
-                  ios={ios}
                   label={`${p.label}${p.starter ? ' (Free)' : ''}`}
                   placeholder={isSet ? '••••••••••••••••' : p.keyPlaceholder}
                   value={keys[p.id] || ''}
                   secureTextEntry={!showPlainKeys}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   onChangeText={(val) => {
                     setKeys((k) => ({ ...k, [p.id]: val }));
                     void setCustomKey(p.id, val);
                   }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
                   accessory={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {isSet ? (
-                        <Text style={[type.caption, { color: '#30D158', fontWeight: '700' }]}>✓ Set</Text>
-                      ) : null}
+                      {isSet ? <Text style={[samType.monoXs, { color: samColor.green }]}>✓ SET</Text> : null}
                       {p.getKeyUrl ? (
                         <Pressable
                           onPress={() => {
@@ -164,24 +143,20 @@ export default function SettingsScreen({
                           accessibilityRole="link"
                           accessibilityLabel={`Get ${p.label} API key`}
                         >
-                          <Text style={[type.footnote, { color: ios.tintText, fontWeight: '600' }]}>
-                            Get Key ↗
-                          </Text>
+                          <Text style={[samType.monoXs, { color: samColor.accent }]}>GET KEY ↗</Text>
                         </Pressable>
                       ) : null}
                     </View>
                   }
-                  last={i === ALL_PROVIDERS.length - 1}
                 />
               );
             })}
           </>
         ) : null}
-      </Section>
+      </SamSection>
 
       {/* SPENDING */}
-      <Section
-        ios={ios}
+      <SamSection
         header="Spending"
         footer={
           consent === 'always'
@@ -189,29 +164,20 @@ export default function SettingsScreen({
             : 'SAM asks before it uses a paid brain. Local and free brains never ask, because they cost nothing.'
         }
       >
-        <Row
-          ios={ios}
-          glyph={GLYPHS.spending}
-          title="Paid brains"
-          value={consent === 'always' ? 'Allowed' : 'Ask every time'}
-          last={consent !== 'always'}
-        />
+        <SamRow glyph={GLYPHS.spending} title="Paid brains" status={<StatusText text={consent === 'always' ? 'Allowed' : 'Ask every time'} />} />
         {consent === 'always' ? (
-          <ActionRow
-            ios={ios}
+          <SamActionRow
             title="Ask me every time"
             onPress={() => {
               setConsentState('ask');
               void setConsent('ask');
             }}
-            last
           />
         ) : null}
-      </Section>
+      </SamSection>
 
       {/* NOTIFICATIONS */}
-      <Section
-        ios={ios}
+      <SamSection
         header="Notifications"
         footer={
           notifyStatus === 'granted'
@@ -221,50 +187,30 @@ export default function SettingsScreen({
               : 'Checking…'
         }
       >
-        <Row
-          ios={ios}
-          glyph={GLYPHS.sound}
-          title="Sound"
-          accessory={
-            <Switch
-              value={sound}
-              onValueChange={toggleSound}
-              trackColor={{ true: ios.green, false: undefined }}
-              accessibilityLabel="Sound"
-            />
-          }
-        />
-        <Row
-          ios={ios}
+        <ToggleRow title="Sound" value={sound} onChange={toggleSound} />
+        <SamRow
           glyph={GLYPHS.test}
           title="Send a test notification"
           onPress={() => notify('SAM', 'Test notification — SAM is running smoothly.')}
-          last
         />
-      </Section>
+      </SamSection>
 
       {/* ABOUT */}
-      <Section ios={ios} header="About" footer="SAM is your private, fast AI assistant on mobile and desktop.">
-        <Row ios={ios} glyph={GLYPHS.appearance} title="Appearance" value="Follows system" />
-        <Row ios={ios} glyph={GLYPHS.info} title="Version" value={`${version} (${build})`} />
-        <Row
-          ios={ios}
+      <SamSection header="About" footer="SAM is your private, fast AI assistant on mobile and desktop.">
+        <SamRow glyph={GLYPHS.appearance} title="Appearance" status={<StatusText text="Follows system" />} />
+        <SamRow glyph={GLYPHS.info} title="Version" status={<StatusText text={`${version} (${build})`} />} />
+        <SamRow
           glyph={GLYPHS.help}
           title="Website and Documentation"
+          status={<SamChevron />}
           onPress={() => void Linking.openURL('https://richhabits.github.io/sam/')}
-          chevron
-          last
         />
-      </Section>
+      </SamSection>
 
       {/* FORGET / RESET */}
       {host ? (
-        <Section
-          ios={ios}
-          footer="Disconnects this phone from your Mac and returns to Standalone Cloud AI mode."
-        >
-          <ActionRow
-            ios={ios}
+        <SamSection footer="Disconnects this phone from your Mac and returns to Standalone Cloud AI mode.">
+          <SamActionRow
             title="Disconnect from Desktop Mac"
             destructive
             onPress={async () => {
@@ -276,14 +222,24 @@ export default function SettingsScreen({
                   : 'Disconnected locally. Open SAM on your Mac to revoke the token if desired.',
               );
             }}
-            last
           />
-        </Section>
+        </SamSection>
       ) : null}
 
-      <Text style={[type.caption, { color: ios.tertiaryLabel, textAlign: 'center', marginTop: 24, marginBottom: 40 }]}>
+      <Text style={[samType.monoXs, { color: samInk.metadata, textAlign: 'center', marginTop: 24, marginBottom: 40 }]}>
         S.A.M. · Smart Artificial Mind
       </Text>
-    </Screen>
+    </ScrollView>
   );
 }
+
+/** Right-aligned status text — SamRow's `status` slot takes any node; this is the mono-metadata
+ *  equivalent of ui.tsx's Row `value` prop. */
+function StatusText({ text }: { text: string }) {
+  return (
+    <Text style={[samType.mono, { color: samInk.metadata }]} numberOfLines={1}>
+      {text}
+    </Text>
+  );
+}
+

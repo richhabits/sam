@@ -2,7 +2,6 @@ import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
   BackHandler,
   Image,
   Modal,
@@ -22,7 +21,6 @@ import VaultScreen from './VaultScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
 import { clearThread } from './lib/history';
-import { type IOS, type as iosType, metrics, paletteFor } from './lib/ios';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { mentionLabel } from './lib/mentions';
 import { ensurePermission, notify } from './lib/notify';
@@ -33,8 +31,8 @@ import { parseQuickLink } from './lib/quicklink';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
 import TasksScreen from './TasksScreen';
-import { SamTabBar, type SamTabKey } from './samKit';
-import { ActionRow, Field, Row, Section } from './ui';
+import { SamActionRow, SamField, SamRow, SamSection, SamTabBar, type SamTabKey } from './samKit';
+import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 
 // THE POCKET — SAM, in your hand.
 //
@@ -53,24 +51,7 @@ function tabKeyToSurface(k: SamTabKey): Surface {
 
 export default function App() {
   const scheme = useColorScheme();
-
-  const [darkerColors, setDarkerColors] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    AccessibilityInfo.isDarkerSystemColorsEnabled?.()
-      .then((v) => alive && setDarkerColors(!!v))
-      .catch(() => { /* API unsupported on this OS version — default false is fine */ });
-    const sub = AccessibilityInfo.addEventListener('darkerSystemColorsChanged', (v) =>
-      setDarkerColors(!!v),
-    );
-    return () => {
-      alive = false;
-      sub?.remove();
-    };
-  }, []);
-
-  const ios = useMemo(() => paletteFor(scheme, darkerColors), [scheme, darkerColors]);
-  const s = useMemo(() => makeStyles(ios), [ios]);
+  const s = styles;
 
   const { width } = useWindowDimensions();
   const layout = useMemo(() => layoutFor(width), [width]);
@@ -235,9 +216,9 @@ export default function App() {
   );
 
   return (
-    <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
+    <SafeAreaView style={[s.screen, { backgroundColor: samColor.ground }]}>
       {/* 44pt Navigation Bar */}
-      <View style={[s.navbar, { backgroundColor: ios.card, borderBottomColor: ios.separator }]}>
+      <View style={s.navbar}>
         <Pressable
           onPress={() => {
             haptic.light();
@@ -250,7 +231,7 @@ export default function App() {
           accessibilityLabel={_paired ? 'Desktop paired' : 'Standalone mode'}
         >
           <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
-          <View style={[s.statusDot, { backgroundColor: _paired ? '#30D158' : ios.tint }]} />
+          <View style={[s.statusDot, { backgroundColor: _paired ? samColor.green : samColor.accent }]} />
         </Pressable>
 
         <View style={{ flex: 1 }} />
@@ -266,7 +247,7 @@ export default function App() {
           accessibilityLabel="More"
           accessibilityState={{ expanded: menu }}
         >
-          <Text style={[iosType.title2, { color: ios.tintText, lineHeight: 24 }]}>•••</Text>
+          <Text style={{ color: samColor.accent, fontSize: 22, lineHeight: 24, fontWeight: '700' }}>•••</Text>
         </Pressable>
       </View>
 
@@ -274,7 +255,7 @@ export default function App() {
       {menu ? (
         <>
           <Pressable style={s.scrim} onPress={() => setMenu(false)} />
-          <View style={[s.menu, { backgroundColor: ios.card }]}>
+          <View style={s.menu}>
             <Pressable
               onPress={() => {
                 haptic.light();
@@ -282,20 +263,20 @@ export default function App() {
                 setSurface('agent');
                 void clearThread().then(() => setResetKey((k) => k + 1));
               }}
-              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: ios.cardPressed }]}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: samColor.raise2 }]}
             >
-              <Text style={[iosType.body, { color: ios.label }]}>New chat</Text>
+              <Text style={s.menuRowText}>New chat</Text>
             </Pressable>
-            <View style={{ height: metrics.hairline, backgroundColor: ios.separator, marginLeft: metrics.margin }} />
+            <View style={{ height: 1, backgroundColor: samBorder.default, marginLeft: samSpace.gutter }} />
             <Pressable
               onPress={() => {
                 haptic.light();
                 setMenu(false);
                 setShowPairModal(true);
               }}
-              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: ios.cardPressed }]}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: samColor.raise2 }]}
             >
-              <Text style={[iosType.body, { color: ios.label }]}>Connect to Mac / PC</Text>
+              <Text style={s.menuRowText}>Connect to Mac / PC</Text>
             </Pressable>
           </View>
         </>
@@ -304,10 +285,10 @@ export default function App() {
       {/* Not dismissible, and it names the way out. A demo mistaken for a live connection is
           worse than no demo: someone would read the sample jobs as their own. */}
       {demo ? (
-        <View style={[s.demoBar, { backgroundColor: ios.tintFill }]}>
-          <Text style={[s.demoBarText, { color: ios.onTint }]}>Demo · sample data, not connected to a SAM</Text>
+        <View style={s.demoBar}>
+          <Text style={s.demoBarText}>Demo · sample data, not connected to a SAM</Text>
           <Pressable onPress={() => void doLeaveDemo()} hitSlop={8}>
-            <Text style={[s.demoBarLink, { color: ios.onTint }]}>Leave</Text>
+            <Text style={s.demoBarLink}>Leave</Text>
           </Pressable>
         </View>
       ) : null}
@@ -329,18 +310,16 @@ export default function App() {
             }}
           />
         ) : surface === 'agent' ? (
-          <ChatScreen ios={ios} onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
+          <ChatScreen onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
         ) : surface === 'vault' ? (
           <VaultScreen onNeedsPairing={onNeedsPairing} />
         ) : surface === 'tasks' ? (
           <TasksScreen
-            ios={ios}
             onNeedsPairing={onNeedsPairing}
             onOpenPairing={() => setShowPairModal(true)}
           />
         ) : (
           <SettingsScreen
-            ios={ios}
             onForgotten={(_note) => {
               claimed.current = false;
               setDemo(false);
@@ -377,25 +356,23 @@ export default function App() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowPairModal(false)}
       >
-        <SafeAreaView style={[s.screen, { backgroundColor: ios.groupedBg }]}>
+        <SafeAreaView style={[s.screen, { backgroundColor: samColor.ground }]}>
           <ScrollView
             contentContainerStyle={[{ paddingBottom: 40, paddingTop: 16 }, centreWhenRoomy(layout), column]}
             keyboardShouldPersistTaps="handled"
           >
             <View style={s.modalHeader}>
-              <Text style={[iosType.title2, { color: ios.label, fontWeight: '700' }]}>Connect to Mac / PC</Text>
+              <Text style={s.modalTitle}>Connect to Mac / PC</Text>
               <Pressable onPress={() => setShowPairModal(false)} hitSlop={12}>
-                <Text style={[iosType.body, { color: ios.tintText, fontWeight: '600' }]}>Done</Text>
+                <Text style={s.modalDone}>Done</Text>
               </Pressable>
             </View>
 
-            <Section
-              ios={ios}
+            <SamSection
               header="Pair this phone"
               footer="Open SAM on your Mac/PC (Dashboard → Devices → Pair a phone), then scan the QR code shown there — or enter the local address and code by hand."
             >
-              <ActionRow
-                ios={ios}
+              <SamActionRow
                 title="Scan QR Code"
                 onPress={() => {
                   // AUDIT FIX: iOS presenting QRScanner's own fullScreen Modal while this
@@ -405,13 +382,11 @@ export default function App() {
                   setShowPairModal(false);
                   setShowScanner(true);
                 }}
-                last
               />
-            </Section>
+            </SamSection>
 
-            <Section ios={ios} header="Or enter manually">
-              <Field
-                ios={ios}
+            <SamSection header="Or enter manually">
+              <SamField
                 label="Address"
                 value={host}
                 onChangeText={setHostInput}
@@ -420,8 +395,7 @@ export default function App() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <Field
-                ios={ios}
+              <SamField
                 label="Code"
                 value={code}
                 onChangeText={setCode}
@@ -429,28 +403,23 @@ export default function App() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 mono
-                last
               />
-            </Section>
+            </SamSection>
 
-            <Section
-              ios={ios}
-              footer="Connecting unlocks local file indexing, execution tools, and yard tasks on your hardware."
-            >
-              {error ? <Row ios={ios} title={error} destructive /> : null}
-              <ActionRow
-                ios={ios}
+            <SamSection footer="Connecting unlocks local file indexing, execution tools, and yard tasks on your hardware.">
+              {error ? (
+                <Text style={{ ...samType.bodySm, color: samColor.red, marginBottom: samSpace.rowGap }}>{error}</Text>
+              ) : null}
+              <SamActionRow
                 title={busy ? 'Connecting…' : 'Pair with Desktop'}
                 onPress={() => doClaim()}
                 disabled={!host || !code}
                 busy={busy}
-                last
               />
-            </Section>
+            </SamSection>
 
-            <Section ios={ios} header="No SAM desktop yet?">
-              <ActionRow
-                ios={ios}
+            <SamSection header="No SAM desktop yet?">
+              <SamActionRow
                 title="Explore the demo"
                 onPress={() => {
                   haptic.light();
@@ -461,15 +430,13 @@ export default function App() {
                     setSurface('agent');
                   });
                 }}
-                last
               />
-            </Section>
+            </SamSection>
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
       <QRScanner
-        ios={ios}
         visible={showScanner}
         onClose={() => {
           setShowScanner(false);
@@ -483,51 +450,59 @@ export default function App() {
   );
 }
 
-const makeStyles = (ios: IOS) =>
-  StyleSheet.create({
-    screen: { flex: 1 },
-    navbar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      minHeight: metrics.rowMinHeight,
-      paddingHorizontal: metrics.margin,
-      borderBottomWidth: metrics.hairline,
-    },
-    markSmall: { width: 28, height: 28, borderRadius: 6 },
-    statusDot: { width: 8, height: 8, borderRadius: 4 },
-    scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
-    menu: {
-      position: 'absolute',
-      top: 52,
-      right: 12,
-      zIndex: 2,
-      minWidth: 190,
-      borderRadius: metrics.radius,
-      borderWidth: metrics.hairline,
-      borderColor: ios.separator,
-      overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOpacity: 0.18,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
-    },
-    menuRow: { paddingHorizontal: metrics.margin, paddingVertical: 14 },
-    demoBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: metrics.margin,
-      paddingVertical: 7,
-      paddingHorizontal: metrics.margin,
-    },
-    demoBarText: { fontSize: 12, fontWeight: '700' },
-    demoBarLink: { fontSize: 12, fontWeight: '800', textDecorationLine: 'underline' },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: metrics.margin,
-      paddingVertical: 12,
-      marginBottom: 8,
-    },
-  });
+// A fixed dark palette, not a light/dark pair — samTheme.ts has no light variant — so this no
+// longer needs recomputing per-render off a scheme/darkerColors-derived `ios` object.
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  navbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    paddingHorizontal: samSpace.gutter,
+    borderBottomWidth: 1,
+    backgroundColor: samColor.raise,
+    borderBottomColor: samBorder.default,
+  },
+  markSmall: { width: 28, height: 28, borderRadius: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  menu: {
+    position: 'absolute',
+    top: 52,
+    right: 12,
+    zIndex: 2,
+    minWidth: 190,
+    borderRadius: samRadius.tile,
+    borderWidth: 1,
+    backgroundColor: samColor.raise,
+    borderColor: samBorder.default,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  menuRow: { paddingHorizontal: samSpace.gutter, paddingVertical: 14 },
+  menuRowText: { ...samType.body, color: samInk.primary },
+  demoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: samSpace.gutter,
+    paddingVertical: 7,
+    paddingHorizontal: samSpace.gutter,
+    backgroundColor: samColor.amber,
+  },
+  demoBarText: { fontSize: 12, fontWeight: '700', color: samColor.ground },
+  demoBarLink: { fontSize: 12, fontWeight: '800', textDecorationLine: 'underline', color: samColor.ground },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: samSpace.gutter,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 19, fontWeight: '700', color: samInk.primary },
+  modalDone: { ...samType.body, color: samColor.accent, fontWeight: '600' },
+});
