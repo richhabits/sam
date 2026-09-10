@@ -94,7 +94,7 @@ export default function Notebook({ onClose, speak }: { onClose: () => void; spea
       setPlayingDialogue(false);
     } else {
       if (dialogueData?.cues?.length > 0) {
-        let cueIdx = 0;
+        const cueIdx = 0;
         const playCue = (idx: number) => {
           if (idx >= dialogueData.cues.length) {
             setPlayingDialogue(false);

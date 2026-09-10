@@ -153,7 +153,7 @@ export async function conductDeepResearch(
         const vRes = await deps.synthesize(vSystem, vPrompt);
         const vRaw = (vRes.text || "").trim();
         const vMatch = vRaw.match(/\\[[\\s\\S]*\\]/);
-        const vJsonText = vMatch ? vMatch[0] : vRaw.replace(/\`\`\`json\\n?|\`\`\`/g, "").trim();
+        const vJsonText = vMatch ? vMatch[0] : vRaw.replace(/```json\\n?|```/g, "").trim();
         const vParsed = JSON.parse(vJsonText);
         if (Array.isArray(vParsed) && vParsed.length === keyFindings.length) {
           verifiedFindings = keyFindings.filter((_, i) => vParsed[i] === true);

@@ -7,7 +7,7 @@
 
 import { EventEmitter } from "node:events";
 import { type OrderBookTick, getSharedIngestEngine } from "./flipit-ingest.ts";
-import { type SentimentSignal } from "./flipit-oracle.ts";
+import type { SentimentSignal } from "./flipit-oracle.ts";
 import { computeKellyRiskShield } from "./flipit-scale.ts";
 import { getWallet } from "./wallet.ts";
 

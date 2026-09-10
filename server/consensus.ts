@@ -127,7 +127,7 @@ Output format:
 
   let consensusAnswer = successfulOpinions[0].answer;
   let confidenceScorePct = 85;
-  let agreementSummary = `${successfulOpinions.length}/${providersToQuery.length} models agreed on core logic.`;
+  const agreementSummary = `${successfulOpinions.length}/${providersToQuery.length} models agreed on core logic.`;
 
   if (options.synthesize !== false && !options.customRunner) {
     try {

@@ -42,7 +42,7 @@ const WEBHOOKS_FILE = () => join(VAULT_DIR(), "webhooks.json");
 const LOGS_FILE = () => join(VAULT_DIR(), "webhook_deliveries.json");
 
 let cachedEndpoints: WebhookEndpoint[] | null = null;
-let cachedLogs: WebhookDeliveryLog[] = [];
+const cachedLogs: WebhookDeliveryLog[] = [];
 
 export function loadWebhookEndpoints(): WebhookEndpoint[] {
   if (cachedEndpoints) return cachedEndpoints;
