@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { workerEntry } from "./supervisor.ts";
 
 // This exists because the first drive of the yard found the worker "missing" on a built
@@ -30,6 +31,13 @@ describe("finding the worker", () => {
     // choice is a real one here, not a default.
     expect(entry.args[0]).toMatch(/worker\.ts$/);
     expect(entry.args[0]).not.toMatch(/yard-worker\.mjs$/);
+  });
+});
+
+describe("Windows must not spawn the POSIX tsx shim", () => {
+  it("asks for tsx.cmd on win32", () => {
+    const src = readFileSync(fileURLToPath(new URL("./supervisor.ts", import.meta.url)), "utf8");
+    expect(src).toContain('process.platform === "win32" ? ["tsx.cmd", "tsx.exe", "tsx"]');
   });
 });
 

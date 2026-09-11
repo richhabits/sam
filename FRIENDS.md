@@ -23,10 +23,9 @@ and loads more) and it asks before anything risky.
 
 ---
 
-## 🛠️ Or the terminal way (any Mac, Windows, or Linux)
+## 🛠️ Or the terminal way (from source)
 
-You don't even need to install anything first — the setup does it all. Open **Terminal**
-(Mac: press `⌘ + Space`, type "Terminal", hit enter) and paste this whole block:
+**Mac / Linux** — Terminal:
 
 ```bash
 git clone https://github.com/richhabits/sam.git
@@ -34,8 +33,15 @@ cd sam
 ./setup.sh
 ```
 
-That's it — **`setup.sh` does everything for you**: installs Node if you don't have it, sets SAM
-up, starts it, and opens your browser. (Takes a couple of minutes — grab a coffee.)
+**Windows** — PowerShell (not Git Bash, not `setup.sh`):
+
+```powershell
+git clone https://github.com/richhabits/sam.git
+cd sam
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+That's it — setup installs Node if needed, starts SAM, and opens your browser. (Takes a couple of minutes.)
 
 
 ---
@@ -54,7 +60,7 @@ SAM needs one free "AI key" to think. **Groq** is the quickest:
 
 ## Run it 🚀
 
-If you let `setup.sh` start it, it's already running. Otherwise, any time:
+If you let setup start it, it's already running. Otherwise, any time:
 
 ```bash
 npm start

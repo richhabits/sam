@@ -14,6 +14,14 @@ const v360 = [
   "https://github.com/richhabits/sam/releases/download/v3.6.0/SAM-Setup-3.6.0.exe",
 ];
 
+describe("install.ps1 Windows asset pick", () => {
+  it("matches SAM-Setup-x.y.z.exe and not the blockmap", () => {
+    const names = ["SAM-Setup-3.6.0.exe", "SAM-Setup-3.6.0.exe.blockmap", "SAM-3.6.0-arm64.dmg"];
+    const hit = names.filter((n) => /SAM-Setup-.*\.exe$/.test(n));
+    expect(hit).toEqual(["SAM-Setup-3.6.0.exe"]);
+  });
+});
+
 describe("install.sh mac asset pick", () => {
   it("Apple Silicon gets the arm64 dmg, not the blockmap", () => {
     expect(pickMac("arm64", v360)?.endsWith("SAM-3.6.0-arm64.dmg")).toBe(true);

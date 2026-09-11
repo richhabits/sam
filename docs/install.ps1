@@ -55,11 +55,6 @@ if (-not $tag) { Die "Couldn't read the latest version." "Report this at github.
 $asset = $rel.assets | Where-Object { $_.name -match 'SAM-Setup-.*\.exe$' } | Select-Object -First 1
 $sums  = $rel.assets | Where-Object { $_.name -match 'SHA256SUMS' } | Select-Object -First 1
 if (-not $asset) { Die "No Windows installer found in $tag." "See github.com/$repo/releases/latest" }
-# Same fallback as install.sh: Pages publishes GitHub's per-asset sha256 when the release
-# itself has no SHA256SUMS.txt (the checksums job used to skip the upload).
-$sumsUrl = $null
-if ($sums) { $sumsUrl = $sums.browser_download_url }
-else { $sumsUrl = "https://richhabits.github.io/sam/SHA256SUMS.txt" }
 Ok "Found $($asset.name) ($tag)"
 
 $tmp  = Join-Path $env:TEMP ("sam-" + [guid]::NewGuid().ToString("N").Substring(0,8))
@@ -71,20 +66,29 @@ try { Invoke-WebRequest -UseBasicParsing -Uri $asset.browser_download_url -OutFi
 catch { Die "Download failed (interrupted or blocked)." "Re-run the command." }
 
 # ── verify SHA-256 ──
-if ($sumsUrl) {
+# Prefer SHA256SUMS.txt on the release. If that job skipped the upload (v3.6.0), GitHub's
+# per-asset digest is the same hash. Do NOT treat a 404 Pages file as "this release advertises
+# checksums" — that path used to abort a working install.
+$expect = $null
+$expectSrc = ""
+if ($sums) {
   try {
     $sumsFile = Join-Path $tmp "SHA256SUMS.txt"
-    Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl -OutFile $sumsFile
-    $line   = Get-Content $sumsFile | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
-    $expect = ([regex]'[a-fA-F0-9]{64}').Match($line).Value
-    # AUDIT FIX: a missing checksum entry used to fall through and install unverified. If this
-    # release advertises a checksums file, an absent/failed verification stops the install.
-    if (-not $expect) { Die "No checksum listed for $($asset.name) in this release's checksums — NOT installing unverified." "Report it — the release may be incomplete." }
-    $got = (Get-FileHash -Algorithm SHA256 -Path $file).Hash
-    if ($got -ne $expect.ToUpper()) { Die "SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete it and re-run. If it keeps failing, report it." }
-    Ok "SHA-256 verified"
-  } catch { Die "Couldn't verify the checksum this release advertises — NOT installing unverified." "Re-run; if it persists, download manually from the releases page." }
-} else { Say "  (no checksum file in this release — skipping verify)" }
+    Invoke-WebRequest -UseBasicParsing -Uri $sums.browser_download_url -OutFile $sumsFile
+    $line = Get-Content $sumsFile | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
+    $expect = ([regex]'[a-fA-F0-9]{64}').Match([string]$line).Value
+    if ($expect) { $expectSrc = "release SHA256SUMS.txt" }
+  } catch { $expect = $null }
+}
+if (-not $expect -and $asset.digest -match 'sha256:([a-fA-F0-9]{64})') {
+  $expect = $Matches[1]
+  $expectSrc = "GitHub asset digest"
+}
+if ($expect) {
+  $got = (Get-FileHash -Algorithm SHA256 -Path $file).Hash
+  if ($got -ne $expect.ToUpper()) { Die "SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete it and re-run. If it keeps failing, report it." }
+  Ok "SHA-256 verified ($expectSrc)"
+} else { Say "  (no checksum for $($asset.name) — skipping verify)" }
 
 # ── run the installer (/S = silent, no launch — used by CI) ──
 Step "Running the installer…"

@@ -73,12 +73,6 @@ else
   ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.AppImage$' | head -1 || true)"
 fi
 SUMS_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+SHA256SUMS[^"]*"' | sed -E 's/.*"(https[^"]+)".*/\1/' | head -1 || true)"
-# v3.6.0 shipped without SHA256SUMS.txt on the release (the checksums job skipped if the notes
-# already said "Verify your download"). The landing page publishes the GitHub-reported sha256
-# of each installer; use that so verify still happens.
-if [ -z "$SUMS_URL" ]; then
-  SUMS_URL="https://richhabits.github.io/sam/SHA256SUMS.txt"
-fi
 
 if [ -z "$ASSET_URL" ]; then
   if [ "$PLATFORM" = "linux" ]; then
@@ -108,7 +102,28 @@ if [ -n "$SUMS_URL" ]; then
   [ "$GOT" = "$EXPECT" ] || die "⚠ SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete anything downloaded and re-run. If it keeps failing, report it."
   ok "SHA-256 verified"
 else
-  say "  ${DIM}(no checksum file in this release — skipping verify)${RESET}"
+  EXPECT=""
+  if command -v python3 >/dev/null 2>&1; then
+    EXPECT="$(FILE="$FILE" python3 -c '
+import json, os, sys
+rel = json.load(sys.stdin)
+want = os.environ.get("FILE", "")
+for a in rel.get("assets") or []:
+    if a.get("name") == want:
+        d = str(a.get("digest") or "")
+        if d.startswith("sha256:"):
+            print(d.split(":", 1)[1])
+            break
+' <<<"$REL" 2>/dev/null || true)"
+  fi
+  if [ -n "$EXPECT" ]; then
+    if command -v shasum >/dev/null 2>&1; then GOT="$(shasum -a 256 "$TMP/$FILE" | awk '{print $1}')";
+    else GOT="$(sha256sum "$TMP/$FILE" | awk '{print $1}')"; fi
+    [ "$GOT" = "$EXPECT" ] || die "⚠ SHA-256 MISMATCH — the download is corrupt or tampered with. NOT installing." "Delete anything downloaded and re-run. If it keeps failing, report it."
+    ok "SHA-256 verified (GitHub asset digest)"
+  else
+    say "  ${DIM}(no checksum file in this release — skipping verify)${RESET}"
+  fi
 fi
 
 # ── install ──

@@ -47,6 +47,8 @@ process.on("unhandledRejection", (e: any) => { _crashLog(`[reject] ${e?.stack ||
 // Packaged app: the .app bundle is READ-ONLY, so the server's data — the vault (memory, notebooks,
 // photos, keys) and the .env it writes config to — must live in a writable per-user directory.
 if (app.isPackaged) {
+  // The yard worker is the packaged app's background builder. SAM_YARD=0 still turns it off.
+  if (process.env.SAM_YARD !== "0") process.env.SAM_YARD = "1";
   const dataDir = app.getPath("userData");
   process.env.VAULT_DIR = process.env.VAULT_DIR || path.join(dataDir, "vault");
   process.env.DOTENV_CONFIG_PATH = process.env.DOTENV_CONFIG_PATH || path.join(dataDir, ".env");
