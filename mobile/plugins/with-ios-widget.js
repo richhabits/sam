@@ -113,6 +113,7 @@ function addWidgetTarget(config) {
       }
     }
 
+    const first = proj.getFirstTarget();
     if (widgetUuid) {
       setBuildSettings(proj, widgetUuid, { CODE_SIGN_ENTITLEMENTS: `${TARGET}/${ENTITLEMENTS}` });
       for (const name of STORE) {
@@ -124,7 +125,6 @@ function addWidgetTarget(config) {
     // addTarget() hangs the "Embed App Extensions" copy phase and the build dependency off
     // getFirstTarget(). If that ever stops being the app, the extension would be embedded in
     // the wrong product and simply never appear on the phone — a failure with no error. Check.
-    const first = proj.getFirstTarget();
     if (String(first.firstTarget.name || '').replace(/"/g, '') !== appName) {
       throw new Error(
         `[with-ios-widget] expected "${appName}" to be the first Xcode target, found ` +
@@ -221,8 +221,6 @@ function addWidgetTarget(config) {
       TARGETED_DEVICE_FAMILY: '"1,2"',
     });
 
-    const appGroup = proj.getFirstProject().firstProject.mainGroup;
-    const appName = cfg.modRequest.projectName;
     for (const name of STORE) {
       try {
         proj.addSourceFile(`${appName}/${name}`, { target: first.uuid });
@@ -230,7 +228,6 @@ function addWidgetTarget(config) {
         /* already in the target on a non-clean prebuild */
       }
     }
-    void appGroup;
 
     return cfg;
   });
