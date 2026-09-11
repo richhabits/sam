@@ -7,6 +7,7 @@
 //   sam://ask               — open the agent surface, ready to type
 //   sam://ask?text=<prompt> — open the agent surface and send that prompt
 //   sam://tasks             — open the tasks surface
+//   sam://home | vault | settings | pair — open those surfaces (no prompt; pair is the sheet)
 //
 // Nothing here is widget-specific. The same links work from Shortcuts, a QR code, a Handoff, or
 // another app — a widget is just the first caller.
@@ -18,7 +19,7 @@
 
 import { param } from './url';
 
-export type QuickAction = 'ask' | 'tasks';
+export type QuickAction = 'ask' | 'tasks' | 'home' | 'vault' | 'settings' | 'pair';
 export type QuickLink = { action: QuickAction; text: string | null };
 
 // Long enough for a real instruction, short enough that a crafted link cannot paste an essay
@@ -37,7 +38,7 @@ export function parseQuickLink(url: string | null | undefined): QuickLink | null
   const before = q === -1 ? raw : raw.slice(0, q);
   const query = q === -1 ? '' : raw.slice(q + 1);
 
-  const m = before.match(/^sam:\/\/(ask|tasks)\/?$/i);
+  const m = before.match(/^sam:\/\/(ask|tasks|home|vault|settings|pair)\/?$/i);
   if (!m) return null;
   const action = m[1].toLowerCase() as QuickAction;
 

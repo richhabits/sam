@@ -134,29 +134,38 @@ export default function App() {
     [host, code],
   );
 
-  const handledUrls = useRef<Set<string>>(new Set());
   const handledCodes = useRef<Set<string>>(new Set());
 
   const handleUrl = useCallback(
     (url: string | null) => {
-      if (!url || handledUrls.current.has(url)) return;
-      handledUrls.current.add(url);
+      if (!url) return;
 
-      const quick = parseQuickLink(url);
-      if (quick) {
-        setSurface(quick.action === 'tasks' ? 'tasks' : 'agent');
-        setPrompt(quick.text);
+      // Pairing codes are one-shot. Quick links (widget / Watch / screenshots) are not —
+      // sam://ask must open Agent every tap, not only the first.
+      const link = parsePairLink(url);
+      if (link) {
+        if (handledCodes.current.has(link.code)) return;
+        handledCodes.current.add(link.code);
+        const target = link.host || host;
+        setHostInput(target);
+        setCode(link.code);
+        doClaim(target, link.code);
         return;
       }
 
-      const link = parsePairLink(url);
-      if (!link) return;
-      if (handledCodes.current.has(link.code)) return;
-      handledCodes.current.add(link.code);
-      const target = link.host || host;
-      setHostInput(target);
-      setCode(link.code);
-      doClaim(target, link.code);
+      const quick = parseQuickLink(url);
+      if (quick) {
+        if (quick.action === 'tasks') setSurface('tasks');
+        else if (quick.action === 'home') setSurface('home');
+        else if (quick.action === 'vault') setSurface('vault');
+        else if (quick.action === 'settings') setSurface('settings');
+        else if (quick.action === 'pair') setShowPairModal(true);
+        else {
+          setSurface('agent');
+          setPrompt(quick.text);
+        }
+        return;
+      }
     },
     [host, doClaim],
   );

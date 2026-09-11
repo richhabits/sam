@@ -11,6 +11,13 @@ describe('the two actions it knows', () => {
     expect(parseQuickLink('sam://tasks')).toEqual({ action: 'tasks', text: null });
   });
 
+  it('opens the other surfaces without a prompt', () => {
+    expect(parseQuickLink('sam://home')).toEqual({ action: 'home', text: null });
+    expect(parseQuickLink('sam://vault')).toEqual({ action: 'vault', text: null });
+    expect(parseQuickLink('sam://settings')).toEqual({ action: 'settings', text: null });
+    expect(parseQuickLink('sam://pair')).toEqual({ action: 'pair', text: null });
+  });
+
   it('accepts a trailing slash and any casing of the scheme', () => {
     expect(parseQuickLink('sam://ask/')?.action).toBe('ask');
     expect(parseQuickLink('SAM://Tasks')?.action).toBe('tasks');
@@ -39,7 +46,7 @@ describe('what it refuses', () => {
   });
 
   it('refuses actions it does not have', () => {
-    for (const u of ['sam://run', 'sam://settings', 'sam://ask/extra', 'sam://']) {
+    for (const u of ['sam://run', 'sam://ask/extra', 'sam://']) {
       expect(parseQuickLink(u), u).toBeNull();
     }
   });
@@ -51,7 +58,7 @@ describe('what it refuses', () => {
   });
 
   it('ignores a pairing link — that is a different parser with different rules', () => {
-    expect(parseQuickLink('sam://pair?code=abc123')).toBeNull();
+    expect(parseQuickLink('sam://pair?code=abc123')).toEqual({ action: 'pair', text: null });
   });
 });
 
