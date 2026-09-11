@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Image,
+  LogBox,
   Modal,
   Platform,
   Pressable,
@@ -14,6 +15,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+// This banner sat on top of the tab bar and ate Agent/Settings taps.
+LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
 import ChatScreen from './ChatScreen';
 import HomeScreen from './HomeScreen';
 import VaultScreen from './VaultScreen';
@@ -312,8 +316,8 @@ export default function App() {
         </View>
       ) : null}
 
-      {/* Main Surfaces View */}
-      <View style={[{ flex: 1 }, column]}>
+      {/* Main Surfaces View — clip so lists cannot steal tab-bar taps */}
+      <View style={[{ flex: 1, overflow: 'hidden', zIndex: 0 }, column]}>
         {surface === 'home' ? (
           <HomeScreen
             paired={_paired}
@@ -485,7 +489,7 @@ const styles = StyleSheet.create({
   },
   markSmall: { width: 28, height: 28, borderRadius: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 72, zIndex: 1 },
   menu: {
     position: 'absolute',
     top: 52,

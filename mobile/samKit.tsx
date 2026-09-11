@@ -450,7 +450,7 @@ export function SamTabBar({
   onChange: (k: SamTabKey) => void;
 }) {
   return (
-    <View style={tabbar.bar} accessibilityRole="tablist">
+    <View style={[tabbar.bar, { zIndex: 20, elevation: 20 }]} accessibilityRole="tablist">
       {tabs.map((t) => {
         const on = t.key === value;
         return (
