@@ -463,6 +463,7 @@ export function SamTabBar({
             accessibilityRole="tab"
             accessibilityLabel={t.label}
             accessibilityState={{ selected: on }}
+            hitSlop={12}
             style={tabbar.item}
           >
             {platform === 'android' && on ? <View style={tabbar.pill} /> : null}
@@ -476,8 +477,15 @@ export function SamTabBar({
   );
 }
 const tabbar = StyleSheet.create({
-  bar: { flexDirection: 'row', backgroundColor: samColor.ground2, borderTopWidth: 1, borderTopColor: samBorder.default },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, minHeight: samTouch.minTarget },
+  bar: {
+    flexDirection: 'row',
+    backgroundColor: samColor.ground2,
+    borderTopWidth: 1,
+    borderTopColor: samBorder.default,
+    // Home indicator was eating taps on Agent / Settings. Keep labels above it.
+    paddingBottom: 18,
+  },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, minHeight: samTouch.minTarget },
   underline: { position: 'absolute', top: 0, width: 24, height: 2, backgroundColor: samColor.accent, borderRadius: 1 },
   pill: { position: 'absolute', top: 2, width: 44, height: 26, borderRadius: 13, backgroundColor: 'rgba(240,130,78,0.15)' },
 });
