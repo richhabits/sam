@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { api, type ApiError } from './lib/api';
 import { haptic } from './lib/haptics';
 import { type RecentTask, taskGlyph, taskTitle, taskWhen } from './lib/mentions';
 import { GlyphTile, HeroCard, SamRow, SamSectionLabel } from './samKit';
 import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 import { publishWidgetState } from './lib/widgetState';
+import { layoutFor, tileWidthPercent } from './lib/layout';
 
 // HOME — design_handoff_sam_clients/README.md, "Screens › Home": the new launch tab, one of
 // the surfaces the phone never had. Hero card → Ask it → pick up where you left off → a grid to
@@ -83,6 +84,10 @@ export default function HomeScreen({
     void load();
   }, [load]);
 
+  const { width } = useWindowDimensions();
+  const layout = layoutFor(width);
+  const tileCols = Math.max(2, layout.gridColumns);
+  const tileW = tileWidthPercent(tileCols);
   const active = (yard?.queued ?? 0) + (yard?.running ?? 0);
   const lanes = yard?.meter?.byTier ? Object.keys(yard.meter.byTier).length : 0;
 
@@ -144,8 +149,9 @@ export default function HomeScreen({
       <View style={{ marginBottom: samSpace.section }}>
         <SamSectionLabel>SURFACES</SamSectionLabel>
         <View style={{ marginHorizontal: samSpace.gutter, flexDirection: 'row', flexWrap: 'wrap', gap: samSpace.rowGap }}>
-          <GridTile label="Studio" glyph="◆" comingSoon />
+          <GridTile width={tileW} label="Studio" glyph="◆" comingSoon />
           <GridTile
+            width={tileW}
             label="Vault"
             glyph="▤"
             onPress={() => {
@@ -153,8 +159,9 @@ export default function HomeScreen({
               onOpenVault();
             }}
           />
-          <GridTile label="FlipIt" glyph="↯" comingSoon />
+          <GridTile width={tileW} label="FlipIt" glyph="↯" comingSoon />
           <GridTile
+            width={tileW}
             label="Your computer"
             glyph="▣"
             status={paired ? 'Paired' : undefined}
@@ -190,12 +197,14 @@ export default function HomeScreen({
 }
 
 function GridTile({
+  width,
   label,
   glyph,
   onPress,
   comingSoon,
   status,
 }: {
+  width: `${number}%`;
   label: string;
   glyph: string;
   onPress?: () => void;
@@ -211,7 +220,7 @@ function GridTile({
       accessibilityLabel={comingSoon ? `${label}, coming soon` : label}
       accessibilityState={{ disabled }}
       style={({ pressed }) => ({
-        width: '47.7%',
+        width,
         aspectRatio: 1.3,
         borderRadius: samRadius.row,
         backgroundColor: pressed ? samColor.raise2 : samColor.raise,

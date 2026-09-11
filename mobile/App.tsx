@@ -236,7 +236,11 @@ export default function App() {
           accessibilityRole="button"
           accessibilityLabel={_paired ? 'Desktop paired' : 'Standalone mode'}
         >
-          <Image source={require('./assets/sam-mark.png')} style={s.markSmall} accessible={false} />
+          <Image
+            source={require('./assets/sam-mark.png')}
+            style={[s.markSmall, layout.isRegular && { width: 36, height: 36, borderRadius: 8 }]}
+            accessible={false}
+          />
           <View style={[s.statusDot, { backgroundColor: _paired ? samColor.green : samColor.accent }]} />
         </Pressable>
 

@@ -131,16 +131,23 @@ struct SAMQuickActionsView: View {
         case .accessoryCircular:
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "sparkles").font(.title3)
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(Palette.tint)
             }
             .widgetURL(Destination.ask)
             .samAccessoryBackground()
+
+        case .accessoryInline:
+            Label(snap.line, systemImage: "sparkles")
+                .widgetURL(Destination.ask)
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 Text("S.A.M.")
                     .font(.caption2.weight(.bold))
                     .tracking(1.2)
+                    .foregroundStyle(Palette.tint)
                 Text(snap.line)
                     .font(.headline)
                 Text(snap.detail)
@@ -150,6 +157,49 @@ struct SAMQuickActionsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(Destination.ask)
             .samAccessoryBackground()
+
+        case .systemLarge, .systemExtraLarge:
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.title)
+                        .foregroundStyle(Palette.tint)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("S.A.M.")
+                            .font(.caption2.weight(.bold))
+                            .tracking(1.6)
+                            .foregroundStyle(Palette.tint)
+                        Text(snap.line)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Palette.ink)
+                        Text(snap.detail)
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.ink.opacity(0.6))
+                    }
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: 10) {
+                    Link(destination: Destination.ask) {
+                        QuickTile(
+                            symbol: "sparkles",
+                            title: "Ask",
+                            subtitle: snap.paired ? (snap.demo ? "Demo" : "Paired") : "Not connected",
+                            filled: true,
+                            tint: tint
+                        )
+                    }
+                    Link(destination: Destination.tasks) {
+                        QuickTile(
+                            symbol: "list.bullet.rectangle",
+                            title: "Tasks",
+                            subtitle: snap.detail,
+                            filled: false,
+                            tint: tint
+                        )
+                    }
+                }
+            }
+            .samWidgetBackground(Palette.ground)
 
         case .systemMedium:
             // Two destinations only, and the whole tile is the target — a Link is honoured in
@@ -203,8 +253,11 @@ struct SAMQuickActionsWidget: Widget {
             SAMQuickActionsView(entry: entry)
         }
         .configurationDisplayName("SAM")
-        .description("Live SAM status from this phone, and a tap to ask or open tasks.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
+        .description("Live SAM status — Home Screen (including iPad large), Lock Screen, and Watch-sized accessories.")
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }
 

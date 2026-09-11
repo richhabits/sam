@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centreWhenRoomy, contentColumn, layoutFor, READABLE_MAX, REGULAR_WIDTH } from './layout';
+import { centreWhenRoomy, contentColumn, layoutFor, READABLE_MAX, REGULAR_WIDTH, tileWidthPercent } from './layout';
 
 // There is no iPad in this loop, so the iPad behaviour is pinned here instead of eyeballed.
 // The widths below are the real ones — if a case regresses, it regresses against an actual
@@ -108,5 +108,11 @@ describe('using the space, not just capping it', () => {
     expect(layoutFor(600).gridColumns).toBe(2);
     expect(layoutFor(834).gridColumns).toBe(3);
     expect(layoutFor(1440).gridColumns).toBe(4);
+  });
+
+  it('sizes home tiles for phone vs iPad vs 13-inch landscape', () => {
+    expect(tileWidthPercent(2)).toBe('47.7%');
+    expect(tileWidthPercent(layoutFor(IPAD_11_PORTRAIT).gridColumns)).toBe('31.4%');
+    expect(tileWidthPercent(layoutFor(IPAD_129_LANDSCAPE).gridColumns)).toBe('23%');
   });
 });

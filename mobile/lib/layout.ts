@@ -78,6 +78,16 @@ export function layoutFor(width: number): Layout {
 /** Style for a column that fills a phone and centres itself once there is room to spare.
  *  `width: '100%'` matters: without it a maxWidth-only child shrink-wraps its content and the
  *  centred column jumps around as messages change length. */
+/** Home-grid tile width as a % of the content column. Home is a 2×2 on phones; iPad uses the
+ *  layout's column count so four tiles sit in a row on a 13" instead of two stretched cards. */
+export function tileWidthPercent(columns: number): `${number}%` {
+  const c = Math.max(1, Math.min(4, Math.floor(columns) || 1));
+  if (c === 1) return '100%';
+  if (c === 2) return '47.7%';
+  if (c === 3) return '31.4%';
+  return '23%';
+}
+
 export function contentColumn(l: Layout): { width: '100%'; maxWidth: number; alignSelf: 'center' } {
   return { width: '100%', maxWidth: l.contentMaxWidth, alignSelf: 'center' };
 }
