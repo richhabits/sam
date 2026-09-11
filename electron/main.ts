@@ -4,6 +4,7 @@ import "./preboot.ts";
 
 import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen, clipboard } from "electron";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
 import { crossOutOnce } from "../server/threshold.ts";   // same module the server booted → shares the once-guard
@@ -88,10 +89,20 @@ function hardenNavigation(w: BrowserWindow) {
   });
 }
 
+function appIconPath(): string {
+  const packaged = path.join(process.resourcesPath || "", "icon.icns");
+  const dev = path.join(__dirname, "../build/icon-mac.png");
+  if (existsSync(packaged)) return packaged;
+  return dev;
+}
+
 function createWindow() {
+  const icon = appIconPath();
+  if (process.platform === "darwin" && app.dock && existsSync(icon)) app.dock.setIcon(icon);
   win = new BrowserWindow({
     width: 1000,
     height: 800,
+    icon,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       nodeIntegration: false,

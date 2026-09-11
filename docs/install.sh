@@ -59,21 +59,26 @@ TAG="$(printf '%s' "$REL" | sed -E -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"(
 [ -n "$TAG" ] || die "Couldn't read the latest version." "Report this at github.com/${REPO}/issues."
 
 # choose the right asset
+# Intel used to match `SAM-*-arm64.dmg` because that name also contains a digit before `.dmg`.
+ALL_URLS="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+"' | sed -E 's/.*"(https[^"]+)".*/\1/')"
 if [ "$PLATFORM" = "mac" ]; then
-  if [ "$ARCH" = "arm64" ]; then PAT="arm64\\.dmg"; else PAT="[0-9]\\.dmg"; fi   # x64 dmg has no -arm64
+  if [ "$ARCH" = "arm64" ]; then
+    ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E 'arm64\.dmg$' | head -1 || true)"
+  else
+    ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.dmg$' | grep -v 'arm64' | head -1 || true)"
+  fi
 elif [ "${SAM_PKG:-}" = "deb" ]; then
-  PAT="\\.deb"           # opt-in: a real dpkg package, but installing it needs root
+  ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.deb$' | head -1 || true)"
 else
-  PAT="\\.AppImage"      # default: no root needed, runs on every distro
+  ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.AppImage$' | head -1 || true)"
 fi
-ASSET_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+"' | sed -E 's/.*"(https[^"]+)".*/\1/' | grep -E "$PAT" | head -1 || true)"
 SUMS_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+SHA256SUMS[^"]*"' | sed -E 's/.*"(https[^"]+)".*/\1/' | head -1 || true)"
 # v3.6.0 shipped without SHA256SUMS.txt on the release (the checksums job skipped if the notes
 # already said "Verify your download"). The landing page publishes the GitHub-reported sha256
 # of each installer; use that so verify still happens.
 if [ -z "$SUMS_URL" ]; then
   SUMS_URL="https://richhabits.github.io/sam/SHA256SUMS.txt"
-fi"
+fi
 
 if [ -z "$ASSET_URL" ]; then
   if [ "$PLATFORM" = "linux" ]; then

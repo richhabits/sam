@@ -95,7 +95,7 @@ graph TD
 
 #### Option A: One-Paste Terminal Install (Recommended)
 
-* **macOS (Apple Silicon & Intel) & Linux:**
+* **macOS (Apple Silicon; Intel uses source until an Intel `.dmg` ships) & Linux:**
   ```bash
   curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash
   ```
@@ -107,7 +107,8 @@ graph TD
 
 #### Option B: Standalone Release Installers
 Download the latest binaries directly from the [GitHub Releases](https://github.com/richhabits/sam/releases/latest) page:
-* **macOS**: `SAM-x.x.x-arm64.dmg` (Apple Silicon M1/M2/M3/M4) or `SAM-x.x.x.dmg` (Intel)
+* **macOS**: `SAM-x.x.x-arm64.dmg` (Apple Silicon). **Intel `.dmg` is not in the current release** — `install.sh` refuses to install the arm64 image on Intel; use Option C (from source) until that asset exists.
+* **Signed vs unsigned:** a notarized Developer ID build opens with Gatekeeper `accepted` (this Mac's 3.6.0 is `source=Notarized Developer ID`). If Gatekeeper cannot verify, the installer says so and clears quarantine — that is the honest unsigned path, not a silent skip. Overlay (⌥Space) and the Dock icon come from **SAM.app**, not from the browser HUD.
 * **Windows**: `SAM-Setup-x.x.x.exe`
 * **Linux**: `SAM-x.x.x.AppImage` or `SAM-x.x.x.deb`
 

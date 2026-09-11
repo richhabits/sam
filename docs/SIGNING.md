@@ -9,7 +9,7 @@ steps + honest costs.
 
 | Platform | Signing wired | Verified in CI | Live? | Needs |
 |---|---|---|---|---|
-| **macOS** | ✅ (auto when secrets set) | ✅ `spctl` + `stapler validate` fail the release if notarization doesn't stick | ⏳ add the 5 secrets below | Apple Developer ID ($99/yr) |
+| **macOS** | ✅ (auto when secrets set) | ✅ `spctl` + `stapler validate` fail the release if notarization doesn't stick | **v3.6.0 on this Mac:** Gatekeeper `accepted` / `Notarized Developer ID`. `stapler validate` on `SAM.app` is still exit 65 (no stapled ticket) — first offline open may need the network. Intel `.dmg` is not attached to that release. | Apple Developer ID ($99/yr) — secrets are in use for arm64 |
 | **Windows** | ✅ (auto when secrets set) | — (graceful unsigned + SHA-256 verify) | ⏳ optional | Azure Trusted Signing (~$10/mo) or OV/EV cert |
 | **Linux** | n/a (AppImage, unsigned by norm) | SHA-256 verify | ✅ | — |
 
