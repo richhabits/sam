@@ -66,10 +66,10 @@ Captured under `mobile/screenshots/` from a **Debug** sim (Metro), standalone, *
 
 | Set | Size | Ready | Missing / wrong size |
 |---|---|---|---|
-| `iphone-6.9/` | **1320 × 2868** required | `01-home.png` | `02`–`06` are 1206 × 2622 (6.3" SAM Test iPhone). Recapture on **SAM Test Max**. |
-| `ipad-13/` | **2064 × 2752** | `01-home.png`, `04-settings.png` | `01-pairing`, `02-agent`, `03-tasks` are still the old **light** 03:09 shots — do not upload those. |
+| `iphone-6.9/` | **1320 × 2868** required | `01-home.png` | `02`–`06` are 1206 × 2622. Recapture on **SAM Test Max**. Do not upload `01-agent.png` (stale). |
+| `ipad-13/` | **2064 × 2752** | **Complete:** home, pairing, agent, tasks, settings, vault. All dark terracotta. | — |
 
-Do not upload `01-agent.png` (stale 6.9" from 03:09). Clock is live, not 9:41. Apple does not require a fake clock.
+Clock is live, not 9:41. Apple does not require a fake clock.
 
 ## 5. Draft metadata
 
