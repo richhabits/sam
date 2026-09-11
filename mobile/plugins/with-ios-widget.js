@@ -15,15 +15,9 @@ const { withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 // in `ios/` is authored by hand, and `expo prebuild --platform ios --clean` reproduces the
 // whole thing from scratch.
 //
-// What it deliberately does NOT do
-// ────────────────────────────────
-// No App Group, no shared container, no entitlements. Sharing live data with a widget needs an
-// App Group identifier registered on a paid Apple Developer account and an entitlement on BOTH
-// targets — which would make `expo prebuild` produce a project that no longer builds for
-// anyone who hasn't done that registration, in exchange for data the widget can't get anyway
-// (the pairing token is in the Keychain and the Mac is on the LAN). The widget is a launcher;
-// it deep-links into the app over the `sam` scheme the app already registers. docs/WIDGETS.md
-// records what the App Group step would cost when someone wants it.
+// App Group `group.com.hectic.sam.mobile` is on BOTH the app and the widget. The app writes a
+// JSON snapshot (pairing / yard); the widget reads it. Taps still open sam://ask and sam://tasks.
+// Team CC9Q9BH5NT must have that group on the Apple Developer account or the next archive fails.
 
 const TARGET = 'SAMWidget';
 // The extension's identifier must be a suffix of the app's — Apple requires an app extension's
@@ -40,6 +34,9 @@ const MIN_IOS = 16.0;
 const SOURCE_DIR = path.join(__dirname, '..', 'widget');
 const SOURCES = ['SAMWidget.swift'];
 const PLIST = 'Info.plist';
+const ENTITLEMENTS = 'SAMWidget.entitlements';
+const STORE = ['SAMWidgetStore.swift', 'SAMWidgetStore.m'];
+const APP_GROUP = 'group.com.hectic.sam.mobile';
 
 /** Copy the tracked widget sources into the generated project, replacing whatever was there.
  *  Dangerous mods run before the .pbxproj mod, so the files exist by the time it references
@@ -51,8 +48,13 @@ function copySources(config) {
       const dest = path.join(cfg.modRequest.platformProjectRoot, TARGET);
       fs.rmSync(dest, { recursive: true, force: true });
       fs.mkdirSync(dest, { recursive: true });
-      for (const name of [...SOURCES, PLIST]) {
+      for (const name of [...SOURCES, PLIST, ENTITLEMENTS]) {
         fs.copyFileSync(path.join(SOURCE_DIR, name), path.join(dest, name));
+      }
+      const appDir = path.join(cfg.modRequest.platformProjectRoot, cfg.modRequest.projectName);
+      fs.mkdirSync(appDir, { recursive: true });
+      for (const name of STORE) {
+        fs.copyFileSync(path.join(SOURCE_DIR, name), path.join(appDir, name));
       }
       return cfg;
     },
@@ -102,9 +104,21 @@ function addWidgetTarget(config) {
     // Idempotent: prebuild without --clean re-runs every mod over a project that already has
     // the target, and a second copy would produce two extensions with the same bundle id.
     const nativeTargets = proj.pbxNativeTargetSection();
+    let widgetUuid = null;
     for (const key of Object.keys(nativeTargets)) {
       const t = nativeTargets[key];
-      if (t && typeof t === 'object' && String(t.name || '').replace(/"/g, '') === TARGET) return cfg;
+      if (t && typeof t === 'object' && String(t.name || '').replace(/"/g, '') === TARGET) {
+        widgetUuid = key;
+        break;
+      }
+    }
+
+    if (widgetUuid) {
+      setBuildSettings(proj, widgetUuid, { CODE_SIGN_ENTITLEMENTS: `${TARGET}/${ENTITLEMENTS}` });
+      for (const name of STORE) {
+        try { proj.addSourceFile(`${appName}/${name}`, { target: first.uuid }); } catch { /* already attached */ }
+      }
+      return cfg;
     }
 
     // addTarget() hangs the "Embed App Extensions" copy phase and the build dependency off
@@ -202,9 +216,21 @@ function addWidgetTarget(config) {
       SKIP_INSTALL: 'YES',
       SWIFT_EMIT_LOC_STRINGS: 'YES',
       SWIFT_VERSION: '5.0',
+      CODE_SIGN_ENTITLEMENTS: `${TARGET}/${ENTITLEMENTS}`,
       // iPhone and iPad, matching the app's supportsTablet.
       TARGETED_DEVICE_FAMILY: '"1,2"',
     });
+
+    const appGroup = proj.getFirstProject().firstProject.mainGroup;
+    const appName = cfg.modRequest.projectName;
+    for (const name of STORE) {
+      try {
+        proj.addSourceFile(`${appName}/${name}`, { target: first.uuid });
+      } catch {
+        /* already in the target on a non-clean prebuild */
+      }
+    }
+    void appGroup;
 
     return cfg;
   });

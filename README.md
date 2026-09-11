@@ -126,10 +126,10 @@ Open **http://localhost:8787** — free, local, and ready immediately. Opening t
 
 ### 📱 Mobile App (iOS)
 
-> **Status: Live on TestFlight · Submitted for App Store review**
+> **Status: Live on TestFlight · App Store not live yet (review notes are in `mobile/SUBMISSION.md`; this session did not press Submit)**
 
 * **Try it now**: [Join the TestFlight beta](https://testflight.apple.com/join/htr4htvY) — works immediately, standalone, no desktop required.
-* **App Store**: Submitted and awaiting Apple's review; this README will be updated the moment it's live.
+* **App Store**: Not on the store yet. TestFlight is the shipping iOS binary. Widget reads App Group `group.com.hectic.sam.mobile` (pairing / yard snapshot from the app) — needs a new native build to land on devices.
 * **Android**: Not shipping. `mobile/android/` is Expo prebuild output, not a Play Store app. The platforms badge does not claim Android.
 * **Optional desktop pairing**: In the app, tap **Connect to Mac / PC** (or in SAM Desktop, **Dashboard → Devices → Pair a phone**) to unlock local files and automation — entirely optional.
 

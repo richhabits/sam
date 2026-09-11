@@ -5,6 +5,7 @@ import { haptic } from './lib/haptics';
 import { type RecentTask, taskGlyph, taskTitle, taskWhen } from './lib/mentions';
 import { HeroCard, SamRow, SamSectionLabel } from './samKit';
 import { samColor, samInk, samSpace } from './lib/samTheme';
+import { publishWidgetState } from './lib/widgetState';
 
 // HOME — design_handoff_sam_clients/README.md, "Screens › Home": the new launch tab, one of
 // the surfaces the phone never had. Hero card → Ask it → pick up where you left off → a grid to
@@ -32,6 +33,7 @@ export default function HomeScreen({
   onOpenPairing,
   onNeedsPairing,
   paired,
+  demo = false,
 }: {
   onOpenChat: () => void;
   onOpenVault: () => void;
@@ -39,6 +41,7 @@ export default function HomeScreen({
   onOpenPairing: () => void;
   onNeedsPairing: () => void;
   paired: boolean;
+  demo?: boolean;
 }) {
   const [yard, setYard] = useState<YardSummary | null>(null);
   const [yardError, setYardError] = useState('');
@@ -49,21 +52,32 @@ export default function HomeScreen({
     loading.current = true;
     try {
       const y: any = await api('/api/yard');
+      const recent = Array.isArray(y?.recent) ? y.recent : [];
+      const queued = y?.queued;
+      const running = y?.running;
       setYard({
         on: !!y?.on,
-        recent: Array.isArray(y?.recent) ? y.recent : [],
+        recent,
         meter: y?.meter,
-        queued: y?.queued,
-        running: y?.running,
+        queued,
+        running,
       });
       setYardError('');
+      const activeNow = (queued ?? 0) + (running ?? 0);
+      const last = recent[0];
+      publishWidgetState({
+        paired: true,
+        demo,
+        line: demo ? 'Demo mode' : y?.on === false ? 'Yard off' : activeNow ? `${activeNow} running` : 'Yard idle',
+        detail: last ? taskTitle(last) : `${recent.length} recent tasks`,
+      });
     } catch (e: any) {
       if ((e as ApiError)?.status === 401) return onNeedsPairing();
       setYardError(e?.message || "Couldn't reach SAM.");
     } finally {
       loading.current = false;
     }
-  }, [onNeedsPairing]);
+  }, [onNeedsPairing, demo]);
 
   useEffect(() => {
     void load();

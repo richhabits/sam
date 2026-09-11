@@ -27,6 +27,7 @@ import { ensurePermission, notify } from './lib/notify';
 import { haptic } from './lib/haptics';
 import { parsePairLink, type PairLink } from './lib/pairlink';
 import { normalizeHost, pairedDespiteError } from './lib/pairstate';
+import { publishWidgetState } from './lib/widgetState';
 import { parseQuickLink } from './lib/quicklink';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
@@ -82,7 +83,14 @@ export default function App() {
         if (claimed.current) return;
         if (saved) setHostInput(saved);
         setDemo(inDemo);
-        setPaired(!!token || inDemo);
+        const isPaired = !!token || inDemo;
+        setPaired(isPaired);
+        publishWidgetState({
+          paired: isPaired,
+          demo: inDemo,
+          line: inDemo ? 'Demo mode' : isPaired ? 'Paired' : 'Ask SAM',
+          detail: inDemo ? 'Sample data, not your Mac' : isPaired ? 'Connected to your computer' : 'Open the app to connect',
+        });
       } catch {
         setPaired(false);
       }
@@ -298,6 +306,7 @@ export default function App() {
         {surface === 'home' ? (
           <HomeScreen
             paired={_paired}
+            demo={demo}
             onNeedsPairing={onNeedsPairing}
             onOpenPairing={() => setShowPairModal(true)}
             onOpenChat={() => setSurface('agent')}

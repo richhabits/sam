@@ -3,18 +3,10 @@ import WidgetKit
 
 // SAM ON THE HOME AND LOCK SCREEN.
 //
-// A widget cannot talk to SAM. It runs in its own sandboxed process, on the system's schedule,
-// with no pairing token and no network reach to the Mac — so anything it "showed" about your
-// SAM would be a guess. What it CAN do is be the shortest path from a locked phone to a
-// started task, and that is all this one claims to be: a launcher.
-//
-// Every destination below is a surface the app already has. `sam://ask` and `sam://tasks` are
-// parsed by lib/quicklink.ts and routed by App.tsx — the widget invents no transport of its
-// own, it taps the same deep link a QR code or a Shortcut would.
-//
-// Live data (what's running, today's token spend) would need an App Group plus a background
-// writer in the app, and an App Group needs a registered identifier on a paid Apple account.
-// See docs/WIDGETS.md for why that is deliberately a later step rather than a half-done one.
+// The widget cannot hold the pairing token or reach the Mac. The app writes a JSON snapshot
+// into App Group `group.com.hectic.sam.mobile` (SAMWidgetStore.save). This process reads that
+// and shows it. Taps still open sam://ask and sam://tasks — same contract as lib/quicklink.ts.
+// Empty/missing snapshot is an honest "not connected", never invented live data.
 
 private enum Destination {
     static let ask = URL(string: "sam://ask")!
@@ -27,23 +19,45 @@ private enum Palette {
     static let tintDark = Color(red: 0.941, green: 0.510, blue: 0.306) // #F0824E
 }
 
+struct SAMSnapshot {
+    var paired: Bool
+    var demo: Bool
+    var line: String
+    var detail: String
+
+    static func load() -> SAMSnapshot {
+        let fallback = SAMSnapshot(paired: false, demo: false, line: "Ask SAM", detail: "Open the app to connect")
+        guard
+            let raw = UserDefaults(suiteName: "group.com.hectic.sam.mobile")?.string(forKey: "state"),
+            let data = raw.data(using: .utf8),
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return fallback }
+        return SAMSnapshot(
+            paired: obj["paired"] as? Bool ?? false,
+            demo: obj["demo"] as? Bool ?? false,
+            line: String((obj["line"] as? String ?? fallback.line).prefix(80)),
+            detail: String((obj["detail"] as? String ?? fallback.detail).prefix(80))
+        )
+    }
+}
+
 struct SAMEntry: TimelineEntry {
     let date: Date
+    let snap: SAMSnapshot
 }
 
 struct SAMProvider: TimelineProvider {
     func placeholder(in context: Context) -> SAMEntry {
-        SAMEntry(date: Date())
+        SAMEntry(date: Date(), snap: SAMSnapshot.load())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SAMEntry) -> Void) {
-        completion(SAMEntry(date: Date()))
+        completion(SAMEntry(date: Date(), snap: SAMSnapshot.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SAMEntry>) -> Void) {
-        // A launcher has nothing that changes over time. One entry with `.never` means the
-        // system never wakes this extension again — no timeline budget spent, no battery.
-        completion(Timeline(entries: [SAMEntry(date: Date())], policy: .never))
+        let entry = SAMEntry(date: Date(), snap: SAMSnapshot.load())
+        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
 
@@ -104,10 +118,12 @@ private struct QuickTile: View {
 }
 
 struct SAMQuickActionsView: View {
+    var entry: SAMEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.colorScheme) private var scheme
 
     private var tint: Color { scheme == .dark ? Palette.tintDark : Palette.tint }
+    private var snap: SAMSnapshot { entry.snap }
 
     var body: some View {
         switch family {
@@ -124,9 +140,9 @@ struct SAMQuickActionsView: View {
                 Text("S.A.M.")
                     .font(.caption2.weight(.bold))
                     .tracking(1.2)
-                Text("Ask something")
+                Text(snap.line)
                     .font(.headline)
-                Text("Runs on your own machine")
+                Text(snap.detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -142,8 +158,8 @@ struct SAMQuickActionsView: View {
                 Link(destination: Destination.ask) {
                     QuickTile(
                         symbol: "sparkles",
-                        title: "Ask SAM",
-                        subtitle: "Start something",
+                        title: snap.line,
+                        subtitle: snap.paired ? (snap.demo ? "Demo" : "Paired") : "Not connected",
                         filled: true,
                         tint: tint
                     )
@@ -152,7 +168,7 @@ struct SAMQuickActionsView: View {
                     QuickTile(
                         symbol: "list.bullet.rectangle",
                         title: "Tasks",
-                        subtitle: "What SAM has run",
+                        subtitle: snap.detail,
                         filled: false,
                         tint: tint
                     )
@@ -166,9 +182,9 @@ struct SAMQuickActionsView: View {
                     .font(.title2)
                     .foregroundStyle(tint)
                 Spacer(minLength: 0)
-                Text("Ask SAM")
+                Text(snap.line)
                     .font(.headline)
-                Text("Start something")
+                Text(snap.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -181,11 +197,11 @@ struct SAMQuickActionsView: View {
 
 struct SAMQuickActionsWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "SAMQuickActions", provider: SAMProvider()) { _ in
-            SAMQuickActionsView()
+        StaticConfiguration(kind: "SAMQuickActions", provider: SAMProvider()) { entry in
+            SAMQuickActionsView(entry: entry)
         }
         .configurationDisplayName("SAM")
-        .description("Start something with SAM from the Home or Lock Screen.")
+        .description("Live SAM status from this phone, and a tap to ask or open tasks.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }

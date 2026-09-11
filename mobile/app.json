@@ -12,6 +12,11 @@
       "bundleIdentifier": "com.hectic.sam.mobile",
       "appleTeamId": "CC9Q9BH5NT",
       "buildNumber": "108",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.hectic.sam.mobile"
+        ]
+      },
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
