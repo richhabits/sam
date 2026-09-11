@@ -95,6 +95,15 @@ Action 2: Show Result
 
 There is no native watchOS app. SAM on the Mac writes `SAM_Last_Reply.txt` into the same drop folder after it answers. If that file is missing, SAM was not running or iCloud has not synced yet.
 
+When the iPhone is nearby, a Watch shortcut can also **Open URL** (no internet, no paid API):
+
+- `sam://ask` — Agent
+- `sam://tasks` — Tasks
+- `sam://home` — Home
+- `sam://pair` — pairing sheet
+
+Those stay on the phone. They do not replace the iCloud drop when you are away from the Mac.
+
 ## What happens next
 
 1. Your iPhone drops the file into iCloud Drive
