@@ -62,25 +62,14 @@ Neither is requested during the demo.
 
 ## 4. Screenshots
 
-Captured and committed under `mobile/screenshots/`, at exactly the sizes App Store Connect wants.
-Because `supportsTablet` is true, **both** sets are required:
+Captured under `mobile/screenshots/` from a **Debug** sim (Metro), standalone, **no demo banner**. Dark terracotta.
 
-| Set | Size | Shots |
-|---|---|---|
-| `screenshots/iphone-6.9/` | 1320 × 2868 | agent, tasks, chat, settings |
-| `screenshots/ipad-13/` | 2064 × 2752 | pairing, agent, tasks, settings |
+| Set | Size | Ready | Missing / wrong size |
+|---|---|---|---|
+| `iphone-6.9/` | **1320 × 2868** required | `01-home.png` | `02`–`06` are 1206 × 2622 (6.3" SAM Test iPhone). Recapture on **SAM Test Max**. |
+| `ipad-13/` | **2064 × 2752** | `01-home.png`, `04-settings.png` | `01-pairing`, `02-agent`, `03-tasks` are still the old **light** 03:09 shots — do not upload those. |
 
-Taken from a Release build on iPhone 17 Pro Max and iPad Pro 13-inch simulators, which Apple
-accepts. The iPhone set carries a clean 9:41 status bar; the iPad status-bar override did not take,
-so those show the real clock — cosmetic, and not something Apple requires.
-
-**Note on current screenshots:** Every shot currently in `mobile/screenshots/` was captured in demo mode and carries the orange `Demo · sample data, not connected to a SAM` banner.
-
-Two honest options:
-1. **Ship these.** Accurate, no personal data, zero risk of leaking anything. The banner is odd marketing but nobody is misled.
-2. **Recapture while paired or in standalone chat** with SAM, which removes the demo banner and shows live chat responses.
-
-Worth keeping option 1 as the safe baseline and doing option 2 before public marketing push.
+Do not upload `01-agent.png` (stale 6.9" from 03:09). Clock is live, not 9:41. Apple does not require a fake clock.
 
 ## 5. Draft metadata
 
