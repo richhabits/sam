@@ -16,8 +16,8 @@ import {
   View,
 } from 'react-native';
 
-// This banner sat on top of the tab bar and ate Agent/Settings taps.
-LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
+// Dev LogBox sat on the tab bar and ate Agent/Settings taps. Store shots must not include it.
+LogBox.ignoreAllLogs(true);
 import ChatScreen from './ChatScreen';
 import HomeScreen from './HomeScreen';
 import VaultScreen from './VaultScreen';
