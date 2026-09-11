@@ -38,7 +38,7 @@ irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex
 graph TD
     User([You: Phone, Laptop, or PC])
     
-    subgraph Mobile ["📱 SAM Mobile (iOS) — Live on TestFlight · App Store review pending"]
+    subgraph Mobile ["📱 SAM Mobile (iOS) — Live on TestFlight · not on the App Store yet"]
         MobileAI[Standalone Direct AI · 30+ Cloud Providers, Zero Setup]
         MobilePair[Optional Desktop Pairing · QR / Local Network]
         MobileYard[Remote Task, Feed & Yard Monitor]
@@ -82,7 +82,7 @@ graph TD
 * **Mathematical Kelly Criterion Engine**: Automated capital allocation and real-time risk regime calculation (`POST /api/flipit/shield`).
 * **Resilient Watchdogs**: Continuous schedule monitoring, forward execution metrics, and market data telemetry.
 
-### 📱 5. Mobile (iOS) — *Live on TestFlight, App Store review submitted*
+### 📱 5. Mobile (iOS) — *Live on TestFlight, not on the App Store yet*
 * **100% Standalone, Zero Setup**: Chat immediately on install — no pairing, no account. Routes through 30+ direct cloud AI providers (Groq, Cerebras, Mistral, Gemini, Anthropic, DeepSeek, and more), each addable with your own free key in Settings.
 * **Optional Desktop Link**: Pair with your Mac/PC over local network to unlock local files, automation, and yard workers — never required, only unlocked when you want it.
 * **Native Feel**: Haptics throughout, 1-tap code copy/share, live connection status, and an honest fallback if every AI lane genuinely fails — SAM never fabricates a response.
