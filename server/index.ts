@@ -126,7 +126,7 @@ import { recover as recoverPreviewCommit } from "./preview-commit.ts";
 import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { knackEnabled, recentInfluences } from "./knack.ts";
 import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
-import { startDropWatcher, dropFolderPath } from "./ios.ts";
+import { startDropWatcher, dropFolderPath, writeLastReply } from "./ios.ts";
 import { processWatchPrompt, APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
 import { processUniversalPrompt, UNIVERSAL_SHORTCUTS, registerDeviceHandoff, getDeviceHandoff } from "./universal-ecosystem.ts";
 import { generateMobileFeed } from "./mobile-feed.ts";
@@ -644,10 +644,9 @@ if (!BENCH_MODE) startDropWatcher(async (d) => {
     const tier = (process.env.DEFAULT_TIER as Tier) || "free";
     const r = await runAgent(system, d.content, tier, undefined, false, true);
     if (r.kind === "final" && r.text) {
-      // Queue the result for the app to show + send a notification.
-      // B4 — the desktop notification (this machine, the operator's own) keeps the full
-      // answer; the phone push (a lock screen, anyone nearby) gets a structural summary
-      // only — what happened, never the actual content of what SAM produced.
+      // Wrist path: write the answer back into iCloud so a Watch shortcut can Get File
+      // (Mac notification alone is invisible on the wrist).
+      writeLastReply(r.text);
       desktopNotify("SAM — iOS Drop Processed", r.text); void pushNotify("SAM", pushSummary(`iOS drop processed — ${d.file}`));
     } else {
       // A phone drop hit a risky action — deliver an Ask instead of silently dropping it.

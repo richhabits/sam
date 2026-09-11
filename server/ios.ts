@@ -9,7 +9,7 @@
 //  configurable local drop folder.
 // ─────────────────────────────────────────────────────────────
 
-import { watch, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, } from "node:fs";
+import { watch, readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, } from "node:fs";
 import { join, extname, basename } from "node:path";
 import { homedir } from "node:os";
 import { exec } from "node:child_process";
@@ -37,6 +37,9 @@ function resolveDropFolder(): string {
 
 const DROP = resolveDropFolder();
 
+/** Latest Watch/iPhone answer, written back into the drop folder so a Shortcut can Get File. */
+export const LAST_REPLY_FILE = "SAM_Last_Reply.txt";
+
 export interface DropResult {
   file: string;
   content: string;
@@ -60,7 +63,18 @@ async function transcribeAudio(path: string): Promise<string> {
 }
 
 // Process a single file from the drop folder.
+export function writeLastReply(text: string): string {
+  try { mkdirSync(DROP, { recursive: true }); } catch { /* folder may be on an unmounted volume */ }
+  const dest = join(DROP, LAST_REPLY_FILE);
+  const body = String(text || "").trim();
+  if (!body) return dest;
+  try { writeFileSync(dest, body, "utf8"); }
+  catch { /* reply is also notified on the Mac — a failed write is not a silent success */ }
+  return dest;
+}
+
 async function processFile(filename: string): Promise<DropResult | null> {
+  if (filename === LAST_REPLY_FILE || filename.startsWith(".") || filename.endsWith(".icloud")) return null;
   const path = join(DROP, filename);
   if (!existsSync(path)) return null;
   const ext = extname(filename).toLowerCase();
@@ -117,7 +131,9 @@ export function startDropWatcher(handler: (d: DropResult) => void) {
   // Watch for new files.
   try {
     _watcher = watch(DROP, async (event, filename) => {
-      if (!filename || filename.startsWith(".") || event !== "rename") return;
+      // iCloud often emits `change` as well as `rename`. Ignoring `change` dropped Watch dictations.
+      if (!filename || filename.startsWith(".") || filename === LAST_REPLY_FILE) return;
+      if (event !== "rename" && event !== "change") return;
       // AUDIT FIX: iCloud emits SEVERAL 'rename' events for one file as it syncs. Without a dedup
       // latch each event ran processFile → the same drop executed its autonomous command twice.
       if (_processing.has(filename)) return;
