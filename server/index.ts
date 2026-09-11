@@ -16,7 +16,7 @@ import { readFileSync, existsSync, } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
 import { recordAuditEvent } from "./audit-ledger.ts";
-import { join, dirname } from "node:path";
+import { join, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ── `--version` / `version` → print the version and exit, before the server binds (issue #13).
@@ -57,7 +57,7 @@ import { registerWorkflowsRoutes } from "./routes.workflows.ts";
 import { writeEnv } from "./env-file.ts";
 import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, mintPairingBundle, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
+import { mintPairingCode, mintPairingBundle, mintSession, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
 import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
 import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
 import { list as connectorList, normalize as normalizeConnectorError, statuses as connectorStatuses } from "./connectors.ts";
@@ -2765,6 +2765,24 @@ app.get("/api/status", (req, res) => {
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
 app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
+
+// Browser HUD on this machine: opening the page is the pairing. The Handshake passkey only
+// exists in Electron preload — a tab cannot send it. Without this, POST /api/stream (chat)
+// and settings saves return 401 "not paired" even though README says open localhost:8787
+// and start. Loopback + a document GET only: a curl POST with no cookie is still refused,
+// and a remote host still has to use the printed /pair?code= link.
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (req.path.startsWith("/api/") || req.path.startsWith("/pair")) return next();
+  if (!handshakeEnforced()) return next();
+  if (!isLoopback(req)) return next();
+  const ext = extname(req.path);
+  if (ext && ext !== ".html") return next();
+  if (validateSession(sessionTokenFromRequest(req), Date.now())) return next();
+  const token = mintSession(Date.now(), "this computer (browser HUD)");
+  res.setHeader("Set-Cookie", sessionCookieHeader(token));
+  next();
+});
 
 // ── Serve the built app from this one process (production mode) ──
 // One server on :8787 — no separate Vite dev server. Leaner + faster.

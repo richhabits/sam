@@ -149,6 +149,13 @@ export function claimCode(code: string, now: number, label = "browser", clientIp
   }
 
   clearAttempts(clientIp);
+  return mintSession(now, label);
+}
+
+/** Create a live session without a pairing code. Used when the operator opens the HUD in a
+ *  browser on THIS machine (loopback). A random local process that never loads the page still
+ *  has no cookie and is still refused. */
+export function mintSession(now: number, label = "browser"): string {
   const token = randomBytes(32).toString("base64url");
   db.prepare(`INSERT INTO sessions (hash, created, last_seen, label) VALUES (?, ?, ?, ?)`)
     .run(sha(token), now, now, String(label).slice(0, 60));

@@ -119,7 +119,7 @@ npm install
 cp .env.example .env
 npm start
 ```
-Open **http://localhost:8787** — free, local, and ready immediately.
+Open **http://localhost:8787** — free, local, and ready immediately. Opening the HUD on this computer pairs that browser tab (chat, tools, and settings work). A phone or another machine still uses the pairing link SAM prints on start.
 
 ---
 

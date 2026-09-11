@@ -19,6 +19,17 @@ beforeEach(async () => {
 });
 afterEach(() => { delete process.env.VAULT_DIR; rmSync(dir, { recursive: true, force: true }); });
 
+describe("loopback HUD session (no pairing code)", () => {
+  it("mintSession is a live, revocable session like a claimed code", () => {
+    const token = P.mintSession(NOW, "this computer (browser HUD)");
+    expect(token).toBeTruthy();
+    expect(P.validateSession(token, NOW)).toBe(true);
+    expect(P.sessionCount()).toBe(1);
+    expect(P.revokeSession(token)).toBe(true);
+    expect(P.validateSession(token, NOW)).toBe(false);
+  });
+});
+
 describe("pairing codes → sessions", () => {
   it("a minted code pairs ONCE and yields a working session", () => {
     const code = P.mintPairingCode(NOW);
