@@ -9,7 +9,7 @@ import { haptic } from './lib/haptics';
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
 import { GLYPHS } from './lib/glyphs';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ToggleRow } from './samKit';
+import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ScreenTitle, ToggleRow } from './samKit';
 import { samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 type Device = { id: string; label: string; lastSeen: number };
@@ -74,9 +74,7 @@ export default function SettingsScreen({
       style={{ flex: 1, backgroundColor: samColor.ground }}
       contentContainerStyle={{ paddingTop: samSpace.section, paddingBottom: 40 }}
     >
-      <Text style={[{ fontSize: 33, fontWeight: '700', color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }]}>
-        Settings
-      </Text>
+      <ScreenTitle>Settings</ScreenTitle>
 
       {/* CONNECTION MODE */}
       <SamSection

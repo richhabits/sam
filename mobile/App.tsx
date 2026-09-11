@@ -11,7 +11,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -51,7 +50,6 @@ function tabKeyToSurface(k: SamTabKey): Surface {
 }
 
 export default function App() {
-  const scheme = useColorScheme();
   const s = styles;
 
   const { width } = useWindowDimensions();
@@ -454,7 +452,7 @@ export default function App() {
         onScanned={onScanned}
       />
 
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="light" />
     </SafeAreaView>
   );
 }
@@ -469,7 +467,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: samSpace.gutter,
     borderBottomWidth: 1,
-    backgroundColor: samColor.raise,
+    backgroundColor: samColor.ground2,
     borderBottomColor: samBorder.default,
   },
   markSmall: { width: 28, height: 28, borderRadius: 6 },
@@ -502,8 +500,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: samSpace.gutter,
     backgroundColor: samColor.amber,
   },
-  demoBarText: { fontSize: 12, fontWeight: '700', color: samColor.ground },
-  demoBarLink: { fontSize: 12, fontWeight: '800', textDecorationLine: 'underline', color: samColor.ground },
+  demoBarText: { ...samType.monoXs, fontWeight: '700', color: samColor.ground, textTransform: 'none' },
+  demoBarLink: { ...samType.monoXs, fontWeight: '800', textDecorationLine: 'underline', color: samColor.ground, textTransform: 'none' },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -512,6 +510,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
   },
-  modalTitle: { fontSize: 19, fontWeight: '700', color: samInk.primary },
+  modalTitle: { ...samType.h3, color: samInk.primary },
   modalDone: { ...samType.body, color: samColor.accent, fontWeight: '600' },
 });

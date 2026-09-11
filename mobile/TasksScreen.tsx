@@ -6,7 +6,7 @@ import { elapsed, type JobStep, runLine } from './lib/fold';
 import { GLYPHS } from './lib/glyphs';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import JobDetailSheet from './JobDetailSheet';
-import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection } from './samKit';
+import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection, ScreenTitle } from './samKit';
 import { samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
@@ -139,9 +139,7 @@ export default function TasksScreen({
       contentContainerStyle={{ paddingTop: samSpace.section, paddingBottom: 40 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={samInk.metadata} />}
     >
-      <Text style={[{ fontSize: 33, fontWeight: '700', color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }]}>
-        Tasks
-      </Text>
+      <ScreenTitle>Tasks</ScreenTitle>
 
       {!yard || error ? (
         <SamSection

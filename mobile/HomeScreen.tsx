@@ -3,8 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { api, type ApiError } from './lib/api';
 import { haptic } from './lib/haptics';
 import { type RecentTask, taskGlyph, taskTitle, taskWhen } from './lib/mentions';
-import { HeroCard, SamRow, SamSectionLabel } from './samKit';
-import { samColor, samInk, samSpace } from './lib/samTheme';
+import { GlyphTile, HeroCard, SamRow, SamSectionLabel } from './samKit';
+import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 import { publishWidgetState } from './lib/widgetState';
 
 // HOME — design_handoff_sam_clients/README.md, "Screens › Home": the new launch tab, one of
@@ -97,8 +97,8 @@ export default function HomeScreen({
           speed={active > 0 ? `${active} active` : 'Idle'}
           lanes={String(yard?.recent.length ?? 0)}
         >
-          <Text style={[{ fontSize: 46, fontWeight: '700', color: samInk.primary, letterSpacing: -0.03 * 46 }]}>£0.00</Text>
-          <Text style={{ color: samInk.support, marginTop: 4, fontSize: 14.5 }}>spent today — it does things, and it costs you nothing</Text>
+          <Text style={[samType.display, { color: samInk.primary }]}>£0.00</Text>
+          <Text style={[samType.body, { color: samInk.support, marginTop: 4 }]}>spent today — it does things, and it costs you nothing</Text>
         </HeroCard>
       </View>
 
@@ -118,7 +118,7 @@ export default function HomeScreen({
             justifyContent: 'center',
           })}
         >
-          <Text style={{ fontSize: 17, fontWeight: '700', color: samColor.ground }}>Ask it</Text>
+          <Text style={[samType.h3, { color: samColor.ground, fontSize: 17 }]}>Ask it</Text>
         </Pressable>
       </View>
 
@@ -171,15 +171,15 @@ export default function HomeScreen({
       <View
         style={{
           marginHorizontal: samSpace.gutter,
-          borderRadius: 18,
+          borderRadius: samRadius.hero,
           borderWidth: 1,
           borderStyle: 'dashed',
-          borderColor: 'rgba(253,246,239,0.12)',
-          padding: 16,
+          borderColor: samBorder.emphasis,
+          padding: samSpace.heroPad,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: '700', color: samInk.primary, marginBottom: 6 }}>What's the catch?</Text>
-        <Text style={{ color: samInk.support, fontSize: 14.5, lineHeight: 21.75 }}>
+        <Text style={[samType.rowTitle, { color: samInk.primary, marginBottom: 6 }]}>What's the catch?</Text>
+        <Text style={[samType.body, { color: samInk.support }]}>
           SAM prefers a local model on your own machine, then free tiers, and only reaches for
           anything paid if you turn it on. Pairing a computer is always optional. Nothing leaves
           your network except the one thing Settings names plainly.
@@ -213,20 +213,20 @@ function GridTile({
       style={({ pressed }) => ({
         width: '47.7%',
         aspectRatio: 1.3,
-        borderRadius: 14,
+        borderRadius: samRadius.row,
         backgroundColor: pressed ? samColor.raise2 : samColor.raise,
-        padding: 14,
+        padding: samSpace.cardPad,
         justifyContent: 'space-between',
         opacity: disabled ? 0.5 : 1,
       })}
     >
-      <Text style={{ fontSize: 20, color: samColor.accent }}>{glyph}</Text>
+      <GlyphTile glyph={glyph} />
       <View>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: samInk.primary }}>{label}</Text>
+        <Text style={[samType.rowTitle, { color: samInk.primary }]}>{label}</Text>
         {comingSoon ? (
-          <Text style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: samInk.metadata, marginTop: 2 }}>Soon</Text>
+          <Text style={[samType.label, { color: samInk.metadata, marginTop: 2 }]}>Soon</Text>
         ) : status ? (
-          <Text style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: samColor.green, marginTop: 2 }}>{status}</Text>
+          <Text style={[samType.label, { color: samColor.green, marginTop: 2 }]}>{status}</Text>
         ) : null}
       </View>
     </Pressable>

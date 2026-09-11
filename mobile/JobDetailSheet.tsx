@@ -5,7 +5,7 @@ import type { JobStep } from './lib/fold';
 import { haptic } from './lib/haptics';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import { RunLog, SamSheet, type RunStep } from './samKit';
-import { samColor, samInk } from './lib/samTheme';
+import { samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 
 // JOB DETAIL SHEET — design_handoff_sam_clients/README.md, build order step 5: "small, high
 // value — failures currently have nowhere to go." Before this, TasksScreen's rows had no tap
@@ -107,18 +107,18 @@ export default function JobDetailSheet({
 
   return (
     <SamSheet visible={!!jobId} onClose={onClose}>
-      <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 20 }}>
+      <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: samSpace.gutter, paddingBottom: 20 }}>
         {!job ? (
           error ? (
-            <Text style={{ color: samInk.support, textAlign: 'center', paddingVertical: 30 }}>{error}</Text>
+            <Text style={[samType.body, { color: samInk.support, textAlign: 'center', paddingVertical: 30 }]}>{error}</Text>
           ) : (
             <ActivityIndicator color={samColor.accent} style={{ paddingVertical: 30 }} />
           )
         ) : (
           <>
-            <Text style={{ fontSize: 12, color: samColor.accent }}>{taskGlyph(job.kind)}</Text>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: samInk.primary, marginTop: 4 }}>{taskTitle(job)}</Text>
-            <Text style={{ fontSize: 13, color: samInk.metadata, marginTop: 4 }}>
+            <Text style={[samType.mono, { color: samColor.accent }]}>{taskGlyph(job.kind)}</Text>
+            <Text style={[samType.h3, { color: samInk.primary, marginTop: 4 }]}>{taskTitle(job)}</Text>
+            <Text style={[samType.mono, { color: samInk.metadata, marginTop: 4 }]}>
               {job.state.toUpperCase()} · {job.costTokens ?? 0} tokens · created {new Date(job.createdAt).toLocaleString()}
             </Text>
 
@@ -128,14 +128,14 @@ export default function JobDetailSheet({
               <View
                 style={{
                   marginTop: 12,
-                  borderRadius: 14,
+                  borderRadius: samRadius.row,
                   borderWidth: 1,
                   borderColor: isBudgetStop ? 'rgba(255,159,10,0.35)' : 'rgba(255,69,58,0.35)',
                   backgroundColor: isBudgetStop ? 'rgba(255,159,10,0.06)' : 'rgba(255,69,58,0.06)',
                   padding: 12,
                 }}
               >
-                <Text style={{ color: isBudgetStop ? samColor.amber : samColor.red, fontSize: 13.5 }}>{job.lastError}</Text>
+                <Text style={[samType.bodySm, { color: isBudgetStop ? samColor.amber : samColor.red }]}>{job.lastError}</Text>
               </View>
             ) : null}
 

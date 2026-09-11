@@ -689,6 +689,15 @@ export function SamHScroll({ children }: { children: ReactNode }) {
 }
 
 /** Section label — "11px above its content", mono, per the handoff's spacing rules. */
+/** Screen H1 — same 33pt Grotesk, same gutter, on every list surface. */
+export function ScreenTitle({ children }: { children: string }) {
+  return (
+    <Text style={[samType.h1, { color: samInk.primary, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }]}>
+      {children}
+    </Text>
+  );
+}
+
 export function SamSectionLabel({ children }: { children: string }) {
   return (
     <Text

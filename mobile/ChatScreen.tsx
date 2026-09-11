@@ -35,7 +35,7 @@ import {
   taskWhen,
 } from './lib/mentions';
 import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
-import { samBorder, samColor, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
+import { samBorder, samColor, samFont, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     maxWidth: '78%',
     backgroundColor: samColor.raise2,
-    borderRadius: 24,
+    borderRadius: samRadius.hero,
     borderBottomRightRadius: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -949,15 +949,15 @@ const styles = StyleSheet.create({
   // The opening sits a little down the screen rather than jammed under the nav bar: on a tall
   // phone, content pinned to the top with nothing beneath it is exactly what read as unfinished.
   opening: { paddingTop: 40, paddingHorizontal: samSpace.gutter - 14 },
-  openingTitle: { fontSize: 27, fontWeight: '700', color: samInk.primary, marginBottom: 6 },
+  openingTitle: { ...samType.h2, color: samInk.primary, marginBottom: 6 },
   openingSub: { ...samType.bodySm, color: samInk.support, lineHeight: 20, marginBottom: 18 },
   starters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   starter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1, backgroundColor: samColor.raise, borderColor: samBorder.default },
   starterText: { ...samType.bodySm, color: samInk.primary },
-  inlineCode: { fontFamily: 'Menlo', fontSize: 15, color: samColor.accent },
+  inlineCode: { fontFamily: samFont.mono, fontSize: 15, color: samColor.accent },
   codeblock: {
     backgroundColor: samColor.ground,
-    borderRadius: 10,
+    borderRadius: samRadius.tile,
     marginTop: 8,
     overflow: 'hidden',
     borderWidth: 1,
@@ -974,8 +974,7 @@ const styles = StyleSheet.create({
     borderBottomColor: samBorder.default,
   },
   codeblockLang: {
-    fontFamily: 'Menlo',
-    fontSize: 11,
+    ...samType.mono,
     fontWeight: '700',
     color: samInk.metadata,
     letterSpacing: 0.5,
@@ -991,8 +990,7 @@ const styles = StyleSheet.create({
     color: samInk.metadata,
   },
   codeblockText: {
-    fontFamily: 'Menlo',
-    fontSize: 13,
+    ...samType.monoLg,
     color: samInk.primary,
     lineHeight: 19,
     padding: 12,

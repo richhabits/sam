@@ -4,7 +4,7 @@ import { api } from './lib/api';
 import { type Attachment, pickFile, pickPhoto, takePhoto } from './lib/attach';
 import { GLYPHS } from './lib/glyphs';
 import { SamChevron, SamRow, SamSection, SamSheet } from './samKit';
-import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { samBorder, samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 // "ADD TO SAM" — the + in the composer.
 //
@@ -176,7 +176,7 @@ export default function AddSheet({
           minHeight: 44,   // a nav bar holding scaling text has to be a floor, not a ceiling
           paddingHorizontal: samSpace.gutter,
           borderBottomWidth: 1,
-          borderBottomColor: samColor.raise2,
+          borderBottomColor: samBorder.default,
           marginBottom: 8,
         }}
       >

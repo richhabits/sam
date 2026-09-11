@@ -14,9 +14,11 @@ private enum Destination {
 }
 
 private enum Palette {
-    // The same terracotta the app tints with (lib/ios.ts), light and dark, stated once.
-    static let tint = Color(red: 0.851, green: 0.325, blue: 0.122) // #D9531F
-    static let tintDark = Color(red: 0.941, green: 0.510, blue: 0.306) // #F0824E
+    // Same tokens as mobile/lib/samTheme.ts — the app is dark-only, so the widget is too.
+    static let ground = Color(red: 12 / 255, green: 10 / 255, blue: 9 / 255) // #0C0A09
+    static let ink = Color(red: 253 / 255, green: 246 / 255, blue: 239 / 255) // #FDF6EF
+    static let tint = Color(red: 240 / 255, green: 130 / 255, blue: 78 / 255) // #F0824E
+    static let raise = Color(red: 23 / 255, green: 19 / 255, blue: 15 / 255) // #17130F
 }
 
 struct SAMSnapshot {
@@ -99,19 +101,19 @@ private struct QuickTile: View {
         VStack(alignment: .leading, spacing: 4) {
             Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(filled ? Color.white : tint)
+                .foregroundStyle(filled ? Palette.ink : tint)
             Spacer(minLength: 0)
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(filled ? Color.white : Color.primary)
+                .foregroundStyle(filled ? Palette.ink : Palette.ink)
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(filled ? Color.white.opacity(0.85) : Color.secondary)
+                .foregroundStyle(filled ? Palette.ink.opacity(0.85) : Palette.ink.opacity(0.4))
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(
-            filled ? tint : Color.primary.opacity(0.06),
+            filled ? tint : Palette.raise,
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
     }
@@ -120,9 +122,8 @@ private struct QuickTile: View {
 struct SAMQuickActionsView: View {
     var entry: SAMEntry
     @Environment(\.widgetFamily) private var family
-    @Environment(\.colorScheme) private var scheme
 
-    private var tint: Color { scheme == .dark ? Palette.tintDark : Palette.tint }
+    private var tint: Color { Palette.tint }
     private var snap: SAMSnapshot { entry.snap }
 
     var body: some View {
@@ -174,7 +175,7 @@ struct SAMQuickActionsView: View {
                     )
                 }
             }
-            .samWidgetBackground(Color(.systemBackground))
+            .samWidgetBackground(Palette.ground)
 
         default:
             VStack(alignment: .leading, spacing: 6) {
@@ -184,13 +185,14 @@ struct SAMQuickActionsView: View {
                 Spacer(minLength: 0)
                 Text(snap.line)
                     .font(.headline)
+                    .foregroundStyle(Palette.ink)
                 Text(snap.detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.ink.opacity(0.6))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .widgetURL(Destination.ask)
-            .samWidgetBackground(Color(.systemBackground))
+            .samWidgetBackground(Palette.ground)
         }
     }
 }

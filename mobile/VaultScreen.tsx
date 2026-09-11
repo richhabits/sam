@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { parseMarkdown } from './lib/markdown';
-import { EmptyState, SamRow, SamSectionLabel, SamSheet, StatCard } from './samKit';
-import { samColor, samInk, samSpace } from './lib/samTheme';
+import { EmptyState, SamRow, SamSectionLabel, SamSheet, ScreenTitle, StatCard } from './samKit';
+import { samColor, samFont, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 
 // VAULT — design_handoff_sam_clients/README.md, build order step 6: "read-only Markdown
 // browser over existing files." The files are real — server/vault.ts's plain-.md,
@@ -49,6 +49,7 @@ export default function VaultScreen({ onNeedsPairing }: { onNeedsPairing: () => 
   return (
     <View style={{ flex: 1, backgroundColor: samColor.ground }}>
       <ScrollView contentContainerStyle={{ paddingTop: samSpace.section, paddingBottom: 40 }}>
+        <ScreenTitle>Vault</ScreenTitle>
         <View style={{ flexDirection: 'row', gap: samSpace.rowGap, marginHorizontal: samSpace.gutter, marginBottom: samSpace.section }}>
           {/* "0 in the cloud" is the headline the handoff names explicitly — the one honest
               number this screen can print without reading anything, because nothing in the
@@ -109,14 +110,14 @@ function NoteSheet({ note, onClose, onNeedsPairing }: { note: GraphNode | null; 
 
   return (
     <SamSheet visible={!!note} onClose={onClose}>
-      <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24 }}>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: samInk.primary, marginBottom: 12 }}>{note?.id}</Text>
+      <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: samSpace.gutter, paddingBottom: 24 }}>
+        <Text style={[samType.h3, { color: samInk.primary, marginBottom: 12 }]}>{note?.id}</Text>
         {error ? (
-          <Text style={{ color: samInk.support }}>{error}</Text>
+          <Text style={[samType.body, { color: samInk.support }]}>{error}</Text>
         ) : content === null ? (
           <ActivityIndicator color={samColor.accent} />
         ) : content === '' ? (
-          <Text style={{ color: samInk.metadata }}>(empty)</Text>
+          <Text style={[samType.mono, { color: samInk.metadata }]}>(empty)</Text>
         ) : (
           <PlainMarkdown text={content} />
         )}
@@ -135,12 +136,12 @@ function PlainMarkdown({ text }: { text: string }) {
       {parseMarkdown(text).map((b, i) =>
         b.kind === 'codeblock' ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
-          <View key={i} style={{ backgroundColor: samColor.input, borderRadius: 10, padding: 10, marginBottom: 10 }}>
-            <Text style={{ fontFamily: 'Menlo', fontSize: 12, color: samInk.support }}>{b.text}</Text>
+          <View key={i} style={{ backgroundColor: samColor.input, borderRadius: samRadius.tile, padding: 10, marginBottom: 10 }}>
+            <Text style={[samType.mono, { color: samInk.support }]}>{b.text}</Text>
           </View>
         ) : (
           // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
-          <Text key={i} style={{ color: samInk.primary, fontSize: 14.5, lineHeight: 21.75, marginBottom: 10 }}>
+          <Text key={i} style={[samType.body, { color: samInk.primary, marginBottom: 10 }]}>
             {b.segments.map((seg, j) =>
               seg.kind === 'bold' ? (
                 // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
@@ -149,7 +150,7 @@ function PlainMarkdown({ text }: { text: string }) {
                 </Text>
               ) : seg.kind === 'code' ? (
                 // biome-ignore lint/suspicious/noArrayIndexKey: re-derived in full on every render
-                <Text key={j} style={{ fontFamily: 'Menlo', fontSize: 13, backgroundColor: samColor.input }}>
+                <Text key={j} style={[samType.monoLg, { fontFamily: samFont.mono, backgroundColor: samColor.input }]}>
                   {seg.text}
                 </Text>
               ) : (
