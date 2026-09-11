@@ -2,6 +2,34 @@
 // Whistle is a sustained tone (very reliable); clap is a sharp transient.
 // Browser-native (Web Audio), works on any laptop, free. Returns stop().
 
+export type WakeClock = { now: number; whistleFrames: number; lastClap: number; firstClap: number; cooldownUntil: number };
+
+/** Pure detector — same thresholds as the live mic loop, so tests can fire a whistle/clap without a mic. */
+export function detectWake(freq: Uint8Array, time: Uint8Array, loBin: number, hiBin: number, clock: WakeClock): boolean {
+  let fire = false;
+  let peak = 0, peakBin = 0, bandAvg = 0;
+  const span = Math.max(1, hiBin - loBin + 1);
+  for (let i = loBin; i <= hiBin; i++) { bandAvg += freq[i] || 0; if ((freq[i] || 0) > peak) { peak = freq[i]; peakBin = i; } }
+  bandAvg /= span;
+  const tonal = peak > 165 && peak - bandAvg > 55;
+  if (tonal && peakBin >= loBin && peakBin <= hiBin) {
+    clock.whistleFrames += 1;
+    if (clock.whistleFrames >= 8) { clock.whistleFrames = 0; fire = true; }
+  } else clock.whistleFrames = 0;
+
+  const t = clock.now;
+  let amp = 0;
+  for (let i = 0; i < time.length; i++) { const v = Math.abs(time[i] - 128); if (v > amp) amp = v; }
+  if (amp > 95 && t - clock.lastClap > 160) {
+    clock.lastClap = t;
+    if (clock.firstClap && t - clock.firstClap < 900) { clock.firstClap = 0; fire = true; }
+    else clock.firstClap = t;
+  }
+  if (fire && t < clock.cooldownUntil) return false;
+  if (fire) clock.cooldownUntil = t + 3000;
+  return fire;
+}
+
 export async function startWakeListener(onActivate: () => void): Promise<() => void> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -18,34 +46,14 @@ export async function startWakeListener(onActivate: () => void): Promise<() => v
   const loBin = Math.floor(1000 / binHz);   // whistles ~1–4 kHz
   const hiBin = Math.ceil(4000 / binHz);
 
-  let whistleFrames = 0;
-  let lastClap = 0, firstClap = 0, cooldownUntil = 0, raf = 0;
-
-  const fire = () => { const t = performance.now(); if (t < cooldownUntil) return; cooldownUntil = t + 3000; onActivate(); };
+  const clock: WakeClock = { now: 0, whistleFrames: 0, lastClap: 0, firstClap: 0, cooldownUntil: 0 };
+  let raf = 0;
 
   const loop = () => {
-    const t = performance.now();
-
-    // ── whistle: a strong, narrow, sustained peak in the whistle band
+    clock.now = performance.now();
     analyser.getByteFrequencyData(freq);
-    let peak = 0, peakBin = 0, bandAvg = 0;
-    for (let i = loBin; i <= hiBin; i++) { bandAvg += freq[i]; if (freq[i] > peak) { peak = freq[i]; peakBin = i; } }
-    bandAvg /= (hiBin - loBin + 1);
-    const tonal = peak > 165 && peak - bandAvg > 55;   // one bin dominates = a tone
-    if (tonal && peakBin >= loBin && peakBin <= hiBin) {
-      if (++whistleFrames >= 8) { whistleFrames = 0; fire(); }   // ~130ms sustained
-    } else whistleFrames = 0;
-
-    // ── double clap: two loud transients close together
     analyser.getByteTimeDomainData(time);
-    let amp = 0;
-    for (let i = 0; i < time.length; i++) { const v = Math.abs(time[i] - 128); if (v > amp) amp = v; }
-    if (amp > 95 && t - lastClap > 160) {
-      lastClap = t;
-      if (firstClap && t - firstClap < 900) { firstClap = 0; fire(); }
-      else firstClap = t;
-    }
-
+    if (detectWake(freq, time, loBin, hiBin, clock)) onActivate();
     raf = requestAnimationFrame(loop);
   };
   loop();
