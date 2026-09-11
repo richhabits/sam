@@ -12,7 +12,7 @@
   <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6">
   <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40+-blue">
   <img alt="tools" src="https://img.shields.io/badge/tools-231%20integrated-purple">
-  <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS%20%C2%B7%20Android-cross--platform-6E56CF">
+  <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-cross--platform-6E56CF">
   <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
 
@@ -129,7 +129,7 @@ Open **http://localhost:8787** — free, local, and ready immediately.
 
 * **Try it now**: [Join the TestFlight beta](https://testflight.apple.com/join/htr4htvY) — works immediately, standalone, no desktop required.
 * **App Store**: Submitted and awaiting Apple's review; this README will be updated the moment it's live.
-* **Android**: Not yet started.
+* **Android**: Not shipping. `mobile/android/` is Expo prebuild output, not a Play Store app. The platforms badge does not claim Android.
 * **Optional desktop pairing**: In the app, tap **Connect to Mac / PC** (or in SAM Desktop, **Dashboard → Devices → Pair a phone**) to unlock local files and automation — entirely optional.
 
 ---
