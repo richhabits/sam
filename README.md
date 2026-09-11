@@ -11,7 +11,7 @@
   <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a">
   <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6">
   <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40+-blue">
-  <img alt="tools" src="https://img.shields.io/badge/tools-231%20integrated-purple">
+  <img alt="tools" src="https://img.shields.io/badge/tools-257%20integrated-purple">
   <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-cross--platform-6E56CF">
   <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
@@ -45,7 +45,7 @@ graph TD
     end
     
     subgraph Core ["💻 SAM Desktop & Server (Mac / Win / Linux)"]
-        Agent[Agentic Doer Loop · 231 Tools & 29 Skills]
+        Agent[Agentic Doer Loop · 257 Tools & 34 Skills]
         Cascade[Cascade Router & 40+ Free Brains]
         Memory[Obsidian-Style Vault & Semantic Cache]
         Overlay[Global ⌥Space Everywhere Overlay]
@@ -69,7 +69,7 @@ graph TD
 * **Zero Cost**: Automatically falls through to the fastest available free model. If one hits a rate limit, it hops to the next in sub-milliseconds.
 * **Sub-Millisecond Semantic Cache**: Repeated questions answer from local memory in ~2ms with 0 token cost.
 
-### 🛠️ 2. The Doer (231 Real Computer Tools & 29 Skills)
+### 🛠️ 2. The Doer (257 Real Computer Tools & 34 Skills)
 * Not just text generation. SAM executes terminal commands, edits code with syntax validation, commits to Git, inspects browsers, manages scheduled cron tasks, and orchestrates multi-agent parallel swarms.
 * **Universal Cross-Platform**: 213 universal tools running identically on macOS, Windows, and Linux, with 18 specialized macOS platform hooks that degrade gracefully.
 
@@ -141,7 +141,7 @@ Open **http://localhost:8787** — free, local, and ready immediately.
 | **Monthly Cost** | **Free (£0/mo)** | $20/mo | $20/mo |
 | **Mobile Standalone + Desktop Sync** | **✅ Full Hybrid** | ❌ Separate | ❌ Separate |
 | **Multi-Agent Swarms** | **✅ Parallel Crew** | ❌ Single Turn | ❌ Single Turn |
-| **Local Tools & Yard Workers** | **✅ 231 Real Tools** | ⚠️ Sandboxed | ⚠️ MCP Only |
+| **Local Tools & Yard Workers** | **✅ 257 Real Tools** | ⚠️ Sandboxed | ⚠️ MCP Only |
 | **Offline Brain Support** | **✅ Ollama / Local** | ❌ Cloud only | ❌ Cloud only |
 | **Data Privacy** | **✅ 100% On-Device** | ❌ Cloud storage | ❌ Cloud storage |
 | **Creative Studio & FlipIt** | **✅ Built-in** | ❌ | ❌ |

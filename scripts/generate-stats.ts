@@ -43,6 +43,10 @@ readme = readme
   .replace(/\b\d+\+?\s+real tools\b/g, `${stats.tools} real tools`)
   .replace(/\b\d+\+?\s+free AI brains\b/g, `${stats.brains} free AI brains`)
   .replace(/free%20AI%20brains-\d+%2B?/g, `free%20AI%20brains-${stats.brains}`)
+  .replace(/tools-\d+%20integrated/g, `tools-${stats.tools}%20integrated`)
+  .replace(/\d+ Tools & \d+ Skills/g, `${stats.tools} Tools & ${stats.skills} Skills`)
+  .replace(/\d+ Real Computer Tools & \d+ Skills/g, `${stats.tools} Real Computer Tools & ${stats.skills} Skills`)
+  .replace(/\*\*✅ \d+ Real Tools\*\*/g, `**✅ ${stats.tools} Real Tools**`)
   .replace(/\ba team of \d+ (specialist )?agents?\b/gi, `a team of ${stats.agents} agents`);
 writeFileSync(readmePath, readme);
 

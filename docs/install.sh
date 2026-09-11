@@ -68,6 +68,12 @@ else
 fi
 ASSET_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+"' | sed -E 's/.*"(https[^"]+)".*/\1/' | grep -E "$PAT" | head -1 || true)"
 SUMS_URL="$(printf '%s' "$REL" | grep -oE '"browser_download_url": *"[^"]+SHA256SUMS[^"]*"' | sed -E 's/.*"(https[^"]+)".*/\1/' | head -1 || true)"
+# v3.6.0 shipped without SHA256SUMS.txt on the release (the checksums job skipped if the notes
+# already said "Verify your download"). The landing page publishes the GitHub-reported sha256
+# of each installer; use that so verify still happens.
+if [ -z "$SUMS_URL" ]; then
+  SUMS_URL="https://richhabits.github.io/sam/SHA256SUMS.txt"
+fi"
 
 if [ -z "$ASSET_URL" ]; then
   if [ "$PLATFORM" = "linux" ]; then

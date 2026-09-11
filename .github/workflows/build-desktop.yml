@@ -370,8 +370,14 @@ jobs:
         run: |
           set -e
           gh release view "$TAG" -R "$REPO" --json body -q .body > existing.md
-          if grep -q "Verify your download" existing.md; then
-            echo "checksums already in notes — skipping"; exit 0
+          # Do NOT skip the whole job just because the notes already mention checksums.
+          # v3.6.0 hit that path and never uploaded SHA256SUMS.txt, so installers skipped verify.
+          NOTES_HAVE_SUMS=0
+          grep -q "Verify your download" existing.md && NOTES_HAVE_SUMS=1
+          HAS_SUMS_ASSET=0
+          gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name' | grep -qx 'SHA256SUMS.txt' && HAS_SUMS_ASSET=1
+          if [ "$NOTES_HAVE_SUMS" = 1 ] && [ "$HAS_SUMS_ASSET" = 1 ]; then
+            echo "checksums already in notes AND SHA256SUMS.txt is attached — skipping"; exit 0
           fi
           mkdir dl && cd dl
           gh release download "$TAG" -R "$REPO" -p '*.dmg' -p '*.exe' -p '*.AppImage' -p '*.deb'
@@ -426,6 +432,7 @@ jobs:
           # (which is in dl/) under `set -e`, so this step failed on every release after uploading
           # the sums + feed. Nothing above this line changed, so the critical assets still publish.
           cd "$GITHUB_WORKSPACE"
+          if [ "$NOTES_HAVE_SUMS" != 1 ]; then
           {
             echo "## 🔒 Verify your download (SHA-256)"
             echo ""
@@ -439,6 +446,7 @@ jobs:
           } > sums.md
           { cat existing.md; echo ""; echo "---"; echo ""; cat sums.md; } > combined.md
           gh release edit "$TAG" -R "$REPO" --notes-file combined.md
+          fi
           echo "✓ checksums (notes + SHA256SUMS.txt asset) published for $TAG"
           # Homebrew cask — auto-bump the tap so `brew install --cask richhabits/tap/sam` tracks releases.
           # Runs only if HOMEBREW_TAP_TOKEN (a PAT with write to richhabits/homebrew-tap) is set — else skips.

@@ -62,10 +62,38 @@ const does = CATS.map(([emoji, label], i) => {
   return `<div class="cat"><div class="cat-h">${emoji} ${label} <em>${groups[i].length}</em></div><div class="does">${chips}</div></div>`;
 }).filter(Boolean).join("\n        ");
 
-const values = { TOOLS: tools || 60, BRAINS: brains || 6, SKILLS: skills || 25, AGENTS: agents || 10, DOES: does };
+const INSTALL_RE = /\.(dmg|exe|AppImage|deb)$/;
+
+async function latestChecksums() {
+  try {
+    const r = await fetch("https://api.github.com/repos/richhabits/sam/releases/latest", {
+      headers: { "User-Agent": "sam-landing", Accept: "application/vnd.github+json" },
+    });
+    if (!r.ok) throw new Error(`GitHub ${r.status}`);
+    const rel = await r.json();
+    const rows = (rel.assets || [])
+      .filter((a) => INSTALL_RE.test(a.name) && typeof a.digest === "string" && a.digest.startsWith("sha256:"))
+      .map((a) => ({ name: a.name, sha: a.digest.slice("sha256:".length) }));
+    const sums = rows.map((a) => `${a.sha}  ${a.name}`).join("\n") + (rows.length ? "\n" : "");
+    writeFileSync(join(ROOT, "docs/SHA256SUMS.txt"), sums || "# no installer digests on the latest release\n");
+    const table = rows.length
+      ? `<pre class="sums">${rows.map((a) => `${a.sha}  ${a.name}`).join("\n")}</pre>`
+      : `<p class="sums-missing">No installer SHA-256 on the latest GitHub release yet.</p>`;
+    return { tag: rel.tag_name || "latest", table };
+  } catch (e) {
+    writeFileSync(join(ROOT, "docs/SHA256SUMS.txt"), "# checksums unavailable while generating the landing page\n");
+    return {
+      tag: "latest",
+      table: `<p class="sums-missing">Checksums could not be fetched (${String(e?.message || e)}). See the GitHub release notes.</p>`,
+    };
+  }
+}
+
+const { tag: RELEASE_TAG, table: CHECKSUMS } = await latestChecksums();
+const values = { TOOLS: tools || 60, BRAINS: brains || 6, SKILLS: skills || 25, AGENTS: agents || 10, DOES: does, CHECKSUMS, RELEASE_TAG };
 
 let html = read("docs/_template.html");
 for (const [k, v] of Object.entries(values)) html = html.replaceAll(`{{${k}}}`, String(v));
 writeFileSync(join(ROOT, "docs/index.html"), html);
 
-console.log(`  landing regenerated · ${values.TOOLS} tools · ${values.BRAINS} free brains · ${values.AGENTS} agents · ${values.SKILLS} skills`);
+console.log(`  landing regenerated · ${values.TOOLS} tools · ${values.BRAINS} free brains · ${values.AGENTS} agents · ${values.SKILLS} skills · ${RELEASE_TAG}`);

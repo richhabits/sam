@@ -55,6 +55,11 @@ if (-not $tag) { Die "Couldn't read the latest version." "Report this at github.
 $asset = $rel.assets | Where-Object { $_.name -match 'SAM-Setup-.*\.exe$' } | Select-Object -First 1
 $sums  = $rel.assets | Where-Object { $_.name -match 'SHA256SUMS' } | Select-Object -First 1
 if (-not $asset) { Die "No Windows installer found in $tag." "See github.com/$repo/releases/latest" }
+# Same fallback as install.sh: Pages publishes GitHub's per-asset sha256 when the release
+# itself has no SHA256SUMS.txt (the checksums job used to skip the upload).
+$sumsUrl = $null
+if ($sums) { $sumsUrl = $sums.browser_download_url }
+else { $sumsUrl = "https://richhabits.github.io/sam/SHA256SUMS.txt" }
 Ok "Found $($asset.name) ($tag)"
 
 $tmp  = Join-Path $env:TEMP ("sam-" + [guid]::NewGuid().ToString("N").Substring(0,8))
@@ -66,10 +71,10 @@ try { Invoke-WebRequest -UseBasicParsing -Uri $asset.browser_download_url -OutFi
 catch { Die "Download failed (interrupted or blocked)." "Re-run the command." }
 
 # ── verify SHA-256 ──
-if ($sums) {
+if ($sumsUrl) {
   try {
     $sumsFile = Join-Path $tmp "SHA256SUMS.txt"
-    Invoke-WebRequest -UseBasicParsing -Uri $sums.browser_download_url -OutFile $sumsFile
+    Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl -OutFile $sumsFile
     $line   = Get-Content $sumsFile | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
     $expect = ([regex]'[a-fA-F0-9]{64}').Match($line).Value
     # AUDIT FIX: a missing checksum entry used to fall through and install unverified. If this
