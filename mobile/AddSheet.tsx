@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { type Attachment, pickFile, pickPhoto, takePhoto } from './lib/attach';
 import { GLYPHS } from './lib/glyphs';
-import { type IOS, metrics, type } from './lib/ios';
-import { Row, Section } from './ui';
+import { SamChevron, SamRow, SamSection, SamSheet } from './samKit';
+import { samColor, samInk, samSpace, samType } from './lib/samTheme';
 
 // "ADD TO SAM" — the + in the composer.
 //
@@ -94,13 +94,11 @@ async function fetchLevel(level: Level): Promise<Item[]> {
 }
 
 export default function AddSheet({
-  ios,
   visible,
   onClose,
   onPick,
   onAttach,
 }: {
-  ios: IOS;
   visible: boolean;
   onClose: () => void;
   onPick: (text: string) => void;
@@ -168,180 +166,146 @@ export default function AddSheet({
   const connectedRows = connected.flatMap((c) => c.lists.map((l) => ({ c, l })));
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: ios.scrim }} onPress={onClose} />
+    <SamSheet visible={visible} onClose={onClose}>
+      {/* Nav bar: leading action, centred title, hairline — the sheet's own drill-down needs a
+          header SamSheet doesn't provide, since it's a generic scrim+card, not a navigator. */}
       <View
         style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          maxHeight: '80%',
-          backgroundColor: ios.groupedBg,
-          borderTopLeftRadius: 12,
-          borderTopRightRadius: 12,
-          // A top edge of its own. In dark this sheet is groupedBg — pure black — over a dimmed
-          // black screen, so without a hairline it has no boundary at all and reads as the page
-          // rather than as something laid over it.
-          borderTopWidth: metrics.hairline,
-          borderTopColor: ios.separator,
-          paddingBottom: 34,
+          flexDirection: 'row',
+          alignItems: 'center',
+          minHeight: 44,   // a nav bar holding scaling text has to be a floor, not a ceiling
+          paddingHorizontal: samSpace.gutter,
+          borderBottomWidth: 1,
+          borderBottomColor: samColor.raise2,
+          marginBottom: 8,
         }}
       >
-        {/* iOS sheet grabber, then a nav bar: leading action, centred title, hairline. */}
-        <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: ios.separator, marginTop: 6 }} />
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            minHeight: 44,   // a nav bar holding scaling text has to be a floor, not a ceiling
-            paddingHorizontal: metrics.margin,
-            borderBottomWidth: metrics.hairline,
-            borderBottomColor: ios.separator,
-          }}
-        >
-          <Pressable onPress={here ? back : onClose} hitSlop={10} style={{ minWidth: 70 }}>
-            <Text style={[type.body, { color: ios.tintText }]}>{here ? '‹ Back' : 'Cancel'}</Text>
-          </Pressable>
-          <Text style={[type.headline, { color: ios.label, flex: 1, textAlign: 'center' }]} numberOfLines={1}>
-            {here ? here.label : 'Add to SAM'}
-          </Text>
-          <View style={{ minWidth: 70 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-          {!here ? (
-            <>
-            <Section ios={ios} header="Attach" footer="Photos and files ride along with your next message. SAM looks at images on your machine.">
-              <Row
-                ios={ios}
-                glyph={GLYPHS.camera}
-                title="Camera"
-                onPress={async () => {
-                  const a = await takePhoto();
-                  if (a) { onAttach(a); onClose(); }
-                }}
-              />
-              <Row
-                ios={ios}
-                glyph={GLYPHS.photos}
-                title="Photos"
-                onPress={async () => {
-                  const a = await pickPhoto();
-                  if (a) { onAttach(a); onClose(); }
-                }}
-              />
-              <Row
-                ios={ios}
-                glyph={GLYPHS.files}
-                title="Files"
-                last
-                onPress={async () => {
-                  const a = await pickFile();
-                  if (a) { onAttach(a); onClose(); }
-                }}
-              />
-            </Section>
-
-            <Section ios={ios} header="Quick start" footer="Drops a starter prompt into the message box, finish the thought and send.">
-              {QUICK_ACTIONS.map((a, i) => (
-                <Row
-                  key={a.id}
-                  ios={ios}
-                  glyph={a.glyph}
-                  title={a.title}
-                  subtitle={a.hint}
-                  onPress={() => { onPick(a.prompt); onClose(); }}
-                  last={i === QUICK_ACTIONS.length - 1}
-                />
-              ))}
-            </Section>
-
-            <Section ios={ios} header="From SAM" footer="Picking one drops its name into the message box. Nothing runs until you send it.">
-              {CATALOGUE.map((c, i) => (
-                <Row
-                  key={c.kind}
-                  ios={ios}
-                  glyph={c.glyph}
-                  title={c.label}
-                  subtitle={c.hint}
-                  chevron
-                  onPress={() => load({ source: 'native', kind: c.kind, label: c.label })}
-                  last={i === CATALOGUE.length - 1}
-                />
-              ))}
-            </Section>
-
-            {connectedRows.length > 0 && (
-              <Section
-                ios={ios}
-                header="Connected"
-                footer={`${connected.map((c) => c.label).join(', ')} — read-only. Nothing here can post, merge or change anything.`}
-              >
-                {connectedRows.map(({ c, l }, i) => (
-                  <Row
-                    key={`${c.id}/${l.kind}`}
-                    ios={ios}
-                    glyph={GLYPHS.connector}
-                    title={l.label}
-                    subtitle={l.hint}
-                    chevron
-                    onPress={() => load({ source: 'connector', id: c.id, kind: l.kind, label: l.label, drill: l.drill })}
-                    last={i === connectedRows.length - 1}
-                  />
-                ))}
-              </Section>
-            )}
-
-            {offline.length > 0 && (
-              // Named rather than hidden: knowing Slack COULD be here is the point. The token can
-              // only be pasted on the Mac, so the phone says so instead of offering a dead row.
-              <Section ios={ios} header="Not connected" footer="Add these on the Mac — Settings → 3rd-Party Integrations. Keys are never accepted from a phone.">
-                {offline.map((c, i) => (
-                  <Row key={c.id} ios={ios} title={c.label} subtitle={c.error || c.note} last={i === offline.length - 1} />
-                ))}
-              </Section>
-            )}
-            </>
-          ) : rows === null ? (
-            <ActivityIndicator color={ios.tint} style={{ marginVertical: 32 }} />
-          ) : error ? (
-            <Section ios={ios}>
-              <Row ios={ios} title={error} destructive last />
-            </Section>
-          ) : rows.length === 0 ? (
-            <Section ios={ios}>
-              <Row ios={ios} title="Nothing here yet" last />
-            </Section>
-          ) : (
-            <Section ios={ios}>
-              {rows.map((r, i) => {
-                // A row that drills opens the next list (a repo's issues, a channel's messages);
-                // a leaf row drops its name in the composer.
-                const drill = here.source === 'connector' ? here.drill : undefined;
-                return (
-                  <Row
-                    key={r.id}
-                    ios={ios}
-                    title={r.title}
-                    subtitle={r.sub}
-                    chevron={!!drill}
-                    onPress={() => {
-                      if (drill && here.source === 'connector') {
-                        load({ source: 'connector', id: here.id, kind: drill, label: r.title, param: r.id });
-                        return;
-                      }
-                      onPick(r.title);
-                      onClose();
-                    }}
-                    last={i === rows.length - 1}
-                  />
-                );
-              })}
-            </Section>
-          )}
-        </ScrollView>
+        <Pressable onPress={here ? back : onClose} hitSlop={10} style={{ minWidth: 70 }}>
+          <Text style={[samType.body, { color: samColor.accent }]}>{here ? '‹ Back' : 'Cancel'}</Text>
+        </Pressable>
+        <Text style={[samType.rowTitle, { color: samInk.primary, flex: 1, textAlign: 'center' }]} numberOfLines={1}>
+          {here ? here.label : 'Add to SAM'}
+        </Text>
+        <View style={{ minWidth: 70 }} />
       </View>
-    </Modal>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {!here ? (
+          <>
+          <SamSection header="Attach" footer="Photos and files ride along with your next message. SAM looks at images on your machine.">
+            <SamRow
+              glyph={GLYPHS.camera}
+              title="Camera"
+              onPress={async () => {
+                const a = await takePhoto();
+                if (a) { onAttach(a); onClose(); }
+              }}
+            />
+            <SamRow
+              glyph={GLYPHS.photos}
+              title="Photos"
+              onPress={async () => {
+                const a = await pickPhoto();
+                if (a) { onAttach(a); onClose(); }
+              }}
+            />
+            <SamRow
+              glyph={GLYPHS.files}
+              title="Files"
+              onPress={async () => {
+                const a = await pickFile();
+                if (a) { onAttach(a); onClose(); }
+              }}
+            />
+          </SamSection>
+
+          <SamSection header="Quick start" footer="Drops a starter prompt into the message box, finish the thought and send.">
+            {QUICK_ACTIONS.map((a) => (
+              <SamRow
+                key={a.id}
+                glyph={a.glyph}
+                title={a.title}
+                meta={a.hint}
+                onPress={() => { onPick(a.prompt); onClose(); }}
+              />
+            ))}
+          </SamSection>
+
+          <SamSection header="From SAM" footer="Picking one drops its name into the message box. Nothing runs until you send it.">
+            {CATALOGUE.map((c) => (
+              <SamRow
+                key={c.kind}
+                glyph={c.glyph}
+                title={c.label}
+                meta={c.hint}
+                status={<SamChevron />}
+                onPress={() => load({ source: 'native', kind: c.kind, label: c.label })}
+              />
+            ))}
+          </SamSection>
+
+          {connectedRows.length > 0 && (
+            <SamSection
+              header="Connected"
+              footer={`${connected.map((c) => c.label).join(', ')} — read-only. Nothing here can post, merge or change anything.`}
+            >
+              {connectedRows.map(({ c, l }) => (
+                <SamRow
+                  key={`${c.id}/${l.kind}`}
+                  glyph={GLYPHS.connector}
+                  title={l.label}
+                  meta={l.hint}
+                  status={<SamChevron />}
+                  onPress={() => load({ source: 'connector', id: c.id, kind: l.kind, label: l.label, drill: l.drill })}
+                />
+              ))}
+            </SamSection>
+          )}
+
+          {offline.length > 0 && (
+            // Named rather than hidden: knowing Slack COULD be here is the point. The token can
+            // only be pasted on the Mac, so the phone says so instead of offering a dead row.
+            <SamSection header="Not connected" footer="Add these on the Mac — Settings → 3rd-Party Integrations. Keys are never accepted from a phone.">
+              {offline.map((c) => (
+                <SamRow key={c.id} title={c.label} meta={c.error || c.note} />
+              ))}
+            </SamSection>
+          )}
+          </>
+        ) : rows === null ? (
+          <ActivityIndicator color={samColor.accent} style={{ marginVertical: 32 }} />
+        ) : error ? (
+          <Text style={[samType.body, { color: samColor.red, marginHorizontal: samSpace.gutter }]}>{error}</Text>
+        ) : rows.length === 0 ? (
+          <View style={{ marginHorizontal: samSpace.gutter }}>
+            <SamRow title="Nothing here yet" />
+          </View>
+        ) : (
+          <View style={{ marginHorizontal: samSpace.gutter, gap: samSpace.rowGap }}>
+            {rows.map((r) => {
+              // A row that drills opens the next list (a repo's issues, a channel's messages);
+              // a leaf row drops its name in the composer.
+              const drill = here.source === 'connector' ? here.drill : undefined;
+              return (
+                <SamRow
+                  key={r.id}
+                  title={r.title}
+                  meta={r.sub}
+                  status={drill ? <SamChevron /> : undefined}
+                  onPress={() => {
+                    if (drill && here.source === 'connector') {
+                      load({ source: 'connector', id: here.id, kind: drill, label: r.title, param: r.id });
+                      return;
+                    }
+                    onPick(r.title);
+                    onClose();
+                  }}
+                />
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    </SamSheet>
   );
 }

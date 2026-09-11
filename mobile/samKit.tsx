@@ -19,6 +19,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  type TextInputProps,
   View,
 } from 'react-native';
 import { haptic } from './lib/haptics';
@@ -697,5 +699,116 @@ export function SamSectionLabel({ children }: { children: string }) {
     >
       {children}
     </Text>
+  );
+}
+
+/** A labelled group of rows with an optional footer — the flat-card language's answer to the
+ *  Apple-grouped-list Section (header/footer/rounded card) that ui.tsx's screens used. SamRow
+ *  itself is a standalone card with no built-in grouping, so screens carrying real header/footer
+ *  copy (why this group exists, what a tap does) need this rather than re-deriving the same
+ *  label+gap+footnote arrangement per screen. */
+export function SamSection({ header, footer, children }: { header?: string; footer?: string; children: ReactNode }) {
+  return (
+    <View style={{ marginBottom: samSpace.section }}>
+      {header ? <SamSectionLabel>{header.toUpperCase()}</SamSectionLabel> : null}
+      <View style={{ marginHorizontal: samSpace.gutter, gap: samSpace.rowGap }}>{children}</View>
+      {footer ? (
+        <Text style={[samType.bodySm, { color: samInk.metadata, marginHorizontal: samSpace.gutter, marginTop: samSpace.rowGap }]}>
+          {footer}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** Trailing "drill in" indicator for a SamRow's `status` slot — SamRow has no built-in chevron
+ *  concept of its own, its status slot takes any node. */
+export function SamChevron() {
+  return <Text style={[samType.mono, { color: samInk.metadata }]}>›</Text>;
+}
+
+/** Centred, accent-coloured CTA row (red when destructive) — the flat-card language's answer to
+ *  ui.tsx's ActionRow. SamRow's own title is always left-aligned next to an optional glyph, so a
+ *  standalone "do this" row (Connect to Mac/PC, Disconnect, Pair with Desktop…) needs this
+ *  instead. `busy` swaps the label for an inline spinner rather than disabling silently. */
+export function SamActionRow({
+  title,
+  onPress,
+  destructive,
+  disabled,
+  busy,
+}: {
+  title: string;
+  onPress: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={() => {
+        if (disabled || busy) return;
+        haptic.light();
+        onPress();
+      }}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled || !!busy }}
+      style={({ pressed }) => ({
+        minHeight: samTouch.minTarget,
+        borderRadius: samRadius.row,
+        backgroundColor: pressed && !disabled ? samColor.raise2 : samColor.raise,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: disabled ? 0.5 : 1,
+      })}
+    >
+      {busy ? (
+        <Spinner reduceMotion={false} />
+      ) : (
+        <Text style={[samType.rowTitle, { color: destructive ? samColor.red : samColor.accent }]}>{title}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+/** Labelled text-input row — the fourteen parts have no field component of their own; samTheme's
+ *  `input` token ("text fields, sheet rows") was already reserved for exactly this. */
+export function SamField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry,
+  mono,
+  accessory,
+  ...input
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  secureTextEntry?: boolean;
+  /** Machine strings (hosts, codes, keys) compared character-by-character read better fixed-width. */
+  mono?: boolean;
+  accessory?: ReactNode;
+} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
+  return (
+    <View style={{ borderRadius: samRadius.row, backgroundColor: samColor.input, padding: samSpace.cardPad, gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={[samType.monoXs, { color: samInk.metadata }]}>{label.toUpperCase()}</Text>
+        {accessory}
+      </View>
+      <TextInput
+        style={[mono ? samType.mono : samType.body, { color: samInk.primary, padding: 0 }]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={samInk.metadata}
+        secureTextEntry={secureTextEntry}
+        accessibilityLabel={label}
+        {...input}
+      />
+    </View>
   );
 }

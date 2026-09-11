@@ -10,15 +10,13 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { parsePairLink, type PairLink } from './lib/pairlink';
-import { type IOS, type as iosType, metrics } from './lib/ios';
+import { samColor, samSpace, samType } from './lib/samTheme';
 
 export default function QRScanner({
-  ios,
   visible,
   onClose,
   onScanned,
 }: {
-  ios: IOS;
   visible: boolean;
   onClose: () => void;
   onScanned: (link: PairLink) => void;
@@ -52,11 +50,11 @@ export default function QRScanner({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleClose}>
-      <SafeAreaView style={[st.screen, { backgroundColor: '#000' }]}>
+      <SafeAreaView style={[st.screen, { backgroundColor: samColor.ground }]}>
         <View style={st.header}>
-          <Text style={[iosType.title2, { color: '#fff', fontWeight: '700' }]}>Scan QR Code</Text>
+          <Text style={[samType.h3, { color: samColor.ink }]}>Scan QR Code</Text>
           <Pressable onPress={handleClose} hitSlop={12}>
-            <Text style={[iosType.body, { color: ios.tint, fontWeight: '600' }]}>Cancel</Text>
+            <Text style={[samType.rowTitle, { color: samColor.accent }]}>Cancel</Text>
           </Pressable>
         </View>
 
@@ -64,11 +62,11 @@ export default function QRScanner({
           <View style={st.center} />
         ) : !permission.granted ? (
           <View style={st.center}>
-            <Text style={[iosType.body, { color: '#fff', textAlign: 'center', marginBottom: 16, paddingHorizontal: 32 }]}>
+            <Text style={[samType.body, { color: samColor.ink, textAlign: 'center', marginBottom: 16, paddingHorizontal: 32 }]}>
               SAM needs camera access to scan the pairing QR code shown on your Mac/PC.
             </Text>
-            <Pressable onPress={requestPermission} style={[st.button, { backgroundColor: ios.tint }]}>
-              <Text style={[iosType.body, { color: '#fff', fontWeight: '600' }]}>Allow Camera</Text>
+            <Pressable onPress={requestPermission} style={[st.button, { backgroundColor: samColor.accent }]}>
+              <Text style={[samType.rowTitle, { color: samColor.ground }]}>Allow Camera</Text>
             </Pressable>
           </View>
         ) : (
@@ -81,7 +79,7 @@ export default function QRScanner({
             />
             <View style={st.frame} pointerEvents="none" />
             <View style={st.captionWrap} pointerEvents="none">
-              <Text style={[iosType.subhead, { color: '#fff', textAlign: 'center' }]}>
+              <Text style={[samType.bodySm, { color: samColor.ink, textAlign: 'center' }]}>
                 {notAPairCode
                   ? "That QR isn't a SAM pairing code — open Dashboard → Devices → Pair a phone on your Mac/PC"
                   : 'Point at the QR code on your Mac/PC'}
@@ -100,7 +98,7 @@ const st = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: metrics.margin,
+    paddingHorizontal: samSpace.gutter,
     height: 44,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
