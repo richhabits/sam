@@ -110,7 +110,7 @@ Download the latest binaries directly from the [GitHub Releases](https://github.
 * **macOS**: `SAM-x.x.x-arm64.dmg` (Apple Silicon). **Intel `.dmg` is not in the current release** — `install.sh` refuses to install the arm64 image on Intel; use Option C (from source) until that asset exists.
 * **Signed vs unsigned:** a notarized Developer ID build opens with Gatekeeper `accepted` (this Mac's 3.6.0 is `source=Notarized Developer ID`). If Gatekeeper cannot verify, the installer says so and clears quarantine — that is the honest unsigned path, not a silent skip. Overlay (⌥Space) and the Dock icon come from **SAM.app**, not from the browser HUD.
 * **Windows**: `SAM-Setup-x.x.x.exe` (v3.6.0: `SAM-Setup-3.6.0.exe`). One-paste: `docs/install.ps1`. From source: `setup.ps1` + `START-SAM.bat` (no `.sh`). The packaged app starts the yard worker; SmartScreen “More info → Run anyway” is the unsigned path.
-* **Linux**: `SAM-x.x.x.AppImage` or `SAM-x.x.x.deb`
+* **Linux (x64)**: `SAM-x.x.x.AppImage` (default one-paste → `~/.local/bin/SAM.AppImage`) or `sam_x.x.x_amd64.deb` (`SAM_PKG=deb`). No arm64 Linux build in the current release — `install.sh` says so instead of handing you the amd64 image. Needs `libfuse2` on some Ubuntu 22+ boxes.
 
 #### Option C: Run from Source (Developers)
 ```bash

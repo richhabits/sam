@@ -5,7 +5,7 @@ Real, scoped, genuinely helpful — not busywork. Ready to create with `gh issue
 1. **Add a `--version` / `sam version` output to the CLI entry**
    Small, self-contained; teaches the repo layout. Label: good-first-issue, cli.
 
-2. **Package matrix: publish a Linux `.deb` alongside the AppImage**
+2. **Package matrix: Linux `.deb` already ships (`sam_*_amd64.deb`); arm64 Linux still missing.**
    The build config already lists `deb`; wire it into `build-desktop.yml` + install.sh. Label: good-first-issue, packaging.
 
 3. **First-run: detect low RAM and skip the Ollama suggestion gracefully**

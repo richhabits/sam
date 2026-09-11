@@ -11,14 +11,31 @@ const v360 = [
   "https://github.com/richhabits/sam/releases/download/v3.6.0/SAM-3.6.0-arm64.dmg",
   "https://github.com/richhabits/sam/releases/download/v3.6.0/SAM-3.6.0-arm64.dmg.blockmap",
   "https://github.com/richhabits/sam/releases/download/v3.6.0/SAM-3.6.0.AppImage",
+  "https://github.com/richhabits/sam/releases/download/v3.6.0/sam_3.6.0_amd64.deb",
   "https://github.com/richhabits/sam/releases/download/v3.6.0/SAM-Setup-3.6.0.exe",
 ];
+
+function pickLinux(arch: "arm64" | "x64", pkg: "appimage" | "deb", urls: string[]): string | undefined {
+  if (arch !== "x64") return undefined;
+  if (pkg === "deb") return urls.find((u) => /\.deb$/.test(u));
+  return urls.find((u) => /\.AppImage$/.test(u));
+}
 
 describe("install.ps1 Windows asset pick", () => {
   it("matches SAM-Setup-x.y.z.exe and not the blockmap", () => {
     const names = ["SAM-Setup-3.6.0.exe", "SAM-Setup-3.6.0.exe.blockmap", "SAM-3.6.0-arm64.dmg"];
     const hit = names.filter((n) => /SAM-Setup-.*\.exe$/.test(n));
     expect(hit).toEqual(["SAM-Setup-3.6.0.exe"]);
+  });
+});
+
+describe("install.sh linux asset pick", () => {
+  it("x64 gets the AppImage; SAM_PKG=deb gets sam_*_amd64.deb", () => {
+    expect(pickLinux("x64", "appimage", v360)?.endsWith("SAM-3.6.0.AppImage")).toBe(true);
+    expect(pickLinux("x64", "deb", v360)?.endsWith("sam_3.6.0_amd64.deb")).toBe(true);
+  });
+  it("linux arm64 gets nothing rather than the amd64 image", () => {
+    expect(pickLinux("arm64", "appimage", v360)).toBeUndefined();
   });
 });
 

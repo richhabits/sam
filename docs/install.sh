@@ -67,8 +67,16 @@ if [ "$PLATFORM" = "mac" ]; then
   else
     ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.dmg$' | grep -v 'arm64' | head -1 || true)"
   fi
-elif [ "${SAM_PKG:-}" = "deb" ]; then
-  ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.deb$' | head -1 || true)"
+elif [ "$PLATFORM" = "linux" ]; then
+  # CI only builds linux-x64. An arm64 box must not silently get the amd64 AppImage.
+  if [ "$ARCH" != "x64" ]; then
+    die "No Linux ${ARCH} app in ${TAG} yet (releases ship x64 AppImage + amd64 .deb)." "Run from source: git clone https://github.com/${REPO}.git && cd sam && ./setup.sh"
+  fi
+  if [ "${SAM_PKG:-}" = "deb" ]; then
+    ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.deb$' | head -1 || true)"
+  else
+    ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.AppImage$' | head -1 || true)"
+  fi
 else
   ASSET_URL="$(printf '%s\n' "$ALL_URLS" | grep -E '\.AppImage$' | head -1 || true)"
 fi
@@ -162,9 +170,20 @@ else
       step "Installing to ${DEST}…"
       install -m 755 "$TMP/$FILE" "$DEST/SAM.AppImage" || die "Couldn't write to ${DEST}." "Check permissions on your home directory."
       ok "Installed to ${DEST}/SAM.AppImage"
+      APPS="${HOME}/.local/share/applications"; mkdir -p "$APPS"
+      cat > "$APPS/sam.desktop" <<DESK
+[Desktop Entry]
+Name=SAM
+Comment=Free, private, local-first AI assistant
+Exec=${DEST}/SAM.AppImage
+Terminal=false
+Type=Application
+Categories=Utility;
+DESK
+      command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" >/dev/null 2>&1 || true
+      case ":$PATH:" in *":${DEST}:"*) ;; *) say "  ${DIM}Add ${DEST} to PATH if the shell cannot find SAM.AppImage.${RESET}" ;; esac
+      say "  ${DIM}If the AppImage will not start on Ubuntu 22+: sudo apt install libfuse2${RESET}"
       if [ "${SAM_NO_LAUNCH:-}" != "1" ]; then step "Launching SAM…"; ( "$DEST/SAM.AppImage" >/dev/null 2>&1 & ) || say "  ${DIM}Start it any time: ${DEST}/SAM.AppImage${RESET}"; fi
-      # Debian/Ubuntu get a real package too. Not automatic: dpkg needs root, and a piped
-      # installer that silently asks for your sudo password is exactly what you shouldn't run.
       if command -v dpkg >/dev/null 2>&1; then
         say "  ${DIM}Prefer a system package? SAM_PKG=deb reinstalls as a .deb (needs sudo).${RESET}"
       fi

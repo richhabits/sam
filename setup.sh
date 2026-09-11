@@ -18,22 +18,27 @@ echo ""
 # 1. Node.js — INSTALL IT FOR THEM (no headache). Non-technical friends don't have it.
 if ! command -v node >/dev/null 2>&1; then
   warn "Node.js isn't installed — no worries, I'll set it up for you."
-  # Make sure Homebrew (Mac's installer) exists; install it quietly if not.
-  if ! command -v brew >/dev/null 2>&1; then
-    echo "  • installing Homebrew first (it may ask for your Mac password — that's normal)…"
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
-    # load brew into this session (Apple Silicon or Intel path)
-    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)" || eval "$(/usr/local/bin/brew shellenv 2>/dev/null)" || true
+  OS="$(uname -s)"
+  if [ "$OS" = "Darwin" ]; then
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "  • installing Homebrew first (it may ask for your Mac password — that's normal)…"
+      NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+      eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)" || eval "$(/usr/local/bin/brew shellenv 2>/dev/null)" || true
+    fi
+    if command -v brew >/dev/null 2>&1; then
+      echo "  • installing Node…"
+      brew install node || true
+    fi
+  else
+    echo "  • On Linux, install Node 22.19+ from https://nodejs.org (or your distro), then re-run ./setup.sh."
+    echo "    Homebrew is a Mac installer — this script will not install it on Linux."
   fi
-  if command -v brew >/dev/null 2>&1; then
-    echo "  • installing Node…"
-    brew install node || true
-  fi
-  # Still no node? Open the official installer page for them and stop cleanly.
   if ! command -v node >/dev/null 2>&1; then
     warn "Couldn't auto-install Node."
-    echo "     → I'll open nodejs.org — click the big green button, install, then run ./setup.sh again."
-    command -v open >/dev/null 2>&1 && open "https://nodejs.org/en/download/prebuilt-installer" 2>/dev/null || true
+    echo "     → Open https://nodejs.org — install Node 22.19+, then run ./setup.sh again."
+    if command -v open >/dev/null 2>&1; then open "https://nodejs.org/en/download/prebuilt-installer" 2>/dev/null || true
+    elif command -v xdg-open >/dev/null 2>&1; then xdg-open "https://nodejs.org" 2>/dev/null || true
+    fi
     exit 1
   fi
   ok "Node installed"
@@ -80,7 +85,10 @@ if [ -t 0 ]; then
   case "$GO" in
     n|N) echo "  Cool — run 'npm start' whenever you're ready (your browser opens automatically)." ;;
     *)   echo ""; bold "  Starting SAM… your browser will open automatically in a few seconds."
-         ( sleep 9; command -v open >/dev/null 2>&1 && open "http://localhost:8787" 2>/dev/null ) &
+         ( sleep 9
+           if command -v open >/dev/null 2>&1; then open "http://localhost:8787" 2>/dev/null
+           elif command -v xdg-open >/dev/null 2>&1; then xdg-open "http://localhost:8787" 2>/dev/null
+           fi ) &
          npm start ;;
   esac
 fi
