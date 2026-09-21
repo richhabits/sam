@@ -149,7 +149,9 @@ export async function dispatchWebhookEvent(
       if (!verdict.ok) {
         throw new Error(`blocked outbound webhook: ${verdict.reason}`);
       }
-      const res = await fetchImpl(ep.url, {
+      // Fetch the guard's validated URL object — not the raw string — so taint analysis
+      // (CodeQL js/request-forgery) sees the request target as post-validation.
+      const res = await fetchImpl(verdict.url.href, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

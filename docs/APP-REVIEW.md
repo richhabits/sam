@@ -132,10 +132,9 @@ the image goes to the user's own server. No upload to us — because there is no
    (`BB18D7CF…`, serial `1F07DD5190…`) — the name alone will point you at the dead one and the
    build will fail for a reason that looks nothing like the cause.
 
-   What is still **not** done: the **App Store Connect app record**. It cannot be created from the
-   API — `POST /v1/apps` returns `403 The resource 'apps' does not allow 'CREATE'`. It must be
-   made in the ASC web UI (Apps → ➕ → New App), bundle `com.hectic.sam.mobile`, SKU
-   `sam-ios-001`. Nothing can be uploaded to TestFlight until that record exists.
+   ~~App Store Connect app record~~ — **exists** (build **1.0.0 (7)** already processed per
+   `mobile/SUBMISSION.md`). Creating apps via API is still impossible (`POST /v1/apps` → 403);
+   age rating, screenshot upload, and Submit for Review remain ASC UI steps.
 2. **APNs key.** `mobile/lib/notify.ts` handles local notifications and is wired for remote push,
    but remote push is inert until an APNs key exists. Create one in the Apple Developer portal
    (Keys → Apple Push Notifications service), then wire it server-side.
