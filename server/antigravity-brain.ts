@@ -135,11 +135,17 @@ export function verifySymbolDeclaration(
     const content = readFileSync(cleanPath, "utf8");
     const lines = content.split("\n");
 
+    // Identifier-only: never interpolate untrusted text into RegExp (CodeQL js/regex-injection).
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(symbolName)) {
+      return { symbolName, filePath, found: false, exported: false };
+    }
+    const sym = symbolName; // validated literal identifier — safe to embed
+
     const exportRegex = new RegExp(
-      `(?:export\\s+(?:async\\s+)?(function|class|interface|type|const|let|var)\\s+${symbolName}\\b)|(?:export\\s*\\{[^}]*\\b${symbolName}\\b[^}]*\\})`
+      `(?:export\\s+(?:async\\s+)?(function|class|interface|type|const|let|var)\\s+${sym}\\b)|(?:export\\s*\\{[^}]*\\b${sym}\\b[^}]*\\})`
     );
     const localRegex = new RegExp(
-      `(?:(?:async\\s+)?(function|class|interface|type|const|let|var)\\s+${symbolName}\\b)`
+      `(?:(?:async\\s+)?(function|class|interface|type|const|let|var)\\s+${sym}\\b)`
     );
 
     for (let i = 0; i < lines.length; i++) {

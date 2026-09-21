@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { checkOutboundUrl } from "./url-guard.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -142,6 +143,12 @@ export async function dispatchWebhookEvent(
     const signature = computeHmacSignature(rawBody, ep.secret);
 
     try {
+      // Same outbound policy as web_fetch / open_url: never POST to loopback/LAN/metadata
+      // from a configured webhook URL (SSRF). Operator-registered endpoints still must be public.
+      const verdict = await checkOutboundUrl(ep.url);
+      if (!verdict.ok) {
+        throw new Error(`blocked outbound webhook: ${verdict.reason}`);
+      }
       const res = await fetchImpl(ep.url, {
         method: "POST",
         headers: {
