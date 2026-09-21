@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { checkOutboundUrl } from "./url-guard.ts";
+import { BlockedFetch, safeFetch } from "./url-guard.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,25 +143,23 @@ export async function dispatchWebhookEvent(
     const signature = computeHmacSignature(rawBody, ep.secret);
 
     try {
-      // Same outbound policy as web_fetch / open_url: never POST to loopback/LAN/metadata
-      // from a configured webhook URL (SSRF). Operator-registered endpoints still must be public.
-      const verdict = await checkOutboundUrl(ep.url);
-      if (!verdict.ok) {
-        throw new Error(`blocked outbound webhook: ${verdict.reason}`);
-      }
-      // Fetch the guard's validated URL object — not the raw string — so taint analysis
-      // (CodeQL js/request-forgery) sees the request target as post-validation.
-      const res = await fetchImpl(verdict.url.href, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-SAM-Event": event,
-          "X-SAM-Signature": signature,
-          "X-SAM-Delivery": deliveryId,
+      // safeFetch applies checkOutboundUrl + DNS pinning + redirect re-checks (SSRF).
+      // Custom fetchImpl (tests) skips pinning but still runs the URL guard per hop.
+      const res = await safeFetch(
+        ep.url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-SAM-Event": event,
+            "X-SAM-Signature": signature,
+            "X-SAM-Delivery": deliveryId,
+          },
+          body: rawBody,
+          signal: AbortSignal.timeout(timeoutMs),
         },
-        body: rawBody,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+        { fetchImpl },
+      );
 
       const success = res.ok;
       const log: WebhookDeliveryLog = {
