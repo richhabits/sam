@@ -44,7 +44,7 @@ Neither is requested during the demo.
 
 | Requirement | State |
 |---|---|
-| App Transport Security | `NSAllowsLocalNetworking` only — no blanket `NSAllowsArbitraryLoads` |
+| App Transport Security | `NSAllowsArbitraryLoads: true` (required for Tailscale `100.x` — `NSAllowsLocalNetworking` alone is not enough); review justification in `docs/APP-REVIEW.md` |
 | Usage strings | Camera, Photos, Local Network — all present and specific |
 | Microphone | Not used, so no string needed and nothing can crash on a missing one |
 | Privacy manifest | `NSPrivacyTracking: false`, no collected data types, reasons declared for FileTimestamp / UserDefaults / SystemBootTime |
