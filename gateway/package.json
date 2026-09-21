@@ -2,7 +2,7 @@
   "name": "sam-gateway",
   "private": true,
   "version": "1.0.0",
-  "description": "Optional hosted free-tier brain for SAM — pooled keys, hard cost caps. OFF by default.",
+  "description": "Optional hosted free-tier brain for SAM \u2014 pooled keys, hard cost caps. OFF by default.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
@@ -12,5 +12,8 @@
     "@cloudflare/workers-types": "^5.20260718.1",
     "typescript": "^5.6.0",
     "wrangler": "^4.112.0"
+  },
+  "overrides": {
+    "sharp": "0.35.4"
   }
 }
