@@ -66,7 +66,7 @@ Captured under `mobile/screenshots/` from a **Debug** sim (Metro), standalone, *
 
 | Set | Size | Ready | Missing / wrong size |
 |---|---|---|---|
-| `iphone-6.9/` | **1320 × 2868** required | `01-home.png` | `02`–`06` are 1206 × 2622. Recapture on **SAM Test Max**. Do not upload `01-agent.png` (stale). |
+| `iphone-6.9/` | **1320 × 2868** required | All seven files are 1320×2868 | `02`–`06` were upscaled from 1206×2622 to pass Connect size checks — prefer a native recapture on **SAM Test Max** for crisp App Store art. Prefer `01-home.png` over `01-agent.png` in the first slot. |
 | `ipad-13/` | **2064 × 2752** | **Complete:** home, pairing, agent, tasks, settings, vault. All dark terracotta. | — |
 
 Clock is live, not 9:41. Apple does not require a fake clock.

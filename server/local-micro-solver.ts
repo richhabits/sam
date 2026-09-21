@@ -15,6 +15,74 @@ export interface MicroSolverResult {
   durationMs: number;
 }
 
+
+/** Evaluate a tiny arithmetic expression without `Function` / `eval` (CodeQL js/code-injection).
+ *  Accepts digits, whitespace, + - * / % ( ) and ** (from ^). Returns null if anything else sneaks in. */
+function safeEvalArith(expr: string): number | null {
+  const s = expr.replace(/\s+/g, "");
+  if (!s || !/^[0-9+\-*/%().]+$/.test(s)) return null;
+  let i = 0;
+  const peek = () => s[i] || "";
+  const get = () => s[i++] || "";
+  function parseExpr(): number {
+    let v = parseTerm();
+    while (peek() === "+" || peek() === "-") {
+      const op = get();
+      const r = parseTerm();
+      v = op === "+" ? v + r : v - r;
+    }
+    return v;
+  }
+  function parseTerm(): number {
+    let v = parsePower();
+    while (peek() === "*" || peek() === "/" || peek() === "%") {
+      const op = get();
+      const r = parsePower();
+      if (op === "*") v = v * r;
+      else if (op === "/") v = v / r;
+      else v = v % r;
+    }
+    return v;
+  }
+  function parsePower(): number {
+    let v = parseUnary();
+    // right-assoc **
+    if (s.slice(i, i + 2) === "**") {
+      i += 2;
+      const r = parsePower();
+      v = v ** r;
+    }
+    return v;
+  }
+  function parseUnary(): number {
+    if (peek() === "+") { get(); return parseUnary(); }
+    if (peek() === "-") { get(); return -parseUnary(); }
+    return parsePrimary();
+  }
+  function parsePrimary(): number {
+    if (peek() === "(") {
+      get();
+      const v = parseExpr();
+      if (peek() !== ")") throw new Error("expected )");
+      get();
+      return v;
+    }
+    const start = i;
+    while (/[0-9.]/.test(peek())) get();
+    if (start === i) throw new Error("expected number");
+    const n = Number(s.slice(start, i));
+    if (!Number.isFinite(n)) throw new Error("bad number");
+    return n;
+  }
+  try {
+    const v = parseExpr();
+    if (i !== s.length) return null;
+    return Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 export function trySolveLocally(input: string): MicroSolverResult {
   const t0 = Date.now();
   const raw = String(input || "").trim();
@@ -53,7 +121,7 @@ export function trySolveLocally(input: string): MicroSolverResult {
     if (/[+\-*/%^]/.test(expr) && !/[a-zA-Z_$]/.test(expr)) {
       try {
         const sanitized = expr.replace(/\^/g, "**");
-        const val = Function(`"use strict"; return (${sanitized});`)();
+        const val = safeEvalArith(sanitized);
         if (typeof val === "number" && !isNaN(val) && isFinite(val)) {
           return {
             solvedLocally: true,
