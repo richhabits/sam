@@ -168,3 +168,22 @@ Ad-hoc still does NOT give you the keychain: `SAM.entitlements` carries only `ap
 and the keychain access group arrives with the `application-identifier` that a provisioning
 profile injects. So the paired experience — chat, `@` references, a widget you can actually tap —
 needs a real development team, which is the same blocker as TestFlight.
+
+---
+
+## 6. Sharing with third-party AI — Guideline 5.1.2(i) (added with build 110)
+
+> In Standalone mode (no computer paired), the app sends the user's message to third-party AI
+> services to write the reply. Before the FIRST message is sent, a card names the recipients
+> (Pollinations and OpenRouter out of the box; Groq, Cerebras, Mistral, Google Gemini, Anthropic,
+> DeepSeek and others if the user adds their own key), says what is sent (the text typed, recent
+> conversation, text from attachments), and asks "Allow and send" / "Don't send". Nothing is sent
+> until the user allows. Permission is revocable in Settings → Privacy. We operate no server that
+> receives these messages. The demo makes no network requests at all.
+
+Enforced at the transport (`mobile/lib/chat.ts` throws `AiConsentRequired` rather than reaching a
+provider), not in a screen, so no code path can skip it. Pinned by `mobile/lib/chat.gate.test.ts`.
+Paired mode is not gated: the message goes to the user's own computer, which is not a third party.
+
+Privacy policy: linked in-app (Settings → Privacy) and in App Store Connect →
+https://richhabits.github.io/sam/privacy.html

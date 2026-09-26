@@ -3,7 +3,12 @@
 Everything that can be settled in code is settled and verified below. What remains is the part
 that only exists inside App Store Connect: metadata, screenshots, and pressing Submit.
 
-**Build to submit: 1.0.0 (109).** Build 107 was rejected on 2026-08-28 under 2.1(a) because the reviewers could not find "Explore the demo" (it sat at the bottom of the pairing sheet). From 109 the demo is the first card on the Home screen for any unpaired user, on iPhone and iPad, and is also in the ••• menu.
+**Build to submit: 1.0.0 (110).** Build 107 was rejected on 2026-08-28 under 2.1(a) because the reviewers could not find "Explore the demo" (it sat at the bottom of the pairing sheet). From 109 the demo is the first card on the Home screen for any unpaired user, on iPhone and iPad, and is also in the ••• menu.
+
+**Build 110 also closes three things found in our own compliance audit (none were cited by Apple):**
+1. **Guideline 5.1.2(i)** — in Standalone mode the app now names the third-party AI providers and asks permission *before the first message leaves the phone* ("Allow and send"); revocable in Settings → Privacy. Enforced in the chat transport (`lib/chat.ts`), covered by `lib/chat.gate.test.ts`.
+2. **The demo chat was not actually offline.** `demoStream()` existed but nothing called it, so chat inside the demo fell through to real cloud providers. Now wired; test-covered. The claim "no network requests in the demo" is true from 110, and was not true of 107–109.
+3. **Guideline 5.1.1(i)** — privacy policy is now linked inside the app (Settings → Privacy) as well as in App Store Connect, and the published policy now describes Standalone mode accurately.
 
 ---
 
