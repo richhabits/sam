@@ -180,7 +180,7 @@ export default function AddSheet({
           marginBottom: 8,
         }}
       >
-        <Pressable onPress={here ? back : onClose} hitSlop={10} style={{ minWidth: 70 }}>
+        <Pressable onPress={here ? back : onClose} hitSlop={10} style={{ minWidth: 70 }} accessibilityRole="button" accessibilityLabel={here ? 'Back' : 'Cancel'}>
           <Text style={[samType.body, { color: samColor.accent }]}>{here ? '‹ Back' : 'Cancel'}</Text>
         </Pressable>
         <Text style={[samType.rowTitle, { color: samInk.primary, flex: 1, textAlign: 'center' }]} numberOfLines={1}>
