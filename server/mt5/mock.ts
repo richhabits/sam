@@ -1,6 +1,6 @@
-// Deterministic MT5 mock — no network, no broker, no randomness, so tests are exact and nothing
-// can ever burn a quota or touch a real account. Also the default backend until a real one is
-// configured, which keeps the HUD/tools demonstrable with zero setup.
+// TEST-ONLY. A deterministic MT5 stand-in so unit tests are exact. It is NOT reachable from a running
+// SAM: index.ts does not import it and MT5_BACKEND=mock is refused (a test pins that). Fake account
+// numbers must never appear in the product — only tests inject this via setMt5AdapterForTests.
 import type { Mt5Account, Mt5Deal, Mt5Position, Mt5Quote, Mt5ReadAdapter } from "./adapter.ts";
 
 const H = 3_600_000;

@@ -41,10 +41,11 @@ export interface Mt5Deal {
   symbol: string;
   side: Mt5Side;
   volume: number;
-  openPrice: number;
+  /** Not every source knows the opening leg of a deal (the reporter EA exports CLOSING deals only). */
+  openPrice?: number;
   closePrice: number;
   profit: number;        // realised P/L in account currency (after swap/commission)
-  openedAt: string;      // ISO
+  openedAt?: string;     // ISO — optional for the same reason
   closedAt: string;      // ISO
 }
 
@@ -64,4 +65,6 @@ export interface Mt5ReadAdapter {
   /** Closed deals with closedAt >= sinceMs (epoch ms). */
   getHistory(sinceMs: number): Promise<Mt5Deal[]>;
   getQuote(symbol: string): Promise<Mt5Quote>;
+  /** When the numbers were TAKEN (ISO UTC), if the source knows — lets callers say "as of" and flag staleness. */
+  asOf?(): Promise<string | undefined>;
 }

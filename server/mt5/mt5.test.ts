@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Mt5Account, Mt5Deal } from "./adapter.ts";
 import { formatAccount, formatHistory, formatPositions, getMt5Adapter, mt5Summary, setMt5AdapterForTests } from "./index.ts";
 import { computeMetrics } from "./metrics.ts";
@@ -9,7 +9,7 @@ const acct = (o: Partial<Mt5Account> = {}): Mt5Account =>
 const deal = (n: number, profit: number): Mt5Deal =>
   ({ ticket: String(n), symbol: "EURUSD", side: "buy", volume: 0.1, openPrice: 1, closePrice: 1, profit, openedAt: new Date(n * 1e6).toISOString(), closedAt: new Date(n * 1e6 + 1).toISOString() });
 
-afterEach(() => { setMt5AdapterForTests(null); delete process.env.MT5_BACKEND; delete process.env.MT5_ALLOW_LIVE_READ; });
+afterEach(() => { setMt5AdapterForTests(null); delete process.env.MT5_BACKEND; delete process.env.MT5_FILE; delete process.env.MT5_ALLOW_LIVE_READ; });
 
 describe("mt5 metrics", () => {
   it("empty history is all zeros, no NaN", () => {
@@ -44,7 +44,9 @@ describe("mt5 metrics", () => {
   });
 });
 
-describe("mt5 mock + summary", () => {
+// The mock is a TEST fixture only — injected explicitly, never reachable from a running SAM (see file-source.test.ts).
+describe("mt5 summary logic (test stand-in adapter)", () => {
+  beforeEach(() => setMt5AdapterForTests(createMockAdapter()));
   it("mock is deterministic and internally consistent", async () => {
     const s = await mt5Summary(30);
     expect(s.backend).toBe("mock"); expect(s.readOnly).toBe(true);
@@ -66,8 +68,9 @@ describe("mt5 mock + summary", () => {
     for (const k of ["placeOrder", "order", "buy", "sell", "closePosition", "modify", "cancel"]) expect(a[k]).toBeUndefined();
   });
   it("unknown backend is a loud error, never a silent fallback", () => {
+    setMt5AdapterForTests(null);
     process.env.MT5_BACKEND = "metaapi";
-    expect(() => getMt5Adapter()).toThrow(/not available yet/);
+    expect(() => getMt5Adapter()).toThrow(/isn't supported/);
   });
   it("refuses a LIVE account unless MT5_ALLOW_LIVE_READ=1", async () => {
     const base = createMockAdapter();

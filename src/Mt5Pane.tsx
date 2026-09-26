@@ -8,7 +8,7 @@ import { useEscape } from "./lib/useOverlay";
 
 type Position = { ticket: string; symbol: string; side: "buy" | "sell"; volume: number; openPrice: number; currentPrice: number; profit: number };
 type Summary = {
-  backend: string; days: number;
+  backend: string; days: number; asOf?: string; stale?: boolean;
   account: { login: string; server: string; currency: string; balance: number; equity: number; margin: number; freeMargin: number; leverage: number; demo: boolean };
   positions: Position[];
   metrics: { trades: number; wins: number; losses: number; winRate: number; netProfit: number; profitFactor: number | null; expectancy: number; maxDrawdown: number; maxDrawdownPct: number; openPnl: number; marginUsedPct: number };
@@ -20,10 +20,15 @@ const tone = (n: number) => ({ color: n > 0 ? "#3fa66b" : n < 0 ? "#d2553f" : un
 export default function Mt5Pane({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<Summary | null>(null);
   const [err, setErr] = useState("");
+  const [offline, setOffline] = useState("");      // not connected is a normal state, not an error
   useEscape(onClose);
 
   useEffect(() => {
-    const load = () => getMt5Summary(30).then((r: any) => { if (r?.error) { setErr(r.error); setS(null); } else { setErr(""); setS(r); } }).catch((e: any) => setErr(String(e?.message || e)));
+    const load = () => getMt5Summary(30).then((r: any) => {
+      if (r?.error) { setErr(r.error); setOffline(""); setS(null); }
+      else if (r?.connected === false) { setErr(""); setOffline(r.reason || "MetaTrader 5 isn't connected."); setS(null); }
+      else { setErr(""); setOffline(""); setS(r); }
+    }).catch((e: any) => setErr(String(e?.message || e)));
     load();
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
@@ -45,7 +50,13 @@ export default function Mt5Pane({ onClose }: { onClose: () => void }) {
         </div>
 
         {err && <div className="drawer-empty">{err}</div>}
-        {!err && !s && <div className="drawer-empty">Loading…</div>}
+        {offline && (
+          <div className="drawer-empty">
+            <strong>Not connected.</strong> {offline}
+            <br /><br />SAM only ever shows your real numbers — there is no sample data.
+          </div>
+        )}
+        {!err && !offline && !s && <div className="drawer-empty">Loading…</div>}
 
         {s && a && m && (
           <>
@@ -77,7 +88,7 @@ export default function Mt5Pane({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <div className="use-foot">
-              <Icon name="lock" size={14} /> Read-only. This view cannot place, change or close trades. {s.backend === "mock" && "Showing built-in demo data — no broker connected yet."}
+              <Icon name="lock" size={14} /> Read-only. This view cannot place, change or close trades.{s.asOf ? ` Numbers as of ${s.asOf}${s.stale ? " — STALE: is MetaTrader 5 still running?" : ""}.` : ""}
             </div>
           </>
         )}

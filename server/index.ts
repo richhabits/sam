@@ -56,7 +56,7 @@ import { listByKind, memoryStats, pinnedModel, recallWith, remember } from "./me
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
 import { providersStatus, runModel, runVision, type Tier, warmBrain, } from "./models.ts";
 import { dismiss as dismissMoment, momentStats, nextMoment, recordSuccess } from "./moments.ts";
-import { mt5Summary } from "./mt5/index.ts";
+import { mt5Status } from "./mt5/index.ts";
 import { applyPack, exportPack, myPackKey, planImport } from "./packs.ts";
 import { claimCode, clearSessionCookieHeader, type Grant, getGrants, guessLabel, hasGrant, listSessions, mintPairingBundle, mintPairingCode, mintSession, revokeAllSessions, revokeSessionById, sessionCookieHeader, sessionCount, sessionIdFromToken, sessionTokenFromRequest, setGrants, validateSession } from "./pairing.ts";
 import { createToken, listTokens, revokeToken, SCOPES, verifyToken as verifyRemoteToken } from "./remote-tokens.ts";
@@ -2769,9 +2769,10 @@ app.get("/api/status", (req, res) => {
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
 app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
-// MT5 Phase 1 — read-only account/positions/journal + risk metrics (mock backend by default; demo-only).
+// MT5 — read-only account/positions/journal + risk metrics from the FlipItReporter file. REAL DATA ONLY:
+// nothing configured is a normal state ({connected:false}), never fake numbers.
 app.get("/api/mt5/summary", async (req, res) => {
-  try { res.json(await mt5Summary(Number(req.query.days) || 30)); }
+  try { res.json(await mt5Status(Number(req.query.days) || 30)); }
   catch (e: any) { res.status(400).json({ error: String(e?.message || e) }); }
 });
 
