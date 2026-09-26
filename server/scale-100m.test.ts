@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getScaleStatus } from "./scale-100m.ts";
 
 describe("S.A.M. Scale Status (Ground Truth)", () => {

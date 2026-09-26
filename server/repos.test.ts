@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseRemote, originFromConfig, chooseRepo, type Clone } from "./repos.ts";
+import { describe, expect, it } from "vitest";
+import { type Clone, chooseRepo, originFromConfig, parseRemote } from "./repos.ts";
 
 // These tests exist because of a real failure: a git tool was handed a folder from the
 // wrong operating system, then the literal string "undefined", and reported neither.

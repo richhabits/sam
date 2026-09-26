@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.hectic.sam.mobile",
       "appleTeamId": "CC9Q9BH5NT",
-      "buildNumber": "108",
+      "buildNumber": "110",
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.hectic.sam.mobile"

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CONNECTORS, connector, topLists } from "./connectors.registry.ts";
 
 describe("CONNECTORS registry integrity", () => {

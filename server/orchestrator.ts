@@ -6,12 +6,12 @@
 //  FlipIt 100x Desk, Higgsfield Studio, Cost Optimizer & Mobile.
 // ─────────────────────────────────────────────────────────────
 
-import { runDoctor } from "./doctor.ts";
 import { getMultiTierCacheStats } from "./cache.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
+import { runDoctor } from "./doctor.ts";
 import { desk, project100xLadder } from "./flipit.ts";
-import { HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES } from "./studio-higgsfield.ts";
 import { getMobileBridgeStatus } from "./mobile-bridge.ts";
+import { HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES } from "./studio-higgsfield.ts";
 
 export interface MasterDashboard {
   timestamp: number;

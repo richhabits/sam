@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
 
 console.log("🔍 Checking for orphaned exports...");
 
@@ -29,7 +28,7 @@ try {
       if (!grepRes) {
         orphans.push(exp);
       }
-    } catch (e) {
+    } catch (_e) {
       // grep exit code 1 means not found (which means it's an orphan)
       orphans.push(exp);
     }
@@ -43,6 +42,6 @@ try {
     console.log("\nNote: Some of these might be used dynamically or intentionally exported for future use.");
   }
 
-} catch (e) {
+} catch (_e) {
   console.log("✅ No exports found or error running grep.");
 }

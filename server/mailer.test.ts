@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMailMock = vi.fn(async () => ({ messageId: "1" }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => ({ sendMail: sendMailMock }) } }));
 
-import { mailerConfigured, sendMail, ownerEmail } from "./mailer.ts";
+import { mailerConfigured, ownerEmail, sendMail } from "./mailer.ts";
 
 const clearSmtp = () => { for (const k of ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM", "SAM_OWNER_EMAIL"]) delete process.env[k]; };
 

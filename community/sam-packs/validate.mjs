@@ -2,7 +2,7 @@
 // Standalone validator for the community sam-packs repo (no SAM dependency). CI runs this on every
 // PR: it checks pack format AND runs the same static safety scan SAM uses on any tool code, so a
 // malicious pack is rejected before merge. (SAM ALSO re-scans + sandboxes on import — defence in depth.)
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const FORBIDDEN = [

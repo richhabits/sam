@@ -15,9 +15,8 @@
 // Quota: gated to the `sam-fix` label (maintainer opt-in per issue), one generation call, bounded
 // file context. Fail soft — missing key writes a skip result and exits 0.
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { readdirSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { extname, join } from "node:path";
 
 const KEY = process.env.GROQ_API_KEY;
 // AUDITED LIVE 2026-08-26 against Groq's own /v1/models: llama-3.3-70b-versatile is retired —

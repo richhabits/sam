@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the model so tests run fast and offline without network or keys
 vi.mock("./models.ts", () => ({
@@ -24,7 +24,7 @@ vi.mock("./models.ts", () => ({
   grammarReaches: vi.fn(async () => false),
 }));
 
-import { swarmPipeline, type PipelineStage } from "./swarm.ts";
+import { type PipelineStage, swarmPipeline } from "./swarm.ts";
 import { swarmPipelineTool } from "./tools.ts";
 
 let dir: string;

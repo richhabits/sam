@@ -1,6 +1,6 @@
-import { describe, it, expect, afterAll, beforeAll } from "vitest";
-import express from "express";
 import { createServer, type Server } from "node:http";
+import express from "express";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerAntigravityRoutes } from "./routes.antigravity.ts";
 
 describe("S.A.M. Antigravity Cognitive Brain REST Routes", () => {

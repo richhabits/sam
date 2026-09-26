@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isDegenerateRepetition, collapseRepetition } from "./repetition.ts";
+import { describe, expect, it } from "vitest";
+import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 
 describe("isDegenerateRepetition — trips on a runaway loop", () => {
   it("word repeated many times", () => {

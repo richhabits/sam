@@ -1,13 +1,12 @@
 import type { Express, Request, Response } from "express";
 import {
   executeAntigravityCognition,
+  generatePremiumDesignSystem,
+  getCognitiveTelemetry,
+  runCognitiveReflectionLoop,
   verifyFactualGrounding,
   verifySymbolDeclaration,
-  runCognitiveReflectionLoop,
-  getCognitiveTelemetry,
-  generatePremiumDesignSystem,
 } from "./antigravity-brain.ts";
-import { isLoopback } from "./http-guards.ts";
 
 export function registerAntigravityRoutes(app: Express) {
   // 1. Execute Antigravity speculative multi-branch cognition

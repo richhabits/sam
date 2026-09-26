@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertNever, err, isErr, isOk, match, ok, type Outcome, unwrapOr } from "./outcome.ts";
+import { assertNever, err, isErr, isOk, match, type Outcome, ok, unwrapOr } from "./outcome.ts";
 
 // Outcome: failures are RETURNED as a typed error, not thrown/swallowed. match() forks exhaustively;
 // assertNever() turns an unhandled state-machine case into a compile error (and a loud runtime throw).

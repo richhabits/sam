@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The planner is a model call, so every test here mocks it. Nothing in this file may
 // reach a provider: a test suite that spends quota is a test suite nobody runs.
@@ -8,9 +8,9 @@ vi.mock("../models.ts", () => ({
   runModel: async () => { calls++; return { text: reply, provider: "mock", tier: "free" }; },
 }));
 
-import {
-  buildSpec, normaliseSpec, fallbackSpec, kindFrom, stackFor, specSummary,
-  DEFAULT_STACKS, APP_NOTE,
+import {APP_NOTE,
+  buildSpec, 
+  DEFAULT_STACKS, fallbackSpec, kindFrom, normaliseSpec, specSummary,stackFor, 
 } from "./spec.ts";
 
 beforeEach(() => { reply = ""; calls = 0; });

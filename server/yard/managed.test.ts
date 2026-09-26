@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  slugify, uniqueSlug, createProject, checkpoint, checkpoints, restore,
-  readManifest, updateManifest, listProjects, projectPath, isManagedProject,
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {checkpoint, checkpoints, createProject, isManagedProject,listProjects, projectPath, 
+  readManifest, restore,
+  slugify, uniqueSlug, updateManifest, 
 } from "./managed.ts";
 
 // The promise this file makes is that work is never lost: every completed step is

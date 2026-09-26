@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // FILE is computed once, at module load, from VAULT_DIR — same reasoning pairing.test.ts and
 // scheduler.test.ts already established: a fresh directory per test needs a fresh module

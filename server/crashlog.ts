@@ -8,9 +8,9 @@
 //  scrubbed before it ever reaches the clipboard.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync, appendFileSync, statSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { homedir, platform, release, totalmem, arch } from "node:os";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
+import { arch, homedir, platform, release, totalmem } from "node:os";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 // Point the cache at a throwaway dir so tests never touch the real vault.
 let C: typeof import("./cache.ts");

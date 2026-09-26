@@ -10,9 +10,9 @@
 //  Run locally:  npm run build && SAM_E2E=1 npx playwright test e2e/overlay.spec.ts
 // ─────────────────────────────────────────────────────────────
 
-import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));   // ESM: no ambient __dirname
 const MAIN = join(__dirname, "..", "dist-electron", "main.js");

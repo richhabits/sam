@@ -11,9 +11,9 @@
 //  the gate decides execution.
 // ─────────────────────────────────────────────────────────────
 
-import { isEnabled, type Behavior } from "./consent.ts";
 import { isDangerous } from "./authz.ts";
 import { logAutonomy } from "./autonomy-log.ts";
+import { type Behavior, isEnabled } from "./consent.ts";
 
 export interface SuggestionCard {
   id: string;

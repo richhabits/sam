@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { rmSync, existsSync, statSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-remotetok-test";
 let T: typeof import("./remote-tokens.ts");

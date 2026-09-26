@@ -14,13 +14,13 @@
 //   • EXPLICIT — folders are added by the user; we never scan the whole disk.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, watch, type FSWatcher } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname, resolve } from "node:path";
-import { homedir } from "node:os";
 import { execFile } from "node:child_process";
+import { existsSync, type FSWatcher, readFileSync, watch } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ingestFolder, forgetDoc, searchDocs, type IngestReport } from "./ingest.ts";
+import { writeFileAtomic } from "./atomic.ts";
+import { forgetDoc, type IngestReport, ingestFolder, searchDocs } from "./ingest.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

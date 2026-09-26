@@ -10,8 +10,8 @@
 //  confidently told those lanes were online.
 // ─────────────────────────────────────────────────────────────
 
-import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 import { keyStatus } from "./keys.ts";
+import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 export interface ProviderBenchmark {
   id: string;
@@ -139,7 +139,6 @@ export function rankOptimalProvider(taskKind: "fast" | "reasoning" | "coding" | 
         rationale: "Superior multimodal visual understanding and OCR at generous free quota.",
         tier: "free",
       };
-    case "reasoning":
     default:
       return {
         recommendedId: "deepseek",

@@ -2,10 +2,11 @@
 // vi.mock is module-scoped, not test-scoped — sharing a file with the other HANDLERS tests
 // would silently stub execInProject for every other job kind too (managed.ts's own real git
 // checkpointing runs through the same module).
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobStore } from "./store.ts";
 
 const { execInProject, smokeTest } = vi.hoisted(() => ({ execInProject: vi.fn(), smokeTest: vi.fn() }));
@@ -24,8 +25,8 @@ vi.mock("./deploy.ts", async (importOriginal) => {
   return { ...real, smokeTest };
 });
 
+import { createProject, projectPath, readManifest } from "./managed.ts";
 import { runOneJob } from "./worker.ts";
-import { createProject, readManifest, projectPath } from "./managed.ts";
 
 // planDeploy refuses a project with nothing to publish — createProject() alone only scaffolds
 // the manifest, not a real site. Every fixture project here needs something deployable, same as

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { generateCinematicStoryboard } from "./studio-director.ts";
 import { studioDirectorStoryboardTool } from "./tools.ts";
 

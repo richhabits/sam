@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { executeSimdToolBatch } from "./simd-tools.ts";
 import { simdParallelToolBatchTool } from "./tools.ts";
 

@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  verifyFactualGrounding,
   executeAntigravityCognition,
-  runAntigravitySilentVerifier,
-  verifySymbolDeclaration,
-  runCognitiveReflectionLoop,
-  getCognitiveTelemetry,
   generatePremiumDesignSystem,
+  getCognitiveTelemetry,
+  runAntigravitySilentVerifier,
+  runCognitiveReflectionLoop,
+  verifyFactualGrounding,
+  verifySymbolDeclaration,
 } from "./antigravity-brain.ts";
 
 describe("S.A.M. Antigravity Cognitive Brain & Factual Grounding Engine", () => {

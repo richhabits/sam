@@ -1,11 +1,11 @@
 import type { Express } from "express";
-import { getSpeedLeaderboard, probeProvider, report, _reset } from "./speed.ts";
 import { isLoopback } from "./http-guards.ts";
 import { runModel } from "./models.ts";
+import { getSpeedLeaderboard, probeProvider, report } from "./speed.ts";
 
 export function registerSpeedRoutes(app: Express) {
   // Speed Leaderboard & Latency Overview
-  app.get("/api/models/speed-benchmark", (req, res) => {
+  app.get("/api/models/speed-benchmark", (_req, res) => {
     const leaderboard = getSpeedLeaderboard();
     const fullReport = report();
     res.json({

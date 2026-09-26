@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { toIssue, toRepo } from "./github.ts";
 
 // The network half needs a token and a live GitHub, so what is pinned here is the shaping —

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { estTokens, recordModelCall, drainMetrics, peekMetrics, costUSD, PRICE } from "./metrics.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { costUSD, drainMetrics, estTokens, PRICE, peekMetrics, recordModelCall } from "./metrics.ts";
 
 describe("metrics", () => {
   beforeEach(() => { drainMetrics(); });

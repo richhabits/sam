@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderConsole } from "./console-view.ts";
-import type { MetricView } from "./pulse.ts";
 import type { Issue } from "./issues.ts";
+import type { MetricView } from "./pulse.ts";
 
 // The Console is server-rendered, self-contained, strictly local. renderConsole is pure, so we test
 // it directly: the right numbers, threshold colours, escaped issue text, a sparkline, and — the

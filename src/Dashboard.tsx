@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
+import { useCallback, useEffect, useState } from "react";
 import Icon from "./Icon";
-import { getStatus, getLog, getSecurity, getSwarms, approveSwarmAgent, type Swarm, getSchedules, toggleSchedule, removeSchedule, type Schedule, getPeople, getYard, cancelYardJob,
-  pairToken, setPairToken, requestYardPairing, collectYardPairing, yardPairPending, approveYardPairing, denyYardPairing, revokeYardPairing,
-  getPairedDevices, pairNew, revokeDevice, revokeAllDevices, setDeviceGrants, type PairedDevice, type Grant,
-  getDeviceActivity, type ActivityEntry, getSpaceAudit, getSavings, runSpaceCompact, runMicroSolver } from "./lib/api";
+import { type ActivityEntry, approveSwarmAgent, approveYardPairing, cancelYardJob,collectYardPairing, denyYardPairing, type Grant,
+  getDeviceActivity, getLog, 
+  getPairedDevices, getPeople, getSavings, getSchedules, getSecurity, getSpaceAudit, getStatus, getSwarms, getYard, type PairedDevice, pairNew, 
+  pairToken, removeSchedule, requestYardPairing, revokeAllDevices, revokeDevice, revokeYardPairing,runMicroSolver, runSpaceCompact, type Schedule, type Swarm, setDeviceGrants, setPairToken, toggleSchedule, yardPairPending } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // SAM control centre — one glance at everything: brains, tools, memory, activity.

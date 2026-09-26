@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hostAllowed, isLoopback, isMeshAddress, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 
 // This function is the gate on every privileged write in SAM — API keys, config, remote tokens,

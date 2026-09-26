@@ -1,6 +1,6 @@
 import { fetch as streamingFetch } from 'expo/fetch';
 import * as SecureStore from 'expo-secure-store';
-import type { Turn, StreamHandlers } from './chat';
+import type { StreamHandlers, Turn } from './chat';
 
 // STANDALONE DIRECT AI ENGINE FOR SAM MOBILE
 //

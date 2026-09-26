@@ -6,10 +6,11 @@
 //  byte is baked in server-side — no external fetch, no scripts, no fonts, no phone-home. Threshold
 //  colours flag what's off. The live-updating view is the Scope; this is the at-a-glance snapshot.
 // ─────────────────────────────────────────────────────────────
+
+import type { Ask } from "./ask.ts";
 import type { Issue } from "./issues.ts";
 import type { Influence } from "./knack.ts";
 import type { MetricView } from "./pulse.ts";
-import type { Ask } from "./ask.ts";
 
 type Tone = "ok" | "warn" | "bad" | "muted";
 interface Tile { label: string; value: string; tone: Tone }

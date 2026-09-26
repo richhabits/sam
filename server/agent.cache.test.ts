@@ -5,7 +5,7 @@
 // ordering a stale cache entry could violate the way there would be across an entire multi-step
 // run (SAM's own write tools change files mid-run; caching git_diff/git_status across steps
 // would risk showing stale state right after SAM edits something itself).
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls: Record<string, number> = {};
 function makeTool(name: string, cacheable: boolean) {

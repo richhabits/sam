@@ -39,21 +39,36 @@
     :root{--ink:#FDF9F4;--surface:#F3EDE4;--paper:#231C16;--ash:#6B655D}
   }
 </style>
-<link rel="canonical" href="https://richhabits.github.io/sam/privacy.html">
 </head>
 <body>
 <div class="wrap">
 <a class="back" href="./">← SAM</a>
 <h1>SAM Privacy</h1>
-<p>Short version: <strong>SAM runs on your machine. By default, nothing about you leaves it — ever.</strong> No account, no tracking, no phone-home. This document is exact about what that means, and about the one thing that is optional and off by default.</p>
-<h2>What stays on your device, always</h2>
-<p>Everything by default:</p>
+<p>Short version: <strong>SAM stores everything on your machine and phones home to nobody.</strong> No account, no tracking, no analytics. (The phone app's Standalone mode is the one place a message leaves the device for a third-party AI service — with your permission first, and spelled out below.) The one thing that does leave — a request you send to a cloud model you configured — is spelled out plainly below rather than buried. This document is exact.</p>
+<h2>What SAM stores, and where</h2>
+<p>All of it, locally, always:</p>
 <ul>
-<li><strong>Your content</strong> — prompts, messages, files, the life index, memory, vault — never leaves the device. In offline mode (a local Ollama model), nothing leaves at all.</li>
+<li><strong>Your content</strong> — prompts, messages, files, the life index, memory, vault — is stored only on this device. SAM never uploads it, backs it up, syncs it, or sends it anywhere of its own accord.</li>
 <li><strong>What SAM learns about you</strong> — preferences, patterns — is stored locally, inspectable and deletable in "What SAM has learned about you". It is never sent to any AI provider or gateway, and never used as training data. (Enforced by a test that locks the module off the wire.)</li>
 <li><strong>Your usage stats</strong> — the "Your SAM" dashboard (tasks run, tools used, retention days, hours saved) is computed and stored <strong>locally</strong>. It's a feature for you, not surveillance of you.</li>
 </ul>
-<p>When you send a request to a cloud model <em>you</em> configured, only that request goes to that provider under their terms — the same as using their API directly. Local/offline mode sends nothing.</p>
+<h2>What leaves, when you ask a cloud model</h2>
+<p>Be clear-eyed about this one, because it is the only routine exception and a vague promise here would be worse than none.</p>
+<p>Choose a cloud brain, and your request goes to that provider under their terms — the same as using their API directly. <strong>That request is not only what you typed.</strong> To answer you, SAM may first read a file, a web page, an email or your clipboard, and the result becomes part of the conversation sent to the model. So a file you asked SAM about does leave the device, to that provider, for that request.</p>
+<p>What never rides along, even then: your stored memory and vault, the life index, learned preferences, and usage stats. Only the conversation in play is sent.</p>
+<p><strong>Offline mode sends nothing at all.</strong> Point SAM at a local Ollama model and there is no exception left — no request, no content, nothing on the wire. That is the mode to use for anything you would not hand to a third party, and it is the mode this claim is measured against.</p>
+<h2>The iPhone and iPad app</h2>
+<p>The phone app works in one of two modes, and what leaves the phone depends on which.</p>
+<p><strong>Paired with your own computer.</strong> Your messages go to SAM running on <em>your</em> Mac or PC, over your own network. That machine is yours, not ours. What it does next follows the section above: if you have turned on a cloud model there, the request goes to that provider from your computer.</p>
+<p><strong>Standalone (no computer paired, or your computer is unreachable).</strong> The phone sends your message straight to third-party AI services to write the answer, and <strong>the app asks your permission first</strong>, naming them, before the first message is sent. What is sent: the text you type, the recent conversation for context, and text taken from anything you attach. What is not sent: your contacts, photos you have not attached, location, or anything else on the phone.</p>
+<ul>
+<li><strong>Out of the box</strong> the recipients are the free, keyless services Pollinations and OpenRouter.</li>
+<li><strong>If you add your own API keys</strong> (Settings → Cloud AI Engine) it can also be Groq, Cerebras, Mistral, Google Gemini, Anthropic, DeepSeek, Together AI, SambaNova, Novita, SiliconFlow, Zhipu, Alibaba (Qwen), Fireworks, Nebius and the other providers listed in that screen. Some of these operate outside the UK and EU.</li>
+<li><strong>Each provider handles your message under its own terms and privacy policy.</strong> We do not control how long they keep it or whether they use it, and we can't promise the same protection they offer. Read theirs before you turn one on.</li>
+<li><strong>We receive none of it.</strong> SAM has no servers for your messages. There is no account, no analytics and no advertising identifier in the phone app.</li>
+</ul>
+<p>You can withdraw permission at any time in Settings → Privacy → Stop sharing with cloud AI; the app then asks again before the next message. The <strong>demo</strong> ("Explore the demo") makes no network requests and sends nothing anywhere.</p>
+<p><strong>On the phone itself:</strong> your API keys and your recent conversation are kept in the iOS Keychain. Deleting the app, or Settings → Disconnect / Forget this device, removes them. Anything a third-party provider has already received has to be deleted with that provider — we have no copy to delete.</p>
 <h2>The one optional thing: anonymous telemetry (OFF by default)</h2>
 <p>To know whether people actually use and keep SAM, there's an <strong>opt-in</strong> anonymous ping. It is:</p>
 <ul>

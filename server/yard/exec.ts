@@ -28,9 +28,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "node:child_process";
-import { realpathSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
-import { resolve, sep, dirname, isAbsolute, join } from "node:path";
+import { existsSync, mkdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 // Authorisation for the yard is enforced where work is CREATED, not where it runs.
 // Every yard route demands the Handshake passkey unconditionally — see isYardTrusted in

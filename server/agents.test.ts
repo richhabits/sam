@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { SPECIALISTS, NINJAS } from "./agents.ts";
+import { describe, expect, it } from "vitest";
+import { NINJAS, SPECIALISTS } from "./agents.ts";
 
 describe("Agent Roster Integrity", () => {
   it("exports specialists and ninjas", () => {

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { PERSONAS, operatingDoctrine, personaVoice, personaVoiceCompact } from "./persona.ts";
+import { describe, expect, it } from "vitest";
+import { operatingDoctrine, PERSONAS, personaVoice, personaVoiceCompact } from "./persona.ts";
 
 describe("personas", () => {
   it("every persona changes tone but keeps the honesty guardrail (no yes-man)", () => {

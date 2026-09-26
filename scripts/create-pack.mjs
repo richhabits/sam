@@ -3,8 +3,8 @@
 //  SAM · create-pack — scaffold a shareable .sampack + print how to sign + publish it.
 //  Usage:  npm run create-pack "My Pack Name"
 // ─────────────────────────────────────────────────────────────
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");

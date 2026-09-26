@@ -23,8 +23,8 @@
 //  on disk — the page you ship is never the page with SAM's script in it.
 // ─────────────────────────────────────────────────────────────
 
-import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type { FileDiff } from "./diff.ts";
 
 // The marker the parent checks for. Anything can postMessage to a window, so the glass

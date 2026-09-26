@@ -13,12 +13,12 @@
 //  model who you are. If a personalisation can't be done without transmitting the profile, we don't do it.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Tier } from "./models.ts";
+import { writeFileAtomic } from "./atomic.ts";
 import { recordInfluence } from "./knack.ts";
+import type { Tier } from "./models.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const FILE = join(VAULT_DIR, "preferences.json");

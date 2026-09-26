@@ -1,5 +1,7 @@
 import { fetch as streamingFetch } from 'expo/fetch';
+import { AiConsentRequired, hasAiSharingConsent } from './aiConsent';
 import { getHost, getToken } from './api';
+import { demoStream, isDemo } from './demo';
 import { streamDirectAI } from './direct';
 import { parseFrames, type StreamEvent } from './sse';
 
@@ -36,6 +38,15 @@ export async function streamChat(
   signal?: AbortSignal,
   tier?: 'free' | 'turbo',
 ): Promise<string> {
+  // THE DEMO NEVER LEAVES THE PHONE. demoStream() existed with tests but nothing called it, so a
+  // reviewer typing into the demo chat fell through to the cloud path below and sent their
+  // message to real AI providers — contradicting "no network requests are made in this mode".
+  if (isDemo()) {
+    const text = await demoStream(message, (soFar) => handlers.onToken?.(soFar), signal);
+    if (!signal?.aborted) handlers.onDone?.(text);
+    return text;
+  }
+
   const [host, token] = await Promise.all([getHost(), getToken()]);
 
   // If paired, attempt desktop stream first
@@ -86,6 +97,10 @@ export async function streamChat(
     }
   }
 
-  // Standalone Direct AI Path (Works anywhere on 5G, Wi-Fi, offline)
+  // Standalone Direct AI Path (Works anywhere on 5G, Wi-Fi, offline) — this is where the message
+  // leaves for THIRD-PARTY servers, so it is the one place that must have permission first
+  // (App Review 5.1.2(i); see lib/aiConsent.ts). Enforced here, at the transport, rather than in
+  // a screen, so no caller can reach the providers without it.
+  if (!(await hasAiSharingConsent())) throw new AiConsentRequired();
   return await streamDirectAI(message, history, handlers, signal, tier);
 }

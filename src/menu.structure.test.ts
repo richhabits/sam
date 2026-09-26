@@ -6,9 +6,10 @@
 // These are source-text assertions, which is the honest tool for the job: what is being checked
 // is that a label says what is behind it, and a rendering test cannot tell you that a word is
 // the wrong word.
-import { describe, it, expect } from "vitest";
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 
 const app = readFileSync(join(import.meta.dirname, "App.tsx"), "utf8");
 

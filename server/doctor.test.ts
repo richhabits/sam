@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { runDoctor, modelForRam, type DoctorWorld } from "./doctor.ts";
+import { describe, expect, it } from "vitest";
+import { type DoctorWorld, modelForRam, runDoctor } from "./doctor.ts";
 
 const world = (over: Partial<DoctorWorld> = {}): DoctorWorld => ({
   hasCloudKeys: true, ollamaConfigured: false, ollamaReachable: false, online: true, vaultWritable: true, platform: "linux", ...over,

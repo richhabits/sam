@@ -22,11 +22,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cosine } from "./embeddings.ts";
 import { needsLiveInfo } from "./agent.ts";
+import { cosine } from "./embeddings.ts";
 import type { Tier } from "./models.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");

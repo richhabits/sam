@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // AUDIT FIX: status was hardcoded "ONLINE" for every entry, regardless of whether a key was
 // ever configured — a user with zero Groq/Cerebras keys would still be confidently told those

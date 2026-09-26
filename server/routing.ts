@@ -10,13 +10,13 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { embed, cosine } from "./embeddings.ts";
+import { cosine, embed } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";
-import { TOOLS } from "./tools.ts";
 import type { Skill } from "./skills.ts";
+import { TOOLS } from "./tools.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Was join(__dirname, ...) with no VAULT_DIR fallback — in the packaged app __dirname resolves

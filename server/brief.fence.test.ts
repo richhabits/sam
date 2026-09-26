@@ -1,8 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { UNTRUSTED_SOURCE, fenceToolResult } from "./agent.ts";
+import { fenceToolResult, UNTRUSTED_SOURCE } from "./agent.ts";
 
 // THE MORNING BRIEF WAS THE SOFTEST TARGET IN SAM.
 //

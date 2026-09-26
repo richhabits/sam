@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { runMultiModelConsensus } from "./consensus.ts";
 
 describe("MULTI-MODEL CONSENSUS ENGINE", () => {
   it("queries panel in parallel with customRunner and synthesizes consensus", async () => {
     const report = await runMultiModelConsensus("What is the speed of light in vacuum?", {
       modelsCount: 3,
-      customRunner: async (provider, prompt) => {
+      customRunner: async (provider, _prompt) => {
         return `[${provider}] The speed of light in vacuum is exactly 299,792,458 metres per second.`;
       },
     });

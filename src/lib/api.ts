@@ -104,6 +104,7 @@ export const setAllow = (tool: string, on: boolean) =>
 export const getProjects = () => get("/api/projects");
 export const getLog = () => get("/api/vault/log");
 export const getStatus = () => get("/api/status");
+export const getMt5Summary = (days = 30) => get(`/api/mt5/summary?days=${days}`);
 export const getQuotes = (symbols: string) =>
   get(`/api/quotes?symbols=${encodeURIComponent(symbols)}`);
 export const runArena = (prompt?: string) =>

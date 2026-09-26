@@ -6,9 +6,9 @@
 //  for automatic self-healing repair workflows.
 // ─────────────────────────────────────────────────────────────
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { parseCompilerDiagnostics, generateRepairPlan, type CodeRepairReport } from "../code-repair.ts";
+import { type CodeRepairReport, generateRepairPlan, parseCompilerDiagnostics } from "../code-repair.ts";
 
 export interface SandboxAppSession {
   sessionId: string;

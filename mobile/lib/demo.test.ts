@@ -122,3 +122,16 @@ describe('the demo talks', () => {
     expect(out.length).toBeLessThan(demoAnswer('tell me about privacy').length);
   });
 });
+
+describe('showDemoEntry (App Review 2026-08-28: the demo must be findable)', () => {
+  it('is offered to an unpaired visitor who is not already in the demo', async () => {
+    const { showDemoEntry } = await import('./demo');
+    expect(showDemoEntry(false, false)).toBe(true);
+  });
+  it('is hidden once paired, or once inside the demo (where Leave is the way out)', async () => {
+    const { showDemoEntry } = await import('./demo');
+    expect(showDemoEntry(true, false)).toBe(false);
+    expect(showDemoEntry(false, true)).toBe(false);
+    expect(showDemoEntry(true, true)).toBe(false);
+  });
+});

@@ -12,13 +12,13 @@
 //  can't vouch for what they do), and env values stay local.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { Tool } from "./tools.ts";
 import { markUntrusted } from "./agent.ts";
+import type { Tool } from "./tools.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = join(process.env.VAULT_DIR || join(ROOT, "vault"), "mcp.json");

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import "dotenv/config";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 const CODEMAP_STATE = ".codemap/modules.json";
 const APPLY_SCRIPT  = ".agents/skills/codemap-skill/scripts/apply_audit.py";

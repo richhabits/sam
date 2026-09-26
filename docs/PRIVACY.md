@@ -1,7 +1,8 @@
 # SAM Privacy
 
 Short version: **SAM stores everything on your machine and phones home to nobody.** No account, no
-tracking, no analytics. The one thing that does leave — a request you send to a cloud model you
+tracking, no analytics. (The phone app's Standalone mode is the one place a message leaves the device
+for a third-party AI service — with your permission first, and spelled out below.) The one thing that does leave — a request you send to a cloud model you
 configured — is spelled out plainly below rather than buried. This document is exact.
 
 ## What SAM stores, and where
@@ -32,6 +33,40 @@ usage stats. Only the conversation in play is sent.
 **Offline mode sends nothing at all.** Point SAM at a local Ollama model and there is no exception left —
 no request, no content, nothing on the wire. That is the mode to use for anything you would not hand to a
 third party, and it is the mode this claim is measured against.
+
+
+## The iPhone and iPad app
+
+The phone app works in one of two modes, and what leaves the phone depends on which.
+
+**Paired with your own computer.** Your messages go to SAM running on *your* Mac or PC, over your own
+network. That machine is yours, not ours. What it does next follows the section above: if you have
+turned on a cloud model there, the request goes to that provider from your computer.
+
+**Standalone (no computer paired, or your computer is unreachable).** The phone sends your message
+straight to third-party AI services to write the answer, and **the app asks your permission first**,
+naming them, before the first message is sent. What is sent: the text you type, the recent conversation
+for context, and text taken from anything you attach. What is not sent: your contacts, photos you have
+not attached, location, or anything else on the phone.
+
+- **Out of the box** the recipients are the free, keyless services Pollinations and OpenRouter.
+- **If you add your own API keys** (Settings → Cloud AI Engine) it can also be Groq, Cerebras, Mistral,
+  Google Gemini, Anthropic, DeepSeek, Together AI, SambaNova, Novita, SiliconFlow, Zhipu, Alibaba (Qwen),
+  Fireworks, Nebius and the other providers listed in that screen. Some of these operate outside the UK
+  and EU.
+- **Each provider handles your message under its own terms and privacy policy.** We do not control how
+  long they keep it or whether they use it, and we can't promise the same protection they offer.
+  Read theirs before you turn one on.
+- **We receive none of it.** SAM has no servers for your messages. There is no account, no analytics
+  and no advertising identifier in the phone app.
+
+You can withdraw permission at any time in Settings → Privacy → Stop sharing with cloud AI; the app then
+asks again before the next message. The **demo** ("Explore the demo") makes no network requests and sends
+nothing anywhere.
+
+**On the phone itself:** your API keys and your recent conversation are kept in the iOS Keychain. Deleting
+the app, or Settings → Disconnect / Forget this device, removes them. Anything a third-party provider has
+already received has to be deleted with that provider — we have no copy to delete.
 
 ## The one optional thing: anonymous telemetry (OFF by default)
 

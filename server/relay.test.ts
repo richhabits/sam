@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setPool } from "./keys.ts";
-import { _resetBreakers, breakerStatus, canAttempt, relayBrain, type Brain } from "./relay.ts";
+import { _resetBreakers, type Brain, breakerStatus, canAttempt, relayBrain } from "./relay.ts";
 
 // The Relay's guarantees. The critical one first: a request that must stay local can NEVER cross to
 // a cloud brain — it's refused explicitly, and the cloud brain's run() is never even called. Plus:

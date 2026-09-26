@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  huntRevenueOpportunities,
-  calculateSaasArbitrage,
   calculateOpportunityRoi,
+  calculateSaasArbitrage,
+  huntRevenueOpportunities,
 } from "./revenue-hunter.ts";
 
 // Mock the model layer so tests don't hang waiting for an LLM

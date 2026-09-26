@@ -3,8 +3,8 @@
 // config, tokens, vault passphrase — so it belongs in one place with its own tests rather than
 // buried in a 1600-line file.
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
+import { sessionTokenFromRequest, validateSession } from "./pairing.ts";
 import { verifyPairToken } from "./yard/pairing.ts";
-import { validateSession, sessionTokenFromRequest } from "./pairing.ts";
 
 /**
  * True only for a request that arrived from this machine.

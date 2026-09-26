@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  formatSmpteTimecode,
   compileProductionTimeline,
+  formatSmpteTimecode,
 } from "./studio-master-timeline.ts";
 
 describe("S.A.M. Studio Multi-Track Production Timeline", () => {

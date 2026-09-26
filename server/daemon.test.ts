@@ -2,10 +2,11 @@
 // fires a real nudge on completion. Uses a genuine short-lived child process rather than mocking
 // child_process, matching how attribution.test.ts/scheduler.test.ts isolate VAULT_DIR: the path
 // is computed at module load, so a fresh temp dir needs vi.resetModules() + a dynamic import.
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync } from "node:fs";
+
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let dir: string;
 let TOOLS: typeof import("./tools.ts")["TOOLS"];

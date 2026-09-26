@@ -6,9 +6,9 @@
 //  autonomous self-correcting reflection loops, and silent verification.
 // ─────────────────────────────────────────────────────────────
 
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
-import { execSync } from "node:child_process";
 import { parseCompilerDiagnostics } from "./code-repair.ts";
 
 export interface FactualGroundingDiscrepancy {

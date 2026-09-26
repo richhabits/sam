@@ -9,10 +9,10 @@
 //  stays locked to 127.0.0.1 — nothing changes there.
 // ─────────────────────────────────────────────────────────────
 
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { hostname } from "node:os";
 import { Bonjour } from "bonjour-service";
 import express from "express";
-import { hostname } from "node:os";
-import { timingSafeEqual, createHmac, createHash, randomBytes } from "node:crypto";
 
 // ── AUTHENTICATION (audit fix — finding 11) ──────────────────
 // The old scheme sent the shared SAM_P2P_TOKEN as a bearer header to whatever peer we

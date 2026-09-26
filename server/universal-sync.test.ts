@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createVaultSnapshot, restoreVaultSnapshot, type VaultSnapshotManifest } from "./universal-sync.ts";
 
 describe("UNIVERSAL VAULT SNAPSHOT & BACKUP ENGINE", () => {

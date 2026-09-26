@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { checkPasskey, passkey, handshakeEnforced, presentedPasskey } from "./handshake.ts";
+import { checkPasskey, handshakeEnforced, passkey, presentedPasskey } from "./handshake.ts";
 import { isTrustedLocal } from "./http-guards.ts";
 
 // The control-token guarantee: with enforcement ON, loopback position is NOT enough — a privileged

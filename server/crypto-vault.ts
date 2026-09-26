@@ -12,7 +12,7 @@
 //  and the data is unrecoverable — by design. The setup flow states this plainly.
 // ─────────────────────────────────────────────────────────────
 
-import { scryptSync, randomBytes, createCipheriv, createDecipheriv, timingSafeEqual, createHash } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 // AUDIT FIX: the KDF work factor is now VERSIONED in each config (N/r/p), so it can be raised in
 // future WITHOUT locking out existing vaults — a config written before versioning has no stored

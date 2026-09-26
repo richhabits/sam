@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { holdPending, takePending, withPending, _pendingSize, _clearPending } from "./pending.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { _clearPending, _pendingSize, holdPending, takePending, withPending } from "./pending.ts";
 
 const ctx = { tier: "free", projectId: "p1", skillBody: "", skillId: "ops", user: { name: "Alex" } };
 const action = { tool: "run_command", input: { command: "ls" }, transcript: "secret transcript", trace: ["step"] };

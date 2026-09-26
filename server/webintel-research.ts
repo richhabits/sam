@@ -14,7 +14,7 @@
 //  one table row per page with source URLs; a dead URL captured in `failed[]`, not fatal;
 //  searchAndExtract feeds an injected search into the pipeline.
 // ─────────────────────────────────────────────────────────────
-import { extract, type ExtractSchema, type LlmFn, type ExtractResult, type ExtractOpts } from "./webintel-extract.ts";
+import { type ExtractOpts, type ExtractResult, type ExtractSchema, extract, type LlmFn } from "./webintel-extract.ts";
 
 export interface MultiResult {
   results: ExtractResult[];

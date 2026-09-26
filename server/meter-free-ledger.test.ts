@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./cost-optimizer.ts", () => ({
   getSavingsSummary: () => ({ ledger: { dollarsSpentTotal: 4.5 }, freeEfficiencyPercentage: 0, cacheEfficiencyPercentage: 0, estimatedGbpSaved: 0 }),

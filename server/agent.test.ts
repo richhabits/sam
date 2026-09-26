@@ -4,7 +4,7 @@
 //  approval resumes, decline is respected.
 // ─────────────────────────────────────────────────────────────
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the model so we script exactly what "SAM" replies each step.
 const replies: string[] = [];
@@ -17,9 +17,9 @@ vi.mock("./models.ts", () => ({
   grammarReaches: vi.fn(async (tier: string) => tier === "local"),
 }));
 
-import { runAgent, runAgentStream, resumeAgent, parseToolCall, UNTRUSTED_SOURCE } from "./agent.ts";
+import { parseToolCall, resumeAgent, runAgent, runAgentStream, UNTRUSTED_SOURCE } from "./agent.ts";
 import { CURTAIN_FALLBACK } from "./curtain.ts";
-import { _reset as resetIssues, listIssues } from "./issues.ts";
+import { listIssues, _reset as resetIssues } from "./issues.ts";
 
 beforeEach(() => { replies.length = 0; });
 

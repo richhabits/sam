@@ -17,17 +17,17 @@
 //  scheme can change that.  Access is recorded to the Black Box REDACTED — the value never leaves here.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
 import { execFileSync } from "node:child_process";
 import { randomBytes, scryptSync } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { decrypt, encrypt } from "./crypto-vault.ts";
 import { envKeysPresent, removeEnvKeys } from "./env-file.ts";
 import { trail } from "./issues.ts";
 import { withLatchSync } from "./latch.ts";
-import { err, ok, type Outcome } from "./outcome.ts";
+import { err, type Outcome, ok } from "./outcome.ts";
 import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 // Why a Safe operation failed — a typed reason RETURNED (not a bare boolean or a lost string). A

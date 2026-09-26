@@ -18,25 +18,26 @@ import {
 
 // Dev LogBox sat on the tab bar and ate Agent/Settings taps. Store shots must not include it.
 LogBox.ignoreAllLogs(true);
+
 import ChatScreen from './ChatScreen';
 import HomeScreen from './HomeScreen';
-import VaultScreen from './VaultScreen';
 import { claim, getHost, getToken } from './lib/api';
-import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
+import { enterDemo, leaveDemo, loadDemo, showDemoEntry } from './lib/demo';
+import { haptic } from './lib/haptics';
 import { clearThread } from './lib/history';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { mentionLabel } from './lib/mentions';
 import { ensurePermission, notify } from './lib/notify';
-import { haptic } from './lib/haptics';
-import { parsePairLink, type PairLink } from './lib/pairlink';
+import { type PairLink, parsePairLink } from './lib/pairlink';
 import { normalizeHost, pairedDespiteError } from './lib/pairstate';
-import { publishWidgetState } from './lib/widgetState';
 import { parseQuickLink } from './lib/quicklink';
+import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import { publishWidgetState } from './lib/widgetState';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
+import { SamActionRow, SamField, SamSection, SamTabBar, type SamTabKey } from './samKit';
 import TasksScreen from './TasksScreen';
-import { SamActionRow, SamField, SamRow, SamSection, SamTabBar, type SamTabKey } from './samKit';
-import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import VaultScreen from './VaultScreen';
 
 // THE POCKET — SAM, in your hand.
 //
@@ -213,6 +214,17 @@ export default function App() {
   // The demo never held a token, so leaving only drops the flag and the chat thread — there is
   // nothing on a Mac to revoke. Reachable both from the banner's own "Leave" link and from
   // Settings → Forget this device (forgetDevice() calls leaveDemo() internally either way).
+  const startDemo = useCallback(() => {
+    haptic.light();
+    setShowPairModal(false);
+    setMenu(false);
+    void enterDemo().then(() => {
+      setDemo(true);
+      setPaired(true);
+      setSurface('agent');
+    });
+  }, []);
+
   const doLeaveDemo = useCallback(async () => {
     await leaveDemo();
     setDemo(false);
@@ -301,6 +313,18 @@ export default function App() {
             >
               <Text style={s.menuRowText}>Connect to Mac / PC</Text>
             </Pressable>
+            {showDemoEntry(_paired, demo) ? (
+              <>
+                <View style={{ height: 1, backgroundColor: samBorder.default, marginLeft: samSpace.gutter }} />
+                <Pressable
+                  onPress={startDemo}
+                  style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: samColor.raise2 }]}
+                  accessibilityRole="button"
+                >
+                  <Text style={s.menuRowText}>Explore the demo</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         </>
       ) : null}
@@ -322,6 +346,7 @@ export default function App() {
           <HomeScreen
             paired={_paired}
             demo={demo}
+            onExploreDemo={startDemo}
             onNeedsPairing={onNeedsPairing}
             onOpenPairing={() => setShowPairModal(true)}
             onOpenChat={() => setSurface('agent')}
@@ -445,15 +470,7 @@ export default function App() {
             <SamSection header="No SAM desktop yet?">
               <SamActionRow
                 title="Explore the demo"
-                onPress={() => {
-                  haptic.light();
-                  setShowPairModal(false);
-                  void enterDemo().then(() => {
-                    setDemo(true);
-                    setPaired(true);
-                    setSurface('agent');
-                  });
-                }}
+                onPress={startDemo}
               />
             </SamSection>
           </ScrollView>

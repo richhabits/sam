@@ -16,20 +16,19 @@
 //  agents survive a restart.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { parseCron } from "./scheduler.ts";
-import { SPECIALISTS, NINJAS } from "./agents.ts";
-import { runAgent, type AgentResult } from "./agent.ts";
-import type { Tier } from "./models.ts";
+import { type AgentResult, runAgent } from "./agent.ts";
+import { NINJAS, SPECIALISTS } from "./agents.ts";
 import { handleUnattended } from "./ask.ts";
+import { writeFileAtomic } from "./atomic.ts";
 import { logAutonomy } from "./autonomy-log.ts";
-import { isEnabled, type Behavior } from "./consent.ts";
+import { type Behavior, isEnabled } from "./consent.ts";
+import type { Tier } from "./models.ts";
 import { desktopNotify } from "./proactive.ts";
 import { pushNotify } from "./push.ts";
+import { parseCron } from "./scheduler.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 function file(): string {

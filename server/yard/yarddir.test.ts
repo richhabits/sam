@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
 import { basename } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { yardDir } from "./store.ts";
 
 // Its own file on purpose: these mutate YARD_DIR, and store.test.ts opens real databases

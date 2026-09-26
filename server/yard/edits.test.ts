@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { applyEdits } from "./edits.ts";
 
 // The promise: a pinpoint edit changes only the exact span it names, never the rest of the file,

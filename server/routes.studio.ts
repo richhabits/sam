@@ -1,24 +1,24 @@
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Express } from "express";
-import * as notebook from "./notebook.ts";
-import { safeFetch } from "./url-guard.ts";
 import { runModel } from "./models.ts";
-import { TOOLS } from "./tools.ts";
+import * as notebook from "./notebook.ts";
 import {
+  buildCharacterAnchorPrompt,
+  type CharacterProfile,
+  compileHiggsfieldMotionPrompt,
+  generateStoryboardDirector,
   HIGGSFIELD_CAMERA_RIGS,
   HIGGSFIELD_LENSES,
   HIGGSFIELD_PHYSICS,
-  buildCharacterAnchorPrompt,
-  generateStoryboardDirector,
-  compileHiggsfieldMotionPrompt,
-  type CharacterProfile,
 } from "./studio-higgsfield.ts";
-import { createHash, randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { enqueueStudioJob } from "./studio-queue.ts";
+import { TOOLS } from "./tools.ts";
+import { safeFetch } from "./url-guard.ts";
 
 // STUDIO + NOTEBOOKS — image/video generation, and the vault media cache that serves generated
 // images SAME-ORIGIN so no service-worker or CSP quirk can break them.

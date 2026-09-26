@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { poolSize, reloadPools } from "./keys.ts";
-import { loadIntoProcessEnv, lock, put, setup, _reset } from "./safe.ts";
+import { _reset, loadIntoProcessEnv, lock, put, setup } from "./safe.ts";
 
 // Slice 3 — point of use. Provider key pools read from the SAFE first (when set up + unlocked), else
 // process.env. reloadPools() rebuilds them after the Safe unlocks (pools are built at import, before

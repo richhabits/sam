@@ -5,9 +5,9 @@
 //  and thermal/power throttle guards for background tasks.
 // ─────────────────────────────────────────────────────────────
 
-import os from "node:os";
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import os from "node:os";
 
 export interface BatteryStatus {
   hasBattery: boolean;

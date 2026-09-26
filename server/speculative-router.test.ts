@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // AUDIT FIX: resolveOptimalRoute used to hardcode primaryProvider/isZeroCostLane per tier
 // regardless of whether that provider had ever had a key configured — same bug class as

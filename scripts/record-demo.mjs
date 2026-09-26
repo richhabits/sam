@@ -15,9 +15,9 @@
 //  model). The scripted prompt fires real tools; with no brain configured the answer is empty and the
 //  GIF is useless. This is why it's not a hosted-CI job — run it where SAM actually answers.
 // ─────────────────────────────────────────────────────────────
-import { spawn, execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { mkdirSync, readdirSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");

@@ -2,8 +2,8 @@
 // Generate the 6 seed SAM Packs (unsigned .sampack JSON) into packs/. They double as marketing —
 // each shows what SAM can do for a real use-case. Import runs the safety pipeline; these carry only
 // skills/prompts/watched-folder templates (no code), so they're safe playbooks.
-import { writeFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");

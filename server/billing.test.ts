@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import { rmSync } from "node:fs";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-billing-test";
 let B: typeof import("./billing.ts");

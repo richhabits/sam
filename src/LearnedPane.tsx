@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { getPreferences, forgetPreference, resetPreferences, setConsent } from "./lib/api";
+import { useEffect, useState } from "react";
 import Icon from "./Icon";
+import { forgetPreference, getPreferences, resetPreferences, setConsent } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // "What SAM has learned about you" — the privacy counterpart to the consent pane. Everything here is

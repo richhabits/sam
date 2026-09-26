@@ -4,7 +4,7 @@
 //  Assembles storyboard JSON metadata into a sequential list.
 // ─────────────────────────────────────────────────────────────
 
-import { generateCinematicStoryboard, type StoryboardShot } from "./studio-director.ts";
+import { generateCinematicStoryboard, } from "./studio-director.ts";
 
 export interface ProductionAudioTrack {
   id: string;

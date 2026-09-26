@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  processUniversalPrompt,
-  UNIVERSAL_SHORTCUTS,
-  registerDeviceHandoff,
   getDeviceHandoff,
+  processUniversalPrompt,
+  registerDeviceHandoff,
+  UNIVERSAL_SHORTCUTS,
 } from "./universal-ecosystem.ts";
 
 const { mockExecFile } = vi.hoisted(() => ({ mockExecFile: vi.fn() }));

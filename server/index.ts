@@ -8,16 +8,18 @@ import "dotenv/config";
 // Applied before anything else can print. Every sink SAM writes to funnels through the
 // console eventually, so scrubbing here means a secret cannot reach a log by being
 // forgotten at one call site.
-import { scrubConsole, publicError } from "./scrub.ts";
+import { publicError, scrubConsole } from "./scrub.ts";
+
 scrubConsole();
-import os from "node:os";
+
 import { timingSafeEqual, } from "node:crypto";
-import { readFileSync, existsSync, } from "node:fs";
-import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
-import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
-import { recordAuditEvent } from "./audit-ledger.ts";
-import { join, dirname, extname } from "node:path";
+import { existsSync, readFileSync, } from "node:fs";
+import os from "node:os";
+import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { type Ask, getAsk, handleUnattended, openAsks, resolveAsk, sweepAsks, wireAskDelivery } from "./ask.ts";
+import { recordAuditEvent } from "./audit-ledger.ts";
+import { type PendingCtx, takePending as takePendingApproval, withPending } from "./pending.ts";
 
 // ── `--version` / `version` → print the version and exit, before the server binds (issue #13).
 //    Uses the packaged version if Electron set it, else reads it from package.json. ──
@@ -28,56 +30,57 @@ if (process.argv.slice(2).some((a) => a === "--version" || a === "version")) {
   process.exit(0);
 }
 
-import express from "express";
 import cors from "cors";
-import { reloadPools } from "./keys.ts";
-import { capacityReport, capacityNudge } from "./capacity.ts";
-import { sendMail, mailerConfigured, ownerEmail, } from "./mailer.ts";
-import { runModel, type Tier, providersStatus, runVision, warmBrain, } from "./models.ts";
-import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
-import { cacheable, fingerprint, lookup as cacheLookup, store as cacheStore, cacheStats, clearCache } from "./cache.ts";
-import { addFolder, removeFolder, listFolders, reindexAll, setWatching, startWatching, lifeIndexStats } from "./lifeindex.ts";
-import { listForged, setForgedEnabled, deleteForged, syncForgedRegistry, forgedStats } from "./forge.ts";
-import { verifyToken as verifyRemoteToken, createToken, revokeToken, listTokens, SCOPES } from "./remote-tokens.ts";
-import { encryptionStatus, setupEncryption, unlockWithPassphrase, unlockFromKeychain, lock as lockVault, isEncryptionEnabled } from "./vault-crypto.ts";
-import { installCrashHandlers, crashStats, diagnosticBundle } from "./crashlog.ts";
-import { previousRelease } from "./rollback.ts";
-import { friendlyUpdateError, isNewerVer, sourceUpdateStatus } from "./update-status.ts";
+import express from "express";
+import QRCode from "qrcode";
+import { isFastPath, resumeAgent, runAgent, runAgentStream } from "./agent.ts";
+import { type Capability as AttrCapability, logAttribution, readAttribution } from "./attribution.ts";
+import { cacheable, lookup as cacheLookup, cacheStats, store as cacheStore, clearCache, fingerprint } from "./cache.ts";
+import { capacityNudge, capacityReport } from "./capacity.ts";
+import { CONTINUATION_RE, nextTierUp, route, selfCheckFailed } from "./classify.ts";
+import { clearRanking, loadRanking, rankingAgeDays, rankingStale } from "./colosseum.ts";
+import { list as connectorList, statuses as connectorStatuses, normalize as normalizeConnectorError } from "./connectors.ts";
+import { crashStats, diagnosticBundle, installCrashHandlers } from "./crashlog.ts";
+import { writeEnv } from "./env-file.ts";
+import { desk as flipitDesk } from "./flipit.ts";
+import { deleteForged, forgedStats, listForged, setForgedEnabled, syncForgedRegistry } from "./forge.ts";
+import { GitHubError, issues as ghIssues, repos as ghRepos, whoami as ghWhoami } from "./github.ts";
+import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
-import { exportPack, planImport, applyPack, myPackKey } from "./packs.ts";
-import { recordSuccess, nextMoment, dismiss as dismissMoment, momentStats } from "./moments.ts";
-import { runAgent, resumeAgent, runAgentStream, isFastPath } from "./agent.ts";
-import { route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
-import { TOOLS, benchmarkBrains, webSearch } from "./tools.ts";
+import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { reloadPools } from "./keys.ts";
+import { addFolder, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
+import { mailerConfigured, ownerEmail, sendMail, } from "./mailer.ts";
 import { quotes as marketQuotes } from "./markets.ts";
-import { loadRanking, rankingStale, rankingAgeDays, clearRanking } from "./colosseum.ts";
-import { remember, recallWith, memoryStats, pinnedModel, listByKind } from "./memory.ts";
+import { listByKind, memoryStats, pinnedModel, recallWith, remember } from "./memory.ts";
+import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
+import { providersStatus, runModel, runVision, type Tier, warmBrain, } from "./models.ts";
+import { dismiss as dismissMoment, momentStats, nextMoment, recordSuccess } from "./moments.ts";
+import { mt5Summary } from "./mt5/index.ts";
+import { applyPack, exportPack, myPackKey, planImport } from "./packs.ts";
+import { claimCode, clearSessionCookieHeader, type Grant, getGrants, guessLabel, hasGrant, listSessions, mintPairingBundle, mintPairingCode, mintSession, revokeAllSessions, revokeSessionById, sessionCookieHeader, sessionCount, sessionIdFromToken, sessionTokenFromRequest, setGrants, validateSession } from "./pairing.ts";
+import { createToken, listTokens, revokeToken, SCOPES, verifyToken as verifyRemoteToken } from "./remote-tokens.ts";
+import { previousRelease } from "./rollback.ts";
 import { registerMemoryRoutes } from "./routes.memory.ts";
 import { registerWorkflowsRoutes } from "./routes.workflows.ts";
-import { writeEnv } from "./env-file.ts";
-import { hostAllowed, isLoopback, isTrustedLocal, isYardTrusted, isYardReadTrusted, isMeshAddress, isPairedSession, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
-import { checkPasskey, handshakeEnforced } from "./handshake.ts";
-import { mintPairingCode, mintPairingBundle, mintSession, claimCode, validateSession, sessionTokenFromRequest, sessionCookieHeader, clearSessionCookieHeader, revokeAllSessions, sessionCount, listSessions, revokeSessionById, guessLabel, getGrants, setGrants, hasGrant, sessionIdFromToken, type Grant } from "./pairing.ts";
-import { logAttribution, readAttribution, type Capability as AttrCapability } from "./attribution.ts";
-import { whoami as ghWhoami, repos as ghRepos, issues as ghIssues, GitHubError } from "./github.ts";
-import { list as connectorList, normalize as normalizeConnectorError, statuses as connectorStatuses } from "./connectors.ts";
-import { desk as flipitDesk } from "./flipit.ts";
-import { JobStore, yardDir } from "./yard/store.ts";
-import { JobLog } from "./yard/worker.ts";
-import { supervisor } from "./yard/supervisor.ts";
-import { routeOrNull as yardRoute, nameFrom } from "./yard/intent.ts";
-import { answerRouted } from "./yard/dispatch.ts";
-import { buildSpec, specSummary } from "./yard/spec.ts";
-import { withSelect, wantsSelect, loadDiffs, previewCsp } from "./yard/glass.ts";
-import { listProjects, listPublished, readManifest, checkpoints, projectPath } from "./yard/managed.ts";
+import { benchmarkBrains, TOOLS, webSearch } from "./tools.ts";
+import { friendlyUpdateError, isNewerVer, sourceUpdateStatus } from "./update-status.ts";
+import { encryptionStatus, isEncryptionEnabled, lock as lockVault, setupEncryption, unlockFromKeychain, unlockWithPassphrase } from "./vault-crypto.ts";
 import { dnsInstructions } from "./yard/deploy.ts";
-import QRCode from "qrcode";
-import { resolvePreview, projectFiles as yardProjectFiles, readProjectFile, projectsRoot } from "./yard/preview.ts";
-import { listPlaybooks, getPlaybook, savePlaybook, deletePlaybook, importMarkdown, renderTemplate } from "./yard/playbooks.ts";
-import {
-  requestPairing, pendingRequests, approvePairing, denyPairing,
-  verifyPairToken, pairedBrowsers, revokePairing, stashForCollection, collect,
+import { answerRouted } from "./yard/dispatch.ts";
+import { loadDiffs, previewCsp, wantsSelect, withSelect } from "./yard/glass.ts";
+import { nameFrom, routeOrNull as yardRoute } from "./yard/intent.ts";
+import { checkpoints, listProjects, listPublished, projectPath, readManifest } from "./yard/managed.ts";
+import {approvePairing, collect,denyPairing,pairedBrowsers, pendingRequests, 
+  requestPairing, revokePairing, stashForCollection, 
+  verifyPairToken, 
 } from "./yard/pairing.ts";
+import { deletePlaybook, getPlaybook, importMarkdown, listPlaybooks, renderTemplate, savePlaybook } from "./yard/playbooks.ts";
+import { projectsRoot, readProjectFile, resolvePreview, projectFiles as yardProjectFiles } from "./yard/preview.ts";
+import { buildSpec, specSummary } from "./yard/spec.ts";
+import { JobStore, yardDir } from "./yard/store.ts";
+import { supervisor } from "./yard/supervisor.ts";
+import { JobLog } from "./yard/worker.ts";
 
 // One store per server process, opened on first use so a SAM with the yard off never
 // creates a database it will not read.
@@ -86,94 +89,93 @@ import {
 
 let _yard: JobStore | null = null;
 const yardStore = (): JobStore => (_yard ??= new JobStore());
-import { issuesSummary, listIssues } from "./issues.ts";
-import { pulseSummary, snapshot, samplesOf } from "./pulse.ts";
-import { startKeeper } from "./keeper.ts";
-import { renderConsole } from "./console-view.ts";
-import { renderScope, scopeData } from "./scope-view.ts";
-import { registerAdminRoutes } from "./routes.admin.ts";
-import { registerPeopleRoutes, lanIP } from "./routes.people.ts";
-import { registerStudioRoutes } from "./routes.studio.ts";
-import { registerCreativeRoutes } from "./routes.creative.ts";
-import { registerVoiceRoutes } from "./routes.voice.ts";
-import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
-import { registerSpeedRoutes } from "./routes.speed.ts";
-import { registerCompanionRoutes } from "./routes.companion.ts";
-import { seedStarterPlaybooks } from "./starter-playbooks.ts";
-import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
-import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
-import { registerAntigravityRoutes } from "./routes.antigravity.ts";
-import { searchDocsWith, docsStats } from "./ingest.ts";
-import { embedOne } from "./embeddings.ts";
-import { buildIndexes, selectTools, selectSkillId, routingReady } from "./routing.ts";
-import { isAllowed, allow, disallow, listAllowed, setAutopilot, autopilotOn, toolTier, isDangerous } from "./authz.ts";
-import { nowText, locationText, initContext } from "./context.ts";
-import { grabWorld, worldContext } from "./world.ts";
-import { logSecurity, securityStatus, securityEvents } from "./security.ts";
-import { startProactive, takePending, listNudges, desktopNotify } from "./proactive.ts";
-import { consentState, setEnabled as setConsent, disableAll as consentDisableAll } from "./consent.ts";
-import { readAutonomyLog, clearAutonomyLog } from "./autonomy-log.ts";
-import { evaluateTriggers } from "./triggers.ts";
-import { listPreferences, learnPreference, forgetPreference, resetPreferences } from "./preferences.ts";
-import { isEnabled as consentEnabled } from "./consent.ts";
-import { recordTask, analyticsSummary, getAnalytics, resetAnalytics } from "./analytics.ts";
-import { telemetryEnabled, telemetryDecided, setTelemetry, buildPayload, postTelemetry } from "./telemetry.ts";
-import { billingStatus, checkout as billingCheckout, type Plan } from "./billing.ts";
-import { runDoctor } from "./doctor.ts";
-import { runTeam, runNinjas, SPECIALISTS, NINJAS } from "./agents.ts";
-import { loadSwarms, startSwarm, approveAgent, resumeOrphanedSwarms, swarmFanout, swarmPipeline } from "./swarm.ts";
-import { recover as recoverPreviewCommit } from "./preview-commit.ts";
-import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
-import { knackEnabled, recentInfluences } from "./knack.ts";
-import { isSetup as safeIsSetup, lock as safeLock, loadIntoProcessEnv as safeLoadEnv, migratableNames, migrateFromEnv as safeMigrate, secretNames, setup as safeSetup, status as safeStatus, unlock as safeUnlock } from "./safe.ts";
-import { startDropWatcher, dropFolderPath, writeLastReply } from "./ios.ts";
-import { processWatchPrompt, APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
-import { processUniversalPrompt, UNIVERSAL_SHORTCUTS, registerDeviceHandoff, getDeviceHandoff } from "./universal-ecosystem.ts";
-import { generateMobileFeed } from "./mobile-feed.ts";
-import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
-import { resolveOptimalRoute } from "./speculative-router.ts";
-import { getMobileBridgeStatus } from "./mobile-bridge.ts";
-import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 
-import { prewarmContext } from "./prefetch.ts";
-import { getMasterDashboard } from "./orchestrator.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
-import { getModelSelectorCatalogue, saveModelSelection } from "./model-selector.ts";
-import { runMultiModelConsensus } from "./consensus.ts";
-import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
+import { NINJAS, runNinjas, runTeam, SPECIALISTS } from "./agents.ts";
+import { analyticsSummary, getAnalytics, recordTask, resetAnalytics } from "./analytics.ts";
+import { APPLE_APP_INTENTS, processWatchPrompt } from "./apple-ecosystem.ts";
+import { allow, autopilotOn, disallow, isAllowed, isDangerous, listAllowed, setAutopilot, toolTier } from "./authz.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
-import { huntRevenueOpportunities } from "./revenue-hunter.ts";
-import { getScaleStatus } from "./scale-100m.ts";
-import { generateExecutiveDailyDeck } from "./executive-deck.ts";
-import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
-import { trySolveLocally } from "./local-micro-solver.ts";
-import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { clearAutonomyLog, readAutonomyLog } from "./autonomy-log.ts";
+import { checkout as billingCheckout, billingStatus, type Plan } from "./billing.ts";
+import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
+import { add as addCamera, camerasEnabled, list as listCameras, remove as removeCamera } from "./cameras.ts";
+import { type Chime, cancelChime, setAlarm as chimeAlarm, setTimer as chimeTimer, fireDue as fireChimesDue, listChimes, snoozeChime } from "./chime.ts";
+import { generateRepairPlan, parseCompilerDiagnostics } from "./code-repair.ts";
+import { runMultiModelConsensus } from "./consensus.ts";
+import { disableAll as consentDisableAll, isEnabled as consentEnabled, consentState, setEnabled as setConsent } from "./consent.ts";
+import { renderConsole } from "./console-view.ts";
+import { initContext, locationText, nowText } from "./context.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
+import { compileExecutiveDossier, conductDeepResearch } from "./deep-research.ts";
+import { runDoctor } from "./doctor.ts";
+import { embedOne } from "./embeddings.ts";
+import { generateExecutiveDailyDeck } from "./executive-deck.ts";
+import { docsStats, searchDocsWith } from "./ingest.ts";
+import { disambiguateUserIntent } from "./intent-disambiguator.ts";
+import { dropFolderPath, startDropWatcher, writeLastReply } from "./ios.ts";
+import { issuesSummary, listIssues } from "./issues.ts";
+import { startKeeper } from "./keeper.ts";
+import { knackEnabled, recentInfluences } from "./knack.ts";
+import { trySolveLocally } from "./local-micro-solver.ts";
 import { meterFreeSummary } from "./meter-free-ledger.ts";
-import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
-import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
-import { startScheduler, listSchedules, addSchedule, removeSchedule, toggleSchedule, scheduleStatus } from "./scheduler.ts";
-import { runDue as runStandingDue, standingEnabled, list as standingList, arm as standingArm, disarm as standingDisarm, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
-import { fireDue as fireChimesDue, setTimer as chimeTimer, setAlarm as chimeAlarm, listChimes, cancelChime, snoozeChime, type Chime } from "./chime.ts";
-import { bind as routineBind, unbind as routineUnbind, list as routineList, matchRoutine, routinesEnabled, routineFor } from "./routines.ts";
-import { getWorkflow, runWorkflow as runWorkflowFor, recordRun as recordWorkflowRunRec } from "./workflows.ts";
-import { camerasEnabled, list as listCameras, add as addCamera, remove as removeCamera } from "./cameras.ts";
+import { getMobileBridgeStatus } from "./mobile-bridge.ts";
+import { generateMobileFeed } from "./mobile-feed.ts";
+import { getModelSelectorCatalogue, saveModelSelection } from "./model-selector.ts";
+import { getMasterDashboard } from "./orchestrator.ts";
+import { broadcastToSwarm, getActivePeers, getNodeId, P2P_ENABLED, startP2PDiscovery, startP2PServer } from "./p2p.ts";
 import { peopleContext, } from "./people.ts";
-import { pushNotify, summarize as pushSummary } from "./push.ts";
-import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
+import { operatingDoctrine, PERSONAS, personaVoice, personaVoiceCompact } from "./persona.ts";
+import { forgetPreference, learnPreference, listPreferences, resetPreferences } from "./preferences.ts";
+import { prewarmContext } from "./prefetch.ts";
+import { recover as recoverPreviewCommit } from "./preview-commit.ts";
+import { desktopNotify, listNudges, startProactive, takePending } from "./proactive.ts";
 import { PROJECTS, projectById, projectsContext } from "./projects.ts";
-import { operatingDoctrine, personaVoice, personaVoiceCompact, PERSONAS } from "./persona.ts";
-import { startP2PDiscovery, startP2PServer, getActivePeers, getNodeId, broadcastToSwarm, P2P_ENABLED } from "./p2p.ts";
+import { pulseSummary, samplesOf, snapshot } from "./pulse.ts";
+import { pushNotify, summarize as pushSummary } from "./push.ts";
+import { huntRevenueOpportunities } from "./revenue-hunter.ts";
+import { registerAdminRoutes } from "./routes.admin.ts";
+import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
+import { registerAntigravityRoutes } from "./routes.antigravity.ts";
+import { registerCompanionRoutes } from "./routes.companion.ts";
+import { registerCreativeRoutes } from "./routes.creative.ts";
+import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
+import { lanIP, registerPeopleRoutes } from "./routes.people.ts";
+import { registerSpeedRoutes } from "./routes.speed.ts";
+import { registerStudioRoutes } from "./routes.studio.ts";
+import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
+import { registerVoiceRoutes } from "./routes.voice.ts";
+import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
+import { buildIndexes, routingReady, selectSkillId, selectTools } from "./routing.ts";
+import { migratableNames, isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, lock as safeLock, migrateFromEnv as safeMigrate, setup as safeSetup, status as safeStatus, unlock as safeUnlock, secretNames } from "./safe.ts";
+import { getScaleStatus } from "./scale-100m.ts";
+import { addSchedule, listSchedules, removeSchedule, scheduleStatus, startScheduler, toggleSchedule } from "./scheduler.ts";
+import { renderScope, scopeData } from "./scope-view.ts";
+import { logSecurity, securityEvents, securityStatus } from "./security.ts";
+import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { resolveOptimalRoute } from "./speculative-router.ts";
+import { runDue as runStandingDue, arm as standingArm, disarm as standingDisarm, standingEnabled, list as standingList, rearm as standingRearm, remove as standingRemove } from "./standing.ts";
+import { seedStarterPlaybooks } from "./starter-playbooks.ts";
+import { approveAgent, loadSwarms, resumeOrphanedSwarms, startSwarm, swarmFanout, swarmPipeline } from "./swarm.ts";
+import { buildPayload, postTelemetry, setTelemetry, telemetryDecided, telemetryEnabled } from "./telemetry.ts";
+import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
+import { evaluateTriggers } from "./triggers.ts";
+import { getDeviceHandoff, processUniversalPrompt, registerDeviceHandoff, UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
+import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import {
-  logExchange,
-  recentLog,
-  recentExchanges,
   buildGraph,
-  vaultStats,
+  logExchange,
+  pruneOldLogs,
   readProjectNote,
   readVaultNote,
-  pruneOldLogs,
+  recentExchanges,
+  recentLog,
+  vaultStats,
 } from "./vault.ts";
+import { dispatchWebhookEvent, loadWebhookEndpoints, registerWebhookEndpoint } from "./webhooks.ts";
+import { getWorkflow, recordRun as recordWorkflowRunRec, runWorkflow as runWorkflowFor } from "./workflows.ts";
+import { grabWorld, worldContext } from "./world.ts";
 
 // RESILIENCE: a single unhandled async error must never take SAM down. Log it and stay up —
 // an always-on personal assistant that dies on one bad request/response is worse than useless.
@@ -498,6 +500,7 @@ console.log(`  vault mounted   · ${vaultStats().path}\n`);
 // MCP — link any configured Model Context Protocol servers (vault/mcp.json), then build
 // the semantic tool/skill indexes over the FULL toolset (non-blocking; index is SHA-cached).
 import { loadMcpTools } from "./mcp.ts";
+
 void loadMcpTools()
   .then((mcpTools) => { if (mcpTools.length) TOOLS.push(...mcpTools); })
   .catch(() => {/* best-effort — nothing downstream depends on this succeeding */})
@@ -1367,15 +1370,15 @@ app.post("/api/micro-solver", basicRateLimit, (req, res) => {
   res.json(trySolveLocally(input || ""));
 });
 
-app.get("/api/system/space-audit", basicRateLimit, (req, res) => {
+app.get("/api/system/space-audit", basicRateLimit, (_req, res) => {
   res.json(auditSpaceConsumption());
 });
 
-app.post("/api/system/space-compact", basicRateLimit, (req, res) => {
+app.post("/api/system/space-compact", basicRateLimit, (_req, res) => {
   res.json(compactSpaceAndMemory());
 });
 
-app.get("/api/system/savings", basicRateLimit, (req, res) => {
+app.get("/api/system/savings", basicRateLimit, (_req, res) => {
   res.json(getSavingsSummary());
 });
 app.post("/api/context/prewarm", (req, res) => {
@@ -2101,13 +2104,15 @@ app.get("/api/hardware/ollama", async (_req, res) => {
 });
 
 // FlipIt Monzo-Style Wallet
-import { getWallet, deposit, requestKYC } from "./wallet.ts";
+import { deposit, getWallet, requestKYC } from "./wallet.ts";
+
 app.get("/api/wallet", (_req, res) => res.json(getWallet()));
 app.post("/api/wallet/deposit", (req, res) => res.json(deposit(Number(req.body?.amount || 0), req.body?.currency)));
 app.post("/api/wallet/kyc", (_req, res) => res.json(requestKYC()));
 
 // Self-Healing & Admin Tasks
 import { getAdminTasks, updateTaskStatus } from "./self-heal.ts";
+
 app.get("/api/admin/tasks", (_req, res) => res.json(getAdminTasks()));
 app.post("/api/admin/tasks/:id/status", (req, res) => {
   const ok = updateTaskStatus(req.params.id, req.body?.status);
@@ -2764,6 +2769,11 @@ app.get("/api/status", (req, res) => {
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
 app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
+// MT5 Phase 1 — read-only account/positions/journal + risk metrics (mock backend by default; demo-only).
+app.get("/api/mt5/summary", async (req, res) => {
+  try { res.json(await mt5Summary(Number(req.query.days) || 30)); }
+  catch (e: any) { res.status(400).json({ error: String(e?.message || e) }); }
+});
 
 // Browser HUD on this machine: opening the page is the pairing. The Handshake passkey only
 // exists in Electron preload — a tab cannot send it. Without this, POST /api/stream (chat)

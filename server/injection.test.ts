@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fenceToolResult, UNTRUSTED_SOURCE } from "./agent.ts";
 
 // Prompt-injection defense: content from web/email/browser/file tools is UNTRUSTED. A fetched page

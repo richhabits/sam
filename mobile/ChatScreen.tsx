@@ -3,6 +3,7 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import AddSheet from './AddSheet';
+import { AiConsentRequired, aiSharingCopy, grantAiSharing } from './lib/aiConsent';
 import { api, confirmPending } from './lib/api';
 import { type Attachment, sendWithAttachments } from './lib/attach';
 import { streamChat, type Turn } from './lib/chat';
@@ -34,8 +36,8 @@ import {
   taskTitle,
   taskWhen,
 } from './lib/mentions';
-import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
 import { samBorder, samColor, samFont, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
+import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -191,6 +193,8 @@ export default function ChatScreen({
   // the operator already gave should not be asked for again every launch.
   const [consent, setConsentState] = useState<SpendConsent>('ask');
   const [askingConsent, setAskingConsent] = useState(false);
+  // Permission to send messages to third-party AI (App Review 5.1.2(i)) — see lib/aiConsent.ts.
+  const [askingAiSharing, setAskingAiSharing] = useState(false);
   // A one-shot bypass rather than a state flag: "Allow once" calls send() immediately, and a
   // state update would not have landed by the time the gate re-reads it.
   const allowOnce = useRef(false);
@@ -481,6 +485,12 @@ export default function ChatScreen({
     } catch (e: any) {
       if (ctrl.signal.aborted) {
         patch((m) => ({ ...m, pending: false, text: m.text || 'Stopped.' }));
+      } else if (e instanceof AiConsentRequired) {
+        // Nothing was sent. Undo the send exactly: take back both bubbles and put the words back
+        // in the box, so the card replaces the send rather than eating the message.
+        setMsgs((prev) => prev.slice(0, -2));
+        setDraft(message);
+        setAskingAiSharing(true);
       } else if (e?.status === 401) {
         // Revoked from the Mac — a pairing problem, never dressed up as a model failure.
         onNeedsPairing();
@@ -786,6 +796,42 @@ export default function ChatScreen({
           decision is about that sentence. Emergent puts the same thing in the thread for the
           same reason. Three actions, in Apple's order of increasing commitment, with the
           declining one first and unemphasised. */}
+      {askingAiSharing ? (
+        <View style={s.consent}>
+          <Text style={s.consentTitle}>{aiSharingCopy().title}</Text>
+          <Text style={s.consentBody}>{aiSharingCopy().body}</Text>
+          <View style={s.consentRow}>
+            <Pressable
+              onPress={() => setAskingAiSharing(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Don't send. Keep my message in the box."
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={s.consentBtnTextMuted}>Don't send</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void Linking.openURL('https://richhabits.github.io/sam/privacy.html')}
+              accessibilityRole="link"
+              accessibilityLabel="Read the privacy policy"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={s.consentBtnTextMuted}>Privacy policy</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setAskingAiSharing(false);
+                void grantAiSharing().then(() => send());
+              }}
+              accessibilityRole="button"
+              accessibilityHint="Sends this message to the cloud AI providers named above"
+              style={({ pressed }) => [s.consentBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={s.consentBtnText}>Allow and send</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {askingConsent ? (
         <View style={s.consent}>
           <Text style={s.consentTitle}>{consentCopy().title}</Text>

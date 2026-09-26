@@ -19,12 +19,12 @@
 // ─────────────────────────────────────────────────────────────
 
 import { spawn } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { markDangerous, unmarkDangerous } from "./authz.ts";
 import { runModel } from "./models.ts";
 import type { Tool } from "./tools.ts";   // TYPE-ONLY: erased at compile, so it creates no cycle
-import { markDangerous, unmarkDangerous } from "./authz.ts";
 
 // ── The live tool registry, INJECTED ────────────────────────────────────────
 // forge.ts and tools.ts used to import each other: forge needed TOOLS (to register forged tools

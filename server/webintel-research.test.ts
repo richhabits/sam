@@ -4,9 +4,9 @@
 // fetchClean (the network boundary extract() sits on) is mocked too: real DNS lookups against
 // invalid TLDs are resolver-timing-dependent and flaked this suite red in CI more than once —
 // mocking makes the "no network" claim in this header actually true.
-import { describe, it, expect, vi } from "vitest";
-import { extractMany, searchAndExtract, type SearchFn } from "./webintel-research.ts";
+import { describe, expect, it, vi } from "vitest";
 import type { ExtractSchema, LlmFn } from "./webintel-extract.ts";
+import { extractMany, type SearchFn, searchAndExtract } from "./webintel-research.ts";
 
 vi.mock("./webintel.ts", () => ({
   fetchClean: vi.fn(async () => ({ ok: false, text: "", title: "", error: "getaddrinfo ENOTFOUND (mocked)" })),

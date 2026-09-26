@@ -20,8 +20,8 @@
 //  so a database read cannot resurrect a live session. Pairing codes are single-use and short-lived.
 // ─────────────────────────────────────────────────────────────
 
-import { randomBytes, randomInt, createHash, timingSafeEqual } from "node:crypto";
-import { join, dirname } from "node:path";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "./db.ts";
 

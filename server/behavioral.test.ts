@@ -4,10 +4,10 @@
 //  suites: the safety gate really blocks, destructive tools really
 //  ask first, recall math really ranks, the cron really fires.
 // ─────────────────────────────────────────────────────────────
-import { describe, it, expect } from "vitest";
-import { toolByName } from "./tools.ts";
+import { describe, expect, it } from "vitest";
 import { cosine } from "./embeddings.ts";
 import { parseCron } from "./scheduler.ts";
+import { toolByName } from "./tools.ts";
 
 // ── SAFETY: the catastrophic-command gate must actually block ──
 describe("HARD_DENY catastrophic-command gate (behavioral)", () => {

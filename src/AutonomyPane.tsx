@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { getConsent, setConsent, consentDisableAll, getSuggestions, getAutonomyLog, clearAutonomyLog } from "./lib/api";
+import { useEffect, useState } from "react";
 import Icon, { type IconName } from "./Icon";
+import { clearAutonomyLog, consentDisableAll, getAutonomyLog, getConsent, getSuggestions, setConsent } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // "What can SAM do on its own?" — the trust contract. Every proactive behavior is OFF by default and

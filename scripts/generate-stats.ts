@@ -2,11 +2,12 @@
 // Walks the REAL registries (not guesses) and writes docs/stats.json. The README badges, the GitHub
 // Pages site, and package.json's description are all generated from this file — so the numbers can
 // never drift out of sync again. Run: `npm run stats` (tsx).
-import { TOOLS } from "../server/tools.ts";
-import { SPECIALISTS, NINJAS } from "../server/agents.ts";
+
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { NINJAS, SPECIALISTS } from "../server/agents.ts";
+import { TOOLS } from "../server/tools.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 

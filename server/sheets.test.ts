@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  CAPS, analyseCsv, inferKind, looksLikeDate, parseCsv, profileTable, renderReport, sniffDelimiter, toDate, toNumber,
+import {analyseCsv, 
+  CAPS, inferKind, looksLikeDate, parseCsv, profileTable, renderReport, sniffDelimiter, toDate, toNumber,
 } from "./sheets.ts";
 
 // The parser is where this breaks. Everything downstream — types, stats, findings — is arithmetic

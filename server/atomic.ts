@@ -15,8 +15,8 @@
 //  file is not world-readable on a shared machine even after the contents are redacted.
 // ─────────────────────────────────────────────────────────────
 
-import { writeFileSync, renameSync, mkdirSync, existsSync, chmodSync } from "node:fs";
-import { dirname, join, basename } from "node:path";
+import { chmodSync, existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 
 let seq = 0;
 

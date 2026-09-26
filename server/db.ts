@@ -2,8 +2,9 @@
 // electron bundler ignores `external`), so its `bindings` helper searches inside the read-only
 // app.asar and can't find better_sqlite3.node — which actually lives in app.asar.unpacked. preboot
 // sets SAM_SQLITE_BINDING to the real path; we pass it explicitly so bindings' guesswork is skipped.
-import Database from "better-sqlite3";
+
 import { existsSync } from "node:fs";
+import Database from "better-sqlite3";
 
 export function openDb(file: string): Database.Database {
   const binding = process.env.SAM_SQLITE_BINDING;

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { parseMarkdown } from './lib/markdown';
-import { EmptyState, SamRow, SamSectionLabel, SamSheet, ScreenTitle, StatCard } from './samKit';
 import { samColor, samFont, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import { EmptyState, SamRow, SamSectionLabel, SamSheet, ScreenTitle, StatCard } from './samKit';
 
 // VAULT — design_handoff_sam_clients/README.md, build order step 6: "read-only Markdown
 // browser over existing files." The files are real — server/vault.ts's plain-.md,

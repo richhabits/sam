@@ -13,10 +13,10 @@
  * If someone later exports `app` from index.ts, replace this with supertest and drive the real
  * handlers — strictly better. Until then this holds the line at zero cost.
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // Scans index.ts AND every routes.*.ts module. index.ts is being split by domain (audit #2), and
 // a contract test that only read index.ts would silently stop covering each route as it moved —

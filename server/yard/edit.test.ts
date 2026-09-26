@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The model's proposal is stubbed so the DECISIONS around it can be tested without a
 // brain: what is shown to it, what is accepted back, and what happens when it returns
@@ -10,8 +10,8 @@ import { join } from "node:path";
 const proposal = { text: "", provider: "stub", tier: "local" as const };
 vi.mock("../models.ts", () => ({ runModel: async () => proposal }));
 
+import { checkpoints, createProject, projectPath, readManifest } from "./managed.ts";
 import { HANDLERS } from "./worker.ts";
-import { createProject, readManifest, projectPath, checkpoints } from "./managed.ts";
 
 let base: string;
 

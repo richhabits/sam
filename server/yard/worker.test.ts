@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobStore } from "./store.ts";
 
 // playbook.run drives the real agent loop — stubbed here so its tests exercise the
@@ -12,7 +12,7 @@ const agentResult: { kind: "final" | "pending"; text?: string; tool?: string; in
   { kind: "final", text: "did the thing", trace: [] };
 vi.mock("../agent.ts", () => ({ runAgent: async () => agentResult }));
 
-import { runOneJob, registerHandler, HANDLERS, JobStopped } from "./worker.ts";
+import { HANDLERS, JobStopped, registerHandler, runOneJob } from "./worker.ts";
 
 // Every path through the worker must end in a written outcome. A worker that returns
 // without recording anything leaves a job `running` for ever, which is the failure the

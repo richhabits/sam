@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planDeploy, planUnpublish, dnsInstructions, readShape, urlFrom, smokeTest, deployToken } from "./deploy.ts";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { deployToken, dnsInstructions, planDeploy, planUnpublish, readShape, smokeTest, urlFrom } from "./deploy.ts";
 
 // Deploying is the one thing the yard does that the outside world can see, so these
 // tests are mostly about refusing rather than shipping.

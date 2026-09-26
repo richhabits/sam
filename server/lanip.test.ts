@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import type os from "node:os";
+import { describe, expect, it } from "vitest";
 import { lanIP } from "./routes.people.ts";
 
 // lanIP() answers one question: "what address do I put in a QR code so a phone on the Wi-Fi

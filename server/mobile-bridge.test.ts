@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
+import { describe, expect, it } from "vitest";
 import {
-  prepareMobilePush,
-  issueBiometricChallenge,
-  verifyBiometricChallenge,
   getMobileBridgeStatus,
+  issueBiometricChallenge,
+  prepareMobilePush,
+  verifyBiometricChallenge,
 } from "./mobile-bridge.ts";
 import { mobileDispatchNotificationTool } from "./tools.ts";
 

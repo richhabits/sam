@@ -116,13 +116,13 @@ export function trySolveLocally(input: string): MicroSolverResult {
   // 2. Pure Arithmetic (Safe regex whitelist: numbers, +, -, *, /, %, (, ), ^, .)
   const mathPattern = /^(?:calculate|compute|solve|eval)?\s*([0-9\s+\-*/%().^]+)$/i;
   const mathMatch = raw.match(mathPattern);
-  if (mathMatch && mathMatch[1]) {
+  if (mathMatch?.[1]) {
     const expr = mathMatch[1].trim();
     if (/[+\-*/%^]/.test(expr) && !/[a-zA-Z_$]/.test(expr)) {
       try {
         const sanitized = expr.replace(/\^/g, "**");
         const val = safeEvalArith(sanitized);
-        if (typeof val === "number" && !isNaN(val) && isFinite(val)) {
+        if (typeof val === "number" && !Number.isNaN(val) && Number.isFinite(val)) {
           return {
             solvedLocally: true,
             type: "math",

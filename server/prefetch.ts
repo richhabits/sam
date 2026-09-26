@@ -5,7 +5,7 @@
 //  and compacts historical chat tokens to preserve free quotas.
 // ─────────────────────────────────────────────────────────────
 
-import { toolCacheSet, toolCacheGet, getMultiTierCacheStats } from "./cache.ts";
+import { getMultiTierCacheStats, toolCacheGet, toolCacheSet } from "./cache.ts";
 
 export interface PrewarmResult {
   warmedKeys: string[];
@@ -40,7 +40,7 @@ export function prewarmContext(topics: string[] = ["system_vitals", "market_desk
 
 export function compactContextForFreeLanes(
   messages: { role: string; content: string }[],
-  maxTokensTarget: number = 2000
+  _maxTokensTarget: number = 2000
 ): {
   originalMessageCount: number;
   compactedText: string;

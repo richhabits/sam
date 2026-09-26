@@ -13,11 +13,11 @@
 //  `scheduleStatus()` is this module's version of the desk's `loop.stale`.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { wallAt, instantForWall } from "./flipit.ts";
+import { writeFileAtomic } from "./atomic.ts";
+import { instantForWall, wallAt } from "./flipit.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "schedules.json");

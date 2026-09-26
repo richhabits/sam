@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { _reset as resetIssues, listIssues } from "./issues.ts";
-import { _resetGuard, buildSummary, crossIn, crossOut, crossOutOnce, sessions, type SessionSummary } from "./threshold.ts";
+import { listIssues, _reset as resetIssues } from "./issues.ts";
+import { _resetGuard, buildSummary, crossIn, crossOut, crossOutOnce, type SessionSummary, sessions } from "./threshold.ts";
 
 // The Threshold carries context across sessions, LOCALLY. Round-trip: cross out → cross in restores
 // it. Storage is bounded. Secrets are redacted before persisting. And the cardinal test: a persist

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // Mirrors docs/install.sh asset pick. Intel used to match arm64.dmg because
 // that filename also has a digit immediately before `.dmg`.

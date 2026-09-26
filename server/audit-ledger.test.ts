@@ -1,9 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   recordAuditEvent,
   verifyAuditChainIntegrity,
-  loadAuditEntries,
-  computeEntryHash,
 } from "./audit-ledger.ts";
 
 describe("S.A.M. Cryptographic Audit Trail Ledger", () => {

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { championWithConfidence, zCrit } from "./colosseum-significance.ts";
 
 const r = (id: string, wins: number, losses: number, ties = 0) => ({

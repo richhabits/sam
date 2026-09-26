@@ -1,7 +1,8 @@
 // The Ask — an unattended risky action is delivered out-of-band and SAFE-DEFAULTS: on timeout,
 // denial, or ambiguity it is NOT performed, recorded as deferred, and never silently dropped.
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+
 import { rmSync } from "node:fs";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-ask-test";
 let A: typeof import("./ask.ts");

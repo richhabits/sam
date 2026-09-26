@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { scrub, scrubDeep, scrubConsole, sensitiveEnvNames, publicError, REDACTED } from "./scrub.ts";
+import { afterEach, describe, expect, it } from "vitest";
+import { publicError, REDACTED, scrub, scrubConsole, scrubDeep, sensitiveEnvNames } from "./scrub.ts";
 
 // A secret only has to reach ONE sink to be on disk in plain text for ever. These tests
 // are the guarantee that it does not — by shape for credentials SAM has never seen, and

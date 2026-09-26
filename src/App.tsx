@@ -1,29 +1,29 @@
 import type React from "react";
-import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys, getPreferences, learnPreference, queueStudioJob, deepResearch } from "./lib/api";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { renderMarkdown } from "./lib/md";
-import { startWakeListener } from "./lib/wake";
-import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
-import { isStopCommand } from "./lib/stopIntent";
-import WidgetRenderer from "./WidgetRenderer";
-import { ErrorBoundary } from "./ErrorBoundary";
-import ChatList, { displayTitle } from "./ChatList";
-import { matchesQuery } from "./lib/chatTitle";
-import { type Capability, GROUP_LABELS, groupCapabilities } from "./lib/capabilities";
+import ChatList from "./ChatList";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { type AgentResult, type Attachment, addSchedule, approveSwarmAgent, checkUpdate, clearArena, clearMemory, command, confirm as confirmAction, deepResearch, exportMemory, forgetMemory, getArena, getAutopilot, getLog, getMemory, getPreferences, getProactive, getProjects, getQuotes, getRoster, getStatus, getSwarms, getTools, importContext, learnPreference, queueStudioJob, runArena, runUpdate, type Swarm, saveKeys, setAutopilotMode, setElonMode, setUser, startSwarm, streamCommand, streamTeam, yardPairPending } from "./lib/api";
+import { renderMarkdown } from "./lib/md";
+import { isStopCommand } from "./lib/stopIntent";
+import { stopSpeaking, speak as ttsSpeak } from "./lib/tts";
+import { startWakeListener } from "./lib/wake";
+import WidgetRenderer from "./WidgetRenderer";
+
 // Heavy panels are lazy-loaded — they only download when you actually open them,
 // so the initial app is slimmer and paints faster.
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
-import UpdateButton from "./UpdateButton";
-import PairPrompt, { useNeedsPairing } from "./PairPrompt";
+
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
+import { HANDOFF_BLURB, HANDOFF_PROMPT } from "./lib/handoffPrompt";
+import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import PersonaPicker from "./PersonaPicker";
 
-import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
+const Mt5Pane = lazy(() => import("./Mt5Pane"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const AutonomyPane = lazy(() => import("./AutonomyPane"));
@@ -432,6 +432,7 @@ export default function App() {
   }, []);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [mt5Open, setMt5Open] = useState(false);
   const [autonomyOpen, setAutonomyOpen] = useState(false);
   const [learnedOpen, setLearnedOpen] = useState(false);
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
@@ -449,7 +450,7 @@ export default function App() {
   // between "approve this number" being findable and being a scavenger hunt. Only the app
   // itself is ever told who's pending (yardPairPending refuses browsers that ask), so this
   // poll is a no-op — always empty — anywhere except the real desktop app.
-  const [pairPendingCount, setPairPendingCount] = useState(0);
+  const [_pairPendingCount, setPairPendingCount] = useState(0);
   useEffect(() => {
     if (dashOpen) return; // Dashboard itself already polls + shows the list; avoid a double poll.
     let alive = true;
@@ -464,7 +465,7 @@ export default function App() {
   const paletteRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
   const toggleExpand = (i: number) => setExpanded((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
-  const [convoSearch, setConvoSearch] = useState("");
+  const [_convoSearch, _setConvoSearch] = useState("");
   const [fontSize, setFontSize] = useState(() => { try { return localStorage.getItem("sam.fontsize") || "normal"; } catch { return "normal"; } });
   const [dragOver, setDragOver] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -557,7 +558,7 @@ export default function App() {
   // Only asks once, and only says yes when the gate is on AND this browser is outside it.
   const needsPair = useNeedsPairing();
   const [updating, setUpdating] = useState("");
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [_deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const msgEnd = useRef<HTMLDivElement>(null);
@@ -651,7 +652,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); setConnectorsOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setMt5Open(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); setConnectorsOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -870,13 +871,13 @@ export default function App() {
   // 👁️ SAM looks through the webcam — captures one frame → its vision describes it.
   const lookThroughCamera = () => askWithFrame("👁️ (looking through the camera)", "Look through my webcam — tell me what and who you can see, naturally and warmly.");
   // 🙋 Who's that? — recognise from people SAM knows, or ASK the name and remember them.
-  const whoIsThis = () => askWithFrame("🙋 (who's this?)",
+  const _whoIsThis = () => askWithFrame("🙋 (who's this?)",
     "Look at the person in this camera frame. If you recognise them from the people you know, greet them by name. If NOT, describe their look in one short line and ASK me for their name — when I tell you, use the remember_person tool (with that look description) so you know them forever.");
   // 📄 Scan text — camera as a document/receipt scanner.
-  const scanTextFromCamera = () => askWithFrame("📄 (scanning text)",
+  const _scanTextFromCamera = () => askWithFrame("📄 (scanning text)",
     "Read ALL text visible in this camera frame (document, receipt, screen, label). Give it back accurately and neatly formatted, then offer to save it as a note.");
   // 🔳 Scan a QR code / barcode — native BarcodeDetector when available, else vision fallback.
-  async function scanQR() {
+  async function _scanQR() {
     if (loading) return;
     let stream: MediaStream | null = null;
     try {
@@ -920,7 +921,7 @@ export default function App() {
 
   // ⏱️ Timelapse watch — snaps every N sec and only pings you when the scene meaningfully changes.
   function stopTimelapse() { if (tlIv.current) { clearInterval(tlIv.current); tlIv.current = null; } tlStream.current?.getTracks().forEach((t) => { t.stop(); }); tlStream.current = null; setTimelapse(false); }
-  async function toggleTimelapse() {
+  async function _toggleTimelapse() {
     if (timelapse) { stopTimelapse(); sysNote("⏱️ Timelapse watch off."); return; }
     try {
       tlStream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -947,7 +948,7 @@ export default function App() {
   }
 
   // 🔈 Read aloud — scan text from the camera then SPEAK it (accessibility: menus, mail, labels).
-  async function readAloudScan() {
+  async function _readAloudScan() {
     if (loading) return;
     const data = await captureFrame();
     if (!data) return;
@@ -962,7 +963,7 @@ export default function App() {
   }
 
   // 🔎 Find it — point the camera and SAM tells you when your object is in view (warmer/colder).
-  async function findObject() {
+  async function _findObject() {
     if (loading || findStream.current) return;
     const target = window.prompt("What should I look for? (e.g. my keys, the remote, a red mug)");
     if (!target?.trim()) return;
@@ -992,7 +993,7 @@ export default function App() {
   function stopFind() { if (findIv.current) { clearInterval(findIv.current); findIv.current = null; } findStream.current?.getTracks().forEach((t) => { t.stop(); }); findStream.current = null; }
 
   // 📸 Take a photo → saved to the vault (local only).
-  async function snapPhoto() {
+  async function _snapPhoto() {
     const data = await captureFrame(0.92);
     if (!data) return;
     try {
@@ -2403,6 +2404,7 @@ export default function App() {
           { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
+          { icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) },
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
           { icon: "settings", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "search", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
@@ -2466,6 +2468,7 @@ export default function App() {
         {adminOpen && <Admin onClose={() => { setAdminOpen(false); setAdminFocus(undefined); }} focus={adminFocus} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
+        {mt5Open && <Mt5Pane onClose={() => setMt5Open(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} onAllProviders={() => { setWizardOpen(false); setAdminOpen(true); }} />}
         {dashOpen && <ErrorBoundary label="dashboard"><Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} /></ErrorBoundary>}
         {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}

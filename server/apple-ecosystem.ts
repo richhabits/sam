@@ -8,10 +8,10 @@
 //  - Cross-device Continuity session handoff
 // ─────────────────────────────────────────────────────────────
 
+import { trySolveLocally } from "./local-micro-solver.ts";
+import { type PreparedPushNotification, prepareMobilePush } from "./mobile-bridge.ts";
 import { runModel } from "./models.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
-import { trySolveLocally } from "./local-micro-solver.ts";
-import { prepareMobilePush, type PreparedPushNotification } from "./mobile-bridge.ts";
 
 export interface WatchPromptRequest {
   transcript: string;

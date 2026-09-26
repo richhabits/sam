@@ -2,13 +2,13 @@ import type { Express } from "express";
 import { isElonMode, setElonMode } from "./authz.ts";
 import { forgetStatuses as forgetConnectorStatuses } from "./connectors.ts";
 import { removeEnvKeys, writeEnv } from "./env-file.ts";
-import { isSetup as safeIsSetup, isUnlocked as safeIsUnlocked, put as safePut, secretNames as safeSecretNames } from "./safe.ts";
 import { isLoopback } from "./http-guards.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { keyStatus, poolSize, setPool } from "./keys.ts";
 import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts";
 import { deviceId, GATEWAY_URL, type Tier } from "./models.ts";
 import { PROVIDER_ENV as REGISTRY_ENV, uiCatalogue } from "./providers.registry.ts";
+import { isSetup as safeIsSetup, isUnlocked as safeIsUnlocked, put as safePut, secretNames as safeSecretNames } from "./safe.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { report as brainHealthReport, _reset as resetBrainHealth } from "./speed.ts";
 

@@ -11,10 +11,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Reading } from "./intent.ts";
-import type { JobStore, Job } from "./store.ts";
-import { isClaimForfeit } from "./state.ts";
-import { JobLog } from "./worker.ts";
 import { buildSpec, specSummary } from "./spec.ts";
+import { isClaimForfeit } from "./state.ts";
+import type { Job, JobStore } from "./store.ts";
+import { JobLog } from "./worker.ts";
 
 function describe(job: Job, now: number): string {
   const spent = job.costBudget ? ` · ${job.costTokens}/${job.costBudget} tokens` : job.costTokens ? ` · ${job.costTokens} tokens` : "";

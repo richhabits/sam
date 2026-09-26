@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mcpEnv } from "./mcp.ts";
 
 // A third-party MCP server is code SAM did not write. The one promise the loader makes is

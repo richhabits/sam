@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // B4's promise: a lock screen is glanced at by anyone nearby, not just the operator, so
 // nothing credential-shaped or otherwise sensitive should reach it. web-push itself is

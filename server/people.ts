@@ -7,10 +7,10 @@
 //  your machine; we store a text description, not the photo.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync, statSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
+import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
+import { writeFileAtomic } from "./atomic.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FILE = join(process.env.VAULT_DIR || join(ROOT, "vault"), "people.json");

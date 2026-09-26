@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildPrompt, fence } from "./overlay-prompts.ts";
 
 describe("overlay injection fencing", () => {

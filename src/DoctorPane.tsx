@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { getDoctor } from "./lib/api";
+import { useEffect, useState } from "react";
 import Icon, { type IconName } from "./Icon";
+import { getDoctor } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // "SAM isn't working" — self-heal. Runs the common-failure checks and tells the user the exact fix,

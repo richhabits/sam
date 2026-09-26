@@ -13,11 +13,12 @@
  * runtime cycle. metrics.ts ⇄ models.ts looks like one and isn't, which is exactly the kind of
  * false positive that gets "fixed" into a worse shape.
  */
+
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 

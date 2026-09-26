@@ -9,10 +9,10 @@
 //  Dangerous steps still PAUSE for approval — that behaviour lives in workflows.ts, untouched.
 // ─────────────────────────────────────────────────────────────
 import type { Express } from "express";
-import { listWorkflows, saveWorkflow, deleteWorkflow, runWorkflow, getWorkflow, dangerousStepsIn, recordRun, type Workflow } from "./workflows.ts";
-import { runModel, type Tier } from "./models.ts";
 import { recordWorkflowRun } from "./analytics.ts";
+import { runModel, type Tier } from "./models.ts";
 import { STARTER_WORKFLOWS } from "./starter-workflows.ts";
+import { dangerousStepsIn, deleteWorkflow, getWorkflow, listWorkflows, recordRun, runWorkflow, saveWorkflow, type Workflow } from "./workflows.ts";
 
 export function registerWorkflowsRoutes(app: Express): void {
   // ── Workflows (v1.8) — named, saved, repeatable multi-step sequences. ──

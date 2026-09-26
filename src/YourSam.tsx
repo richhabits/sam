@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Icon from "./Icon";
-import { getAnalytics, setTelemetry, getTelemetryPreview } from "./lib/api";
+import { getAnalytics, getTelemetryPreview, setTelemetry } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // 📈 "Your SAM" — the user's own usage, computed 100% on-device. The point: make the value of staying

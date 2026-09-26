@@ -13,7 +13,7 @@
 //  100% on-device (SQLite); nothing here ever leaves the machine.
 // ─────────────────────────────────────────────────────────────
 import type { Express } from "express";
-import { listAll, forget, clearUser } from "./memory.ts";
+import { clearUser, forget, listAll } from "./memory.ts";
 
 export function registerMemoryRoutes(app: Express): void {
   app.get("/api/memory", (req, res) => {

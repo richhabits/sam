@@ -10,7 +10,7 @@
 //  brain to self-correct. Tools with no schema get name-only validation upstream; the Parser is a
 //  no-op for them, so adoption is incremental.
 // ─────────────────────────────────────────────────────────────
-import { err, ok, type Outcome } from "./outcome.ts";
+import { err, type Outcome, ok } from "./outcome.ts";
 
 export type ArgType = "string" | "number" | "boolean" | "array" | "object";
 

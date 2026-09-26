@@ -1,7 +1,7 @@
 import { checkFlipItAlerts } from "../server/flipit.ts";
-import { processNextStudioJob } from "../server/studio-queue.ts";
-import { auditSpaceConsumption, compactSpaceAndMemory } from "../server/space-compactor.ts";
 import { prewarmContext } from "../server/prefetch.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "../server/space-compactor.ts";
+import { processNextStudioJob } from "../server/studio-queue.ts";
 
 console.log("🚀 Starting Local Automation Daemon (Zero-Cost Mode)...");
 

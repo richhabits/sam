@@ -9,10 +9,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { BlockedFetch, safeFetch } from "./url-guard.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { safeFetch } from "./url-guard.ts";
 
 export interface WebhookEndpoint {
   id: string;
@@ -40,10 +40,10 @@ export interface WebhookDeliveryLog {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const VAULT_DIR = () => process.env.VAULT_DIR || join(ROOT, "vault");
 const WEBHOOKS_FILE = () => join(VAULT_DIR(), "webhooks.json");
-const LOGS_FILE = () => join(VAULT_DIR(), "webhook_deliveries.json");
+const _LOGS_FILE = () => join(VAULT_DIR(), "webhook_deliveries.json");
 
 let cachedEndpoints: WebhookEndpoint[] | null = null;
-const cachedLogs: WebhookDeliveryLog[] = [];
+const _cachedLogs: WebhookDeliveryLog[] = [];
 
 export function loadWebhookEndpoints(): WebhookEndpoint[] {
   if (cachedEndpoints) return cachedEndpoints;

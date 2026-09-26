@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // rollback.ts has no vault dependency — it is a pure-logic module that parses GitHub releases.
 // We test the version comparator and the exported interface shape. The actual API call is

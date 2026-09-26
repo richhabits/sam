@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./keys.ts", () => ({ keyStatus: vi.fn() }));
+
+import { capacityNudge, capacityReport } from "./capacity.ts";
 import { keyStatus } from "./keys.ts";
-import { capacityReport, capacityNudge } from "./capacity.ts";
 
 const set = (arr: any[]) => (keyStatus as any).mockReturnValue(arr);
 const s = (provider: string, total: number, healthy = total, cooling = 0) => ({ provider, total, healthy, cooling, uses: 0 });

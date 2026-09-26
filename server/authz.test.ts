@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { mayAutoRun, toolTier, allow, disallow, isAllowed, setAutopilot, setElonMode } from "./authz.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { allow, disallow, isAllowed, mayAutoRun, setAutopilot, setElonMode, toolTier } from "./authz.ts";
 
 describe("permission tiers (v1.2 security hardening)", () => {
   beforeEach(() => {

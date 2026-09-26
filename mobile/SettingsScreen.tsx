@@ -1,16 +1,18 @@
 import { nativeApplicationVersion, nativeBuildVersion } from 'expo-application';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { hasAiSharingConsent, revokeAiSharing } from './lib/aiConsent';
 import { api, forgetDevice, getHost } from './lib/api';
 import { loadConsent, type SpendConsent, setConsent } from './lib/consent';
 import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, setCustomKey } from './lib/direct';
 import { haptic } from './lib/haptics';
 
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
+
 import { GLYPHS } from './lib/glyphs';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ScreenTitle, ToggleRow } from './samKit';
 import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ScreenTitle, ToggleRow } from './samKit';
 
 type Device = { id: string; label: string; lastSeen: number };
 
@@ -27,6 +29,7 @@ export default function SettingsScreen({
   const [notifyStatus, setNotifyStatus] = useState('');
   const [_error, setError] = useState('');
   const [consent, setConsentState] = useState<SpendConsent>('ask');
+  const [aiSharing, setAiSharing] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState(false);
   const [showPlainKeys, setShowPlainKeys] = useState(false);
@@ -56,6 +59,7 @@ export default function SettingsScreen({
     soundEnabled().then(setSound);
     ensurePermission().then(setNotifyStatus);
     loadConsent().then(setConsentState);
+    hasAiSharingConsent().then(setAiSharing);
     Promise.all(ALL_PROVIDERS.map((p) => getCustomKey(p.id).then((k) => [p.id, k || ''] as const))).then((pairs) =>
       setKeys(Object.fromEntries(pairs)),
     );
@@ -151,6 +155,34 @@ export default function SettingsScreen({
             })}
           </>
         ) : null}
+      </SamSection>
+
+      {/* PRIVACY — App Review 5.1.1(i) wants the policy reachable in-app; 5.1.2(i) wants the AI
+          data-sharing permission visible and revocable somewhere other than a one-off card. */}
+      <SamSection
+        header="Privacy"
+        footer={
+          aiSharing
+            ? 'In Standalone mode SAM sends your messages to the cloud AI providers named under Cloud AI Engine. Stop sharing and it asks again before the next send.'
+            : 'In Standalone mode SAM asks before it sends a message to a cloud AI provider. Paired with your own computer, messages go to that computer instead.'
+        }
+      >
+        <SamRow glyph={GLYPHS.connection} title="Cloud AI sharing" status={<StatusText text={aiSharing ? 'Allowed' : 'Ask first'} />} />
+        {aiSharing ? (
+          <SamActionRow
+            title="Stop sharing with cloud AI"
+            onPress={() => {
+              setAiSharing(false);
+              void revokeAiSharing();
+            }}
+          />
+        ) : null}
+        <SamRow
+          glyph={GLYPHS.help}
+          title="Privacy Policy"
+          status={<SamChevron />}
+          onPress={() => void Linking.openURL('https://richhabits.github.io/sam/privacy.html')}
+        />
       </SamSection>
 
       {/* SPENDING */}

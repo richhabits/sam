@@ -2,10 +2,11 @@
 // Walks every tool's source, detects OS gating (a `!IS_MAC` / `OS !== "mac"` guard or a
 // notSupported() early-return), and emits docs/PLATFORMS.md: which tools are universal vs macOS-only,
 // and confirms macOS-only tools DEGRADE cleanly (they return a message, never crash). Run: `npm run platforms`.
-import { TOOLS } from "../server/tools.ts";
+
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { TOOLS } from "../server/tools.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = readFileSync(join(root, "server/tools.ts"), "utf8");

@@ -12,7 +12,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { poolSize } from "./keys.ts";
-import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 export interface SelectableModel {
   id: string;

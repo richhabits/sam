@@ -12,8 +12,8 @@
 //  honest in the rationale when nothing in the chain is actually configured.
 // ─────────────────────────────────────────────────────────────
 
-import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 import { keyStatus } from "./keys.ts";
+import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 export type ComplexityTier = "TIER_0_INSTANT" | "TIER_1_CODE_DATA" | "TIER_2_DEEP_REASON";
 
@@ -119,8 +119,6 @@ export function resolveOptimalRoute(prompt: string): SpeculativeRoutePlan {
     case "TIER_1_CODE_DATA":
       return planFor(prompt, tier, 380, "deepseek", "deepseek-coder-v3", ["groq", "together", "openrouter"], true,
         "Specialized code & syntax analysis model with AST understanding.");
-
-    case "TIER_2_DEEP_REASON":
     default:
       return planFor(prompt, tier, 850, "deepseek", "deepseek-reasoner", ["anthropic", "gemini", "openrouter"], false,
         "Deep chain-of-thought multi-step reasoning brain.");

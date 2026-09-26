@@ -9,18 +9,17 @@
 //  — or plain text when it's ready to answer the user.
 // ─────────────────────────────────────────────────────────────
 
-import { execSync } from "node:child_process";
-import { grammarReaches, runModel, streamModel, type Tier } from "./models.ts";
-import { compressToolOutput } from "./compress.ts";
-import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
+import { runAntigravitySilentVerifier } from "./antigravity-brain.ts";
+import { recordAuditEvent } from "./audit-ledger.ts";
 import { mayAutoRun } from "./authz.ts";
-import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
-import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
+import { compressToolOutput } from "./compress.ts";
 import { CURTAIN_FALLBACK, curtain, stageGate } from "./curtain.ts";
+import { replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
 import { capture } from "./issues.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
-import { recordAuditEvent } from "./audit-ledger.ts";
-import { runAntigravitySilentVerifier } from "./antigravity-brain.ts";
+import { grammarReaches, runModel, streamModel, type Tier } from "./models.ts";
+import { diagnostic, problemArgs, validateArgs } from "./parser.ts";
+import { TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 
 // Adaptive step budget: simple turns stay cheap (4 steps), complex agentic tasks
 // get up to 12 steps, and massive/50x multi-stage workflows get up to 50 steps. Never a flat ceiling —

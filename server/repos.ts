@@ -15,9 +15,9 @@
 //  then explains the imaginary result to the user.
 // ─────────────────────────────────────────────────────────────
 
-import { readdirSync, readFileSync, existsSync, statSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import os from "node:os";
+import { join } from "node:path";
 
 export interface Clone { path: string; owner: string | null; name: string | null; remote: string | null }
 

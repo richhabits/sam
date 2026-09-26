@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fully OFFLINE: deterministic fake embeddings (word counts over a tiny vocab)
 // so ingestion + retrieval are testable without any provider or network call.
@@ -24,7 +24,7 @@ vi.mock("./embeddings.ts", () => ({
 // Don't open the real vault's memory.db just to read the pinned model.
 vi.mock("./memory.ts", () => ({ pinnedModel: () => null }));
 
-import { chunkText, ingestFolder, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
+import { chunkText, docsStats, forgetDoc, ingestFolder, recentDocs, searchDocs } from "./ingest.ts";
 
 let vault = "";
 let docsDir = "";
