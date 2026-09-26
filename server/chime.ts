@@ -17,13 +17,12 @@
 //  NOT duplicated here.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { parseCron } from "./scheduler.ts";
-import { desktopNotify } from "./proactive.ts";
 import { logAutonomy } from "./autonomy-log.ts";
+import { desktopNotify } from "./proactive.ts";
+import { parseCron } from "./scheduler.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const FILE = join(VAULT_DIR, "chimes.json");

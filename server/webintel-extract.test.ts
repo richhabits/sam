@@ -2,8 +2,8 @@
 // The full live pipeline (real page fetch → prompt → mock llm → struct) is in
 // webintel-extract.verify.mjs (9/9). Here we pin the deterministic pieces + the extract() wiring
 // via a mock LLM so CI never needs the network or a model key.
-import { describe, it, expect } from "vitest";
-import { buildExtractPrompt, parseJsonLoose, coerceToSchema, type ExtractSchema } from "./webintel-extract.ts";
+import { describe, expect, it } from "vitest";
+import { buildExtractPrompt, coerceToSchema, type ExtractSchema, parseJsonLoose } from "./webintel-extract.ts";
 
 const schema: ExtractSchema = { title: "string", founded: "number", isPublic: "boolean", products: "string[]" };
 

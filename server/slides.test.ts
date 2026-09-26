@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
-import {
-  MAX_SLIDES, MIN_SLIDES, buildDeck, deckFilename, fallbackSections,
+import { describe, expect, it } from "vitest";
+import {buildDeck, deckFilename, fallbackSections,
+  MAX_SLIDES, MIN_SLIDES, 
   outlineMarkdown, parseSections, renderDeck, saveDeck, sectionCount,
 } from "./slides.ts";
 

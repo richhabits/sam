@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { notarize } from "@electron/notarize";
-import { notaryCredentials, isDeveloperIdSigned, skipRequested, profileName } from "./notary-credentials.mjs";
+import { isDeveloperIdSigned, notaryCredentials, profileName, skipRequested } from "./notary-credentials.mjs";
 
 export default async function notarizing(context) {
   const { electronPlatformName, appOutDir, packager } = context;

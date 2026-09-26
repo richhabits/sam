@@ -2,9 +2,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { _reset as resetIssues, recentTrail } from "./issues.ts";
-import { get, isSetup, isUnlocked, lock, loadIntoProcessEnv, migratableNames, migrateFromEnv, names, put, secretNames, setup, status, unlock, _reset } from "./safe.ts";
+import { recentTrail, _reset as resetIssues } from "./issues.ts";
 import { claim, LatchHeld, release } from "./latch.ts";
+import { _reset, get, isSetup, isUnlocked, loadIntoProcessEnv, lock, migratableNames, migrateFromEnv, names, put, secretNames, setup, status, unlock } from "./safe.ts";
 
 // The Safe: secrets sealed at rest, readable only through get(); a locked read throws (never
 // plaintext); migration imports from .env, verifies, then strips the plaintext; and no secret VALUE

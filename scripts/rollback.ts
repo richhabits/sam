@@ -2,7 +2,7 @@
 // Finds the release before this one on GitHub and opens its installer download. Your vault/data stays.
 import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { previousRelease } from "../server/rollback.ts";
 

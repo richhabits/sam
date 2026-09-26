@@ -31,10 +31,10 @@ export interface SpeechSynthesisResult {
 }
 
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { readFile, unlink } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 

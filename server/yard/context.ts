@@ -16,7 +16,7 @@
 //  genuinely new files, which are how a project grows).
 // ─────────────────────────────────────────────────────────────
 
-import { readdirSync, readFileSync, lstatSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const EDITABLE = /\.(html?|css|js|mjs|ts|tsx|jsx|json|md|txt|svg)$/i;

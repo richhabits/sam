@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 // runTestsTool shells out via execFile("npx", ["vitest", ...]). Mocking it here isn't optional:
 // without this, these tests spawn a REAL nested `npx vitest run` from inside a vitest run every
 // time the suite executes — which is exactly how a load-average-100 process storm happened in

@@ -11,9 +11,9 @@
 //  What exactly is/ isn't sent is documented in docs/PRIVACY.md. See telemetry.test.ts for the guards.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Analytics } from "./analytics.ts";
 

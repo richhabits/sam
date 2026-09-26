@@ -2,10 +2,11 @@
  *  each other (selftest wanted TOOLS, tools wanted runSelftest), which made module
  *  initialisation order load-bearing and undocumented. Injection removes the cycle and lets a
  *  test hand in any list it likes. */
-import { SPECIALISTS, NINJAS } from "./agents.ts";
-import { keyStatus } from "./keys.ts";
-import { existsSync, writeFileSync, unlinkSync } from "node:fs";
+
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { NINJAS, SPECIALISTS } from "./agents.ts";
+import { keyStatus } from "./keys.ts";
 
 export interface SelftestReport {
   ok: boolean;

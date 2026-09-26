@@ -22,8 +22,8 @@
 //  Tokens are per-browser, revocable, and never grant more than the yard's own writes.
 // ─────────────────────────────────────────────────────────────
 
-import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { yardDir } from "./store.ts";
 

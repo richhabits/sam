@@ -34,8 +34,8 @@ import {
   taskTitle,
   taskWhen,
 } from './lib/mentions';
-import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
 import { samBorder, samColor, samFont, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
+import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //

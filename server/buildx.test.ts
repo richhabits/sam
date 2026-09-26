@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { loadSkills, routeSkill } from "./skills.ts";
 
 // The buildx skill was landed 2026-07-18. Two things nearly made it inert, and neither was

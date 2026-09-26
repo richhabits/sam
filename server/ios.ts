@@ -9,10 +9,10 @@
 //  configurable local drop folder.
 // ─────────────────────────────────────────────────────────────
 
-import { watch, readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, } from "node:fs";
-import { join, extname, basename } from "node:path";
-import { homedir } from "node:os";
 import { exec } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, watch, writeFileSync, } from "node:fs";
+import { homedir } from "node:os";
+import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
 
 const sh = promisify(exec);

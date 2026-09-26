@@ -13,23 +13,23 @@
 //  a worker that leaves a phantom in the queue, so every path here ends in a write.
 // ─────────────────────────────────────────────────────────────
 
-import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { JobStore, yardDir, type JobStep, type Job } from "./store.ts";
-import { HEARTBEAT_MS, type FailureKind } from "./state.ts";
-import { execInProject, writeInProject, resolveProjectWrite, isWithin } from "./exec.ts";
-import { scrub } from "../scrub.ts";
-import { runModel, type Tier } from "../models.ts";
+import { join } from "node:path";
 import { runAgent } from "../agent.ts";
 import { handleUnattended } from "../ask.ts";
-import { createProject, checkpoint, restore, projectPath, projectsRoot, isManagedProject, updateManifest, readManifest, MANIFEST } from "./managed.ts";
-import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
+import { runModel, type Tier } from "../models.ts";
+import { scrub } from "../scrub.ts";
+import { admissible, MAX_FILES, readEditable, selectContext } from "./context.ts";
+import { planDeploy, planUnpublish, smokeTest, urlFrom } from "./deploy.ts";
 import { applyEdits } from "./edits.ts";
-import { normaliseSpec, specSummary } from "./spec.ts";
-import { buildUntilGreen, describeOutcome } from "./loop.ts";
+import { execInProject, isWithin, resolveProjectWrite, writeInProject } from "./exec.ts";
 import { saveDiffs } from "./glass.ts";
-import { planDeploy, planUnpublish, urlFrom, smokeTest } from "./deploy.ts";
+import { buildUntilGreen, describeOutcome } from "./loop.ts";
+import { checkpoint, createProject, isManagedProject, MANIFEST, projectPath, projectsRoot, readManifest, restore, updateManifest } from "./managed.ts";
+import { normaliseSpec, specSummary } from "./spec.ts";
+import { type FailureKind, HEARTBEAT_MS } from "./state.ts";
+import { type Job, type JobStep, JobStore, yardDir } from "./store.ts";
 
 const IDLE_POLL_MS = 1000;
 

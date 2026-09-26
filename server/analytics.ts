@@ -8,10 +8,10 @@
 //  strict whitelist of these aggregates and only sends them if the user explicitly opts in.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const FILE = join(VAULT_DIR, "analytics.json");

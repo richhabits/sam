@@ -18,25 +18,26 @@ import {
 
 // Dev LogBox sat on the tab bar and ate Agent/Settings taps. Store shots must not include it.
 LogBox.ignoreAllLogs(true);
+
 import ChatScreen from './ChatScreen';
 import HomeScreen from './HomeScreen';
-import VaultScreen from './VaultScreen';
 import { claim, getHost, getToken } from './lib/api';
 import { enterDemo, leaveDemo, loadDemo } from './lib/demo';
+import { haptic } from './lib/haptics';
 import { clearThread } from './lib/history';
 import { centreWhenRoomy, contentColumn, layoutFor } from './lib/layout';
 import { mentionLabel } from './lib/mentions';
 import { ensurePermission, notify } from './lib/notify';
-import { haptic } from './lib/haptics';
-import { parsePairLink, type PairLink } from './lib/pairlink';
+import { type PairLink, parsePairLink } from './lib/pairlink';
 import { normalizeHost, pairedDespiteError } from './lib/pairstate';
-import { publishWidgetState } from './lib/widgetState';
 import { parseQuickLink } from './lib/quicklink';
+import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import { publishWidgetState } from './lib/widgetState';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
-import TasksScreen from './TasksScreen';
 import { SamActionRow, SamField, SamRow, SamSection, SamTabBar, type SamTabKey } from './samKit';
-import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import TasksScreen from './TasksScreen';
+import VaultScreen from './VaultScreen';
 
 // THE POCKET — SAM, in your hand.
 //

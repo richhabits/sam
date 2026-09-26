@@ -8,6 +8,7 @@
 // "4/4 live-verified". A verification script that cannot execute is worse than none: it reports
 // success by existing. Now imports the REAL module, and the numbers below are from a real run.
 import { extractMany, searchAndExtract } from "../server/webintel-research.ts";
+
 let pass=0, fail=0; const ok=(n,c)=>{(c?pass++:fail++);console.log(`  [${c?"PASS":"FAIL"}] ${n}`);};
 
 const schema = { title: "string" };

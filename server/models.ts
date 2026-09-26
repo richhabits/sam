@@ -13,14 +13,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadRanking, rankingStale } from "./colosseum.ts";
+import { recordCostSavings } from "./cost-optimizer.ts";
 import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./keys.ts";
 import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
 import { count, mark, observe } from "./pulse.ts";
 import { relayBrain } from "./relay.ts";
 import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
-import { healthOrder } from "./speed.ts";
 import { classifyPromptTier } from "./speculative-router.ts";
-import { recordCostSavings } from "./cost-optimizer.ts";
+import { healthOrder } from "./speed.ts";
 
 export type Tier = "local" | "free" | "premium";
 export interface ModelResult { text: string; provider: string; tier: Tier }
@@ -42,8 +42,9 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
   return { text: mockText(tier), provider: `mock:${tier}`, tier };
 }
 
-import { callOllama, callGateway, OLLAMA_MODEL, OLLAMA_URL, PROVIDERS, type Provider, deviceId, warmBrain, GATEWAY_URL, GROQ_MODEL, streamOpenAICompat, streamGemini, callOllamaStream } from "./model-providers.ts";
-export { deviceId, warmBrain, GATEWAY_URL, type Provider, PROVIDERS };
+import { callGateway, callOllama, callOllamaStream, deviceId, GATEWAY_URL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL, PROVIDERS, type Provider, streamGemini, streamOpenAICompat, warmBrain } from "./model-providers.ts";
+
+export { deviceId, GATEWAY_URL, PROVIDERS, type Provider, warmBrain };
 
 // Try one provider, rotating through its key pool on failure.
 async function tryProvider(prov: Provider, system: string, prompt: string): Promise<string | null> {

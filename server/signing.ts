@@ -7,11 +7,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const VAULT = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");

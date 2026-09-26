@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TOOLS } from "./tools.ts";
 import { titleCard } from "./render.ts";
+import { TOOLS } from "./tools.ts";
 
 describe("Video Generation Pipeline & Free-Credit Lanes", () => {
   const videoTool = TOOLS.find((t) => t.name === "generate_video");

@@ -7,11 +7,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { openDb } from "./db.ts";
-import { embedOne, cosine } from "./embeddings.ts";
+import { cosine, embedOne } from "./embeddings.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

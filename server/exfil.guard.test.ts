@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markUntrusted, fenceToolResult } from "./agent.ts";
+import { fenceToolResult, markUntrusted } from "./agent.ts";
 import { carriesKnownCredential, redactKnownCredentials } from "./scrub.ts";
 import { isCredentialPath } from "./tools.ts";
 

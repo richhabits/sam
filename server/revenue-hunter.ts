@@ -6,10 +6,10 @@
 //  that generates hypothetical savings and ROI metrics.
 // ─────────────────────────────────────────────────────────────
 
-import { runModel } from "./models.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
-import { quotes } from "./markets.ts";
 import { scanCrossMarketSpreads } from "./flipit-scale.ts";
+import { quotes } from "./markets.ts";
+import { runModel } from "./models.ts";
 
 export interface OpportunityItem {
   id: string;

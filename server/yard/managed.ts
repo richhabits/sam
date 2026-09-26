@@ -17,9 +17,9 @@
 //  throws is that a silent git error once had SAM explaining an outcome that never was.
 // ─────────────────────────────────────────────────────────────
 
-import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
+import { join } from "node:path";
 import { execInProject, isWithin } from "./exec.ts";
 
 export function yardRoot(): string {

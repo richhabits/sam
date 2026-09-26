@@ -9,10 +9,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { BlockedFetch, safeFetch } from "./url-guard.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BlockedFetch, safeFetch } from "./url-guard.ts";
 
 export interface WebhookEndpoint {
   id: string;

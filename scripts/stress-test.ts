@@ -1,12 +1,13 @@
 process.env.SAM_BENCH_MOCK = "1";
 process.env.NODE_ENV = "test";
-import { route } from "../server/classify.ts";
+
 import { isFastPath } from "../server/agent.ts";
-import { TOOLS, toolByName } from "../server/tools.ts";
-import { remember, memoryStats } from "../server/memory.ts";
-import { fingerprint, store as cacheStore, lookup as cacheLookup, clearCache, cacheStats } from "../server/cache.ts";
+import { lookup as cacheLookup, cacheStats, store as cacheStore, clearCache, fingerprint } from "../server/cache.ts";
+import { route } from "../server/classify.ts";
 import { desk as flipitDesk } from "../server/flipit.ts";
+import { memoryStats, remember } from "../server/memory.ts";
 import { runSelftest } from "../server/selftest.ts";
+import { TOOLS, toolByName } from "../server/tools.ts";
 
 async function main() {
   console.log("🚀 INITIALIZING STRESS TEST SUITE...");

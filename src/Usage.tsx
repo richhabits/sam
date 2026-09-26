@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { getStatus } from "./lib/api";
+import { useEffect, useState } from "react";
 import Icon from "./Icon";
+import { getStatus } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // Live Usage — even though it's all free, this shows WHERE SAM is spending each provider,

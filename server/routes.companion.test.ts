@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterAll, beforeAll } from "vitest";
-import express from "express";
 import { createServer, type Server } from "node:http";
+import express from "express";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { getAsk, raiseAsk } from "./ask.ts";
 import { registerCompanionRoutes } from "./routes.companion.ts";
-import { raiseAsk, getAsk } from "./ask.ts";
 
 describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
   let server: Server;

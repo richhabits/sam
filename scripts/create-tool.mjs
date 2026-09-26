@@ -3,8 +3,8 @@
 //  SAM · create-tool — scaffold a new tool stub + print how to wire it.
 //  Usage:  npm run create-tool my_tool_name   [--dangerous]
 // ─────────────────────────────────────────────────────────────
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");

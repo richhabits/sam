@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { selectContext, admissible, score, keywords, readEditable, type ProjectFile } from "./context.ts";
-import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { admissible, keywords, type ProjectFile, readEditable, score, selectContext } from "./context.ts";
 
 const f = (path: string, content: string): ProjectFile => ({ path, content, bytes: Buffer.byteLength(content) });
 

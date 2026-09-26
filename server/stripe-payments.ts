@@ -6,8 +6,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { deposit, getWallet } from "./wallet.ts";
 import { getKey } from "./keys.ts";
+import { deposit, getWallet } from "./wallet.ts";
 
 export interface CheckoutSessionParams {
   amountGbp: number;

@@ -17,11 +17,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { seal, open } from "./vault-crypto.ts";   // encrypted at rest when vault encryption is on
 import { writeFileAtomic } from "./atomic.ts";
+import { open, seal } from "./vault-crypto.ts";   // encrypted at rest when vault encryption is on
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

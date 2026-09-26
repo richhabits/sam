@@ -8,8 +8,8 @@
 //  because "live" is exactly the case that needs it; it still fetches only same-origin, loopback data.
 // ─────────────────────────────────────────────────────────────
 import { issuesSummary } from "./issues.ts";
-import { knackEnabled, recentInfluences, type Influence } from "./knack.ts";
-import { recentActivity, snapshot, type Activity } from "./pulse.ts";
+import { type Influence, knackEnabled, recentInfluences } from "./knack.ts";
+import { type Activity, recentActivity, snapshot } from "./pulse.ts";
 
 export interface ScopeData {
   at: number;

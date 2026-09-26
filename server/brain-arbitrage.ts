@@ -10,8 +10,8 @@
 //  confidently told those lanes were online.
 // ─────────────────────────────────────────────────────────────
 
-import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 import { keyStatus } from "./keys.ts";
+import { PROVIDER_REGISTRY } from "./providers.registry.ts";
 
 export interface ProviderBenchmark {
   id: string;

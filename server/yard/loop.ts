@@ -22,14 +22,14 @@
 //  is "it said it fixed it three times and it was broken in production".
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execInProject, writeInProject, resolveProjectWrite, ExecRefused, type ExecResult } from "./exec.ts";
-import { readEditable, selectContext, admissible, MAX_FILES } from "./context.ts";
+import { admissible, MAX_FILES, readEditable, selectContext } from "./context.ts";
+import { diffFiles, type FileDiff, summariseAll } from "./diff.ts";
 import { applyEdits } from "./edits.ts";
-import { indexProject, renderIndex } from "./tree.ts";
-import { diffFiles, summariseAll, type FileDiff } from "./diff.ts";
+import { ExecRefused, type ExecResult, execInProject, resolveProjectWrite, writeInProject } from "./exec.ts";
 import { MANIFEST } from "./managed.ts";
+import { indexProject, renderIndex } from "./tree.ts";
 
 // SAM's own record of the project is not the model's to rewrite — the slug inside it is
 // the invariant every later lookup depends on.

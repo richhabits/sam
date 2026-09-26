@@ -6,12 +6,12 @@
 //  (local, gitignored). No third party — SAM pushes direct.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
 import webpush from "web-push";
-import { scrub, collapseHomes } from "./scrub.ts";
+import { writeFileAtomic } from "./atomic.ts";
+import { collapseHomes, scrub } from "./scrub.ts";
 
 const VAULT = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 const KEYS = join(VAULT, "push-keys.json");

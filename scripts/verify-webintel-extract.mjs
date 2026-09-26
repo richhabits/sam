@@ -7,7 +7,8 @@
 // landed, so it threw ERR_MODULE_NOT_FOUND and the "9/9 passed" receipt it advertised had
 // never actually run on this disk. A verification script that cannot execute is worse than
 // none: it reports success by existing.
-import { buildExtractPrompt, parseJsonLoose, coerceToSchema, extract } from "../server/webintel-extract.ts";
+import { buildExtractPrompt, coerceToSchema, extract, parseJsonLoose } from "../server/webintel-extract.ts";
+
 let pass=0, fail=0; const ok=(n,c)=>{(c?pass++:fail++);console.log(`  [${c?"PASS":"FAIL"}] ${n}`);};
 
 // 1) prompt building

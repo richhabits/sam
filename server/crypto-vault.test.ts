@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { deriveKey, encrypt, decrypt, isEncrypted, newKeyConfig, unlockKey, keyFingerprint } from "./crypto-vault.ts";
 import { randomBytes } from "node:crypto";
+import { describe, expect, it } from "vitest";
+import { decrypt, deriveKey, encrypt, isEncrypted, keyFingerprint, newKeyConfig, unlockKey } from "./crypto-vault.ts";
 
 describe("vault crypto core", () => {
   it("round-trips plaintext through an authenticated envelope", () => {

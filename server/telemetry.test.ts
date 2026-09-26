@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
 import { rmSync } from "node:fs";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const SCRATCH = "/tmp/sam-telemetry-test";
 let T: typeof import("./telemetry.ts");

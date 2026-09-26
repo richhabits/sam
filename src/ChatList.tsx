@@ -1,5 +1,5 @@
-import Icon from "./Icon";
 import { Fragment, useMemo, useState } from "react";
+import Icon from "./Icon";
 import { cleanTitle, groupByRecency, matchesQuery, snippetFor } from "./lib/chatTitle";
 
 /**

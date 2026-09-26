@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./models.ts", () => ({
   runModel: vi.fn(async () => ({
@@ -44,18 +44,18 @@ vi.mock("./models.ts", () => ({
 }));
 
 import {
+  buildCharacterAnchorPrompt,
+  type CharacterProfile,
+  compileHiggsfieldMotionPrompt,
+  generateStoryboardDirector,
   HIGGSFIELD_CAMERA_RIGS,
   HIGGSFIELD_LENSES,
   HIGGSFIELD_PHYSICS,
-  buildCharacterAnchorPrompt,
-  compileHiggsfieldMotionPrompt,
-  generateStoryboardDirector,
-  type CharacterProfile,
 } from "./studio-higgsfield.ts";
 import {
+  studioCharacterLockTool,
   studioHiggsfieldDirectorTool,
   studioMotionControllerTool,
-  studioCharacterLockTool,
 } from "./tools.ts";
 
 describe("Higgsfield Studio 100x Engine", () => {

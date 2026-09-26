@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { _reset as resetIssues, listIssues } from "./issues.ts";
+import { listIssues, _reset as resetIssues } from "./issues.ts";
+import { defaultGuards, type Guard, startKeeper, stopKeeper, tick } from "./keeper.ts";
 import { _reset as resetPulse, snapshot } from "./pulse.ts";
-import { type Guard, startKeeper, stopKeeper, tick, defaultGuards } from "./keeper.ts";
 
 // The Keeper: one pass observes actual vs intent, corrects SAFE drift, and records every correction
 // (Black Box issue + Pulse metric). Injected guards drive the scenarios so nothing real is touched.

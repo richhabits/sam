@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // astReplaceSymbolTool validates renames by running `npx tsc --noEmit` against the WHOLE
 // project (cwd: process.cwd()), which never actually inspects files living outside the
@@ -13,6 +13,7 @@ vi.mock("node:child_process", async (importOriginal) => {
   const actual: any = await importOriginal();
   return { ...actual, execSync: vi.fn(actual.execSync) };
 });
+
 import { execSync } from "node:child_process";
 import { astReplaceSymbolTool } from "./tools.ts";
 

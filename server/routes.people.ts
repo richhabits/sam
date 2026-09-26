@@ -1,5 +1,10 @@
+import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Express } from "express";
+import { writeFileAtomic } from "./atomic.ts";
 import { writeEnv } from "./env-file.ts";
 import { isLoopback } from "./http-guards.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
@@ -7,11 +12,6 @@ import { addPerson, faceRoster, listPeople } from "./people.ts";
 import { addSubscription, subscriberCount, vapidPublicKey } from "./push.ts";
 import { logSecurity } from "./security.ts";
 import { generateAndroidKeystore, signingStatus } from "./signing.ts";
-import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // The address another device on the LAN can actually reach SAM at. Exported (not local to
 // registerPeopleRoutes) because /api/pair/new in index.ts needs the exact same thing and must

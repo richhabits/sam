@@ -9,7 +9,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { parsePairLink, type PairLink } from './lib/pairlink';
+import { type PairLink, parsePairLink } from './lib/pairlink';
 import { samColor, samSpace, samType } from './lib/samTheme';
 
 export default function QRScanner({

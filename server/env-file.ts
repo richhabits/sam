@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { withLatchSync } from "./latch.ts";
 
 // __dirname equivalent. IMPORTANT: plain fileURLToPath(import.meta.url), never

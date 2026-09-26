@@ -6,9 +6,9 @@
 //  Run: npm run og   (then commit docs/og.png)
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
 import { chromium } from "playwright-core";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");

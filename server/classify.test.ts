@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { classify, route, selfCheckFailed, nextTierUp, CONTINUATION_RE } from "./classify.ts";
+import { describe, expect, it } from "vitest";
+import { CONTINUATION_RE, classify, nextTierUp, route, selfCheckFailed } from "./classify.ts";
 
 describe("classify", () => {
   it("greetings & acks are trivial → local + lean", () => {

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the model so tests run fast and offline without network or keys
 vi.mock("./models.ts", () => ({
@@ -21,9 +21,9 @@ vi.mock("./models.ts", () => ({
   grammarReaches: vi.fn(async () => false),
 }));
 
-import { swarmFanout, type FanoutTask } from "./swarm.ts";
-import { swarmFanoutTool, codebaseScanParallelTool, isCredentialPath } from "./tools.ts";
 import { parseToolBatch } from "./agent.ts";
+import { type FanoutTask, swarmFanout } from "./swarm.ts";
+import { codebaseScanParallelTool, isCredentialPath, swarmFanoutTool } from "./tools.ts";
 
 let dir: string;
 beforeEach(() => {

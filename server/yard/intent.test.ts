@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { read, routeOrNull, nameFrom, projectFrom, CONFIDENT } from "./intent.ts";
+import { describe, expect, it } from "vitest";
+import { CONFIDENT, nameFrom, projectFrom, read, routeOrNull } from "./intent.ts";
 
 // The asymmetry under test: reading a build request as chat costs a repeat; reading
 // chat as a build request starts a job, writes files and spends money. So the large

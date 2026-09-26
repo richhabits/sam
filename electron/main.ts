@@ -2,14 +2,14 @@
 // module below evaluates. (ES imports evaluate in source order, so preboot runs before the server.)
 import "./preboot.ts";
 
-import { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen, clipboard } from "electron";
-import path from "node:path";
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { captureSelection, ensureAccessibility, pasteBack, buildPrompt, overlayHTML, type OverlayAction } from "./overlay.ts";
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from "electron";
 import { crossOutOnce } from "../server/threshold.ts";   // same module the server booted → shares the once-guard
-import { projectsRoot } from "../server/yard/managed.ts";
 import { isWithin, trueLocation } from "../server/yard/exec.ts";
+import { projectsRoot } from "../server/yard/managed.ts";
+import { buildPrompt, captureSelection, ensureAccessibility, type OverlayAction, overlayHTML, pasteBack } from "./overlay.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8787;

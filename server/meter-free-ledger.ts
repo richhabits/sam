@@ -15,8 +15,8 @@
 //  reports what work would cost, not what any specific product charges.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSavingsSummary } from "./cost-optimizer.ts";
 

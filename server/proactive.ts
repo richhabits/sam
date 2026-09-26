@@ -6,11 +6,11 @@
 //  (works even if the window's closed) + queued for the app.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
 import { execFile } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NUDGES = join(process.env.VAULT_DIR || join(ROOT, "vault"), "nudges.json");
@@ -78,9 +78,9 @@ const briefTime = () => (process.env.SAM_BRIEF_TIME || "08:00");
 function hhmm(d = new Date()) { return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
 function today() { return new Date().toLocaleDateString("en-GB"); }
 
-import { pushNotify, summarize as pushSummary } from "./push.ts";
-import { isEnabled } from "./consent.ts";
 import { logAutonomy } from "./autonomy-log.ts";
+import { isEnabled } from "./consent.ts";
+import { pushNotify, summarize as pushSummary } from "./push.ts";
 
 export function startProactive(composeBrief: () => Promise<string>) {
   if (process.env.SAM_NO_PROACTIVE === "1") return;

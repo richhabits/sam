@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { disambiguateUserIntent } from "./intent-disambiguator.ts";
 import { intentAutoDisambiguatorTool, TOOLS } from "./tools.ts";
 

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The Pairing is what lets a browser earn the Handshake without ever holding the preload passkey.
 // These are its promises: a code pairs ONCE, a session is revocable and expires, and the raw token

@@ -1,27 +1,29 @@
 import type React from "react";
-import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, memo } from "react";
-import { command, confirm as confirmAction, streamCommand, setUser, getProjects, getLog, getStatus, getTools, checkUpdate, runUpdate, getProactive, streamTeam, getAutopilot, setAutopilotMode, setElonMode, importContext, type AgentResult, type Attachment, type Swarm, getSwarms, startSwarm, approveSwarmAgent, addSchedule, getRoster, getMemory, forgetMemory, exportMemory, clearMemory, getQuotes, runArena, getArena, clearArena, yardPairPending, saveKeys, getPreferences, learnPreference, queueStudioJob, deepResearch } from "./lib/api";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { renderMarkdown } from "./lib/md";
-import { startWakeListener } from "./lib/wake";
-import { speak as ttsSpeak, stopSpeaking } from "./lib/tts";
-import { isStopCommand } from "./lib/stopIntent";
-import WidgetRenderer from "./WidgetRenderer";
-import { ErrorBoundary } from "./ErrorBoundary";
 import ChatList, { displayTitle } from "./ChatList";
-import { matchesQuery } from "./lib/chatTitle";
-import { type Capability, GROUP_LABELS, groupCapabilities } from "./lib/capabilities";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { type AgentResult, type Attachment, addSchedule, approveSwarmAgent, checkUpdate, clearArena, clearMemory, command, confirm as confirmAction, deepResearch, exportMemory, forgetMemory, getArena, getAutopilot, getLog, getMemory, getPreferences, getProactive, getProjects, getQuotes, getRoster, getStatus, getSwarms, getTools, importContext, learnPreference, queueStudioJob, runArena, runUpdate, type Swarm, saveKeys, setAutopilotMode, setElonMode, setUser, startSwarm, streamCommand, streamTeam, yardPairPending } from "./lib/api";
+import { type Capability, GROUP_LABELS, groupCapabilities } from "./lib/capabilities";
+import { matchesQuery } from "./lib/chatTitle";
+import { renderMarkdown } from "./lib/md";
+import { isStopCommand } from "./lib/stopIntent";
+import { stopSpeaking, speak as ttsSpeak } from "./lib/tts";
+import { startWakeListener } from "./lib/wake";
+import WidgetRenderer from "./WidgetRenderer";
+
 // Heavy panels are lazy-loaded — they only download when you actually open them,
 // so the initial app is slimmer and paints faster.
 const VoiceMode = lazy(() => import("./VoiceMode"));
 const Admin = lazy(() => import("./Admin"));
-import UpdateButton from "./UpdateButton";
-import PairPrompt, { useNeedsPairing } from "./PairPrompt";
-import Icon, { ICON_NAMES, type IconName } from "./Icon";
-import PersonaPicker from "./PersonaPicker";
 
-import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
+import Icon, { ICON_NAMES, type IconName } from "./Icon";
+import { HANDOFF_BLURB, HANDOFF_PROMPT } from "./lib/handoffPrompt";
+import PairPrompt, { useNeedsPairing } from "./PairPrompt";
+import PersonaPicker from "./PersonaPicker";
+import UpdateButton from "./UpdateButton";
+
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
 const Mt5Pane = lazy(() => import("./Mt5Pane"));

@@ -20,9 +20,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { randomUUID } from "node:crypto";
-import { holdPending, takePending, type PendingAction } from "./pending.ts";
 import { isDangerous } from "./authz.ts";
 import { logAutonomy } from "./autonomy-log.ts";
+import { holdPending, type PendingAction, takePending } from "./pending.ts";
 
 export function askEnabled(): boolean {
   return process.env.SAM_ASK !== "0";   // default ON (SAM_ASK=0 kills it) — the fail-safe approval path is protective, so it stays on

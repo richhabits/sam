@@ -6,8 +6,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHash, randomBytes } from "node:crypto";
+import { type DeviceSession, listSessions } from "./pairing.ts";
 import { redactKnownCredentials } from "./scrub.ts";
-import { listSessions, type DeviceSession } from "./pairing.ts";
 
 export interface MobilePushPayload {
   title: string;

@@ -6,9 +6,9 @@
 //  daily action deck with one-click execution triggers.
 // ─────────────────────────────────────────────────────────────
 
+import { getAutoProvisionStatus } from "./auto-provision.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
-import { getAutoProvisionStatus } from "./auto-provision.ts";
 
 export interface ActionCard {
   id: string;

@@ -6,11 +6,11 @@
 //  on demand via the my_apps / my_socials tools.
 // ─────────────────────────────────────────────────────────────
 
-import { promisify } from "node:util";
 import { exec } from "node:child_process";
-import { readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { PROJECTS } from "./projects.ts";
 
 const sh = promisify(exec);

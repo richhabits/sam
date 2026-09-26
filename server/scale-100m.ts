@@ -9,8 +9,8 @@
 //  or a live API response, it MUST NOT appear here.
 // ─────────────────────────────────────────────────────────────
 
-import { readdirSync, existsSync, readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSavingsSummary } from "./cost-optimizer.ts";
 

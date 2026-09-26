@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getModelSelectorCatalogue, loadModelSelection, saveModelSelection } from "./model-selector.ts";
 
 describe("DYNAMIC MODEL SELECTOR & ZERO-COST CATALOG", () => {

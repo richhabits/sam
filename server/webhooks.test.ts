@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   computeHmacSignature,
-  verifyInboundSignature,
-  registerWebhookEndpoint,
   dispatchWebhookEvent,
   loadWebhookEndpoints,
+  registerWebhookEndpoint,
+  verifyInboundSignature,
 } from "./webhooks.ts";
 
 describe("SECURE EVENT WEBHOOKS & INBOUND SIGNAL ENGINE", () => {

@@ -16,8 +16,8 @@
 //  No model call in the common case — pure heuristics = ~0ms, $0.
 // ─────────────────────────────────────────────────────────────
 
-import type { Tier, Lane } from "./models.ts";
 import { isFastPath, needsLiveInfo } from "./agent.ts";
+import type { Lane, Tier } from "./models.ts";
 
 export type ReqClass = "trivial" | "standard" | "hard" | "needs-tools";
 

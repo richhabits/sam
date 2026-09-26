@@ -8,13 +8,13 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, mkdirSync } from "node:fs";
+import { basename, dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname, extname, basename } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "./db.ts";
-import { embed, embedOne, cosine } from "./embeddings.ts";
-import { pinnedModel } from "./memory.ts";
+import { cosine, embed, embedOne } from "./embeddings.ts";
 import { chunkText, extractText } from "./ingest.ts";
+import { pinnedModel } from "./memory.ts";
 import { safeFetch } from "./url-guard.ts";
 
 // Lazy DB handle — opened on FIRST use, not at import. This keeps the (native) SQLite open OFF

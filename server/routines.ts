@@ -19,8 +19,8 @@
 //  crash mid-write can never leave a half-written map. NO silent failures: bind returns a typed result.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isValidWorkflowId } from "./workflows.ts";
 

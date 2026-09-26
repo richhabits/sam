@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  parseMacBatteryOutput,
-  getHardwareVitals,
   type BatteryStatus,
+  getHardwareVitals,
+  parseMacBatteryOutput,
 } from "./hardware-monitor.ts";
 
 describe("S.A.M. Hardware & Battery Sentinel", () => {

@@ -4,8 +4,8 @@ import { cancelJob, fetchJobDetail, raiseJobBudget, retryJob } from './lib/api';
 import type { JobStep } from './lib/fold';
 import { haptic } from './lib/haptics';
 import { taskGlyph, taskTitle } from './lib/mentions';
-import { RunLog, SamSheet, type RunStep } from './samKit';
 import { samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
+import { RunLog, type RunStep, SamSheet } from './samKit';
 
 // JOB DETAIL SHEET — design_handoff_sam_clients/README.md, build order step 5: "small, high
 // value — failures currently have nowhere to go." Before this, TasksScreen's rows had no tap

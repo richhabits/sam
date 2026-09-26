@@ -3,8 +3,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { api } from './lib/api';
 import { type Attachment, pickFile, pickPhoto, takePhoto } from './lib/attach';
 import { GLYPHS } from './lib/glyphs';
-import { SamChevron, SamRow, SamSection, SamSheet } from './samKit';
 import { samBorder, samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { SamChevron, SamRow, SamSection, SamSheet } from './samKit';
 
 // "ADD TO SAM" — the + in the composer.
 //

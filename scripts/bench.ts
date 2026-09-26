@@ -17,12 +17,12 @@
 //          npm run bench -- --compare baseline v1.4   → prints a delta table
 // ─────────────────────────────────────────────────────────────
 
-import { spawn, type ChildProcess } from "node:child_process";
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { type ChildProcess, spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { costUSD } from "../server/metrics.ts";
 import type { ModelCall } from "../server/metrics.ts";
+import { costUSD } from "../server/metrics.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");

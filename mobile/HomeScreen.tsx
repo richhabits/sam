@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { api, type ApiError } from './lib/api';
+import { type ApiError, api } from './lib/api';
 import { haptic } from './lib/haptics';
+import { layoutFor, tileWidthPercent } from './lib/layout';
 import { type RecentTask, taskGlyph, taskTitle, taskWhen } from './lib/mentions';
-import { GlyphTile, HeroCard, SamRow, SamSectionLabel } from './samKit';
 import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
 import { publishWidgetState } from './lib/widgetState';
-import { layoutFor, tileWidthPercent } from './lib/layout';
+import { GlyphTile, HeroCard, SamRow, SamSectionLabel } from './samKit';
 
 // HOME — design_handoff_sam_clients/README.md, "Screens › Home": the new launch tab, one of
 // the surfaces the phone never had. Hero card → Ask it → pick up where you left off → a grid to

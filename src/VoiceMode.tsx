@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { speak as ttsSpeak, stopSpeaking, voiceLevel } from "./lib/tts";
+import { useEffect, useRef, useState } from "react";
+import { stopSpeaking, speak as ttsSpeak, voiceLevel } from "./lib/tts";
 
 type State = "connecting" | "listening" | "thinking" | "speaking" | "unsupported" | "blocked";
 

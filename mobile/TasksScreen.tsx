@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, View } from 'react-native';
+import JobDetailSheet from './JobDetailSheet';
 import { api } from './lib/api';
 import { applyFilter, type Filter, taskFilters, windowNote } from './lib/filters';
 import { elapsed, type JobStep, runLine } from './lib/fold';
 import { GLYPHS } from './lib/glyphs';
 import { taskGlyph, taskTitle } from './lib/mentions';
-import JobDetailSheet from './JobDetailSheet';
-import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection, ScreenTitle } from './samKit';
 import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection, ScreenTitle } from './samKit';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 
 describe("GUIDED KEY SETUP & VALIDATOR ASSISTANT", () => {

@@ -6,9 +6,9 @@
 //  Exits 1 on any failure — so a malicious or malformed pack can't merge into the community index.
 // ─────────────────────────────────────────────────────────────
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
-import { verifyPack } from "../server/packs.ts";
+import { extname, join } from "node:path";
 import { scanCode } from "../server/forge.ts";
+import { verifyPack } from "../server/packs.ts";
 
 const dir = process.argv[2] || "packs";
 function walk(d: string): string[] {

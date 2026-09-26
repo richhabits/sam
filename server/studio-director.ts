@@ -5,7 +5,7 @@
 //  lighting palettes, consistent character seeds, and SMPTE frame timing.
 // ─────────────────────────────────────────────────────────────
 
-import { HIGGSFIELD_CAMERA_RIGS, type CameraMove } from "./studio-higgsfield.ts";
+import { type CameraMove, HIGGSFIELD_CAMERA_RIGS } from "./studio-higgsfield.ts";
 
 export interface StoryboardShot {
   shotNumber: number;

@@ -7,10 +7,10 @@
 //  run_command is authorized.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync, } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

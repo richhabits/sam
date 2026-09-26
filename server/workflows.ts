@@ -11,10 +11,10 @@
 //  before a dangerous one run; the dangerous step waits for you.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { isDangerous } from "./authz.ts";
 
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");

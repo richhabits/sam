@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createHmac } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createStripeCheckoutSession,
-  verifyStripeWebhookSignature,
   processStripeWebhookEvent,
+  verifyStripeWebhookSignature,
 } from "./stripe-payments.ts";
-import { getWallet, approveKYC } from "./wallet.ts";
+import { approveKYC, getWallet } from "./wallet.ts";
 
 describe("Production Stripe Payments & Webhook Engine", () => {
   const originalEnv = process.env.STRIPE_SECRET_KEY;

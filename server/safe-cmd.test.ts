@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { isReadOnlyCommand } from "./tools.ts";
 
 // These tests verify the ACTUAL classification logic, not just that the function exists.

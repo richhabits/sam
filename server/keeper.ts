@@ -12,10 +12,10 @@
 // ─────────────────────────────────────────────────────────────
 import { statfsSync } from "node:fs";
 import { join } from "node:path";
-import { capture } from "./issues.ts";
-import { sweepStaleLatches, staleLatches } from "./latch.ts";
-import { count, mark } from "./pulse.ts";
 import { getHardwareVitals } from "./hardware-monitor.ts";
+import { capture } from "./issues.ts";
+import { staleLatches, sweepStaleLatches } from "./latch.ts";
+import { count, mark } from "./pulse.ts";
 
 export interface GuardResult { ok: boolean; detail?: string }
 export interface Guard {

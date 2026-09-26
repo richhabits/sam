@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { requestYardPairing, collectYardPairing, setPairToken, pairStatus } from "./lib/api";
+import { collectYardPairing, pairStatus, requestYardPairing, setPairToken } from "./lib/api";
 
 // 🔑 PAIRING — the way a browser tab gets back in.
 //

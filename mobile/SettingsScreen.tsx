@@ -7,10 +7,11 @@ import { ANTHROPIC_PROVIDER, DIRECT_PROVIDERS, GEMINI_PROVIDER, getCustomKey, se
 import { haptic } from './lib/haptics';
 
 const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS];
+
 import { GLYPHS } from './lib/glyphs';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
-import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ScreenTitle, ToggleRow } from './samKit';
 import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ScreenTitle, ToggleRow } from './samKit';
 
 type Device = { id: string; label: string; lastSeen: number };
 

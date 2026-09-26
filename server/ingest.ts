@@ -10,17 +10,17 @@
 // ─────────────────────────────────────────────────────────────
 
 import { existsSync, mkdirSync } from "node:fs";
-import { count } from "./pulse.ts";
-import { distill } from "./reader.ts";
-import { readFile, readdir, stat } from "node:fs/promises";
-import { join, dirname, extname, resolve } from "node:path";
-import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { homedir } from "node:os";
+import { dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type Database from "better-sqlite3";
 import { openDb } from "./db.ts";
-import { embed, embedOne, cosine } from "./embeddings.ts";
+import { cosine, embed, embedOne } from "./embeddings.ts";
 import { pinnedModel } from "./memory.ts";
+import { count } from "./pulse.ts";
+import { distill } from "./reader.ts";
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));

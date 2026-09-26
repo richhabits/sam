@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  processWatchPrompt,
   APPLE_APP_INTENTS,
   prepareWatchActionNotification,
+  processWatchPrompt,
 } from "./apple-ecosystem.ts";
 
 describe("Apple Multi-Device Ecosystem & Watch Dispatch", () => {

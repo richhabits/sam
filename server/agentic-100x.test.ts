@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildExecutionWaves, execute100xAgenticWorkflow, type TaskNode } from "./agentic-100x.ts";
 
 describe("100X ANTIGRAVITY AGENTIC SUPER-ENGINE", () => {

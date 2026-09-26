@@ -10,12 +10,12 @@
 //  grant trust — the safety pipeline + explicit approval always apply.
 // ─────────────────────────────────────────────────────────────
 
-import { generateKeyPairSync, sign as edSign, verify as edVerify, createPublicKey, createPrivateKey } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
-import { join, dirname } from "node:path";
+import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify, generateKeyPairSync } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { scanCode, testForged, listForged, type Capability, type ForgedTool } from "./forge.ts";
+import { writeFileAtomic } from "./atomic.ts";
+import { type Capability, type ForgedTool, listForged, scanCode, testForged } from "./forge.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

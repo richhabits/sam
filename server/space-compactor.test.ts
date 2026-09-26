@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { spaceConsumptionOptimizerTool } from "./tools.ts";
 

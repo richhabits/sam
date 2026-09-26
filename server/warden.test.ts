@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { hostAllowed, isTrustedLocal, originAllowed } from "./http-guards.ts";
-import { checkOutboundUrl } from "./url-guard.ts";
-import { relayBrain, type Brain } from "./relay.ts";
-import { redact, recentTrail, _reset as resetIssues } from "./issues.ts";
-import { isCatastrophic } from "./tools.ts";
-import { holdPending, takePending, withPending, _clearPending } from "./pending.ts";
+import { recentTrail, redact, _reset as resetIssues } from "./issues.ts";
+import { _clearPending, holdPending, takePending, withPending } from "./pending.ts";
+import { type Brain, relayBrain } from "./relay.ts";
 import * as safe from "./safe.ts";
+import { isCatastrophic } from "./tools.ts";
+import { checkOutboundUrl } from "./url-guard.ts";
 
 // ─────────────────────────────────────────────────────────────
 //  THE WARDEN — SAM's security-regression gate.

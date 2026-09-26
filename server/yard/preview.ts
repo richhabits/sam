@@ -10,11 +10,11 @@
 //  then check it is inside the project — never compare the strings someone sent.
 // ─────────────────────────────────────────────────────────────
 
-import { existsSync, statSync, readFileSync, readdirSync } from "node:fs";
-import { join, extname, sep } from "node:path";
-import { projectsRoot, projectPath, isManagedProject } from "./managed.ts";
-import { trueLocation, isWithin } from "./exec.ts";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { extname, join, sep } from "node:path";
 import { generatePremiumDesignSystem } from "../antigravity-brain.ts";
+import { isWithin, trueLocation } from "./exec.ts";
+import { isManagedProject, projectPath, projectsRoot } from "./managed.ts";
 
 // Only what a built page legitimately needs. Anything else is not served rather than
 // guessed at — an unknown type handed back as octet-stream is still a file handed back.

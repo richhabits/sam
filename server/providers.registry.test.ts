@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { PROVIDER_REGISTRY, POOLED, PROVIDER_ENV, CONFIG_STYLE, uiCatalogue } from "./providers.registry.ts";
+import { describe, expect, it } from "vitest";
+import { CONFIG_STYLE, POOLED, PROVIDER_ENV, PROVIDER_REGISTRY, uiCatalogue } from "./providers.registry.ts";
 
 describe("PROVIDER_REGISTRY structural integrity", () => {
   it("every provider has a unique id", () => {

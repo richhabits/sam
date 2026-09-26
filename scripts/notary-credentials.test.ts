@@ -3,8 +3,8 @@
 // earlier revision of the notarization hook understood only the keychain, which would have thrown
 // on every CI macOS build — turning main red for a reason that has nothing to do with the code
 // being built. These tests pin the fallback so that regression cannot come back quietly.
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { notaryCredentials, isDeveloperIdSigned, codesignOutput, developerIdFromCodesignOutput } from "./notary-credentials.mjs";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { codesignOutput, developerIdFromCodesignOutput, isDeveloperIdSigned, notaryCredentials } from "./notary-credentials.mjs";
 
 // A profile name that cannot exist, so resolution is forced past the keychain and onto the
 // environment — the CI path — even on a machine where the real profile IS installed.

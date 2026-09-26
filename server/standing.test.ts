@@ -2,9 +2,9 @@
 // and NEVER auto-run a dangerous action unattended. Uses a scratch VAULT_DIR + injected runner so
 // no model, quota, OS notifier, or network is touched.
 
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { rmSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-standing-test";
 

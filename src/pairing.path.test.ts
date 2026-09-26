@@ -9,9 +9,10 @@
 // These assertions are deliberately about SOURCE TEXT, which is usually the weak form of a test —
 // here it is the right one, because the thing being checked IS two files agreeing on a string. A
 // behavioural test of the Dashboard would not notice the phone saying something different.
-import { describe, it, expect } from "vitest";
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");

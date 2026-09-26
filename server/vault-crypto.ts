@@ -9,12 +9,12 @@
 //  If none is available, SAM falls back to asking for the passphrase each boot.
 // ─────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
 import { execFileSync } from "node:child_process";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { newKeyConfig, unlockKey, encrypt, decrypt, keyFingerprint, type KeyConfig } from "./crypto-vault.ts";
+import { writeFileAtomic } from "./atomic.ts";
+import { decrypt, encrypt, type KeyConfig, keyFingerprint, newKeyConfig, unlockKey } from "./crypto-vault.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VAULT_DIR = process.env.VAULT_DIR || join(__dirname, "..", "vault");

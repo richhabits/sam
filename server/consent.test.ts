@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { rmSync } from "node:fs";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-consent-test";
 let C: typeof import("./consent.ts");

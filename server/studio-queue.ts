@@ -1,4 +1,4 @@
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb, runMigrations, type SqlMigration } from "./db.ts";
 import { generateStoryboardDirector } from "./studio-higgsfield.ts";

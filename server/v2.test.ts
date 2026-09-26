@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Note: `maxSteps` is internal to agent.ts, but we can infer it by watching 
 // how many times the loop iterates before giving up.

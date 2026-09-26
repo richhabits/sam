@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { diffFiles, hunksBetween, summariseDiff, summariseAll, renderDiff, MAX_DIFF_LINES } from "./diff.ts";
+import { describe, expect, it } from "vitest";
+import { diffFiles, hunksBetween, MAX_DIFF_LINES, renderDiff, summariseAll, summariseDiff } from "./diff.ts";
 
 describe("finding what changed", () => {
   it("sees nothing when nothing changed", () => {

@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  probeProvider,
-  getSpeedLeaderboard,
-  record,
-  health,
   _reset,
+  getSpeedLeaderboard,
+  health,
+  probeProvider,
+  record,
 } from "./speed.ts";
 
 describe("S.A.M. Speed & Active Probe Benchmarking", () => {

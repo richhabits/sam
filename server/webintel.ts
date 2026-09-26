@@ -11,10 +11,10 @@
 //  Roadmap (owned, incremental): 2) headless-browser escalation for JS-rendered pages;
 //  3) keyless multi-engine search adapters; 4) on-device embeddings for semantic cache.
 // ─────────────────────────────────────────────────────────────
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { safeFetch } from "./url-guard.ts";
 import { distill } from "./reader.ts";
+import { safeFetch } from "./url-guard.ts";
 
 const UA = "Mozilla/5.0 (compatible; SAM-webintel/0.1; local-first)";
 

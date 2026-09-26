@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isStale, computeStaleness } from "./release-staleness.mjs";
+import { describe, expect, it } from "vitest";
+import { computeStaleness, isStale } from "./release-staleness.mjs";
 
 describe("isStale", () => {
   it("is stale past both thresholds (the synthetic incident case: 14 days, 200+ commits)", () => {

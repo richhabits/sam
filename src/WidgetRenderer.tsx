@@ -1,6 +1,6 @@
 import React from "react";
-import { renderMarkdown } from "./lib/md";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { renderMarkdown } from "./lib/md";
 
 // ── WIDGET COMPONENTS ──
 

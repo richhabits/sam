@@ -5,7 +5,7 @@
 //  and compacts historical chat tokens to preserve free quotas.
 // ─────────────────────────────────────────────────────────────
 
-import { toolCacheSet, toolCacheGet, getMultiTierCacheStats } from "./cache.ts";
+import { getMultiTierCacheStats, toolCacheGet, toolCacheSet } from "./cache.ts";
 
 export interface PrewarmResult {
   warmedKeys: string[];

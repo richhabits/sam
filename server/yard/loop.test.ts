@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Everything that reaches the outside world is injected, so nothing here runs a build,
 // spends quota, or touches a provider. What is being proven is the loop's rules.
@@ -12,8 +12,8 @@ vi.mock("./exec.ts", async (importOriginal) => {
 });
 
 import {
-  buildUntilGreen, verifyFor, needsInstall, failureText, readProposal, noteFrom,
-  describeOutcome, MAX_ITERATIONS,
+  buildUntilGreen, 
+  describeOutcome, failureText, MAX_ITERATIONS,needsInstall, noteFrom,readProposal, verifyFor, 
 } from "./loop.ts";
 
 let dir: string;

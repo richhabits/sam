@@ -20,10 +20,10 @@
 //  Run after any `npm install` that rebuilds better-sqlite3:  npm run electron:sqlite
 // ─────────────────────────────────────────────────────────────
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PKG = join(ROOT, "node_modules", "better-sqlite3");

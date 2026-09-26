@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "sam-test-")); process.env.VAULT_DIR = dir; activeTasks.clear(); });
@@ -9,7 +9,7 @@ afterEach(() => { delete process.env.VAULT_DIR; rmSync(dir, { recursive: true, f
 
 vi.mock("./proactive.ts", () => ({ addNudge: vi.fn() }));
 
-import { manageTaskTool, activeTasks } from "./tools.ts";
+import { activeTasks, manageTaskTool } from "./tools.ts";
 
 describe("manageTaskTool", () => {
   beforeEach(() => {

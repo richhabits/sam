@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { prewarmContext, compactContextForFreeLanes } from "./prefetch.ts";
+import { describe, expect, it } from "vitest";
+import { compactContextForFreeLanes, prewarmContext } from "./prefetch.ts";
 import { prefetchWarmContextTool } from "./tools.ts";
 
 describe("Predictive Context Prefetcher & Compactor", () => {

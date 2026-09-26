@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
-import { getChimes, setChimeTimer, setChimeAlarm, cancelChimeApi, snoozeChimeApi } from "./lib/api";
+import { cancelChimeApi, getChimes, setChimeAlarm, setChimeTimer, snoozeChimeApi } from "./lib/api";
 import { useEscape } from "./lib/useOverlay";
 
 // ⏰ The Chime — alarms + named timers. The store always works; whether a due chime actually RINGS

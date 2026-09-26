@@ -5,6 +5,7 @@
 // scripts/verify-scripts.test.ts now fails CI if any verify script imports a path that does not
 // exist — the lesson is enforced instead of re-learned.
 import { crawl, mapSite } from "../server/webintel-crawl.ts";
+
 let pass=0, fail=0; const ok=(n,c)=>{(c?pass++:fail++);console.log(`  [${c?"PASS":"FAIL"}] ${n}`);};
 
 // 1) map: discover same-domain URLs from a real page

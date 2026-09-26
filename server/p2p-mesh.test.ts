@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  registerPeerNode,
-  listActivePeers,
-  createGossipMessage,
-  processIncomingMeshGossip,
-  getMeshTopologyReport,
   computeGossipSignature,
+  createGossipMessage,
+  getMeshTopologyReport,
+  listActivePeers,
+  processIncomingMeshGossip,
+  registerPeerNode,
 } from "./p2p-mesh.ts";
 
 describe("S.A.M. P2P LAN Mesh & Vector State Gossip Engine", () => {

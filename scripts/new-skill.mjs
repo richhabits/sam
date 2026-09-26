@@ -4,8 +4,8 @@
 //  Creates skills/<slug>/SKILL.md from the standard template so
 //  new skills (yours or ported from GitHub) drop straight in.
 // ─────────────────────────────────────────────────────────────
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const name = process.argv.slice(2).join(" ").trim();

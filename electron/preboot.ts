@@ -3,12 +3,13 @@
 // writable per-user data directory. Kept separate so a STATIC `import "../server/index.ts"` in main
 // can follow it — a static import lets the electron build's `external` (better-sqlite3) apply, so the
 // native module loads from node_modules (asar.unpacked) instead of being bundled and losing its .node.
-import { app } from "electron";
+
 import { randomBytes } from "node:crypto";
-import path from "node:path";
-import os from "node:os";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { app } from "electron";
 
 // Per-launch control-channel secret (the Handshake). Minted HERE — before the server module
 // and before any renderer/preload loads — so server, main, and preload all read ONE value from

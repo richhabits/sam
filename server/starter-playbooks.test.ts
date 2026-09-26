@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
+  getStarterPlaybookDef,
   STARTER_PLAYBOOKS,
   seedStarterPlaybooks,
-  getStarterPlaybookDef,
 } from "./starter-playbooks.ts";
-import { renderTemplate, extractParams, listPlaybooks } from "./yard/playbooks.ts";
+import { extractParams, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
 
 describe("S.A.M. Yard Starter Playbooks", () => {
   it("includes all 5 core starter playbooks", () => {

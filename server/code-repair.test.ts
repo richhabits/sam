@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseCompilerDiagnostics, generateRepairPlan } from "./code-repair.ts";
+import { describe, expect, it } from "vitest";
+import { generateRepairPlan, parseCompilerDiagnostics } from "./code-repair.ts";
 
 describe("AUTONOMOUS CODE REPAIR & AST DIAGNOSTIC PATCHER", () => {
   it("parses compiler errors from tsc / linter output", () => {

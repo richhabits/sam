@@ -1,5 +1,5 @@
-import { runModel, type Tier } from "./models.ts";
 import { remember } from "./memory.ts";
+import { runModel, type Tier } from "./models.ts";
 
 /**
  * Splits raw text into chunks of roughly maxChars length.

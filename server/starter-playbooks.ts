@@ -9,7 +9,7 @@
 //  5. zero-cost-ai-proxy (Local micro-solver + 50-provider rotation)
 // ─────────────────────────────────────────────────────────────
 
-import { type Playbook, savePlaybook, listPlaybooks, getPlaybook } from "./yard/playbooks.ts";
+import { getPlaybook, listPlaybooks, type Playbook, savePlaybook } from "./yard/playbooks.ts";
 
 export interface StarterPlaybookDef {
   id: string;

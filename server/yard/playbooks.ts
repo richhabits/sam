@@ -14,9 +14,9 @@
 //  legible even after the playbook has since been edited.
 // ─────────────────────────────────────────────────────────────
 
-import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { yardRoot } from "./managed.ts";
 
 // No separate override: SAMYARD_DIR (already yardRoot()'s own test/config hook) relocates

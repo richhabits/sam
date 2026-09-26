@@ -5,14 +5,13 @@
 //  No network, no keys — runs 100% offline.
 // ─────────────────────────────────────────────────────────────
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mkdtempSync, } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-import { loadSkills, routeSkill } from "./skills.ts";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PROJECTS, projectById } from "./projects.ts";
-import { TOOLS, toolByName, toolCatalogue, isCatastrophic, isPrivateIp } from "./tools.ts";
+import { loadSkills, routeSkill } from "./skills.ts";
+import { isCatastrophic, isPrivateIp, TOOLS, toolByName, toolCatalogue } from "./tools.ts";
 
 // ── THE BRAIN · skill routing ────────────────────────────────
 describe("routeSkill", () => {

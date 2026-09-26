@@ -7,8 +7,10 @@
 // landed, so it threw ERR_MODULE_NOT_FOUND and the "9/9 passed" receipt it advertised had
 // never actually run on this disk. A verification script that cannot execute is worse than
 // none: it reports success by existing.
-import { htmlToText, fetchClean, WebCache, read } from "../server/webintel.ts";
+
 import { mkdtempSync } from "node:fs"; import { tmpdir } from "node:os"; import { join } from "node:path";
+import { fetchClean, htmlToText, read, WebCache } from "../server/webintel.ts";
+
 let pass=0, fail=0; const ok=(n,c)=>{(c?pass++:fail++);console.log(`  [${c?"PASS":"FAIL"}] ${n}`);};
 
 // 1) pure: htmlToText strips junk, keeps title/text/links

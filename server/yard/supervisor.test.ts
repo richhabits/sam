@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { workerEntry } from "./supervisor.ts";
 
 // This exists because the first drive of the yard found the worker "missing" on a built

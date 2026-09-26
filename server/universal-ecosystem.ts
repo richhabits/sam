@@ -9,8 +9,8 @@
 //  - Universal real-time cross-device session handoff
 // ─────────────────────────────────────────────────────────────
 
-import { runModel } from "./models.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
+import { runModel } from "./models.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
 
 export type DevicePlatform = "android" | "wear_os" | "windows" | "linux" | "macos" | "ios" | "watchos" | "pwa";

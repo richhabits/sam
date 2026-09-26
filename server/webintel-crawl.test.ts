@@ -8,7 +8,7 @@
 // invalid TLD could exceed vitest's 5000ms test timeout depending on the resolver's mood —
 // flaked red in CI. Mocking removes the network dependency entirely, matching this file's own
 // "no live crawl in CI" premise instead of quietly violating it.
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { crawl, mapSite } from "./webintel-crawl.ts";
 
 vi.mock("./webintel.ts", () => ({

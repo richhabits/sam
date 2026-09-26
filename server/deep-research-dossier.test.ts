@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  conductDeepResearch,
-  compileExecutiveDossier,
-  extractDomainFromUrl,
   calculateConsensusScore,
+  compileExecutiveDossier,
+  conductDeepResearch,
   type DeepResearchReport,
+  extractDomainFromUrl,
 } from "./deep-research.ts";
 
 describe("S.A.M. Deep Research Executive Dossier Engine", () => {

@@ -2,10 +2,10 @@ import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { _reset as resetIssues, recentTrail } from "./issues.ts";
-import { _reset as resetPulse, snapshot } from "./pulse.ts";
-import { learnPreference, preferredTier, resetPreferences } from "./preferences.ts";
+import { recentTrail, _reset as resetIssues } from "./issues.ts";
 import { _reset, knackEnabled, recentInfluences, recordInfluence } from "./knack.ts";
+import { learnPreference, preferredTier, resetPreferences } from "./preferences.ts";
+import { _reset as resetPulse, snapshot } from "./pulse.ts";
 
 // The Knack observes learned influence, never silently. Enabled → every application is attributed to
 // the Pulse + the Trail + an inspectable log. Disabled (default) → a no-op, so behaviour is exactly

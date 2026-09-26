@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { decomposeResearchQuery, calculateConsensusScore, conductDeepResearch } from "./deep-research.ts";
+import { describe, expect, it } from "vitest";
+import { calculateConsensusScore, conductDeepResearch, decomposeResearchQuery } from "./deep-research.ts";
 
 describe("Autonomous Deep Research Synthesizer", () => {
   it("decomposes queries into multi-angle research subqueries", () => {

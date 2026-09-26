@@ -6,8 +6,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import { desk, project100xLadder } from "./flipit.ts";
-import { HIGGSFIELD_CAMERA_RIGS, generateStoryboardDirector } from "./studio-higgsfield.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
+import { generateStoryboardDirector, HIGGSFIELD_CAMERA_RIGS } from "./studio-higgsfield.ts";
 
 export interface MobileFeedCard {
   id: string;

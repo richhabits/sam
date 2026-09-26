@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { argObjectSchema, replySchema, respondStreamer, unwrapRespond, type JsonSchema } from "./grammar.ts";
-import { TOOLS } from "./tools.ts";
+import { argObjectSchema, type JsonSchema, replySchema, respondStreamer, unwrapRespond } from "./grammar.ts";
 import { validateArgs } from "./parser.ts";
+import { TOOLS } from "./tools.ts";
 
 // The Grammar derives a constrained-decoding schema from the tool registry — the SAME source of
 // truth the Parser validates against. A constrained turn is a tool call OR a {"respond":"..."} final

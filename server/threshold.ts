@@ -12,13 +12,13 @@
 //  anything is written.
 // ─────────────────────────────────────────────────────────────
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { writeFileAtomic } from "./atomic.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { capture, recentTrail, redact } from "./issues.ts";
+import { err, type Outcome, ok } from "./outcome.ts";
 import { pendingCommit } from "./preview-commit.ts";
 import { loadSwarms } from "./swarm.ts";
-import { err, ok, type Outcome } from "./outcome.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const dir = () => join(process.env.VAULT_DIR || join(HERE, "..", "vault"), "threshold");

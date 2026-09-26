@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { parseToolBatch, executeToolBatch } from "./agent.ts";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { executeToolBatch, parseToolBatch } from "./agent.ts";
 import { TOOLS } from "./tools.ts";
 
 // Inject fast + slow SAFE fake tools to prove the batch runs concurrently, then clean up.

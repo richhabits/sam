@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
-import { withSelect, wantsSelect, saveDiffs, loadDiffs, diffPathFor, GLASS_SOURCE, SELECT_SCRIPT_SRC, previewCsp } from "./glass.ts";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { diffFiles } from "./diff.ts";
+import { diffPathFor, GLASS_SOURCE, loadDiffs, previewCsp, SELECT_SCRIPT_SRC, saveDiffs, wantsSelect, withSelect } from "./glass.ts";
 
 // Caught live, in a browser, after the unit tests were green: the picker was injected
 // perfectly and then refused by the preview's own `default-src 'self'`, which forbids

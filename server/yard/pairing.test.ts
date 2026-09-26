@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  requestPairing, pendingRequests, approvePairing, denyPairing,
-  verifyPairToken, pairedBrowsers, revokePairing, clearPending, makeCode,
-  stashForCollection, collect,
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {approvePairing, clearPending, collect,denyPairing,makeCode,pairedBrowsers, pendingRequests, 
+  requestPairing, revokePairing, 
+  stashForCollection, 
+  verifyPairToken, 
 } from "./pairing.ts";
 
 // Pairing exists so a browser can drive the yard WITHOUT the passkey being served to

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { resolvePreview, projectFiles, readProjectFile } from "./preview.ts";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createProject, projectPath } from "./managed.ts";
+import { projectFiles, readProjectFile, resolvePreview } from "./preview.ts";
 
 // "Serve a file from a path in the URL" is the oldest way to hand over a machine, so
 // most of this file is about what must NOT be served.

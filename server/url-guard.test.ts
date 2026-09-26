@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { checkOutboundUrl, isPrivateAddress, pinnedDispatcher, safeFetch, BlockedFetch } from "./url-guard.ts";
+import { BlockedFetch, checkOutboundUrl, isPrivateAddress, pinnedDispatcher, safeFetch } from "./url-guard.ts";
 
 // Hermetic resolver — no real DNS, so these tests pass offline and never flake in CI.
 const resolves = (map: Record<string, string[]>) => async (host: string) => {

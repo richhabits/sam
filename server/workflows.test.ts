@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { rmSync } from "node:fs";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const SCRATCH = "/tmp/sam-workflows-test";
 let W: typeof import("./workflows.ts");

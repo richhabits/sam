@@ -80,10 +80,10 @@ export function runDoctor(w: DoctorWorld): { healthy: boolean; summary: string; 
   return { healthy, summary, checks };
 }
 
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { sweepStaleLatches } from "./latch.ts";
 import { proposeTask } from "./self-heal.ts";
-import { mkdirSync, existsSync, writeFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
 
 export interface HealReport {
   remediated: string[];

@@ -8,10 +8,10 @@
 //  Events, screencapture, open) + Node + fetch. No paid APIs.
 // ─────────────────────────────────────────────────────────────
 
-import { exec, execFile as execFileCb, spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, exec, execFile as execFileCb, spawn } from "node:child_process";
+import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync } from "node:fs";
+import { appendFile as appendFileFs, cp, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { readFile, writeFile, readdir, stat, appendFile as appendFileFs, rename, cp } from "node:fs/promises";
-import { existsSync, readFileSync, readdirSync, mkdirSync, statfsSync, createWriteStream } from "node:fs";
 
 // ── Cross-platform file search (NO shell) — works on Windows/Linux/Mac identically. Mac keeps its
 //    fast Spotlight `mdfind` path where called; this is the portable fallback. Walk is bounded so it
@@ -65,93 +65,96 @@ async function findByContent(root: string, query: string, limit = 30): Promise<s
   }
   return hits;
 }
-import { homedir, } from "node:os";
-import { randomBytes, createHash } from "node:crypto";
-import { resolve, dirname, basename, extname, join, sep, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { createHash, randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
+import { homedir, } from "node:os";
+import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
 // Heavy CJS/native deps (pdf-parse, mammoth, playwright) are lazy-loaded at call
 // time via require — importing them as ESM at the top crashed boot, and this also
 // keeps startup fast/slim (they only load if you actually use them).
 const require = createRequire(import.meta.url);
+
 import type { Page } from "playwright-core";
-import { redactKnownCredentials } from "./scrub.ts";
-import { renderVideo, titleCard } from "./render.ts";
-import { buildDeck, fallbackSections, outlineMarkdown, parseSections, saveDeck, sectionCount, type Section } from "./slides.ts";
-import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
-import { fetchLocation, nowText } from "./context.ts";
-import { grabRepos, loadSocials } from "./world.ts";
-import { resolveRepoDir, repoIndex } from "./repos.ts";
-import { logSecurity, securityStatus } from "./security.ts";
-import { addNudge, listNudges, completeNudge } from "./proactive.ts";
-import { addPerson, listPeople } from "./people.ts";
-import { remember, recall, listRecent, forget, clearAll } from "./memory.ts";
-import { ingestFolder, reportText, searchDocs, docsStats, recentDocs, forgetDoc } from "./ingest.ts";
-import { addFolder, removeFolder, listFolders, askAbout, lifeIndexStats } from "./lifeindex.ts";
-import { forgeTool, listForged, forgedStats, bindToolRegistry } from "./forge.ts";
-import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
-import { startSwarm, loadSwarms, stopSwarm, spawnSubAgent, swarmFanout, swarmPipeline } from "./swarm.ts";
-import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } from "./authz.ts";
-import { PROJECTS } from "./projects.ts";
-import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
-import { capacityReport, capacityNudge } from "./capacity.ts";
-import { mt5Summary, formatAccount, formatPositions, formatHistory } from "./mt5/index.ts";
-import { autoHealDoctor } from "./doctor.ts";
-import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
-import { runSelftest } from "./selftest.ts";
-import { loadSkills } from "./skills.ts";
-import { vaultStats, recentLog, pruneOldLogs } from "./vault.ts";
-import { runVision, runModel, availableBrains, runBrain } from "./models.ts";
-import { runArena, judgePrompt, JUDGE_SYSTEM, parseVerdict, formatLeaderboard, saveRanking, type ArenaResult } from "./colosseum.ts";
-import { championWithConfidence } from "./colosseum-significance.ts";
-import { monteCarlo100x, analyzeMultiStrategy, project100xLadder } from "./flipit.ts";
-import { generateStoryboardDirector, compileHiggsfieldMotionPrompt, buildCharacterAnchorPrompt, type CharacterProfile } from "./studio-higgsfield.ts";
-import { getSavingsSummary, compressPromptForCost, auditCapitalProtection } from "./cost-optimizer.ts";
-import { executeSmartAction, generateSmartStudioPreset, buildSimpleFlipItSummary } from "./smart-actions.ts";
-import { prepareMobilePush } from "./mobile-bridge.ts";
-import { generateSpeechAudio } from "./audio-engine.ts";
-import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
-import { getMasterDashboard } from "./orchestrator.ts";
-import { generateMobileFeed } from "./mobile-feed.ts";
-import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
-import { executeSimdToolBatch } from "./simd-tools.ts";
-import { resolveOptimalRoute } from "./speculative-router.ts";
-import { prewarmContext } from "./prefetch.ts";
-import { trySolveLocally } from "./local-micro-solver.ts";
-import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
-import { disambiguateUserIntent } from "./intent-disambiguator.ts";
-import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
-import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
-import { getStarterPlaybookDef, STARTER_PLAYBOOKS } from "./starter-playbooks.ts";
-import { getPlaybook, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
-import { getSpeedLeaderboard } from "./speed.ts";
-import { conductDeepResearch, compileExecutiveDossier } from "./deep-research.ts";
-import { getHardwareVitals } from "./hardware-monitor.ts";
-import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
-import { scanEvArbitrageSignals } from "./flipit-signals.ts";
-import { startSandboxApp, stopSandboxApp, getSandboxSession, listSandboxSessions } from "./yard/sandbox-daemon.ts";
-import { compileProductionTimeline } from "./studio-master-timeline.ts";
-import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
-import { getMeshTopologyReport, createGossipMessage, processIncomingMeshGossip } from "./p2p-mesh.ts";
-import { getOrCreateVoiceSession } from "./voice-agent.ts";
-import { executeAntigravityCognition, verifyFactualGrounding, verifySymbolDeclaration, runCognitiveReflectionLoop, generatePremiumDesignSystem } from "./antigravity-brain.ts";
-import { generateCinematicStoryboard } from "./studio-director.ts";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
-import { runMultiModelConsensus } from "./consensus.ts";
-import { parseCompilerDiagnostics, generateRepairPlan, runSelfHealingVerification } from "./code-repair.ts";
+import { executeAntigravityCognition, generatePremiumDesignSystem, runCognitiveReflectionLoop, verifyFactualGrounding, verifySymbolDeclaration } from "./antigravity-brain.ts";
+import { generateSpeechAudio } from "./audio-engine.ts";
+import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
+import { allow, autopilotOn, disallow, isElonMode, listAllowed, setAutopilot } from "./authz.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
-import { huntRevenueOpportunities } from "./revenue-hunter.ts";
-import { generateExecutiveDailyDeck } from "./executive-deck.ts";
-import { registerWebhookEndpoint, dispatchWebhookEvent, loadWebhookEndpoints } from "./webhooks.ts";
-import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
-import * as nb from "./notebook.ts";
+import { getBrainPerformanceMatrix } from "./brain-arbitrage.ts";
+import { capacityNudge, capacityReport } from "./capacity.ts";
+import { generateRepairPlan, parseCompilerDiagnostics, runSelfHealingVerification } from "./code-repair.ts";
+import { type ArenaResult, formatLeaderboard, JUDGE_SYSTEM, judgePrompt, parseVerdict, runArena, saveRanking } from "./colosseum.ts";
+import { championWithConfidence } from "./colosseum-significance.ts";
 import { retrieveFullOutput } from "./compress.ts";
+import { runMultiModelConsensus } from "./consensus.ts";
+import { fetchLocation, nowText } from "./context.ts";
+import { auditCapitalProtection, compressPromptForCost, getSavingsSummary } from "./cost-optimizer.ts";
+import { compileExecutiveDossier, conductDeepResearch } from "./deep-research.ts";
+import { autoHealDoctor } from "./doctor.ts";
+import { generateExecutiveDailyDeck } from "./executive-deck.ts";
+import { analyzeMultiStrategy, monteCarlo100x, project100xLadder } from "./flipit.ts";
+import { calculatePortfolioRebalance, type HoldingPosition, type TargetAllocation } from "./flipit-auto.ts";
+import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
+import { calculateDeltaHedge, generateMarketMakerQuotes } from "./flipit-market-maker.ts";
+import { computeKellyRiskShield, scanCrossMarketSpreads } from "./flipit-scale.ts";
+import { scanEvArbitrageSignals } from "./flipit-signals.ts";
+import { bindToolRegistry, forgedStats, forgeTool, listForged } from "./forge.ts";
+import { getHardwareVitals } from "./hardware-monitor.ts";
+import { docsStats, forgetDoc, ingestFolder, recentDocs, reportText, searchDocs } from "./ingest.ts";
+import { disambiguateUserIntent } from "./intent-disambiguator.ts";
+import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./keys.ts";
+import { addFolder, askAbout, lifeIndexStats, listFolders, removeFolder } from "./lifeindex.ts";
+import { trySolveLocally } from "./local-micro-solver.ts";
+import { mailerConfigured, ownerEmail, sendMail } from "./mailer.ts";
+import { formatQuotes, quotes as marketQuotes } from "./markets.ts";
+import { clearAll, forget, listRecent, recall, remember } from "./memory.ts";
+import { prepareMobilePush } from "./mobile-bridge.ts";
+import { generateMobileFeed } from "./mobile-feed.ts";
+import { availableBrains, runBrain, runModel, runVision } from "./models.ts";
+import { formatAccount, formatHistory, formatPositions, mt5Summary } from "./mt5/index.ts";
+import * as nb from "./notebook.ts";
+import { getMasterDashboard } from "./orchestrator.ts";
+import { createGossipMessage, getMeshTopologyReport, processIncomingMeshGossip } from "./p2p-mesh.ts";
+import { addPerson, listPeople } from "./people.ts";
+import { prewarmContext } from "./prefetch.ts";
+import { addNudge, completeNudge, listNudges } from "./proactive.ts";
+import { PROJECTS } from "./projects.ts";
+import { renderVideo, titleCard } from "./render.ts";
+import { repoIndex, resolveRepoDir } from "./repos.ts";
+import { huntRevenueOpportunities } from "./revenue-hunter.ts";
+import { addSchedule, listSchedules, removeSchedule, toggleSchedule } from "./scheduler.ts";
+import { redactKnownCredentials } from "./scrub.ts";
+import { logSecurity, securityStatus } from "./security.ts";
+import { runSelftest } from "./selftest.ts";
+import { parseCsv, profileTable, readTable, renderReport, CAPS as SHEET_CAPS, SheetError } from "./sheets.ts";
+import { executeSimdToolBatch } from "./simd-tools.ts";
+import { loadSkills } from "./skills.ts";
+import { buildDeck, fallbackSections, outlineMarkdown, parseSections, type Section, saveDeck, sectionCount } from "./slides.ts";
+import { buildSimpleFlipItSummary, executeSmartAction, generateSmartStudioPreset } from "./smart-actions.ts";
+import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
+import { resolveOptimalRoute } from "./speculative-router.ts";
+import { getSpeedLeaderboard } from "./speed.ts";
+import { getStarterPlaybookDef, STARTER_PLAYBOOKS } from "./starter-playbooks.ts";
+import { generateCinematicStoryboard } from "./studio-director.ts";
+import { buildCharacterAnchorPrompt, type CharacterProfile, compileHiggsfieldMotionPrompt, generateStoryboardDirector } from "./studio-higgsfield.ts";
+import { compileProductionTimeline } from "./studio-master-timeline.ts";
+import { loadSwarms, spawnSubAgent, startSwarm, stopSwarm, swarmFanout, swarmPipeline } from "./swarm.ts";
+import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import { checkOutboundUrl } from "./url-guard.ts";
-import { CAPS as SHEET_CAPS, parseCsv, profileTable, readTable, renderReport, SheetError } from "./sheets.ts";
+import { pruneOldLogs, recentLog, vaultStats } from "./vault.ts";
+import { getOrCreateVoiceSession } from "./voice-agent.ts";
+import { dispatchWebhookEvent, loadWebhookEndpoints, registerWebhookEndpoint } from "./webhooks.ts";
 import { fetchClean } from "./webintel.ts";
+import { crawl, mapSite } from "./webintel-crawl.ts";
 import { extract } from "./webintel-extract.ts";
 import { extractMany } from "./webintel-research.ts";
-import { crawl, mapSite } from "./webintel-crawl.ts";
+import { grabRepos, loadSocials } from "./world.ts";
+import { getPlaybook, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
+import { getSandboxSession, listSandboxSessions, startSandboxApp, stopSandboxApp } from "./yard/sandbox-daemon.ts";
 
 // SAM's own brain, shaped for the webintel extractors. They take an injected LLM precisely so
 // they own no model plumbing — this is the one place that plumbing lives.
@@ -160,9 +163,10 @@ import { crawl, mapSite } from "./webintel-crawl.ts";
 const samLlm = async (system: string, prompt: string): Promise<string> =>
   (await runModel("free", system, prompt))?.text || "";
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
+
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
-import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
 import type { ArgSchema } from "./parser.ts";
+import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
 
 // Locate the user's Obsidian vault: explicit OBSIDIAN_VAULT, else the usual spots (a real
 // Obsidian vault always contains a `.obsidian` config folder — that's how we recognise one).
@@ -308,6 +312,7 @@ const webSignal = () => AbortSignal.timeout(WEB_TIMEOUT);
 function tfetch(url: any, opts: any = {}): Promise<Response> {
   return fetch(url, { ...opts, signal: opts.signal || AbortSignal.timeout(WEB_TIMEOUT) });
 }
+
 // SSRF guard — ONE implementation, in server/url-guard.ts, unit-tested there (url-guard.test.ts).
 // This file used to carry its own isPrivateIp/assertPublicUrl pair. Two guards means one is quietly
 // the weaker, and this one was: it missed CGNAT (100.64/10), multicast and non-http(s) schemes, and

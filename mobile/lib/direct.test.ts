@@ -10,7 +10,7 @@ vi.mock('expo-secure-store', () => ({
 const fetchSpy = vi.fn();
 vi.mock('expo/fetch', () => ({ fetch: (...args: unknown[]) => fetchSpy(...args) }));
 
-import { streamDirectAI, setCustomKey, DIRECT_PROVIDERS } from './direct';
+import { DIRECT_PROVIDERS, setCustomKey, streamDirectAI } from './direct';
 
 function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { rmSync, mkdirSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { beforeEach, describe, expect, it } from "vitest";
 
 const SCRATCH = "/tmp/sam-signing-test";
 

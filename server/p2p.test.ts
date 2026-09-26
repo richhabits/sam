@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { p2pAuthHeaders, p2pVerify, freshNonce } from "./p2p.ts";
+import { describe, expect, it } from "vitest";
+import { freshNonce, p2pAuthHeaders, p2pVerify } from "./p2p.ts";
 
 // The promise this redesign makes: the shared secret is NEVER transmitted, a signature proves
 // knowledge of it without disclosing it, and a captured signature cannot be replayed. A fake

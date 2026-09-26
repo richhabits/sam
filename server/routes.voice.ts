@@ -8,8 +8,8 @@
 //  so the HUD uses the browser's speechSynthesis. No Pollinations phone-home.
 // ─────────────────────────────────────────────────────────────
 import type { Express } from "express";
+import { synthesizeDialogueAudio, VOICES } from "./audio-engine.ts";
 import { getKey, } from "./keys.ts";
-import { VOICES, synthesizeDialogueAudio } from "./audio-engine.ts";
 
 export function registerVoiceRoutes(app: Express): void {
   // ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──
