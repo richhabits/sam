@@ -5445,8 +5445,9 @@ export const TOOLS: Tool[] = [
         (r.cooling ? `, ${r.cooling} cooling (rate-limited)` : "") + ".\n" + (nudge || "You're well-stocked — nothing to add.") +
         `\n(Local Ollama is always the unlimited, key-free fallback.)`;
     } },
-  // MT5 — Phase 1, READ-ONLY (the adapter has no write methods). Demo accounts only unless MT5_ALLOW_LIVE_READ=1.
-  { name: "mt5_account", safe: true, description: "MetaTrader 5 account snapshot (read-only): balance, equity, margin, open P/L. Demo accounts only. input: (none).", params: "(none)",
+  // MT5 — READ-ONLY, REAL DATA ONLY (the adapter has no write methods; no simulated source exists). Reads the file the
+  // FlipItReporter EA writes (MT5_FILE). Not connected ⇒ says so. Demo accounts only unless MT5_ALLOW_LIVE_READ=1.
+  { name: "mt5_account", safe: true, description: "MetaTrader 5 account snapshot (read-only, REAL data from the FlipItReporter EA file): balance, equity, margin, open P/L. Says so if MT5 is not connected. Demo accounts only. input: (none).", params: "(none)",
     activity: () => `Reading MT5 account`, run: async () => { try { return formatAccount(await mt5Summary()); } catch (e: any) { return `MT5: ${e?.message || e}`; } } },
   { name: "mt5_positions", safe: true, description: "MetaTrader 5 open positions and exposure by symbol (read-only). input: (none).", params: "(none)",
     activity: () => `Reading MT5 positions`, run: async () => { try { return formatPositions(await mt5Summary()); } catch (e: any) { return `MT5: ${e?.message || e}`; } } },
