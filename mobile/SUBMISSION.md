@@ -3,9 +3,7 @@
 Everything that can be settled in code is settled and verified below. What remains is the part
 that only exists inside App Store Connect: metadata, screenshots, and pressing Submit.
 
-**Build to submit: 1.0.0 (7)**, already uploaded and processed. No new build is needed — the only
-change to `mobile/` since then deleted `devicePushToken()`, a function with no caller anywhere,
-ever. Runtime behaviour is identical.
+**Build to submit: 1.0.0 (109).** Build 107 was rejected on 2026-08-28 under 2.1(a) because the reviewers could not find "Explore the demo" (it sat at the bottom of the pairing sheet). From 109 the demo is the first card on the Home screen for any unpaired user, on iPhone and iPad, and is also in the ••• menu.
 
 ---
 
@@ -13,7 +11,7 @@ ever. Runtime behaviour is identical.
 
 SAM functions both as a direct AI assistant and as a companion for SAM running on a user's own Mac/PC.
 
-Because Apple App Store reviewers test in isolated network environments and will not have a running desktop node or custom API keys, **Demo Mode** is the primary, deterministic path provided specifically for App Review. Under the top menu (•••) → Connect to Mac/PC → **"Explore the demo"**, every screen runs from a fixed local script with zero network dependencies.
+Because Apple App Store reviewers test in isolated network environments and will not have a running desktop node or custom API keys, **Demo Mode** is the primary, deterministic path provided specifically for App Review. From the first card on the Home screen (**"Explore the demo"**), every screen runs from a fixed local script with zero network dependencies.
 
 Paste into **App Review Information → Notes**:
 
@@ -23,9 +21,8 @@ SAM is an AI assistant with optional local desktop pairing (free, open source: h
 You do not need a Mac or an API key to review this app.
 
 To review the full app deterministically:
-1. On launch, tap the top-right menu (•••) → "Connect to Mac / PC".
-2. Under "No SAM yet?", tap "Explore the demo".
-3. Every screen (Agent chat, Tasks list, Attachments, and Settings) runs from a fixed local script. A banner marks it as a demo throughout and you can exit at any time. No network requests are made in this mode.
+1. Launch the app. The first card on the Home screen is a large orange button, "Explore the demo" — tap it. (It is also in the top-right menu (•••) and at the bottom of Connect to Mac / PC.)
+2. Every screen (Agent chat, Tasks list, Attachments, and Settings) runs from a fixed local script. A banner marks it as a demo throughout and you can exit at any time. No network requests are made in this mode.
 
 Direct AI & Custom Keys:
 • The app also supports direct cloud brains and 30+ custom provider keys (Groq, Cerebras, Mistral, Gemini, Anthropic, etc.) in Settings → Cloud AI Engine.

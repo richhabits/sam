@@ -26,6 +26,14 @@ export function isDemo(): boolean {
   return demo;
 }
 
+/** Whether to put "Explore the demo" front and centre. App Review (2026-08-28, build 107) could
+ *  not FIND the demo when it lived only at the bottom of the pairing sheet, so it is now offered
+ *  on the first screen an unpaired visitor sees. Hidden once paired or already inside the demo,
+ *  where it would be noise (and inside the demo the banner's "Leave" is the way out). */
+export function showDemoEntry(paired: boolean, inDemo: boolean): boolean {
+  return !paired && !inDemo;
+}
+
 /** Restore the flag at boot, beside the token read. A failed read means "not in demo", which
  *  is the truthful answer and lands on the pairing screen — the same rule the token uses. */
 export async function loadDemo(): Promise<boolean> {
