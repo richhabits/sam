@@ -32,6 +32,7 @@ import express from "express";
 import cors from "cors";
 import { reloadPools } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
+import { mt5Summary } from "./mt5/index.ts";
 import { sendMail, mailerConfigured, ownerEmail, } from "./mailer.ts";
 import { runModel, type Tier, providersStatus, runVision, warmBrain, } from "./models.ts";
 import { drainMetrics, peekMetrics, recordModelCall } from "./metrics.ts";
@@ -2764,6 +2765,11 @@ app.get("/api/status", (req, res) => {
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
 app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
+// MT5 Phase 1 — read-only account/positions/journal + risk metrics (mock backend by default; demo-only).
+app.get("/api/mt5/summary", async (req, res) => {
+  try { res.json(await mt5Summary(Number(req.query.days) || 30)); }
+  catch (e: any) { res.status(400).json({ error: String(e?.message || e) }); }
+});
 
 // Browser HUD on this machine: opening the page is the pairing. The Handshake passkey only
 // exists in Electron preload — a tab cannot send it. Without this, POST /api/stream (chat)

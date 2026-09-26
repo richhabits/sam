@@ -95,6 +95,7 @@ import { listAllowed, allow, disallow, setAutopilot, autopilotOn, isElonMode } f
 import { PROJECTS } from "./projects.ts";
 import { keyStatus, getKey, poolSize, reportSuccess, reportFailure } from "./keys.ts";
 import { capacityReport, capacityNudge } from "./capacity.ts";
+import { mt5Summary, formatAccount, formatPositions, formatHistory } from "./mt5/index.ts";
 import { autoHealDoctor } from "./doctor.ts";
 import { sendMail, mailerConfigured, ownerEmail } from "./mailer.ts";
 import { runSelftest } from "./selftest.ts";
@@ -5439,6 +5440,13 @@ export const TOOLS: Tool[] = [
         (r.cooling ? `, ${r.cooling} cooling (rate-limited)` : "") + ".\n" + (nudge || "You're well-stocked — nothing to add.") +
         `\n(Local Ollama is always the unlimited, key-free fallback.)`;
     } },
+  // MT5 — Phase 1, READ-ONLY (the adapter has no write methods). Demo accounts only unless MT5_ALLOW_LIVE_READ=1.
+  { name: "mt5_account", safe: true, description: "MetaTrader 5 account snapshot (read-only): balance, equity, margin, open P/L. Demo accounts only. input: (none).", params: "(none)",
+    activity: () => `Reading MT5 account`, run: async () => { try { return formatAccount(await mt5Summary()); } catch (e: any) { return `MT5: ${e?.message || e}`; } } },
+  { name: "mt5_positions", safe: true, description: "MetaTrader 5 open positions and exposure by symbol (read-only). input: (none).", params: "(none)",
+    activity: () => `Reading MT5 positions`, run: async () => { try { return formatPositions(await mt5Summary()); } catch (e: any) { return `MT5: ${e?.message || e}`; } } },
+  { name: "mt5_history", safe: true, description: "MetaTrader 5 trade journal + performance/risk metrics (win rate, profit factor, expectancy, max drawdown) over the last N days (read-only). input: { days? } default 30.", params: "{days?}",
+    activity: () => `Reviewing MT5 trade history`, run: async (i: any) => { try { return formatHistory(await mt5Summary(Number(i?.days) || 30)); } catch (e: any) { return `MT5: ${e?.message || e}`; } } },
   { name: "key_pool_status", safe: true, description: "Live dashboard showing every AI provider's key pool: how many keys are healthy vs cooling down.", params: "(none)",
     activity: () => `Checking key pool health`, run: async () => {
       const pools = keyStatus();
