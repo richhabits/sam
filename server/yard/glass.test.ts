@@ -12,7 +12,7 @@ import { diffPathFor, GLASS_SOURCE, loadDiffs, previewCsp, SELECT_SCRIPT_SRC, sa
 // of those had a test. This is the one that would have failed.
 describe("the picker is allowed to run, not merely present", () => {
   const scriptIn = (html: string) => {
-    const m = html.match(/<script>([\s\S]*?)<\/script>/);
+    const m = html.match(/<script>([\s\S]*?)<\/script>/i);
     if (!m) throw new Error("no script was injected");
     return m[1];
   };
@@ -49,7 +49,7 @@ describe("the preview policy admits what the preview injects", () => {
   };
 
   const injected = (html: string) => {
-    const m = html.match(/<script>([\s\S]*?)<\/script>/);
+    const m = html.match(/<script>([\s\S]*?)<\/script>/i);
     return m ? m[1] : "";
   };
 
