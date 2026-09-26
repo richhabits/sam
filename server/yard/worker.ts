@@ -13,7 +13,7 @@
 //  a worker that leaves a phantom in the queue, so every path here ends in a write.
 // ─────────────────────────────────────────────────────────────
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import { runAgent } from "../agent.ts";

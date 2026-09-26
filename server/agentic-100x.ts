@@ -220,7 +220,7 @@ export async function execute100xAgenticWorkflow(
       const depContext = node.dependencies
         .map((depId) => {
           const dep = nodeMap.get(depId);
-          return dep && dep.output ? `[Output from ${dep.title} (${depId})]:\n${dep.output}` : "";
+          return dep?.output ? `[Output from ${dep.title} (${depId})]:\n${dep.output}` : "";
         })
         .filter(Boolean)
         .join("\n\n");

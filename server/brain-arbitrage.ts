@@ -139,7 +139,6 @@ export function rankOptimalProvider(taskKind: "fast" | "reasoning" | "coding" | 
         rationale: "Superior multimodal visual understanding and OCR at generous free quota.",
         tier: "free",
       };
-    case "reasoning":
     default:
       return {
         recommendedId: "deepseek",

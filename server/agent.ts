@@ -9,7 +9,6 @@
 //  — or plain text when it's ready to answer the user.
 // ─────────────────────────────────────────────────────────────
 
-import { execSync } from "node:child_process";
 import { runAntigravitySilentVerifier } from "./antigravity-brain.ts";
 import { recordAuditEvent } from "./audit-ledger.ts";
 import { mayAutoRun } from "./authz.ts";

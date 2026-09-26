@@ -2,11 +2,9 @@ import type { Express } from "express";
 import { APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
 import { getAsk, resolveAsk } from "./ask.ts";
 import { recordAuditEvent, verifyAuditChainIntegrity } from "./audit-ledger.ts";
-import { allow } from "./authz.ts";
 import { getHardwareVitals } from "./hardware-monitor.ts";
 import { isLoopback } from "./http-guards.ts";
 import { createGossipMessage, getMeshTopologyReport, processIncomingMeshGossip } from "./p2p-mesh.ts";
-import { takePending } from "./pending.ts";
 import { UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
 

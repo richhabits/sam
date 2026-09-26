@@ -36,7 +36,7 @@ const SOURCES = ['SAMWidget.swift'];
 const PLIST = 'Info.plist';
 const ENTITLEMENTS = 'SAMWidget.entitlements';
 const STORE = ['SAMWidgetStore.swift', 'SAMWidgetStore.m'];
-const APP_GROUP = 'group.com.hectic.sam.mobile';
+const _APP_GROUP = 'group.com.hectic.sam.mobile';
 
 /** Copy the tracked widget sources into the generated project, replacing whatever was there.
  *  Dangerous mods run before the .pbxproj mod, so the files exist by the time it references

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   computeHmacSignature,
   dispatchWebhookEvent,
-  loadWebhookEndpoints,
   registerWebhookEndpoint,
   verifyInboundSignature,
 } from "./webhooks.ts";
@@ -27,7 +26,7 @@ describe("SECURE EVENT WEBHOOKS & INBOUND SIGNAL ENGINE", () => {
     expect(ep.id).toBeDefined();
     expect(ep.secret).toBeDefined();
 
-    const mockFetcher = async (url: any, init: any) => {
+    const mockFetcher = async (_url: any, _init: any) => {
       return {
         ok: true,
         status: 200,

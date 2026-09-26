@@ -8,7 +8,7 @@
 import { getSavingsSummary } from "./cost-optimizer.ts";
 import { runDoctor } from "./doctor.ts";
 import { desk, project100xLadder } from "./flipit.ts";
-import { compileHiggsfieldMotionPrompt, HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES } from "./studio-higgsfield.ts";
+import { compileHiggsfieldMotionPrompt, } from "./studio-higgsfield.ts";
 
 export interface SmartStudioPresetResult {
   concept: string;
@@ -51,7 +51,6 @@ export function generateSmartStudioPreset(
       lensId = "vintage_super_8";
       aspect = "16:9";
       break;
-    case "cinematic":
     default:
       rigId = "dolly_in_rapid";
       lensId = "imax_70mm_grand";

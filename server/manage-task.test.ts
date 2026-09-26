@@ -16,7 +16,7 @@ describe("manageTaskTool", () => {
     activeTasks.clear();
   });
   afterEach(async () => {
-    for (const [id, t] of activeTasks.entries()) {
+    for (const [_id, t] of activeTasks.entries()) {
       t.child.kill();
     }
     activeTasks.clear();

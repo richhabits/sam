@@ -154,7 +154,7 @@ export function verifyStripeWebhookSignature(
 
   const nowSec = Math.floor(Date.now() / 1000);
   const tsNum = Number(timestamp);
-  if (isNaN(tsNum) || Math.abs(nowSec - tsNum) > toleranceSec) {
+  if (Number.isNaN(tsNum) || Math.abs(nowSec - tsNum) > toleranceSec) {
     return false; // Replay attack protection
   }
 

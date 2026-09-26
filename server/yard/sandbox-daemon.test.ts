@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   findOpenPort,
   getSandboxSession,
-  listSandboxSessions,
   startSandboxApp,
   stopSandboxApp,
 } from "./sandbox-daemon.ts";

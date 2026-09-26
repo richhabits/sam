@@ -7,7 +7,6 @@ import {
   verifyFactualGrounding,
   verifySymbolDeclaration,
 } from "./antigravity-brain.ts";
-import { isLoopback } from "./http-guards.ts";
 
 export function registerAntigravityRoutes(app: Express) {
   // 1. Execute Antigravity speculative multi-branch cognition

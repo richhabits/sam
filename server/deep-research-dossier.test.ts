@@ -63,11 +63,11 @@ describe("S.A.M. Deep Research Executive Dossier Engine", () => {
   });
 
   it("conducts deep research with injected search & synthesis dependencies", async () => {
-    const mockSearch = async (q: string) => {
+    const mockSearch = async (_q: string) => {
       return `• Autonomous Agents Architecture — Multi-agent DAG execution review\n  https://arxiv.org/abs/2401.12345`;
     };
 
-    const mockSynthesize = async (system: string, prompt: string) => {
+    const mockSynthesize = async (_system: string, _prompt: string) => {
       return {
         text: JSON.stringify({
           executiveSummary: "Multi-agent systems achieve high autonomy when scheduled via DAGs [1].",

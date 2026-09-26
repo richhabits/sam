@@ -31,12 +31,9 @@ export interface SpeechSynthesisResult {
 }
 
 import { execFile } from "node:child_process";
-import { readFile, unlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { promisify } from "node:util";
 
-const execFileAsync = promisify(execFile);
+const _execFileAsync = promisify(execFile);
 
 export async function generateSpeechAudio(
   text: string,

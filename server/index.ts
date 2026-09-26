@@ -1370,15 +1370,15 @@ app.post("/api/micro-solver", basicRateLimit, (req, res) => {
   res.json(trySolveLocally(input || ""));
 });
 
-app.get("/api/system/space-audit", basicRateLimit, (req, res) => {
+app.get("/api/system/space-audit", basicRateLimit, (_req, res) => {
   res.json(auditSpaceConsumption());
 });
 
-app.post("/api/system/space-compact", basicRateLimit, (req, res) => {
+app.post("/api/system/space-compact", basicRateLimit, (_req, res) => {
   res.json(compactSpaceAndMemory());
 });
 
-app.get("/api/system/savings", basicRateLimit, (req, res) => {
+app.get("/api/system/savings", basicRateLimit, (_req, res) => {
   res.json(getSavingsSummary());
 });
 app.post("/api/context/prewarm", (req, res) => {

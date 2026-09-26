@@ -56,7 +56,7 @@ export function registerPeerNode(node: {
   port: number;
   capabilities?: string[];
 }): MeshNode {
-  const existing = PEER_NODES.get(node.nodeId);
+  const _existing = PEER_NODES.get(node.nodeId);
   const updated: MeshNode = {
     nodeId: node.nodeId,
     deviceName: node.deviceName,
@@ -76,7 +76,7 @@ export function registerPeerNode(node: {
  */
 export function listActivePeers(now = Date.now()): MeshNode[] {
   const list: MeshNode[] = [];
-  for (const [id, node] of PEER_NODES) {
+  for (const [_id, node] of PEER_NODES) {
     if (now - node.lastSeenAt > PEER_STALE_TTL_MS) {
       node.status = "STALE";
     } else {
@@ -131,7 +131,7 @@ export function processIncomingMeshGossip(message: MeshGossipMessage): {
   forward: boolean;
   reason?: string;
 } {
-  if (!message || !message.messageId || !message.originNodeId) {
+  if (!message?.messageId || !message.originNodeId) {
     return { accepted: false, forward: false, reason: "Malformed gossip packet" };
   }
 

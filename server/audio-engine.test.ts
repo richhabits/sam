@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateSpeechAudio,
   synthesizeDialogueAudio,
-  VOICES,
 } from "./audio-engine.ts";
 import { audioSynthesizeSpeechTool } from "./tools.ts";
 

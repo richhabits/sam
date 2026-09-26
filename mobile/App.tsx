@@ -35,7 +35,7 @@ import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib
 import { publishWidgetState } from './lib/widgetState';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
-import { SamActionRow, SamField, SamRow, SamSection, SamTabBar, type SamTabKey } from './samKit';
+import { SamActionRow, SamField, SamSection, SamTabBar, type SamTabKey } from './samKit';
 import TasksScreen from './TasksScreen';
 import VaultScreen from './VaultScreen';
 

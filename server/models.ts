@@ -8,17 +8,12 @@
 //  Add a provider = one entry in PROVIDERS below. That's it.
 // ─────────────────────────────────────────────────────────────
 
-import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadRanking, rankingStale } from "./colosseum.ts";
 import { recordCostSavings } from "./cost-optimizer.ts";
 import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./keys.ts";
 import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
 import { count, mark, observe } from "./pulse.ts";
 import { relayBrain } from "./relay.ts";
-import { collapseRepetition, isDegenerateRepetition } from "./repetition.ts";
 import { classifyPromptTier } from "./speculative-router.ts";
 import { healthOrder } from "./speed.ts";
 

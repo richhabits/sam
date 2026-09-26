@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { queueStudioJob } from "./lib/api";
 
@@ -85,7 +85,7 @@ export default function StudioView() {
     return saved ? JSON.parse(saved) : [...INITIAL_TIMELINE_CLIPS];
   });
 
-  const [cameraRigs, setCameraRigs] = useState<{ id: string; label: string }[]>([]);
+  const [_cameraRigs, setCameraRigs] = useState<{ id: string; label: string }[]>([]);
   const [lens, setLens] = useState<{ id: string; name: string; focalLength: string; aperture: string } | null>(null);
 
   const timelineTrackRef = useRef<HTMLDivElement | null>(null);
@@ -279,7 +279,7 @@ export default function StudioView() {
       });
       let data = await res.json();
 
-      if (data.error && data.error.includes("free-credit key")) {
+      if (data.error?.includes("free-credit key")) {
         showToast("📷 Video requires API key. Falling back to free image generation...");
         res = await fetch("/api/studio/image", {
           method: "POST",
@@ -309,7 +309,7 @@ export default function StudioView() {
       } else {
         showToast("⚠️ Render failed: " + (data.error || "Unknown error"));
       }
-    } catch (err: any) {
+    } catch (_err: any) {
       clearInterval(progressInterval);
       showToast("⚠️ Network error during render.");
     } finally {

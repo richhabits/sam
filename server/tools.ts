@@ -79,7 +79,7 @@ const require = createRequire(import.meta.url);
 
 import type { Page } from "playwright-core";
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
-import { executeAntigravityCognition, generatePremiumDesignSystem, runCognitiveReflectionLoop, verifyFactualGrounding, verifySymbolDeclaration } from "./antigravity-brain.ts";
+import { executeAntigravityCognition, generatePremiumDesignSystem, runCognitiveReflectionLoop, verifySymbolDeclaration } from "./antigravity-brain.ts";
 import { generateSpeechAudio } from "./audio-engine.ts";
 import { verifyAuditChainIntegrity } from "./audit-ledger.ts";
 import { allow, autopilotOn, disallow, isElonMode, listAllowed, setAutopilot } from "./authz.ts";
@@ -2303,10 +2303,10 @@ export async function antigravityKnowledgeGraphTool(input: {
     }
 
     const matched = nodes.filter((n) =>
-      (n.label && n.label.toLowerCase().includes(q)) ||
-      (n.source_file && n.source_file.toLowerCase().includes(q)) ||
-      (n.id && n.id.toLowerCase().includes(q)) ||
-      (n.community_name && n.community_name.toLowerCase().includes(q))
+      (n.label?.toLowerCase().includes(q)) ||
+      (n.source_file?.toLowerCase().includes(q)) ||
+      (n.id?.toLowerCase().includes(q)) ||
+      (n.community_name?.toLowerCase().includes(q))
     ).slice(0, limit);
 
     if (!matched.length) return `No nodes found matching query "${input?.query}".`;
@@ -2321,7 +2321,7 @@ export async function antigravityKnowledgeGraphTool(input: {
   }
 }
 
-export async function antigravitySelfHealTool(input?: {
+export async function antigravitySelfHealTool(_input?: {
   fixInstruction?: string;
 }): Promise<string> {
   const report = await runSelfHealingVerification();
@@ -3625,7 +3625,7 @@ export const TOOLS: Tool[] = [
       text: { type: "string", required: true, desc: "Reasoning output or code plan to self-correct" },
       maxIterations: { type: "number", desc: "Maximum reflection passes (default: 3)" }
     },
-    activity: (i) => `Executing cognitive reflection loop on reasoning plan`,
+    activity: (_i) => `Executing cognitive reflection loop on reasoning plan`,
     run: (i) => antigravityReflectionLoopTool(i) },
   { name: "antigravity_symbol_verifier", safe: true, description: "Empirically verifies whether a TypeScript function, type, class, or variable is declared and exported in a specific workspace file. input: { filePath, symbolName }.", params: "{filePath, symbolName}",
     args: {

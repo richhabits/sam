@@ -1,4 +1,4 @@
-import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 // Mock environment for testing locally to save money
@@ -7,7 +7,7 @@ process.env.POLYMARKET_API_KEY = "MockApiKey";
 
 import { calculatePortfolioRebalance } from "../server/flipit-auto.ts";
 // We import the modules strictly after the environment override
-import { getSharedExecutionEngine, submitPolymarketClobOrder } from "../server/flipit-execution.ts";
+import { submitPolymarketClobOrder } from "../server/flipit-execution.ts";
 import { FlipItLocalSimulator } from "../server/flipit-local-simulator.ts";
 import { compileHiggsfieldMotionPrompt } from "../server/studio-higgsfield.ts";
 import { compileProductionTimeline } from "../server/studio-master-timeline.ts";

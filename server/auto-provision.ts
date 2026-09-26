@@ -7,8 +7,8 @@
 // ─────────────────────────────────────────────────────────────
 
 import { writeEnv } from "./env-file.ts";
-import { keyStatus, poolSize, setPool } from "./keys.ts";
-import { PROVIDER_REGISTRY, type ProviderSpec } from "./providers.registry.ts";
+import { poolSize, setPool } from "./keys.ts";
+import { PROVIDER_REGISTRY, } from "./providers.registry.ts";
 
 export interface KeySetupTarget {
   id: string;
@@ -82,7 +82,7 @@ export async function validateAndSaveProviderKey(
   const cleanKey = String(key || "").trim();
   const spec = PROVIDER_REGISTRY.find((p) => p.id === providerId);
 
-  if (!spec || !spec.envPlural) {
+  if (!spec?.envPlural) {
     return {
       providerId,
       label: providerId,

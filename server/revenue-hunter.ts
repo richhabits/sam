@@ -42,7 +42,7 @@ export async function buildDynamicOpportunities(): Promise<OpportunityItem[]> {
 
   // Fetch live market quotes for market arb evaluation
   let liveBtc = 65000;
-  let liveEth = 3500;
+  let _liveEth = 3500;
   let simulatedQuotesForSpread: any[] = [];
 
   try {
@@ -50,7 +50,7 @@ export async function buildDynamicOpportunities(): Promise<OpportunityItem[]> {
     const btc = marketQuotes.find((q) => q.symbol === "BTC-USD");
     const eth = marketQuotes.find((q) => q.symbol === "ETH-USD");
     if (btc?.ok && typeof btc.price === "number") liveBtc = btc.price;
-    if (eth?.ok && typeof eth.price === "number") liveEth = eth.price;
+    if (eth?.ok && typeof eth.price === "number") _liveEth = eth.price;
 
     // Build real cross-exchange spread inputs from live ticker price
     const spreadBps = 0.0015; // 15 bps spread across hypothetical venues
