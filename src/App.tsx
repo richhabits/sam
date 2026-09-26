@@ -24,6 +24,7 @@ import PersonaPicker from "./PersonaPicker";
 import { HANDOFF_PROMPT, HANDOFF_BLURB } from "./lib/handoffPrompt";
 const Notebook = lazy(() => import("./Notebook"));
 const Usage = lazy(() => import("./Usage"));
+const Mt5Pane = lazy(() => import("./Mt5Pane"));
 const KeyWizard = lazy(() => import("./KeyWizard"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const AutonomyPane = lazy(() => import("./AutonomyPane"));
@@ -432,6 +433,7 @@ export default function App() {
   }, []);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [mt5Open, setMt5Open] = useState(false);
   const [autonomyOpen, setAutonomyOpen] = useState(false);
   const [learnedOpen, setLearnedOpen] = useState(false);
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
@@ -651,7 +653,7 @@ export default function App() {
       else if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); newChat(); }
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPalette((v) => !v); setPq(""); setPi(0); }
       else if (mod && e.key.toLowerCase() === "f" && messages.length > 0) { e.preventDefault(); setFindOpen(true); setFindIdx(0); setTimeout(() => findRef.current?.select(), 30); }
-      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); setConnectorsOpen(false); } }
+      else if (e.key === "Escape") { if (dragOver) setDragOver(false); else if (palette) setPalette(false); else if (findOpen) { setFindOpen(false); setFindQ(""); } else if (loading) stop(); else { setHistoryOpen(false); setCtxOpen(false); setMarketsOpen(false); setColosseumOpen(false); setMemoryOpen(false); setToolsOpen(false); setSettingsOpen(false); setDashOpen(false); setAdminOpen(false); setUsageOpen(false); setMt5Open(false); setNotebookOpen(false); setAutonomyOpen(false); setLearnedOpen(false); setWorkflowsOpen(false); setYourSamOpen(false); setDoctorOpen(false); setConnectorsOpen(false); } }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -2403,6 +2405,7 @@ export default function App() {
           { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
+          { icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) },
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
           { icon: "settings", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "search", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },
@@ -2466,6 +2469,7 @@ export default function App() {
         {adminOpen && <Admin onClose={() => { setAdminOpen(false); setAdminFocus(undefined); }} focus={adminFocus} />}
         {notebookOpen && <Notebook onClose={() => setNotebookOpen(false)} speak={speakText} />}
         {usageOpen && <Usage onClose={() => setUsageOpen(false)} />}
+        {mt5Open && <Mt5Pane onClose={() => setMt5Open(false)} />}
         {wizardOpen && <KeyWizard onClose={() => setWizardOpen(false)} onAllProviders={() => { setWizardOpen(false); setAdminOpen(true); }} />}
         {dashOpen && <ErrorBoundary label="dashboard"><Dashboard onClose={() => setDashOpen(false)} onAddKeys={() => setAdminOpen(true)} /></ErrorBoundary>}
         {autonomyOpen && <AutonomyPane onClose={() => setAutonomyOpen(false)} />}

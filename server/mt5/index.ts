@@ -8,11 +8,11 @@
 //  Live (non-demo) accounts are refused unless MT5_ALLOW_LIVE_READ=1 — Phase 1 is demo-only.
 // ─────────────────────────────────────────────────────────────
 
-import type { Mt5ReadAdapter, Mt5Account, Mt5Position, Mt5Deal } from "./adapter.ts";
-import { createMockAdapter } from "./mock.ts";
+import type { Mt5Account, Mt5Deal, Mt5Position, Mt5ReadAdapter } from "./adapter.ts";
 import { computeMetrics, type Mt5Metrics } from "./metrics.ts";
+import { createMockAdapter } from "./mock.ts";
 
-export type { Mt5ReadAdapter, Mt5Account, Mt5Position, Mt5Deal, Mt5Metrics };
+export type { Mt5Account, Mt5Deal, Mt5Metrics, Mt5Position, Mt5ReadAdapter };
 export { computeMetrics };
 
 let override: Mt5ReadAdapter | null = null;

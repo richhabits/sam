@@ -1,7 +1,7 @@
 // Deterministic MT5 mock — no network, no broker, no randomness, so tests are exact and nothing
 // can ever burn a quota or touch a real account. Also the default backend until a real one is
 // configured, which keeps the HUD/tools demonstrable with zero setup.
-import type { Mt5ReadAdapter, Mt5Account, Mt5Position, Mt5Deal, Mt5Quote } from "./adapter.ts";
+import type { Mt5Account, Mt5Deal, Mt5Position, Mt5Quote, Mt5ReadAdapter } from "./adapter.ts";
 
 const H = 3_600_000;
 const iso = (ms: number) => new Date(ms).toISOString();

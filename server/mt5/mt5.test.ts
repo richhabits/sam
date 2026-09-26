@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { createMockAdapter } from "./mock.ts";
-import { computeMetrics } from "./metrics.ts";
-import { mt5Summary, getMt5Adapter, setMt5AdapterForTests, formatHistory, formatPositions, formatAccount } from "./index.ts";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Mt5Account, Mt5Deal } from "./adapter.ts";
+import { formatAccount, formatHistory, formatPositions, getMt5Adapter, mt5Summary, setMt5AdapterForTests } from "./index.ts";
+import { computeMetrics } from "./metrics.ts";
+import { createMockAdapter } from "./mock.ts";
 
 const acct = (o: Partial<Mt5Account> = {}): Mt5Account =>
   ({ login: "1", server: "s", currency: "USD", balance: 1000, equity: 1000, margin: 100, freeMargin: 900, leverage: 100, demo: true, ...o });
