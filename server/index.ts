@@ -12,7 +12,7 @@ import { scrubConsole, publicError } from "./scrub.ts";
 scrubConsole();
 import os from "node:os";
 import { timingSafeEqual, } from "node:crypto";
-import { readFileSync, existsSync, } from "node:fs";
+import { readFileSync, existsSync, appendFileSync, mkdirSync } from "node:fs";
 import { withPending, takePending as takePendingApproval, type PendingCtx } from "./pending.ts";
 import { handleUnattended, resolveAsk, sweepAsks, openAsks, getAsk, wireAskDelivery, type Ask } from "./ask.ts";
 import { recordAuditEvent } from "./audit-ledger.ts";
@@ -2272,10 +2272,11 @@ app.post("/api/ask/:id", (req, res) => {
   res.json({ status: r?.ask.status ?? "gone" });
 });
 
-// FLIP IT — surface the sibling £5 trading rig's live state inside SAM (read-only, loopback only).
-// Reads ~/flip-it/state|ledger; absent (most users) ⇒ { present: false } and the pane shows a hint.
+// FLIP IT — read the sibling desk. A paired phone may read it (same door as a yard read).
+// Placing a trade stays on this computer: POST /api/flipit/execute is still loopback-only.
+// Reads ~/flip-it/state|ledger; absent ⇒ { present: false }.
 app.get("/api/flipit", (req, res) => {
-  if (!isTrustedLocal(req)) { res.status(403).json({ error: "loopback + Handshake only" }); return; }
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "paired session required" }); return; }
   const d = flipitDesk();
   if (!d.present) { res.json({ present: false, schema: 2 }); return; }
   // schema 2 payload, plus the flat fields the desk shipped before it grew a read model —
@@ -2286,6 +2287,22 @@ app.get("/api/flipit", (req, res) => {
     seeded: d.now!.seeded, status: d.now!.status,
     days: d.now!.days, trades: d.now!.trades, target: d.now!.target, tradeTarget: d.now!.tradeTarget,
   });
+});
+
+// A person reporting a model reply. Paired phone or this computer. Append-only.
+// The file is the review queue; nothing here deletes or hides a report.
+app.post("/api/reports", (req, res) => {
+  if (!isYardReadTrusted(req)) { res.status(403).json({ error: "paired session required" }); return; }
+  const reason = String(req.body?.reason || "");
+  const text = String(req.body?.text || "").trim().slice(0, 2000);
+  if (!["harmful", "sexual", "illegal", "other"].includes(reason) || !text) {
+    res.status(400).json({ error: "need a reason and the reply" });
+    return;
+  }
+  const dir = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
+  mkdirSync(dir, { recursive: true });
+  appendFileSync(join(dir, "reports.jsonl"), JSON.stringify({ at: new Date().toISOString(), reason, text }) + "\n");
+  res.json({ ok: true });
 });
 
 // THE YARD — long-running build jobs.

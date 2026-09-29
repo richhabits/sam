@@ -4,6 +4,7 @@ import {
   wallAt, instantForWall, buildDesk,
 } from "./flipit.ts";
 import * as flipit from "./flipit.ts";
+import { readFileSync } from "node:fs";
 
 // The desk's only real logic is arithmetic and calendars, so that is what gets tested:
 // fold the journal the way the rig folds it, and get the schedule right across weekends
@@ -231,6 +232,27 @@ describe("assembling the desk", () => {
 // never should be — the guarantee holds because this module has no write-shaped export to
 // grant access TO in the first place (see its own file header). This test is the tripwire:
 // if anyone ever adds one, it fails here before it can be wired into a capability tier.
+describe("a reported reply is kept", () => {
+  it("gates POST /api/reports on a paired session and writes the queue", () => {
+    const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    const start = src.indexOf('app.post("/api/reports"');
+    const body = src.slice(start, start + 700);
+    expect(start).toBeGreaterThan(0);
+    expect(body).toContain("isYardReadTrusted(req)");
+    expect(body).toContain("reports.jsonl");
+  });
+});
+
+describe("the phone may read the desk", () => {
+  it("gates GET /api/flipit on a paired session, not on sitting at the computer", () => {
+    const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    const start = src.indexOf('app.get("/api/flipit"');
+    const body = src.slice(start, start + 420);
+    expect(body).toContain("isYardReadTrusted(req)");
+    expect(body).not.toContain("isTrustedLocal(req)");
+  });
+});
+
 describe("read-only by construction — the ~/flip-it guarantee", () => {
   const WRITE_SHAPED = /^(write|save|set|put|post|update|delete|remove|create|place|submit|approve|order|buy|sell|trade|execute|apply|commit|push)/i;
 

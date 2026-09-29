@@ -119,7 +119,7 @@ export async function setCustomKey(provider: string, key: string): Promise<void>
 const SAM_SYSTEM_PROMPT = `You are S.A.M. (Smart Artificial Mind), an elite, direct, and exceptionally capable AI assistant.
 You are running on mobile and desktop devices.
 You are concise, sharp, extremely knowledgeable, and write clean, modern, state-of-the-art code and clear explanations.
-When asked to build websites, applications, or documents, write complete, production-ready, beautiful code.
+When asked to build websites, applications, or documents, write the finished artifact in the reply. Do not stop at an outline.
 Never give robotic excuses or refer to yourself as a restricted demo. You are the real SAM.`;
 
 type ChatMessage = { role: string; content: string };
@@ -134,6 +134,15 @@ function buildMessages(message: string, history: Turn[]): ChatMessage[] {
 
 // Task-aware prompt classification
 export type Lane = 'fast' | 'deep' | 'code';
+/** How many tokens this phone is willing to spend on the reply. Code and long
+ *  reasoning were capped at the same 2048 as a one-line chat, so a "build this"
+ *  request died mid-file. */
+export function tokenBudget(lane: Lane): number {
+  if (lane === 'code') return 8192;
+  if (lane === 'deep') return 4096;
+  return 2048;
+}
+
 export function pickLane(text: string): Lane {
   const t = (text || '').slice(0, 600).toLowerCase();
   if (/```|\b(debug|refactor|stack ?trace|compile|regex|typescript|javascript|python|\bnpm\b|traceback|exception|syntax error|stack overflow|code|html|css|react)\b/.test(t)) return 'code';
@@ -213,7 +222,7 @@ async function callGeminiDirect(
             ...history.slice(-8).map((t) => ({ role: t.role === 'sam' ? 'model' : 'user', parts: [{ text: t.text }] })),
             { role: 'user', parts: [{ text: message }] },
           ],
-          generationConfig: { maxOutputTokens: 2048 },
+          generationConfig: { maxOutputTokens: tokenBudget(pickLane(message)) },
         }),
         signal,
       },
@@ -267,7 +276,7 @@ async function callAnthropicDirect(
       },
       body: JSON.stringify({
         model,
-        max_tokens: 2048,
+        max_tokens: tokenBudget(pickLane(message)),
         system: SAM_SYSTEM_PROMPT,
         stream: true,
         messages: [
@@ -391,7 +400,10 @@ export async function streamDirectAI(
     const model = provider.id === 'openai' && tier === 'turbo' ? 'gpt-4o'
       : provider.id === 'openrouter' && tier === 'turbo' ? 'anthropic/claude-3.5-sonnet'
       : provider.model;
-    const text = await callOpenAICompatDirect(provider.baseURL, model, key, messages, handlers, signal);
+    const text = await callOpenAICompatDirect(provider.baseURL, model, key, messages, handlers, signal, {
+      temperature: lane === 'code' ? 0.2 : 0.7,
+      max_tokens: tokenBudget(lane),
+    });
     if (text) { handlers.onDone?.(text); return text; }
   }
 

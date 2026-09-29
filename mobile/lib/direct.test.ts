@@ -10,7 +10,7 @@ vi.mock('expo-secure-store', () => ({
 const fetchSpy = vi.fn();
 vi.mock('expo/fetch', () => ({ fetch: (...args: unknown[]) => fetchSpy(...args) }));
 
-import { streamDirectAI, setCustomKey, DIRECT_PROVIDERS } from './direct';
+import { streamDirectAI, setCustomKey, DIRECT_PROVIDERS, pickLane, tokenBudget } from './direct';
 
 function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
@@ -118,5 +118,16 @@ describe('streamDirectAI — configured providers & multi-cloud', () => {
 
     expect(result).toBe('from claude');
     expect(fetchSpy.mock.calls[0][0]).toContain('api.anthropic.com');
+  });
+
+  it('gives a code request a full reply budget instead of the chat cap', async () => {
+    expect(tokenBudget(pickLane('refactor this typescript function'))).toBe(8192);
+    expect(tokenBudget(pickLane('hi'))).toBe(2048);
+
+    await setCustomKey('groq', 'gsk_test123');
+    fetchSpy.mockResolvedValue({ ok: true, body: sseBody([okChunk('done'), '[DONE]']) });
+    await streamDirectAI('refactor this typescript function', []);
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect(body.max_tokens).toBe(8192);
   });
 });

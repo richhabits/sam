@@ -305,6 +305,14 @@ export function demoApi(path: string): any {
   if (path.startsWith('/api/yard')) return YARD;
   if (path.startsWith('/api/pair/devices')) return { devices: DEVICES };
   if (path.startsWith('/api/connectors')) return CONNECTORS;
+  if (path.startsWith('/api/flipit')) {
+    return {
+      present: true,
+      schema: 2,
+      now: { equity: 5, status: 'IN PROGRESS', days: 12, target: 60, trades: 4, tradeTarget: 20 },
+      holdings: [{ ticker: 'VWRL', weight: 1 }],
+    };
+  }
   return { demo: true, note: 'This screen has no demo data.' };
 }
 

@@ -3,9 +3,10 @@
 Everything that can be settled in code is settled and verified below. What remains is the part
 that only exists inside App Store Connect: metadata, screenshots, and pressing Submit.
 
-**Build to submit: 1.0.0 (7)**, already uploaded and processed. No new build is needed — the only
-change to `mobile/` since then deleted `devicePushToken()`, a function with no caller anywhere,
-ever. Runtime behaviour is identical.
+**Next build: 1.0.0 (109).** Apple already rejected 1.0.0. Builds through 108 are on App Store
+Connect and cannot be resubmitted. Archive from this tree so the binary includes Studio, the
+FlipIt reader, and Report on each reply. Screenshots for iPhone and iPad are already on the
+1.0.0 version. The age rating is 9+.
 
 ---
 

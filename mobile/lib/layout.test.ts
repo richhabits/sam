@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centreWhenRoomy, contentColumn, layoutFor, READABLE_MAX, REGULAR_WIDTH, tileWidthPercent } from './layout';
+import { centreWhenRoomy, contentColumn, DUO_COVER_WIDTH, DUO_HINGE, DUO_INNER_WIDTH, layoutFor, READABLE_MAX, REGULAR_WIDTH, tileWidthPercent } from './layout';
 
 // There is no iPad in this loop, so the iPad behaviour is pinned here instead of eyeballed.
 // The widths below are the real ones — if a case regresses, it regresses against an actual
@@ -108,6 +108,29 @@ describe('using the space, not just capping it', () => {
     expect(layoutFor(600).gridColumns).toBe(2);
     expect(layoutFor(834).gridColumns).toBe(3);
     expect(layoutFor(1440).gridColumns).toBe(4);
+  });
+
+  it('keeps the iPhone Duo cover as a phone and splits the inner display around the hinge', () => {
+    const cover = layoutFor(DUO_COVER_WIDTH);
+    expect(cover.isRegular).toBe(false);
+    expect(cover.panes).toBe(1);
+    expect(cover.hinge).toBe(0);
+    expect(cover.contentMaxWidth).toBe(Infinity);
+
+    const inner = layoutFor(DUO_INNER_WIDTH);
+    expect(inner.isRegular).toBe(true);
+    expect(inner.panes).toBe(2);
+    expect(inner.hinge).toBe(DUO_HINGE);
+    expect(inner.gridColumns).toBe(2);
+    expect(inner.contentMaxWidth).toBe(READABLE_MAX);
+
+    // iPad mini portrait is the next real device up. It must not grow a fake hinge.
+    const mini = layoutFor(IPAD_MINI_PORTRAIT);
+    expect(mini.panes).toBe(1);
+    expect(mini.hinge).toBe(0);
+
+    // Inner landscape is 951pt, the same band as a large iPhone turned sideways.
+    expect(layoutFor(951).panes).toBe(1);
   });
 
   it('sizes home tiles for phone vs iPad vs 13-inch landscape', () => {

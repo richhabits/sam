@@ -19,27 +19,30 @@ import { layoutFor, tileWidthPercent } from './lib/layout';
 // dishonest control the handoff's own copy rules ("failures say what happened") argue against.
 // "Ask it" — text, which already works — is the one CTA below.
 //
-// Vault is real (build order step 6, VaultScreen.tsx). Studio is a real destination in the
-// handoff but doesn't exist as a screen yet (step 8) — its grid tile is disabled rather than
-// pointed at nothing. FlipIt is locked to simulated/paper/beta per the handoff's own FlipIt
-// section and has no mobile screen either. "Your computer" is real: it's the same pairing flow
-// QRScanner.tsx already drives, just reached from here too.
+// Vault is real. Studio makes a picture on this phone. FlipIt reads the desk on the
+// paired computer and cannot place a trade. "Your computer" is the pairing flow.
 
 type YardSummary = { on: boolean; recent: RecentTask[]; meter?: { todayTokens: number; weekTokens: number; byTier?: Record<string, number> }; queued?: number; running?: number };
 
 export default function HomeScreen({
   onOpenChat,
   onOpenVault,
+  onOpenStudio,
+  onOpenFlipIt,
   onResume,
   onOpenPairing,
+  onExploreDemo,
   onNeedsPairing,
   paired,
   demo = false,
 }: {
   onOpenChat: () => void;
   onOpenVault: () => void;
+  onOpenStudio: () => void;
+  onOpenFlipIt: () => void;
   onResume: (task: RecentTask) => void;
   onOpenPairing: () => void;
+  onExploreDemo: () => void;
   onNeedsPairing: () => void;
   paired: boolean;
   demo?: boolean;
@@ -125,6 +128,25 @@ export default function HomeScreen({
         >
           <Text style={[samType.h3, { color: samColor.ground, fontSize: 17 }]}>Ask it</Text>
         </Pressable>
+        {demo ? null : (
+          <Pressable
+            onPress={onExploreDemo}
+            accessibilityRole="button"
+            accessibilityLabel="Explore the demo"
+            style={({ pressed }) => ({
+              minHeight: 52,
+              marginTop: 12,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: samColor.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text style={[samType.h3, { color: samColor.accent, fontSize: 17 }]}>Explore the demo</Text>
+          </Pressable>
+        )}
       </View>
 
       {yard?.on && yard.recent.length ? (
@@ -149,7 +171,15 @@ export default function HomeScreen({
       <View style={{ marginBottom: samSpace.section }}>
         <SamSectionLabel>SURFACES</SamSectionLabel>
         <View style={{ marginHorizontal: samSpace.gutter, flexDirection: 'row', flexWrap: 'wrap', gap: samSpace.rowGap }}>
-          <GridTile width={tileW} label="Studio" glyph="◆" comingSoon />
+          <GridTile
+            width={tileW}
+            label="Studio"
+            glyph="◆"
+            onPress={() => {
+              haptic.medium();
+              onOpenStudio();
+            }}
+          />
           <GridTile
             width={tileW}
             label="Vault"
@@ -159,7 +189,15 @@ export default function HomeScreen({
               onOpenVault();
             }}
           />
-          <GridTile width={tileW} label="FlipIt" glyph="↯" comingSoon />
+          <GridTile
+            width={tileW}
+            label="FlipIt"
+            glyph="↯"
+            onPress={() => {
+              haptic.medium();
+              onOpenFlipIt();
+            }}
+          />
           <GridTile
             width={tileW}
             label="Your computer"

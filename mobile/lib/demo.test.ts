@@ -76,6 +76,13 @@ describe('the demo answers the shapes the screens actually read', () => {
     expect(demoApi('/api/yard/job/nope').job).toBeNull();
   });
 
+  it('gives FlipIt a readable sample desk', () => {
+    const d = demoApi('/api/flipit');
+    expect(d.present).toBe(true);
+    expect(d.now.equity).toBe(5);
+    expect(d.holdings[0].ticker).toBe('VWRL');
+  });
+
   it('gives Settings its devices', () => {
     expect(demoApi('/api/pair/devices').devices.length).toBeGreaterThan(0);
   });

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Alert,
   Text,
   TextInput,
   View,
@@ -34,6 +35,7 @@ import {
   taskTitle,
   taskWhen,
 } from './lib/mentions';
+import { reportRecord, saveReport, type ReportReason } from './lib/report';
 import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
 import { samBorder, samColor, samFont, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
 
@@ -55,7 +57,49 @@ import { samBorder, samColor, samFont, samInk, samRadius, samSpace, samTouch, sa
 // request is in flight can't resend it and the buttons visibly go away rather than sitting
 // there implying they still do something.
 type Gate = { pendingId: string; activity: string; preview?: string; trace: string[]; status: 'open' | 'approved' | 'declined' };
-type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean; gate?: Gate };
+type Msg = { role: 'user' | 'sam'; text: string; route?: string; pending?: boolean; gate?: Gate; reported?: boolean };
+
+const REPORT_CHOICES: { reason: ReportReason; label: string }[] = [
+  { reason: 'harmful', label: 'Harmful' },
+  { reason: 'sexual', label: 'Sexual' },
+  { reason: 'illegal', label: 'Illegal' },
+  { reason: 'other', label: 'Other' },
+];
+
+function reportThisReply(text: string, onDone: () => void) {
+  const finish = (reason: ReportReason) => {
+    const rec = reportRecord(reason, text);
+    if (!rec) return;
+    void (async () => {
+      try {
+        await api('/api/reports', { method: 'POST', body: JSON.stringify(rec) });
+      } catch {
+        // Kept on the phone either way. A missing server must not eat the tap.
+      }
+      await saveReport(rec);
+      onDone();
+    })();
+  };
+  const labels = REPORT_CHOICES.map((r) => r.label);
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title: 'Report this reply', options: [...labels, 'Cancel'], cancelButtonIndex: labels.length },
+      (index) => {
+        const picked = REPORT_CHOICES[index];
+        if (picked) finish(picked.reason);
+      },
+    );
+    return;
+  }
+  Alert.alert(
+    'Report this reply',
+    undefined,
+    [
+      ...REPORT_CHOICES.map((r) => ({ text: r.label, onPress: () => finish(r.reason) })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ],
+  );
+}
 
 // The opening screen's starting points. Kept SHORT — these are prompts to edit, not menu items,
 // and a chip you cannot read at a glance is a chip nobody taps. Each one names something SAM
@@ -658,6 +702,19 @@ export default function ChatScreen({
                   )}
                 </Pressable>
                 {m.route ? <Text style={s.route}>{m.route}</Text> : null}
+                {m.text && !m.pending ? (
+                  <Pressable
+                    onPress={() => reportThisReply(m.text, () => setMsgs((prev) => prev.map((row, j) => (j === i ? { ...row, reported: true } : row))))}
+                    disabled={m.reported}
+                    accessibilityRole="button"
+                    accessibilityLabel={m.reported ? 'Reply reported' : 'Report this reply'}
+                    hitSlop={8}
+                  >
+                    <Text style={[s.route, { color: m.reported ? samColor.green : samInk.metadata }]}>
+                      {m.reported ? 'Reported' : 'Report'}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ),
           )

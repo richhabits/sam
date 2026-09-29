@@ -443,14 +443,25 @@ export function SamTabBar({
   tabs,
   value,
   onChange,
+  axis = 'row',
 }: {
   platform: 'ios' | 'android';
   tabs: { key: SamTabKey; glyph: string; label: string }[];
   value: SamTabKey;
   onChange: (k: SamTabKey) => void;
+  /** Column is the iPhone Duo inner display: tabs sit in the left pane, clear of the hinge. */
+  axis?: 'row' | 'column';
 }) {
+  const vertical = axis === 'column';
   return (
-    <View style={[tabbar.bar, { zIndex: 20, elevation: 20 }]} accessibilityRole="tablist">
+    <View
+      style={[
+        tabbar.bar,
+        vertical && tabbar.rail,
+        { zIndex: 20, elevation: 20 },
+      ]}
+      accessibilityRole="tablist"
+    >
       {tabs.map((t) => {
         const on = t.key === value;
         return (
@@ -464,12 +475,12 @@ export function SamTabBar({
             accessibilityLabel={t.label}
             accessibilityState={{ selected: on }}
             hitSlop={12}
-            style={tabbar.item}
+            style={[tabbar.item, vertical && tabbar.railItem]}
           >
-            {platform === 'android' && on ? <View style={tabbar.pill} /> : null}
+            {platform === 'android' && on && !vertical ? <View style={tabbar.pill} /> : null}
             <Text style={[samType.mono, { color: on ? samColor.accent : samInk.metadata }]}>{t.glyph}</Text>
-            <Text style={[samType.monoXs, { color: on ? samColor.accent : samInk.metadata, marginTop: 3 }]}>{t.label}</Text>
-            {platform === 'ios' && on ? <View style={tabbar.underline} /> : null}
+            <Text style={[samType.monoXs, { color: on ? samColor.accent : samInk.metadata, marginTop: vertical ? 0 : 3, marginLeft: vertical ? 10 : 0 }]}>{t.label}</Text>
+            {platform === 'ios' && on && !vertical ? <View style={tabbar.underline} /> : null}
           </Pressable>
         );
       })}
@@ -486,6 +497,21 @@ const tabbar = StyleSheet.create({
     paddingBottom: 18,
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, minHeight: samTouch.minTarget },
+  rail: {
+    flex: 1,
+    flexDirection: 'column',
+    borderTopWidth: 0,
+    paddingBottom: 12,
+    paddingTop: 8,
+    justifyContent: 'flex-start',
+  },
+  railItem: {
+    flex: 0,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 18,
+    minHeight: samTouch.minTarget,
+  },
   underline: { position: 'absolute', top: 0, width: 24, height: 2, backgroundColor: samColor.accent, borderRadius: 1 },
   pill: { position: 'absolute', top: 2, width: 44, height: 26, borderRadius: 13, backgroundColor: 'rgba(240,130,78,0.15)' },
 });

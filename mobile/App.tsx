@@ -34,6 +34,8 @@ import { publishWidgetState } from './lib/widgetState';
 import { parseQuickLink } from './lib/quicklink';
 import QRScanner from './QRScanner';
 import SettingsScreen from './SettingsScreen';
+import StudioScreen from './StudioScreen';
+import FlipItScreen from './FlipItScreen';
 import TasksScreen from './TasksScreen';
 import { SamActionRow, SamField, SamRow, SamSection, SamTabBar, type SamTabKey } from './samKit';
 import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib/samTheme';
@@ -44,7 +46,15 @@ import { samBorder, samColor, samInk, samRadius, samSpace, samType } from './lib
 // Works immediately on mobile without requiring any desktop setup,
 // while unlocking computer control and yard tasks when paired with a Mac/PC.
 
-type Surface = 'home' | 'agent' | 'tasks' | 'vault' | 'settings';
+type Surface = 'home' | 'agent' | 'tasks' | 'vault' | 'settings' | 'studio' | 'flipit';
+
+const POCKET_TABS: { key: SamTabKey; glyph: string; label: string }[] = [
+  { key: 'home', glyph: '◇', label: 'Home' },
+  { key: 'chat', glyph: '◈', label: 'Agent' },
+  { key: 'yard', glyph: '▤', label: 'Tasks' },
+  { key: 'vault', glyph: '▥', label: 'Vault' },
+  { key: 'settings', glyph: '⚙', label: 'Settings' },
+];
 
 function surfaceToTabKey(s: Surface): SamTabKey {
   return s === 'agent' ? 'chat' : s === 'tasks' ? 'yard' : s;
@@ -210,6 +220,19 @@ export default function App() {
     setPaired(false);
   }, []);
 
+  // Reviewers look for these exact words. They live on the home screen, in the
+  // menu, and at the top of the pairing sheet — not only below the fold.
+  const startDemo = useCallback(() => {
+    haptic.light();
+    setMenu(false);
+    setShowPairModal(false);
+    void enterDemo().then(() => {
+      setDemo(true);
+      setPaired(true);
+      setSurface('home');
+    });
+  }, []);
+
   // The demo never held a token, so leaving only drops the flag and the chat thread — there is
   // nothing on a Mac to revoke. Reachable both from the banner's own "Leave" link and from
   // Settings → Forget this device (forgetDevice() calls leaveDemo() internally either way).
@@ -257,7 +280,27 @@ export default function App() {
           <View style={[s.statusDot, { backgroundColor: _paired ? samColor.green : samColor.accent }]} />
         </Pressable>
 
-        <View style={{ flex: 1 }} />
+        {demo ? (
+          <View style={{ flex: 1 }} />
+        ) : (
+          <Pressable
+            onPress={startDemo}
+            accessibilityRole="button"
+            accessibilityLabel="Explore the demo"
+            style={({ pressed }) => ({
+              flex: 1,
+              minHeight: 44,
+              marginHorizontal: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text numberOfLines={1} style={{ color: samColor.accent, fontSize: 17, fontWeight: '600' }}>
+              Explore the demo
+            </Text>
+          </Pressable>
+        )}
 
         <Pressable
           onPress={() => {
@@ -301,6 +344,13 @@ export default function App() {
             >
               <Text style={s.menuRowText}>Connect to Mac / PC</Text>
             </Pressable>
+            <View style={{ height: 1, backgroundColor: samBorder.default, marginLeft: samSpace.gutter }} />
+            <Pressable
+              onPress={startDemo}
+              style={({ pressed }) => [s.menuRow, pressed && { backgroundColor: samColor.raise2 }]}
+            >
+              <Text style={s.menuRowText}>Explore the demo</Text>
+            </Pressable>
           </View>
         </>
       ) : null}
@@ -316,16 +366,35 @@ export default function App() {
         </View>
       ) : null}
 
-      {/* Main Surfaces View — clip so lists cannot steal tab-bar taps */}
-      <View style={[{ flex: 1, overflow: 'hidden', zIndex: 0 }, column]}>
+      {/* Main Surfaces View — clip so lists cannot steal tab-bar taps.
+          On the Duo inner display the tabs move to the left pane so the hinge
+          (layout.hinge) is an empty band, not a stripe through the content. */}
+      <View style={{ flex: 1, flexDirection: layout.panes === 2 ? 'row' : 'column', overflow: 'hidden' }}>
+      {layout.panes === 2 ? (
+        <SamTabBar
+          axis="column"
+          platform={Platform.OS === 'android' ? 'android' : 'ios'}
+          value={surfaceToTabKey(surface)}
+          onChange={(k) => {
+            haptic.selection();
+            setSurface(tabKeyToSurface(k));
+          }}
+          tabs={POCKET_TABS}
+        />
+      ) : null}
+      {layout.panes === 2 ? <View style={{ width: layout.hinge }} /> : null}
+      <View style={[{ flex: 1, overflow: 'hidden', zIndex: 0 }, layout.panes === 2 ? null : column]}>
         {surface === 'home' ? (
           <HomeScreen
             paired={_paired}
             demo={demo}
             onNeedsPairing={onNeedsPairing}
             onOpenPairing={() => setShowPairModal(true)}
+            onExploreDemo={startDemo}
             onOpenChat={() => setSurface('agent')}
             onOpenVault={() => setSurface('vault')}
+            onOpenStudio={() => setSurface('studio')}
+            onOpenFlipIt={() => setSurface('flipit')}
             onResume={(task) => {
               // Same reference the `@` picker builds (lib/mentions.ts's mentionLabel) — ChatScreen's
               // `prompt` prop appends it to the composer, exactly like a sam://ask deep link.
@@ -335,6 +404,10 @@ export default function App() {
           />
         ) : surface === 'agent' ? (
           <ChatScreen onNeedsPairing={onNeedsPairing} resetKey={resetKey} prompt={prompt} />
+        ) : surface === 'studio' ? (
+          <StudioScreen onClose={() => setSurface('home')} />
+        ) : surface === 'flipit' ? (
+          <FlipItScreen onClose={() => setSurface('home')} onOpenPairing={() => setShowPairModal(true)} />
         ) : surface === 'vault' ? (
           <VaultScreen onNeedsPairing={onNeedsPairing} />
         ) : surface === 'tasks' ? (
@@ -357,6 +430,7 @@ export default function App() {
       {/* Bottom tab bar — samKit's SamTabBar (the handoff's fourteen-part kit), replacing the
           old top Segmented control. Surface keys differ slightly from SamTabKey's naming
           ('agent'→'chat', 'tasks'→'yard'); the two small maps below translate between them. */}
+      {layout.panes === 2 ? null : (
       <SamTabBar
         platform={Platform.OS === 'android' ? 'android' : 'ios'}
         value={surfaceToTabKey(surface)}
@@ -364,14 +438,10 @@ export default function App() {
           haptic.selection();
           setSurface(tabKeyToSurface(k));
         }}
-        tabs={[
-          { key: 'home', glyph: '◇', label: 'Home' },
-          { key: 'chat', glyph: '◈', label: 'Agent' },
-          { key: 'yard', glyph: '▤', label: 'Tasks' },
-          { key: 'vault', glyph: '▥', label: 'Vault' },
-          { key: 'settings', glyph: '⚙', label: 'Settings' },
-        ]}
+        tabs={POCKET_TABS}
       />
+      )}
+      </View>
 
       {/* Pairing Modal */}
       <Modal
@@ -391,6 +461,10 @@ export default function App() {
                 <Text style={s.modalDone}>Done</Text>
               </Pressable>
             </View>
+
+            <SamSection header="No SAM desktop yet?">
+              <SamActionRow title="Explore the demo" onPress={startDemo} />
+            </SamSection>
 
             <SamSection
               header="Pair this phone"
@@ -442,20 +516,6 @@ export default function App() {
               />
             </SamSection>
 
-            <SamSection header="No SAM desktop yet?">
-              <SamActionRow
-                title="Explore the demo"
-                onPress={() => {
-                  haptic.light();
-                  setShowPairModal(false);
-                  void enterDemo().then(() => {
-                    setDemo(true);
-                    setPaired(true);
-                    setSurface('agent');
-                  });
-                }}
-              />
-            </SamSection>
           </ScrollView>
         </SafeAreaView>
       </Modal>

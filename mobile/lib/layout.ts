@@ -14,13 +14,27 @@
 //  somewhere between the two. The window is the only thing that tells the truth, and it changes
 //  while the app is running — so this takes a width and returns what that width implies.
 //
+//  iPhone Duo's inner display is 669pt wide in portrait, which used to fall in the empty gap
+//  between a phone (430) and an iPad (744) and got a stretched phone layout with the hinge
+//  through the middle of every row. That width now gets two panes and a 24pt hinge gap.
+//
 //  Pure and dependency-free on purpose: there is no iPad simulator in the loop here, so the
 //  behaviour has to be verifiable by test rather than by eye.
 // ─────────────────────────────────────────────────────────────
 
-/** Below this the window behaves like a phone, whatever hardware it is on. 700 sits clear of
- *  both edges: the largest iPhone is 430pt wide, the narrowest iPad in portrait is 744pt. */
-export const REGULAR_WIDTH = 700;
+/** Below this the window behaves like a phone. 640 sits clear of every cover display:
+ *  iPhone Pro Max portrait is 430pt, the iPhone Duo cover is 466pt, and an iPad Split View
+ *  half is about 507pt. The next real width up is the Duo's inner display at 669pt. */
+export const REGULAR_WIDTH = 640;
+
+/** iPhone Duo, from the Xcode 27.1 simulator profile (pixels at 3x). This Mac's Xcode is
+ *  26.6 and has no Duo device type, so these widths are the stand-in. The cover matches the
+ *  panel. The inner portrait matches App Store Connect's 2007×2853 screenshot, not the
+ *  1878×2670 physical panel. Landscape inner is 951pt and overlaps a large iPhone turned
+ *  sideways, so it is not detectable by width. */
+export const DUO_COVER_WIDTH = 466;
+export const DUO_INNER_WIDTH = 669;
+export const DUO_HINGE = 24;
 
 /** A column wider than this stops being comfortable to read. Roughly 80–90 characters at the
  *  app's body size — past that the eye loses the start of the next line. */
@@ -39,6 +53,10 @@ export interface Layout {
   tier: "compact_phone" | "phone" | "phablet" | "tablet" | "desktop";
   /** Optimal column count for grid layouts on this viewport */
   gridColumns: number;
+  /** 2 only on the Duo inner portrait, where a vertical hinge bisects the window. */
+  panes: 1 | 2;
+  /** Empty band reserved for that hinge. 0 on every other width. */
+  hinge: number;
 }
 
 export function deviceTierFor(width: number): "compact_phone" | "phone" | "phablet" | "tablet" | "desktop" {
@@ -57,9 +75,11 @@ export function layoutFor(width: number): Layout {
   const w = Number.isFinite(width) && width > 0 ? width : 0;
   const isRegular = w >= REGULAR_WIDTH;
   const tier = deviceTierFor(w);
+  // Inner portrait only. iPad mini starts at 744, so the band stops short of it.
+  const innerFold = w >= 650 && w < 744;
 
   let gridColumns = 1;
-  if (tier === "phablet") gridColumns = 2;
+  if (innerFold || tier === "phablet") gridColumns = 2;
   else if (tier === "tablet") gridColumns = 3;
   else if (tier === "desktop") gridColumns = 4;
 
@@ -72,6 +92,8 @@ export function layoutFor(width: number): Layout {
     markSize: isRegular ? 76 : 56,
     tier,
     gridColumns,
+    panes: innerFold ? 2 : 1,
+    hinge: innerFold ? DUO_HINGE : 0,
   };
 }
 
