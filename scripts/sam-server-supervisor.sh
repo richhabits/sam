@@ -32,6 +32,9 @@ PORT="${PORT:-8787}"
 NODE="${SAM_NODE:-node}"
 APP_MATCH="${SAM_APP_MATCH:-SAM.app/Contents/MacOS/SAM}"
 GRACE_SEC="${SAM_GRACE_SEC:-20}"
+# Tells the server a supervisor will start it again, so POST /api/restart may exit cleanly
+# (used to apply add-on changes). The desktop app never sets this: exiting would quit the app.
+export SAM_SUPERVISED=1
 ENTRY="$REPO/dist/server.mjs"
 grace_used=0
 
@@ -65,6 +68,21 @@ while true; do
   if lsof -ti "tcp:$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     wait_because "port $PORT already served by another process — standing down" 15
     continue
+  fi
+  # ARM THE GRACE AGAIN ONCE THE APP IS GONE.
+  #
+  # grace_used was a one-shot for the lifetime of the daemon, which made it correct exactly once.
+  # After the first grace it never re-armed, so every LATER launch of SAM.app raced this loop for
+  # the port — and the daemon usually won, because it is already awake and polling while the app
+  # is still starting up. The app then spent that whole session unable to prove who it was: no
+  # update, no pairing, no yard, and until today no explanation either. Romeo hit this on
+  # 2026-08-09 after restarting SAM; two servers ended up alive at once, the second one headless
+  # with its own yard worker on the same jobs.db.
+  #
+  # The grace belongs to each APP LAUNCH, not to the daemon's lifetime. So re-arm it whenever the
+  # app is not running: the next time it appears, it gets its full window again.
+  if ! pgrep -f "$APP_MATCH" >/dev/null 2>&1; then
+    grace_used=0
   fi
   # One exception, for the login race: if the app is up but hasn't bound yet, give it a moment
   # rather than stealing the port it is about to want. It serves its own renderer with a passkey
