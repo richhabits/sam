@@ -20,6 +20,15 @@ export interface McpPreset {
 
 // Best-known launch commands. Users can edit command/args if a package name changes.
 export const MCP_PRESETS: McpPreset[] = [
+  // ── 🧩 Add-ons: our own apps, connected only if you want them ──
+  // FLIP IT is its own app now (not a core SAM feature). Its MCP server is READ-ONLY by design —
+  // no tool trades, deposits, writes or takes a path/URL — so SAM can look at the rig, never touch it.
+  // Launched through python (not a shell) so the same preset works on macOS, Linux and Windows.
+  // Finds FLIP IT at $FLIPIT_DIR, else ~/flip-it; edit args if it lives elsewhere.
+  { id: "flipit", label: "FLIP IT (add-on)", emoji: "📈", official: true, note: "read-only view of your FLIP IT paper-trading rig — status, ledger, candidates. Never trades.",
+    command: "python3", args: ["-c", "import os,runpy;d=os.environ.get('FLIPIT_DIR') or os.path.join(os.path.expanduser('~'),'flip-it');runpy.run_path(os.path.join(d,'mcp','flipit_mcp.py'),run_name='__main__')"],
+    fields: [], docs: "https://github.com/richhabits/flip-it" },
+
   // ── 💰 Business / revenue ──
   { id: "stripe", label: "Stripe", emoji: "💳", official: true, note: "payments, revenue, customers, refunds",
     command: "npx", args: ["-y", "@stripe/mcp", "--tools=all"], fields: [{ env: "STRIPE_SECRET_KEY", label: "Secret key", placeholder: "sk_live_…" }], docs: "https://docs.stripe.com/mcp" },
