@@ -8,25 +8,41 @@
 
 /* Begin PBXBuildFile section */
 		119273D5244ECC36F79BFACB /* SAMWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */; };
+		1C321D149233D980EA9B6DC2 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 99533B2BBC570EF62DF7D14F /* SAMKit */; };
 		329A805AE30323ED5EE46536 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785954E4995D5CC8A3C69827 /* PairView.swift */; };
 		337D28621FA2EADCDBF08759 /* OnDeviceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */; };
 		35D292A0A1D6E41871DA4936 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D0185F19D3306F1F34210 /* RootView.swift */; };
+		41017A9866125095C54247CB /* SAMSafari.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = 692DBB7FF1B37A32B788D35B /* SAMSafari.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		52F2C303A39C4EA058BA5382 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 0246E1B0408DDAC9DB911C4F /* manifest.json */; };
 		55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2E33377DE427835DADBFCC /* Store.swift */; };
 		5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */; };
+		67016402A32D61C856496D1D /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 844E0708B0A3ECEE060768D2 /* popup.html */; };
 		70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, ); fileRef = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFD5A501959C0C4D179972C /* DeviceServices.swift */; };
 		88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */; };
 		94A038132C43C3483848085D /* CatalogueViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */; };
+		A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */; };
 		A7885A358E746BA5E729644C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6044DCFCD57844D33C594D00 /* Theme.swift */; };
 		AD1080F6244F056F32FF8B57 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9E8E5651EA3EC12445EFD9 /* SAMKit */; };
+		B15930723F29E520F8293605 /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = FF5A661B3A21D45B36E77345 /* _locales */; };
 		B901372E8B871941215355B7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */; };
 		C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7161CA230E0B8F11E7A4243B /* AppModel.swift */; };
 		CA428F29A5FB68A3230D563B /* YardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B96425CF191D4879506DC71 /* YardView.swift */; };
+		D0A8223A043C14DC15865E2E /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = 69150E615E30D86FE0B4D91C /* popup.css */; };
 		D5E73DAB1081C4D756B60D67 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 493F14D0ABEC951786C2E721 /* SAMKit */; };
 		E1DB3CF6CDFA730FB7DC8585 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */; };
+		E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 5B152F9948B52309BCC78CD7 /* popup.js */; };
+		F15CF9E5D25C426E2091CF74 /* images in Resources */ = {isa = PBXBuildFile; fileRef = 6D063B5E7F377FE745C743EB /* images */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		C859A005C98BF84C3010637C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12C70BC78AD76BA16C05DEDB;
+			remoteInfo = SAMSafari;
+		};
 		FADDD255B08348CE6E43237D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
@@ -44,6 +60,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */,
+				41017A9866125095C54247CB /* SAMSafari.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -51,16 +68,23 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		0246E1B0408DDAC9DB911C4F /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		0B96425CF191D4879506DC71 /* YardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardView.swift; sourceTree = "<group>"; };
 		0CFD5A501959C0C4D179972C /* DeviceServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceServices.swift; sourceTree = "<group>"; };
 		4EBAE17E1B2D49D8FB8FB34E /* SAM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAM.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B152F9948B52309BCC78CD7 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popup.js; sourceTree = "<group>"; };
 		6044DCFCD57844D33C594D00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViews.swift; sourceTree = "<group>"; };
+		69150E615E30D86FE0B4D91C /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = popup.css; sourceTree = "<group>"; };
 		691D0185F19D3306F1F34210 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		692DBB7FF1B37A32B788D35B /* SAMSafari.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMSafari.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6D063B5E7F377FE745C743EB /* images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = images; path = Safari/WebExtension/images; sourceTree = SOURCE_ROOT; };
 		6E5F63C6D54E83B5EA0C33B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7161CA230E0B8F11E7A4243B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		785954E4995D5CC8A3C69827 /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		7F87B19D46F6AA399BABC257 /* SAMKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SAMKit; path = Packages/SAMKit; sourceTree = SOURCE_ROOT; };
+		844E0708B0A3ECEE060768D2 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = popup.html; sourceTree = "<group>"; };
 		AE6647FD353F11912A853B47 /* SAM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAM.entitlements; sourceTree = "<group>"; };
 		B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		BB2E33377DE427835DADBFCC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
@@ -70,11 +94,22 @@
 		EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMIntents.swift; sourceTree = "<group>"; };
 		EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMWidgets.swift; sourceTree = "<group>"; };
 		EB2D3DB6EE0E4CEC451F4CF5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ED116A2728852BA6D08CE351 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceBrain.swift; sourceTree = "<group>"; };
+		FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMSafari.entitlements; sourceTree = "<group>"; };
 		FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FF5A661B3A21D45B36E77345 /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _locales; path = Safari/WebExtension/_locales; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6377E9E813BD580C15ADC0B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C321D149233D980EA9B6DC2 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A91027CAE73A55D756C8124 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -131,6 +166,7 @@
 			children = (
 				B76120D0CDADB46E91001654 /* App */,
 				E9F0155F7C1C74EC077FCDA7 /* Packages */,
+				DF50B2E7FFF705F1E9140C04 /* Safari */,
 				ECB18C021B0AD7BAD30D633E /* Widgets */,
 				D0C79DDC2409FD289A17984E /* Products */,
 			);
@@ -154,9 +190,34 @@
 			isa = PBXGroup;
 			children = (
 				4EBAE17E1B2D49D8FB8FB34E /* SAM.app */,
+				692DBB7FF1B37A32B788D35B /* SAMSafari.appex */,
 				FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DD00C411E1A72DC32F56175C /* WebExtension */ = {
+			isa = PBXGroup;
+			children = (
+				FF5A661B3A21D45B36E77345 /* _locales */,
+				6D063B5E7F377FE745C743EB /* images */,
+				0246E1B0408DDAC9DB911C4F /* manifest.json */,
+				69150E615E30D86FE0B4D91C /* popup.css */,
+				844E0708B0A3ECEE060768D2 /* popup.html */,
+				5B152F9948B52309BCC78CD7 /* popup.js */,
+			);
+			path = WebExtension;
+			sourceTree = "<group>";
+		};
+		DF50B2E7FFF705F1E9140C04 /* Safari */ = {
+			isa = PBXGroup;
+			children = (
+				ED116A2728852BA6D08CE351 /* Info.plist */,
+				00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */,
+				FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */,
+				DD00C411E1A72DC32F56175C /* WebExtension */,
+			);
+			path = Safari;
 			sourceTree = "<group>";
 		};
 		E9F0155F7C1C74EC077FCDA7 /* Packages */ = {
@@ -180,6 +241,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		12C70BC78AD76BA16C05DEDB /* SAMSafari */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C82D18DE9B3B23DEBA662875 /* Build configuration list for PBXNativeTarget "SAMSafari" */;
+			buildPhases = (
+				BF30202E8B6081CDF43B9E2F /* Sources */,
+				300FE22A687B2A61F955FB16 /* Resources */,
+				6377E9E813BD580C15ADC0B9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAMSafari;
+			packageProductDependencies = (
+				99533B2BBC570EF62DF7D14F /* SAMKit */,
+			);
+			productName = SAMSafari;
+			productReference = 692DBB7FF1B37A32B788D35B /* SAMSafari.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		46D3E39D1B87E75244A3F672 /* SAMWidgets */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 121CC48916142FDCA665A886 /* Build configuration list for PBXNativeTarget "SAMWidgets" */;
@@ -212,6 +293,7 @@
 			);
 			dependencies = (
 				3CF490F8E326E55BA8D0756A /* PBXTargetDependency */,
+				B7C8E18499376040578AE3D0 /* PBXTargetDependency */,
 			);
 			name = SAM;
 			packageProductDependencies = (
@@ -230,6 +312,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					12C70BC78AD76BA16C05DEDB = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
 					46D3E39D1B87E75244A3F672 = {
 						DevelopmentTeam = CC9Q9BH5NT;
 						ProvisioningStyle = Automatic;
@@ -259,6 +345,7 @@
 			targets = (
 				97155B1100C9891712317760 /* SAM */,
 				46D3E39D1B87E75244A3F672 /* SAMWidgets */,
+				12C70BC78AD76BA16C05DEDB /* SAMSafari */,
 			);
 		};
 /* End PBXProject section */
@@ -272,6 +359,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		300FE22A687B2A61F955FB16 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B15930723F29E520F8293605 /* _locales in Resources */,
+				F15CF9E5D25C426E2091CF74 /* images in Resources */,
+				52F2C303A39C4EA058BA5382 /* manifest.json in Resources */,
+				D0A8223A043C14DC15865E2E /* popup.css in Resources */,
+				67016402A32D61C856496D1D /* popup.html in Resources */,
+				E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -280,6 +380,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				119273D5244ECC36F79BFACB /* SAMWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF30202E8B6081CDF43B9E2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -310,6 +418,12 @@
 			platformFilters = (ios, );
 			target = 46D3E39D1B87E75244A3F672 /* SAMWidgets */;
 			targetProxy = FADDD255B08348CE6E43237D /* PBXContainerItemProxy */;
+		};
+		B7C8E18499376040578AE3D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, macos, );
+			target = 12C70BC78AD76BA16C05DEDB /* SAMSafari */;
+			targetProxy = C859A005C98BF84C3010637C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -404,6 +518,28 @@
 			};
 			name = Debug;
 		};
+		34CEEA3A6A9864DE4B304264 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Safari/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.safari;
+				PRODUCT_NAME = SAMSafari;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		45BC2C5F362A06A3DE2D1981 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -493,6 +629,28 @@
 			};
 			name = Debug;
 		};
+		6AD32A5CD2E760C63A0FB2BC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Safari/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.safari;
+				PRODUCT_NAME = SAMSafari;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		C5D85309698E2CE98DDDD509 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -565,6 +723,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		C82D18DE9B3B23DEBA662875 /* Build configuration list for PBXNativeTarget "SAMSafari" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6AD32A5CD2E760C63A0FB2BC /* Debug */,
+				34CEEA3A6A9864DE4B304264 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -580,6 +747,10 @@
 			productName = SAMKit;
 		};
 		493F14D0ABEC951786C2E721 /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		99533B2BBC570EF62DF7D14F /* SAMKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SAMKit;
 		};

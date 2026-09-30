@@ -91,12 +91,14 @@ public struct BrainClient: Sendable {
     // MARK: Chat
 
     /// POST /api/stream as parsed SSE events. Cancelling the consuming task cancels the request.
-    public func stream(message: String, history: [Turn], tier: String? = nil) -> AsyncThrowingStream<StreamEvent, Error> {
-        struct Body: Encodable { let message: String; let history: [Turn]; let tier: String? }
+    /// `untrusted` marks outside content (a web page, a shared file): the brain then answers with
+    /// no tools, routines, memory or cache (server/stream-policy.ts).
+    public func stream(message: String, history: [Turn], tier: String? = nil, untrusted: Bool = false) -> AsyncThrowingStream<StreamEvent, Error> {
+        struct Body: Encodable { let message: String; let history: [Turn]; let tier: String?; let untrusted: Bool? }
         let request: URLRequest
         do {
             var req = try makeRequest("/api/stream", method: "POST", timeout: 300)
-            req.httpBody = try JSONEncoder().encode(Body(message: message, history: Array(history.suffix(10)), tier: tier))
+            req.httpBody = try JSONEncoder().encode(Body(message: message, history: Array(history.suffix(10)), tier: tier, untrusted: untrusted ? true : nil))
             request = req
         } catch {
             return AsyncThrowingStream { $0.finish(throwing: error) }

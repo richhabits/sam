@@ -35,10 +35,13 @@ targets:
       - package: SAMKit
       - target: SAMWidgets
         platformFilters: [iOS]
+      - target: SAMSafari
+        platformFilters: [iOS, macOS]
     info:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: SAM
+        SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         LSApplicationCategoryType: public.app-category.productivity
         ITSAppUsesNonExemptEncryption: false
         NSMicrophoneUsageDescription: SAM listens when you tap the microphone so you can talk instead of type.
@@ -70,6 +73,7 @@ targets:
         com.apple.security.device.camera: true
         com.apple.security.personal-information.photos-library: true
         com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+        keychain-access-groups: [$(AppIdentifierPrefix)com.hectic.sam.shared]
     settings:
       base:
         PRODUCT_NAME: SAM
@@ -91,16 +95,63 @@ targets:
       path: Widgets/SAMWidgets.entitlements
       properties:
         com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+        keychain-access-groups: [$(AppIdentifierPrefix)com.hectic.sam.shared]
     info:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: SAM
+        SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_NAME: SAMWidgets
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.widget
+
+  # Safari Web Extension (iOS, iPadOS, macOS): "Ask SAM about this page".
+  # The popup hands the page to the native handler; the token stays in the Keychain.
+  SAMSafari:
+    type: app-extension
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Safari
+        excludes: [WebExtension/**]
+      # Web files must sit at the bundle root (manifest.json first); subfolders stay folders.
+      - path: Safari/WebExtension
+        excludes: [images/**, _locales/**]
+        buildPhase: resources
+      - path: Safari/WebExtension/images
+        type: folder
+        buildPhase: resources
+      - path: Safari/WebExtension/_locales
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: SAMKit
+    entitlements:
+      path: Safari/SAMSafari.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+        keychain-access-groups: [$(AppIdentifierPrefix)com.hectic.sam.shared]
+    info:
+      path: Safari/Info.plist
+      properties:
+        CFBundleDisplayName: SAM
+        SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.web-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+    settings:
+      base:
+        PRODUCT_NAME: SAMSafari
+        PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.safari
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_HARDENED_RUNTIME: YES
 
 schemes:
   SAM:

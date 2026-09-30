@@ -1,0 +1,4 @@
+{
+  "extension_name": { "message": "SAM" },
+  "extension_description": { "message": "Ask SAM about the page you're reading. The page goes to SAM on your own Mac, never to us." }
+}

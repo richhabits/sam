@@ -17,8 +17,8 @@ struct PendingApproval: Identifiable, Equatable {
 @MainActor @Observable final class AppModel {
     static let shared = AppModel()
 
-    private(set) var host: String? = UserDefaults.standard.string(forKey: "sam.host")
-    private var token: String? = Keychain.get("token")
+    private(set) var host: String? = Session.host
+    private var token: String? = Session.token
     private(set) var reachable = false
     var yard: YardSummary?
     var specialists: [Specialist] = []
@@ -76,8 +76,7 @@ struct PendingApproval: Identifiable, Equatable {
     private func store(host: String?, token: String?) {
         self.host = host
         self.token = token
-        UserDefaults.standard.set(host, forKey: "sam.host")
-        if !Keychain.set(token, for: "token"), token != nil {
+        if !Session.save(host: host, token: token), token != nil {
             lastError = "Paired, but the Keychain wouldn't save the session, so you'll need to pair again next launch."
         }
     }

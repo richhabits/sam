@@ -17,22 +17,9 @@ struct AskSAMIntent: AppIntent {
     }
 
     static func ask(_ question: String) async throws -> String {
-        if let host = UserDefaults.standard.string(forKey: "sam.host"), let token = Keychain.get("token") {
-            let brain = BrainClient(host: host, token: token)
-            var text = ""
-            do {
-                for try await event in brain.stream(message: question, history: []) {
-                    switch event {
-                    case .token(let t): text += t
-                    case .done(let final, _): if let final, !final.isEmpty { text = final }
-                    case .pending(_, let tool, _, _): return "SAM needs your approval to use \(tool). Open SAM to allow it."
-                    default: break
-                    }
-                }
-                if !text.isEmpty { return text }
-            } catch {
-                // fall through to on-device
-            }
+        if let brain = Session.brain, let answer = try? await Session.ask(question, brain: brain) {
+            if let tool = answer.needsApproval { return "SAM needs your approval to use \(tool). Open SAM to allow it." }
+            if !answer.text.isEmpty { return answer.text }
         }
         guard OnDeviceBrain.isAvailable else {
             throw BrainError(0, OnDeviceBrain.unavailableReason ?? "SAM can't answer right now.")
@@ -49,10 +36,10 @@ struct YardStatusIntent: AppIntent {
     static let description = IntentDescription("Hear what SAM is building on your Mac.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let host = UserDefaults.standard.string(forKey: "sam.host"), let token = Keychain.get("token") else {
+        guard let brain = Session.brain else {
             return .result(dialog: "SAM isn't paired with a Mac yet.")
         }
-        let yard = try await BrainClient(host: host, token: token).yard()
+        let yard = try await brain.yard()
         var line = "\(yard.running) running, \(yard.queued) queued"
         if yard.failed > 0 { line += ", \(yard.failed) failed" }
         if let job = yard.recent?.first { line += ". Latest: \(job.title), \(job.state)." }
