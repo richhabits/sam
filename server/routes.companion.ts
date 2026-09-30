@@ -5,6 +5,7 @@ import { recordAuditEvent, verifyAuditChainIntegrity } from "./audit-ledger.ts";
 import { getHardwareVitals } from "./hardware-monitor.ts";
 import { isLoopback } from "./http-guards.ts";
 import { createGossipMessage, getMeshTopologyReport, processIncomingMeshGossip } from "./p2p-mesh.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 import { UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
 
@@ -24,8 +25,11 @@ export interface CompanionRouteOptions {
 }
 
 export function registerCompanionRoutes(app: Express, options?: CompanionRouteOptions) {
+  // Watches and PWAs poll vitals, so the budget is generous: 120/min per IP.
+  const companionLimit = createRateLimiter({ max: 120, message: "Too many companion requests. Please slow down." });
+
   // Companion Vitals Endpoint (Apple Watch / Wear OS / Mobile PWA)
-  app.get("/api/companion/vitals", (_req, res) => {
+  app.get("/api/companion/vitals", companionLimit, (_req, res) => {
     const vitals = getHardwareVitals();
     const auditStatus = verifyAuditChainIntegrity();
 

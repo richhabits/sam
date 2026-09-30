@@ -10,15 +10,18 @@
 import type { Express } from "express";
 import { synthesizeDialogueAudio, VOICES } from "./audio-engine.ts";
 import { getKey, } from "./keys.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 
 export function registerVoiceRoutes(app: Express): void {
+  // Speech costs money (premium lane bills per char) and shells out to `say`: 30/min per IP.
+  const speakLimit = createRateLimiter({ max: 30, message: "Too many speech requests. Please slow down." });
   // ── ElevenLabs premium voice (optional; free browser voice used otherwise) ──
   // TTS — rotating free-first lanes, works OUT OF THE BOX with zero keys:
   //   1. ElevenLabs (premium voice — only if you added a key; bills per char, so capped)
   //   2. Groq TTS (free tier, if a Groq key is set)
   //   3. Pollinations openai-audio (FREE, NO key — the out-of-the-box voice)
   // Client falls back to the browser's built-in voice if all lanes miss.
-  app.post("/api/speak", async (req, res) => {
+  app.post("/api/speak", speakLimit, async (req, res) => {
     const text = String(req.body?.text || "").slice(0, 800); // cap chars (premium bills per char)
     if (!text.trim()) return res.status(400).json({ error: "no text" });
     const sendAudio = (buf: ArrayBuffer | Buffer, type = "audio/mpeg") => {
@@ -76,7 +79,7 @@ export function registerVoiceRoutes(app: Express): void {
   });
 
   // Multi-Speaker Dialogue / Podcast Synthesis
-  app.post("/api/audio/dialogue", async (req, res) => {
+  app.post("/api/audio/dialogue", speakLimit, async (req, res) => {
     const { title, exchanges } = req.body as { title?: string; exchanges: Array<{ speaker: string; text: string }> };
     if (!Array.isArray(exchanges) || exchanges.length === 0) {
       return res.status(400).json({ error: "exchanges array is required" });

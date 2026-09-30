@@ -180,6 +180,11 @@ export function verifySymbolDeclaration(
   }
 }
 
+// "10 out of 20 (60%)". Every quantity is bounded and the leading digits cannot start mid-number:
+// with open-ended `\d+` and `\s+`/`\s*` the engine retried from every digit of a long numeric
+// string (polynomial ReDoS). Bounded, the work per starting position is constant.
+const PERCENT_CLAIM = /(?<!\d)(\d{1,15})\s{1,20}(?:out of|\/)\s{1,20}(\d{1,15})\s{0,20}\((?:approx\s{0,20})?(\d{1,3})%\)/i;
+
 /**
  * Scans generated model output for file references, code symbols, and mathematical claims,
  * empirically verifying each against real filesystem state and mathematical invariants.
@@ -214,7 +219,7 @@ export function verifyFactualGrounding(
   }
 
   // 2. Scan for simple percentage math claims e.g., "10 out of 20 (60%)"
-  const fractionMatch = text.match(/(\d+)\s+(?:out of|\/)\s+(\d+)\s*\((?:approx\s*)?(\d+)%\)/i);
+  const fractionMatch = text.match(PERCENT_CLAIM);
   if (fractionMatch) {
     const num = Number(fractionMatch[1]);
     const denom = Number(fractionMatch[2]);
@@ -233,7 +238,7 @@ export function verifyFactualGrounding(
   }
 
   // 3. Scan for symbol imports e.g., import { Foo } from "./bar.ts"
-  const importRegex = /import\s+\{\s*([a-zA-Z0-9_,\s]+)\s*\}\s+from\s+["'](\.[^"']+)["']/g;
+  const importRegex = /import\s{1,20}\{([a-zA-Z0-9_,\s]{1,2000})\}\s{1,20}from\s{1,20}["'](\.[^"']{1,500})["']/g;
   let importMatch: RegExpExecArray | null;
   while ((importMatch = importRegex.exec(text)) !== null) {
     const symbols = importMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
@@ -328,7 +333,7 @@ export function runCognitiveReflectionLoop(
     let modifiedInThisPass = false;
     for (const d of report.discrepancies) {
       if (d.category === "MATH_INCONSISTENCY") {
-        const match = currentText.match(/(\d+)\s+(?:out of|\/)\s+(\d+)\s*\((?:approx\s*)?(\d+)%\)/i);
+        const match = currentText.match(PERCENT_CLAIM);
         if (match) {
           const num = Number(match[1]);
           const denom = Number(match[2]);

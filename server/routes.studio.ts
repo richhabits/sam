@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { Express } from "express";
 import { runModel } from "./models.ts";
 import * as notebook from "./notebook.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 import {
   buildCharacterAnchorPrompt,
   type CharacterProfile,
@@ -27,6 +28,9 @@ import { safeFetch } from "./url-guard.ts";
 // index.ts would have made them shared state for no reason. Paths and registration order
 // unchanged (registerX(app), not a Router).
 export function registerStudioRoutes(app: Express) {
+  // Media is read straight off disk and a gallery loads many tiles at once: 300/min per IP.
+  const mediaLimit = createRateLimiter({ max: 300, message: "Too many media requests. Please slow down." });
+
   // ── 📓 NOTEBOOKS (NotebookLM UI backend) — grounded Q&A + audio overview over YOUR sources ──
   // ── 🎨 STUDIO — free-first image/video generation (Pollinations → keyed lanes), no MUAPI needed ──
   const urlFromMarkdown = (md: string) => { const m = String(md||"").match(/\((https?:\/\/[^)\s]+)\)/); return m ? m[1] : ""; };
@@ -91,7 +95,7 @@ export function registerStudioRoutes(app: Express) {
     return res.json({ id, concept, status: "queued" });
   });
 
-  app.get("/api/studio/media/:id", async (req, res) => {
+  app.get("/api/studio/media/:id", mediaLimit, async (req, res) => {
     const id = String(req.params.id).replace(/[^a-zA-Z0-9._-]/g, "");   // strip any path-traversal
     const file = join(GEN_DIR, id);
     if (!id || !existsSync(file)) return res.status(404).end();

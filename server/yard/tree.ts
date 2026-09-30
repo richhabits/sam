@@ -17,6 +17,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { stripTags } from "../html-text.ts";
 
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", "coverage", ".vercel"]);
 
@@ -40,7 +41,8 @@ export function summarise(path: string, head: string): string {
 
   if (ext === "html" || ext === "htm") {
     const title = head.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
-    const h1 = head.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, "").trim();
+    const h1Raw = head.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+    const h1 = h1Raw === undefined ? undefined : stripTags(h1Raw).trim();
     return [title && `title "${title}"`, h1 && `h1 "${h1.slice(0, 60)}"`].filter(Boolean).join(" · ") || "a page";
   }
 

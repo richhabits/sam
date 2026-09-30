@@ -136,6 +136,7 @@ import { pushNotify, summarize as pushSummary } from "./push.ts";
 import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 import { registerAntigravityRoutes } from "./routes.antigravity.ts";
 import { registerCompanionRoutes } from "./routes.companion.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
@@ -1356,23 +1357,12 @@ app.post("/api/intent/disambiguate", (req, res) => {
   res.json(disambiguateUserIntent(prompt || "", contextHints));
 });
 
-const aiRateLimitCounts = new Map<string, { count: number; windowStart: number }>();
-const AI_RATE_LIMIT_WINDOW_MS = 60_000;
-const AI_RATE_LIMIT_MAX = 30;
-function basicRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const ip = req.ip || req.socket?.remoteAddress || "unknown";
-  const now = Date.now();
-  const record = aiRateLimitCounts.get(ip);
-  if (!record || now - record.windowStart > AI_RATE_LIMIT_WINDOW_MS) {
-    aiRateLimitCounts.set(ip, { count: 1, windowStart: now });
-    return next();
-  }
-  if (record.count >= AI_RATE_LIMIT_MAX) {
-    return res.status(429).json({ error: "Too many requests to this unauthenticated route. Please slow down." });
-  }
-  record.count++;
-  next();
-}
+// Unauthenticated AI/system routes: 30 requests per IP per minute (see rate-limit.ts).
+const basicRateLimit = createRateLimiter({
+  windowMs: 60_000,
+  max: 30,
+  message: "Too many requests to this unauthenticated route. Please slow down.",
+});
 
 app.post("/api/research/deep", basicRateLimit, async (req, res) => {
   const { query, mode } = req.body as { query: string; mode?: "fast" | "comprehensive" };
@@ -1578,7 +1568,7 @@ app.get("/api/telemetry/preview", (req, res) => {
 });
 
 // ── Doctor (v2.1) — "SAM isn't working" self-heal. Gathers the live world, returns exact fixes. ──
-app.get("/api/doctor", async (req, res) => {
+app.get("/api/doctor", basicRateLimit, async (req, res) => {
   // Doctor's whole job is to enumerate this machine's configuration and what is wrong with it —
   // which is a reconnaissance report for anyone who is not the operator.
   if (!canReadOwnContent(req)) return denyRead(res, "SAM's diagnostics");
@@ -1719,7 +1709,7 @@ app.post("/api/consensus", async (req, res) => {
 });
 
 // ── Autonomous AST Code Repair & Diagnostic Patcher ──
-app.post("/api/code/repair", async (req, res) => {
+app.post("/api/code/repair", basicRateLimit, async (req, res) => {
   try {
     let raw = String(req.body?.compilerOutput || "").trim();
     if (!raw && req.body?.runTsc) {

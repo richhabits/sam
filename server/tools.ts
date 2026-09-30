@@ -166,6 +166,7 @@ const samLlm = async (system: string, prompt: string): Promise<string> =>
 const VAULT_DIR = process.env.VAULT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "vault");
 
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
+import { decodeEntities, stripTags } from "./html-text.ts";
 import type { ArgSchema } from "./parser.ts";
 import { commit as commitChanges, preview as previewChanges } from "./preview-commit.ts";
 
@@ -339,7 +340,8 @@ function randomUA() { return ROTATING_UAS[Math.floor(Math.random() * ROTATING_UA
 export async function webSearch(q: string): Promise<string> {
   const query = encodeURIComponent(q);
   const out: string[] = [];
-  const strip = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
+  // Tags out first, entities decoded once after (html-text.ts says why neither is a regex chain).
+  const strip = (h: string) => decodeEntities(stripTags(h)).trim();
 
   // Lane 1: DuckDuckGo HTML Scrape
   try {
