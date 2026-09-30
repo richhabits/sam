@@ -145,6 +145,7 @@ import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
+import { isSupervised, restartRefusal } from "./restart.ts";
 import { streamPolicy, UNTRUSTED_ROUTE_REASON, UNTRUSTED_SYSTEM_NOTE } from "./stream-policy.ts";
 import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
 import { buildIndexes, routingReady, selectSkillId, selectTools } from "./routing.ts";
@@ -322,6 +323,16 @@ app.post("/api/pair/new", (req, res) => {
     pinExpiresInSec: 120, // the PIN is far lower-entropy than the hex code — much shorter window, see pairing.ts
   });
 });
+// Restart SAM (to apply add-on changes). See server/restart.ts for who may, and why.
+app.post("/api/restart", (req, res) => {
+  const refusal = restartRefusal({ trustedLocal: isTrustedLocal(req), supervised: isSupervised() });
+  if (refusal) { res.status(refusal.status).json({ error: refusal.error }); return; }
+  res.json({ ok: true, restarting: true });
+  console.log("  ↻ restart requested from this Mac — exiting for the supervisor to start SAM again");
+  // SIGTERM runs the normal shutdown (stops the yard worker) before exiting.
+  setTimeout(() => process.kill(process.pid, "SIGTERM"), 300);
+});
+
 // Revoke every paired session. Same bar, and for the mirror-image reason: an unguarded revoke is
 // a one-request denial of service that logs every device out, and it was reachable exactly as
 // freely as minting was. Takes `req` now — it could not check what it never looked at.
