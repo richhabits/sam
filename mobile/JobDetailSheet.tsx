@@ -5,7 +5,7 @@ import type { JobStep } from './lib/fold';
 import { haptic } from './lib/haptics';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import { RunLog, SamSheet, type RunStep } from './samKit';
-import { samColor, samInk } from './lib/samTheme';
+import { samColor, useInk } from './lib/samTheme';
 
 // JOB DETAIL SHEET — design_handoff_sam_clients/README.md, build order step 5: "small, high
 // value — failures currently have nowhere to go." Before this, TasksScreen's rows had no tap
@@ -51,6 +51,7 @@ export default function JobDetailSheet({
   publishedUrl?: string;
   onTogglePublish?: (slug: string) => void;
 }) {
+  const samInk = useInk();
   const [job, setJob] = useState<DetailJob | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -223,6 +224,7 @@ export default function JobDetailSheet({
 }
 
 function SheetButton({ label, onPress, disabled, tone }: { label: string; onPress: () => void; disabled?: boolean; tone?: 'dim' }) {
+  const samInk = useInk();
   return (
     <Pressable
       onPress={onPress}

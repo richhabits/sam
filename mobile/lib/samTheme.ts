@@ -1,17 +1,13 @@
 // SAM'S NEW SKIN — the tokens from design_handoff_sam_clients/README.md, transcribed verbatim
 // rather than re-derived (the handoff is explicit that every value there is final).
 //
-// This is a SECOND palette, not a replacement for lib/ios.ts. The existing kit (ui.tsx +
-// iosLight/iosDark) is Apple's grouped-list system with SAM's terracotta as tint, built and
-// contrast-checked screen by screen. This one is the handoff's own dark, mono-metadata
-// language — Home, run log, permission gate, Vault, the surfaces the phone never had. The two
-// are meant to replace each other screen by screen (build order in the handoff README), not to
-// be reconciled into one — trying to average two different, both-considered systems is how you
-// get a third, worse one.
+// This is now the app's only palette. It replaced the old Apple-style grouped-list kit
+// (ui.tsx + lib/ios.ts's iosLight/iosDark) screen by screen; that kit is deleted.
 //
 // High-fidelity per the handoff: these are the literal values, not approximations.
 
-import { Platform } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo, Platform } from 'react-native';
 
 export const samColor = {
   ink: '#FDF6EF', // all primary text
@@ -37,6 +33,49 @@ export const samInk = {
   support: 'rgba(253,246,239,0.6)',
   metadata: 'rgba(253,246,239,0.4)',
 };
+
+// Restored from the old lib/ios.ts (iosLightHighContrast/iosDarkHighContrast + paletteFor's
+// darkerSystemColors param): a user who turns on Settings ▸ Accessibility ▸ Increase Contrast
+// gets a system-wide darkening of dynamic label colours, and copying those as flat constants
+// (as `samInk` above does) silently throws that adaptation away. Measured against every
+// surface these sit on (ground/ground2/raise/raise2/input): `support` (.6 alpha) already
+// clears AA normal text everywhere at 6.6-6.9:1, unchanged; `metadata` (.4 alpha) sits at
+// ~3.6:1, under AA normal (needs 4.5) though it clears AA Large — .5 is the smallest alpha
+// step that clears 4.5:1 on every surface (4.99-5.06:1), so only `metadata` moves.
+const samInkHighContrast = {
+  primary: samInk.primary,
+  support: samInk.support,
+  metadata: 'rgba(253,246,239,0.5)',
+};
+
+/** Live, iOS-only, matches useReduceMotion in samKit.tsx: AccessibilityInfo's setting is
+ *  dynamic, so a value read once at launch would miss the user toggling it while the app is
+ *  running. Android has no equivalent AccessibilityInfo API and resolves false. */
+export function useHighContrast(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isDarkerSystemColorsEnabled?.()
+      .then((v) => alive && setOn(!!v))
+      .catch(() => {
+        /* unsupported OS/version — default false */
+      });
+    const sub = AccessibilityInfo.addEventListener('darkerSystemColorsChanged', (v) => setOn(!!v));
+    return () => {
+      alive = false;
+      sub?.remove();
+    };
+  }, []);
+  return on;
+}
+
+/** The ink tokens for this render: base, or the Increase-Contrast variant. Call once per
+ *  component and read `.support`/`.metadata` off the result so the screen re-themes live
+ *  when the OS setting changes — `.primary` is identical in both and never needs it. */
+export function useInk(): typeof samInk {
+  const hc = useHighContrast();
+  return hc ? samInkHighContrast : samInk;
+}
 
 export const samBorder = {
   default: 'rgba(253,246,239,0.07)',
@@ -107,3 +146,13 @@ export const samMotion = {
   barStagger: 180,
   toggleKnob: 180,
 };
+
+// Same meanings as the old lib/ios.ts stateTone: done -> green, failed -> red, everything else
+// muted (running is carried by the spinner, not colour). Shared by the Tasks list and the
+// Agent screen's "pick up where you left off" cards so a job can't read as one colour in one
+// list and another in the other.
+export function stateTone(state: string | null | undefined): string {
+  if (state === 'done') return samColor.green;
+  if (state === 'failed') return samColor.red;
+  return samInk.metadata;
+}

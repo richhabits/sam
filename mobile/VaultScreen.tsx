@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { api } from './lib/api';
 import { parseMarkdown } from './lib/markdown';
 import { EmptyState, SamRow, SamSectionLabel, SamSheet, StatCard } from './samKit';
-import { samColor, samInk, samSpace } from './lib/samTheme';
+import { samColor, samSpace, useInk } from './lib/samTheme';
 
 // VAULT — design_handoff_sam_clients/README.md, build order step 6: "read-only Markdown
 // browser over existing files." The files are real — server/vault.ts's plain-.md,
@@ -16,6 +16,7 @@ type GraphNode = { id: string; group: string };
 type VaultStats = { projectNotes: number; dailyNotes: number; path: string };
 
 export default function VaultScreen({ onNeedsPairing }: { onNeedsPairing: () => void }) {
+  const samInk = useInk();
   const [stats, setStats] = useState<VaultStats | null>(null);
   const [notes, setNotes] = useState<GraphNode[]>([]);
   const [error, setError] = useState('');
@@ -88,6 +89,7 @@ export default function VaultScreen({ onNeedsPairing }: { onNeedsPairing: () => 
 }
 
 function NoteSheet({ note, onClose, onNeedsPairing }: { note: GraphNode | null; onClose: () => void; onNeedsPairing: () => void }) {
+  const samInk = useInk();
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -130,6 +132,7 @@ function NoteSheet({ note, onClose, onNeedsPairing }: { note: GraphNode | null; 
  *  render as plain mono blocks; a vault note is daily-log prose and project summaries, not a
  *  place syntax highlighting earns its keep. */
 function PlainMarkdown({ text }: { text: string }) {
+  const samInk = useInk();
   return (
     <>
       {parseMarkdown(text).map((b, i) =>

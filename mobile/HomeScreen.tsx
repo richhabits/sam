@@ -4,7 +4,7 @@ import { api, type ApiError } from './lib/api';
 import { haptic } from './lib/haptics';
 import { type RecentTask, taskGlyph, taskTitle, taskWhen } from './lib/mentions';
 import { HeroCard, SamRow, SamSectionLabel } from './samKit';
-import { samColor, samInk, samSpace } from './lib/samTheme';
+import { samColor, samSpace, useInk } from './lib/samTheme';
 
 // HOME — design_handoff_sam_clients/README.md, "Screens › Home": the new launch tab, one of
 // the surfaces the phone never had. Hero card → Ask it → pick up where you left off → a grid to
@@ -40,6 +40,7 @@ export default function HomeScreen({
   onNeedsPairing: () => void;
   paired: boolean;
 }) {
+  const samInk = useInk();
   const [yard, setYard] = useState<YardSummary | null>(null);
   const [yardError, setYardError] = useState('');
   const loading = useRef(false);
@@ -188,6 +189,7 @@ function GridTile({
   comingSoon?: boolean;
   status?: string;
 }) {
+  const samInk = useInk();
   const disabled = !onPress;
   return (
     <Pressable

@@ -4,9 +4,8 @@
 //
 // Reduce Motion: the orb, rings and spinner stop; the run-log step SEQUENCE stays, because per
 // the handoff it is information, not decoration. Each animated part below checks
-// AccessibilityInfo's reduce-motion state itself rather than trusting a prop, for the same
-// reason lib/ios.ts reads darkerSystemColors live — a setting a user turned on for the OS
-// should not need this app to be relaunched to take effect.
+// AccessibilityInfo's reduce-motion state itself rather than trusting a prop — a setting a
+// user turned on for the OS should not need this app to be relaunched to take effect.
 
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -24,7 +23,7 @@ import {
   View,
 } from 'react-native';
 import { haptic } from './lib/haptics';
-import { samBorder, samColor, samInk, samMotion, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
+import { samBorder, samColor, samMotion, samRadius, samSpace, samTouch, samType, useInk } from './lib/samTheme';
 
 function useReduceMotion(): boolean {
   const [reduce, setReduce] = useState(false);
@@ -68,6 +67,7 @@ export function HeroCard({
   );
 }
 function HeroCell({ label, value }: { label: string; value: string }) {
+  const samInk = useInk();
   return (
     <View style={hero.cell}>
       <Text style={[samType.monoXs, { color: samInk.metadata }]}>{label}</Text>
@@ -128,6 +128,7 @@ export function SamRow({
   status?: ReactNode;
   onPress?: () => void;
 }) {
+  const samInk = useInk();
   const body = (pressed: boolean) => (
     <View style={[row.card, pressed && { backgroundColor: samColor.raise2 }]}>
       {glyph ? <GlyphTile glyph={glyph} /> : null}
@@ -173,6 +174,7 @@ const row = StyleSheet.create({
 
 /** 4. Stat card — big Grotesk number over mono caption. Ships in twos and threes. */
 export function StatCard({ value, caption }: { value: string; caption: string }) {
+  const samInk = useInk();
   return (
     <View style={stat.card}>
       <Text style={[samType.h2, { color: samInk.primary }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -195,7 +197,7 @@ export type RunStepKind = 'normal' | 'hop' | 'fail';
 export type RunStep = { id: string; label: string; kind: RunStepKind };
 
 const stepTone: Record<RunStepKind, { ink: string; mark: string; tint?: string }> = {
-  normal: { ink: samInk.primary, mark: '✓' },
+  normal: { ink: samColor.ink, mark: '✓' },
   hop: { ink: samColor.amber, mark: '⇢', tint: 'rgba(255,159,10,0.1)' },
   fail: { ink: samColor.red, mark: '✕', tint: 'rgba(255,69,58,0.1)' },
 };
@@ -217,6 +219,7 @@ export function RunLog({
   steps: RunStep[];
 }) {
   const reduceMotion = useReduceMotion();
+  const samInk = useInk();
   return (
     <View style={log.card}>
       <View style={log.header}>
@@ -310,6 +313,7 @@ export function PermissionGate({
   onAllow: () => void;
   onNotNow: () => void;
 }) {
+  const samInk = useInk();
   return (
     <View style={gate.card} accessibilityRole="none">
       <Text style={[samType.rowTitle, { color: samInk.primary }]}>{title}</Text>
@@ -357,15 +361,32 @@ const gate = StyleSheet.create({
   btn: { flex: 1, minHeight: samTouch.minTarget, borderRadius: samRadius.pill, alignItems: 'center', justifyContent: 'center' },
 });
 
-/** 7. Chip — follow-ups and filters. Mono uppercase, min-height 44. */
-export function SamChip({ label, on, onPress }: { label: string; on?: boolean; onPress: () => void }) {
+/** 7. Chip — follow-ups and filters. Mono uppercase, min-height 44.
+ *  `role`/`accessibilityLabel` default to a plain toggle button; a filter chip inside a
+ *  SamHScroll marked accessibilityRole="tablist" should pass role="tab" with a label that
+ *  includes its count, so it reads correctly to VoiceOver/TalkBack. */
+export function SamChip({
+  label,
+  on,
+  onPress,
+  role = 'button',
+  accessibilityLabel,
+}: {
+  label: string;
+  on?: boolean;
+  onPress: () => void;
+  role?: 'button' | 'tab';
+  accessibilityLabel?: string;
+}) {
+  const samInk = useInk();
   return (
     <Pressable
       onPress={() => {
         haptic.selection();
         onPress();
       }}
-      accessibilityRole="button"
+      accessibilityRole={role}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!on }}
       style={[
         chip.pill,
@@ -449,6 +470,7 @@ export function SamTabBar({
   value: SamTabKey;
   onChange: (k: SamTabKey) => void;
 }) {
+  const samInk = useInk();
   return (
     <View style={tabbar.bar} accessibilityRole="tablist">
       {tabs.map((t) => {
@@ -498,6 +520,7 @@ export function ToggleRow({
   useEffect(() => {
     Animated.timing(knob, { toValue: value ? 1 : 0, duration: samMotion.toggleKnob, useNativeDriver: true }).start();
   }, [value, knob]);
+  const samInk = useInk();
   return (
     <Pressable
       onPress={() => {
@@ -545,6 +568,7 @@ export function EmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const samInk = useInk();
   return (
     <View style={empty.wrap}>
       <View style={empty.box}>
@@ -675,13 +699,25 @@ const grid = StyleSheet.create({
 });
 
 /** Horizontal scroller for chip rows / stat card pairs, so screens don't each re-derive the
- *  gutter + gap spacing rule from lib/samTheme.ts. */
-export function SamHScroll({ children }: { children: ReactNode }) {
+ *  gutter + gap spacing rule from lib/samTheme.ts. A row of filter chips should pass
+ *  accessibilityRole="tablist" and a label (paired with SamChip's role="tab") so it doesn't
+ *  read to VoiceOver/TalkBack as an unlabelled group of buttons. */
+export function SamHScroll({
+  children,
+  accessibilityRole,
+  accessibilityLabel,
+}: {
+  children: ReactNode;
+  accessibilityRole?: 'tablist';
+  accessibilityLabel?: string;
+}) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: samSpace.gutter, gap: samSpace.rowGap }}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
     >
       {children}
     </ScrollView>
@@ -690,6 +726,7 @@ export function SamHScroll({ children }: { children: ReactNode }) {
 
 /** Section label — "11px above its content", mono, per the handoff's spacing rules. */
 export function SamSectionLabel({ children }: { children: string }) {
+  const samInk = useInk();
   return (
     <Text
       style={[
@@ -708,6 +745,7 @@ export function SamSectionLabel({ children }: { children: string }) {
  *  copy (why this group exists, what a tap does) need this rather than re-deriving the same
  *  label+gap+footnote arrangement per screen. */
 export function SamSection({ header, footer, children }: { header?: string; footer?: string; children: ReactNode }) {
+  const samInk = useInk();
   return (
     <View style={{ marginBottom: samSpace.section }}>
       {header ? <SamSectionLabel>{header.toUpperCase()}</SamSectionLabel> : null}
@@ -724,6 +762,7 @@ export function SamSection({ header, footer, children }: { header?: string; foot
 /** Trailing "drill in" indicator for a SamRow's `status` slot — SamRow has no built-in chevron
  *  concept of its own, its status slot takes any node. */
 export function SamChevron() {
+  const samInk = useInk();
   return <Text style={[samType.mono, { color: samInk.metadata }]}>›</Text>;
 }
 
@@ -793,6 +832,7 @@ export function SamField({
   mono?: boolean;
   accessory?: ReactNode;
 } & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'autoCorrect' | 'autoComplete' | 'textContentType'>) {
+  const samInk = useInk();
   return (
     <View style={{ borderRadius: samRadius.row, backgroundColor: samColor.input, padding: samSpace.cardPad, gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -35,7 +35,7 @@ import {
   taskWhen,
 } from './lib/mentions';
 import { PermissionGate, RunLog, type RunStep, SamChip, SamRow, SamSheet } from './samKit';
-import { samBorder, samColor, samInk, samRadius, samSpace, samTouch, samType } from './lib/samTheme';
+import { samBorder, samColor, samRadius, samSpace, stateTone, samTouch, samType, useInk } from './lib/samTheme';
 
 // THE AGENT SURFACE — the phone's half of the desk's chat.
 //
@@ -164,7 +164,8 @@ export default function ChatScreen({
   /** Text handed in by a `sam://ask?text=…` link — a widget tap, a Shortcut, a QR code. */
   prompt?: string | null;
 }) {
-  const s = styles;
+  const samInk = useInk();
+  const s = useMemo(() => makeStyles(samInk), [samInk]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -913,18 +914,11 @@ export default function ChatScreen({
   );
 }
 
-// Same meanings as the old stateTone: done -> green, failed -> red, everything else muted
-// (running is carried by the spinner on both surfaces, not colour).
-function stateTone(state: string | undefined): string {
-  if (state === 'done') return samColor.green;
-  if (state === 'failed') return samColor.red;
-  return samInk.metadata;
-}
-
-// A fixed dark palette, not a light/dark pair — samTheme.ts has no light variant, so this no
-// longer needs to be recomputed per-render off a passed-in `ios` object the way makeStyles(ios)
-// did. One StyleSheet, created once.
-const styles = StyleSheet.create({
+// A function of the live ink tokens, not a module-level StyleSheet.create: `support`/
+// `metadata` move when the OS's Increase Contrast setting toggles (see useInk in
+// lib/samTheme.ts), so these can't be baked in once at import time the way the rest of the
+// palette can — memoized per-render in the component below, keyed on `samInk`.
+const makeStyles = (samInk: ReturnType<typeof useInk>) => StyleSheet.create({
   list: { padding: samSpace.gutter, paddingBottom: 24, gap: 8 },
   // iMessage geometry: 18pt radius, a squared corner on the sender's side, 17pt body.
   bubbleUser: {

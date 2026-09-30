@@ -11,7 +11,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -50,7 +49,6 @@ function tabKeyToSurface(k: SamTabKey): Surface {
 }
 
 export default function App() {
-  const scheme = useColorScheme();
   const s = styles;
 
   const { width } = useWindowDimensions();
@@ -445,7 +443,7 @@ export default function App() {
         onScanned={onScanned}
       />
 
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="light" />
     </SafeAreaView>
   );
 }

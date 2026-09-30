@@ -10,7 +10,7 @@ const ALL_PROVIDERS = [GEMINI_PROVIDER, ANTHROPIC_PROVIDER, ...DIRECT_PROVIDERS]
 import { GLYPHS } from './lib/glyphs';
 import { ensurePermission, notify, setSoundEnabled, soundEnabled } from './lib/notify';
 import { SamActionRow, SamChevron, SamField, SamRow, SamSection, ToggleRow } from './samKit';
-import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { samColor, samSpace, samType, useInk } from './lib/samTheme';
 
 type Device = { id: string; label: string; lastSeen: number };
 
@@ -21,6 +21,7 @@ export default function SettingsScreen({
   onForgotten: (note?: string) => void;
   onOpenPairing?: () => void;
 }) {
+  const samInk = useInk();
   const [host, setHost] = useState('');
   const [_devices, setDevices] = useState<Device[] | null>(null);
   const [sound, setSound] = useState(true);
@@ -236,6 +237,7 @@ export default function SettingsScreen({
 /** Right-aligned status text — SamRow's `status` slot takes any node; this is the mono-metadata
  *  equivalent of ui.tsx's Row `value` prop. */
 function StatusText({ text }: { text: string }) {
+  const samInk = useInk();
   return (
     <Text style={[samType.mono, { color: samInk.metadata }]} numberOfLines={1}>
       {text}

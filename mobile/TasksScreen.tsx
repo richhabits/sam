@@ -7,7 +7,7 @@ import { GLYPHS } from './lib/glyphs';
 import { taskGlyph, taskTitle } from './lib/mentions';
 import JobDetailSheet from './JobDetailSheet';
 import { SamActionRow, SamChip, SamHScroll, SamRow, SamSection } from './samKit';
-import { samColor, samInk, samSpace, samType } from './lib/samTheme';
+import { samColor, samSpace, stateTone, samType, useInk } from './lib/samTheme';
 
 // THE TASKS SURFACE — every job SAM has run, as a native grouped list.
 
@@ -45,6 +45,7 @@ export default function TasksScreen({
   onNeedsPairing: () => void;
   onOpenPairing?: () => void;
 }) {
+  const samInk = useInk();
   const [yard, setYard] = useState<Yard | null>(null);
   const [published, setPublished] = useState<PublishedSite[]>([]);
   const [error, setError] = useState('');
@@ -163,9 +164,16 @@ export default function TasksScreen({
         <>
           {rows.length || filter !== 'all' ? (
             <View style={{ marginBottom: samSpace.section }}>
-              <SamHScroll>
+              <SamHScroll accessibilityRole="tablist" accessibilityLabel="Filter tasks">
                 {chips.map((c) => (
-                  <SamChip key={c.key} label={c.count != null ? `${c.label} (${c.count})` : c.label} on={c.key === filter} onPress={() => setFilter(c.key)} />
+                  <SamChip
+                    key={c.key}
+                    label={c.count != null ? `${c.label} (${c.count})` : c.label}
+                    on={c.key === filter}
+                    onPress={() => setFilter(c.key)}
+                    role="tab"
+                    accessibilityLabel={c.count != null ? `${c.label}, ${c.count}` : c.label}
+                  />
                 ))}
               </SamHScroll>
             </View>
@@ -242,14 +250,8 @@ function subtitleFor(j: Job, now: number): string {
   return parts.join(' · ');
 }
 
-// Same meanings as the old stateToneText: done -> green, failed -> red, everything else muted
-// (running is carried by the spinner, not colour).
-function stateTone(state: Job['state']): string {
-  if (state === 'done') return samColor.green;
-  if (state === 'failed') return samColor.red;
-  return samInk.metadata;
-}
 function StateAccessory({ state }: { state: Job['state'] }) {
+  const samInk = useInk();
   const running = state === 'running';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
