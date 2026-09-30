@@ -33,6 +33,7 @@
 		E1DB3CF6CDFA730FB7DC8585 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */; };
 		E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 5B152F9948B52309BCC78CD7 /* popup.js */; };
 		F15CF9E5D25C426E2091CF74 /* images in Resources */ = {isa = PBXBuildFile; fileRef = 6D063B5E7F377FE745C743EB /* images */; };
+		FC105793B2EA89D3C3E649EA /* AddOnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007351A230D66E6BCF4AD603 /* AddOnsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		007351A230D66E6BCF4AD603 /* AddOnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddOnsView.swift; sourceTree = "<group>"; };
 		00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		0246E1B0408DDAC9DB911C4F /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		0B96425CF191D4879506DC71 /* YardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardView.swift; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 		2285B20E406CCF793E2044D9 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				007351A230D66E6BCF4AD603 /* AddOnsView.swift */,
 				66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */,
 				B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */,
 				785954E4995D5CC8A3C69827 /* PairView.swift */,
@@ -395,6 +398,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FC105793B2EA89D3C3E649EA /* AddOnsView.swift in Sources */,
 				C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */,
 				94A038132C43C3483848085D /* CatalogueViews.swift in Sources */,
 				B901372E8B871941215355B7 /* ChatView.swift in Sources */,

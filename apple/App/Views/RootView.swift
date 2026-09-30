@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 enum AppSection: String, Hashable, CaseIterable {
-    case chat, yard, crew, tools, settings
+    case chat, yard, crew, tools, addOns, settings
 }
 
 struct RootView: View {
@@ -60,6 +60,7 @@ struct RootView: View {
                 .badge(model.yard.map { $0.running + $0.queued } ?? 0)
             Tab("Crew", systemImage: "person.3", value: .crew) { CrewView(section: $section) }
             Tab("Tools", systemImage: "wrench.and.screwdriver", value: .tools) { ToolsView() }
+            Tab("Add-ons", systemImage: "puzzlepiece.extension", value: .addOns) { AddOnsView() }
             Tab("Settings", systemImage: "gearshape", value: .settings) { SettingsView() }
         }
         .tabViewStyle(.sidebarAdaptable)

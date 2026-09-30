@@ -75,6 +75,21 @@ public struct BrainClient: Sendable {
     public func specialists() async throws -> [Specialist] { (try await get("/api/agents") as AgentRoster).specialists }
     public func vaultStats() async throws -> VaultStats { try await get("/api/vault/stats") }
 
+    // MARK: Add-ons (MCP)
+
+    public func addOns() async throws -> [AddOn] { (try await get("/api/mcp/presets") as AddOnCatalogue).presets }
+
+    /// Loopback-only on the server: works from the Mac app, refused (403) from other devices.
+    public func connectAddOn(_ id: String, keys: [String: String]) async throws {
+        struct Body: Encodable { let id: String; let env: [String: String] }
+        _ = try await send("/api/mcp/configure", Body(id: id, env: keys))
+    }
+
+    public func removeAddOn(_ id: String) async throws { _ = try await send("/api/mcp/remove", ["id": id]) }
+
+    /// Restarts the brain so add-on changes load (POST /api/restart, supervised daemon only).
+    public func restart() async throws { _ = try await send("/api/restart", [String: String]()) }
+
     // MARK: Actions
 
     public func cancel(job id: String) async throws { _ = try await send("/api/yard/cancel", ["id": id]) }

@@ -83,6 +83,14 @@ import Testing
         #expect(!job.isActive)
     }
 
+    @Test func decodesAddOns() throws {
+        let json = #"{"presets":[{"id":"flipit","label":"FLIP IT (add-on)","emoji":"📈","note":"read-only","official":true,"fields":[],"docs":"https://github.com/richhabits/flip-it","connected":false},{"id":"stripe","label":"Stripe","emoji":"💳","note":"payments","official":true,"fields":[{"env":"STRIPE_SECRET_KEY","label":"Secret key","placeholder":"sk_live_…"}],"connected":true}]}"#
+        let c = try JSONDecoder().decode(AddOnCatalogue.self, from: Data(json.utf8))
+        #expect(c.presets.count == 2)
+        #expect(c.presets[0].fields.isEmpty && !c.presets[0].connected)
+        #expect(c.presets[1].fields.first?.env == "STRIPE_SECRET_KEY" && c.presets[1].connected)
+    }
+
     @Test func snapshotRoundTrips() throws {
         let defaults = try #require(UserDefaults(suiteName: "samkit.tests.\(UUID())"))
         let snap = SharedSnapshot(paired: true, reachable: true, queued: 2, updated: Date(timeIntervalSince1970: 1))

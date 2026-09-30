@@ -99,3 +99,22 @@ public struct PairingBundle: Codable, Sendable {
     public let expiresInSec: Int?
     public let pin: String?
 }
+
+/// GET /api/mcp/presets entry: an add-on SAM can connect to over MCP. Never carries key values.
+public struct AddOn: Codable, Identifiable, Equatable, Sendable {
+    public struct Field: Codable, Equatable, Sendable {
+        public let env: String
+        public let label: String
+        public let placeholder: String?
+    }
+    public let id: String
+    public let label: String
+    public let emoji: String?
+    public let note: String?
+    public let official: Bool?
+    public let fields: [Field]
+    public let docs: String?
+    public let connected: Bool
+}
+
+struct AddOnCatalogue: Codable, Sendable { let presets: [AddOn] }
