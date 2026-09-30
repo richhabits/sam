@@ -19,6 +19,7 @@ struct PendingApproval: Identifiable, Equatable {
 
     private(set) var host: String? = Session.host
     private var token: String? = Session.token
+    private(set) var fingerprint: String? = Session.fingerprint
     private(set) var reachable = false
     var yard: YardSummary?
     var specialists: [Specialist] = []
@@ -32,7 +33,7 @@ struct PendingApproval: Identifiable, Equatable {
     var isPaired: Bool { host != nil && token != nil }
     var brain: BrainClient? {
         guard let host, let token else { return nil }
-        return BrainClient(host: host, token: token)
+        return BrainClient(host: host, token: token, fingerprint: fingerprint)
     }
 
     private var streamTask: Task<Void, Never>?
@@ -53,16 +54,19 @@ struct PendingApproval: Identifiable, Equatable {
         await refresh()
     }
 
-    func pair(host: String, code: String) async throws {
+    func pair(host: String, code: String, fingerprint: String? = nil) async throws {
         let base = PairLink.normalizeHost(host.contains("://") ? host : "http://\(host)")
-        let token = try await BrainClient.claim(host: base, code: code, client: Self.clientName)
-        store(host: base, token: token)
+        if base.hasPrefix("https://") && fingerprint == nil {
+            throw BrainError(0, "That SAM uses encryption. Scan its QR code so this device can check it's really your Mac.")
+        }
+        let token = try await BrainClient.claim(host: base, code: code, client: Self.clientName, fingerprint: fingerprint)
+        store(host: base, token: token, fingerprint: fingerprint)
         await refresh()
     }
 
     func pair(link: PairLink, fallbackHost: String?) async throws {
         guard let h = link.host ?? fallbackHost, !h.isEmpty else { throw BrainError(0, "That link doesn't say which SAM to pair with. Enter its address.") }
-        try await pair(host: h, code: link.code)
+        try await pair(host: h, code: link.code, fingerprint: link.fingerprint)
     }
 
     func unpair() async {
@@ -73,10 +77,11 @@ struct PendingApproval: Identifiable, Equatable {
         publishSnapshot()
     }
 
-    private func store(host: String?, token: String?) {
+    private func store(host: String?, token: String?, fingerprint: String? = nil) {
         self.host = host
         self.token = token
-        if !Session.save(host: host, token: token), token != nil {
+        self.fingerprint = fingerprint
+        if !Session.save(host: host, token: token, fingerprint: fingerprint), token != nil {
             lastError = "Paired, but the Keychain wouldn't save the session, so you'll need to pair again next launch."
         }
     }

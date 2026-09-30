@@ -67,8 +67,40 @@ import Testing
         #expect(PairLink.parse("sam://pair?code=\(code)&host=javascript:alert(1)")?.host == nil)
     }
 
+    @Test func carriesTheCertificateFingerprint() {
+        let fp = String(repeating: "ab", count: 32)
+        let link = PairLink.parse("sam://pair?code=\(code)&host=https%3A%2F%2F192.168.1.4%3A8788&fp=\(fp.uppercased())")
+        #expect(link == PairLink(code: code, host: "https://192.168.1.4:8788", fingerprint: fp))
+        #expect(PairLink.parse("sam://pair?code=\(code)&fp=nothex")?.fingerprint == nil)
+        #expect(PairLink.parse("http://h:8787/pair?code=\(code)")?.fingerprint == nil)
+    }
+
     @Test func normalizesHost() {
         #expect(PairLink.normalizeHost("  http://a:8787/// ") == "http://a:8787")
+    }
+}
+
+@Suite struct PinningTests {
+    @Test func fingerprintIsSHA256OfDER() {
+        // SHA-256("abc") is a published test vector.
+        #expect(PinningDelegate.fingerprint(of: Data("abc".utf8)) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
+
+    @Test func matchesOnlyTheExactCertificate() {
+        let der = Data("certificate bytes".utf8)
+        let fp = PinningDelegate.fingerprint(of: der)
+        #expect(PinningDelegate.matches(der: der, fingerprint: fp))
+        #expect(PinningDelegate.matches(der: der, fingerprint: fp.uppercased()))
+        #expect(!PinningDelegate.matches(der: Data("other".utf8), fingerprint: fp))
+        #expect(!PinningDelegate.matches(der: der, fingerprint: String(fp.dropLast())))
+    }
+
+    @Test func httpsWithoutAPinUsesNoSpecialTrust() {
+        // No fingerprint → the shared session (which rejects SAM's self-signed cert). There's no
+        // "trust anything" path.
+        #expect(BrainClient.session(for: nil) === URLSession.shared)
+        #expect(BrainClient.session(for: "short") === URLSession.shared)
+        #expect(BrainClient.session(for: String(repeating: "0", count: 64)) !== URLSession.shared)
     }
 }
 

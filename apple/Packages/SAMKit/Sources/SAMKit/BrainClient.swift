@@ -19,19 +19,31 @@ public struct BrainClient: Sendable {
 
     public let host: String
     public let token: String
+    /// Pinned certificate fingerprint for an https brain (docs/decisions/0002); nil for loopback.
+    public let fingerprint: String?
     let session: URLSession
 
-    public init(host: String, token: String, session: URLSession = .shared) {
+    public init(host: String, token: String, fingerprint: String? = nil, session: URLSession? = nil) {
         self.host = PairLink.normalizeHost(host)
         self.token = token
-        self.session = session
+        self.fingerprint = fingerprint
+        self.session = session ?? Self.session(for: fingerprint)
+    }
+
+    /// https with a fingerprint → a pinned session; anything else → the shared session.
+    /// There's deliberately no path to an https brain WITHOUT a pin: its certificate is
+    /// self-signed, so the only alternative would be trusting whatever answers.
+    static func session(for fingerprint: String?) -> URLSession {
+        guard let fingerprint, PairLink.isFingerprint(fingerprint) else { return .shared }
+        return PinningDelegate.session(fingerprint: fingerprint)
     }
 
     // MARK: Pairing
 
     /// Exchange a one-time code for a session token (POST /api/pair/claim).
-    public static func claim(host: String, code: String, client: String, session: URLSession = .shared) async throws -> String {
+    public static func claim(host: String, code: String, client: String, fingerprint: String? = nil, session: URLSession? = nil) async throws -> String {
         let base = PairLink.normalizeHost(host)
+        let session = session ?? Self.session(for: fingerprint)
         guard let url = URL(string: "\(base)/api/pair/claim") else { throw BrainError(0, "That address isn't valid.") }
         var req = URLRequest(url: url, timeoutInterval: 8)
         req.httpMethod = "POST"
@@ -62,7 +74,8 @@ public struct BrainClient: Sendable {
     }
 
     /// Unauthenticated liveness check (GET /api/health).
-    public static func isUp(_ host: String, session: URLSession = .shared) async -> Bool {
+    public static func isUp(_ host: String, fingerprint: String? = nil, session: URLSession? = nil) async -> Bool {
+        let session = session ?? Self.session(for: fingerprint)
         guard let url = URL(string: "\(PairLink.normalizeHost(host))/api/health") else { return false }
         guard let (_, res) = try? await transport(session, URLRequest(url: url, timeoutInterval: 3)) else { return false }
         return res == 200

@@ -15,6 +15,8 @@ struct PairView: View {
     @State private var working = false
     @State private var error: String?
     @State private var scanning = false
+    @State private var discovery = Discovery()
+    @State private var picked: Discovery.Found?
 
     var body: some View {
         ScrollView {
@@ -49,6 +51,33 @@ struct PairView: View {
                 .samProminent()
                 .controlSize(.large)
                 #endif
+
+                if !discovery.found.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("On your network").font(.headline)
+                        ForEach(discovery.found) { f in
+                            Button {
+                                picked = f
+                                host = f.host
+                            } label: {
+                                HStack {
+                                    Image(systemName: "desktopcomputer").foregroundStyle(Color.sam)
+                                    VStack(alignment: .leading) {
+                                        Text(f.name)
+                                        Text("Check your Mac shows \(f.shortFingerprint)").font(.caption.monospaced()).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    if picked == f { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+                                }
+                                .contentShape(.rect)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Text("Then enter the pairing code your Mac shows.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(20)
+                    .samGlass(in: .rect(cornerRadius: 24))
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Or enter it yourself").font(.headline)
@@ -96,6 +125,8 @@ struct PairView: View {
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
+        .task { discovery.start() }
+        .onDisappear { discovery.stop() }
         #if os(iOS)
         .fullScreenCover(isPresented: $scanning) {
             QRScanner { payload in
@@ -118,6 +149,9 @@ struct PairView: View {
         do {
             if let link = PairLink.parse(host) {
                 try await model.pair(link: link, fallbackHost: nil)
+            } else if let picked, host == picked.host {
+                // Fingerprint from the network, compared by the person against their Mac.
+                try await model.pair(host: picked.host, code: code, fingerprint: picked.fingerprint)
             } else {
                 try await model.pair(host: host.contains(":") || host.contains("://") ? host : "\(host):\(BrainClient.defaultPort)", code: code)
             }

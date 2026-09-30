@@ -30,6 +30,7 @@
 		AD1080F6244F056F32FF8B57 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9E8E5651EA3EC12445EFD9 /* SAMKit */; };
 		B15930723F29E520F8293605 /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = FF5A661B3A21D45B36E77345 /* _locales */; };
 		B901372E8B871941215355B7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */; };
+		BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C919BA9D5651C50A2E4587 /* Discovery.swift */; };
 		C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7161CA230E0B8F11E7A4243B /* AppModel.swift */; };
 		CA428F29A5FB68A3230D563B /* YardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B96425CF191D4879506DC71 /* YardView.swift */; };
 		D0A8223A043C14DC15865E2E /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = 69150E615E30D86FE0B4D91C /* popup.css */; };
@@ -100,6 +101,7 @@
 		7161CA230E0B8F11E7A4243B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		785954E4995D5CC8A3C69827 /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		7F87B19D46F6AA399BABC257 /* SAMKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SAMKit; path = Packages/SAMKit; sourceTree = SOURCE_ROOT; };
+		80C919BA9D5651C50A2E4587 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
 		844E0708B0A3ECEE060768D2 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = popup.html; sourceTree = "<group>"; };
 		AE6647FD353F11912A853B47 /* SAM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAM.entitlements; sourceTree = "<group>"; };
 		B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 			children = (
 				7161CA230E0B8F11E7A4243B /* AppModel.swift */,
 				0CFD5A501959C0C4D179972C /* DeviceServices.swift */,
+				80C919BA9D5651C50A2E4587 /* Discovery.swift */,
 				EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */,
 				BB2E33377DE427835DADBFCC /* Store.swift */,
 			);
@@ -475,6 +478,7 @@
 				94A038132C43C3483848085D /* CatalogueViews.swift in Sources */,
 				B901372E8B871941215355B7 /* ChatView.swift in Sources */,
 				8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */,
+				BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */,
 				337D28621FA2EADCDBF08759 /* OnDeviceBrain.swift in Sources */,
 				329A805AE30323ED5EE46536 /* PairView.swift in Sources */,
 				35D292A0A1D6E41871DA4936 /* RootView.swift in Sources */,

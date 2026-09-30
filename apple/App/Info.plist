@@ -42,6 +42,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_sam._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>SAM uses the camera to scan the pairing code your Mac shows.</string>
 	<key>NSFaceIDUsageDescription</key>
@@ -49,7 +53,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Romeo Valentine</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>SAM connects to the Mac running SAM on your network.</string>
+	<string>SAM finds and connects to the Mac running SAM on your network.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SAM listens when you tap the microphone so you can talk instead of type.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

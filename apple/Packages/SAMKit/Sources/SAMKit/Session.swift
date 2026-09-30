@@ -7,6 +7,7 @@ import Foundation
 public enum Session {
     static let hostKey = "sam.host"
     static let tokenAccount = "token"
+    static let fingerprintKey = "sam.fp"
 
     static var defaults: UserDefaults { UserDefaults(suiteName: SharedSnapshot.appGroup) ?? .standard }
 
@@ -22,16 +23,20 @@ public enum Session {
 
     public static var token: String? { Keychain.get(tokenAccount) }
 
+    /// The pinned certificate fingerprint for an https brain (not secret, so it lives in defaults).
+    public static var fingerprint: String? { defaults.string(forKey: fingerprintKey) }
+
     /// Nil when this device isn't paired.
     public static var brain: BrainClient? {
         guard let host, let token else { return nil }
-        return BrainClient(host: host, token: token)
+        return BrainClient(host: host, token: token, fingerprint: fingerprint)
     }
 
     /// Returns false if the Keychain refused the token.
     @discardableResult
-    public static func save(host: String?, token: String?) -> Bool {
+    public static func save(host: String?, token: String?, fingerprint: String? = nil) -> Bool {
         defaults.set(host, forKey: hostKey)
+        defaults.set(fingerprint, forKey: fingerprintKey)
         UserDefaults.standard.removeObject(forKey: hostKey)
         return Keychain.set(token, for: tokenAccount)
     }

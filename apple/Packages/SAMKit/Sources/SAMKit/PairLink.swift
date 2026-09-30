@@ -10,10 +10,14 @@ import Foundation
 public struct PairLink: Equatable, Sendable {
     public let code: String
     public let host: String?
+    /// SHA-256 of the brain's TLS certificate (64 lowercase hex), carried by `sam://pair` links for
+    /// the encrypted phone listener (docs/decisions/0002). The client pins it; nil for plain links.
+    public let fingerprint: String?
 
-    public init(code: String, host: String?) {
+    public init(code: String, host: String?, fingerprint: String? = nil) {
         self.code = code
         self.host = host
+        self.fingerprint = fingerprint
     }
 
     public static func parse(_ url: String?) -> PairLink? {
@@ -47,7 +51,13 @@ public struct PairLink: Equatable, Sendable {
                 }
             }
         }
-        return PairLink(code: code, host: host)
+        let fp = param(query, "fp").lowercased()
+        return PairLink(code: code, host: host, fingerprint: isFingerprint(fp) ? fp : nil)
+    }
+
+    /// 64 hex characters: a SHA-256 digest.
+    public static func isFingerprint(_ s: String) -> Bool {
+        s.count == 64 && s.allSatisfy(\.isHexDigit)
     }
 
     /// 16–64 hex characters, the shape SAM mints.
