@@ -145,6 +145,7 @@ import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
+import { streamPolicy } from "./stream-policy.ts";
 import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
 import { buildIndexes, routingReady, selectSkillId, selectTools } from "./routing.ts";
 import { migratableNames, isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, lock as safeLock, migrateFromEnv as safeMigrate, setup as safeSetup, status as safeStatus, unlock as safeUnlock, secretNames } from "./safe.ts";
@@ -1075,6 +1076,7 @@ app.post("/api/command", async (req, res) => {
 app.post("/api/stream", async (req, res) => {
   const { message, projectId, tier: rawTier, user, noCache, history } = req.body as { message: string; projectId?: string; tier?: string; user?: User; noCache?: boolean; history?: ClientTurn[] };
   if (!message?.trim()) return res.status(400).json({ error: "empty message" });
+  const policy = streamPolicy(req.body);   // untrusted content ⇒ no tools/routines/memory/cache
   const convo = formatHistory(history);
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -1086,7 +1088,7 @@ app.post("/api/stream", async (req, res) => {
   // ── Routines: a spoken/typed phrase bound to a saved workflow runs it directly, ahead of the
   //    brain. Gated by SAM_ROUTINES; the workflow's own pause-on-dangerous contract is preserved
   //    (execTool refuses unsafe tools here — nothing risky runs unattended from a phrase). ──
-  if (routinesEnabled()) {
+  if (policy.routines && routinesEnabled()) {
     const wfId = matchRoutine(message);
     const wf = wfId ? getWorkflow(wfId) : null;
     if (wf) {
@@ -1122,7 +1124,7 @@ app.post("/api/stream", async (req, res) => {
   try {
     // Setup (embed/recall/routing) is INSIDE the try — a throw here (e.g. an embed
     // provider blowing up) must still send done+end, or the client's SSE reader hangs.
-    const turbo = rawTier === "turbo";              // one fast call, no tools
+    const turbo = policy.turbo;                     // one fast call, no tools
     const tier = (turbo ? "free" : rawTier) as Tier | undefined;
     const fast = turbo || isFastPath(message);
     const qvec = fast ? null : await embedOne(message, true, pinnedModel());
@@ -1139,7 +1141,7 @@ app.post("/api/stream", async (req, res) => {
     const userName = (user?.name || "the user").trim();
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
-    const canCache = !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
+    const canCache = policy.cache && !!message && cacheable(message) && !convo;   // multi-turn context → never replay a stale single-turn answer
     const fp = canCache ? fingerprint({ skillId: skill?.id, projectId, userName: user?.name, mode: user?.mode, persona: user?.persona, lean, recalled, docs }) : "";
     if (canCache && !noCache) {
       const t0 = Date.now();
@@ -1161,7 +1163,7 @@ app.post("/api/stream", async (req, res) => {
       send(e.type === "pending" ? withPending(e, ctx) : e);
       if (e.type === "done") {
         logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
-        void learnFrom(message, e.text || "", userName);
+        if (policy.learn) void learnFrom(message, e.text || "", userName);
         // Cache tool-free finals only (reproducible; never a dangerous-tool run).
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
       }
