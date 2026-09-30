@@ -21,7 +21,7 @@
 		55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2E33377DE427835DADBFCC /* Store.swift */; };
 		5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */; };
 		67016402A32D61C856496D1D /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 844E0708B0A3ECEE060768D2 /* popup.html */; };
-		70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, ); fileRef = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFD5A501959C0C4D179972C /* DeviceServices.swift */; };
 		88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */; };
 		94A038132C43C3483848085D /* CatalogueViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */; };
@@ -491,7 +491,7 @@
 /* Begin PBXTargetDependency section */
 		3CF490F8E326E55BA8D0756A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			platformFilters = (ios, );
+			platformFilters = (ios, macos, );
 			target = 46D3E39D1B87E75244A3F672 /* SAMWidgets */;
 			targetProxy = FADDD255B08348CE6E43237D /* PBXContainerItemProxy */;
 		};
@@ -566,6 +566,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -656,7 +657,11 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
 				PRODUCT_NAME = SAMWidgets;
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -724,6 +729,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -767,7 +773,11 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
 				PRODUCT_NAME = SAMWidgets;
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

@@ -42,7 +42,11 @@ struct YardWidget: Widget {
         }
         .configurationDisplayName("SAM Yard")
         .description("What SAM is building on your Mac.")
+        #if os(iOS)
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
+        #else
+        .supportedFamilies([.systemSmall, .systemMedium])
+        #endif
     }
 }
 

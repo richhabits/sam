@@ -41,7 +41,10 @@ Mint the code on the Mac with `curl -X POST localhost:8787/api/pair/new`.
 | `App/Services` | `AppModel` (state, chat, pairing), `OnDeviceBrain` (Foundation Models), device services (Speech, voices, haptics, Spotlight, Face ID lock), SwiftData store. |
 | `App/Views` | Chat, Yard, Crew, Tools, Settings, Pairing (VisionKit QR). |
 | `App/Intents` | App Intents + App Shortcuts: Siri, Spotlight, Action button, Shortcuts. |
-| `Widgets` | Yard widget (Home Screen, Lock Screen, StandBy) and the Ask SAM control. |
+| `Widgets` | Yard widget (Home Screen, Lock Screen, StandBy, Mac desktop) and the Ask SAM control (Control Center on iPhone and Mac). |
+| `Safari` | Safari Web Extension (iOS, iPadOS, macOS): the popup plus a native handler that holds the session. |
+| `Share` | Share extension (iOS, iPadOS, macOS): text, links, photos (Vision OCR) and PDFs (PDFKit) into SAM. |
+| `App/Views/AddOnsView.swift` | Add-ons: connect FLIP IT and business tools over MCP (Mac), then restart the brain to load them. |
 
 ## What's in (phase 1, 2026-09-30)
 
@@ -53,12 +56,13 @@ Mint the code on the Mac with `curl -X POST localhost:8787/api/pair/new`.
 - **Security**: session token in the Keychain (this device only, never synced); optional Face ID / Touch ID / Optic ID lock; http only to the paired SAM.
 - **System**: Siri and Shortcuts, Spotlight, Handoff, widgets, Control Center control, Mac menu-bar quick ask, Liquid Glass throughout, SF Symbols animations, haptics, Dynamic Type.
 - **Yard**: live counts, job detail, cancel and retry.
+- **Safari extension**: summarise, key points, explain or ask about the page (iPhone, iPad, Mac).
+- **Share extension**: send text, links, photos and PDFs to SAM from any app. Links are your own request, so SAM may open them with its tools; everything else goes untrusted.
+- **Add-ons**: FLIP IT (read-only) and business tools, connected on the Mac, applied with one restart.
 
 ## Roadmap
 
 **Phase 2: the rest of the device**
-- Safari Web Extension (iOS + macOS): "Ask SAM about this page", summarise, save to memory.
-- Share extension: send text, links, files and images to SAM from any app.
 - Live Activity + Dynamic Island for running yard jobs; push from the brain via APNs.
 - Apple Watch: ask by voice, yard complication, approve risky tools from the wrist.
 - Camera: point at something and ask (AVFoundation + Vision), document scanning (VisionKit).
@@ -72,8 +76,9 @@ Mint the code on the Mac with `curl -X POST localhost:8787/api/pair/new`.
 - Bonjour discovery (`_sam._tcp`) so nobody types IP addresses.
 - CloudKit sync of conversations (end-to-end encrypted fields).
 
-**Phase 4: add-ons**
-- An Add-ons screen listing MCP presets (FLIP IT and others) from `/api/mcp/presets`, with connect and disconnect on the Mac. FLIP IT is its own app; see `docs/decisions/0001-flipit-is-an-add-on.md`.
+**Phase 4: add-ons** (screen done; next: more of our own apps as add-ons, and connecting from iPhone once secure phone access exists). FLIP IT is its own app; see `docs/decisions/0001-flipit-is-an-add-on.md`.
+
+**Phone access (needs a decision)**: remote/LAN mode is off (2026-09-30), so iPhone and iPad reach SAM only through a future secure transport (Bonjour + pinned TLS, Phase 3) or the Tailscale mesh mode. Until then they answer on-device with Apple Intelligence.
 
 **Release**
 - Replace the React Native iOS build with this app (same bundle id); keep `mobile/` for Android.

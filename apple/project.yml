@@ -34,7 +34,7 @@ targets:
     dependencies:
       - package: SAMKit
       - target: SAMWidgets
-        platformFilters: [iOS]
+        platformFilters: [iOS, macOS]
       - target: SAMSafari
         platformFilters: [iOS, macOS]
       - target: SAMShare
@@ -86,16 +86,17 @@ targets:
         "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xrsimulator*]": VisionAppIcon
         ENABLE_HARDENED_RUNTIME: YES
 
-  # Home Screen / Lock Screen widget + Control Center control.
+  # Widgets (Home Screen, Lock Screen, StandBy, Mac desktop) + Control Center control.
   SAMWidgets:
     type: app-extension
-    platform: iOS
+    supportedDestinations: [iOS, macOS]
     sources: [Widgets]
     dependencies:
       - package: SAMKit
     entitlements:
       path: Widgets/SAMWidgets.entitlements
       properties:
+        com.apple.security.app-sandbox: true
         com.apple.security.application-groups: [group.com.hectic.sam.mobile]
         keychain-access-groups: [$(AppIdentifierPrefix)com.hectic.sam.shared]
     info:
