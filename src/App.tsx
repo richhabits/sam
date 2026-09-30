@@ -2404,7 +2404,7 @@ export default function App() {
           { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
-          { icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) },
+          ...(status?.flipitBuiltin === false ? [] : [{ icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) }]),
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
           { icon: "settings", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "search", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },

@@ -115,6 +115,7 @@ import { clearAll, forget, listRecent, recall, remember } from "./memory.ts";
 import { prepareMobilePush } from "./mobile-bridge.ts";
 import { generateMobileFeed } from "./mobile-feed.ts";
 import { availableBrains, runBrain, runModel, runVision } from "./models.ts";
+import { flipitBuiltinEnabled, isFlipitBuiltinTool } from "./flipit-builtin.ts";
 import { formatAccount, formatHistory, formatPositions, mt5Summary } from "./mt5/index.ts";
 import * as nb from "./notebook.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
@@ -5560,6 +5561,11 @@ export const TOOLS: Tool[] = [
 // directly, making tools.ts ⇄ forge.ts a cycle and module-init order load-bearing. Binding here —
 // immediately after the registry exists — keeps the dependency one-way. forge throws if anything
 // calls it before this line runs, rather than silently registering nothing.
+// FLIP IT / MT5 built-in tools are opt-in now (SAM_FLIPIT_BUILTIN=1); the add-on supplies its own over MCP.
+// Spliced in place so TOOLS keeps its identity for everything that already imported it.
+if (!flipitBuiltinEnabled()) {
+  for (let i = TOOLS.length - 1; i >= 0; i--) if (isFlipitBuiltinTool(TOOLS[i].name)) TOOLS.splice(i, 1);
+}
 bindToolRegistry(TOOLS);
 
 export const toolByName = (n: string) => TOOLS.find((t) => t.name === n);

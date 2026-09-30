@@ -48,7 +48,7 @@ if (typeof location !== "undefined" && location.protocol.startsWith("http") && "
 // ?app=studio → the Creative Space; ?app=flipit → the £5 money desk; ?app=yard → what SAM has built; else the chat.
 // Each is its own full-view entity (dedicated Electron window or a browser tab).
 const StudioView = lazy(() => import("./StudioView"));
-const FlipItView = lazy(() => import("./FlipItView"));
+const FlipItView = lazy(() => import("./FlipItGate"));  // the built-in desk, or the add-on card when the server has it off
 const YardView = lazy(() => import("./YardView"));
 const whichApp = new URLSearchParams(location.search).get("app");
 
