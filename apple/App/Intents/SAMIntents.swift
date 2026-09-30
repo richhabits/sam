@@ -1,0 +1,83 @@
+import AppIntents
+import SAMKit
+
+/// "Hey Siri, ask SAM…", the Action button, Spotlight and Shortcuts all land here.
+struct AskSAMIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ask SAM"
+    static let description = IntentDescription("Ask SAM a question and hear the answer. Uses your Mac when it's reachable, Apple Intelligence on this device when it isn't.")
+
+    @Parameter(title: "Question", requestValueDialog: "What would you like to ask SAM?")
+    var question: String
+
+    static var parameterSummary: some ParameterSummary { Summary("Ask SAM \(\.$question)") }
+
+    func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        let answer = try await Self.ask(question)
+        return .result(value: answer, dialog: IntentDialog(stringLiteral: answer))
+    }
+
+    static func ask(_ question: String) async throws -> String {
+        if let host = UserDefaults.standard.string(forKey: "sam.host"), let token = Keychain.get("token") {
+            let brain = BrainClient(host: host, token: token)
+            var text = ""
+            do {
+                for try await event in brain.stream(message: question, history: []) {
+                    switch event {
+                    case .token(let t): text += t
+                    case .done(let final, _): if let final, !final.isEmpty { text = final }
+                    case .pending(_, let tool, _, _): return "SAM needs your approval to use \(tool). Open SAM to allow it."
+                    default: break
+                    }
+                }
+                if !text.isEmpty { return text }
+            } catch {
+                // fall through to on-device
+            }
+        }
+        guard OnDeviceBrain.isAvailable else {
+            throw BrainError(0, OnDeviceBrain.unavailableReason ?? "SAM can't answer right now.")
+        }
+        var last = ""
+        for try await snapshot in OnDeviceBrain.stream(question, history: []) { last = snapshot }
+        return last
+    }
+}
+
+/// "What's running in SAM's yard?"
+struct YardStatusIntent: AppIntent {
+    static let title: LocalizedStringResource = "Check SAM's Yard"
+    static let description = IntentDescription("Hear what SAM is building on your Mac.")
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let host = UserDefaults.standard.string(forKey: "sam.host"), let token = Keychain.get("token") else {
+            return .result(dialog: "SAM isn't paired with a Mac yet.")
+        }
+        let yard = try await BrainClient(host: host, token: token).yard()
+        var line = "\(yard.running) running, \(yard.queued) queued"
+        if yard.failed > 0 { line += ", \(yard.failed) failed" }
+        if let job = yard.recent?.first { line += ". Latest: \(job.title), \(job.state)." }
+        return .result(dialog: IntentDialog(stringLiteral: line))
+    }
+}
+
+struct OpenChatIntent: AppIntent {
+    static let title: LocalizedStringResource = "New SAM Chat"
+    static let openAppWhenRun = true
+    func perform() async throws -> some IntentResult { .result() }
+}
+
+struct SAMShortcuts: AppShortcutsProvider {
+    static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: AskSAMIntent(), phrases: [
+            "Ask \(.applicationName)",
+            "Ask \(.applicationName) a question",
+        ], shortTitle: "Ask SAM", systemImageName: "bubble.left.and.text.bubble.right")
+        AppShortcut(intent: YardStatusIntent(), phrases: [
+            "What's running in \(.applicationName)",
+            "Check \(.applicationName) yard",
+        ], shortTitle: "Yard status", systemImageName: "hammer")
+        AppShortcut(intent: OpenChatIntent(), phrases: [
+            "New \(.applicationName) chat",
+        ], shortTitle: "New chat", systemImageName: "square.and.pencil")
+    }
+}

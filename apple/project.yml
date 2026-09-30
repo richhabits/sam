@@ -1,0 +1,111 @@
+name: SAM
+options:
+  bundleIdPrefix: com.hectic.sam
+  deploymentTarget:
+    macOS: "26.0"
+    iOS: "26.0"
+    visionOS: "26.0"
+    watchOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: CC9Q9BH5NT
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "4.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+
+packages:
+  SAMKit:
+    path: Packages/SAMKit
+
+targets:
+  # One native SwiftUI app for iPhone, iPad, Mac and Apple Vision Pro.
+  # Same bundle id as the App Store app, so this ships as an update to it.
+  SAM:
+    type: application
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources: [App]
+    dependencies:
+      - package: SAMKit
+      - target: SAMWidgets
+        platformFilters: [iOS]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: SAM
+        LSApplicationCategoryType: public.app-category.productivity
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: SAM listens when you tap the microphone so you can talk instead of type.
+        NSSpeechRecognitionUsageDescription: SAM turns what you say into text, on this device when it can.
+        NSCameraUsageDescription: SAM uses the camera to scan the pairing code your Mac shows.
+        NSFaceIDUsageDescription: SAM can require Face ID before it opens, because it can act on your Mac.
+        NSLocalNetworkUsageDescription: SAM connects to the Mac running SAM on your network.
+        # Paired Macs are reached by LAN or Tailscale (100.x) address over http; Tailscale addresses
+        # aren't "local" to ATS, so local-networking alone breaks those users (see build 106 → 107).
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+        NSUserActivityTypes: [com.hectic.sam.chat]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hectic.sam
+            CFBundleURLSchemes: [sam]
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSHumanReadableCopyright: © 2026 Romeo Valentine
+    entitlements:
+      path: App/SAM.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.device.audio-input: true
+        com.apple.security.device.camera: true
+        com.apple.security.personal-information.photos-library: true
+        com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+    settings:
+      base:
+        PRODUCT_NAME: SAM
+        PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]": VisionAppIcon
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xrsimulator*]": VisionAppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+
+  # Home Screen / Lock Screen widget + Control Center control.
+  SAMWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [Widgets]
+    dependencies:
+      - package: SAMKit
+    entitlements:
+      path: Widgets/SAMWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: SAM
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_NAME: SAMWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.widget
+
+schemes:
+  SAM:
+    build:
+      targets:
+        SAM: all
+    run:
+      config: Debug

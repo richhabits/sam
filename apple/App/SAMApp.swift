@@ -1,0 +1,95 @@
+import SAMKit
+import SwiftData
+import SwiftUI
+
+@main
+struct SAMApp: App {
+    @State private var model = AppModel.shared
+    let container: ModelContainer
+
+    init() {
+        do {
+            container = try ModelContainer(for: Conversation.self, Message.self)
+        } catch {
+            // A damaged store must not brick the app: fall back to memory and say so in the log.
+            print("SAM: SwiftData store failed (\(error)); using in-memory history this launch")
+            container = try! ModelContainer(for: Conversation.self, Message.self,
+                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .environment(model)
+                #if os(macOS)
+                .frame(minWidth: 720, minHeight: 520)
+                #endif
+        }
+        .modelContainer(container)
+        #if os(macOS)
+        .windowToolbarStyle(.unified)
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+        }
+        #endif
+        #if os(visionOS)
+        .defaultSize(width: 900, height: 700)
+        #endif
+
+        #if os(macOS)
+        // Quick ask from the menu bar, without bringing the main window forward.
+        MenuBarExtra("SAM", systemImage: "brain.head.profile") {
+            QuickAskView()
+                .environment(model)
+                .modelContainer(container)
+                .frame(width: 380, height: 460)
+        }
+        .menuBarExtraStyle(.window)
+        #endif
+    }
+}
+
+#if os(macOS)
+struct QuickAskView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.modelContext) private var context
+    @Environment(\.openWindow) private var openWindow
+    @State private var convo = Conversation(title: "Quick ask")
+    @State private var draft = ""
+    @State private var inserted = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                SAMMark(size: 22)
+                Text("SAM").font(.headline)
+                Spacer()
+                ConnectionBadge(paired: model.isPaired, reachable: model.reachable)
+            }
+            .padding(12)
+            ScrollView {
+                LazyVStack(spacing: 10) { ForEach(convo.sorted) { MessageRow(message: $0) } }.padding(12)
+            }
+            .defaultScrollAnchor(.bottom)
+            HStack {
+                TextField("Ask SAM", text: $draft).textFieldStyle(.plain).onSubmit(send)
+                Button(action: model.busy ? model.stop : send) {
+                    Image(systemName: model.busy ? "stop.fill" : "arrow.up.circle.fill").font(.title2)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.sam)
+            }
+            .padding(10)
+            .samGlass(in: .capsule)
+            .padding(10)
+        }
+    }
+
+    private func send() {
+        if !inserted { context.insert(convo); inserted = true }
+        model.send(draft, in: convo, context: context)
+        draft = ""
+    }
+}
+#endif
