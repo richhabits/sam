@@ -42,10 +42,13 @@ export function parseCompilerDiagnostics(output: string): DiagnosticError[] {
   const lines = output.split("\n");
   const diagnostics: DiagnosticError[] = [];
 
+  // The message group is `(.*)` with no `\s*` in front of it: `\s*(.*)` gave the engine two ways to
+  // consume the same spaces, which backtracks polynomially when the line then fails to match. The
+  // leading space is trimmed off below instead.
   // Match pattern like: src/App.tsx(45,12): error TS2304: Cannot find name 'foo'.
   // or: server/index.ts:12:5 - error TS2305: Module '"./x"' has no exported member 'y'.
-  const patternA = /^([a-zA-Z0-9_\-./]+)\((\d+),(\d+)\):\s*error\s*(TS\d+)?:\s*(.*)$/;
-  const patternB = /^([a-zA-Z0-9_\-./]+):(\d+):(\d+)\s*-\s*error\s*(TS\d+)?:\s*(.*)$/;
+  const patternA = /^([a-zA-Z0-9_\-./]+)\((\d+),(\d+)\):\s*error\s*(TS\d+)?:(.*)$/;
+  const patternB = /^([a-zA-Z0-9_\-./]+):(\d+):(\d+)\s*-\s*error\s*(TS\d+)?:(.*)$/;
 
   for (const line of lines) {
     const clean = line.trim();
@@ -58,7 +61,7 @@ export function parseCompilerDiagnostics(output: string): DiagnosticError[] {
         line: parseInt(matchA[2], 10),
         column: parseInt(matchA[3], 10),
         code: matchA[4] || "TS",
-        message: matchA[5],
+        message: matchA[5].trim(),
         rawText: clean,
       });
       continue;
@@ -71,7 +74,7 @@ export function parseCompilerDiagnostics(output: string): DiagnosticError[] {
         line: parseInt(matchB[2], 10),
         column: parseInt(matchB[3], 10),
         code: matchB[4] || "TS",
-        message: matchB[5],
+        message: matchB[5].trim(),
         rawText: clean,
       });
       continue;

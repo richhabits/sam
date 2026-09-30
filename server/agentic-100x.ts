@@ -139,7 +139,11 @@ Output strict JSON with this shape:
 
   try {
     const res = await runModel(tier, system, `Goal: ${prompt}\n\nPlan DAG:`);
-    const jsonMatch = res.text.match(/\{[\s\S]*\}/);
+    // First "{" to last "}": what the greedy /\{[\s\S]*\}/ matched, without the regex, which
+    // rescanned to the end of the text from every "{" when no "}" followed (quadratic).
+    const open = res.text.indexOf("{");
+    const close = res.text.lastIndexOf("}");
+    const jsonMatch = open !== -1 && close > open ? [res.text.slice(open, close + 1)] : null;
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {

@@ -135,7 +135,10 @@ export function isStageDirection(segment: string, toolNames: readonly string[] =
 // coarse a unit: "…running a list_dir tool first — I'll give a clear answer using only plain text:
 // Assistant apps aren't available…". Splitting on the dash and the colon as well as on sentence
 // ends is what lets the answer be rescued from the clause that was hiding it.
-const SPLIT = /(\n+|(?<=[.!?…])\s+|\s+[—–]\s+|\s+-\s+|:\s+|;\s+)/;
+// `(?<!\s)` anchors the dash alternatives at the START of a whitespace run. The match found is the
+// same (the leftmost start is always a run's first space), but the engine no longer retries from
+// every space inside a long run, which was quadratic.
+const SPLIT = /(\n+|(?<=[.!?…])\s+|(?<!\s)\s+[—–]\s+|(?<!\s)\s+-\s+|:\s+|;\s+)/;
 
 interface Segment { text: string; sep: string }
 
@@ -259,7 +262,7 @@ export function stageGate(toolNames: readonly string[] = []): { push(chunk: stri
     // The Curtain trims whitespace off what it returns, which is right for a finished answer and
     // wrong mid-stream: the space that ended the held buffer is the space before the NEXT chunk, and
     // losing it welds two sentences together ("your Mac.Nothing leaves it"). Put it back.
-    const trailing = held.match(/\s+$/)?.[0] ?? "";
+    const trailing = held.slice(held.trimEnd().length);   // not /\s+$/ — that is quadratic on long runs of spaces
     const kept = curtainOpening(held, toolNames);
     if (!kept) return "";                      // all deliberation so far — keep holding
     open = true;

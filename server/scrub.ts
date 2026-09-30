@@ -107,7 +107,10 @@ export function carriesKnownCredential(text: string, env: NodeJS.ProcessEnv = pr
 // in plain text for ever" this file exists to prevent, arriving by the one door it did not watch.
 // Handled apart from SHAPES because only the password is replaced; the host and user stay
 // readable, or the log stops being diagnosable at the moment it matters most.
-const URL_CREDENTIAL = /([a-z][a-z0-9+.-]*:\/\/)([^\s:/@]+):([^\s@/]{3,})@/gi;
+// The lookbehind pins the scheme's START to a scheme boundary: without it the engine began a
+// `[a-z0-9+.-]*` run at every letter of a long word and rescanned it each time (polynomial ReDoS),
+// yet always reported the same leftmost match this one does.
+const URL_CREDENTIAL = /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*:\/\/)([^\s:/@]+):([^\s@/]{3,})@/gi;
 
 // Redact a string. Values first (a known secret is redacted even if it looks like
 // nothing), then shapes.

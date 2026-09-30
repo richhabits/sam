@@ -7,8 +7,13 @@ import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine 
 import { scanEvArbitrageSignals } from "./flipit-signals.ts";
 import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
 import { isLoopback } from "./http-guards.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 
 export function registerFlipItScaleRoutes(app: Express) {
+  // The webhook is reachable from outside and verifies an HMAC per call: cap attempts at
+  // 120/min per IP (Stripe retries are a handful per event, far below that).
+  const webhookLimit = createRateLimiter({ max: 120, message: "Too many webhook requests." });
+
   app.post("/api/flipit/rebalance", (req, res) => {
     try {
       const { holdings, targetAllocations, totalEquityGbp, threshold, commission } = req.body || {};
@@ -88,7 +93,7 @@ export function registerFlipItScaleRoutes(app: Express) {
   });
 
   // Stripe Webhook Endpoint
-  app.post("/api/flipit/stripe-webhook", (req, res) => {
+  app.post("/api/flipit/stripe-webhook", webhookLimit, (req, res) => {
     const signature = (req.headers["stripe-signature"] as string) || "";
     const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
     const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);

@@ -7,8 +7,12 @@ import {
   verifyFactualGrounding,
   verifySymbolDeclaration,
 } from "./antigravity-brain.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 
 export function registerAntigravityRoutes(app: Express) {
+  // These handlers parse caller-supplied text and read workspace files: 60/min per IP.
+  const brainLimit = createRateLimiter({ max: 60, message: "Too many cognition requests. Please slow down." });
+
   // 1. Execute Antigravity speculative multi-branch cognition
   app.post("/api/brain/cognition/execute", (req: Request, res: Response) => {
     const { taskPrompt, maxBranches } = req.body || {};
@@ -24,7 +28,7 @@ export function registerAntigravityRoutes(app: Express) {
   });
 
   // 2. Perform deep factual grounding verification on text / plan
-  app.post("/api/brain/cognition/ground", (req: Request, res: Response) => {
+  app.post("/api/brain/cognition/ground", brainLimit, (req: Request, res: Response) => {
     const { text } = req.body || {};
     if (!text || typeof text !== "string") {
       return res.status(400).json({ error: "text (string) is required." });
@@ -35,7 +39,7 @@ export function registerAntigravityRoutes(app: Express) {
   });
 
   // 3. Inspect a specific symbol declaration in a workspace file
-  app.post("/api/brain/cognition/symbol", (req: Request, res: Response) => {
+  app.post("/api/brain/cognition/symbol", brainLimit, (req: Request, res: Response) => {
     const { filePath, symbolName } = req.body || {};
     if (!filePath || !symbolName) {
       return res.status(400).json({ error: "filePath and symbolName are required." });

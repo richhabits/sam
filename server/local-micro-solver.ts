@@ -114,8 +114,11 @@ export function trySolveLocally(input: string): MicroSolverResult {
   }
 
   // 2. Pure Arithmetic (Safe regex whitelist: numbers, +, -, *, /, %, (, ), ^, .)
-  const mathPattern = /^(?:calculate|compute|solve|eval)?\s*([0-9\s+\-*/%().^]+)$/i;
-  const mathMatch = raw.match(mathPattern);
+  // The optional verb is peeled off first and the remainder matched whole: folding it into one
+  // regex as `(?:verb)?\s*([0-9\s...]+)$` let the leading \s* and the class's own \s fight over
+  // the same spaces, which backtracks polynomially on a long run of whitespace.
+  const mathPattern = /^([0-9\s+\-*/%().^]+)$/;
+  const mathMatch = raw.replace(/^(?:calculate|compute|solve|eval)/i, "").match(mathPattern);
   if (mathMatch?.[1]) {
     const expr = mathMatch[1].trim();
     if (/[+\-*/%^]/.test(expr) && !/[a-zA-Z_$]/.test(expr)) {
