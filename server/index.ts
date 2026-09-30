@@ -145,7 +145,7 @@ import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
-import { streamPolicy } from "./stream-policy.ts";
+import { streamPolicy, UNTRUSTED_ROUTE_REASON, UNTRUSTED_SYSTEM_NOTE } from "./stream-policy.ts";
 import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
 import { buildIndexes, routingReady, selectSkillId, selectTools } from "./routing.ts";
 import { migratableNames, isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, lock as safeLock, migrateFromEnv as safeMigrate, setup as safeSetup, status as safeStatus, unlock as safeUnlock, secretNames } from "./safe.ts";
@@ -1137,7 +1137,11 @@ app.post("/api/stream", async (req, res) => {
     let toolNames = fast ? undefined : selectTools(qvec, 8, message);
     const restricted = !!(req as any).remoteScope && (req as any).remoteScope !== "full";   // scoped remote token
     if (restricted && toolNames) toolNames = toolNames.filter((n) => !isDangerous(n));
-    const system = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
+    // Skills assume tools (e.g. research: "always note the source was saved to the vault"), so an
+    // untrusted, tool-less request gets none: following one would make SAM claim actions it never took.
+    if (policy.untrusted) skill = null;
+    const baseSystem = buildSystem(skill?.body || "", projectId, user, recalled, true, docs, lean);
+    const system = policy.untrusted ? `${baseSystem}\n\n${UNTRUSTED_SYSTEM_NOTE}` : baseSystem;
     const userName = (user?.name || "the user").trim();
 
     // ── SEMANTIC CACHE — same question, same context → replay instantly, 0 tokens ──
@@ -1157,12 +1161,12 @@ app.post("/api/stream", async (req, res) => {
     }
 
     // Router badge — tell the client which tier is answering and why, before tokens flow.
-    send({ type: "route", tier: chosen, klass, reason });
+    send({ type: "route", tier: chosen, klass: policy.untrusted ? "untrusted" : klass, reason: policy.untrusted ? UNTRUSTED_ROUTE_REASON : reason });
     const ctx: PendingCtx = { tier: chosen, projectId, skillBody: skill?.body || "", skillId: skill?.id, user };
     await runAgentStream(system, message, chosen, toolNames, (e) => {
       send(e.type === "pending" ? withPending(e, ctx) : e);
       if (e.type === "done") {
-        logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
+        if (policy.log) logExchange({ user: message, sam: e.text || "", skill: skill?.id, project: projectId, provider: e.provider || "" });
         if (policy.learn) void learnFrom(message, e.text || "", userName);
         // Cache tool-free finals only (reproducible; never a dangerous-tool run).
         if (canCache && (e.trace?.length ?? 0) === 0 && e.text) cacheStore({ message, fp, answer: e.text, provider: e.provider || "", tier: chosen, qvec });
