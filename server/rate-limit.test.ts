@@ -1,52 +1,55 @@
-import type { Request, Response } from "express";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import express from "express";
+import { afterEach, describe, expect, it } from "vitest";
 import { createRateLimiter } from "./rate-limit.ts";
 
-function run(limiter: ReturnType<typeof createRateLimiter>, ip: string) {
-  const req = { ip, socket: { remoteAddress: ip } } as unknown as Request;
-  let status = 200;
-  let body: unknown;
-  const res = {
-    status(c: number) { status = c; return this; },
-    json(b: unknown) { body = b; return this; },
-  } as unknown as Response;
-  const next = vi.fn();
-  limiter(req, res, next);
-  return { status, body, passed: next.mock.calls.length === 1 };
+// Real HTTP through a real Express app: express-rate-limit is async middleware that sets headers,
+// so a fake req/res would test the fake, not the limiter.
+const servers: Server[] = [];
+afterEach(() => { for (const s of servers.splice(0)) s.close(); });
+
+async function serve(...limiters: ReturnType<typeof createRateLimiter>[]) {
+  const app = express();
+  limiters.forEach((l, i) => app.get(`/r${i}`, l, (_req, res) => { res.json({ ok: true }); }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise<void>((r) => server.once("listening", () => r()));
+  const { port } = server.address() as AddressInfo;
+  return async (i = 0) => {
+    const res = await fetch(`http://127.0.0.1:${port}/r${i}`);
+    return { status: res.status, body: await res.json() };
+  };
 }
 
 describe("createRateLimiter", () => {
-  afterEach(() => vi.useRealTimers());
-
-  it("allows up to max per IP, then answers 429", () => {
-    const l = createRateLimiter({ max: 3, message: "slow" });
-    expect([1, 2, 3].every(() => run(l, "1.1.1.1").passed)).toBe(true);
-    const blocked = run(l, "1.1.1.1");
-    expect(blocked.passed).toBe(false);
+  it("allows up to max per IP, then answers 429 with the route's message", async () => {
+    const hit = await serve(createRateLimiter({ max: 3, message: "slow" }));
+    for (let i = 0; i < 3; i++) expect((await hit()).status).toBe(200);
+    const blocked = await hit();
     expect(blocked.status).toBe(429);
     expect(blocked.body).toEqual({ error: "slow" });
   });
 
-  it("counts each IP separately", () => {
-    const l = createRateLimiter({ max: 1 });
-    expect(run(l, "1.1.1.1").passed).toBe(true);
-    expect(run(l, "2.2.2.2").passed).toBe(true);
-    expect(run(l, "1.1.1.1").passed).toBe(false);
+  it("starts a fresh window after windowMs", async () => {
+    const hit = await serve(createRateLimiter({ max: 1, windowMs: 300 }));
+    expect((await hit()).status).toBe(200);
+    expect((await hit()).status).toBe(429);
+    await new Promise((r) => setTimeout(r, 350));
+    expect((await hit()).status).toBe(200);
   });
 
-  it("starts a fresh window after windowMs", () => {
-    vi.useFakeTimers();
-    const l = createRateLimiter({ max: 1, windowMs: 1000 });
-    expect(run(l, "1.1.1.1").passed).toBe(true);
-    expect(run(l, "1.1.1.1").passed).toBe(false);
-    vi.advanceTimersByTime(1001);
-    expect(run(l, "1.1.1.1").passed).toBe(true);
+  it("keeps a separate budget per limiter", async () => {
+    const hit = await serve(createRateLimiter({ max: 1 }), createRateLimiter({ max: 1 }));
+    expect((await hit(0)).status).toBe(200);
+    expect((await hit(1)).status).toBe(200);
+    expect((await hit(0)).status).toBe(429);
   });
 
-  it("keeps a separate table per limiter", () => {
-    const a = createRateLimiter({ max: 1 });
-    const b = createRateLimiter({ max: 1 });
-    expect(run(a, "1.1.1.1").passed).toBe(true);
-    expect(run(b, "1.1.1.1").passed).toBe(true);
+  it("uses the default message when none is given", async () => {
+    const hit = await serve(createRateLimiter({ max: 0 }));
+    const r = await hit();
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual({ error: "Too many requests to this route. Please slow down." });
   });
 });
