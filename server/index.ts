@@ -140,6 +140,7 @@ import { registerAntigravityRoutes } from "./routes.antigravity.ts";
 import { registerCompanionRoutes } from "./routes.companion.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
 import { registerFlipItScaleRoutes } from "./routes.flipit-scale.ts";
+import { flipitBuiltinEnabled, flipitBuiltinGuard } from "./flipit-builtin.ts";
 import { lanIP, registerPeopleRoutes } from "./routes.people.ts";
 import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
@@ -1308,6 +1309,8 @@ registerAdminRoutes(app);
 // Voice/TTS routes live in routes.voice.ts — self-contained (no index.ts-local state).
 registerVoiceRoutes(app);
 registerCreativeRoutes(app);
+// FLIP IT / MT5 are an add-on now: their routes answer 404 + an add-on hint unless SAM_FLIPIT_BUILTIN=1.
+app.use(["/api/flipit", "/api/mt5"], flipitBuiltinGuard);
 registerFlipItScaleRoutes(app);
 registerSpeedRoutes(app);
 registerCompanionRoutes(app, { resolvePending: executePendingConfirmation });
@@ -2769,6 +2772,7 @@ app.get("/api/status", (req, res) => {
     skills: SKILLS.length,
     projects: PROJECTS.length,
     tools: TOOLS.length,
+    flipitBuiltin: flipitBuiltinEnabled(),   // the HUD hides the built-in FLIP IT desk and points at the add-on when false
     platform: process.platform,
     defaultTier: process.env.DEFAULT_TIER || "free",
     voice: { elevenlabs: !!process.env.ELEVENLABS_API_KEY },

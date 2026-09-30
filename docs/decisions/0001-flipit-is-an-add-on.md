@@ -23,8 +23,9 @@ kept tripping the financial-code boundary and App Review, and made SAM look like
 ## Consequences / follow-ups (separate PRs, nothing deleted without sign-off)
 
 - [x] `flipit` MCP preset + tests.
-- [ ] Put the built-in FLIP IT HUD pane and `/api/flipit*` routes behind `SAM_FLIPIT_BUILTIN=1`
-      (default off), and point the pane at the add-on instead.
+- [x] Put the built-in FLIP IT HUD pane and `/api/flipit*` routes behind `SAM_FLIPIT_BUILTIN=1`
+      (default off), and point the pane at the add-on instead. (Also gates `/api/mt5*` and the
+      `flipit_*` / `mt5_*` / `smart_flipit_summary` tools; set `SAM_FLIPIT_BUILTIN=1` to turn it all back on.)
 - [ ] Once the add-on covers what the pane showed, move `server/flipit*` and `server/mt5/`
       out of SAM (to the FLIP IT repo) in one reviewed PR, keeping their tests.
 - [ ] Other "mini-apps" follow the same pattern: own repo, own MCP server, SAM preset.
