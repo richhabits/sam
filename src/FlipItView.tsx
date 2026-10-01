@@ -737,7 +737,7 @@ export default function FlipItView() {
       width: "100vw",
       background: "#080C13",
       color: "var(--text)",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+      fontFamily: "var(--sans)",
       overflow: "hidden",
       userSelect: "none",
     }}>

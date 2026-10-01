@@ -78,7 +78,7 @@ window.addEventListener("unhandledrejection", (ev) => {
 // A top-level boundary is the last safety net: a render error anywhere below shows a plain
 // recoverable message instead of a blank white window with no way back.
 const rootFallback = (
-  <div style={{ padding: "2rem", fontFamily: "system-ui", lineHeight: 1.5 }}>
+  <div style={{ padding: "2rem", fontFamily: "var(--sans, system-ui)", lineHeight: 1.5 }}>
     <h2>SAM hit a display error.</h2>
     <p>The page couldn’t render. Reload to try again — your data is safe on disk.</p>
     <button type="button" onClick={() => location.reload()}>Reload</button>
