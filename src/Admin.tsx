@@ -462,7 +462,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span>
           </div>
           <div className="admin-note" style={{ marginBottom: 6, fontSize: 13, color: "var(--muted)" }}>
-            {"Open SAM in your phone's browser (remote access). To pair the native app instead, go to "}
+            {"Open SAM in your phone's browser (the older remote access, plain http on your Wi-Fi). For the SAM app, use secure phone access instead: set SAM_LAN=1 in your .env, restart SAM, then go to "}
             <b>Dashboard → Devices → Pair a phone</b>.
           </div>
           {phone.remoteOn && phoneQR ? (

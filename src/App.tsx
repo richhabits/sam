@@ -1641,7 +1641,7 @@ export default function App() {
           <button type="button" onClick={openStudio} title="Studio — AI video director & timeline editor" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Studio
           </button>
-          <button type="button" onClick={openFlipit} title="FlipIt — arbitrage desk & Kelly risk shield" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={openFlipit} title={status?.flipitBuiltin === false ? "FLIP IT — now an add-on; connect it in Settings" : "FlipIt — arbitrage desk & Kelly risk shield"} style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             FLIP IT
           </button>
         </div>
@@ -1852,7 +1852,7 @@ export default function App() {
           <input className="stranger-input" placeholder="Their name" value={strangerName} onChange={(e) => setStrangerName(e.target.value)}
             onKeyDown={async (e) => { if (e.key === "Enter" && strangerName.trim()) { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); } }} />
           <button type="button" className="stranger-save" disabled={!strangerName.trim()} onClick={async () => { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); }}>Remember</button>
-          <button type="button" className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
+          <button type="button" className="stranger-dismiss" aria-label="Dismiss" title="Dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
         </div>
       )}
       <footer className="composer" style={{ padding: "0 20px 16px" }}>
@@ -1884,13 +1884,13 @@ export default function App() {
           <button type="button" className="icon-btn ghost" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)" aria-label="Apps grid" style={{ background: 'transparent', border: 'none', color: "var(--muted)", padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="grid" size={15} />
           </button>
-          <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+          <select aria-label="Mode" value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
               <option value="personal">Personal</option>
               <option value="business">Business</option>
           </select>
           <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={choosePersona} />
           {mode === "business" && (
-              <select value={brand} onChange={(e) => setBrand(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+              <select aria-label="Business" value={brand} onChange={(e) => setBrand(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                   <option value="">All my businesses</option>
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -1974,7 +1974,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Quant Desk</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Arbitrage desk &amp; Kelly risk shield</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "FLIP IT is an add-on now — connect it" : "Arbitrage desk & Kelly risk shield"}</div>
                 </div>
               </button>
             </div>
@@ -2077,7 +2077,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT Quant Desk</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Multi-exchange arbitrage &amp; Kelly risk</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "Now an add-on — connect it in Settings" : "Multi-exchange arbitrage & Kelly risk"}</div>
                 </div>
               </button>
 
@@ -2401,7 +2401,7 @@ export default function App() {
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "lock", label: "The Safe (encrypted secrets)", run: () => setSafeOpen(true) },
-          { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
+          { icon: "markets", label: status?.flipitBuiltin === false ? "FLIP IT (add-on — how to connect)" : "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
           ...(status?.flipitBuiltin === false ? [] : [{ icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) }]),

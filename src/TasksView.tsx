@@ -8,6 +8,7 @@ import {cancelYardJob, deletePlaybook, enqueueYardJob, getDnsGuide,
   getYardProject, getYardProjectFile, getYardProjects,importPlaybook, raiseYardJobBudget, retryYardJob, runPlaybook,savePlaybook, yardFileUrl,
 } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
+import { useEscape } from "./lib/useOverlay";
 import PairPrompt from "./PairPrompt";
 
 // THE FACE, Tasks half — every yard job as a durable, revisitable thread, in the same
@@ -389,7 +390,7 @@ function TaskFiles({ slug }: { slug: string }) {
               </a>
               {isDesktop && (
                 <button type="button" style={{ ...btn, padding: "3px 8px", fontSize: 11 }}
-                  onClick={() => (window as any).samDesktop.revealInFinder(`${slug}/${f.path}`)}>
+                  onClick={() => (window as any).samDesktop.revealInFinder(`${slug}/${f.path}`)} aria-label={`Show ${f.path} in Finder`} title="Show in Finder">
                   <Icon name="folder" size={11} />
                 </button>
               )}
@@ -588,6 +589,7 @@ function FirstRunCards({ onNewTask, onPlaybooks }: { onNewTask: () => void; onPl
 }
 
 function NewTaskSheet({ onClose, onCreated, busy, setBusy, setErr }: { onClose: () => void; onCreated: () => void; busy: boolean; setBusy: (b: boolean) => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [kind, setKind] = useState<"project.build" | "project.edit">("project.build");
   const [name, setName] = useState("");
   const [spec, setSpec] = useState("");
@@ -662,6 +664,7 @@ type Playbook = {
 const inputStyle: React.CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text)", fontSize: 13 };
 
 function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan: () => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [playbooks, setPlaybooks] = useState<Playbook[] | null>(null);
   const [refused, setRefused] = useState(false);
   const [mode, setMode] = useState<"list" | "edit" | "run">("list");
@@ -742,8 +745,8 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pb.name}</div>
                     <div style={{ fontSize: 11, color: "var(--muted)" }}>v{pb.version}{pb.params.length ? ` · ${pb.params.join(", ")}` : ""}</div>
                   </div>
-                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => startEdit(pb)}><Icon name="pencil" size={12} /></button>
-                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => remove(pb)}><Icon name="trash" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => startEdit(pb)} aria-label="Edit playbook" title="Edit playbook"><Icon name="pencil" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => remove(pb)} aria-label="Delete playbook" title="Delete playbook"><Icon name="trash" size={12} /></button>
                   <button type="button" style={{ ...btn, padding: "4px 9px", background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => startRun(pb)}>Run</button>
                 </div>
               ))}
@@ -788,6 +791,7 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
 // The published registry — "nothing public that isn't on this list." The ops view over
 // everything The Press has ever put on the internet, and the one place to take it back down.
 function PublishedSheet({ onClose, setErr }: { onClose: () => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [sites, setSites] = useState<{ slug: string; name: string; url: string; publishedAt: number; qr: string | null }[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 

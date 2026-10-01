@@ -154,7 +154,9 @@ export default function StudioView() {
   // Spacebar toggle Play/Pause
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && (e.target as HTMLElement).tagName !== "TEXTAREA" && (e.target as HTMLElement).tagName !== "INPUT") {
+      const tag = (e.target as HTMLElement).tagName;
+      // Space must keep working on focused buttons, selects and links (keyboard users) and in text fields.
+      if (e.code === "Space" && tag !== "TEXTAREA" && tag !== "INPUT" && tag !== "BUTTON" && tag !== "SELECT" && tag !== "A" && !(e.target as HTMLElement).isContentEditable) {
         e.preventDefault();
         setIsPlaying((p) => !p);
       }
