@@ -80,3 +80,23 @@ retired OpenRouter slug, so the code fix alone changed nothing until the `.env` 
 | `SAM_HEDGE=0` | strictly serial cascade, the old behaviour |
 | `SAM_HEDGE_INFLIGHT=n` | how many free calls may race (default 3) |
 | `SAM_SINK_MS=n` | how long a terminally-failed brain stays sunk (default 6 h) |
+| `SAM_MODEL_DISCOVERY=0` | stop the daily free-model catalogue refresh (`server/model-discovery.ts`) |
+
+## The autopilot (2026-10)
+
+- **Usage ledger** — `vault/usage-ledger.json` (0600): requests, tokens, 429s and errors per
+  provider and key *slot* (a short hash — never the key), in day and minute windows. Fed by the Relay.
+- **Known free quotas** — `server/free-quotas.ts`, each number cited to the provider's own docs,
+  `null` where unpublished. A key slot steps aside at 90% of a window, before the provider says 429.
+- **Retry-After is honoured** — a 429's `retry-after` / `x-ratelimit-reset-*` / Gemini `retryDelay`
+  sets that key's cooldown exactly, instead of a flat minute.
+- **Failover order** — lanes that can't answer *right now* (every key cooling or at quota, breaker
+  open) go last; flaky or nearly-spent lanes are demoted. Paid lanes are never added.
+- **Model discovery** — once a day, the providers' own *list* endpoints (no tokens spent) refresh
+  the free-model catalogue (`vault/model-catalogue.json`); a lane whose configured model has
+  disappeared switches to the best listed free replacement.
+- **`GET /api/lanes/status`** — per lane health, cooldown, today's use vs the documented limit,
+  model and discovery date. No key values, slot ids or key counts.
+
+SAM never creates accounts, signs up, farms keys, or works around a provider's per-account limits.
+More capacity comes only from the keys you add and the free models those keys already allow.

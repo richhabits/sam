@@ -49,6 +49,9 @@ import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { aiProvidersReport } from "./ai-disclosure.ts";
+import { lanesStatus } from "./free-lanes.ts";
+import { discoveryEnabled, startModelDiscovery } from "./model-discovery.ts";
+import { flushLedger } from "./usage-ledger.ts";
 import { reloadPools } from "./keys.ts";
 import { createLanGuard, lanInfo, pairNewLanFields, startLanListener } from "./lan-tls.ts";
 import { addFolder, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
@@ -535,6 +538,11 @@ void loadMcpTools()
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
 if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {/* warm-up is best-effort and must never delay boot */});
+// Free-lane autopilot: re-apply cached model repairs now, refresh the free-model catalogue daily
+// from the providers' LIST endpoints (no tokens spent). SAM_MODEL_DISCOVERY=0 turns it off.
+if (!BENCH_MODE) startModelDiscovery();
+// The usage ledger debounces its writes; make sure the last few seconds reach disk on shutdown.
+process.once("beforeExit", () => { try { flushLedger(); } catch { /* best-effort */ } });
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
@@ -2794,6 +2802,13 @@ app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 app.get("/api/ai/providers", (req, res) => {
   if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json(aiProvidersReport());
+});
+// Free-lane autopilot status (server/free-lanes.ts): per lane health, cooldown, today's usage vs the
+// documented free limit, the model it runs and when discovery last refreshed it. Same guard as
+// /api/ai/providers, and the same rule: no key values, no slot ids, no key counts.
+app.get("/api/lanes/status", (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json({ lanes: lanesStatus(), discovery: discoveryEnabled() });
 });
 app.get("/api/capacity",(_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
 // MT5 — read-only account/positions/journal + risk metrics from the FlipItReporter file. REAL DATA ONLY:

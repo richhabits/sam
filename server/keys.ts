@@ -1,6 +1,7 @@
 // SAM · KEY VAULT (rotation + pooling)
 import { POOLED } from "./providers.registry.ts";
 import * as safe from "./safe.ts";
+import { dayHeadroom, nearQuota, quotaFreesAt, slotId } from "./usage-ledger.ts";
 
 // Point of use: read a secret from the SAFE first (when it's set up + UNLOCKED), else process.env.
 // Guarded so it never throws — a locked Safe returns undefined here and we fall back, so pool-building
@@ -20,7 +21,11 @@ function secretVal(name: string): string | undefined {
 // deploy token already re-derived it once, and a third copy is how the order drifts).
 export function readSecret(name: string): string | null { return secretVal(name) ?? null; }
 
-interface KeyState { key: string; uses: number; failures: number; cooldownUntil: number; }
+// `slot` is the ledger's opaque id for this key (usage-ledger.ts) — computed once, never the key.
+interface KeyState { key: string; slot: string; uses: number; failures: number; cooldownUntil: number; }
+
+// A 429's Retry-After is honoured exactly, but never trusted to bench a key for longer than a day.
+const MAX_RETRY_AFTER_MS = 24 * 3600 * 1000;
 
 class KeyPool {
   provider: string;
@@ -30,7 +35,7 @@ class KeyPool {
     const seen = new Set<string>();
     for (const k of raw) {
       const key = k.trim();
-      if (key && !seen.has(key)) { seen.add(key); this.keys.push({ key, uses: 0, failures: 0, cooldownUntil: 0 }); }
+      if (key && !seen.has(key)) { seen.add(key); this.keys.push({ key, slot: slotId(key), uses: 0, failures: 0, cooldownUntil: 0 }); }
     }
     this.provider = provider;
   }
@@ -41,16 +46,38 @@ class KeyPool {
     for (let i = 0; i < this.keys.length; i++) {
       const k = this.keys[this.idx % this.keys.length];
       this.idx++;
-      if (k.cooldownUntil <= now) { k.uses++; return k.key; }
+      // Skip a slot that is cooling OR has used ≥90% of a documented free window (free-quotas.ts):
+      // stepping aside before the provider says 429 keeps every key in good standing.
+      if (k.cooldownUntil <= now && !nearQuota(this.provider, k.slot, now)) { k.uses++; return k.key; }
     }
     return null;
   }
+  /** First usable key WITHOUT counting a use or advancing the rotation — for list-only calls
+   *  (model discovery) that must not skew the round-robin or the usage numbers. */
+  peek(): string | null {
+    const now = Date.now();
+    return this.keys.find((k) => k.cooldownUntil <= now)?.key ?? null;
+  }
+  /** Can this lane be tried right now, when does it free up, and how much daily budget is left on
+   *  its best usable key? Deliberately no key COUNT — callers that publish this must not leak it. */
+  availability(now = Date.now()): { usable: boolean; coolingUntil: number; headroom: number } {
+    let usable = false, headroom = 0, soonest = 0;
+    for (const k of this.keys) {
+      const gatedUntil = quotaFreesAt(this.provider, k.slot, now);
+      const until = Math.max(k.cooldownUntil > now ? k.cooldownUntil : 0, gatedUntil);
+      if (until === 0) { usable = true; headroom = Math.max(headroom, dayHeadroom(this.provider, k.slot, now)); }
+      else if (!soonest || until < soonest) soonest = until;
+    }
+    return { usable, coolingUntil: usable ? 0 : soonest, headroom: usable ? headroom : 0 };
+  }
   reportSuccess(key: string) { const k = this.keys.find((x) => x.key === key); if (k) { k.failures = 0; k.cooldownUntil = 0; } }
-  reportFailure(key: string, status?: number) {
+  reportFailure(key: string, status?: number, retryAfterMs?: number) {
     const k = this.keys.find((x) => x.key === key);
     if (!k) return;
     k.failures++;
-    if (status === 429) k.cooldownUntil = Date.now() + 60000;
+    // 429: the provider told us exactly when (Retry-After / x-ratelimit-reset-*, parsed in
+    // model-providers.ts). Use it to the millisecond; the flat minute is only the fallback.
+    if (status === 429) k.cooldownUntil = Date.now() + (retryAfterMs && retryAfterMs > 0 ? Math.min(retryAfterMs, MAX_RETRY_AFTER_MS) : 60000);
     else if (status === 401 || status === 403) k.cooldownUntil = Date.now() + 3600000;
     else k.cooldownUntil = Date.now() + 15000;
   }
@@ -97,7 +124,9 @@ export function setPool(provider: string, rawKeys: string[]) {
 
 export function getKey(provider: string): string | null { return POOLS[provider]?.next() ?? null; }
 export function reportSuccess(provider: string, key: string) { POOLS[provider]?.reportSuccess(key); }
-export function reportFailure(provider: string, key: string, status?: number) { POOLS[provider]?.reportFailure(key, status); }
+export function reportFailure(provider: string, key: string, status?: number, retryAfterMs?: number) { POOLS[provider]?.reportFailure(key, status, retryAfterMs); }
+export function peekKey(provider: string): string | null { return POOLS[provider]?.peek() ?? null; }
+export function laneAvailability(provider: string, now = Date.now()) { return POOLS[provider]?.availability(now) ?? { usable: false, coolingUntil: 0, headroom: 0 }; }
 export function poolSize(provider: string): number { return POOLS[provider]?.size ?? 0; }
 export function keyStatus() { return Object.values(POOLS).map((p) => p.status()); }
 
