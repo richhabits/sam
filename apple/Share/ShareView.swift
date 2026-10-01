@@ -94,6 +94,10 @@ struct ShareView: View {
             error = "Open the SAM app and pair it with your Mac first."
             return
         }
+        guard Session.isDemo || AIConsent.hasAllowedAnything() else {
+            error = "Open the SAM app first and choose whether your Mac's AI services may be used."
+            return
+        }
         working = true
         error = nil
         defer { working = false }

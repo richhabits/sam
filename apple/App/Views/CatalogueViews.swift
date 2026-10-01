@@ -145,6 +145,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("SAM can act on your Mac. Locking means a borrowed, unlocked device isn't enough to drive it. Your session key is kept in the Keychain on this device only.")
                 }
+                AIConsentSettings()
                 Section("Privacy") {
                     Button("Clear SAM from Spotlight") { Spotlight.clear() }
                     Link("Privacy policy", destination: URL(string: "https://richhabits.github.io/sam/privacy.html")!)

@@ -253,3 +253,42 @@ import Testing
         #expect(DemoURLProtocol.canInit(with: URLRequest(url: URL(string: "\(DemoBrain.host)/api/yard")!)))
     }
 }
+
+@Suite struct AIConsentTests {
+    func store() -> UserDefaults { UserDefaults(suiteName: "samkit.consent.\(UUID())")! }
+    let groq = AIProviders.Provider(id: "groq", name: "Groq", company: "Groq, Inc.", privacy: nil, free: true)
+    let gemini = AIProviders.Provider(id: "gemini", name: "Google Gemini", company: "Google", privacy: nil, free: true)
+
+    @Test func nothingLeavesTheMacMeansNoQuestion() {
+        #expect(AIConsent.state(for: AIProviders(onDevice: true, cloud: [], keyless: []), defaults: store()) == .allowed)
+    }
+
+    @Test func askThenRemember() {
+        let d = store(); let p = AIProviders(onDevice: false, cloud: [groq], keyless: [])
+        #expect(AIConsent.state(for: p, defaults: d) == .undecided)
+        AIConsent.allow(p, defaults: d)
+        #expect(AIConsent.state(for: p, defaults: d) == .allowed)
+        #expect(AIConsent.hasAllowedAnything(defaults: d))
+    }
+
+    @Test func aNewProviderAsksAgain() {
+        let d = store()
+        AIConsent.allow(AIProviders(onDevice: false, cloud: [groq], keyless: []), defaults: d)
+        #expect(AIConsent.state(for: AIProviders(onDevice: false, cloud: [groq, gemini], keyless: []), defaults: d) == .undecided)
+    }
+
+    @Test func declineSticksUntilReset() {
+        let d = store(); let p = AIProviders(onDevice: false, cloud: [groq], keyless: [])
+        AIConsent.decline(defaults: d)
+        #expect(AIConsent.state(for: p, defaults: d) == .declined)
+        #expect(!AIConsent.hasAllowedAnything(defaults: d))
+        AIConsent.reset(defaults: d)
+        #expect(AIConsent.state(for: p, defaults: d) == .undecided)
+    }
+
+    @Test func decodesTheLiveShape() throws {
+        let json = #"{"onDevice":false,"cloud":[{"id":"groq","name":"Groq","company":"Groq, Inc.","privacy":"https://groq.com/privacy-policy/","free":true}],"keyless":[{"id":"pollinations","name":"Pollinations","company":"Pollinations.AI","privacy":"https://pollinations.ai","free":true}],"updated":"2026-10-01T03:11:00.000Z"}"#
+        let p = try JSONDecoder().decode(AIProviders.self, from: Data(json.utf8))
+        #expect(p.thirdParties.map(\.name) == ["Groq", "Pollinations"])
+    }
+}

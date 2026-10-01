@@ -19,7 +19,9 @@ struct AskSAMIntent: AppIntent {
     }
 
     static func ask(_ question: String) async throws -> String {
-        if let brain = Session.brain, let answer = try? await Session.ask(question, brain: brain) {
+        // Siri/Watch can't show the consent sheet: only use the Mac once the person said yes in the app.
+        if let brain = Session.brain, Session.isDemo || AIConsent.hasAllowedAnything(),
+           let answer = try? await Session.ask(question, brain: brain) {
             if let tool = answer.needsApproval { return "SAM needs your approval to use \(tool). Open SAM to allow it." }
             if !answer.text.isEmpty { return answer.text }
         }
