@@ -48,6 +48,7 @@ import { GitHubError, issues as ghIssues, repos as ghRepos, whoami as ghWhoami }
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { aiProvidersReport } from "./ai-disclosure.ts";
 import { reloadPools } from "./keys.ts";
 import { createLanGuard, lanInfo, pairNewLanFields, startLanListener } from "./lan-tls.ts";
 import { addFolder, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
@@ -2788,7 +2789,13 @@ app.get("/api/status", (req, res) => {
 });
 app.get("/api/keys", (_req, res) => res.json(providersStatus()));
 // SAM's own free-tier capacity + the single legit key to add next (if any).
-app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
+// App Store 5.1.2(i): which third-party AI services could receive a chat message, derived from the
+// live router (server/ai-disclosure.ts). Names and public policy links only — no key values or counts.
+app.get("/api/ai/providers", (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json(aiProvidersReport());
+});
+app.get("/api/capacity",(_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
 // MT5 — read-only account/positions/journal + risk metrics from the FlipItReporter file. REAL DATA ONLY:
 // nothing configured is a normal state ({connected:false}), never fake numbers.
 app.get("/api/mt5/summary", async (req, res) => {
