@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrub } from "./scrub.ts";
 
 export interface AuditEntry {
   index: number;
@@ -77,7 +78,10 @@ export function recordAuditEvent(
 
   const payloadStr = typeof payload === "string" ? payload : JSON.stringify(payload ?? {});
   const payloadHash = computeSha256(payloadStr);
-  const payloadSummary = payloadStr.slice(0, 160);
+  // The HASH covers the raw payload (tamper-evidence is unchanged); the readable SUMMARY that lands
+  // on disk is scrubbed. Approved tool inputs flow through here verbatim — a shell command or a
+  // message body can carry a token, and this file is a permanent plain-text record.
+  const payloadSummary = scrub(payloadStr).slice(0, 160);
 
   const entryHash = computeEntryHash(index, timestamp, actor, action, payloadHash, status, prevHash);
 
@@ -93,7 +97,8 @@ export function recordAuditEvent(
     entryHash,
   };
 
-  appendFileSync(ledgerFile(), JSON.stringify(entry) + "\n", "utf8");
+  // 0600 on creation: the ledger names every approved action; it is not for other users of the machine.
+  appendFileSync(ledgerFile(), JSON.stringify(entry) + "\n", { encoding: "utf8", mode: 0o600 });
   return entry;
 }
 

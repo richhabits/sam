@@ -36,14 +36,31 @@ export function vapidPublicKey(): string { return keys!.publicKey; }
 
 let subs: Sub[] = load<Sub[]>(SUBS, []);
 
+// Bounds on what a subscribe call may store. Any paired device can POST here, the body limit is 30mb,
+// and every stored endpoint becomes a URL this server POSTs to on each notification — so: https
+// only, short fields, only the fields web-push needs (the old code stored the whole body verbatim),
+// and a cap on the list so the file and the fan-out cannot grow without limit.
+const MAX_SUBS = 50;
+const short = (v: unknown, max: number): v is string => typeof v === "string" && v.length > 0 && v.length <= max;
+
 export function addSubscription(sub: Sub): boolean {
-  if (!sub) return false;
+  if (!sub || typeof sub !== "object") return false;
   if ("expoPushToken" in sub && typeof sub.expoPushToken === "string") {
-    if (!subs.some((s) => "expoPushToken" in s && s.expoPushToken === sub.expoPushToken)) { subs.push(sub); saveJson(SUBS, subs); }
+    if (!short(sub.expoPushToken, 200)) return false;
+    if (!subs.some((s) => "expoPushToken" in s && s.expoPushToken === sub.expoPushToken)) {
+      if (subs.length >= MAX_SUBS) return false;
+      subs.push({ expoPushToken: sub.expoPushToken }); saveJson(SUBS, subs);
+    }
     return true;
   }
-  if (!("endpoint" in sub) || !sub?.keys?.p256dh) return false;
-  if (!subs.some((s) => "endpoint" in s && s.endpoint === sub.endpoint)) { subs.push(sub); saveJson(SUBS, subs); }
+  if (!("endpoint" in sub) || !short(sub.endpoint, 2048) || !short(sub.keys?.p256dh, 256) || !short(sub.keys?.auth, 256)) return false;
+  let url: URL;
+  try { url = new URL(sub.endpoint); } catch { return false; }
+  if (url.protocol !== "https:") return false;
+  if (!subs.some((s) => "endpoint" in s && s.endpoint === sub.endpoint)) {
+    if (subs.length >= MAX_SUBS) return false;
+    subs.push({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }); saveJson(SUBS, subs);
+  }
   return true;
 }
 export function subscriberCount(): number { return subs.length; }

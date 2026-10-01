@@ -149,6 +149,7 @@ import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
+import { jsonErrorHandler } from "./http-errors.ts";
 import { isSupervised, restartRefusal } from "./restart.ts";
 import { streamPolicy, UNTRUSTED_ROUTE_REASON, UNTRUSTED_SYSTEM_NOTE } from "./stream-policy.ts";
 import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
@@ -1470,9 +1471,11 @@ app.get("/api/voice/token", async (req, res) => {
         voice: "ash", // Ash is a great agent voice
       })
     });
-    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    // Never relay the upstream body: OpenAI's 401 text quotes the key back ("Incorrect API key
+    // provided: sk-proj-...abcd"), and this route answers any caller that clears the gate.
+    if (!r.ok) return res.status(r.status === 401 || r.status === 403 ? 502 : r.status).json({ error: "OpenAI refused the voice session", upstreamStatus: r.status });
     res.json(await r.json());
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch { res.status(502).json({ error: "could not reach OpenAI for a voice session" }); }
 });
 // ── Self-update: SAM keeps every user's copy in sync with the repo ──
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1723,13 +1726,15 @@ app.post("/api/code/repair", basicRateLimit, async (req, res) => {
   try {
     let raw = String(req.body?.compilerOutput || "").trim();
     if (!raw && req.body?.runTsc) {
-      const { execSync } = await import("node:child_process");
-      try {
-        execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
-        raw = "";
-      } catch (e: any) {
-        raw = e?.stdout || e?.stderr || e?.message || "";
-      }
+      // Async + bounded. This was a synchronous exec with no timeout: a full type-check blocks the whole
+      // daemon's event loop (chat, voice, every other request) for as long as tsc runs, and any
+      // caller past the gate could trigger it. execFile keeps the loop free and the timeout caps it.
+      const { execFile } = await import("node:child_process");
+      raw = await new Promise<string>((resolve) => {
+        execFile("npx", ["tsc", "--noEmit"], { cwd: process.cwd(), encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
+          resolve(err ? String(stdout || stderr || err.message || "") : "");
+        });
+      });
     }
     const diagnostics = parseCompilerDiagnostics(raw);
     const plan = generateRepairPlan(diagnostics);
@@ -2835,6 +2840,11 @@ if (existsSync(DIST)) {
   });
   console.log(`  app served     · http://localhost:${PORT}  (single process)`);
 }
+
+// LAST in the stack, after every route and the SPA fallback: a throw anywhere above (and any
+// body-parser rejection from the express.json at the top) answers JSON, not Express's HTML page
+// with a stack trace in it. See server/http-errors.ts.
+app.use(jsonErrorHandler);
 
 // B1 — the mesh interface, if the operator has one configured and connected. Scans the
 // OS's own interface list rather than shelling out to any client CLI, so this has no
