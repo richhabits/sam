@@ -144,3 +144,13 @@ graphify-out/
 vault-amnesia-backup-*/
 
 design-reference/
+
+# Extra hygiene guards (belt and braces): every .env variant except the committed example,
+# Android/Java signing keystores at any depth, and any dist-style build folder.
+.env.*
+!.env.example
+*.keystore
+*.jks
+!mobile/android/app/debug.keystore
+dist-*/
+dist*.zip
