@@ -22,7 +22,7 @@ describe("summarising a file from what is already in it", () => {
   });
 
   it("reads a markdown heading", () => {
-    expect(summarise("README.md", "# Hectic Bullz\n\nsome text")).toContain("Hectic Bullz");
+    expect(summarise("README.md", "# Teahouse\n\nsome text")).toContain("Teahouse");
   });
 
   it("reads what a module exports", () => {

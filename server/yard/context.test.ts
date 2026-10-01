@@ -155,7 +155,7 @@ describe("documentation is only in scope when it is asked for", () => {
   ];
 
   it("keeps the README out of an ordinary edit, even when it matches every word", () => {
-    const { offered, leftOut } = selectContext(WITH_DOCS, "change the heading on the one-page hello site to Hectic Bullz");
+    const { offered, leftOut } = selectContext(WITH_DOCS, "change the heading on the one-page hello site to Teahouse");
     expect(offered.map((o) => o.path)).toEqual(["index.html"]);
     expect(leftOut).toContain("README.md");
   });

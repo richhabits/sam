@@ -2,7 +2,7 @@
 
 `iphone-6.9/` — iPhone 6.9" (1320 × 2868), the size Apple requires for the current
 flagship class. Captured on an iPhone 17 Pro Max simulator against a **real paired
-SAM**, not fixtures: the Tasks shot is Romeo's own yard.
+SAM**, not fixtures: the Tasks shot shows the owner's own task list and should be re-captured with fictional data (see the hygiene notes).
 
 | file | what it is |
 |---|---|

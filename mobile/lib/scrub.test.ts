@@ -53,10 +53,10 @@ describe('the phone scrubber matches the server scrubber, shape for shape', () =
 
 describe('safeBody — what a lock screen is allowed to show', () => {
   it('never names the operator’s home directory', () => {
-    expect(safeBody('wrote /Users/romeovalentine/SAM/vault/keys.json')).toBe(
-      'wrote ~/SAM/vault/keys.json',
+    expect(safeBody('wrote /Users/alex/sam/vault/keys.json')).toBe(
+      'wrote ~/sam/vault/keys.json',
     );
-    expect(safeBody('wrote /home/romeo/notes.md')).toBe('wrote ~/notes.md');
+    expect(safeBody('wrote /home/alex/notes.md')).toBe('wrote ~/notes.md');
   });
 
   it('strips markdown so a body renders as plain text, not backticks', () => {

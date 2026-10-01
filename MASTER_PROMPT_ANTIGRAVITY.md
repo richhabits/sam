@@ -1,7 +1,7 @@
 # SAM — Master Prompt for Antigravity
 
 You (Antigravity, running Gemini) and Claude Code both work on this repo,
-`/Volumes/ROMEO HQ/SAM` — `richhabits/sam`, public, MIT. This is the standing
+the `richhabits/sam` repo (public, source-available licence — see LICENSE). This is the standing
 brief for your side of that split. Read it before starting work each session.
 
 ## The split — and why it works

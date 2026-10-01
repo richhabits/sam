@@ -8,7 +8,7 @@ import { isReadOnlyCommand } from "./tools.ts";
 describe("isReadOnlyCommand — commands that SHOULD auto-run", () => {
   const safeCommands = [
     // Basic reads
-    "ls -la /Volumes/ROMEO\\ HQ/SAM/server",
+    "ls -la /Volumes/Work\\ Drive/SAM/server",
     "cat package.json",
     "head -20 server/agent.ts",
     "tail -f vault/daemons/latest.log",

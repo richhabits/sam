@@ -79,7 +79,7 @@ describe("choosing a repo", () => {
   });
 
   it("refuses a path from the wrong machine instead of running git against it", () => {
-    const r = chooseRepo("/home/romeo/sam", CLONES, REMOTE_ONLY, no);
+    const r = chooseRepo("/home/alex/sam", CLONES, REMOTE_ONLY, no);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toContain("isn't a git working copy");
   });

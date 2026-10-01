@@ -39,7 +39,7 @@ describe("Production Stripe Payments & Webhook Engine", () => {
     };
 
     const res = await createStripeCheckoutSession(
-      { amountGbp: 25, customerEmail: "romeo@hectic.com" },
+      { amountGbp: 25, customerEmail: "alex@example.com" },
       { fetcher: mockFetcher as any }
     );
 
