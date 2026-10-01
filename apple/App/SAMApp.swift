@@ -9,7 +9,10 @@ enum SAMStore {
             // Chat history stays in the app's own container, not the app group: extensions don't
             // read it, and on a fresh device the group's Library folder doesn't exist yet
             // (SwiftData then fails to create the store; seen on the iPad, 2026-10-01).
-            let config = ModelConfiguration("SAM", groupContainer: .none)
+            // A fresh install has no Application Support folder yet, and SwiftData won't create it.
+            let support = URL.applicationSupportDirectory
+            try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+            let config = ModelConfiguration("SAM", url: support.appending(path: "SAM.store"))
             return try ModelContainer(for: Conversation.self, Message.self, configurations: config)
         } catch {
             // A damaged store must not brick the app: fall back to memory and say so in the log.
