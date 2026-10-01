@@ -125,13 +125,16 @@ describe("/api/pair/new", () => {
 // ── the listener, over real sockets ──────────────────────────
 const IP = lanIP();
 const PORT = 20000 + Math.floor(Math.random() * 20000);
+// The listener's own certificate, trusted explicitly (like the phone's pin) so the client keeps
+// full certificate validation on, hostname check against the SAN included.
+let trustedCa: string | undefined;
 
 function call(method: string, path: string, opts: { token?: string; body?: unknown; host?: string } = {}):
   Promise<{ status: number; body: any; fp: string }> {
   return new Promise((resolve, reject) => {
     const data = opts.body === undefined ? undefined : JSON.stringify(opts.body);
     const r = httpsRequest({
-      host: IP!, port: PORT, method, path, rejectUnauthorized: false, agent: false,
+      host: IP!, port: PORT, method, path, ca: trustedCa, agent: false,
       headers: {
         host: opts.host ?? `${IP}:${PORT}`,
         ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}),
@@ -179,6 +182,7 @@ describe.skipIf(!IP)("the LAN listener", () => {
     app.get("/*splat", (_req, res) => { res.type("html").send("<html>HUD</html>"); });   // stands in for the static HUD
 
     info = await startLanListener(app, { ip: IP, env: { SAM_LAN: "1", SAM_LAN_PORT: String(PORT) }, bonjour: false, tlsDirPath: tlsDir, log: quiet });
+    trustedCa = readFileSync(join(tlsDir, "cert.pem"), "utf8");
     token = mintSession(Date.now(), "test phone");
   });
   afterAll(() => stopLanListener());
