@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installs the SAM janitor as a per-user launchd job that runs every 15 minutes.
+# Installs the SAM janitor as a per-user launchd job that runs every 5 minutes.
 # Uninstall: launchctl bootout gui/$(id -u)/com.sam.janitor && rm ~/Library/LaunchAgents/com.sam.janitor.plist
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,7 +15,7 @@ cat > "$PLIST" <<PL
   <key>Label</key><string>com.sam.janitor</string>
   <key>ProgramArguments</key><array><string>/bin/bash</string><string>$SUPPORT/sam-janitor.sh</string></array>
   <key>EnvironmentVariables</key><dict><key>SAM_REPO</key><string>$REPO</string></dict>
-  <key>StartInterval</key><integer>900</integer>
+  <key>StartInterval</key><integer>300</integer>
   <key>RunAtLoad</key><true/>
   <key>LowPriorityIO</key><true/>
   <key>Nice</key><integer>10</integer>
@@ -25,4 +25,4 @@ cat > "$PLIST" <<PL
 PL
 launchctl bootout "gui/$(id -u)/com.sam.janitor" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "SAM janitor installed: every 15 minutes, log at ~/Library/Logs/sam-janitor.log"
+echo "SAM janitor installed: every 5 minutes, log at ~/Library/Logs/sam-janitor.log"
