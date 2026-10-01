@@ -1,5 +1,5 @@
 #!/bin/bash
-# SAM janitor — every 15 minutes (launchd com.sam.janitor), keeps SAM's own footprint tidy.
+# SAM janitor — every 5 minutes (launchd com.sam.janitor), keeps SAM's own footprint tidy.
 #
 # Deliberately narrow. It only ever touches things SAM itself creates:
 #   • orphaned SAM processes (parent died → reparented to launchd, PID 1): a yard worker,
@@ -7,6 +7,8 @@
 #     own yard worker have a living parent, so they are never matched.
 #   • SAM's logs in ~/Library/Logs, rotated when over 20 MB (one old copy kept).
 #   • dist-app/ release output older than a day (it's rebuilt by every release).
+#   • Xcode DerivedData for SAM's own project (DerivedData/SAM-*) untouched for a day: a
+#     regenerable build cache, often gigabytes. Other projects' caches are never touched.
 # It never touches the vault, .env, worktrees, user files, or any other project.
 # Dry run: SAM_JANITOR_DRY=1 scripts/sam-janitor.sh
 set -u
@@ -44,4 +46,12 @@ if [ -d "$REPO/dist-app" ] && [ -n "$(find "$REPO/dist-app" -maxdepth 0 -mtime +
   say "remove stale $REPO/dist-app ($(du -sh "$REPO/dist-app" | cut -f1))"
   act rm -rf "$REPO/dist-app"
 fi
+# 4. SAM's own Xcode build cache, stale for a day.
+for d in "$HOME/Library/Developer/Xcode/DerivedData"/SAM-*; do
+  [ -d "$d" ] || continue
+  if [ -n "$(find "$d" -maxdepth 0 -mtime +1 2>/dev/null)" ]; then
+    say "remove stale Xcode cache $d ($(du -sh "$d" | cut -f1))"
+    act rm -rf "$d"
+  fi
+done
 exit 0
