@@ -49,6 +49,7 @@ targets:
         NSMicrophoneUsageDescription: SAM listens when you tap the microphone so you can talk instead of type.
         NSSpeechRecognitionUsageDescription: SAM turns what you say into text, on this device when it can.
         NSCameraUsageDescription: SAM uses the camera to scan the pairing code your Mac shows.
+        NSPhotoLibraryAddUsageDescription: SAM saves pictures you make in Studio to your library. It can add photos, never read them.
         NSFaceIDUsageDescription: SAM can require Face ID before it opens, because it can act on your Mac.
         NSLocalNetworkUsageDescription: SAM finds and connects to the Mac running SAM on your network.
         NSBonjourServices: [_sam._tcp]
