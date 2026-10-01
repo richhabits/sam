@@ -46,6 +46,21 @@ updates:
       interval: "monthly"
     open-pull-requests-limit: 3
     labels: ["dependencies", "mobile"]
+    # Expo pins react, react-native and the expo-* native modules per SDK release
+    # (expo/bundledNativeModules.json). Bumping them one by one breaks the native build even
+    # when the JS tests pass (seen 2026-10-01: RN 0.87 / SDK 58 modules on an SDK 57 app).
+    # Those move together, through `npx expo install --fix` during a deliberate SDK upgrade.
+    ignore:
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "@types/react"
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       mobile-minor-patch:
         patterns: ["*"]
