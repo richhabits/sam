@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -7,8 +8,9 @@ import { registerPeopleRoutes } from "./routes.people.ts";
 // bare isLoopback, and the global Handshake gate only covers mutations — so any local process
 // with no passkey and no pairing could read the one secret that opens SAM to the LAN.
 
-const PASSKEY = "test-passkey-0123456789abcdef0123456789abcdef";
-const TOKEN = "remote-token-0123456789-abcdefghijklmnop";
+// Generated per run: no secret-shaped literal in a public repo (and gitleaks stays quiet).
+const PASSKEY = randomBytes(32).toString("hex");
+const TOKEN = randomBytes(20).toString("hex");
 
 describe("GET /api/phone-link", () => {
   let server: Server;
