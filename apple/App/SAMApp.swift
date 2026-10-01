@@ -24,6 +24,12 @@ struct SAMApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var macDelegate
     #endif
 
+    init() {
+        #if os(iOS)
+        PhoneLink.shared.start()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

@@ -267,6 +267,9 @@ struct PendingApproval: Identifiable, Equatable {
         snap.updated = .now
         snap.save()
         reloadWidgets()
+        #if os(iOS)
+        PhoneLink.shared.push(snap)
+        #endif
     }
 
     private func reloadWidgets() {

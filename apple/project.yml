@@ -35,6 +35,8 @@ targets:
       - package: SAMKit
       - target: SAMWidgets
         platformFilters: [iOS, macOS]
+      - target: SAMWatch
+        platformFilters: [iOS]
       - target: SAMSafari
         platformFilters: [iOS, macOS]
       - target: SAMShare
@@ -201,6 +203,52 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.share
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_HARDENED_RUNTIME: YES
+
+  # Apple Watch: ask SAM by voice through the iPhone (WatchConnectivity), yard at a glance.
+  SAMWatch:
+    type: application
+    platform: watchOS
+    sources: [Watch]
+    dependencies:
+      - package: SAMKit
+      - target: SAMWatchWidgets
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: SAM
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.hectic.sam.mobile
+    entitlements:
+      path: Watch/SAMWatch.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+    settings:
+      base:
+        PRODUCT_NAME: SAM
+        PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.watchkitapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  # Watch face complications + Smart Stack.
+  SAMWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources: [WatchWidgets]
+    dependencies:
+      - package: SAMKit
+    entitlements:
+      path: WatchWidgets/SAMWatchWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.hectic.sam.mobile]
+    info:
+      path: WatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: SAM
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_NAME: SAMWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.watchkitapp.widgets
 
 schemes:
   SAM:
