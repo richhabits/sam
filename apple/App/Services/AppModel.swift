@@ -2,6 +2,9 @@ import Foundation
 import Observation
 import SAMKit
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(WidgetKit)
 import WidgetKit
 #endif
@@ -167,7 +170,8 @@ struct PendingApproval: Identifiable, Equatable {
         #elseif os(watchOS)
         "watchos"
         #else
-        "ios"
+        // Matches server/pairing.ts NATIVE_CLIENTS, so the Mac's device list says "iPad · SAM app".
+        UIDevice.current.userInterfaceIdiom == .pad ? "ios-ipad" : "ios-iphone"
         #endif
     }
 
