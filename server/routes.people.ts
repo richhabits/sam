@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { Express } from "express";
 import { writeFileAtomic } from "./atomic.ts";
 import { writeEnv } from "./env-file.ts";
-import { isLoopback } from "./http-guards.ts";
+import { isLoopback, isPairedSession, isTrustedLocal } from "./http-guards.ts";
 import { MCP_PRESETS, presetById } from "./mcp-presets.ts";
 import { addPerson, faceRoster, listPeople } from "./people.ts";
 import { addSubscription, subscriberCount, vapidPublicKey } from "./push.ts";
@@ -111,7 +111,12 @@ export function registerPeopleRoutes(app: Express, port: string | number, rebind
   // 📱 Phone link — loopback-only. Returns the scan-me URL (with token) so Settings can show a
   // QR the phone camera reads → lands authenticated. Only reveals the token to a local request.
   app.get("/api/phone-link", (req, res) => {
-    if (!isLoopback(req)) return res.status(403).json({ error: "loopback only" });
+    // Not bare isLoopback: this is a GET, which the global Handshake gate never covers, and the
+    // response carries SAM_REMOTE_TOKEN — the one secret that opens the whole API to the LAN. Bare
+    // loopback let any local process (no passkey, no pairing) read it. Still this-machine-only
+    // (a paired phone is refused), but the caller must also be the app (passkey) or a paired
+    // browser tab — the same bar as canReadPrivate, which is what lets the HUD in a tab show the QR.
+    if (!isLoopback(req) || !(isTrustedLocal(req) || isPairedSession(req))) return res.status(403).json({ error: "loopback + Handshake only" });
     const remoteOn = process.env.SAM_REMOTE === "1" && (process.env.SAM_REMOTE_TOKEN || "").length >= 16;
     const lan = lanIP();
     const url = remoteOn && lan ? `http://${lan}:${port}/?token=${encodeURIComponent(process.env.SAM_REMOTE_TOKEN!)}` : null;

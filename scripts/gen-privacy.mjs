@@ -22,7 +22,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const md = readFileSync(join(ROOT, "docs/PRIVACY.md"), "utf8");
 
 // Escape FIRST, then add markup, so nothing in the source can inject tags.
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Escapes for text AND attribute values (the title goes into content="…"), so quotes too.
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 // Inline: code before bold/links, so `**` inside backticks stays literal.
 const inline = (s) =>
   esc(s)
@@ -98,8 +99,20 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)} · SAM</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="mask-icon" href="icon.svg" color="#F0824E">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#100E0C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FDF9F4" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-title" content="SAM">
+<meta property="og:title" content="${esc(title)} · SAM">
+<meta property="og:description" content="How SAM handles your data: it runs on your machine, and by default nothing about you leaves it.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://richhabits.github.io/sam/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="How SAM handles your data: it runs on your machine, and by default nothing about you leaves it.">
 <style>
   :root{

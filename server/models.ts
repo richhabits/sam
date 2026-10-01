@@ -10,6 +10,7 @@
 
 import { loadRanking, rankingStale } from "./colosseum.ts";
 import { recordCostSavings } from "./cost-optimizer.ts";
+import { quotaOrder } from "./free-lanes.ts";
 import { getKey, keyStatus, poolSize, reportFailure, reportSuccess } from "./keys.ts";
 import { costUSD, estTokens, recordModelCall } from "./metrics.ts";
 import { count, mark, observe } from "./pulse.ts";
@@ -37,7 +38,7 @@ async function mockRun(tier: Tier): Promise<ModelResult> {
   return { text: mockText(tier), provider: `mock:${tier}`, tier };
 }
 
-import { callGateway, callOllama, callOllamaStream, deviceId, GATEWAY_URL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL, PROVIDERS, type Provider, streamGemini, streamOpenAICompat, warmBrain } from "./model-providers.ts";
+import { callGateway, callOllama, callOllamaStream, deviceId, GATEWAY_URL, laneModel, OLLAMA_MODEL, OLLAMA_URL, PROVIDERS, type Provider, streamGemini, streamOpenAICompat, warmBrain } from "./model-providers.ts";
 
 export { deviceId, GATEWAY_URL, PROVIDERS, type Provider, warmBrain };
 
@@ -67,7 +68,7 @@ async function tryProvider(prov: Provider, system: string, prompt: string): Prom
       const text = await prov.run(system, prompt, key);
       if (text) { reportSuccess(prov.id, key); return text; }
     } catch (e: any) {
-      reportFailure(prov.id, key, e?.status);
+      reportFailure(prov.id, key, e?.status, e?.retryAfterMs);
       // 4xx that isn't rate-limit = bad key/request; stop hammering this provider
       if (e?.status && e.status !== 429 && e.status < 500) break;
     }
@@ -116,7 +117,11 @@ export function freeOrder(pool: Provider[], lane: Lane): Provider[] {
   // says which brain is RIGHT for the job and Elo says which is BEST — neither notices that the
   // brain has been answering 404 since its provider retired the model slug. Measurement does, and
   // it only sinks the dead and the measurably slow; everything else keeps the order chosen above.
-  return healthOrder(ordered);
+  // And after that, what each lane can do RIGHT NOW (free-lanes.ts): a lane whose every key is
+  // cooling or at 90% of its documented free quota, or whose breaker is open, is tried last; one
+  // that has mostly failed lately or has <20% of today's budget left is demoted. Stable within a
+  // grade, so the lane/Elo/health order above still decides among the lanes that can answer.
+  return quotaOrder(healthOrder(ordered));
 }
 
 // ── DISPATCH with graceful fallback ──────────────────────────
@@ -413,13 +418,13 @@ async function streamModelInner(tier: Tier, system: string, prompt: string, onCh
     if (!poolSize(id)) return null;
     const key = getKey(id); if (!key) return null;
     try { const text = await run(key); if (text) { reportSuccess(id, key); return { text, provider: label, tier: "free" }; } }
-    catch (e: any) { reportFailure(id, key, e?.status); }
+    catch (e: any) { reportFailure(id, key, e?.status, e?.retryAfterMs); }
     return null;
   };
   if (tier !== "premium") {
-    const g = await tryStream("groq", (k) => streamOpenAICompat("https://api.groq.com/openai/v1", GROQ_MODEL, system, prompt, k, onChunk), `groq:${GROQ_MODEL}`);
+    const g = await tryStream("groq", (k) => streamOpenAICompat("https://api.groq.com/openai/v1", laneModel("groq"), system, prompt, k, onChunk), `groq:${laneModel("groq")}`);
     if (g) return g;
-    const gem = await tryStream("gemini", (k) => streamGemini(system, prompt, k, onChunk), "gemini-2.5-flash");
+    const gem = await tryStream("gemini", (k) => streamGemini(system, prompt, k, onChunk), laneModel("gemini"));
     if (gem) return gem;
   }
   // fallback: non-streamed, emit whole text once (respects a forced lane, e.g. deep/Hermes)

@@ -104,6 +104,7 @@ export const setAllow = (tool: string, on: boolean) =>
 export const getProjects = () => get("/api/projects");
 export const getLog = () => get("/api/vault/log");
 export const getStatus = () => get("/api/status");
+export const getLanes = () => get("/api/lanes/status");
 export const getMt5Summary = (days = 30) => get(`/api/mt5/summary?days=${days}`);
 export const getQuotes = (symbols: string) =>
   get(`/api/quotes?symbols=${encodeURIComponent(symbols)}`);
@@ -413,7 +414,7 @@ export const revokeAllDevices = () => post("/api/pair/revoke-all", {});
 // (electron/preload.ts → the fetch shim in main.tsx attaches X-SAM-Token to every /api call), so
 // inviting a device stays a power of the machine SAM runs on rather than of anything that can
 // reach the port.
-export const pairNew = (): Promise<{ url?: string; expiresInSec?: number; pin?: string; pinExpiresInSec?: number; error?: string }> =>
+export const pairNew = (): Promise<{ url?: string; expiresInSec?: number; pin?: string; pinExpiresInSec?: number; error?: string; lan?: { url: string; fingerprint: string }; appLink?: string }> =>
   post("/api/pair/new", {});
 // B3 — capability tiers. Loopback-only server-side (grants can't be self-elevated from a
 // remote device) — this call will 403 from anywhere but the Mac itself, by design.

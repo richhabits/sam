@@ -92,7 +92,7 @@ export function startProactive(composeBrief: () => Promise<string>) {
         if (due.length) {
           // B4: a reminder's TEXT is the point of the notification — the user wrote it
           // themselves specifically to see it again, same as the brief's own "Task
-          // finished — Hectic Bullz site" example (short, named, purposeful). Not the
+          // finished — Teahouse site" example (short, named, purposeful). Not the
           // AI-synthesized-content case B4 warns about; left as-is deliberately.
           for (const n of due) { desktopNotify("SAM — reminder", n.text); void pushNotify("⏰ SAM reminder", n.text); pending.push({ type: "nudge", text: `⏰ ${n.text}`, at: hhmm() }); logAutonomy({ at: new Date().toISOString(), behavior: "reminders", kind: "acted", summary: `Reminded: ${n.text}` }); }
           markNotified(due.map((n) => n.id));

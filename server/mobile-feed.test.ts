@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateMobileFeed } from "./mobile-feed.ts";
 import { mobileGenerateFeedSnapshotTool } from "./tools.ts";
 
@@ -15,6 +15,10 @@ vi.mock("./studio-higgsfield.ts", async (importOriginal) => {
 });
 
 describe("Mobile Live Feed Hub", () => {
+  // The market card is the built-in FLIP IT desk's; the OFF case is in flipit-addon-gating.test.ts.
+  beforeEach(() => { process.env.SAM_FLIPIT_BUILTIN = "1"; });
+  afterEach(() => { delete process.env.SAM_FLIPIT_BUILTIN; });
+
   it("generates structured live feed stream for iOS and Android", async () => {
     const feed = await generateMobileFeed();
 

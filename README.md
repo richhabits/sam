@@ -3,7 +3,7 @@
 # ⚡ S.A.M. — Smart Artificial Mind
 
 **The Private, High-Speed AI Agent & Multi-Device OS.**
-*Runs standalone on your phone or locally on your computer with 40+ auto-rotating free AI brains. Zero subscriptions. 100% private.*
+*Runs standalone on your phone or locally on your computer with 40+ auto-rotating free AI brains. No subscription. Your files and memory stay on your machine; free AI models are cloud-hosted, so what you type goes to the model you pick (or stays fully local with Ollama).*
 
 <p align="center">
   <img alt="license" src="https://img.shields.io/badge/license-source--available-E8673A">
@@ -66,12 +66,12 @@ graph TD
 
 ### 🧠 1. Cascade Router & 40+ Free AI Brains
 * **Free-First Auto-Rotation**: Groq · Cerebras · NVIDIA NIM · DeepSeek · Gemini · Mistral · SambaNova · Together · Fireworks · Ollama.
-* **Zero Cost**: Automatically falls through to the fastest available free model. If one hits a rate limit, it hops to the next in sub-milliseconds.
-* **Sub-Millisecond Semantic Cache**: Repeated questions answer from local memory in ~2ms with 0 token cost.
+* **No cost by default**: it uses free models first, and if one hits its limit it switches to the next free one. Paid models (Anthropic, OpenAI) are used only if you add your own key and choose them.
+* **Answer cache**: repeated questions are answered from local memory — instantly, and with no AI call to pay for.
 
 ### 🛠️ 2. The Doer (248 Real Computer Tools & 34 Skills)
 * Not just text generation. SAM executes terminal commands, edits code with syntax validation, commits to Git, inspects browsers, manages scheduled cron tasks, and orchestrates multi-agent parallel swarms.
-* **Universal Cross-Platform**: 213 universal tools running identically on macOS, Windows, and Linux, with 18 specialized macOS platform hooks that degrade gracefully.
+* **Universal Cross-Platform**: 230 tools that work the same on macOS, Windows, and Linux, plus 18 macOS-only tools that tell you politely when they are unavailable elsewhere.
 
 ### 🎨 3. SAM Studio (Creative Suite)
 * **Free-First Image & Video Generation**: Powered by a multi-provider matrix (Pollinations, Together, HuggingFace, NVIDIA, Cloudflare).
@@ -79,11 +79,11 @@ graph TD
 * **Notebooks & Audio Briefings**: Upload PDFs, notes, or web links to generate grounded audio overviews and interactive citations.
 
 ### 📈 4. FlipIt & The Financial Execution Desk
-* **Mathematical Kelly Criterion Engine**: Automated capital allocation and real-time risk regime calculation (`POST /api/flipit/shield`).
-* **Resilient Watchdogs**: Continuous schedule monitoring, forward execution metrics, and market data telemetry.
+* **Position-sizing calculator (Kelly criterion)**: works out how much to stake, plus a live read on market risk. It is a calculator, not financial advice and not a promise of profit (`POST /api/flipit/shield`).
+* **Watchdogs**: keeps an eye on scheduled jobs and market data. Trading carries real risk of loss.
 
 ### 📱 5. Mobile (iOS) — *Live on TestFlight, not on the App Store yet*
-* **100% Standalone, Zero Setup**: Chat immediately on install — no pairing, no account. Routes through 30+ direct cloud AI providers (Groq, Cerebras, Mistral, Gemini, Anthropic, DeepSeek, and more), each addable with your own free key in Settings.
+* **Works on its own, no setup**: chat straight after install — no pairing, no account. It uses free public AI lanes, or any of 30+ providers (Groq, Cerebras, Mistral, Gemini, DeepSeek and more) with your own free key in Settings. Anthropic and OpenAI are paid, and used only with your own key.
 * **Optional Desktop Link**: Pair with your Mac/PC over local network to unlock local files, automation, and yard workers — never required, only unlocked when you want it.
 * **Native Feel**: Haptics throughout, 1-tap code copy/share, live connection status, and an honest fallback if every AI lane genuinely fails — SAM never fabricates a response.
 
@@ -137,14 +137,16 @@ Open **http://localhost:8787** — free, local, and ready immediately. Opening t
 
 ## 📊 SAM vs. The Rest
 
+_A general comparison, as of 2026. Their products change often — check their current plans._
+
 | Feature | **SAM** | ChatGPT Desktop | Claude Desktop |
 |---|:---:|:---:|:---:|
-| **Monthly Cost** | **Free (£0/mo)** | $20/mo | $20/mo |
-| **Mobile Standalone + Desktop Sync** | **✅ Full Hybrid** | ❌ Separate | ❌ Separate |
-| **Multi-Agent Swarms** | **✅ Parallel Crew** | ❌ Single Turn | ❌ Single Turn |
-| **Local Tools & Yard Workers** | **✅ 248 Real Tools** | ⚠️ Sandboxed | ⚠️ MCP Only |
+| **Monthly Cost** | **£0 for SAM** (paid AI models are optional, your own key) | paid plans from about $20/mo | paid plans from about $20/mo |
+| **Mobile Standalone + Desktop Sync** | **✅ Full Hybrid** | Separate apps | Separate apps |
+| **Multi-Agent Swarms** | **✅ Parallel Crew** | Varies by plan | Varies by plan |
+| **Local Tools & Yard Workers** | **✅ 248 Real Tools** | Different approach | Different approach |
 | **Offline Brain Support** | **✅ Ollama / Local** | ❌ Cloud only | ❌ Cloud only |
-| **Data Privacy** | **✅ 100% On-Device** | ❌ Cloud storage | ❌ Cloud storage |
+| **Data Privacy** | **Files and memory stay on your machine** (chat text goes to the AI model you pick; fully local with Ollama) | Cloud-hosted | Cloud-hosted |
 | **Creative Studio & FlipIt** | **✅ Built-in** | ❌ | ❌ |
 
 ---
@@ -152,12 +154,12 @@ Open **http://localhost:8787** — free, local, and ready immediately. Opening t
 ## 🔒 Privacy & Local-First Architecture
 
 * All chats, memories, and vault artifacts are stored as plain Markdown & SQLite files in your local workspace (`vault/`).
-* API keys are stored strictly in your local environment / OS Keychain and never sent to external telemetry servers.
+* API keys are stored in your local environment file on your machine. They are sent only to the AI provider they belong to. Anonymous usage counts are off unless you opt in (see `docs/PRIVACY.md`).
 * Full offline capability supported with local Ollama models (e.g. `llama3.2:3b`, `qwen2.5-coder`).
 
 ---
 
 <div align="center">
-  <b>Built by HECTIC · Open, Free, and Yours.</b>
+  <b>Built by HECTIC · Source-available, free to use, and yours.</b>
 </div>
 

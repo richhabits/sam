@@ -6,9 +6,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 
 export interface VaultFileEntry {
   relativePath: string;
@@ -38,6 +39,31 @@ export interface RestoreResult {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const VAULT_DIR = () => process.env.VAULT_DIR || join(ROOT, "vault");
 
+// A restore writes files the operator never reviewed, into the directory SAM reads its trust
+// decisions and credentials from. So restore is an ALLOWLIST of plain user-data files, not "anything
+// without a .." — mcp.json (spawns commands), .env, push-keys.json, the signing/tls dirs, sessions*,
+// authorized.json / consent.json (standing permissions) and entitlement.json are all absent on
+// purpose and are refused. Names are matched exactly against a flat file name: no separators.
+export const RESTORABLE_VAULT_FILES: ReadonlySet<string> = new Set([
+  "analytics.json",
+  "brands.json",
+  "cost_savings_ledger.json",
+  "moments.json",
+  "socials.json",
+  "routing_cache.json",
+  "semantic_cache.json",
+  "facts.md",
+  "memory.json",
+  "preferences.json",
+  "chimes.json",
+]);
+
+/** Files a snapshot never EXPORTS: they run commands or hold credentials, and restore refuses them anyway. */
+export function isExportExcluded(name: string): boolean {
+  const n = name.toLowerCase();
+  return n === "mcp.json" || n === "push-keys.json" || n === ".env" || n.startsWith(".env") || n.startsWith("sessions");
+}
+
 /**
  * Computes SHA-256 hash of a buffer or string.
  */
@@ -55,7 +81,7 @@ export function createVaultSnapshot(): VaultSnapshotManifest {
   if (existsSync(vaultDir)) {
     const filenames = readdirSync(vaultDir);
     for (const name of filenames) {
-      if (name.startsWith(".") || name.includes("tmp")) continue;
+      if (name.startsWith(".") || name.includes("tmp") || isExportExcluded(name)) continue;
       const full = join(vaultDir, name);
       try {
         const buf = readFileSync(full);
@@ -103,7 +129,7 @@ export function restoreVaultSnapshot(manifest: VaultSnapshotManifest): RestoreRe
   }
 
   for (const f of manifest.files) {
-    if (!f.relativePath || !f.contentBase64) {
+    if (typeof f.relativePath !== "string" || !f.relativePath || typeof f.contentBase64 !== "string" || !f.contentBase64) {
       skippedCount++;
       continue;
     }
@@ -111,6 +137,11 @@ export function restoreVaultSnapshot(manifest: VaultSnapshotManifest): RestoreRe
     // Guard against path traversal
     if (f.relativePath.includes("..") || f.relativePath.startsWith("/")) {
       errors.push(`Rejected unsafe file path: ${f.relativePath}`);
+      skippedCount++;
+      continue;
+    }
+    if (!RESTORABLE_VAULT_FILES.has(f.relativePath)) {
+      errors.push(`Refused to restore ${String(f.relativePath)}: not an allowlisted vault file`);
       skippedCount++;
       continue;
     }
@@ -126,7 +157,8 @@ export function restoreVaultSnapshot(manifest: VaultSnapshotManifest): RestoreRe
       }
 
       const dest = join(vaultDir, f.relativePath);
-      writeFileSync(dest, buf);
+      // Atomic + 0600: a crash mid-restore can't leave a truncated file, and nothing lands world-readable.
+      writeFileAtomic(dest, buf, { mode: 0o600 });
       restoredFiles.push(f.relativePath);
       restoredCount++;
     } catch (e: any) {

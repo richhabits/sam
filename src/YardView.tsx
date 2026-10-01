@@ -180,7 +180,7 @@ export default function YardView() {
   const wrap: React.CSSProperties = {
     ...palette, minHeight: "100vh",
     background: "radial-gradient(900px 460px at 50% -12%, rgba(124,158,255,.10), transparent 62%), var(--ink)",
-    color: "var(--paper)", fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif",
+    color: "var(--paper)", fontFamily: "var(--display)",
     WebkitFontSmoothing: "antialiased",
   };
 
@@ -299,7 +299,7 @@ export default function YardView() {
                   {m.issues.map((i) => <div key={i}>⚠ {i}</div>)}
                 </div>
               )}
-              {detail && <div style={{ fontSize: 11, color: "var(--ash)", marginTop: 10, fontFamily: "ui-monospace,Menlo,monospace", wordBreak: "break-all" }}>{detail.path}</div>}
+              {detail && <div style={{ fontSize: 11, color: "var(--ash)", marginTop: 10, fontFamily: "var(--mono)", wordBreak: "break-all" }}>{detail.path}</div>}
             </div>
 
             {/* tabs */}
@@ -341,7 +341,7 @@ export default function YardView() {
                   <div style={{ marginBottom: 10, fontSize: 12.5, color: picked ? "var(--gold)" : "var(--ash)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     {picked ? (
                       <>
-                        <span>aiming at <code style={{ fontFamily: "ui-monospace,Menlo,monospace" }}>{picked.selector}</code>{picked.text ? ` — “${picked.text}”` : ""}</span>
+                        <span>aiming at <code style={{ fontFamily: "var(--mono)" }}>{picked.selector}</code>{picked.text ? ` — “${picked.text}”` : ""}</span>
                         <button type="button" onClick={() => setPicked(null)}
                           style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: "1px solid var(--line)", background: "transparent", color: "var(--ash)", cursor: "pointer" }}>clear</button>
                       </>
@@ -385,7 +385,7 @@ export default function YardView() {
                     {diffs.map((d) => (
                       <div key={d.path} style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 10px", background: "var(--ink-2)", fontSize: 12.5, flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: "ui-monospace,Menlo,monospace" }}>{d.path}</span>
+                          <span style={{ fontFamily: "var(--mono)" }}>{d.path}</span>
                           <span style={{ color: "var(--ash)" }}>
                             {d.kind === "added" ? "new file" : d.kind === "removed" ? "emptied" : (
                               <>
@@ -398,7 +398,7 @@ export default function YardView() {
                         {d.truncated ? (
                           <div style={{ padding: "8px 10px", fontSize: 12.5, color: "var(--ash)" }}>Too large to show line by line ({d.addedLines} lines).</div>
                         ) : (
-                          <div style={{ padding: "6px 0", fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, overflowX: "auto" }}>
+                          <div style={{ padding: "6px 0", fontFamily: "var(--mono)", fontSize: 12, overflowX: "auto" }}>
                             {d.hunks.map((h) => (
                               <div key={`${d.path}-${h.at}`} style={{ padding: "4px 0" }}>
                                 <div style={{ color: "var(--ash)", padding: "0 10px 2px" }}>line {h.at + 1}</div>
@@ -436,7 +436,7 @@ export default function YardView() {
                           border: "none", textAlign: "left", fontSize: 13,
                           background: openFile?.path === f.path ? "var(--accent-soft)" : "transparent",
                           color: openFile?.path === f.path ? "var(--accent)" : "var(--paper)" }}>
-                        <span style={{ fontFamily: "ui-monospace,Menlo,monospace" }}>{f.path}</span>
+                        <span style={{ fontFamily: "var(--mono)" }}>{f.path}</span>
                         <span style={{ color: "var(--ash)", fontSize: 12 }}>{bytes(f.bytes)}</span>
                       </button>
                     ))}
@@ -446,7 +446,7 @@ export default function YardView() {
                 {openFile && (
                   <div style={card}>
                     <div style={lbl}>{openFile.path}</div>
-                    <pre style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "ui-monospace,Menlo,monospace", color: "var(--paper)", opacity: .9, maxHeight: 460, overflow: "auto" }}>
+                    <pre style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--mono)", color: "var(--paper)", opacity: .9, maxHeight: 460, overflow: "auto" }}>
                       {openFile.text}
                     </pre>
                   </div>
@@ -460,7 +460,7 @@ export default function YardView() {
                 <div style={{ display: "grid", gap: 2 }}>
                   {(detail?.checkpoints ?? []).map((c, i) => (
                     <div key={c.sha} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "8px 0", borderBottom: i === (detail?.checkpoints.length ?? 0) - 1 ? "none" : "1px solid var(--line)" }}>
-                      <span style={{ fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, color: i === 0 ? "var(--gold)" : "var(--ash)", minWidth: 66 }}>{c.sha.slice(0, 8)}</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: i === 0 ? "var(--gold)" : "var(--ash)", minWidth: 66 }}>{c.sha.slice(0, 8)}</span>
                       <span style={{ flex: 1, fontSize: 13.5 }}>{c.message}</span>
                       <span style={{ fontSize: 12, color: "var(--ash)", whiteSpace: "nowrap" }}>{when(c.at)}</span>
                     </div>

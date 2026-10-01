@@ -65,12 +65,12 @@ describe("normalising what the model returned", () => {
       kind: "webapp", name: "Bookings", summary: "A booking desk.",
       pages: [{ name: "Home", purpose: "the way in" }, { name: "Diary", purpose: "what is booked" }],
       models: [{ name: "Booking", fields: ["date", "service"] }],
-      features: ["email confirmation"], brand: "Hectic Bullz",
+      features: ["email confirmation"], brand: "Teahouse",
     }, "build a booking app", "bookings");
     expect(s.kind).toBe("webapp");
     expect(s.pages.map((p) => p.name)).toEqual(["Home", "Diary"]);
     expect(s.models[0].fields).toEqual(["date", "service"]);
-    expect(s.brand).toBe("Hectic Bullz");
+    expect(s.brand).toBe("Teahouse");
     expect(s.derived).toBe(false);
   });
 
@@ -159,7 +159,7 @@ describe("the name a plan is shown under", () => {
   // while a name only labelled a job; not harmless once it is the heading on something
   // the operator reads before confirming.
   it("cuts on a word boundary, not mid-word", async () => {
-    const request = "build me a one-page booking site for Hectic Bullz stud services, on-brand";
+    const request = "build me a one-page booking site for Teahouse stud services, on-brand";
     const { nameFrom } = await import("./intent.ts");
     const n = nameFrom(request);
     expect(n.length).toBeLessThanOrEqual(60);

@@ -230,11 +230,11 @@ describe("the dispatcher", () => {
 
   it("memoises statuses, and forgets them when a token is saved", async () => {
     process.env.LINEAR_API_KEY = "lin_api_x";
-    stubFetch({ data: { viewer: { name: "Romeo", email: "r@x" } } });
+    stubFetch({ data: { viewer: { name: "Alex", email: "r@x" } } });
     const first = await statuses({ refresh: true });
     vi.unstubAllGlobals();
     // Same answer with no fetch stubbed at all — proof it did not call out again.
-    expect((await statuses()).find((c) => c.id === "linear")!.detail).toBe("Romeo");
+    expect((await statuses()).find((c) => c.id === "linear")!.detail).toBe("Alex");
     expect(await statuses()).toBe(first);
   });
 });

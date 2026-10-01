@@ -74,6 +74,49 @@ export async function warmBrain(): Promise<string | null> {
   } catch { return null; }
 }
 
+// ── HTTP errors that carry WHEN to retry ─────────────────────
+// A 429 used to become a bare `{status: 429}` and every key sat out a flat minute, whatever the
+// provider had said. The provider usually says exactly how long: `retry-after` (seconds or an
+// HTTP date), Groq/OpenAI-style `x-ratelimit-reset-requests|tokens` ("2m59.56s", "7.66s", "20ms"),
+// or Gemini's RetryInfo `retryDelay: "37s"` in the body. KeyPool turns that into coolingUntil.
+export function parseDurationMs(v: string | null | undefined): number | undefined {
+  if (!v) return undefined;
+  const t = v.trim();
+  if (/^\d+(\.\d+)?$/.test(t)) return Math.round(Number(t) * 1000);   // bare seconds
+  let ms = 0, hit = false;
+  for (const m of t.matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/g)) {
+    hit = true;
+    const n = Number(m[1]);
+    ms += m[2] === "h" ? n * 3_600_000 : m[2] === "m" ? n * 60_000 : m[2] === "s" ? n * 1000 : n;
+  }
+  return hit ? Math.round(ms) : undefined;
+}
+export function retryAfterMs(h: Headers, body = "", now = Date.now()): number | undefined {
+  const ra = h.get("retry-after");
+  if (ra) {
+    if (/^\s*\d+(\.\d+)?\s*$/.test(ra)) return Math.round(Number(ra) * 1000);
+    const at = Date.parse(ra);
+    if (!Number.isNaN(at)) return Math.max(0, at - now);
+  }
+  // No retry-after: the reset of whichever window is actually exhausted.
+  const waits: number[] = [];
+  if (h.get("x-ratelimit-remaining-requests") === "0") { const w = parseDurationMs(h.get("x-ratelimit-reset-requests")); if (w !== undefined) waits.push(w); }
+  if (h.get("x-ratelimit-remaining-tokens") === "0") { const w = parseDurationMs(h.get("x-ratelimit-reset-tokens")); if (w !== undefined) waits.push(w); }
+  if (waits.length) return Math.max(...waits);
+  const rd = /"retryDelay"\s*:\s*"([\d.]+s)"/.exec(body);
+  return rd ? parseDurationMs(rd[1]) : undefined;
+}
+export async function httpError(prefix: string, r: Response): Promise<Error & { status: number; retryAfterMs?: number }> {
+  const e = new Error(`${prefix} ${r.status}`) as Error & { status: number; retryAfterMs?: number };
+  e.status = r.status;
+  if (r.status === 429) {
+    let body = "";
+    try { body = (await r.text()).slice(0, 4000); } catch { /* headers are enough */ }
+    e.retryAfterMs = retryAfterMs(r.headers, body);
+  }
+  return e;
+}
+
 // ── Shared OpenAI-compatible caller (Groq, OpenRouter, OpenAI) ─
 export async function callOpenAICompat(
   base: string, model: string, system: string, prompt: string, key: string
@@ -91,7 +134,7 @@ export async function callOpenAICompat(
       ],
     }),
   });
-  if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) throw await httpError("http", r);
   const d = await r.json();
   return d?.choices?.[0]?.message?.content?.trim() || "";
 }
@@ -109,7 +152,7 @@ export async function callPollinationsAnon(model: string, system: string, prompt
       messages: [{ role: "user", content: combined }],
     }),
   });
-  if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) throw await httpError("http", r);
   const d = await r.json();
   return d?.choices?.[0]?.message?.content?.trim() || "";
 }
@@ -119,15 +162,15 @@ export async function callPollinationsAnon(model: string, system: string, prompt
 export async function callPollinationsGet(system: string, prompt: string): Promise<string> {
   const q = `${system}\n\nUser: ${prompt}\nSAM:`.slice(0, 3000);
   const r = await fetch(`https://text.pollinations.ai/${encodeURIComponent(q)}?model=openai`, { signal: AbortSignal.timeout(30000) });
-  if (!r.ok) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) throw await httpError("http", r);
   return (await r.text()).trim();
 }
 
 // ── FREE · Gemini 2.5 Flash (thinkingBudget 0 — no wasted tokens) ─
-export async function callGemini(system: string, prompt: string, key: string): Promise<string> {
+export async function callGemini(system: string, prompt: string, key: string, model = laneModel("gemini")): Promise<string> {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `gemini-2.5-flash:generateContent?key=${key}`;
+    `${encodeURIComponent(model)}:generateContent?key=${key}`;
   const r = await fetch(url, {
     signal: AbortSignal.timeout(30000),   // never hang forever on a stalled provider
     method: "POST",
@@ -138,7 +181,7 @@ export async function callGemini(system: string, prompt: string, key: string): P
       generationConfig: { maxOutputTokens: 6000, thinkingConfig: { thinkingBudget: 0 } },
     }),
   });
-  if (!r.ok) { const e: any = new Error(`gemini ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) throw await httpError("gemini", r);
   const d = await r.json();
   const text = d?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
   if (!text) throw new Error("gemini empty");
@@ -188,7 +231,7 @@ export async function callAnthropic(system: string, prompt: string, key: string)
       messages: [{ role: "user", content: [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }] }],
     }),
   });
-  if (!r.ok) { const e: any = new Error(`anthropic ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) throw await httpError("anthropic", r);
   const d = await r.json();
   if (d?.stop_reason === "refusal") {
     const e: any = new Error(`anthropic refused (${d?.stop_details?.category || "unspecified"})`);
@@ -277,6 +320,24 @@ export const GMI_MODEL = process.env.GMI_MODEL || "meta-llama/Llama-3.3-70B-Inst
 export const VERCEL_MODEL = process.env.VERCEL_MODEL || "meta/llama-3.3-70b";
 export const OVH_MODEL = process.env.OVH_MODEL || "Meta-Llama-3_1-70B-Instruct";
 export const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "openai";
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+// ── Lane models that MODEL DISCOVERY can repair (server/model-discovery.ts) ──
+// The configured slug (env pin or default above) stays the source of truth. Discovery only sets an
+// override when that slug has DISAPPEARED from the provider's own model list — the failure mode
+// that silently broke cerebras, openrouter and groq before (see the AUDITED notes above).
+const CONFIGURED_MODELS: Record<string, string> = {
+  groq: GROQ_MODEL, cerebras: CEREBRAS_MODEL, mistral: MISTRAL_MODEL, nvidia: NVIDIA_MODEL,
+  openrouter: OPENROUTER_MODEL, gemini: GEMINI_MODEL,
+};
+const MODEL_OVERRIDES = new Map<string, string>();
+export function configuredModel(id: string): string | undefined { return CONFIGURED_MODELS[id]; }
+export function laneModel(id: string): string { return MODEL_OVERRIDES.get(id) ?? CONFIGURED_MODELS[id] ?? ""; }
+export function setLaneModel(id: string, model: string | null): void {
+  if (!(id in CONFIGURED_MODELS)) return;
+  if (!model || model === CONFIGURED_MODELS[id]) MODEL_OVERRIDES.delete(id);
+  else MODEL_OVERRIDES.set(id, model);
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  THE BURN-DOWN ENGINE — 30+ providers, tiered for maximum
@@ -286,15 +347,15 @@ export const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "openai";
 // ═══════════════════════════════════════════════════════════════
 export const PROVIDERS: Provider[] = [
   // ── TIER 1: Speed Demons (sub-200ms TTFT) ──────────────────
-  { id: "cerebras", tier: "free", label: `cerebras:${CEREBRAS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cerebras.ai/v1", CEREBRAS_MODEL, s, p, k) },
-  { id: "groq", tier: "free", label: `groq:${GROQ_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.groq.com/openai/v1", GROQ_MODEL, s, p, k) },
+  { id: "cerebras", tier: "free", get label() { return `cerebras:${laneModel("cerebras")}`; }, run: (s, p, k) => callOpenAICompat("https://api.cerebras.ai/v1", laneModel("cerebras"), s, p, k) },
+  { id: "groq", tier: "free", get label() { return `groq:${laneModel("groq")}`; }, run: (s, p, k) => callOpenAICompat("https://api.groq.com/openai/v1", laneModel("groq"), s, p, k) },
   { id: "sambanova", tier: "free", label: `sambanova:${SAMBANOVA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.sambanova.ai/v1", SAMBANOVA_MODEL, s, p, k) },
 
   // ── TIER 2: Bottomless Wells (huge free quotas) ────────────
   { id: "together", tier: "free", label: `together:${TOGETHER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.together.xyz/v1", TOGETHER_MODEL, s, p, k) },
   { id: "deepseek", tier: "free", label: `deepseek:${DEEPSEEK_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.deepseek.com", DEEPSEEK_MODEL, s, p, k) },
   { id: "fireworks", tier: "free", label: `fireworks:${FIREWORKS_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.fireworks.ai/inference/v1", FIREWORKS_MODEL, s, p, k) },
-  { id: "nvidia", tier: "free", label: `nvidia:${NVIDIA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://integrate.api.nvidia.com/v1", NVIDIA_MODEL, s, p, k) },
+  { id: "nvidia", tier: "free", get label() { return `nvidia:${laneModel("nvidia")}`; }, run: (s, p, k) => callOpenAICompat("https://integrate.api.nvidia.com/v1", laneModel("nvidia"), s, p, k) },
   { id: "siliconflow", tier: "free", label: `siliconflow:${SILICONFLOW_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.siliconflow.cn/v1", SILICONFLOW_MODEL, s, p, k) },
   { id: "xai", tier: "free", label: `xai:${XAI_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.x.ai/v1", XAI_MODEL, s, p, k) },
   { id: "huggingface", tier: "free", label: `huggingface:${HUGGINGFACE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://router.huggingface.co/v1", HUGGINGFACE_MODEL, s, p, k) },
@@ -328,15 +389,15 @@ export const PROVIDERS: Provider[] = [
   { id: "upstage", tier: "free", label: `upstage:${UPSTAGE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.upstage.ai/v1/solar", UPSTAGE_MODEL, s, p, k) },
   { id: "cohere", tier: "free", label: `cohere:${COHERE_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.cohere.com/v1", COHERE_MODEL, s, p, k) },
   { id: "perplexity", tier: "free", label: `perplexity:${PERPLEXITY_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.perplexity.ai", PERPLEXITY_MODEL, s, p, k) },
-  { id: "mistral", tier: "free", label: `mistral:${MISTRAL_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.mistral.ai/v1", MISTRAL_MODEL, s, p, k) },
+  { id: "mistral", tier: "free", get label() { return `mistral:${laneModel("mistral")}`; }, run: (s, p, k) => callOpenAICompat("https://api.mistral.ai/v1", laneModel("mistral"), s, p, k) },
   // GITHUB MODELS IS BEING RETIRED. Audited 2026-08-01: the old Azure endpoint answers 401, and
   // the current one (models.github.ai/inference) answers HTTP 410 `github_models_retirement_brownout`.
   // It stays listed because GITHUB_TOKEN is still a live credential — the GitHub CONNECTOR reads
   // your repos and issues with it (server/connectors.registry.ts) — but it is no longer a brain
   // anyone should be told to get a key for. The health memory sinks it on its first 410 anyway.
   { id: "github", tier: "free", label: `github:${GITHUB_MODEL}`, run: (s, p, k) => callOpenAICompat("https://models.github.ai/inference", GITHUB_MODEL, s, p, k) },
-  { id: "gemini", tier: "free", label: "gemini-2.5-flash", run: callGemini },
-  { id: "openrouter", tier: "free", label: `openrouter:${OPENROUTER_MODEL}`, run: (s, p, k) => callOpenAICompat("https://openrouter.ai/api/v1", OPENROUTER_MODEL, s, p, k) },
+  { id: "gemini", tier: "free", get label() { return laneModel("gemini"); }, run: (s, p, k) => callGemini(s, p, k) },
+  { id: "openrouter", tier: "free", get label() { return `openrouter:${laneModel("openrouter")}`; }, run: (s, p, k) => callOpenAICompat("https://openrouter.ai/api/v1", laneModel("openrouter"), s, p, k) },
 
   // ── TIER 3c: Bonus free brains (opt-in — add a key; tried after the mains) ──
   { id: "deepinfra", tier: "free", label: `deepinfra:${DEEPINFRA_MODEL}`, run: (s, p, k) => callOpenAICompat("https://api.deepinfra.com/v1/openai", DEEPINFRA_MODEL, s, p, k) },
@@ -375,7 +436,7 @@ export async function streamOpenAICompat(base: string, model: string, system: st
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({ model, max_tokens: 1500, stream: true, messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }),
   });
-  if (!r.ok || !r.body) { const e: any = new Error(`http ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok || !r.body) throw await httpError("http", r);
   const reader = r.body.getReader(); const dec = new TextDecoder();
   let buf = "", full = "";
   for (;;) {
@@ -392,12 +453,12 @@ export async function streamOpenAICompat(base: string, model: string, system: st
 }
 
 export async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${key}`, {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(laneModel("gemini"))}:streamGenerateContent?alt=sse&key=${key}`, {
     signal: AbortSignal.timeout(30000),   // bound inter-chunk stalls so a hung stream can't wedge the SSE
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 6000, thinkingConfig: { thinkingBudget: 0 } } }),
   });
-  if (!r.ok || !r.body) { const e: any = new Error(`gemini ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok || !r.body) throw await httpError("gemini", r);
   const reader = r.body.getReader(); const dec = new TextDecoder();
   let buf = "", full = "";
   for (;;) {

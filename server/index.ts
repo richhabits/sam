@@ -48,9 +48,13 @@ import { GitHubError, issues as ghIssues, repos as ghRepos, whoami as ghWhoami }
 import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
+import { aiProvidersReport } from "./ai-disclosure.ts";
+import { lanesStatus } from "./free-lanes.ts";
+import { discoveryEnabled, startModelDiscovery } from "./model-discovery.ts";
+import { flushLedger } from "./usage-ledger.ts";
 import { reloadPools } from "./keys.ts";
 import { createLanGuard, lanInfo, pairNewLanFields, startLanListener } from "./lan-tls.ts";
-import { addFolder, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
+import { addFolder, indexRefusal, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
 import { mailerConfigured, ownerEmail, sendMail, } from "./mailer.ts";
 import { quotes as marketQuotes } from "./markets.ts";
 import { listByKind, memoryStats, pinnedModel, recallWith, remember } from "./memory.ts";
@@ -94,7 +98,7 @@ const yardStore = (): JobStore => (_yard ??= new JobStore());
 import { execute100xAgenticWorkflow } from "./agentic-100x.ts";
 import { NINJAS, runNinjas, runTeam, SPECIALISTS } from "./agents.ts";
 import { analyticsSummary, getAnalytics, recordTask, resetAnalytics } from "./analytics.ts";
-import { APPLE_APP_INTENTS, processWatchPrompt } from "./apple-ecosystem.ts";
+import { appleAppIntents, processWatchPrompt } from "./apple-ecosystem.ts";
 import { allow, autopilotOn, disallow, isAllowed, isDangerous, listAllowed, setAutopilot, toolTier } from "./authz.ts";
 import { getAutoProvisionStatus, validateAndSaveProviderKey } from "./auto-provision.ts";
 import { clearAutonomyLog, readAutonomyLog } from "./autonomy-log.ts";
@@ -138,6 +142,7 @@ import { huntRevenueOpportunities } from "./revenue-hunter.ts";
 import { registerAdminRoutes } from "./routes.admin.ts";
 import { registerAdminCostRoutes } from "./routes.admin-cost.ts";
 import { createRateLimiter } from "./rate-limit.ts";
+import { runThrottledUnlock, unlockThrottle } from "./unlock-throttle.ts";
 import { registerAntigravityRoutes } from "./routes.antigravity.ts";
 import { registerCompanionRoutes } from "./routes.companion.ts";
 import { registerCreativeRoutes } from "./routes.creative.ts";
@@ -148,13 +153,14 @@ import { registerSpeedRoutes } from "./routes.speed.ts";
 import { registerStudioRoutes } from "./routes.studio.ts";
 import { registerStudioDirectorRoutes } from "./routes.studio-director.ts";
 import { registerVoiceRoutes } from "./routes.voice.ts";
+import { jsonErrorHandler } from "./http-errors.ts";
 import { isSupervised, restartRefusal } from "./restart.ts";
 import { streamPolicy, UNTRUSTED_ROUTE_REASON, UNTRUSTED_SYSTEM_NOTE } from "./stream-policy.ts";
 import { matchRoutine, bind as routineBind, routineFor, list as routineList, routinesEnabled, unbind as routineUnbind } from "./routines.ts";
 import { buildIndexes, routingReady, selectSkillId, selectTools } from "./routing.ts";
 import { migratableNames, isSetup as safeIsSetup, loadIntoProcessEnv as safeLoadEnv, lock as safeLock, migrateFromEnv as safeMigrate, setup as safeSetup, status as safeStatus, unlock as safeUnlock, secretNames } from "./safe.ts";
 import { getScaleStatus } from "./scale-100m.ts";
-import { addSchedule, listSchedules, removeSchedule, scheduleStatus, startScheduler, toggleSchedule } from "./scheduler.ts";
+import { addSchedule, listSchedules, removeSchedule, scheduleInputError, scheduleStatus, startScheduler, toggleSchedule } from "./scheduler.ts";
 import { renderScope, scopeData } from "./scope-view.ts";
 import { logSecurity, securityEvents, securityStatus } from "./security.ts";
 import { loadSkills, routeSkill, validateSkillTools } from "./skills.ts";
@@ -166,7 +172,7 @@ import { approveAgent, loadSwarms, resumeOrphanedSwarms, startSwarm, swarmFanout
 import { buildPayload, postTelemetry, setTelemetry, telemetryDecided, telemetryEnabled } from "./telemetry.ts";
 import { crossIn, crossOutOnce, thresholdEnabled } from "./threshold.ts";
 import { evaluateTriggers } from "./triggers.ts";
-import { getDeviceHandoff, processUniversalPrompt, registerDeviceHandoff, UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
+import { getDeviceHandoff, processUniversalPrompt, registerDeviceHandoff, universalShortcuts } from "./universal-ecosystem.ts";
 import { createVaultSnapshot, restoreVaultSnapshot } from "./universal-sync.ts";
 import {
   buildGraph,
@@ -534,6 +540,11 @@ void loadMcpTools()
 // Pre-load the local brain into RAM so the FIRST message is instant (no cold model-load).
 // Local Ollama only — never a cloud call, so it costs nothing.
 if (!BENCH_MODE) void warmBrain().then((m) => m && console.log(`  brain warmed    · ${m} resident (first reply is instant)\n`)).catch(() => {/* warm-up is best-effort and must never delay boot */});
+// Free-lane autopilot: re-apply cached model repairs now, refresh the free-model catalogue daily
+// from the providers' LIST endpoints (no tokens spent). SAM_MODEL_DISCOVERY=0 turns it off.
+if (!BENCH_MODE) startModelDiscovery();
+// The usage ledger debounces its writes; make sure the last few seconds reach disk on shutdown.
+process.once("beforeExit", () => { try { flushLedger(); } catch { /* best-effort */ } });
 initContext();
 // Self-containment: prune ancient daily logs so the vault stays lean forever (free).
 { const { removed } = pruneOldLogs(); if (removed) console.log(`  vault tidied    · pruned ${removed} old log${removed > 1 ? "s" : ""}\n`); }
@@ -1320,7 +1331,7 @@ registerAdminRoutes(app);
 registerVoiceRoutes(app);
 registerCreativeRoutes(app);
 // FLIP IT / MT5 are an add-on now: their routes answer 404 + an add-on hint unless SAM_FLIPIT_BUILTIN=1.
-app.use(["/api/flipit", "/api/mt5"], flipitBuiltinGuard);
+app.use(["/api/flipit", "/api/mt5", "/api/wallet", "/api/revenue"], flipitBuiltinGuard);   // wallet + revenue are the same desk
 registerFlipItScaleRoutes(app);
 registerSpeedRoutes(app);
 registerCompanionRoutes(app, { resolvePending: executePendingConfirmation });
@@ -1339,14 +1350,14 @@ app.post("/api/watch/prompt", async (req, res) => {
   res.json(result);
 });
 app.get("/api/apple/app-intents", (_req, res) => {
-  res.json({ intents: APPLE_APP_INTENTS });
+  res.json({ intents: appleAppIntents() });
 });
 app.post("/api/universal/prompt", async (req, res) => {
   const result = await processUniversalPrompt(req.body);
   res.json(result);
 });
 app.get("/api/universal/shortcuts", (_req, res) => {
-  res.json({ shortcuts: UNIVERSAL_SHORTCUTS });
+  res.json({ shortcuts: universalShortcuts() });
 });
 app.get("/api/mobile/feed", async (_req, res) => {
   res.json(await generateMobileFeed());
@@ -1469,9 +1480,11 @@ app.get("/api/voice/token", async (req, res) => {
         voice: "ash", // Ash is a great agent voice
       })
     });
-    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    // Never relay the upstream body: OpenAI's 401 text quotes the key back ("Incorrect API key
+    // provided: sk-proj-...abcd"), and this route answers any caller that clears the gate.
+    if (!r.ok) return res.status(r.status === 401 || r.status === 403 ? 502 : r.status).json({ error: "OpenAI refused the voice session", upstreamStatus: r.status });
     res.json(await r.json());
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch { res.status(502).json({ error: "could not reach OpenAI for a voice session" }); }
 });
 // ── Self-update: SAM keeps every user's copy in sync with the repo ──
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1722,13 +1735,15 @@ app.post("/api/code/repair", basicRateLimit, async (req, res) => {
   try {
     let raw = String(req.body?.compilerOutput || "").trim();
     if (!raw && req.body?.runTsc) {
-      const { execSync } = await import("node:child_process");
-      try {
-        execSync("npx tsc --noEmit", { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" });
-        raw = "";
-      } catch (e: any) {
-        raw = e?.stdout || e?.stderr || e?.message || "";
-      }
+      // Async + bounded. This was a synchronous exec with no timeout: a full type-check blocks the whole
+      // daemon's event loop (chat, voice, every other request) for as long as tsc runs, and any
+      // caller past the gate could trigger it. execFile keeps the loop free and the timeout caps it.
+      const { execFile } = await import("node:child_process");
+      raw = await new Promise<string>((resolve) => {
+        execFile("npx", ["tsc", "--noEmit"], { cwd: process.cwd(), encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
+          resolve(err ? String(stdout || stderr || err.message || "") : "");
+        });
+      });
     }
     const diagnostics = parseCompilerDiagnostics(raw);
     const plan = generateRepairPlan(diagnostics);
@@ -1826,16 +1841,28 @@ app.get("/api/schedules", (req, res) => {
   if (!canReadOwnContent(req)) return denyRead(res, "your schedules");
   res.json(listSchedules().map((s) => ({ ...s, ...scheduleStatus(s) })));
 });
+// Writes are isTrustedLocal (loopback + the Handshake): a schedule is a command that runs unattended,
+// so creating, deleting or flipping one is the same power as running it — not something any local
+// process that merely passes isLoopback, or a paired phone, gets.
 app.post("/api/schedules", (req, res) => {
-  const { command, cron } = req.body;
-  if (!command || !cron) return res.status(400).json({ error: "missing command or cron" });
-  res.json(addSchedule(command, cron));
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "schedules are changed from SAM on this machine only" }); return; }
+  const { command, cron } = req.body || {};
+  const bad = scheduleInputError(command, cron);
+  if (bad) return res.status(400).json({ error: bad });
+  try { res.json(addSchedule(command, cron)); }
+  catch (e: any) { res.status(400).json({ error: publicError(e) }); }
 });
-app.delete("/api/schedules/:id", (req, res) => res.json({ ok: removeSchedule(req.params.id) }));
+app.delete("/api/schedules/:id", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "schedules are changed from SAM on this machine only" }); return; }
+  res.json({ ok: removeSchedule(req.params.id) });
+});
 
 registerStudioRoutes(app);
 
-app.post("/api/schedules/:id/toggle", (req, res) => res.json(toggleSchedule(req.params.id)));
+app.post("/api/schedules/:id/toggle", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "schedules are changed from SAM on this machine only" }); return; }
+  res.json(toggleSchedule(req.params.id));
+});
 
 // ── P2P Network — expose peer list to frontend ──
 // This machine's node id and every peer it is talking to — a map of the operator's other
@@ -1859,19 +1886,29 @@ app.get("/api/life-index", (req, res) => {
   if (!canReadPrivate(req)) return denyRead(res, "the folders you watch");
   res.json({ ...lifeIndexStats(), folders: listFolders() });
 });
+// Writes are isTrustedLocal like the guarded GET above: choosing which folders SAM reads and makes
+// searchable is the operator's call, not any local process's. addFolder also refuses "/", the home
+// root and key directories (indexRefusal, after realpath) — a 400, since the caller chose the path.
 app.post("/api/life-index", async (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Life Index is changed from SAM on this machine only" }); return; }
   const { path } = req.body as { path?: string };
-  if (!path?.trim()) return res.status(400).json({ error: "path required" });
+  if (typeof path !== "string" || !path.trim()) return res.status(400).json({ error: "path required" });
+  const refusal = indexRefusal(path);
+  if (refusal) return res.status(400).json({ error: refusal });
   try { const r = await addFolder(path); res.json({ ok: true, ...r }); }
   catch (e: any) { res.status(500).json({ error: publicError(e) }); }
 });
 app.delete("/api/life-index", (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Life Index is changed from SAM on this machine only" }); return; }
   const path = (req.query.path as string) || (req.body as any)?.path;
   if (!path) return res.status(400).json({ error: "path required" });
   res.json(removeFolder(path));
 });
-app.post("/api/life-index/reindex", async (_req, res) => { const reports = await reindexAll(); res.json({ ok: true, reports }); });
-app.post("/api/life-index/watch", (req, res) => { const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
+app.post("/api/life-index/reindex", async (req, res) => {
+  if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Life Index is changed from SAM on this machine only" }); return; }
+  const reports = await reindexAll(); res.json({ ok: true, reports });
+});
+app.post("/api/life-index/watch", (req, res) => { if (!isTrustedLocal(req)) { res.status(403).json({ error: "the Life Index is changed from SAM on this machine only" }); return; } const on = !!(req.body as any)?.on; setWatching(on); res.json({ ok: true, ...lifeIndexStats() }); });
 
 // ── THE FORGE (Phase 5) — settings screen: review, enable/disable, delete SAM-forged tools ──
 app.get("/api/forged", (req, res) => {
@@ -1923,7 +1960,9 @@ app.post("/api/encryption/setup", (req, res) => {
 });
 app.post("/api/encryption/unlock", (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: "unlock on this computer only" });
-  const ok = unlockWithPassphrase(String((req.body as any)?.passphrase || ""));
+  // Per-IP failure throttle (server/unlock-throttle.ts): 5 wrong guesses, then 429 with growing backoff.
+  const ok = runThrottledUnlock(unlockThrottle, req, res, () => unlockWithPassphrase(String((req.body as any)?.passphrase || "")));
+  if (ok === "throttled") return;
   res.status(ok ? 200 : 401).json({ ok, ...encryptionStatus() });
 });
 app.post("/api/encryption/lock", (req, res) => {
@@ -1957,7 +1996,14 @@ app.post("/api/safe/setup", (req, res) => {
 app.post("/api/safe/unlock", (req, res) => {
   if (!safeGate(req, res)) return;
   const pass = (req.body as { passphrase?: string })?.passphrase;
-  const r = safeUnlock(pass ? String(pass) : undefined);
+  // Same throttle as /api/encryption/unlock (shared table). Only a wrong/missing passphrase counts as a
+  // failure; "not-setup" and the like are not guesses.
+  let r!: ReturnType<typeof safeUnlock>;
+  const outcome = runThrottledUnlock(unlockThrottle, req, res, () => {
+    r = safeUnlock(pass ? String(pass) : undefined);
+    return r.ok || (r.error.kind !== "bad-passphrase" && r.error.kind !== "missing-passphrase");
+  });
+  if (outcome === "throttled") return;
   if (!r.ok) return res.json({ ok: false, error: r.error.kind });
   // Same as the boot path: bridge tool creds, then rebuild the key pools from the now-unlocked Safe —
   // a passphrase-mode Safe unlocked HERE (not at boot) must still repopulate the pools, or a migrated
@@ -2786,9 +2832,25 @@ app.get("/api/status", (req, res) => {
     } : {}),
   });
 });
-app.get("/api/keys", (_req, res) => res.json(providersStatus()));
+app.get("/api/keys", (req, res) => {
+  if (!canReadOwnContent(req)) return denyRead(res, "which providers you have keys for");
+  res.json(providersStatus());
+});
 // SAM's own free-tier capacity + the single legit key to add next (if any).
-app.get("/api/capacity", (_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
+// App Store 5.1.2(i): which third-party AI services could receive a chat message, derived from the
+// live router (server/ai-disclosure.ts). Names and public policy links only — no key values or counts.
+app.get("/api/ai/providers", (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json(aiProvidersReport());
+});
+// Free-lane autopilot status (server/free-lanes.ts): per lane health, cooldown, today's usage vs the
+// documented free limit, the model it runs and when discovery last refreshed it. Same guard as
+// /api/ai/providers, and the same rule: no key values, no slot ids, no key counts.
+app.get("/api/lanes/status", (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json({ lanes: lanesStatus(), discovery: discoveryEnabled() });
+});
+app.get("/api/capacity",(_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
 // MT5 — read-only account/positions/journal + risk metrics from the FlipItReporter file. REAL DATA ONLY:
 // nothing configured is a normal state ({connected:false}), never fake numbers.
 app.get("/api/mt5/summary", async (req, res) => {
@@ -2828,6 +2890,11 @@ if (existsSync(DIST)) {
   });
   console.log(`  app served     · http://localhost:${PORT}  (single process)`);
 }
+
+// LAST in the stack, after every route and the SPA fallback: a throw anywhere above (and any
+// body-parser rejection from the express.json at the top) answers JSON, not Express's HTML page
+// with a stack trace in it. See server/http-errors.ts.
+app.use(jsonErrorHandler);
 
 // B1 — the mesh interface, if the operator has one configured and connected. Scans the
 // OS's own interface list rather than shelling out to any client CLI, so this has no

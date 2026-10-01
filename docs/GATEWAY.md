@@ -19,7 +19,7 @@ Hard cost controls are built in and enforced server-side:
 - **Anonymous device id** — a random per-install id (no personal data), so the zero-telemetry promise holds
 
 When a user hits their allowance, SAM nudges them to add their own free key (Phase 3 wizard) for
-unlimited use, and falls through to the public no-key lanes meanwhile — it never goes dark.
+more headroom, and falls through to the public no-key lanes meanwhile — so chat keeps working.
 
 ## Deploy (≈10 minutes)
 

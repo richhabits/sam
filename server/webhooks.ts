@@ -9,9 +9,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileAtomic } from "./atomic.ts";
 import { safeFetch } from "./url-guard.ts";
 
 export interface WebhookEndpoint {
@@ -66,7 +67,8 @@ export function saveWebhookEndpoints(endpoints: WebhookEndpoint[]): void {
   cachedEndpoints = endpoints;
   try {
     mkdirSync(VAULT_DIR(), { recursive: true });
-    writeFileSync(WEBHOOKS_FILE(), JSON.stringify(endpoints, null, 2));
+    // Holds every endpoint's HMAC signing secret: atomic (no half-written file) and 0600.
+    writeFileAtomic(WEBHOOKS_FILE(), JSON.stringify(endpoints, null, 2), { mode: 0o600 });
   } catch {
     // Best-effort persistence
   }

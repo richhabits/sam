@@ -52,7 +52,7 @@ export type Mention = { start: number; query: string };
  * since, or null.
  *
  * The two rules that matter are both about NOT firing. `@` only opens a mention at the start
- * of the box or after whitespace, which is what keeps `romeo@example.com` and `npm i foo@2`
+ * of the box or after whitespace, which is what keeps `alex@example.com` and `npm i foo@2`
  * from popping a task list over the keyboard mid-address — the single most annoying way this
  * feature can be built. And any whitespace after the `@` closes it again, which is what lets
  * an inserted label ("@Build: mainline ") end its own mention without a flag to unset.

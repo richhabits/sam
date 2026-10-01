@@ -5,6 +5,7 @@ import os from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Express } from "express";
+import { isLoopback } from "./http-guards.ts";
 import { runModel } from "./models.ts";
 import * as notebook from "./notebook.ts";
 import { createRateLimiter } from "./rate-limit.ts";
@@ -301,6 +302,11 @@ export function registerStudioRoutes(app: Express) {
     const { url, file, text, title } = req.body || {};
     try {
       if (url) { const r = await notebook.addUrl(req.params.id, String(url)); return res.json({ ok: true, chunks: r.chunks, title: r.title }); }
+      // A server-side PATH, ingested whole and then answerable through /ask: with no check this is
+      // "read any file the SAM process can see" for any paired phone (~/.ssh, .env, the vault). A path
+      // only means something on the machine SAM runs on, so only that machine may name one — a phone
+      // still adds URLs and pasted text.
+      if (file && !isLoopback(req)) return res.status(403).json({ error: "files can only be added from this computer, not remotely" });
       if (file) { const c = await notebook.addFile(req.params.id, String(file).replace(/^~/, os.homedir())); return res.json({ ok: true, chunks: c }); }
       if (text) { const c = await notebook.addText(req.params.id, String(title || "note"), String(text)); return res.json({ ok: true, chunks: c }); }
       res.status(400).json({ error: "need url, file, or text" });

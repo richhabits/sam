@@ -52,7 +52,7 @@ const TIPS = [
   "Hit Voice to go hands-free — talk and listen.",
   "Guardian mode watches your camera and flags strangers.",
   "⌘⇧T opens Team, ⌘⇧N opens Ninjas — power user moves.",
-  "Type /private to go fully local — nothing leaves your Mac.",
+  "Type /private to run on your computer only — your message is not sent to a cloud AI.",
   "Type /share to copy your SAM pitch + link.",
   "Turn on Autopilot in settings — SAM handles routine stuff silently.",
 ];
@@ -164,7 +164,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
       {m.role === "sam" ? (
         <div className="sam-card-container" style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '14px', padding: '18px 20px', width: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' }}>
           <div className="sam-card-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, #E8673A, #FF8F6B)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-accent)' }}>
               <Icon name="brain" size={13} />
             </div>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>
@@ -391,7 +391,7 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
-  const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); return v === null ? true : v === "1"; } catch { return true; } });
+  const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); if (v !== null) return v === "1"; return !window.matchMedia?.("(prefers-color-scheme: light)").matches; } catch { return true; } }); // manual toggle wins; first run follows the OS (dark if unknown)
   const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
   // The eight alternate skins (everything but the one true accent, "classic") are opt-in —
   // see docs/DESIGN-SYSTEM.md: nine skins each redefining --accent was the root cause of the
@@ -1641,7 +1641,7 @@ export default function App() {
           <button type="button" onClick={openStudio} title="Studio — AI video director & timeline editor" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Studio
           </button>
-          <button type="button" onClick={openFlipit} title="FlipIt — arbitrage desk & Kelly risk shield" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={openFlipit} title={status?.flipitBuiltin === false ? "FLIP IT — now an add-on; connect it in Settings" : "FlipIt — arbitrage desk & Kelly risk shield"} style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             FLIP IT
           </button>
         </div>
@@ -1852,7 +1852,7 @@ export default function App() {
           <input className="stranger-input" placeholder="Their name" value={strangerName} onChange={(e) => setStrangerName(e.target.value)}
             onKeyDown={async (e) => { if (e.key === "Enter" && strangerName.trim()) { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); } }} />
           <button type="button" className="stranger-save" disabled={!strangerName.trim()} onClick={async () => { await fetch("/api/people", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: strangerName.trim(), look: stranger }) }); showToast(`✓ I'll recognise ${strangerName.trim()} now`); setStranger(null); setStrangerName(""); }}>Remember</button>
-          <button type="button" className="stranger-dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
+          <button type="button" className="stranger-dismiss" aria-label="Dismiss" title="Dismiss" onClick={() => { setStranger(null); setStrangerName(""); }}>✕</button>
         </div>
       )}
       <footer className="composer" style={{ padding: "0 20px 16px" }}>
@@ -1884,13 +1884,13 @@ export default function App() {
           <button type="button" className="icon-btn ghost" onClick={() => setCtxOpen(true)} title="Apps grid (⌘K)" aria-label="Apps grid" style={{ background: 'transparent', border: 'none', color: "var(--muted)", padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="grid" size={15} />
           </button>
-          <select value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+          <select aria-label="Mode" value={mode} onChange={(e) => setMode(e.target.value as "personal"|"business")} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
               <option value="personal">Personal</option>
               <option value="business">Business</option>
           </select>
           <PersonaPicker value={persona} options={PERSONA_OPTS} onPick={choosePersona} />
           {mode === "business" && (
-              <select value={brand} onChange={(e) => setBrand(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+              <select aria-label="Business" value={brand} onChange={(e) => setBrand(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                   <option value="">All my businesses</option>
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -1939,7 +1939,7 @@ export default function App() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button type="button" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(232, 103, 58, 0.15)', color: '#E8673A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--accent-soft)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Icon name="team" size={20} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -1974,7 +1974,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Quant Desk</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Arbitrage desk &amp; Kelly risk shield</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "FLIP IT is an add-on now — connect it" : "Arbitrage desk & Kelly risk shield"}</div>
                 </div>
               </button>
             </div>
@@ -2077,7 +2077,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT Quant Desk</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Multi-exchange arbitrage &amp; Kelly risk</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "Now an add-on — connect it in Settings" : "Multi-exchange arbitrage & Kelly risk"}</div>
                 </div>
               </button>
 
@@ -2401,7 +2401,7 @@ export default function App() {
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "lock", label: "The Safe (encrypted secrets)", run: () => setSafeOpen(true) },
-          { icon: "markets", label: "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
+          { icon: "markets", label: status?.flipitBuiltin === false ? "FLIP IT (add-on — how to connect)" : "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
           ...(status?.flipitBuiltin === false ? [] : [{ icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) }]),

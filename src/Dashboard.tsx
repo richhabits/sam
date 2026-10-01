@@ -41,7 +41,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [devicesRefused, setDevicesRefused] = useState(false);
   // The pairing code currently on offer, if the operator has asked for one.
-  const [pairCode, setPairCode] = useState<{ code: string; url: string; pin?: string; pinExpiresInSec?: number } | null>(null);
+  const [pairCode, setPairCode] = useState<{ code: string; url: string; pin?: string; pinExpiresInSec?: number; lanUrl?: string } | null>(null);
   const [pairErr, setPairErr] = useState("");
   // Same reasoning as the phone-link QR in Admin.tsx: this code was only ever shown as text to
   // type in by hand. The mobile app's claim() (mobile/lib/api.ts) posts the CODE straight to
@@ -57,15 +57,17 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
         // The phone's field wants the CODE, not the URL — the Pocket posts it to
         // /api/pair/claim. Showing only the link is what sent people hunting for a number.
         const code = new URL(r.url).searchParams.get("code") || "";
-        setPairCode({ code, url: r.url, pin: r.pin, pinExpiresInSec: r.pinExpiresInSec });
+        setPairCode({ code, url: r.url, pin: r.pin, pinExpiresInSec: r.pinExpiresInSec, lanUrl: r.lan?.url });
         // The QR must carry sam://, not the printed http://<lan-ip>/pair?code=… link — a
         // Camera-app scan of a plain http(s) link just opens Safari (Universal Links need a
         // fixed, DNS-verified domain; a dynamic LAN IP can never have one), while a registered
         // custom scheme (mobile/app.json: "scheme": "sam") is exactly what iOS's Camera app
         // recognises and offers to open straight into the app. Same code+host, different
         // carrier — mobile/lib/pairlink.ts already parses both shapes.
+        // With phone access on (SAM_LAN=1) the server hands back the pinned-TLS link (address +
+        // fingerprint) the app needs; the plain http origin below is only the pre-LAN fallback.
         const origin = new URL(r.url).origin;
-        const samLink = `sam://pair?code=${encodeURIComponent(code)}&host=${encodeURIComponent(origin)}`;
+        const samLink = r.appLink || `sam://pair?code=${encodeURIComponent(code)}&host=${encodeURIComponent(origin)}`;
         QRCode.toDataURL(samLink, { width: 220, margin: 1 }).then(setPairQR).catch(() => setPairQR(""));
       })
       .catch(() => setPairErr("Couldn't reach SAM to mint a code."));
@@ -407,14 +409,19 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                       <div style={{ fontSize: 12, opacity: 0.75 }}>
                         Scan with your phone's camera — or, in the SAM app, enter this address and code:
                       </div>
-                      <div style={{ fontSize: 13, fontFamily: "ui-monospace, Menlo, monospace" }}>{new URL(pairCode.url).origin}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", wordBreak: "break-all" }}>
+                      <div style={{ fontSize: 13, fontFamily: "var(--mono)" }}>{pairCode.lanUrl || new URL(pairCode.url).origin}</div>
+                      {!pairCode.lanUrl && (
+                        <div style={{ fontSize: 12, color: "var(--c-err)" }}>
+                          Phone access is off, so a phone can't reach this Mac yet. Add SAM_LAN=1 to your .env, restart SAM, then tap New code.
+                        </div>
+                      )}
+                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--mono)", wordBreak: "break-all" }}>
                         {pairCode.code}
                       </div>
                       {pairCode.pin && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
                           <div style={{ fontSize: 12, opacity: 0.75 }}>Or enter this 6-digit PIN on your phone:</div>
-                          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: 3 }}>
+                          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "var(--mono)", letterSpacing: 3 }}>
                             {pairCode.pin.slice(0, 3)} {pairCode.pin.slice(3)}
                           </div>
                         </div>
@@ -439,7 +446,7 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                     {/* The other half of the same signpost as Settings → Devices. Two ways in,
                         each stated plainly, so neither is discovered by failing at the other. */}
                     <div className="dash-empty" style={{ marginTop: 6 }}>
-                      For the SAM <b>app</b> on iPhone. To open SAM in your phone's <b>browser</b> instead, use Settings → Devices.
+                      For the SAM <b>app</b> on iPhone. Needs phone access on (SAM_LAN=1 in your .env, then restart SAM). For the older browser route, use Settings → Devices.
                     </div>
                   </>
                 )}

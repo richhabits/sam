@@ -2,14 +2,22 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>S.A.M. — Smart Artificial Mind</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
-<meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. Your machine does the compute, so there's no meter running underneath — no subscription, no credits, no per-minute bill. Runs free on rotating cloud tiers, or 100% offline on Ollama.">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="mask-icon" href="icon.svg" color="#F0824E">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#100E0C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FDF9F4" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-title" content="SAM">
+<meta name="apple-itunes-app" content="app-id=6798908400">
+<meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. Your machine does the compute, so there's no meter running underneath — no subscription, no credits, no per-minute bill. Runs free on rotating cloud tiers, or fully offline with Ollama. Paid models are optional and only used if you add your own key and choose them.">
 <meta property="og:title" content="S.A.M. — a free, private team of AI agents on your machine">
 <meta property="og:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="S.A.M.">
+<meta property="og:image:alt" content="S.A.M. — Smart Artificial Mind">
 <meta property="og:url" content="https://richhabits.github.io/sam/">
 <meta property="og:image" content="https://richhabits.github.io/sam/og.png">
 <meta property="og:image:width" content="2400">
@@ -18,6 +26,7 @@
 <meta name="twitter:title" content="S.A.M. — a free, private team of AI agents on your machine">
 <meta name="twitter:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta name="twitter:image" content="https://richhabits.github.io/sam/og.png">
+<meta name="twitter:image:alt" content="S.A.M. — Smart Artificial Mind">
 <style>html,body{margin:0;padding:0}
     /* Icons — one sprite generated from src/Icon.tsx (scripts/build-icon-sprite.mjs), so the
        site and the app can never drift on what a glyph looks like. Stroke set once, here. */
@@ -300,7 +309,7 @@
     </div>
     <div class="hero">
       <div>
-        <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code. No credits to burn through, no meter running while you think. <b>£0 a month</b> — because there's no bill to send.</p>
+        <p class="lede">A personal AI that <b>lives on your machine</b>, keeps your data yours, and takes <b>real action</b> — the web, your files, email, code. SAM itself has no subscription and no credits to burn through. <b>£0 a month</b> — paid AI models are optional, and only used if you add your own key and choose them.</p>
         <div class="oneliner">
           <div class="ol-tabs">
             <button class="ol-tab on" data-os="unix">macOS / Linux</button>
@@ -318,7 +327,7 @@
           <span class="fr-tag">Mac / Linux</span><span class="prompt">$</span><span class="cmd" id="cmd">git clone …/sam &amp;&amp; cd sam &amp;&amp; ./setup.sh</span>
           <button class="copy" id="copy">Copy</button>
         </div>
-        <div class="sub-note">Free · no sign-up · no telemetry — your data stays yours. <b><svg class="i" aria-hidden="true"><use href="#i-check"/></svg> Just want it? Use the Download buttons above — no terminal needed (that's the way on Windows).</b> The command line is only for Mac/Linux developers who prefer source.</div>
+        <div class="sub-note">Free · no sign-up · no tracking unless you opt in. Your files and memory stay on your machine; what you type goes to the AI model you pick. <b><svg class="i" aria-hidden="true"><use href="#i-check"/></svg> Just want it? Use the Download buttons above — no terminal needed (that's the way on Windows).</b> The command line is only for Mac/Linux developers who prefer source.</div>
         <div class="firstrun">
           <b>First time you open it, your computer will ask you to confirm — that's normal for a new indie app</b> (Apple/Windows may still warn the first time — Gatekeeper / SmartScreen until you've opened it once). Nothing's wrong:
           <span class="fr-os"><b>Windows:</b> if a blue “Windows protected your PC” box appears → <b>More info → Run anyway</b>. If the browser says “keep” → keep it.</span>
@@ -340,7 +349,7 @@
       <div class="stat"><div class="n">{{BRAINS}}</div><div class="l">free AI brains</div></div>
       <div class="stat"><div class="n">{{TOOLS}}</div><div class="l">real tools</div></div>
       <div class="stat"><div class="n"><span class="u">£</span>0</div><div class="l">per month</div></div>
-      <div class="stat"><div class="n">100<span class="u">%</span></div><div class="l">yours — no telemetry</div></div>
+      <div class="stat"><div class="n">Off</div><div class="l">tracking, unless you opt in</div></div>
     </div>
 
     <!-- WHY -->
@@ -356,12 +365,12 @@
         </div>
         <div class="card">
           <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg></span>It can see — and guard</h3>
-          <p>Looks through your camera, learns the people you introduce it to, and <b>Guardian</b> mode flags anyone it doesn't recognise. Motion detection runs locally on your machine; frames are read by the vision brain you choose (a free cloud model, or fully local with Ollama).</p>
+          <p>Looks through your camera, learns the people you introduce it to, and <b>Guardian</b> mode warns you about anyone it doesn't recognise. Motion detection runs locally on your machine; pictures are read by the AI model you choose (a free cloud model, or fully local with Ollama).</p>
           <div class="vs">Them: text only · <b>SAM: eyes on your world</b></div>
         </div>
         <div class="card">
           <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span>Private by design</h3>
-          <p>Your keys, memory, files and vault stay on your laptop — no telemetry, no account, and your data never trains anyone's model. The only thing that leaves is the prompt you choose to send to the brain you pick — and in offline (Ollama) mode, nothing leaves at all.</p>
+          <p>Your keys, memory, files and vault stay on your laptop — no account, no tracking unless you opt in, and SAM never uses your data to train anything. The only thing that leaves is the prompt you choose to send to the brain you pick — and in offline (Ollama) mode, nothing leaves at all.</p>
           <div class="vs">Them: your data trains their model · <b>SAM: your data stays yours</b></div>
         </div>
         <div class="card">
@@ -371,8 +380,8 @@
         </div>
         <div class="card">
           <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-markets"/></svg></span>Free — because there's no meter to run</h3>
-          <p>Runs on free models (NVIDIA, Groq, Cerebras, Mistral…) that auto-rotate, so you never hit a limit or a bill. Every cloud agent on the market prices by the minute or the credit — which is exactly why their #1 complaint is always the same complaint: the bill. SAM structurally can't have that one.</p>
-          <div class="vs">Them: bills the clock · <b>SAM: doesn't have one</b></div>
+          <p>Runs on free models (NVIDIA, Groq, Cerebras, Mistral…) that auto-rotate, so you rarely hit a limit — and nothing is billed unless you add a paid key and choose it. Many cloud agents on the market prices by the minute or the credit — which is exactly why their #1 complaint is always the same complaint: the bill. SAM has no meter of its own.</p>
+          <div class="vs">Them: bills the clock · <b>SAM: no meter of its own</b></div>
         </div>
         <div class="card">
           <h3><span class="g"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg></span>It reaches out first</h3>
@@ -393,12 +402,12 @@
         <span><svg class="i" aria-hidden="true"><use href="#i-team"/></svg> Background swarm</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg> Scheduled tasks</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-studio"/></svg> Free image generation</span>
-        <span><svg class="i" aria-hidden="true"><use href="#i-link"/></svg> MCP — plug in 1000s of tools</span>
+        <span><svg class="i" aria-hidden="true"><use href="#i-link"/></svg> Plug in thousands of outside tools (MCP)</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg> Use it from your phone</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-grid"/></svg> {{SKILLS}} skills</span>
         <span><svg class="i" aria-hidden="true"><use href="#i-voice"/></svg> Your language</span>
-        <span><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg> Self-updating — evolves for free</span>
-        <span><svg class="i" aria-hidden="true"><use href="#i-brain"/></svg> Remembers everything</span>
+        <span><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg> Built-in updater</span>
+        <span><svg class="i" aria-hidden="true"><use href="#i-brain"/></svg> Remembers what you tell it</span>
       </div>
     </section>
 
@@ -429,6 +438,32 @@
       <div class="cats">
         {{DOES}}
       </div>
+    </section>
+
+    <!-- APPLE -->
+    <section>
+      <div class="kicker">On Apple devices</div>
+      <h2>Made for the Apple ecosystem.</h2>
+      <p class="section-lede">SAM already runs on your Mac. A native app for the rest of your Apple devices is on the way — everything below is <b>coming</b> unless it says otherwise, and none of it is in a public release yet.</p>
+      <div class="why">
+        <div class="card">
+          <h3>Native app</h3>
+          <p>A SwiftUI app for iPhone, iPad, Mac and Vision Pro. Coming — it is still in App Review.</p>
+        </div>
+        <div class="card">
+          <h3>Safari extension</h3>
+          <p>Summarise, key points or ask about any page; the page goes to SAM on your own Mac. Coming.</p>
+        </div>
+        <div class="card">
+          <h3>Share extension</h3>
+          <p>Send a link, text or file to SAM from any app's share sheet. Coming.</p>
+        </div>
+        <div class="card">
+          <h3>Siri, Shortcuts &amp; widgets</h3>
+          <p>Ask by voice, run SAM from Shortcuts, and keep it on your Home Screen. Coming.</p>
+        </div>
+      </div>
+      <p class="sub-note">Safari on Mac can already add the in-browser SAM to your Dock (File → Add to Dock), and Safari on iPhone and iPad to your Home Screen.</p>
     </section>
 
     <!-- HOW -->

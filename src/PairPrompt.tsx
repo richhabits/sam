@@ -90,7 +90,7 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
   // between renders and React would throw.
   if (lostThePortRace()) {
     return (
-      <div style={{ padding: 14, borderRadius: 12, background: "rgba(240,130,78,.10)", border: "1px solid rgba(240,130,78,.45)", lineHeight: 1.5 }}>
+      <div style={{ padding: 14, borderRadius: 12, background: "color-mix(in srgb, var(--accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--accent) 45%, transparent)", lineHeight: 1.5 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Another SAM already had this port.</div>
         <div style={{ fontSize: 12.5, opacity: 0.85 }}>
           This window is talking to a SAM server it did not start, so it cannot prove who it is —
@@ -108,8 +108,8 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
   const banner = tone === "banner";
   const box: React.CSSProperties = banner
     ? { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
-        padding: "10px 14px", borderRadius: 12, background: "rgba(240,130,78,.10)", border: "1px solid rgba(240,130,78,.45)" }
-    : { padding: 18, borderRadius: 14, background: "rgba(240,130,78,.08)", border: "1px solid rgba(240,130,78,.4)", textAlign: "center" };
+        padding: "10px 14px", borderRadius: 12, background: "color-mix(in srgb, var(--accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--accent) 45%, transparent)" }
+    : { padding: 18, borderRadius: 14, background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--accent) 40%, transparent)", textAlign: "center" };
 
   if (done) {
     return <div style={box}><span style={{ fontSize: 13, fontWeight: 600 }}>Paired — reloading…</span></div>;
@@ -135,7 +135,7 @@ export default function PairPrompt({ tone = "card", onPaired }: { tone?: Tone; o
         {err && <span style={{ color: "#EF4444" }}> {err}</span>}
       </span>
       <button type="button" onClick={start}
-        style={{ marginTop: banner ? 0 : 12, background: "#F0824E", color: "#1a1207", border: "none",
+        style={{ marginTop: banner ? 0 : 12, background: "var(--accent)", color: "var(--on-accent)", border: "none",
                  borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>
         Pair this browser
       </button>

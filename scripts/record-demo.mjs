@@ -36,7 +36,7 @@ const SCRIPT = process.env.SAM_DEMO_SCRIPT
   ? JSON.parse(process.env.SAM_DEMO_SCRIPT)
   : [
       // "don't act yet" keeps turn 1 a clean acknowledgement (no tool detours), so the memory beat reads clearly.
-      "Just remember this about me for later — don't do anything yet: my brand is Hectic Bullz, I make content for French bulldog owners, and my brand colour is teal.",
+      "Just remember this about me for later — don't do anything yet: my brand is Teahouse, I run a small tea shop for loose-leaf tea lovers, and my brand colour is teal.",
       "perfect — now write me a punchy Instagram bio",
     ];
 const ANSWER_WAIT_MS = Number(process.env.SAM_DEMO_WAIT_MS || 8000);   // chat replies stream in quickly — no team to assemble, so keep the GIF tight

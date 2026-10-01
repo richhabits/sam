@@ -21,28 +21,28 @@ import { isCredentialPath } from "./tools.ts";
 describe("step 1 — reading the secret", () => {
   it("refuses the credential files an unattended read should never touch", () => {
     for (const p of [
-      "/Users/romeo/.ssh/id_rsa",
-      "/Users/romeo/.ssh/id_ed25519",
-      "/Users/romeo/.aws/credentials",
-      "/Users/romeo/project/.env",
-      "/Users/romeo/project/.env.production",
-      "/Users/romeo/.netrc",
-      "/Users/romeo/.npmrc",
-      "/Users/romeo/.kube/config",
-      "/Users/romeo/certs/server.pem",
-      "/Users/romeo/certs/private.key",
-      "/Users/romeo/Library/Keychains/login.keychain-db",
+      "/Users/alex/.ssh/id_rsa",
+      "/Users/alex/.ssh/id_ed25519",
+      "/Users/alex/.aws/credentials",
+      "/Users/alex/project/.env",
+      "/Users/alex/project/.env.production",
+      "/Users/alex/.netrc",
+      "/Users/alex/.npmrc",
+      "/Users/alex/.kube/config",
+      "/Users/alex/certs/server.pem",
+      "/Users/alex/certs/private.key",
+      "/Users/alex/Library/Keychains/login.keychain-db",
     ]) expect(isCredentialPath(p), p).toBe(true);
   });
 
   it("leaves ordinary files alone — this must not become a tool that cannot read", () => {
     for (const p of [
-      "/Users/romeo/notes.md",
-      "/Users/romeo/sam/server/index.ts",
-      "/Users/romeo/Documents/report.pdf",
-      "/Users/romeo/.zshrc",              // a dotfile, but not a credential store
-      "/Users/romeo/env-notes.txt",       // contains "env", is not .env
-      "/Users/romeo/keyboard-layout.json",// contains "key", is not a .key
+      "/Users/alex/notes.md",
+      "/Users/alex/sam/server/index.ts",
+      "/Users/alex/Documents/report.pdf",
+      "/Users/alex/.zshrc",              // a dotfile, but not a credential store
+      "/Users/alex/env-notes.txt",       // contains "env", is not .env
+      "/Users/alex/keyboard-layout.json",// contains "key", is not a .key
     ]) expect(isCredentialPath(p), p).toBe(false);
   });
 });

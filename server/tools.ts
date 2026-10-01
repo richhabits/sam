@@ -1661,7 +1661,7 @@ export async function samMasterDashboardTool(): Promise<string> {
     `· Overall System Health: [${d.systemHealth.status}] (${d.systemHealth.activeToolsCount} tools online)`,
     `· Multi-Tier Cache: L1=${d.cacheStats.l1Entries}, L2=${d.cacheStats.l2Entries} (${d.cacheStats.totalHitRatioPct}% hit ratio)`,
     `· Cost & Token Savings: $${d.costSavings.dollarsSaved.toFixed(2)} saved (${d.costSavings.freeTierPct}% free-lane efficiency)`,
-    `· FlipIt 100x Quant Desk: £${d.flipitQuant.equityGbp.toFixed(2)} on Rung ${d.flipitQuant.currentRung} (Safe Sizing: £${d.flipitQuant.safePositionGbp.toFixed(2)})`,
+    ...(d.flipitQuant ? [`· FlipIt 100x Quant Desk: £${d.flipitQuant.equityGbp.toFixed(2)} on Rung ${d.flipitQuant.currentRung} (Safe Sizing: £${d.flipitQuant.safePositionGbp.toFixed(2)})`] : []),
     `· Higgsfield AI Studio: ${d.studioHiggsfield.cameraRigsCount} 3D Camera Rigs, ${d.studioHiggsfield.lensProfilesCount} Lenses, SoulID Active`,
     `· Universal Mobile Bridge: ${d.mobileBridge.pairedDevicesCount} paired devices (APNs: ${d.mobileBridge.apnsOnline ? "ON" : "OFF"}, FCM: ${d.mobileBridge.fcmOnline ? "ON" : "OFF"})`,
     `\nDiagnostics: ${d.systemHealth.doctorSummary}`,
@@ -3393,7 +3393,7 @@ export async function benchmarkBrains(
   const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
   const prompts = (opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT]).slice(0, MAX_PROMPTS);
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
-  const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
+  const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("free", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
   const result = await runArena(competitors, prompts, answer, judge);
   // Only re-crown on real evidence. The arena used to persist leaderboard[0] by raw Elo, so a
   // gap well inside the noise could flip the champion night to night and churn routing for

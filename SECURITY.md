@@ -4,7 +4,7 @@ SAM is built local-first and safe by default. Here's the security model and how 
 
 ## Security model
 
-- **Local-first.** Your API keys, memory and data live only on your machine (`.env` + `vault/`, both gitignored). SAM has no telemetry and never phones home — the only thing that leaves your machine is the prompt (or photo) you send to the AI brain you pick, and nothing at all in offline/Ollama mode.
+- **Local-first.** Your API keys, memory and data live only on your machine (`.env` + `vault/`, both gitignored). SAM sends no usage data unless you opt in to anonymous counts (off by default, see docs/PRIVACY.md) — otherwise the only thing that leaves your machine is the prompt (or photo) you send to the AI brain you pick, and nothing at all in offline/Ollama mode.
 - **Three permission tiers (v1.2).** Every tool is classified `safe` / `confirm` / `dangerous` (exposed on `/api/tools`):
   - **safe** — read-only / harmless (search, read, calculate). Runs without asking.
   - **confirm** — recoverable but notable (write a file, git *commit*, play music). Asks by default; Autopilot, a standing "always allow", or Elon Mode may skip it.
@@ -49,7 +49,7 @@ Phone/remote access uses **scoped, per-device tokens** (v1.5): `read-only` (view
 
 ## Reporting a vulnerability
 
-Found a security issue? Please **do not open a public issue.** Report it privately via GitHub Security Advisories (Security tab → "Report a vulnerability") so it can be fixed before disclosure.
+Found a security issue? Please **do not open a public issue.** Report it privately via GitHub Security Advisories (Security tab → "Report a vulnerability") so it can be fixed before disclosure. If you cannot use GitHub, email smartartificialmind@gmail.com instead.
 
 Include: what you found, steps to reproduce, and the potential impact. You'll get a response as quickly as possible.
 

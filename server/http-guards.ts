@@ -132,6 +132,15 @@ export function isTrustedLocal(req: { socket: { remoteAddress?: string | null };
   return checkPasskey(req) || !!verifyPairToken(req.headers?.["x-sam-pair"]);
 }
 
+/**
+ * Reads of the operator's OWN content (identity, accounts, config): the app/passkey, a paired session,
+ * or a scoped remote token — never an anonymous local process. Same rule as index.ts's
+ * canReadOwnContent, shared here so extracted route files can apply it without importing index.ts.
+ */
+export function canReadOwnContentReq(req: Parameters<typeof isTrustedLocal>[0] & CookieReq & { remoteScope?: string }): boolean {
+  return isTrustedLocal(req) || isPairedSession(req) || !!req.remoteScope;
+}
+
 type CookieReq = { headers: Record<string, string | string[] | undefined> };
 
 /**

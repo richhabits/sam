@@ -12,7 +12,7 @@ describe("S.A.M. P2P LAN Mesh & Vector State Gossip Engine", () => {
   it("registers peer nodes and lists active peers", () => {
     const nodeA = registerPeerNode({
       nodeId: "mac-mini-m4",
-      deviceName: "Romeo HQ Mac Mini",
+      deviceName: "Studio Mac Mini",
       platform: "darwin",
       address: "192.168.1.105",
       port: 3000,
@@ -20,7 +20,7 @@ describe("S.A.M. P2P LAN Mesh & Vector State Gossip Engine", () => {
     });
 
     expect(nodeA.status).toBe("ONLINE");
-    expect(nodeA.deviceName).toBe("Romeo HQ Mac Mini");
+    expect(nodeA.deviceName).toBe("Studio Mac Mini");
 
     const peers = listActivePeers();
     expect(peers.some((p) => p.nodeId === "mac-mini-m4")).toBe(true);

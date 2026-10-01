@@ -10,6 +10,7 @@ import { getMultiTierCacheStats } from "./cache.ts";
 import { getSavingsSummary } from "./cost-optimizer.ts";
 import { runDoctor } from "./doctor.ts";
 import { desk, project100xLadder } from "./flipit.ts";
+import { flipitBuiltinEnabled } from "./flipit-builtin.ts";
 import { getMobileBridgeStatus } from "./mobile-bridge.ts";
 import { HIGGSFIELD_CAMERA_RIGS, HIGGSFIELD_LENSES } from "./studio-higgsfield.ts";
 
@@ -31,7 +32,9 @@ export interface MasterDashboard {
     dollarsSaved: number;
     estimatedGbpSaved: number;
   };
-  flipitQuant: {
+  // Absent when the built-in FLIP IT desk is off (flipitBuiltinEnabled) — it is an add-on now, so a
+  // default install must not advertise a trading desk it does not have.
+  flipitQuant?: {
     equityGbp: number;
     currentRung: number;
     inBand: boolean;
@@ -67,8 +70,9 @@ export function getMasterDashboard(options: { activeToolsCount?: number } = {}):
 
   const cache = getMultiTierCacheStats();
   const savings = getSavingsSummary();
-  const d = desk();
-  const ladder = project100xLadder(d.now?.equity ?? 5.0);
+  const flipit = flipitBuiltinEnabled();
+  const d = flipit ? desk() : null;
+  const ladder = d ? project100xLadder(d.now?.equity ?? 5.0) : null;
   const mobile = getMobileBridgeStatus();
 
   const totalHits = cache.l1.hits + (cache.semantic?.hits || 0);
@@ -93,12 +97,14 @@ export function getMasterDashboard(options: { activeToolsCount?: number } = {}):
       dollarsSaved: Number(savings.ledger.dollarsSavedTotal.toFixed(2)),
       estimatedGbpSaved: savings.estimatedGbpSaved,
     },
-    flipitQuant: {
-      equityGbp: Number((d.now?.equity ?? 5.0).toFixed(2)),
-      currentRung: d.now?.rung ?? 0,
-      inBand: d.now?.inBand ?? true,
-      safePositionGbp: Number(((d.now?.equity ?? 5.0) * ladder.optimalKellyFraction).toFixed(2)),
-    },
+    ...(d && ladder ? {
+      flipitQuant: {
+        equityGbp: Number((d.now?.equity ?? 5.0).toFixed(2)),
+        currentRung: d.now?.rung ?? 0,
+        inBand: d.now?.inBand ?? true,
+        safePositionGbp: Number(((d.now?.equity ?? 5.0) * ladder.optimalKellyFraction).toFixed(2)),
+      },
+    } : {}),
     studioHiggsfield: {
       cameraRigsCount: HIGGSFIELD_CAMERA_RIGS.length,
       lensProfilesCount: HIGGSFIELD_LENSES.length,

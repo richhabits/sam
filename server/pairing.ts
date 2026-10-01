@@ -275,6 +275,8 @@ export function revokeSessionById(id: string): boolean {
 const NATIVE_CLIENTS: Record<string, string> = {
   "ios-iphone": "iPhone · SAM app",
   "ios-ipad": "iPad · SAM app",
+  macos: "Mac · SAM app",
+  visionos: "Vision Pro · SAM app",
   android: "Android · SAM app",
 };
 

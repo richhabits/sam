@@ -12,6 +12,45 @@ ratios. **Nothing in this document was verified by looking at a rendered screen.
 
 ---
 
+## A. Apple tokens — same rules as the native app
+
+The web HUD follows the same design language as the native Mac/iPhone app
+(`apple/App/Views/Theme.swift` on `feature/native-apple`): system font, Liquid Glass materials,
+continuous rounded corners, an adaptive terracotta accent, Light/Dark adaptive backgrounds.
+**`:root` and `:root[data-theme="dark"]` in `src/styles.css` are the single source of truth** —
+components consume `var(--…)`; do not hard-code accent hex, fonts or radii in CSS or inline styles.
+
+| Token | Light | Dark | Notes |
+|---|---|---|---|
+| `--accent` / `--accent-text` | `#A83F15` | `#F0824E` | Light is 6.2:1 on white, 5.7:1 on `--bg` |
+| `--accent-deep` (`--accent-2`) | `#8C3310` | `#D9531F` | 8.1:1 on white in light |
+| `--on-accent` | `#FFFFFF` (6.2:1) | `#0C0A09` (7.5:1) | ink on accent fills |
+| `--bg` / `--surface` / `--paper` | `#F5F5F7` / `#FFFFFF` / `#FFFFFF` | `#000` / `#0A0A0A` / `#121212` | |
+| `--text` | `#1D1D1F` (16.8:1) | `#F5F5F7` | |
+| `--muted` | `#6E6E73` (5.07:1 white, 4.66:1 `--bg`) | `#98989D` (>=5.9:1) | was `#86868B` (3.6:1) |
+| `--muted-on-dark` | `#98989D` | same | always-dark panels (Studio) |
+| `--sans` / `--display` | `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif` | | no webfonts |
+| `--mono` | `ui-monospace, "SF Mono", Menlo, monospace` | | |
+| `--radius-card` / `--radius-control` / `--radius-pill` | 20px / 12px / 999px | | cards, drawers, modals / inputs / buttons + chips |
+| `--glass-filter` | `saturate(180%) blur(20px)` | | with `-webkit-` prefix for Safari |
+| `--glass-bg` / `--glass-bg-thick` | `rgba(255,255,255,.72/.88)` | `rgba(28,28,30,.72/.88)` | `.glass` utility class |
+| `--ease` | `cubic-bezier(.2,.8,.2,1)` | | all transitions |
+
+- **Materials:** floating surfaces (`.bar .drawer .ctx .popover .composer-inner .center-header .glass`)
+  use `--glass-filter`. Under `@supports not (backdrop-filter: blur(1px))` and
+  `@media (prefers-reduced-transparency: reduce)` the tokens collapse to solid `--surface`.
+- **Focus:** `:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }`, keyboard only.
+- **Motion:** the global `prefers-reduced-motion` rule is kept; new transitions use `--ease`.
+- **Theme:** `data-theme` is set by `App.tsx` from the manual toggle (`sam.dark` in localStorage).
+  With no stored choice the first run follows `prefers-color-scheme`; before JS runs, a
+  `prefers-color-scheme: dark` block covers `:root:not([data-theme])`.
+- **Named skins** (`jarvis`, `ember`, `linen`, …) are deliberate overrides and keep their own accents;
+  `linen`'s `--muted` was raised to `#6F6657` (4.94:1 on its `#F4EFE6` ground, was 3.36:1).
+- **Scope:** token-level only. FlipIt and Studio keep their designs; they only had colour/font
+  literals swapped for vars.
+
+---
+
 ## 0. How the theme system actually works
 
 This is the single most important thing to understand before touching the file, and it is not

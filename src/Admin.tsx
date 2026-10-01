@@ -255,8 +255,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           const has = (id: string) => count(id) > 0;
           const ABILITIES: { icon: IconName; label: string; on: boolean; via: string; up: string }[] = [
             { icon: "chat", label: "Chat", on: true, via: activeKeys ? `${activeKeys} free brains, rotating` : "free no-key brain + Ollama", up: activeKeys ? "" : "add Groq/Cerebras for speed" },
-            { icon: "studio", label: "Images", on: true, via: has("together") || has("siliconflow") ? "unlimited + free-credit lanes" : "Pollinations — unlimited, no key", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
-            { icon: "voice", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
+            { icon: "studio", label: "Images", on: true, via: has("together") || has("siliconflow") ? "free-credit lanes (limits apply)" : "Pollinations — free, no key (rate-limited)", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
+            { icon: "voice", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs (paid)" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for a paid premium voice" },
             { icon: "eye", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
             { icon: "music", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
             { icon: "video", label: "Video", on: has("fal") || has("novita") || has("siliconflow"), via: has("fal") ? "HappyHorse #1 (fal)" : has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("fal") ? "" : "add fal (HappyHorse!) / Novita / SiliconFlow" },
@@ -462,7 +462,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
             <span className="admin-name" style={{ fontSize: 24, fontWeight: 700 }}>Phone Pairing</span>
           </div>
           <div className="admin-note" style={{ marginBottom: 6, fontSize: 13, color: "var(--muted)" }}>
-            {"Open SAM in your phone's browser (remote access). To pair the native app instead, go to "}
+            {"Open SAM in your phone's browser (the older remote access, plain http on your Wi-Fi). For the SAM app, use secure phone access instead: set SAM_LAN=1 in your .env, restart SAM, then go to "}
             <b>Dashboard → Devices → Pair a phone</b>.
           </div>
           {phone.remoteOn && phoneQR ? (
@@ -478,7 +478,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               </div>
               
               <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
-                <button type="button" style={{ background: "#E8673A", color: "white", padding: "10px 24px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(232, 103, 58, 0.3)" }} onClick={() => onClose()}>
+                <button type="button" style={{ background: "var(--accent)", color: "var(--on-accent)", padding: "10px 24px", borderRadius: 999, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "var(--shadow-accent)" }} onClick={() => onClose()}>
                   Done
                 </button>
               </div>
@@ -506,8 +506,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #232730", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><Icon name="bell" size={16} /> Device Alerts</div>
-              <div style={{ fontSize: 13, color: "#666", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>
-              {pushMsg && <div style={{ fontSize: 13, color: "#F26101", marginTop: 4, fontWeight: 500 }}>{pushMsg}</div>}
+              <div style={{ fontSize: 13, color: "var(--muted)", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>
+              {pushMsg && <div style={{ fontSize: 13, color: "var(--accent-text)", marginTop: 4, fontWeight: 500 }}>{pushMsg}</div>}
             </div>
             <div>
               {pushOn ? (

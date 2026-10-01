@@ -8,6 +8,7 @@ import {cancelYardJob, deletePlaybook, enqueueYardJob, getDnsGuide,
   getYardProject, getYardProjectFile, getYardProjects,importPlaybook, raiseYardJobBudget, retryYardJob, runPlaybook,savePlaybook, yardFileUrl,
 } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
+import { useEscape } from "./lib/useOverlay";
 import PairPrompt from "./PairPrompt";
 
 // THE FACE, Tasks half — every yard job as a durable, revisitable thread, in the same
@@ -322,7 +323,7 @@ function TaskDetail({ job, log, onKill, onRetry, onRaiseBudget }: { job: Job; lo
         </div>
       )}
       {job.steps.length > 0 && <StepChecklist steps={job.steps} />}
-      <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
+      <div style={{ ...card, padding: 10, fontFamily: "var(--mono)", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
       </div>
       {job.project && <ProjectPublish slug={job.project} />}
@@ -389,7 +390,7 @@ function TaskFiles({ slug }: { slug: string }) {
               </a>
               {isDesktop && (
                 <button type="button" style={{ ...btn, padding: "3px 8px", fontSize: 11 }}
-                  onClick={() => (window as any).samDesktop.revealInFinder(`${slug}/${f.path}`)}>
+                  onClick={() => (window as any).samDesktop.revealInFinder(`${slug}/${f.path}`)} aria-label={`Show ${f.path} in Finder`} title="Show in Finder">
                   <Icon name="folder" size={11} />
                 </button>
               )}
@@ -403,7 +404,7 @@ function TaskFiles({ slug }: { slug: string }) {
                   // own model-written output, not arbitrary third-party HTML.
                   <div style={{ fontSize: 12.5, color: "var(--text)" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(text || "") }} />
                 ) : (
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", color: "var(--text)" }}>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", color: "var(--text)" }}>
                     {text === null ? "Loading…" : text}
                   </div>
                 )}
@@ -588,6 +589,7 @@ function FirstRunCards({ onNewTask, onPlaybooks }: { onNewTask: () => void; onPl
 }
 
 function NewTaskSheet({ onClose, onCreated, busy, setBusy, setErr }: { onClose: () => void; onCreated: () => void; busy: boolean; setBusy: (b: boolean) => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [kind, setKind] = useState<"project.build" | "project.edit">("project.build");
   const [name, setName] = useState("");
   const [spec, setSpec] = useState("");
@@ -662,6 +664,7 @@ type Playbook = {
 const inputStyle: React.CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text)", fontSize: 13 };
 
 function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan: () => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [playbooks, setPlaybooks] = useState<Playbook[] | null>(null);
   const [refused, setRefused] = useState(false);
   const [mode, setMode] = useState<"list" | "edit" | "run">("list");
@@ -742,8 +745,8 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pb.name}</div>
                     <div style={{ fontSize: 11, color: "var(--muted)" }}>v{pb.version}{pb.params.length ? ` · ${pb.params.join(", ")}` : ""}</div>
                   </div>
-                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => startEdit(pb)}><Icon name="pencil" size={12} /></button>
-                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => remove(pb)}><Icon name="trash" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => startEdit(pb)} aria-label="Edit playbook" title="Edit playbook"><Icon name="pencil" size={12} /></button>
+                  <button type="button" style={{ ...btn, padding: "4px 9px" }} onClick={() => remove(pb)} aria-label="Delete playbook" title="Delete playbook"><Icon name="trash" size={12} /></button>
                   <button type="button" style={{ ...btn, padding: "4px 9px", background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }} onClick={() => startRun(pb)}>Run</button>
                 </div>
               ))}
@@ -756,7 +759,7 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           <textarea placeholder={"The prompt. Use {{name}} for anything you want filled in on run — e.g. {{project}}, {{repo}}, {{branch}}, {{target}}."}
             value={template} onChange={(e) => setTemplate(e.target.value)} rows={10}
-            style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 12.5, resize: "vertical" }} />
+            style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 12.5, resize: "vertical" }} />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button type="button" style={btn} onClick={() => setMode("list")}>Cancel</button>
             <button type="button" disabled={busy || !name.trim() || !template.trim()} style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff", opacity: busy ? 0.6 : 1 }} onClick={save}>
@@ -788,6 +791,7 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
 // The published registry — "nothing public that isn't on this list." The ops view over
 // everything The Press has ever put on the internet, and the one place to take it back down.
 function PublishedSheet({ onClose, setErr }: { onClose: () => void; setErr: (s: string) => void }) {
+  useEscape(onClose);
   const [sites, setSites] = useState<{ slug: string; name: string; url: string; publishedAt: number; qr: string | null }[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 

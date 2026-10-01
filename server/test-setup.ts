@@ -38,3 +38,11 @@ process.on("exit", () => {
     try { rmSync(dir, { recursive: true, force: true }); } catch { /* already gone — fine */ }
   }
 });
+
+// MONEY GUARD — `npm test` must never be able to spend the developer's money. If a paid key is
+// exported in the shell running the tests, a test that forgets to mock fetch would bill it. So
+// every key that unlocks a PAID lane (premium models, paid voice/image/video) is dropped here,
+// before any test file is imported. Tests that need one set it themselves, to a fake value.
+for (const name of Object.keys(process.env)) {
+  if (/^(ANTHROPIC|OPENAI|MOONSHOT|ELEVENLABS|MUAPI|FAL|LEONARDO)_/.test(name)) delete process.env[name];
+}

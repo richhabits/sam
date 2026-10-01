@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getAsk, raiseAsk } from "./ask.ts";
+import { passkey } from "./handshake.ts";
 import { registerCompanionRoutes } from "./routes.companion.ts";
 
 describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
@@ -9,7 +10,10 @@ describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
   let baseUrl: string;
   const mockResolver = vi.fn();
 
+  const prevHandshake = process.env.SAM_REQUIRE_CONTROL_TOKEN;
   beforeAll(async () => {
+    // The pre-existing cases exercise resolution logic, not the guard; the guard has its own case below.
+    process.env.SAM_REQUIRE_CONTROL_TOKEN = "0";
     const app = express();
     app.use(express.json());
     registerCompanionRoutes(app, { resolvePending: mockResolver });
@@ -27,6 +31,8 @@ describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
   });
 
   afterAll(async () => {
+    if (prevHandshake === undefined) delete process.env.SAM_REQUIRE_CONTROL_TOKEN;
+    else process.env.SAM_REQUIRE_CONTROL_TOKEN = prevHandshake;
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
@@ -183,5 +189,23 @@ describe("S.A.M. Universal Companion & P2P Mesh Routes", () => {
     expect(body.success).toBe(true);
     expect(body.session.sessionId).toBe("test-voice-status");
     expect(body.session.state).toBe("IDLE");
+  });
+
+  it("approval needs the passkey or a paired session once the Handshake is enforced (same bar as /api/confirm)", async () => {
+    process.env.SAM_REQUIRE_CONTROL_TOKEN = "1";
+    try {
+      mockResolver.mockResolvedValue({ kind: "final", text: "ok" });
+      const post = (headers: Record<string, string>) =>
+        fetch(`${baseUrl}/api/companion/action/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ actionId: "pending-guard", actor: "watch" }),
+        });
+      expect((await post({})).status).toBe(401);
+      expect((await post({ "x-sam-token": "wrong" })).status).toBe(401);
+      expect((await post({ "x-sam-token": passkey() })).status).toBe(200);
+    } finally {
+      process.env.SAM_REQUIRE_CONTROL_TOKEN = "0";
+    }
   });
 });

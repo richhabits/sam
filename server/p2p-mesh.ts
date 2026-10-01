@@ -43,7 +43,7 @@ const PROCESSED_MESSAGE_IDS = new Set<string>();
 const MAX_SEEN_CACHE = 1000;
 const PEER_STALE_TTL_MS = 60_000;
 
-const localNodeId = `sam-node-${createHash("sha256").update(process.env.HOSTNAME || "localhost-romeo").digest("hex").slice(0, 12)}`;
+const localNodeId = `sam-node-${createHash("sha256").update(process.env.HOSTNAME || "localhost-sam").digest("hex").slice(0, 12)}`;
 
 /**
  * Registers or heartbeats a peer node in the local mesh network.
