@@ -255,8 +255,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           const has = (id: string) => count(id) > 0;
           const ABILITIES: { icon: IconName; label: string; on: boolean; via: string; up: string }[] = [
             { icon: "chat", label: "Chat", on: true, via: activeKeys ? `${activeKeys} free brains, rotating` : "free no-key brain + Ollama", up: activeKeys ? "" : "add Groq/Cerebras for speed" },
-            { icon: "studio", label: "Images", on: true, via: has("together") || has("siliconflow") ? "unlimited + free-credit lanes" : "Pollinations — unlimited, no key", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
-            { icon: "voice", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs premium" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for premium voice" },
+            { icon: "studio", label: "Images", on: true, via: has("together") || has("siliconflow") ? "free-credit lanes (limits apply)" : "Pollinations — free, no key (rate-limited)", up: has("together") || has("siliconflow") ? "" : "add Together for FLUX quality" },
+            { icon: "voice", label: "Voice", on: true, via: cfg?.elevenlabs ? "ElevenLabs (paid)" : has("groq") ? "Groq TTS (free)" : "free voice, no key", up: cfg?.elevenlabs ? "" : "add ElevenLabs for a paid premium voice" },
             { icon: "eye", label: "Photo reading", on: has("gemini"), via: has("gemini") ? "Gemini (free)" : "", up: has("gemini") ? "" : "add a free Gemini key (or run Ollama + llava)" },
             { icon: "music", label: "Transcription", on: has("groq"), via: has("groq") ? "Groq Whisper (free)" : "", up: has("groq") ? "" : "add a free Groq key" },
             { icon: "video", label: "Video", on: has("fal") || has("novita") || has("siliconflow"), via: has("fal") ? "HappyHorse #1 (fal)" : has("novita") ? "Novita credits" : has("siliconflow") ? "SiliconFlow credits" : "", up: has("fal") ? "" : "add fal (HappyHorse!) / Novita / SiliconFlow" },

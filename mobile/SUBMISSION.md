@@ -79,16 +79,16 @@ Clock is live, not 9:41. Apple does not require a fake clock.
 
 **Promotional text (170):**
 ```
-Direct AI chat in your pocket, powered by 30+ cloud brains — with seamless local pairing to your Mac/PC for computer control and background tasks. No sign-in required.
+Direct AI chat in your pocket, powered by free AI lanes and 30+ providers — with seamless local pairing to your Mac/PC for computer control and background tasks. No sign-in required.
 ```
 
 **Description:**
 ```
-SAM is an elite, private AI assistant in your hand.
+SAM is a private AI assistant in your hand.
 
 Use SAM standalone on 5G or Wi-Fi with direct cloud intelligence, or pair with your Mac/PC to unlock local files, automation, and background yard tasks.
 
-• 100% Standalone AI Engine: Instant chat with 30+ supported providers (Groq, Cerebras, Mistral, Gemini, Anthropic, DeepSeek, and more)
+• Works on its own: chat straight away using free public AI lanes, or add your own key for any of 30+ providers (Groq, Cerebras, Mistral, Gemini, DeepSeek, and more). Anthropic and OpenAI are paid services and are used only with your own key
 • Zero-config out-of-the-box experience — no account and no sign-in required
 • 1-Tap Desktop Link: Monitor background builds, automated playbooks, and yard workers on your own computer
 • Native Haptics: Full tactile feedback with Apple Taptic Engine
