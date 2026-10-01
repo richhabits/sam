@@ -2,14 +2,22 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>S.A.M. — Smart Artificial Mind</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="mask-icon" href="icon.svg" color="#F0824E">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#100E0C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FDF9F4" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-title" content="SAM">
+<meta name="apple-itunes-app" content="app-id=6798908400">
 <meta name="description" content="A free, private team of AI agents that lives on your machine and actually does the work. Your machine does the compute, so there's no meter running underneath — no subscription, no credits, no per-minute bill. Runs free on rotating cloud tiers, or 100% offline on Ollama.">
 <meta property="og:title" content="S.A.M. — a free, private team of AI agents on your machine">
 <meta property="og:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="S.A.M.">
+<meta property="og:image:alt" content="S.A.M. — Smart Artificial Mind">
 <meta property="og:url" content="https://richhabits.github.io/sam/">
 <meta property="og:image" content="https://richhabits.github.io/sam/og.png">
 <meta property="og:image:width" content="2400">
@@ -18,6 +26,7 @@
 <meta name="twitter:title" content="S.A.M. — a free, private team of AI agents on your machine">
 <meta name="twitter:description" content="It doesn't just answer, it handles it. No meter running underneath — free, local, yours.">
 <meta name="twitter:image" content="https://richhabits.github.io/sam/og.png">
+<meta name="twitter:image:alt" content="S.A.M. — Smart Artificial Mind">
 <style>html,body{margin:0;padding:0}
     /* Icons — one sprite generated from src/Icon.tsx (scripts/build-icon-sprite.mjs), so the
        site and the app can never drift on what a glyph looks like. Stroke set once, here. */
@@ -429,6 +438,32 @@
       <div class="cats">
         {{DOES}}
       </div>
+    </section>
+
+    <!-- APPLE -->
+    <section>
+      <div class="kicker">On Apple devices</div>
+      <h2>Made for the Apple ecosystem.</h2>
+      <p class="section-lede">SAM already runs on your Mac. A native app for the rest of your Apple devices is on the way — everything below is <b>coming</b> unless it says otherwise, and none of it is in a public release yet.</p>
+      <div class="why">
+        <div class="card">
+          <h3>Native app</h3>
+          <p>A SwiftUI app for iPhone, iPad, Mac and Vision Pro. Coming — it is still in App Review.</p>
+        </div>
+        <div class="card">
+          <h3>Safari extension</h3>
+          <p>Summarise, key points or ask about any page; the page goes to SAM on your own Mac. Coming.</p>
+        </div>
+        <div class="card">
+          <h3>Share extension</h3>
+          <p>Send a link, text or file to SAM from any app's share sheet. Coming.</p>
+        </div>
+        <div class="card">
+          <h3>Siri, Shortcuts &amp; widgets</h3>
+          <p>Ask by voice, run SAM from Shortcuts, and keep it on your Home Screen. Coming.</p>
+        </div>
+      </div>
+      <p class="sub-note">Safari on Mac can already add the in-browser SAM to your Dock (File → Add to Dock), and Safari on iPhone and iPad to your Home Screen.</p>
     </section>
 
     <!-- HOW -->
