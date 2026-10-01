@@ -15,6 +15,10 @@ import { report as brainHealthReport, _reset as resetBrainHealth } from "./speed
 // ADMIN — manage API keys & config from inside the app. Every write here is loopback-gated:
 // these endpoints write credentials to .env, so a remote device (a phone on the shared token)
 // must never reach them. Extracted from index.ts; paths and registration order unchanged.
+// Input bounds for anything written to .env / the Safe from a request body.
+const MAX_KEYS_PER_POOL = 64;
+const MAX_SECRET_LEN = 4096;
+
 export function registerAdminRoutes(app: Express) {
   // ── ADMIN · manage API keys & config from inside the app ─────
   // Providers → their .env variable. Rolling pools accept many keys (comma list).
@@ -116,10 +120,13 @@ export function registerAdminRoutes(app: Express) {
     // CREDENTIAL change: it decides which accounts SAM spends and who it talks to. Every other
     // privileged write here is already "this computer only"; these two were the exception.
     if (!isLoopback(req)) return res.status(403).json({ error: "API keys can only be changed on this computer, not remotely." });
-    const { provider, keys } = req.body as { provider: string; keys: string | string[] };
+    const { provider, keys } = (req.body ?? {}) as { provider: string; keys: string | string[] };
     const envVar = PROVIDER_ENV[provider];
     if (!envVar) return res.status(400).json({ error: "unknown provider" });
     const list = (Array.isArray(keys) ? keys : String(keys || "").split(/[\n,]/)).map((k) => k.trim()).filter(Boolean);
+    // Bounds: this lands in .env / the Safe, and the body limit is 30mb. A pool of dozens of keys is
+    // generous; a real key is well under 1 KB.
+    if (list.length > MAX_KEYS_PER_POOL || list.some((k) => k.length > MAX_SECRET_LEN)) return res.status(400).json({ error: "too many keys, or a key is too long" });
     const joined = list.join(",");
     // When the Safe is set up, it is the source of truth for provider keys (migration strips them
     // from .env). Writing only to .env left Safe holding the old value — Settings looked saved
@@ -146,7 +153,7 @@ export function registerAdminRoutes(app: Express) {
     // Notion/Linear keys and Cloudflare token — so a remote token-holder could REDIRECT SAM's
     // outbound integrations at their own endpoints. That is a local-only decision.
     if (!isLoopback(req)) return res.status(403).json({ error: "Integration keys can only be changed on this computer, not remotely." });
-    const { key, value } = req.body as { key: string; value: string };
+    const { key, value } = (req.body ?? {}) as { key: string; value: string };
     const envVar = CONFIG_ENV[key];
     if (!envVar) return res.status(400).json({ error: "unknown config key" });
     // Same Safe-aware write as /api/admin/keys, for the same reason: a handful of CONFIG_ENV vars
@@ -154,6 +161,7 @@ export function registerAdminRoutes(app: Express) {
     // set (safe.secretNames()). Writing those to plaintext .env unconditionally would re-expose a
     // sealed secret and leave the Safe holding a stale value — the exact bug fixed above for keys.
     const joined = String(value || "");
+    if (joined.length > MAX_SECRET_LEN) return res.status(400).json({ error: "value too long" });
     if (safeIsSetup() && safeSecretNames().includes(envVar)) {
       if (!safeIsUnlocked()) {
         return res.status(409).json({ error: "Unlock the Safe in Settings before changing this — it's sealed and a locked Safe cannot store a new value." });
