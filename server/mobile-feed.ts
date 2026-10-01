@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { desk, project100xLadder } from "./flipit.ts";
+import { flipitBuiltinEnabled } from "./flipit-builtin.ts";
 import { getMasterDashboard } from "./orchestrator.ts";
 import { generateStoryboardDirector, HIGGSFIELD_CAMERA_RIGS } from "./studio-higgsfield.ts";
 
@@ -33,18 +34,20 @@ export async function generateMobileFeed(options: { activeToolsCount?: number } 
   // TOOLS here would recreate the exact orchestrator ⇄ tools import cycle getMasterDashboard's
   // own activeToolsCount parameter exists to avoid.
   const dash = getMasterDashboard({ activeToolsCount: options.activeToolsCount });
-  const d = desk();
-  
+  // FLIP IT is an add-on: with the built-in desk off there is no market card to show (nor a desk to read).
+  const flipit = flipitBuiltinEnabled();
+  const d = flipit ? desk() : null;
+
   const studioStoryboard = await generateStoryboardDirector({
     concept: "High-octane cinematic intro to the SAM AI motion studio",
     shotCount: 2,
   }).catch(() => null);
-  const eq = d.now?.equity ?? 5.0;
+  const eq = d?.now?.equity ?? 5.0;
   const ladder = project100xLadder(eq);
 
   const cards: MobileFeedCard[] = [
     // 1. FlipIt Market Card
-    {
+    ...(d && dash.flipitQuant ? [{
       id: `market_${Date.now()}`,
       type: "MARKET",
       title: `FlipIt Desk · £${eq.toFixed(2)}`,
@@ -57,7 +60,7 @@ export async function generateMobileFeed(options: { activeToolsCount?: number } 
         rung: d.now?.rung ?? 0,
         nextTarget: ladder.rungs[0]?.targetEquity ?? (eq * 1.15),
       },
-    },
+    } satisfies MobileFeedCard] : []),
     // 2. Studio 3D Motion Card
     {
       id: `studio_${Date.now()}`,

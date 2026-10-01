@@ -9,8 +9,10 @@ let dir: string;
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "sam-orchestrator-test-"));
   process.env.VAULT_DIR = dir;
+  process.env.SAM_FLIPIT_BUILTIN = "1";   // these cases assert the FLIP IT desk's numbers; the OFF case is in flipit-addon-gating.test.ts
 });
 afterEach(() => {
+  delete process.env.SAM_FLIPIT_BUILTIN;
   delete process.env.VAULT_DIR;
   rmSync(dir, { recursive: true, force: true });
 });
@@ -47,7 +49,7 @@ describe("Master System Orchestrator", () => {
     expect(dash.systemHealth.activeToolsCount).toBeGreaterThanOrEqual(100);
     expect(dash.cacheStats.l1Entries).toBeGreaterThanOrEqual(0);
     expect(dash.costSavings.dollarsSaved).toBeGreaterThanOrEqual(0);
-    expect(dash.flipitQuant.equityGbp).toBeGreaterThan(0);
+    expect(dash.flipitQuant?.equityGbp).toBeGreaterThan(0);
     expect(dash.studioHiggsfield.cameraRigsCount).toBeGreaterThanOrEqual(10);
     expect(dash.mobileBridge.pairedDevicesCount).toBeGreaterThanOrEqual(0);
   });

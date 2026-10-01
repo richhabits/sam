@@ -1,12 +1,12 @@
 import type { Express } from "express";
-import { APPLE_APP_INTENTS } from "./apple-ecosystem.ts";
+import { appleAppIntents } from "./apple-ecosystem.ts";
 import { getAsk, resolveAsk } from "./ask.ts";
 import { recordAuditEvent, verifyAuditChainIntegrity } from "./audit-ledger.ts";
 import { getHardwareVitals } from "./hardware-monitor.ts";
-import { isLoopback } from "./http-guards.ts";
+import { isLoopback, isPairedSession, isTrustedLocal } from "./http-guards.ts";
 import { createGossipMessage, getMeshTopologyReport, processIncomingMeshGossip } from "./p2p-mesh.ts";
 import { createRateLimiter } from "./rate-limit.ts";
-import { UNIVERSAL_SHORTCUTS } from "./universal-ecosystem.ts";
+import { universalShortcuts } from "./universal-ecosystem.ts";
 import { getOrCreateVoiceSession } from "./voice-agent.ts";
 
 export type PendingActionResolver = (
@@ -47,8 +47,15 @@ export function registerCompanionRoutes(app: Express, options?: CompanionRouteOp
 
   // 1-Tap Companion Action Approval Endpoint
   app.post("/api/companion/action/approve", async (req, res) => {
+    // Approving runs a tool SAM paused on. /api/confirm (the same decision, from the HUD) is held by
+    // the global mutation gate: the passkey or a paired session. Bare isLoopback here was weaker than
+    // that — any local process passes it knowing no secret — so the same bar is enforced in-handler,
+    // on top of staying loopback-only (a watch reaches us through a local bridge, not the LAN).
     if (!isLoopback(req)) {
       return res.status(403).json({ error: "Companion approvals can only originate from loopback/local device bridges." });
+    }
+    if (!isTrustedLocal(req) && !isPairedSession(req)) {
+      return res.status(401).json({ error: "not paired", locked: true });
     }
 
     const { actionId, actor, details, always } = req.body || {};
@@ -130,8 +137,8 @@ export function registerCompanionRoutes(app: Express, options?: CompanionRouteOp
   // Siri Shortcuts & Universal Companion Manifest
   app.get("/api/companion/shortcuts", (_req, res) => {
     res.json({
-      appleAppIntents: APPLE_APP_INTENTS,
-      universalShortcuts: UNIVERSAL_SHORTCUTS,
+      appleAppIntents: appleAppIntents(),
+      universalShortcuts: universalShortcuts(),
     });
   });
 

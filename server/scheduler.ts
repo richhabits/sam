@@ -47,6 +47,17 @@ function save(schedules: Schedule[]) {
 
 export function listSchedules(): Schedule[] { return load(); }
 
+// A stored command runs unattended, on every tick, as the operator. Bounded so a caller cannot park a
+// megabyte payload (or a pathological cron string for parseCron) in the schedule file.
+export const MAX_SCHEDULE_COMMAND = 2000;
+export const MAX_SCHEDULE_CRON = 100;
+export function scheduleInputError(command: unknown, cron: unknown): string | null {
+  if (typeof command !== "string" || typeof cron !== "string" || !command.trim() || !cron.trim()) return "missing command or cron";
+  if (command.length > MAX_SCHEDULE_COMMAND) return `command too long (max ${MAX_SCHEDULE_COMMAND} characters)`;
+  if (cron.length > MAX_SCHEDULE_CRON) return `cron too long (max ${MAX_SCHEDULE_CRON} characters)`;
+  return null;
+}
+
 export function addSchedule(command: string, cron: string): Schedule {
   if (!parseCron(cron)) throw new Error(`Invalid cron format: ${cron}`);
   const schedules = load();

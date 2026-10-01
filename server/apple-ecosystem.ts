@@ -8,6 +8,7 @@
 //  - Cross-device Continuity session handoff
 // ─────────────────────────────────────────────────────────────
 
+import { flipitBuiltinEnabled } from "./flipit-builtin.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
 import { type PreparedPushNotification, prepareMobilePush } from "./mobile-bridge.ts";
 import { runModel } from "./models.ts";
@@ -69,6 +70,11 @@ export const APPLE_APP_INTENTS: AppleAppIntentDef[] = [
   },
 ];
 
+/** The App Intents to advertise: the FlipIt halt intent only exists while the built-in desk does. */
+export function appleAppIntents(): AppleAppIntentDef[] {
+  return flipitBuiltinEnabled() ? APPLE_APP_INTENTS : APPLE_APP_INTENTS.filter((i) => i.intentId !== "FlipItRiskHaltIntent");
+}
+
 export async function processWatchPrompt(req: WatchPromptRequest): Promise<WatchPromptResponse> {
   const t0 = Date.now();
   const text = String(req.transcript || "").trim();
@@ -107,7 +113,7 @@ export async function processWatchPrompt(req: WatchPromptRequest): Promise<Watch
   if (lower.includes("build") || lower.includes("task") || lower.includes("yard")) {
     actions.push({ id: "view_task", label: "View Yard", action: "open_surface:tasks" });
   }
-  if (lower.includes("halt") || lower.includes("trade") || lower.includes("portfolio") || lower.includes("risk")) {
+  if (flipitBuiltinEnabled() && (lower.includes("halt") || lower.includes("trade") || lower.includes("portfolio") || lower.includes("risk"))) {
     actions.push({ id: "halt_risk", label: "Halt Leveraged Trades", action: "flipit:circuit_breaker", destructive: true });
   }
 

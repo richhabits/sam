@@ -6,8 +6,20 @@ import { getSharedExecutionEngine, submitPolymarketClobOrder } from "./flipit-ex
 import { getSharedIngestStatus, startSharedIngestEngine, stopSharedIngestEngine } from "./flipit-ingest.ts";
 import { scanEvArbitrageSignals } from "./flipit-signals.ts";
 import { generateMarketMakerQuotes, calculateDeltaHedge } from "./flipit-market-maker.ts";
-import { isLoopback } from "./http-guards.ts";
+import { isLoopback, isTrustedLocal } from "./http-guards.ts";
 import { createRateLimiter } from "./rate-limit.ts";
+
+// A CLOB order is real money. Number("1e999") is Infinity, Number("-5") is a short, and Number(x || 0.5)
+// quietly turned an explicit 0 into a 0.5 order — so each field is parsed strictly, defaults apply ONLY
+// to an omitted field, and anything non-finite, non-positive or oversized is refused rather than clamped.
+export const MAX_ORDER_SIZE = 1000;
+export function parseOrderParams(rawPrice: unknown, rawSize: unknown): { ok: true; price: number; size: number } | { ok: false; error: string } {
+  const price = rawPrice == null ? 0.5 : Number(rawPrice);
+  const size = rawSize == null ? 10 : Number(rawSize);
+  if (!Number.isFinite(price) || price <= 0 || price >= 1) return { ok: false, error: "price must be a number between 0 and 1 (exclusive)." };
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_ORDER_SIZE) return { ok: false, error: `size must be a number greater than 0 and at most ${MAX_ORDER_SIZE}.` };
+  return { ok: true, price, size };
+}
 
 export function registerFlipItScaleRoutes(app: Express) {
   // The webhook is reachable from outside and verifies an HMAC per call: cap attempts at
@@ -142,19 +154,27 @@ export function registerFlipItScaleRoutes(app: Express) {
 
   // Arbitrage & Market Order Execute Route
   app.post("/api/flipit/execute", async (req, res) => {
-    if (!isLoopback(req)) return res.status(403).json({ error: "Trade execution can only be triggered on this computer, not remotely." });
+    // isTrustedLocal, not bare isLoopback: this moves money, and any local process passes isLoopback
+    // while knowing no secret. It needs the passkey (or an approved pairing) as well.
+    if (!isTrustedLocal(req)) return res.status(403).json({ error: "Trade execution can only be triggered on this computer, with the Handshake." });
     try {
       const { spreadId, pair, sellEx, buyEx, spreadPct, sellPrice, buyPrice, tokenId, price, size, side } = req.body || {};
 
       if (tokenId) {
+        const params = parseOrderParams(price, size);
+        if (!params.ok) return res.status(400).json({ error: params.error });
         // Direct Polymarket CLOB Order Execution
         const clobRes = await submitPolymarketClobOrder({
           tokenId: String(tokenId),
-          price: Number(price || 0.5),
-          size: Number(size || 10),
+          price: params.price,
+          size: params.size,
           side: side === "SELL" ? "SELL" : "BUY",
         });
         return res.json(clobRes);
+      }
+
+      for (const [k, v] of Object.entries({ spreadPct, sellPrice, buyPrice })) {
+        if (v != null && (!Number.isFinite(Number(v)) || Number(v) < 0)) return res.status(400).json({ error: `${k} must be a finite, non-negative number.` });
       }
 
       // Cross-Exchange Arbitrage Execution via Risk Manager

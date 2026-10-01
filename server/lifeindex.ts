@@ -15,9 +15,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "node:child_process";
-import { existsSync, type FSWatcher, readFileSync, watch } from "node:fs";
+import { existsSync, type FSWatcher, readFileSync, realpathSync, watch } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeFileAtomic } from "./atomic.ts";
 import { forgetDoc, type IngestReport, ingestFolder, searchDocs } from "./ingest.ts";
@@ -32,6 +32,24 @@ export interface WatchedFolder { path: string; addedAt: number; lastIndexedAt?: 
 interface Store { folders: WatchedFolder[]; watching: boolean }
 
 function expand(p: string): string { return resolve((p || "").replace(/^~(?=$|\/)/, homedir())); }
+
+// The Life Index reads every file under a folder, chunks it and makes it searchable (and, via the
+// chat model, quotable). Indexing "/" or the home root sweeps in the whole disk; ~/.ssh, the
+// Keychains and ~/.gnupg are private keys. Refused after realpath, so a symlink or "../" into one of
+// them is judged by where it lands. A path that does not exist yet falls back to its resolved form.
+export function indexRefusal(path: string): string | null {
+  let real = expand(path);
+  try { real = realpathSync(real); } catch { /* not there yet — judge the resolved path */ }
+  const home = (() => { try { return realpathSync(homedir()); } catch { return homedir(); } })();
+  if (real === sep || real === home || real === homedir()) return "refusing to index the disk root or the home folder — pick a specific folder";
+  for (const secret of [".ssh", join("Library", "Keychains"), ".gnupg"]) {
+    for (const base of new Set([home, homedir()])) {
+      const dir = join(base, secret);
+      if (real === dir || real.startsWith(dir + sep)) return "refusing to index a folder that holds keys or credentials";
+    }
+  }
+  return null;
+}
 
 function load(): Store {
   try { if (existsSync(STORE)) return JSON.parse(readFileSync(STORE, "utf8")); } catch { /* fresh */ }
@@ -94,6 +112,8 @@ async function indexOne(folder: string, maxFiles = 300): Promise<IngestReport | 
 // Add a folder the user chose → index it now and start watching it.
 export async function addFolder(path: string): Promise<{ folder: WatchedFolder; report: IngestReport | null }> {
   const full = expand(path);
+  const refusal = indexRefusal(full);
+  if (refusal) throw new Error(refusal);
   const s = load();
   let folder = s.folders.find((f) => f.path === full);
   if (!folder) { folder = { path: full, addedAt: Date.now() }; s.folders.push(folder); save(s); }

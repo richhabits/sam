@@ -2,7 +2,7 @@ import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addSchedule, listSchedules, parseCron, removeSchedule, type Schedule, scheduleStatus, toggleSchedule } from "./scheduler.ts";
+import { addSchedule, listSchedules, MAX_SCHEDULE_COMMAND, MAX_SCHEDULE_CRON, parseCron, removeSchedule, type Schedule, scheduleInputError, scheduleStatus, toggleSchedule } from "./scheduler.ts";
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
@@ -186,5 +186,23 @@ describe("scheduleStatus — the stale watchdog (the desk's loop.stale, generali
     const s: Schedule = { ...base, cron: "daily 09:00" };
     const now = Date.parse("2026-07-20T07:00:00Z");
     expect(iso(scheduleStatus(s, now).nextRun!)).toBe("2026-07-20T08:00:00.000Z");
+  });
+});
+
+describe("scheduleInputError (bounds on stored unattended commands)", () => {
+  it("accepts normal input and the exact limits", () => {
+    expect(scheduleInputError("echo hi", "daily 09:00")).toBeNull();
+    expect(scheduleInputError("x".repeat(MAX_SCHEDULE_COMMAND), "y".repeat(MAX_SCHEDULE_CRON))).toBeNull();
+  });
+  it("rejects a command over 2,000 chars and a cron over 100", () => {
+    expect(scheduleInputError("x".repeat(MAX_SCHEDULE_COMMAND + 1), "daily 09:00")).toMatch(/command too long/);
+    expect(scheduleInputError("echo", "y".repeat(MAX_SCHEDULE_CRON + 1))).toMatch(/cron too long/);
+    expect(MAX_SCHEDULE_COMMAND).toBe(2000);
+    expect(MAX_SCHEDULE_CRON).toBe(100);
+  });
+  it("rejects missing or non-string fields", () => {
+    for (const [c, k] of [[undefined, "daily 09:00"], ["echo", undefined], ["  ", "daily 09:00"], [{ a: 1 }, "daily 09:00"], ["echo", 5]] as const) {
+      expect(scheduleInputError(c, k)).toBe("missing command or cron");
+    }
   });
 });
