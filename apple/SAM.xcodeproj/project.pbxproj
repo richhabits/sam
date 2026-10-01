@@ -143,6 +143,7 @@
 		0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0B96425CF191D4879506DC71 /* YardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardView.swift; sourceTree = "<group>"; };
 		0CFD5A501959C0C4D179972C /* DeviceServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceServices.swift; sourceTree = "<group>"; };
+		11CF85EA5CFEEC96C5D1DD24 /* SAMSafari-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMSafari-macOS.entitlements"; sourceTree = "<group>"; };
 		13BEA0D720CADC6F034B5C3A /* SAMWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SAMWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A84CEFAE1F0B54C88A8DA83 /* SAMWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWatchWidgets.entitlements; sourceTree = "<group>"; };
 		34DDFF825EA767398ECDB352 /* SAMWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWatch.entitlements; sourceTree = "<group>"; };
@@ -152,6 +153,7 @@
 		5B152F9948B52309BCC78CD7 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popup.js; sourceTree = "<group>"; };
 		5E00F499E33663AFA5C50A0B /* YardNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardNotifier.swift; sourceTree = "<group>"; };
 		6044DCFCD57844D33C594D00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		66B651E39B3585D742708CF4 /* SAMShare-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMShare-macOS.entitlements"; sourceTree = "<group>"; };
 		66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViews.swift; sourceTree = "<group>"; };
 		69150E615E30D86FE0B4D91C /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = popup.css; sourceTree = "<group>"; };
 		691D0185F19D3306F1F34210 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -187,6 +189,7 @@
 		EB2D3DB6EE0E4CEC451F4CF5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		ED116A2728852BA6D08CE351 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceBrain.swift; sourceTree = "<group>"; };
+		F2D511A9B19B578337586514 /* SAMWidgets-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMWidgets-macOS.entitlements"; sourceTree = "<group>"; };
 		F6E760BFAC36AFC3716A3558 /* SharedContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedContent.swift; sourceTree = "<group>"; };
 		FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMSafari.entitlements; sourceTree = "<group>"; };
 		FD30FBACCB9D1CCE627571FD /* SAMShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMShare.entitlements; sourceTree = "<group>"; };
@@ -313,6 +316,7 @@
 			isa = PBXGroup;
 			children = (
 				6DE71E726F72635AC5639E8E /* Info.plist */,
+				66B651E39B3585D742708CF4 /* SAMShare-macOS.entitlements */,
 				FD30FBACCB9D1CCE627571FD /* SAMShare.entitlements */,
 				F6E760BFAC36AFC3716A3558 /* SharedContent.swift */,
 				B9B25B585C11D4BE0CC1846E /* ShareView.swift */,
@@ -395,6 +399,7 @@
 			children = (
 				ED116A2728852BA6D08CE351 /* Info.plist */,
 				00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */,
+				11CF85EA5CFEEC96C5D1DD24 /* SAMSafari-macOS.entitlements */,
 				FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */,
 				DD00C411E1A72DC32F56175C /* WebExtension */,
 			);
@@ -413,6 +418,7 @@
 			isa = PBXGroup;
 			children = (
 				6E5F63C6D54E83B5EA0C33B1 /* Info.plist */,
+				F2D511A9B19B578337586514 /* SAMWidgets-macOS.entitlements */,
 				BCCE3D267570C147F67372A8 /* SAMWidgets.entitlements */,
 				EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */,
 			);
@@ -844,6 +850,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Share/SAMShare.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Share/SAMShare-macOS.entitlements";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Share/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -906,6 +913,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Safari/SAMSafari-macOS.entitlements";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Safari/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -928,6 +936,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widgets/SAMWidgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Widgets/SAMWidgets-macOS.entitlements";
 				INFOPLIST_FILE = Widgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1021,6 +1030,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Safari/SAMSafari-macOS.entitlements";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Safari/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1075,6 +1085,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widgets/SAMWidgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Widgets/SAMWidgets-macOS.entitlements";
 				INFOPLIST_FILE = Widgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1140,6 +1151,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Share/SAMShare.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Share/SAMShare-macOS.entitlements";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Share/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

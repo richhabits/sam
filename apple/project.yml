@@ -130,6 +130,7 @@ targets:
       base:
         PRODUCT_NAME: SAMWidgets
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.widget
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Widgets/SAMWidgets-macOS.entitlements
 
   # Safari Web Extension (iOS, iPadOS, macOS): "Ask SAM about this page".
   # The popup hands the page to the native handler; the token stays in the Keychain.
@@ -176,6 +177,7 @@ targets:
       base:
         PRODUCT_NAME: SAMSafari
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.safari
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Safari/SAMSafari-macOS.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_HARDENED_RUNTIME: YES
 
@@ -221,6 +223,7 @@ targets:
       base:
         PRODUCT_NAME: SAMShare
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile.share
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Share/SAMShare-macOS.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_HARDENED_RUNTIME: YES
 

@@ -46,6 +46,7 @@ struct YardView: View {
                                            description: Text("Pair with SAM on your Mac in Settings to see its yard."))
                 }
             }
+            .readableWidth(900)
             .navigationTitle("Yard")
             .navigationDestination(for: YardJob.self) { JobDetail(job: $0) }
             .refreshable { await model.refresh() }
@@ -66,8 +67,8 @@ private struct Stat: View {
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .samGlass(in: .rect(cornerRadius: 16))
+        .padding(.vertical, 18)
+        .samGlass(in: .rect(cornerRadius: 18))
         .accessibilityElement(children: .combine)
     }
 }

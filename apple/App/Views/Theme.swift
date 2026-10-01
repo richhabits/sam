@@ -76,3 +76,17 @@ extension View {
         #endif
     }
 }
+
+extension View {
+    /// Centres content at a comfortable reading width on big screens (iPad, Mac, Vision Pro)
+    /// instead of stretching it edge to edge or hugging one side. No effect on iPhone widths.
+    func readableWidth(_ max: CGFloat = 760) -> some View {
+        frame(maxWidth: max).frame(maxWidth: .infinity)
+    }
+}
+
+enum Spacing {
+    static let gutter: CGFloat = 28     // page side padding on regular width
+    static let section: CGFloat = 24
+    static let item: CGFloat = 16
+}

@@ -9,7 +9,7 @@ struct CrewView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 14)], spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 20)], spacing: 20) {
                     ForEach(model.specialists) { s in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -22,11 +22,13 @@ struct CrewView: View {
                             if let brief = s.brief { Text(brief).font(.callout).foregroundStyle(.secondary) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .samGlass(in: .rect(cornerRadius: 20))
+                        .padding(20)
+                        .samGlass(in: .rect(cornerRadius: 22))
                     }
                 }
-                .padding()
+                .padding(.horizontal, Spacing.gutter)
+                .padding(.vertical, 20)
+                .readableWidth(1100)
                 .overlay {
                     if model.specialists.isEmpty {
                         ContentUnavailableView("The crew lives on your Mac", systemImage: "person.3",
@@ -73,6 +75,7 @@ struct ToolsView: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
+            .readableWidth(900)
             .searchable(text: $query, prompt: "\(model.tools.count) tools")
             .navigationTitle("Tools")
             .task { if model.tools.isEmpty { await model.loadCatalogue() } }
@@ -151,6 +154,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .readableWidth(720)
             .navigationTitle("Settings")
             .confirmationDialog("Unpair this device?", isPresented: $confirmUnpair) {
                 Button("Unpair", role: .destructive) { Task { await model.unpair() } }

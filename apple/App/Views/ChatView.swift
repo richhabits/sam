@@ -29,13 +29,18 @@ struct ChatView: View {
         Group {
             if regular {
                 // iPad, Mac, Vision Pro: conversations beside the chat, like Messages and Notes.
-                NavigationSplitView {
-                    ConversationList(conversations: conversations, current: conversation, select: { current = $0 },
-                                     newChat: newChat, delete: delete)
-                } detail: {
+                // A fixed conversation column beside the chat. (A NavigationSplitView nested inside
+                // the app's sidebar TabView added an unpredictable leading inset on macOS.)
+                HStack(spacing: 0) {
+                    NavigationStack {
+                        ConversationList(conversations: conversations, current: conversation, select: { current = $0 },
+                                         newChat: newChat, delete: delete)
+                    }
+                    .frame(width: 300)
+                    Divider()
                     NavigationStack { chatPane }
+                        .frame(maxWidth: .infinity)
                 }
-                .navigationSplitViewStyle(.balanced)
             } else {
                 NavigationStack { chatPane }
             }
@@ -71,18 +76,18 @@ struct ChatView: View {
     private var messages: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 14) {
+                LazyVStack(spacing: 20) {
                     if let conversation, !(conversation.messages ?? []).isEmpty {
                         ForEach(conversation.sorted) { MessageRow(message: $0) }
                     } else {
                         EmptyChat { draft = $0; focused = true }
-                            .padding(.top, 60)
+                            .padding(.top, 48)
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding()
-                .frame(maxWidth: 820)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, Spacing.gutter)
+                .padding(.vertical, 20)
+                .readableWidth()
             }
             #if !os(visionOS)
             .scrollDismissesKeyboard(.interactively)
@@ -144,17 +149,18 @@ struct ChatView: View {
             .padding(.vertical, 4)
             .samGlass(in: .rect(cornerRadius: 26), interactive: true)
         }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
-        .frame(maxWidth: 820)
+        .padding(.horizontal, Spacing.gutter)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+        .readableWidth()
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        if !regular {
         ToolbarItem(placement: .primaryAction) {
             Button { newChat() } label: { Label("New chat", systemImage: "square.and.pencil") }
                 .keyboardShortcut("n", modifiers: .command)
         }
-        if !regular {
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 ForEach(conversations.prefix(30)) { c in
@@ -231,7 +237,7 @@ struct MessageRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            if message.isUser { Spacer(minLength: 48) } else { SAMMark(size: 28) }
+            if message.isUser { Spacer(minLength: 64) } else { SAMMark(size: 30) }
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
                 Group {
                     if message.text.isEmpty {
@@ -241,8 +247,9 @@ struct MessageRow: View {
                             .textSelection(.enabled)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .lineSpacing(3)
                 .foregroundStyle(message.isUser ? .white : .primary)
                 .background {
                     if message.isUser {
@@ -263,7 +270,7 @@ struct MessageRow: View {
                 Button { speaker.speak(message.text) } label: { Label("Read aloud", systemImage: "speaker.wave.2") }
                 ShareLink(item: message.text)
             }
-            if !message.isUser { Spacer(minLength: 48) }
+            if !message.isUser { Spacer(minLength: 64) }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
     }
@@ -303,15 +310,19 @@ struct EmptyChat: View {
         ("globe", "Research the best free AI models right now"),
     ]
     var body: some View {
-        VStack(spacing: 20) {
-            SAMMark(size: 72)
-            Text("How can I help?").font(.title2.bold())
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
+        VStack(spacing: 28) {
+            VStack(spacing: 14) {
+                SAMMark(size: 88)
+                Text("How can I help?").font(.largeTitle.bold())
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: Spacing.item)], spacing: Spacing.item) {
                 ForEach(ideas, id: \.1) { icon, text in
                     Button { pick(text) } label: {
                         Label(text, systemImage: icon)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
+                            .font(.body.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 14)
                     }
                     .buttonStyle(.plain)
                     .samGlass(in: .rect(cornerRadius: 18), interactive: true)
@@ -386,7 +397,7 @@ struct ConversationList: View {
                                        description: Text("Ask SAM anything to start one."))
             }
         }
-        .searchable(text: $query, placement: .sidebar, prompt: "Search chats")
+        .searchable(text: $query, prompt: "Search chats")
         .navigationTitle("Chats")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

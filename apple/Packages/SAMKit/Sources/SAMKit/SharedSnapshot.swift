@@ -21,7 +21,14 @@ public struct SharedSnapshot: Codable, Equatable, Sendable {
         self.lastReply = lastReply; self.updated = updated
     }
 
+    /// iOS-family app group, or on the Mac the team-prefixed form. A sandboxed Mac app using a
+    /// "group." identifier makes macOS ask "would like to access data from other apps" (and
+    /// blocks until answered); "<TeamID>.<name>" is the Mac convention and never prompts.
+    #if os(macOS)
+    public static let appGroup = "CC9Q9BH5NT.com.hectic.sam"
+    #else
     public static let appGroup = "group.com.hectic.sam.mobile"
+    #endif
     static let key = "sam.snapshot.v1"
 
     public static func load(_ defaults: UserDefaults? = UserDefaults(suiteName: appGroup)) -> SharedSnapshot {

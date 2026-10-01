@@ -54,6 +54,7 @@ struct AddOnsView: View {
                                            description: Text(model.isPaired ? "Can't reach SAM right now." : "Pair with SAM to see them."))
                 }
             }
+            .readableWidth(820)
             .navigationTitle("Add-ons")
             .task { await load() }
             .refreshable { await load() }

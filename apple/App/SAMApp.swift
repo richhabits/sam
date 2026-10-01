@@ -42,11 +42,15 @@ struct SAMApp: App {
             RootView()
                 .environment(model)
                 #if os(macOS)
-                .frame(minWidth: 720, minHeight: 520)
+                .frame(minWidth: 960, minHeight: 600)
                 #endif
         }
         .modelContainer(container)
         #if os(macOS)
+        // Three columns (sections, chats, conversation) need room: open at a generous size and
+        // never let the window shrink below what the content needs (it used to clip both edges).
+        .defaultSize(width: 1280, height: 820)
+        .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {}
