@@ -58,7 +58,10 @@ import SAMKit
     /// connection. No data is sent.
     private static func resolve(_ endpoint: NWEndpoint) async -> String? {
         await withCheckedContinuation { (c: CheckedContinuation<String?, Never>) in
-            let conn = NWConnection(to: endpoint, using: .tcp)
+            // IPv4 only: the brain checks the Host header, which must be the LAN IP it bound to.
+            let params = NWParameters.tcp
+            (params.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options)?.version = .v4
+            let conn = NWConnection(to: endpoint, using: params)
             let once = Once()
             conn.stateUpdateHandler = { state in
                 switch state {

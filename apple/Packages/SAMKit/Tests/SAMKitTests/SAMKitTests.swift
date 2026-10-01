@@ -186,3 +186,26 @@ import Testing
         try await brain.forget()
     }
 }
+
+/// Opt-in end-to-end test of secure phone access against a brain started with SAM_LAN=1:
+/// `SAM_LAN_LINK='sam://pair?code=…&host=https…&fp=…' swift test --filter LanPinningTests`.
+@Suite(.enabled(if: ProcessInfo.processInfo.environment["SAM_LAN_LINK"] != nil)) struct LanPinningTests {
+    @Test func pairsAndTalksOnlyToThePinnedCertificate() async throws {
+        let link = try #require(PairLink.parse(ProcessInfo.processInfo.environment["SAM_LAN_LINK"]))
+        let host = try #require(link.host)
+        let fp = try #require(link.fingerprint)
+        #expect(host.hasPrefix("https://"))
+        #expect(await BrainClient.isUp(host, fingerprint: fp))
+
+        let token = try await BrainClient.claim(host: host, code: link.code, client: "ios", fingerprint: fp)
+        let brain = BrainClient(host: host, token: token, fingerprint: fp)
+        #expect(try await brain.tools().count > 100)
+
+        // Same server, wrong pin: refused before any request is sent.
+        let wrong = String(fp.reversed())
+        #expect(!(await BrainClient.isUp(host, fingerprint: wrong)))
+        await #expect(throws: (any Error).self) { try await BrainClient(host: host, token: token, fingerprint: wrong).tools() }
+        // No pin at all: the system rejects SAM's self-signed certificate.
+        #expect(!(await BrainClient.isUp(host)))
+    }
+}
