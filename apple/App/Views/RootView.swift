@@ -55,6 +55,9 @@ struct RootView: View {
         }
         .onOpenURL { url in handle(url) }
         .onContinueUserActivity(ChatActivity.type) { _ in section = .chat }
+        .sheet(item: Binding(get: { model.consentRequest.map(ConsentItem.init) }, set: { if $0 == nil && model.consentRequest != nil { model.answerConsent(false) } })) { item in
+            ConsentSheet(providers: item.providers).environment(model)
+        }
         .confirmationDialog("Pair with this SAM?", isPresented: Binding(get: { incomingLink != nil }, set: { if !$0 { incomingLink = nil } }),
                             titleVisibility: .visible, presenting: incomingLink) { link in
             Button("Pair") {
@@ -141,6 +144,9 @@ enum ChatActivity {
                 print("SAMTEST FAIL pair \(error.localizedDescription)")
             }
         }
+        if d.bool(forKey: "samConsentPreview"), let p = try? await model.brain?.aiProviders() {
+            model.consentRequest = p      // preview only: no chat is waiting on it
+        }
         guard let question = d.string(forKey: "samSelfTest") else { return }
         let container = try! ModelContainer(for: Conversation.self, Message.self,
                                             configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -188,4 +194,10 @@ struct MoreView: View {
             .navigationTitle("More")
         }
     }
+}
+
+/// Wraps the provider list so it can drive `.sheet(item:)`.
+struct ConsentItem: Identifiable {
+    let providers: AIProviders
+    var id: String { providers.thirdParties.map(\.id).joined(separator: ",") }
 }

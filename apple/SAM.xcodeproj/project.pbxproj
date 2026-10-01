@@ -36,6 +36,7 @@
 		8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFD5A501959C0C4D179972C /* DeviceServices.swift */; };
 		8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7807835C805EC4E3F2ED5449 /* MacSupport.swift */; };
 		88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */; };
+		890D4A9799E33C990D973D6A /* ConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C4F4CD23E099845FEEE475 /* ConsentView.swift */; };
 		94A038132C43C3483848085D /* CatalogueViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */; };
 		A11B17A35B7CD7C5A86FD053 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23E406A895F814DFE67064F3 /* SAMKit */; };
 		A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */; };
@@ -153,6 +154,7 @@
 		5B152F9948B52309BCC78CD7 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popup.js; sourceTree = "<group>"; };
 		5E00F499E33663AFA5C50A0B /* YardNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardNotifier.swift; sourceTree = "<group>"; };
 		6044DCFCD57844D33C594D00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		62C4F4CD23E099845FEEE475 /* ConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentView.swift; sourceTree = "<group>"; };
 		66B651E39B3585D742708CF4 /* SAMShare-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMShare-macOS.entitlements"; sourceTree = "<group>"; };
 		66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViews.swift; sourceTree = "<group>"; };
 		69150E615E30D86FE0B4D91C /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = popup.css; sourceTree = "<group>"; };
@@ -269,6 +271,7 @@
 				007351A230D66E6BCF4AD603 /* AddOnsView.swift */,
 				66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */,
 				B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */,
+				62C4F4CD23E099845FEEE475 /* ConsentView.swift */,
 				785954E4995D5CC8A3C69827 /* PairView.swift */,
 				691D0185F19D3306F1F34210 /* RootView.swift */,
 				44FC91B4244B95FE71EFFF26 /* StudioView.swift */,
@@ -727,6 +730,7 @@
 				C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */,
 				94A038132C43C3483848085D /* CatalogueViews.swift in Sources */,
 				B901372E8B871941215355B7 /* ChatView.swift in Sources */,
+				890D4A9799E33C990D973D6A /* ConsentView.swift in Sources */,
 				8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */,
 				BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */,
 				8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */,

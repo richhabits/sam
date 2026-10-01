@@ -44,6 +44,47 @@ struct PendingApproval: Identifiable, Equatable {
 
     private var streamTask: Task<Void, Never>?
 
+    // MARK: AI data-sharing consent (App Review 5.1.2(i))
+
+    /// Set while the consent sheet is up; the chat waits for the answer.
+    var consentRequest: AIProviders?
+    private var consentContinuation: CheckedContinuation<Bool, Never>?
+    private(set) var lastProviders: AIProviders?
+
+    /// May this message go to the Mac (and on to the providers it names)? Asks once per provider
+    /// set; "Not now" means answer on-device. The demo never leaves the device, so it never asks.
+    func macAllowed() async -> Bool {
+        if isDemo { return true }
+        guard let brain else { return false }
+        let providers: AIProviders
+        if let p = try? await brain.aiProviders() {
+            providers = p
+        } else {
+            // An older SAM that can't list its providers: still ask, in general terms.
+            providers = AIProviders(onDevice: false, cloud: [.init(id: "unknown", name: "The AI services set up on your Mac",
+                                                                     company: nil, privacy: nil, free: nil)], keyless: [])
+        }
+        lastProviders = providers
+        switch AIConsent.state(for: providers) {
+        case .allowed: return true
+        case .declined: return false
+        case .undecided:
+            return await withCheckedContinuation { c in
+                consentContinuation = c
+                consentRequest = providers
+            }
+        }
+    }
+
+    func answerConsent(_ allowed: Bool) {
+        if let p = consentRequest {
+            if allowed { AIConsent.allow(p) } else { AIConsent.decline() }
+        }
+        consentRequest = nil
+        consentContinuation?.resume(returning: allowed)
+        consentContinuation = nil
+    }
+
     // MARK: Demo
 
     /// Explore every screen with fictional sample data. Nothing is sent anywhere.
@@ -241,7 +282,8 @@ struct PendingApproval: Identifiable, Equatable {
                 conversation.updated = .now
                 try? context.save()
             }
-            if let brain, await streamFromMac(brain, prompt: prompt, history: untrusted ? [] : history, untrusted: untrusted, into: reply) { return }
+            if let brain, await macAllowed(),
+               await streamFromMac(brain, prompt: prompt, history: untrusted ? [] : history, untrusted: untrusted, into: reply) { return }
             await streamOnDevice(prompt: prompt, history: history, into: reply)
         }
     }

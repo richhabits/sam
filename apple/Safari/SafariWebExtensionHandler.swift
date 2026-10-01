@@ -27,6 +27,9 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             guard let brain = Session.brain else {
                 return ["error": "Open the SAM app and pair it with your Mac first."]
             }
+            guard Session.isDemo || AIConsent.hasAllowedAnything() else {
+                return ["error": "Open the SAM app first and choose whether your Mac's AI services may be used."]
+            }
             let action = PagePrompt.Action(rawValue: message["mode"] as? String ?? "") ?? .summarise
             let prompt = PagePrompt.make(action: action,
                                          question: message["question"] as? String,
