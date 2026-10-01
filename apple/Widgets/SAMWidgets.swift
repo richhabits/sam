@@ -71,7 +71,7 @@ struct YardWidgetView: View {
             VStack(alignment: .leading) {
                 Label("SAM Yard", systemImage: "hammer").font(.headline)
                 Text("\(s.running) running · \(s.queued) queued")
-                if let job = s.latestJob { Text(job).foregroundStyle(.secondary) }
+                if let job = s.latestJob { Text(job).foregroundStyle(.secondary).privacySensitive() }
             }
         default:
             VStack(alignment: .leading, spacing: 6) {
@@ -80,6 +80,7 @@ struct YardWidgetView: View {
                     Text("SAM").font(.headline)
                     Spacer()
                     Circle().fill(s.reachable ? .green : .orange).frame(width: 8, height: 8)
+                        .accessibilityLabel(s.reachable ? "Mac connected" : "Mac not reachable")
                 }
                 if !s.paired {
                     Text("Open SAM to pair with your Mac.").font(.caption).foregroundStyle(.secondary)
@@ -90,11 +91,11 @@ struct YardWidgetView: View {
                     }
                     Text("\(s.queued) queued · \(s.failed) failed").font(.caption)
                     if family == .systemMedium, let reply = s.lastReply {
-                        Text(reply).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                        Text(reply).font(.caption2).foregroundStyle(.secondary).lineLimit(2).privacySensitive()
                     }
                     Spacer(minLength: 0)
                     if let job = s.latestJob {
-                        Text("\(job) · \(s.latestState ?? "")").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        Text("\(job) · \(s.latestState ?? "")").font(.caption2).foregroundStyle(.secondary).lineLimit(1).privacySensitive()
                     }
                 }
             }

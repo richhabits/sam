@@ -209,3 +209,47 @@ import Testing
         #expect(!(await BrainClient.isUp(host)))
     }
 }
+
+@Suite(.serialized) struct DemoBrainTests {
+    let brain: BrainClient
+    init() {
+        DemoBrain.register()
+        brain = BrainClient(host: DemoBrain.host, token: DemoBrain.token)
+    }
+
+    @Test func everyScreenHasFictionalData() async throws {
+        #expect(await BrainClient.isUp(DemoBrain.host))
+        let yard = try await brain.yard()
+        #expect(yard.running == 1 && (yard.recent ?? []).contains { $0.project == "teahouse" })
+        #expect(try await brain.tools().count >= 10)
+        #expect(try await brain.specialists().map(\.name).contains("Scout"))
+        #expect(try await brain.addOns().contains { $0.id == "flipit" })
+        let graph = try await brain.vaultGraph()
+        #expect(graph.projects.map(\.id).contains("lemon-and-ivy"))
+        let note = try await brain.vaultNote(VaultNode(id: "teahouse", group: .project))
+        #expect(note.content.hasPrefix("# Teahouse"))
+        #expect(!(try await brain.studioLenses()).isEmpty)
+    }
+
+    @Test func chatStreamsACannedAnswer() async throws {
+        var text = ""
+        for try await e in brain.stream(message: "What's running in the yard?", history: []) {
+            if case .token(let t) = e { text += t }
+        }
+        #expect(text.contains("Lemon & Ivy"))
+    }
+
+    @Test func writesAreRefusedPolitely() async {
+        await #expect(throws: BrainError.self) { try await brain.cancel(job: "d1") }
+    }
+
+    @Test func studioReturnsAnImage() async throws {
+        let url = try await brain.generateImage(prompt: "tea", aspect: .square)
+        #expect(url.absoluteString.contains("/api/studio/media/"))
+    }
+
+    @Test func neverInterceptsRealHosts() {
+        #expect(!DemoURLProtocol.canInit(with: URLRequest(url: URL(string: "http://127.0.0.1:8787/api/yard")!)))
+        #expect(DemoURLProtocol.canInit(with: URLRequest(url: URL(string: "\(DemoBrain.host)/api/yard")!)))
+    }
+}

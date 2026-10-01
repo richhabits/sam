@@ -121,6 +121,7 @@ private struct QuickPanelView: View {
                 if model.busy {
                     Button(action: model.stop) { Image(systemName: "stop.circle.fill").font(.title2) }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Stop")
                         .foregroundStyle(Color.sam)
                 } else {
                     ConnectionBadge(paired: model.isPaired, reachable: model.reachable)
@@ -135,6 +136,7 @@ private struct QuickPanelView: View {
                     Spacer()
                     Button { self.shared = nil } label: { Image(systemName: "xmark.circle.fill") }
                         .buttonStyle(.plain).foregroundStyle(.secondary)
+                        .accessibilityLabel("Remove the selected text")
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 10)

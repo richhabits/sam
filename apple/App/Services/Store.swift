@@ -8,6 +8,8 @@ import SwiftData
     var title: String = "New chat"
     var created: Date = Date.now
     var updated: Date = Date.now
+    /// Created while exploring the demo; deleted when the demo ends so it never mixes with real history.
+    var demo: Bool = false
     @Relationship(deleteRule: .cascade, inverse: \Message.conversation) var messages: [Message]? = []
 
     init(title: String = "New chat") {

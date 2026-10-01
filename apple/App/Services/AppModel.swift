@@ -30,18 +30,76 @@ struct PendingApproval: Identifiable, Equatable {
     /// Which brain answered last: a lane name from the Mac, or "on-device".
     var lastProvider: String?
 
-    var isPaired: Bool { host != nil && token != nil }
+    /// Exploring with fictional sample data (DemoBrain). Never touches the network.
+    private(set) var isDemo = Session.isDemo
+    var isPaired: Bool { isDemo || (host != nil && token != nil) }
     var brain: BrainClient? {
+        if isDemo { return Session.brain }
         guard let host, let token else { return nil }
         return BrainClient(host: host, token: token, fingerprint: fingerprint)
     }
 
     private var streamTask: Task<Void, Never>?
 
+    // MARK: Demo
+
+    /// Explore every screen with fictional sample data. Nothing is sent anywhere.
+    func enterDemo() async {
+        DemoBrain.register()
+        Session.isDemo = true
+        isDemo = true
+        lastError = nil
+        seedDemoConversation()
+        await refresh()
+        await loadCatalogue()
+    }
+
+    /// One fictional conversation so Chat isn't empty in the demo (and in store screenshots).
+    private func seedDemoConversation() {
+        let context = SAMStore.container.mainContext
+        let existing = (try? context.fetch(FetchDescriptor<Conversation>(predicate: #Predicate { $0.demo }))) ?? []
+        guard existing.isEmpty else { return }
+        let c = Conversation(title: "What did I get done this week?")
+        c.demo = true
+        context.insert(c)
+        for (role, text, provider) in [
+            ("user", "What did I get done this week?", nil as String?),
+            ("assistant", "A good week:\n\n- **Teahouse** went live on Monday, menu and booking form included.\n- The **Lemon & Ivy** spring newsletter is drafted and waiting for photos.\n- You compared three supplier quotes; the cheapest lids came out **12% lower**.\n\nWant me to schedule the newsletter for Thursday morning?", "demo"),
+            ("user", "Yes, and remind me to pick the photos.", nil),
+            ("assistant", "Done. The newsletter is queued for **Thursday 9:00**, and I'll remind you about the photos tomorrow at 10.", "demo"),
+        ] {
+            let m = Message(role: role, text: text, provider: provider)
+            m.conversation = c
+            context.insert(m)
+        }
+        try? context.save()
+    }
+
+    func leaveDemo() async {
+        let context = SAMStore.container.mainContext
+        for c in (try? context.fetch(FetchDescriptor<Conversation>(predicate: #Predicate { $0.demo }))) ?? [] {
+            context.delete(c)
+        }
+        try? context.save()
+        Session.isDemo = false
+        isDemo = false
+        yard = nil
+        specialists = []
+        tools = []
+        var snap = SharedSnapshot()
+        snap.paired = isPaired
+        snap.save()
+        await refresh()
+    }
+
     // MARK: Pairing
 
     /// On the Mac SAM runs on, pair silently over loopback. Anywhere else, wait for a code.
     func connect() async {
+        if ProcessInfo.processInfo.arguments.contains("-samDemo") || isDemo {
+            await enterDemo()
+            return
+        }
         #if os(macOS)
         if !isPaired, await BrainClient.isUp(BrainClient.localHost) {
             do {
@@ -59,6 +117,11 @@ struct PendingApproval: Identifiable, Equatable {
         if base.hasPrefix("https://") && fingerprint == nil {
             throw BrainError(0, "That SAM uses encryption. Scan its QR code so this device can check it's really your Mac.")
         }
+        // Plain http only where it can't be read on the way: this device, or a Tailscale address
+        // (100.64.0.0/10, already WireGuard-encrypted). Anything else needs the pinned https listener.
+        if base.hasPrefix("http://") && !Self.plainHTTPAllowed(base) {
+            throw BrainError(0, "For your privacy SAM won't pair over an unencrypted connection. Turn on phone access on your Mac and scan its QR code.")
+        }
         let token = try await BrainClient.claim(host: base, code: code, client: Self.clientName, fingerprint: fingerprint)
         store(host: base, token: token, fingerprint: fingerprint)
         await refresh()
@@ -70,10 +133,13 @@ struct PendingApproval: Identifiable, Equatable {
     }
 
     func unpair() async {
+        if isDemo { await leaveDemo(); return }
         try? await brain?.forget()
         store(host: nil, token: nil)
         reachable = false
         yard = nil
+        SharedSnapshot().save()   // nothing from the old pairing lingers on the Lock Screen
+        Spotlight.clear()
         publishSnapshot()
     }
 
@@ -84,6 +150,13 @@ struct PendingApproval: Identifiable, Equatable {
         if !Session.save(host: host, token: token, fingerprint: fingerprint), token != nil {
             lastError = "Paired, but the Keychain wouldn't save the session, so you'll need to pair again next launch."
         }
+    }
+
+    static func plainHTTPAllowed(_ base: String) -> Bool {
+        guard let host = URL(string: base)?.host() else { return false }
+        if host == "127.0.0.1" || host == "localhost" || host == "::1" { return true }
+        let parts = host.split(separator: ".").compactMap { Int($0) }
+        return parts.count == 4 && parts[0] == 100 && (64...127).contains(parts[1])
     }
 
     static var clientName: String {
@@ -145,6 +218,7 @@ struct PendingApproval: Identifiable, Equatable {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !busy else { return }
         let history = conversation.sorted.map { Turn(role: $0.isUser ? .user : .assistant, content: $0.text) }
+        if isDemo { conversation.demo = true }
         let user = Message(role: "user", text: display ?? prompt)
         user.conversation = conversation
         context.insert(user)

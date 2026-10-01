@@ -92,10 +92,11 @@ struct JobRow: View {
 
 struct StateIcon: View {
     let state: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         Image(systemName: symbol)
             .foregroundStyle(color)
-            .symbolEffect(.rotate, isActive: state == "running")
+            .symbolEffect(.rotate, isActive: state == "running" && !reduceMotion)
             .frame(width: 24)
             .accessibilityLabel(state)
     }

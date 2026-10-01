@@ -1,9 +1,10 @@
 import SwiftUI
 
 extension Color {
-    /// SAM's one accent (mobile/lib/samTheme.ts `accent`).
-    static let sam = Color(red: 0xF0 / 255, green: 0x82 / 255, blue: 0x4E / 255)
-    static let samDeep = Color(red: 0xD9 / 255, green: 0x53 / 255, blue: 0x1F / 255)
+    /// SAM's one accent (mobile/lib/samTheme.ts `accent` #F0824E in Dark Mode). Light Mode uses a
+    /// deeper terracotta (#A83F15) so accent text and white-on-accent pass 4.5:1 contrast.
+    static let sam = Color("AccentColor")
+    static let samDeep = Color("AccentDeep")
 }
 
 extension ShapeStyle where Self == LinearGradient {

@@ -26,8 +26,19 @@ public enum Session {
     /// The pinned certificate fingerprint for an https brain (not secret, so it lives in defaults).
     public static var fingerprint: String? { defaults.string(forKey: fingerprintKey) }
 
-    /// Nil when this device isn't paired.
+    /// "Explore the demo": every surface (app, widgets, Share/Safari extensions, Siri) talks to
+    /// the in-app DemoBrain instead of a Mac. Shared through the app group so extensions follow.
+    public static var isDemo: Bool {
+        get { defaults.bool(forKey: "sam.demo") }
+        set { defaults.set(newValue, forKey: "sam.demo") }
+    }
+
+    /// Nil when this device isn't paired (and isn't in the demo).
     public static var brain: BrainClient? {
+        if isDemo {
+            DemoBrain.register()
+            return BrainClient(host: DemoBrain.host, token: DemoBrain.token)
+        }
         guard let host, let token else { return nil }
         return BrainClient(host: host, token: token, fingerprint: fingerprint)
     }

@@ -83,7 +83,7 @@ struct ChatView: View {
                 PhotosPicker(selection: $photo, matching: .images) {
                     Image(systemName: readingPhoto ? "text.viewfinder" : "photo.badge.plus")
                         .symbolEffect(.pulse, isActive: readingPhoto)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Read text from a photo")
@@ -98,7 +98,7 @@ struct ChatView: View {
                 Button { Task { await dictation.toggle() } } label: {
                     Image(systemName: dictation.listening ? "waveform" : "mic")
                         .symbolEffect(.variableColor.iterative, isActive: dictation.listening)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(dictation.listening ? Color.sam : .secondary)
@@ -108,7 +108,7 @@ struct ChatView: View {
                     Image(systemName: model.busy ? "stop.fill" : "arrow.up")
                         .font(.body.bold())
                         .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                         .background(.samGradient, in: .circle)
                         .contentTransition(.symbolEffect(.replace))
                 }
@@ -256,10 +256,11 @@ struct MessageRow: View {
 }
 
 struct TypingDots: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         Image(systemName: "ellipsis")
             .font(.title3)
-            .symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating)
+            .symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating, isActive: !reduceMotion)
             .foregroundStyle(.secondary)
             .accessibilityLabel("SAM is thinking")
     }

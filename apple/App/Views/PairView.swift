@@ -30,6 +30,15 @@ struct PairView: View {
                 }
                 .padding(.top, 40)
 
+                Button {
+                    Task { await model.enterDemo(); onSkip() }
+                } label: {
+                    Label("Explore the demo", systemImage: "sparkles").frame(maxWidth: .infinity)
+                }
+                .samSecondary()
+                .controlSize(.large)
+                .accessibilityHint("Try every screen with sample data. No Mac needed, nothing is sent.")
+
                 #if os(iOS)
                 if DataScannerViewController.isSupported {
                     Button { scanning = true } label: {
@@ -58,13 +67,15 @@ struct PairView: View {
                         ForEach(discovery.found) { f in
                             Button {
                                 picked = f
-                                host = f.host
+                                #if os(iOS)
+                                if DataScannerViewController.isSupported { scanning = true }
+                                #endif
                             } label: {
                                 HStack {
                                     Image(systemName: "desktopcomputer").foregroundStyle(Color.sam)
                                     VStack(alignment: .leading) {
                                         Text(f.name)
-                                        Text("Check your Mac shows \(f.shortFingerprint)").font(.caption.monospaced()).foregroundStyle(.secondary)
+                                        Text("Scan the QR code on this Mac to pair").font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     if picked == f { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
@@ -73,7 +84,7 @@ struct PairView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        Text("Then enter the pairing code your Mac shows.").font(.caption).foregroundStyle(.secondary)
+                        Text("The QR code carries the Mac's certificate, so this device can check it's really yours.").font(.caption).foregroundStyle(.secondary)
                     }
                     .padding(20)
                     .samGlass(in: .rect(cornerRadius: 24))
@@ -149,9 +160,6 @@ struct PairView: View {
         do {
             if let link = PairLink.parse(host) {
                 try await model.pair(link: link, fallbackHost: nil)
-            } else if let picked, host == picked.host {
-                // Fingerprint from the network, compared by the person against their Mac.
-                try await model.pair(host: picked.host, code: code, fingerprint: picked.fingerprint)
             } else {
                 try await model.pair(host: host.contains(":") || host.contains("://") ? host : "\(host):\(BrainClient.defaultPort)", code: code)
             }

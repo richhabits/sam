@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 enum AppSection: String, Hashable, CaseIterable {
-    case chat, vault, studio, yard, crew, tools, addOns, settings
+    case chat, vault, studio, yard, more, crew, tools, addOns, settings
 }
 
 struct RootView: View {
@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var lock = AppLock.shared
     @State private var section: AppSection = .chat
     @State private var skippedPairing = UserDefaults.standard.bool(forKey: "sam.skippedPairing")
+    @State private var incomingLink: PairLink?
 
     var body: some View {
         ZStack {
@@ -26,6 +27,9 @@ struct RootView: View {
             }
             if lock.locked {
                 LockView().transition(.opacity)
+            }
+            if model.isDemo && !lock.locked {
+                DemoBanner().frame(maxHeight: .infinity, alignment: .top).allowsHitTesting(false)
             }
         }
         .animation(.smooth, value: model.isPaired)
@@ -51,28 +55,48 @@ struct RootView: View {
         }
         .onOpenURL { url in handle(url) }
         .onContinueUserActivity(ChatActivity.type) { _ in section = .chat }
+        .confirmationDialog("Pair with this SAM?", isPresented: Binding(get: { incomingLink != nil }, set: { if !$0 { incomingLink = nil } }),
+                            titleVisibility: .visible, presenting: incomingLink) { link in
+            Button("Pair") {
+                Task {
+                    do { try await model.pair(link: link, fallbackHost: nil) } catch { model.lastError = error.localizedDescription }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { link in
+            Text("\(link.host ?? "Unknown address")\(link.fingerprint.map { "\nCertificate \($0.prefix(16))…" } ?? "")\n\nOnly pair if this link came from your own Mac.")
+        }
     }
 
     private var tabs: some View {
+        // iPhone gets five tabs (HIG: five or fewer); iPad, Mac and Vision Pro list everything in the
+        // sidebar. "More" only exists in the tab bar; the four it holds only exist in the sidebar.
         TabView(selection: $section) {
             Tab("Chat", systemImage: "bubble.left.and.text.bubble.right", value: .chat) { ChatView() }
             Tab("Vault", systemImage: "books.vertical", value: .vault) { VaultView() }
             Tab("Studio", systemImage: "paintpalette", value: .studio) { StudioView() }
             Tab("Yard", systemImage: "hammer", value: .yard) { YardView() }
                 .badge(model.yard.map { $0.running + $0.queued } ?? 0)
+            #if !os(macOS)
+            Tab("More", systemImage: "ellipsis.circle", value: .more) { MoreView(section: $section) }
+                .defaultVisibility(.hidden, for: .sidebar)
+            #endif
             Tab("Crew", systemImage: "person.3", value: .crew) { CrewView(section: $section) }
+                .defaultVisibility(.hidden, for: .tabBar)
             Tab("Tools", systemImage: "wrench.and.screwdriver", value: .tools) { ToolsView() }
+                .defaultVisibility(.hidden, for: .tabBar)
             Tab("Add-ons", systemImage: "puzzlepiece.extension", value: .addOns) { AddOnsView() }
+                .defaultVisibility(.hidden, for: .tabBar)
             Tab("Settings", systemImage: "gearshape", value: .settings) { SettingsView() }
+                .defaultVisibility(.hidden, for: .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
     }
 
     private func handle(_ url: URL) {
         if let link = PairLink.parse(url.absoluteString) {
-            Task {
-                do { try await model.pair(link: link, fallbackHost: model.host) } catch { model.lastError = error.localizedDescription }
-            }
+            // A link can come from any web page, so it never pairs on its own: the person confirms.
+            incomingLink = link
         } else if url.host() == "chat" {
             section = .chat
         } else if url.host() == "yard" {
@@ -136,3 +160,32 @@ enum ChatActivity {
     }
 }
 #endif
+
+/// Always visible while exploring, so sample data is never mistaken for real.
+struct DemoBanner: View {
+    var body: some View {
+        Label("Demo · sample data", systemImage: "sparkles")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .samGlass(in: .capsule)
+            .padding(.top, 2)
+            .accessibilityLabel("Demo mode: sample data, not connected to a Mac")
+    }
+}
+
+/// The iPhone's fifth tab: everything that lives in the sidebar on bigger screens.
+struct MoreView: View {
+    @Binding var section: AppSection
+    var body: some View {
+        NavigationStack {
+            List {
+                NavigationLink { CrewView(section: $section) } label: { Label("Crew", systemImage: "person.3") }
+                NavigationLink { ToolsView() } label: { Label("Tools", systemImage: "wrench.and.screwdriver") }
+                NavigationLink { AddOnsView() } label: { Label("Add-ons", systemImage: "puzzlepiece.extension") }
+                NavigationLink { SettingsView() } label: { Label("Settings", systemImage: "gearshape") }
+            }
+            .navigationTitle("More")
+        }
+    }
+}

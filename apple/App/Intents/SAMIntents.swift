@@ -4,6 +4,8 @@ import SAMKit
 /// "Hey Siri, ask SAM…", the Action button, Spotlight and Shortcuts all land here.
 struct AskSAMIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask SAM"
+    /// SAM can act on your Mac, so Siri never runs it from a locked device.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
     static let description = IntentDescription("Ask SAM a question and hear the answer. Uses your Mac when it's reachable, Apple Intelligence on this device when it isn't.")
 
     @Parameter(title: "Question", requestValueDialog: "What would you like to ask SAM?")
@@ -33,6 +35,7 @@ struct AskSAMIntent: AppIntent {
 /// "What's running in SAM's yard?"
 struct YardStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Check SAM's Yard"
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
     static let description = IntentDescription("Hear what SAM is building on your Mac.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {

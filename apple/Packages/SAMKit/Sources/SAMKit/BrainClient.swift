@@ -35,7 +35,7 @@ public struct BrainClient: Sendable {
     /// self-signed, so the only alternative would be trusting whatever answers.
     static func session(for fingerprint: String?) -> URLSession {
         guard let fingerprint, PairLink.isFingerprint(fingerprint) else { return .shared }
-        return PinningDelegate.session(fingerprint: fingerprint)
+        return PinnedSessions.shared.session(for: fingerprint.lowercased())
     }
 
     // MARK: Pairing
@@ -197,5 +197,22 @@ public struct BrainClient: Sendable {
         } catch let e as URLError {
             throw BrainError(0, e.code == .timedOut ? "SAM didn't answer in time." : "Can't reach SAM: \(e.localizedDescription)")
         }
+    }
+}
+
+/// One pinned URLSession per fingerprint, reused. A delegate-backed session is never released
+/// until invalidated, so building one per request would leak (refresh runs every 15 s).
+final class PinnedSessions: @unchecked Sendable {
+    static let shared = PinnedSessions()
+    private let lock = NSLock()
+    private var sessions: [String: URLSession] = [:]
+
+    func session(for fingerprint: String) -> URLSession {
+        lock.lock()
+        defer { lock.unlock() }
+        if let s = sessions[fingerprint] { return s }
+        let s = PinningDelegate.session(fingerprint: fingerprint)
+        sessions[fingerprint] = s
+        return s
     }
 }

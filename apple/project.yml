@@ -14,8 +14,8 @@ settings:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: CC9Q9BH5NT
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "4.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "111"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
@@ -30,7 +30,10 @@ targets:
   SAM:
     type: application
     supportedDestinations: [iOS, macOS, visionOS]
-    sources: [App]
+    sources:
+      - App
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
       - target: SAMWidgets
@@ -44,6 +47,8 @@ targets:
     info:
       path: App/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         LSApplicationCategoryType: public.app-category.productivity
@@ -55,10 +60,9 @@ targets:
         NSFaceIDUsageDescription: SAM can require Face ID before it opens, because it can act on your Mac.
         NSLocalNetworkUsageDescription: SAM finds and connects to the Mac running SAM on your network.
         NSBonjourServices: [_sam._tcp]
-        # Paired Macs are reached by LAN or Tailscale (100.x) address over http; Tailscale addresses
-        # aren't "local" to ATS, so local-networking alone breaks those users (see build 106 → 107).
+        # Paired Macs are reached by IP (LAN, or Tailscale 100.x). NSAllowsLocalNetworking covers IP
+        # addresses and .local names; NSAllowsArbitraryLoads is ignored once it's present.
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSUserActivityTypes: [com.hectic.sam.chat]
         NSServices:
@@ -90,6 +94,7 @@ targets:
       base:
         PRODUCT_NAME: SAM
         PRODUCT_BUNDLE_IDENTIFIER: com.hectic.sam.mobile
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": App/SAM-macOS.entitlements
         TARGETED_DEVICE_FAMILY: "1,2,7"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]": VisionAppIcon
@@ -100,7 +105,10 @@ targets:
   SAMWidgets:
     type: app-extension
     supportedDestinations: [iOS, macOS]
-    sources: [Widgets]
+    sources:
+      - Widgets
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
     entitlements:
@@ -112,6 +120,8 @@ targets:
     info:
       path: Widgets/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSExtension:
@@ -139,6 +149,8 @@ targets:
       - path: Safari/WebExtension/_locales
         type: folder
         buildPhase: resources
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
     entitlements:
@@ -151,10 +163,11 @@ targets:
     info:
       path: Safari/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
@@ -171,7 +184,10 @@ targets:
   SAMShare:
     type: app-extension
     supportedDestinations: [iOS, macOS]
-    sources: [Share]
+    sources:
+      - Share
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
     entitlements:
@@ -184,20 +200,23 @@ targets:
     info:
       path: Share/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
-            NSExtensionActivationRule:
-              NSExtensionActivationSupportsText: true
-              NSExtensionActivationSupportsWebURLWithMaxCount: 1
-              NSExtensionActivationSupportsImageWithMaxCount: 1
-              NSExtensionActivationSupportsFileWithMaxCount: 1
+            # Text, one web link, one image or one PDF: only what SharedContent can actually read.
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a,
+              ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.plain-text" OR
+              ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url" OR
+              ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image" OR
+              ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf").@count == 1).@count == 1
     settings:
       base:
         PRODUCT_NAME: SAMShare
@@ -209,13 +228,18 @@ targets:
   SAMWatch:
     type: application
     platform: watchOS
-    sources: [Watch]
+    sources:
+      - Watch
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
       - target: SAMWatchWidgets
     info:
       path: Watch/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.hectic.sam.mobile
@@ -233,7 +257,10 @@ targets:
   SAMWatchWidgets:
     type: app-extension
     platform: watchOS
-    sources: [WatchWidgets]
+    sources:
+      - WatchWidgets
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: SAMKit
     entitlements:
@@ -243,6 +270,8 @@ targets:
     info:
       path: WatchWidgets/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: SAM
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension

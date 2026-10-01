@@ -105,12 +105,19 @@ struct SettingsView: View {
             Form {
                 Section("Your Mac") {
                     LabeledContent("Status") { ConnectionBadge(paired: model.isPaired, reachable: model.reachable) }
-                    if let host = model.host { LabeledContent("Address", value: host) }
+                    if model.isDemo {
+                        LabeledContent("Address", value: "Demo · sample data")
+                    } else if let host = model.host {
+                        LabeledContent("Address", value: host)
+                    }
                     if let p = model.lastProvider { LabeledContent("Last answered by", value: p) }
-                    if model.isPaired {
+                    if model.isDemo {
+                        Button("Leave the demo") { Task { await model.leaveDemo() } }
+                    } else if model.isPaired {
                         Button("Unpair this device", role: .destructive) { confirmUnpair = true }
                     } else {
                         Button("Pair with SAM") { showPair = true }
+                        Button("Explore the demo") { Task { await model.enterDemo() } }
                     }
                 }
                 Section {

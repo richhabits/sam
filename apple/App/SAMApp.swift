@@ -50,6 +50,13 @@ struct SAMApp: App {
         #endif
 
         #if os(macOS)
+        // ⌘, opens Settings in its own window, like every Mac app.
+        Settings {
+            SettingsView()
+                .environment(model)
+                .frame(width: 520, height: 560)
+        }
+
         // Quick ask from the menu bar, without bringing the main window forward.
         MenuBarExtra("SAM", systemImage: "brain.head.profile") {
             QuickAskView()
@@ -90,6 +97,7 @@ struct QuickAskView: View {
                     Image(systemName: model.busy ? "stop.fill" : "arrow.up.circle.fill").font(.title2)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(model.busy ? "Stop" : "Send")
                 .foregroundStyle(Color.sam)
             }
             .padding(10)
