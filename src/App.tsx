@@ -164,7 +164,7 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
       {m.role === "sam" ? (
         <div className="sam-card-container" style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '14px', padding: '18px 20px', width: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' }}>
           <div className="sam-card-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, #E8673A, #FF8F6B)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-accent)' }}>
               <Icon name="brain" size={13} />
             </div>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#F3F4F6', letterSpacing: '-0.01em' }}>
@@ -391,7 +391,7 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [scrollPct, setScrollPct] = useState(0);
   const [listening, setListening] = useState(false);
-  const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); return v === null ? true : v === "1"; } catch { return true; } });
+  const [dark, setDark] = useState(() => { try { const v = localStorage.getItem("sam.dark"); if (v !== null) return v === "1"; return !window.matchMedia?.("(prefers-color-scheme: light)").matches; } catch { return true; } }); // manual toggle wins; first run follows the OS (dark if unknown)
   const [skin, setSkin] = useState(() => { try { return localStorage.getItem("sam.skin") || "classic"; } catch { return "classic"; } });
   // The eight alternate skins (everything but the one true accent, "classic") are opt-in —
   // see docs/DESIGN-SYSTEM.md: nine skins each redefining --accent was the root cause of the
@@ -1939,7 +1939,7 @@ export default function App() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button type="button" onClick={() => { setInput("/team "); inputRef.current?.focus(); }} style={{ background: '#16181D', border: '1px solid #232730', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(232, 103, 58, 0.15)', color: '#E8673A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--accent-soft)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Icon name="team" size={20} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

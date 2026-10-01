@@ -9,10 +9,12 @@
   transform: translate(-50%, -50%) !important;
   width: 850px !important;
   height: 600px !important;
-  background: #FFFFFF !important;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.15) !important;
-  border: 1px solid #EAEAEA !important;
-  border-radius: 16px !important;
+  background: var(--glass-bg-thick) !important;
+  -webkit-backdrop-filter: var(--glass-filter) !important;
+  backdrop-filter: var(--glass-filter) !important;
+  box-shadow: var(--shadow-glass) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-card) !important;
   display: flex !important;
   flex-direction: row !important;
   padding: 0 !important;
@@ -25,8 +27,8 @@
   flex-direction: column !important;
   width: 220px !important;
   min-width: 220px !important;
-  background: #F9F9F9 !important;
-  border-right: 1px solid #EAEAEA !important;
+  background: var(--bg) !important;
+  border-right: 1px solid var(--border) !important;
   border-bottom: none !important;
   padding: 24px 16px !important;
   gap: 8px !important;
@@ -35,20 +37,20 @@
 .pop-tabs button {
   text-align: left !important;
   padding: 10px 16px !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
-  color: #111111 !important;
+  color: var(--text) !important;
   background: transparent !important;
   border: none !important;
 }
 
 .pop-tabs button:hover {
-  background: #EAEAEA !important;
+  background: var(--user-bubble) !important;
 }
 
 .pop-tabs button.on {
-  background: #EAEAEA !important;
+  background: var(--user-bubble) !important;
   font-weight: 600 !important;
 }
 
@@ -64,8 +66,8 @@
 .pop-title {
   font-size: 20px !important;
   font-weight: 600 !important;
-  color: #111111 !important;
-  border-bottom: 1px solid #EAEAEA !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
   padding-bottom: 16px !important;
   margin-bottom: 16px !important;
 }
@@ -82,8 +84,8 @@
   flex-direction: row !important;
   align-items: center !important;
   background: transparent !important;
-  border: 1px solid #EAEAEA !important;
-  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-control) !important;
   padding: 16px !important;
   gap: 16px !important;
   box-shadow: none !important;
@@ -91,15 +93,15 @@
 }
 
 .bento-card:hover {
-  background: #F9F9F9 !important;
+  background: var(--bg) !important;
 }
 
 .bento-icon {
   width: 32px !important;
   height: 32px !important;
-  border-radius: 8px !important;
-  background: #F4F4F4 !important;
-  color: #111111 !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--user-bubble) !important;
+  color: var(--text) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -108,12 +110,12 @@
 .bento-name {
   font-weight: 600 !important;
   font-size: 15px !important;
-  color: #111111 !important;
+  color: var(--text) !important;
 }
 
 .bento-sub {
   font-size: 13px !important;
-  color: #666666 !important;
+  color: var(--muted) !important;
 }
 
 .bento-action {
@@ -125,20 +127,20 @@
   display: inline-block !important;
   width: 8px !important; height: 8px !important;
   border-radius: 50% !important;
-  background: #F26101 !important;
-  box-shadow: 0 0 8px rgba(242, 97, 1, 0.6) !important;
+  background: var(--accent) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
   margin-left: 6px !important;
 }
 
 .composer-inner button[type="submit"] {
-  background: #F26101 !important;
-  color: white !important;
+  background: var(--accent) !important;
+  color: var(--on-accent) !important;
   border-radius: 50% !important;
   width: 36px !important; height: 36px !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
 }
 
-.side-title { color: #F26101 !important; }
+.side-title { color: var(--accent-text) !important; }
 
 /* ── FLIP IT — layout only. Colour used to be duplicated here as hardcoded hex + !important
    (see git history: "LUXURY DARK MODE") fighting the component's own --ink/--surface/--paper
@@ -171,34 +173,50 @@
   overflow-y: auto;
   max-height: calc(100vh - 48px);
 }:root {
-  --bg: #F5F5F7;          /* apple classic background */
-  --surface: #FFFFFF;     /* clean white */
-  --text: #1D1D1F;        /* crisp near-black */
-  --muted: #86868B;       /* pure gray */
-  --border: rgba(0, 0, 0, 0.08); /* subtle dividers */
+  /* ── Apple tokens: single source of truth. Mirrors apple/App/Views/Theme.swift (native app).
+     Light is the base; the dark values live in :root[data-theme="dark"] below (and in the
+     prefers-color-scheme block for the moment before App.tsx sets data-theme). ── */
+  color-scheme: light dark;
+  --bg: #F5F5F7;          /* systemGroupedBackground */
+  --surface: #FFFFFF;
+  --paper: #FFFFFF;
+  --text: #1D1D1F;        /* 16.8:1 on white */
+  --muted: #6E6E73;       /* secondary label; 5.07:1 on white, 4.66:1 on --bg (was #86868B, 3.6:1) */
+  --muted-on-dark: #98989D; /* secondary label for always-dark panels (Studio): 6.5:1 on #121212 */
+  --border: rgba(0, 0, 0, 0.08);
   --border-strong: rgba(0, 0, 0, 0.16);
-  --accent: #F0824E;      /* the one accent — see docs/DESIGN-SYSTEM.md */
-  --accent-text: #D9531F;
+  --accent: #A83F15;      /* terracotta, Light Mode (4.5:1+ on white/bg); Dark Mode #F0824E */
+  --accent-text: #A83F15; /* accent as text on a surface */
+  --accent-deep: #8C3310; /* deep accent, Light Mode (Dark Mode #D9531F) */
+  --accent-2: var(--accent-deep);
   --accent-soft: #FBE4D5;
-  --user-bubble: #E5E5EA; /* cool gray */
-  /* Semantic colors */
-  --c-blue: #0A84FF; --c-ok: #30D158; --c-err: #FF453A; --c-err-bg: rgba(255,69,58,.12); --c-bg2: var(--surface);
-  --c-warn: #FF9F0A; 
-  --sans: "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "Satoshi", "Geist", "Outfit", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
-  --display: "SF Pro Display", "SF Pro", var(--sans);
-  --radius: 12px;
-  /* Apple-tier shadows */
-  --shadow: 0 1px 3px rgba(0,0,0,.03), 0 4px 12px rgba(0,0,0,.04);
-  --shadow-lg: 0 10px 40px rgba(0,0,0,.08);
-  --shadow-accent: 0 4px 16px rgba(240, 130, 78, 0.35);
-  --glass-rim: rgba(255,255,255,.55);
+  --accent-glow: rgba(168, 63, 21, 0.45);
+  --on-accent: #FFFFFF;   /* ink on --accent: 6.2:1 in light, #0C0A09 in dark (7.5:1) */
+  --user-bubble: #E5E5EA;
+  /* Semantic colours (Apple system colours, Light variants for contrast) */
+  --c-blue: #0066CC; --c-ok: #248A3D; --c-err: #D70015; --c-err-bg: rgba(215,0,21,.10); --c-bg2: var(--surface);
+  --c-warn: #B25000;
+  /* Type: system font (SF Pro on Apple devices) — no webfonts */
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* Shape: continuous rounded corners, capsules for pills/buttons */
+  --radius-card: 20px; --radius-control: 12px; --radius-pill: 999px;
+  --radius: var(--radius-control);
+  /* Shadows */
+  --shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.05);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,.10);
+  --shadow-accent: 0 4px 16px rgba(168, 63, 21, 0.30);
+  --glass-rim: rgba(255,255,255,.65);
   --shadow-glass: var(--shadow-lg), inset 0 1px 0 var(--glass-rim);
-  --accent-2: #D9531F;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --on-accent: #0C0A09; /* white on #F0824E is 2.62:1 — unreadable. This ink is 7.53:1. */
+  /* Materials (Liquid Glass): translucent fill + saturate/blur. Solid fallbacks at the end
+     of the :root[data-theme] blocks for no-backdrop-filter and prefers-reduced-transparency. */
+  --glass-filter: saturate(180%) blur(20px);
+  --glass-bg: rgba(255,255,255,.72);
+  --glass-bg-thick: rgba(255,255,255,.88);
   --ring: 0 0 0 3.5px var(--accent-soft);
   /* Motion */
-  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease: cubic-bezier(.2, .8, .2, 1); /* Apple-like ease-out */
   --ease-spring: cubic-bezier(.175, .885, .32, 1.275);
   --dur: .17s;
   --dur-slow: .32s;
@@ -219,7 +237,7 @@
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
   /* Radius */
-  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 999px;
+  --radius-sm: 8px; --radius-md: 10px; --radius-lg: var(--radius-control); --radius-xl: var(--radius-card);
   /* Elevation ladder — depth you feel; every raised surface picks a rung, not a bespoke shadow. */
   --elev-1: var(--shadow);
   --elev-2: var(--shadow-lg);
@@ -254,34 +272,54 @@ button, a, [role="button"], summary, label { -webkit-tap-highlight-color: transp
   --surface: #0A0A0A;
   --paper: #121212;
   --text: #F5F5F7;
-  --muted: #86868B;
+  --muted: #98989D;       /* 5.9:1+ on every dark surface (was #86868B, 4.7:1 on bubbles) */
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.2);
   --accent: #F0824E;
-  --accent-text: #FFA075;
+  --accent-text: #F0824E; /* 7.1:1 on --paper */
+  --accent-deep: #D9531F;
+  --accent-2: var(--accent-deep);
   --accent-soft: rgba(240, 130, 78, 0.14);
-  --accent-2: #D9531F;
+  --accent-glow: rgba(240, 130, 78, 0.6);
+  --on-accent: #0C0A09;   /* white on #F0824E is 2.62:1 — unreadable. This ink is 7.53:1. */
   --user-bubble: #1C1C1E;
+  --c-blue: #0A84FF; --c-ok: #30D158; --c-err: #FF453A; --c-err-bg: rgba(255,69,58,.12); --c-warn: #FF9F0A;
   --shadow: 0 4px 20px rgba(0,0,0,0.8);
   --shadow-lg: 0 16px 48px rgba(0,0,0,0.9);
   --shadow-accent: 0 4px 16px rgba(240, 130, 78, 0.35);
   --glass-rim: rgba(255,255,255,0.08);
-  --on-accent: #0C0A09; /* white on #F0824E is 2.62:1 — unreadable. This ink is 7.53:1. */
+  --glass-bg: rgba(28,28,30,.72);
+  --glass-bg-thick: rgba(28,28,30,.88);
+  --elev-3: 0 24px 64px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.4);
+}
+/* Before App.tsx sets data-theme (first paint) follow the OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #000000; --surface: #0A0A0A; --paper: #121212; --text: #F5F5F7; --muted: #98989D;
+    --border: rgba(255,255,255,.1); --border-strong: rgba(255,255,255,.2);
+    --accent: #F0824E; --accent-text: #F0824E; --accent-deep: #D9531F; --accent-soft: rgba(240,130,78,.14);
+    --on-accent: #0C0A09; --user-bubble: #1C1C1E;
+    --glass-bg: rgba(28,28,30,.72); --glass-bg-thick: rgba(28,28,30,.88); --glass-rim: rgba(255,255,255,.08);
+  }
 }
 :root[data-theme="dark"] .app { background: var(--bg); }
 
-/* Glassmorphism: cards/panels/bars whose background is now translucent (--surface's alpha
-   above) need the blur themselves, or "translucent" just reveals whatever's underneath with
-   no frosted effect. Scoped to dark mode — light mode's surfaces stay solid. */
-:root[data-theme="dark"] .popover,
-:root[data-theme="dark"] .onboard-card,
-:root[data-theme="dark"] .composer-inner,
-:root[data-theme="dark"] .composer,
-:root[data-theme="dark"] .center-header,
-:root[data-theme="dark"] .ctx,
-:root[data-theme="dark"] .drawer {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Materials: one recipe (--glass-filter) for every floating surface, both themes. */
+.popover, .onboard-card, .composer-inner, .center-header, .ctx, .drawer, .bar, .glass {
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}
+.glass { background: var(--glass-bg); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-glass); }
+
+/* Solid fallbacks: no backdrop-filter support, or the user asked for less transparency. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root, :root[data-theme] { --glass-filter: none; --glass-bg: var(--surface); --glass-bg-thick: var(--surface); }
+  .bar, .drawer, .ctx, .composer-inner, .center-header, .popover { background: var(--surface) !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme] { --glass-filter: none; --glass-bg: var(--surface); --glass-bg-thick: var(--surface); }
+  .bar, .drawer, .ctx, .composer-inner, .center-header, .popover, .drawer-wrap { background-color: var(--surface) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .drawer-wrap { background-color: rgba(0,0,0,.45) !important; }
 }
 
 * { box-sizing: border-box; }
@@ -567,7 +605,7 @@ button { font-family: inherit; cursor: pointer; }
   position: sticky; top: 16px; z-index: 10; margin: 0 auto 16px; max-width: 760px; width: calc(100% - 48px);
   background: color-mix(in srgb, var(--surface) 95%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 14px; box-shadow: var(--shadow-glass); padding: 12px 16px;
-  animation: rowIn .28s cubic-bezier(.2,.7,.2,1) both;
+  animation: rowIn .28s var(--ease) both;
 }
 .pb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .pb-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
@@ -739,7 +777,7 @@ button { font-family: inherit; cursor: pointer; }
   -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
-.icon-btn { border-radius: 10px; transition: transform .12s ease, background .15s, border-color .15s, box-shadow .15s; }
+.icon-btn { border-radius: 10px; transition: transform .12s var(--ease), background .15s, border-color .15s, box-shadow .15s; }
 .icon-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .icon-btn:active { transform: translateY(0); }
 .dot-live { background: radial-gradient(circle at 35% 35%, #fff6, var(--accent)); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 12px var(--accent); }
@@ -783,7 +821,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border); border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 8px;
   display: flex; flex-direction: column; gap: 2px; z-index: 50;
-  animation: rowIn .2s cubic-bezier(.2,.7,.2,1) both;
+  animation: rowIn .2s var(--ease) both;
 }
 /* Full-screen click-away layer behind the actions menu — click anywhere off the menu to close it.
    Sits just under .plus-menu (z-index 50) so item clicks still land on the buttons. */
@@ -847,7 +885,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-orb.listening { animation: vmListen 1.4s ease-in-out infinite; }
 .vm-orb.speaking { animation: vmSpeak .6s ease-in-out infinite; }
 .vm-orb.thinking { animation: vmThink 1s linear infinite; filter: saturate(.7); }
-@keyframes vmListen { 0%,100% { transform: scale(1); box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 0 rgba(232,103,58,.35); } 50% { transform: scale(1.06); box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 24px rgba(232,103,58,0); } }
+@keyframes vmListen { 0%,100% { transform: scale(1); box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent); } 50% { transform: scale(1.06); box-shadow: 0 20px 60px var(--accent-soft), 0 0 0 24px color-mix(in srgb, var(--accent) 0%, transparent); } }
 @keyframes vmSpeak { 0%,100% { transform: scale(1.02); } 50% { transform: scale(1.12); } }
 @keyframes vmThink { 0% { transform: rotate(0) scale(1); } 100% { transform: rotate(360deg) scale(1); } }
 .vm-state { font-size: 15px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text); }
@@ -905,7 +943,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .admin-lead { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 2px 0 14px; }
 .admin-lead b { color: var(--text); }
 .admin-more { width: 100%; text-align: left; background: none; border: 1px dashed var(--border); border-radius: 10px; color: var(--accent-text); font-size: 13px; font-weight: 600; padding: 10px 14px; margin: 6px 0 4px; cursor: pointer; }
-.admin-more:hover { background: var(--accent-soft, rgba(232,103,58,.08)); border-color: var(--accent); }
+.admin-more:hover { background: var(--accent-soft); border-color: var(--accent); }
 .admin-sub { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; opacity: .8; }
 .allow-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .allow-list li { display: flex; align-items: center; justify-content: space-between; font-size: 14px; text-transform: capitalize; }
@@ -925,10 +963,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .src-link:hover { border-bottom-style: solid; }
 
 /* ── Seamless polish: smooth message entrance + calmer transitions ── */
-.row { animation: rowIn .28s cubic-bezier(.2,.7,.2,1) both; }
+.row { animation: rowIn .28s var(--ease) both; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .bubble { transition: background .2s ease; }
-.chip, .icon-btn, .pop-opt, .send, .mic, .plus { transition: all .16s cubic-bezier(.2,.7,.2,1); }
+.chip, .icon-btn, .pop-opt, .send, .mic, .plus { transition: all .16s var(--ease); }
 
 /* ── Tactile press — interactive surfaces dip and spring back when pressed. The physicality
    that separates "designed" from "merely functional". Transform-only (cheap); the global
@@ -978,7 +1016,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .vm-orb { transform: scale(calc(1 + var(--v, 0) * 0.07)); transition: transform .06s ease-out; }
 .vm-orb.listening, .vm-orb.speaking, .vm-orb.thinking { animation: none; }
 .vm-orb { box-shadow: 0 20px 60px var(--accent-soft),
-  0 0 calc(24px + var(--v,0) * 70px) calc(var(--v,0) * 12px) rgba(232,103,58,.4); }
+  0 0 calc(24px + var(--v,0) * 70px) calc(var(--v,0) * 12px) color-mix(in srgb, var(--accent) 40%, transparent); }
 .vm-orb.thinking { filter: saturate(.8); }
 .vm-mouth { display: flex; align-items: center; justify-content: center; gap: 8px; height: 100px; }
 .vm-bar {
@@ -1175,7 +1213,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* 📜 LINEN — warm paper, sepia ink: a soft, bright light mode */
 :root[data-skin="linen"] {
-  --bg: #F4EFE6; --surface: #FBF8F1; --text: #3B352C; --muted: #8A8172;
+  --bg: #F4EFE6; --surface: #FBF8F1; --text: #3B352C; --muted: #6F6657;
   --border: #E7DFCE; --border-strong: #D6CAB3;
   --accent: #B0703C; --accent-text: #8F5A2E; --accent-soft: #EFE4D3;
   --user-bubble: #EDE5D5;
@@ -1192,7 +1230,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .skin-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
 .skin-prev { width: 100%; height: 28px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
 .skin-chip-label { font-size: 12px; font-weight: 600; line-height: 1.2; }
-.prev-classic { background: linear-gradient(135deg, #FDFBF9, #E8673A); }
+.prev-classic { background: linear-gradient(135deg, #FDFBF9, #A83F15); }
 .prev-jarvis { background: linear-gradient(135deg, #0B1420, #29C6F6); }
 .prev-ember { background: linear-gradient(135deg, #1C1712, #F0824E); }
 .prev-stealth { background: linear-gradient(135deg, #0C0C0C, #4ADE80); }
@@ -1251,7 +1289,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 :root[data-skin="jarvis"] .tok-s { color: #6bd6ff; }
 :root[data-skin="jarvis"] .tok-k { color: #29C6F6; }
 :root[data-skin="stealth"] .tok-k { color: #4ADE80; }
-:root[data-skin="ember"] .tok-k { color: #F0824E; }
+:root[data-skin="ember"] .tok-k { color: var(--accent); }
 
 /* ── ⌘P Command palette ── */
 .cmdp-scrim { position: fixed; inset: 0; z-index: 200; background: rgba(10,12,16,.42); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; animation: cmdp-fade .12s ease; }
@@ -1305,7 +1343,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .row:hover .at { opacity: 1; }
 
 /* ── Onboarding + empty-state polish ── */
-.onboard-card { animation: onboard-in .42s cubic-bezier(.2,.9,.3,1.05); }
+.onboard-card { animation: onboard-in .42s var(--ease); }
 @keyframes onboard-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .onboard-by { font-size: 14px; color: var(--muted); margin-top: 3px; }
 .onboard-by b { color: var(--accent-text); }
@@ -1514,7 +1552,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   cursor: pointer; text-align: left;
-  transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all .2s var(--ease);
 }
 .ctx-module-card:hover {
   transform: translateY(-1px);
@@ -2756,3 +2794,20 @@ body:has(.flipit-view) { background: #000000; }
   0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(16, 185, 129, 0.8); }
   50% { opacity: .5; text-shadow: none; }
 }
+
+/* ═══ Apple layer (same rules as the native app — see docs/DESIGN-SYSTEM.md §A) ═══
+   Kept last so it wins source order against the older per-component rules above. */
+.popover, .drawer, .ctx, .bar, .center-header { background: var(--glass-bg); }
+.popover { border-radius: var(--radius-card); }
+.drawer { border-radius: var(--radius-card); }
+.onboard-card, .import-modal, .roster { border-radius: var(--radius-card); }
+.composer-inner { border-radius: var(--radius-control); }
+/* Pills + buttons are capsules (round send/mic buttons already are). */
+.chip, .skin-chip { border-radius: var(--radius-pill); }
+.onboard-go, .admin-save, .key-cta { border-radius: var(--radius-pill); }
+
+/* Focus: one ring, keyboard only. Older rules set outline:none + a box-shadow ring; this wins. */
+:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
+.composer textarea:focus-visible { outline: none !important; } /* ring is drawn on .composer-inner:focus-within */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible,
+.dl-btn:focus-visible, .pop-opt:focus-visible, [role="button"]:focus-visible { box-shadow: none; }

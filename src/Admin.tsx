@@ -478,7 +478,7 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
               </div>
               
               <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
-                <button type="button" style={{ background: "#E8673A", color: "white", padding: "10px 24px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(232, 103, 58, 0.3)" }} onClick={() => onClose()}>
+                <button type="button" style={{ background: "var(--accent)", color: "var(--on-accent)", padding: "10px 24px", borderRadius: 999, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "var(--shadow-accent)" }} onClick={() => onClose()}>
                   Done
                 </button>
               </div>
@@ -506,8 +506,8 @@ export default function Admin({ onClose, focus }: { onClose: () => void; focus?:
           <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #232730", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><Icon name="bell" size={16} /> Device Alerts</div>
-              <div style={{ fontSize: 13, color: "#666", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>
-              {pushMsg && <div style={{ fontSize: 13, color: "#F26101", marginTop: 4, fontWeight: 500 }}>{pushMsg}</div>}
+              <div style={{ fontSize: 13, color: "var(--muted)", maxWidth: 400 }}>Get morning briefs and task notifications on this device.</div>
+              {pushMsg && <div style={{ fontSize: 13, color: "var(--accent-text)", marginTop: 4, fontWeight: 500 }}>{pushMsg}</div>}
             </div>
             <div>
               {pushOn ? (

@@ -409,19 +409,19 @@ export default function Dashboard({ onClose, onAddKeys }: { onClose: () => void;
                       <div style={{ fontSize: 12, opacity: 0.75 }}>
                         Scan with your phone's camera — or, in the SAM app, enter this address and code:
                       </div>
-                      <div style={{ fontSize: 13, fontFamily: "ui-monospace, Menlo, monospace" }}>{pairCode.lanUrl || new URL(pairCode.url).origin}</div>
+                      <div style={{ fontSize: 13, fontFamily: "var(--mono)" }}>{pairCode.lanUrl || new URL(pairCode.url).origin}</div>
                       {!pairCode.lanUrl && (
                         <div style={{ fontSize: 12, color: "var(--c-err)" }}>
                           Phone access is off, so a phone can't reach this Mac yet. Add SAM_LAN=1 to your .env, restart SAM, then tap New code.
                         </div>
                       )}
-                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", wordBreak: "break-all" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--mono)", wordBreak: "break-all" }}>
                         {pairCode.code}
                       </div>
                       {pairCode.pin && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
                           <div style={{ fontSize: 12, opacity: 0.75 }}>Or enter this 6-digit PIN on your phone:</div>
-                          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: 3 }}>
+                          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "var(--mono)", letterSpacing: 3 }}>
                             {pairCode.pin.slice(0, 3)} {pairCode.pin.slice(3)}
                           </div>
                         </div>

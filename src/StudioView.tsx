@@ -366,7 +366,7 @@ export default function StudioView() {
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', sans-serif",
+      fontFamily: "var(--sans)",
       boxSizing: "border-box",
       userSelect: "none",
     }}>
@@ -399,10 +399,10 @@ export default function StudioView() {
         </div>
 
         {/* Global Timecode Display in Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#0A0A0A", border: "1px solid #282828", padding: "3px 12px", borderRadius: 6, fontFamily: "monospace", fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#0A0A0A", border: "1px solid #282828", padding: "3px 12px", borderRadius: 6, fontFamily: "var(--mono)", fontSize: 12 }}>
           <span style={{ color: isPlaying ? "#27C93F" : "#D9A05B", fontWeight: 800 }}>{isPlaying ? "● REC" : "■ STBY"}</span>
           <span style={{ color: "#FFF", fontWeight: 700 }}>{formatTimecode(currentTimeSec)}</span>
-          <span style={{ color: "#666" }}>/ {formatTimecode(TOTAL_DURATION_SEC)}</span>
+          <span style={{ color: "var(--muted-on-dark)" }}>/ {formatTimecode(TOTAL_DURATION_SEC)}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#888" }}>
@@ -459,7 +459,7 @@ export default function StudioView() {
                   boxShadow: "inset 0 2px 4px rgba(0,0,0,0.5)"
                 }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#666", marginTop: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--muted-on-dark)", marginTop: 6 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 4, height: 4, borderRadius: "50%", background: "#27C93F" }} /> Tokens: ~{Math.round(prompt.length / 4)}</span>
                 <span>{prompt.length} chars</span>
               </div>
@@ -561,7 +561,7 @@ export default function StudioView() {
                     }} />
                     <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                       <span style={{ fontSize: 10, color: on ? "#D9A05B" : "#CCC", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</span>
-                      <span style={{ fontSize: 8, color: on ? "#B5803E" : "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.cue}</span>
+                      <span style={{ fontSize: 8, color: on ? "#B5803E" : "var(--muted-on-dark)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.cue}</span>
                     </div>
                   </div>
                 );
@@ -648,7 +648,7 @@ export default function StudioView() {
           
           {/* Interactive Playback Scrub Bar */}
           <div style={{ height: 38, minHeight: 38, padding: "0 14px", display: "flex", alignItems: "center", gap: 12, background: "#121212", borderTop: "1px solid #222" }}>
-            <span style={{ fontSize: 11, color: "#D9A05B", fontFamily: "monospace", fontWeight: 700 }}>{formatTimecode(currentTimeSec)}</span>
+            <span style={{ fontSize: 11, color: "#D9A05B", fontFamily: "var(--mono)", fontWeight: 700 }}>{formatTimecode(currentTimeSec)}</span>
             
             {/* Scrubber track */}
             <div
@@ -677,7 +677,7 @@ export default function StudioView() {
               <span onClick={handleJumpEnd} title="Jump to End" style={{ fontSize: 13, cursor: "pointer", color: "#AAA" }}>⏭</span>
             </div>
 
-            <div style={{ display: "flex", gap: 8, color: "#777", marginLeft: "auto" }}>
+            <div style={{ display: "flex", gap: 8, color: "var(--muted-on-dark)", marginLeft: "auto" }}>
               <button
                 type="button"
                 onClick={cycleAspect}
@@ -685,7 +685,7 @@ export default function StudioView() {
                 style={{ fontSize: 9, cursor: "pointer", color: "#D9A05B", background: "#1E1E1E", border: "1px solid #333", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
                 {activeAspect.id}
               </button>
-              <span style={{ cursor: "pointer", color: showFraming ? "#D9A05B" : "#777" }} onClick={toggleFraming} title="Toggle Viewfinder Overlay">
+              <span style={{ cursor: "pointer", color: showFraming ? "#D9A05B" : "var(--muted-on-dark)" }} onClick={toggleFraming} title="Toggle Viewfinder Overlay">
                 <Icon name="frame" size={13} />
               </span>
               <span style={{ cursor: "pointer" }} onClick={toggleFullscreen} title="Toggle Fullscreen">
@@ -704,7 +704,7 @@ export default function StudioView() {
           <div style={{ background: "#141414", borderRadius: 8, border: "1px solid #242424", padding: "10px 12px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.5px", color: "#BBB" }}>GENERATION QUEUE</span>
-              <span style={{ cursor: "pointer", color: "#666", fontSize: 10 }} onClick={clearQueue} title="Clear Queue"><Icon name="trash" size={11} /></span>
+              <span style={{ cursor: "pointer", color: "var(--muted-on-dark)", fontSize: 10 }} onClick={clearQueue} title="Clear Queue"><Icon name="trash" size={11} /></span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", flex: 1 }}>
@@ -741,7 +741,7 @@ export default function StudioView() {
                     <div style={{ width: 5, height: 5, background: selectedClipId === clip.id ? "#D9A05B" : "#555", borderRadius: "50%" }} />
                     <span style={{ color: selectedClipId === clip.id ? "#FFF" : "#AAA", fontWeight: 600 }}>{clip.name}</span>
                   </div>
-                  <span style={{ fontSize: 9, color: "#666" }}>{clip.time}</span>
+                  <span style={{ fontSize: 9, color: "var(--muted-on-dark)" }}>{clip.time}</span>
                 </div>
               ))}
             </div>
@@ -763,7 +763,7 @@ export default function StudioView() {
                   onClick={item.cycle}
                   title="Click to cycle option"
                   style={{ cursor: "pointer", background: "#0A0A0A", border: "1px solid #282828", borderRadius: 5, padding: "5px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#BBB", fontSize: 10 }}>
-                  <span style={{ fontSize: 9, color: "#666", fontWeight: 700 }}>{item.label}</span>
+                  <span style={{ fontSize: 9, color: "var(--muted-on-dark)", fontWeight: 700 }}>{item.label}</span>
                   <span style={{ fontWeight: 600, color: "#D9A05B" }}>{item.val.split(" ")[0]} ▾</span>
                 </div>
               ))}
@@ -776,7 +776,7 @@ export default function StudioView() {
               style={{
                 width: "100%", marginTop: 6,
                 background: isGenerating ? "#333" : "linear-gradient(135deg, #EDBE7D 0%, #D9A05B 100%)",
-                color: isGenerating ? "#777" : "#000", border: "none", borderRadius: 6,
+                color: isGenerating ? "var(--muted-on-dark)" : "#000", border: "none", borderRadius: 6,
                 padding: "10px", fontSize: 11, fontWeight: 900, letterSpacing: "0.8px",
                 cursor: isGenerating ? "default" : "pointer", boxShadow: isGenerating ? "none" : "0 4px 16px rgba(217,160,91,0.3)"
               }}>
@@ -795,7 +795,7 @@ export default function StudioView() {
       }}>
         {/* Track Headers */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 75, flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "#666", fontSize: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted-on-dark)", fontSize: 10 }}>
             <span style={{ cursor: "pointer", background: "#222", padding: "2px 4px", borderRadius: 3 }} onClick={handleJumpStart} title="Jump to 0:00">↰ 0:00</span>
             <span style={{ cursor: "pointer", color: "#AAA", background: "#222", padding: "2px 4px", borderRadius: 3 }} onClick={duplicateActiveClip} title="Duplicate Selected Clip">
               <Icon name="copy" size={11} />
@@ -818,7 +818,7 @@ export default function StudioView() {
         <div ref={timelineTrackRef} onClick={handleTimelineClick} style={{ flex: 1, position: "relative", minHeight: 0, cursor: "crosshair" }}>
           
           {/* Time Ruler Markers */}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#666", marginBottom: 4, borderBottom: "1px solid #222", paddingBottom: 2 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--muted-on-dark)", marginBottom: 4, borderBottom: "1px solid #222", paddingBottom: 2 }}>
             <span>0:00</span><span>0:15</span><span>0:30</span><span>0:45</span><span>1:00</span><span>1:15 (End)</span>
           </div>
 
@@ -852,7 +852,7 @@ export default function StudioView() {
                   <div style={{ position: "absolute", top: 2, left: 4, fontSize: 8, color: "#FFF", background: "rgba(0,0,0,0.7)", padding: "1px 3px", borderRadius: 2, fontWeight: 700 }}>
                     {clip.name.split("·")[0]}
                   </div>
-                  <div style={{ position: "absolute", bottom: 2, right: 4, fontSize: 8, color: "#D9A05B", background: "rgba(0,0,0,0.8)", padding: "1px 3px", borderRadius: 2, fontFamily: "monospace" }}>
+                  <div style={{ position: "absolute", bottom: 2, right: 4, fontSize: 8, color: "#D9A05B", background: "rgba(0,0,0,0.8)", padding: "1px 3px", borderRadius: 2, fontFamily: "var(--mono)" }}>
                     {clip.time}
                   </div>
                 </div>

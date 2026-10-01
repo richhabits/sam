@@ -323,7 +323,7 @@ function TaskDetail({ job, log, onKill, onRetry, onRaiseBudget }: { job: Job; lo
         </div>
       )}
       {job.steps.length > 0 && <StepChecklist steps={job.steps} />}
-      <div style={{ ...card, padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
+      <div style={{ ...card, padding: 10, fontFamily: "var(--mono)", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto", color: "var(--text)" }}>
         {log.length ? log.join("\n") : <span style={{ color: "var(--muted)" }}>No log output yet.</span>}
       </div>
       {job.project && <ProjectPublish slug={job.project} />}
@@ -404,7 +404,7 @@ function TaskFiles({ slug }: { slug: string }) {
                   // own model-written output, not arbitrary third-party HTML.
                   <div style={{ fontSize: 12.5, color: "var(--text)" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(text || "") }} />
                 ) : (
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", color: "var(--text)" }}>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", color: "var(--text)" }}>
                     {text === null ? "Loading…" : text}
                   </div>
                 )}
@@ -759,7 +759,7 @@ function PlaybookSheet({ onClose, onRan, setErr }: { onClose: () => void; onRan:
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           <textarea placeholder={"The prompt. Use {{name}} for anything you want filled in on run — e.g. {{project}}, {{repo}}, {{branch}}, {{target}}."}
             value={template} onChange={(e) => setTemplate(e.target.value)} rows={10}
-            style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 12.5, resize: "vertical" }} />
+            style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 12.5, resize: "vertical" }} />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button type="button" style={btn} onClick={() => setMode("list")}>Cancel</button>
             <button type="button" disabled={busy || !name.trim() || !template.trim()} style={{ ...btn, background: "var(--accent)", borderColor: "var(--accent)", color: "#fff", opacity: busy ? 0.6 : 1 }} onClick={save}>
