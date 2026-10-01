@@ -18,22 +18,27 @@ struct ChatView: View {
 
     private var conversation: Conversation? { current ?? conversations.first }
 
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var regular: Bool { sizeClass == .regular }
+    #else
+    private let regular = true
+    #endif
+
     var body: some View {
-        NavigationStack {
-            messages
-                .safeAreaInset(edge: .bottom) { composer }
-                .navigationTitle(conversation?.title ?? "SAM")
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar { toolbar }
-                .sheet(item: pendingBinding) { approval in
-                    ApprovalSheet(approval: approval) { approved, always in
-                        guard let conversation else { return }
-                        Task { await model.answer(approval, approved: approved, always: always, in: conversation, context: context) }
-                    }
-                    .presentationDetents([.medium])
+        Group {
+            if regular {
+                // iPad, Mac, Vision Pro: conversations beside the chat, like Messages and Notes.
+                NavigationSplitView {
+                    ConversationList(conversations: conversations, current: conversation, select: { current = $0 },
+                                     newChat: newChat, delete: delete)
+                } detail: {
+                    NavigationStack { chatPane }
                 }
+                .navigationSplitViewStyle(.balanced)
+            } else {
+                NavigationStack { chatPane }
+            }
         }
         .userActivity(ChatActivity.type) { activity in
             activity.title = conversation?.title ?? "SAM"
@@ -42,6 +47,23 @@ struct ChatView: View {
         }
         .onChange(of: dictation.transcript) { _, t in if !t.isEmpty { draft = t } }
         .onChange(of: photo) { _, item in if let item { Task { await readText(from: item) } } }
+    }
+
+    private var chatPane: some View {
+        messages
+            .safeAreaInset(edge: .bottom) { composer }
+            .navigationTitle(conversation?.title ?? "SAM")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar { toolbar }
+            .sheet(item: pendingBinding) { approval in
+                ApprovalSheet(approval: approval) { approved, always in
+                    guard let conversation else { return }
+                    Task { await model.answer(approval, approved: approved, always: always, in: conversation, context: context) }
+                }
+                .presentationDetents([.medium])
+            }
     }
 
     // MARK: Messages
@@ -132,6 +154,7 @@ struct ChatView: View {
             Button { newChat() } label: { Label("New chat", systemImage: "square.and.pencil") }
                 .keyboardShortcut("n", modifiers: .command)
         }
+        if !regular {
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 ForEach(conversations.prefix(30)) { c in
@@ -142,6 +165,7 @@ struct ChatView: View {
                     Button("Delete this chat", role: .destructive) { deleteCurrent() }
                 }
             } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+        }
         }
         ToolbarItem(placement: .status) {
             ConnectionBadge(paired: model.isPaired, reachable: model.reachable)
@@ -176,8 +200,12 @@ struct ChatView: View {
 
     private func deleteCurrent() {
         guard let c = conversation else { return }
+        delete(c)
+    }
+
+    private func delete(_ c: Conversation) {
+        if current == c { current = nil }
         context.delete(c)
-        current = nil
         try? context.save()
     }
 
@@ -321,5 +349,50 @@ struct ApprovalSheet: View {
             }
         }
         .padding(24)
+    }
+}
+
+/// The sidebar of conversations on iPad, Mac and Vision Pro.
+struct ConversationList: View {
+    let conversations: [Conversation]
+    let current: Conversation?
+    var select: (Conversation) -> Void
+    var newChat: () -> Void
+    var delete: (Conversation) -> Void
+    @State private var query = ""
+
+    private var filtered: [Conversation] {
+        query.isEmpty ? conversations : conversations.filter { $0.title.localizedCaseInsensitiveContains(query) }
+    }
+
+    var body: some View {
+        List(selection: Binding(get: { current?.id }, set: { id in
+            if let c = conversations.first(where: { $0.id == id }) { select(c) }
+        })) {
+            ForEach(filtered) { c in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(c.title).lineLimit(1)
+                    Text(c.updated, format: .relative(presentation: .named))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .tag(c.id)
+                .contextMenu { Button("Delete", role: .destructive) { delete(c) } }
+                .swipeActions { Button("Delete", role: .destructive) { delete(c) } }
+            }
+        }
+        .overlay {
+            if conversations.isEmpty {
+                ContentUnavailableView("No chats yet", systemImage: "bubble.left.and.text.bubble.right",
+                                       description: Text("Ask SAM anything to start one."))
+            }
+        }
+        .searchable(text: $query, placement: .sidebar, prompt: "Search chats")
+        .navigationTitle("Chats")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: newChat) { Label("New chat", systemImage: "square.and.pencil") }
+                    .keyboardShortcut("n", modifiers: .command)
+            }
+        }
     }
 }
