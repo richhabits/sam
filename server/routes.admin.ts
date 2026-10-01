@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { isElonMode, setElonMode } from "./authz.ts";
 import { forgetStatuses as forgetConnectorStatuses } from "./connectors.ts";
 import { removeEnvKeys, writeEnv } from "./env-file.ts";
-import { isLoopback } from "./http-guards.ts";
+import { canReadOwnContentReq, isLoopback } from "./http-guards.ts";
 import { extractFactsFromTranscript, saveImportedFacts } from "./importer.ts";
 import { keyStatus, poolSize, setPool } from "./keys.ts";
 import { mailerConfigured, ownerEmail, resetMailer, sendMail } from "./mailer.ts";
@@ -45,7 +45,11 @@ export function registerAdminRoutes(app: Express) {
     appleId: "APPLE_ID", appleTeam: "APPLE_TEAM_ID", applePass: "APPLE_APP_SPECIFIC_PASSWORD",
   };
   // Status only — never returns key VALUES, just how many are set.
-  app.get("/api/admin/config", (_req, res) => {
+  // Status only, but it still carries appleId, ownerEmail and smtpUser — the operator's identity — so it
+  // is not an anonymous read: the app/passkey, a paired session or a scoped remote token (the HUD's own
+  // fetch carries the same credential its mutations do).
+  app.get("/api/admin/config", (req, res) => {
+    if (!canReadOwnContentReq(req as any)) return res.status(401).json({ error: "this device isn't paired with SAM — settings can only be read from the app or a paired device", locked: true });
     const pools = keyStatus();
     res.json({
       // Full descriptors, not just ids: the Settings UI renders from THIS, so there is no second

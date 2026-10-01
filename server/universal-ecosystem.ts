@@ -9,6 +9,7 @@
 //  - Universal real-time cross-device session handoff
 // ─────────────────────────────────────────────────────────────
 
+import { flipitBuiltinEnabled } from "./flipit-builtin.ts";
 import { trySolveLocally } from "./local-micro-solver.ts";
 import { runModel } from "./models.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
@@ -77,6 +78,11 @@ export const UNIVERSAL_SHORTCUTS: UniversalShortcutDef[] = [
   },
 ];
 
+/** The shortcuts to advertise: the FlipIt Shield one only exists while the built-in desk does (it is an add-on now). */
+export function universalShortcuts(): UniversalShortcutDef[] {
+  return flipitBuiltinEnabled() ? UNIVERSAL_SHORTCUTS : UNIVERSAL_SHORTCUTS.filter((s) => s.id !== "flipit_shield_status");
+}
+
 // In-memory active cross-device handoff registry
 interface DeviceHandoffSession {
   sessionId: string;
@@ -136,7 +142,8 @@ export async function processUniversalPrompt(req: UniversalPromptRequest): Promi
   if (lower.includes("task") || lower.includes("build") || lower.includes("yard")) {
     actions.push({ id: "open_tasks", label: "Open Yard Tasks", payload: "surface:tasks" });
   }
-  if (lower.includes("risk") || lower.includes("halt") || lower.includes("circuit") || lower.includes("trade")) {
+  // flipit:circuit_breaker drives the built-in desk; with it off the action would point at nothing.
+  if (flipitBuiltinEnabled() && (lower.includes("risk") || lower.includes("halt") || lower.includes("circuit") || lower.includes("trade"))) {
     actions.push({ id: "halt_risk", label: "Trigger Risk Halt", payload: "flipit:circuit_breaker", destructive: true });
   }
 

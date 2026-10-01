@@ -1661,7 +1661,7 @@ export async function samMasterDashboardTool(): Promise<string> {
     `· Overall System Health: [${d.systemHealth.status}] (${d.systemHealth.activeToolsCount} tools online)`,
     `· Multi-Tier Cache: L1=${d.cacheStats.l1Entries}, L2=${d.cacheStats.l2Entries} (${d.cacheStats.totalHitRatioPct}% hit ratio)`,
     `· Cost & Token Savings: $${d.costSavings.dollarsSaved.toFixed(2)} saved (${d.costSavings.freeTierPct}% free-lane efficiency)`,
-    `· FlipIt 100x Quant Desk: £${d.flipitQuant.equityGbp.toFixed(2)} on Rung ${d.flipitQuant.currentRung} (Safe Sizing: £${d.flipitQuant.safePositionGbp.toFixed(2)})`,
+    ...(d.flipitQuant ? [`· FlipIt 100x Quant Desk: £${d.flipitQuant.equityGbp.toFixed(2)} on Rung ${d.flipitQuant.currentRung} (Safe Sizing: £${d.flipitQuant.safePositionGbp.toFixed(2)})`] : []),
     `· Higgsfield AI Studio: ${d.studioHiggsfield.cameraRigsCount} 3D Camera Rigs, ${d.studioHiggsfield.lensProfilesCount} Lenses, SoulID Active`,
     `· Universal Mobile Bridge: ${d.mobileBridge.pairedDevicesCount} paired devices (APNs: ${d.mobileBridge.apnsOnline ? "ON" : "OFF"}, FCM: ${d.mobileBridge.fcmOnline ? "ON" : "OFF"})`,
     `\nDiagnostics: ${d.systemHealth.doctorSummary}`,

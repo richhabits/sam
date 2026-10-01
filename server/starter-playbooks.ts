@@ -9,6 +9,7 @@
 //  5. zero-cost-ai-proxy (Local micro-solver + 50-provider rotation)
 // ─────────────────────────────────────────────────────────────
 
+import { flipitBuiltinEnabled } from "./flipit-builtin.ts";
 import { listPlaybooks, type Playbook, savePlaybook } from "./yard/playbooks.ts";
 
 export interface StarterPlaybookDef {
@@ -119,6 +120,8 @@ export function seedStarterPlaybooks(): Playbook[] {
   const seeded: Playbook[] = [];
 
   for (const def of STARTER_PLAYBOOKS) {
+    // The prediction-market bot is the FLIP IT desk's playbook; it is not seeded onto installs without it.
+    if (def.id === "prediction-market-bot" && !flipitBuiltinEnabled()) continue;
     if (!existingIds.has(def.id)) {
       const pb = savePlaybook({
         id: def.id,

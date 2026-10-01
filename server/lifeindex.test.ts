@@ -57,3 +57,22 @@ describe("life index management", () => {
     expect(typeof await LI.onACPower()).toBe("boolean");
   });
 });
+
+describe("index refusals (the Life Index must not swallow the disk or the keys)", () => {
+  it("refuses /, the home folder and key directories", async () => {
+    const { homedir } = await import("node:os");
+    const h = homedir();
+    for (const p of ["/", h, "~", `${h}/.ssh`, `${h}/.ssh/keys`, "~/.gnupg", `${h}/Library/Keychains`, `${h}/Library/Keychains/login.keychain-db`]) {
+      expect(LI.indexRefusal(p), p).toBeTruthy();
+    }
+    await expect(LI.addFolder("/")).rejects.toThrow(/refusing/);
+  });
+  it("judges a symlink by where it lands", async () => {
+    const { symlinkSync } = await import("node:fs");
+    const { homedir } = await import("node:os");
+    const link = join(SCRATCH, "innocent-link");
+    symlinkSync(homedir(), link);
+    expect(LI.indexRefusal(link)).toBeTruthy();
+  });
+  it("allows an ordinary folder", () => { expect(LI.indexRefusal(DOCS)).toBeNull(); });
+});

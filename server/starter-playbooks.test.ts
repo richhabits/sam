@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getStarterPlaybookDef,
   STARTER_PLAYBOOKS,
@@ -7,6 +7,10 @@ import {
 import { extractParams, listPlaybooks, renderTemplate } from "./yard/playbooks.ts";
 
 describe("S.A.M. Yard Starter Playbooks", () => {
+  // prediction-market-bot is only seeded with the built-in FLIP IT desk on (see flipit-addon-gating.test.ts for OFF).
+  beforeEach(() => { process.env.SAM_FLIPIT_BUILTIN = "1"; });
+  afterEach(() => { delete process.env.SAM_FLIPIT_BUILTIN; });
+
   it("includes all 5 core starter playbooks", () => {
     expect(STARTER_PLAYBOOKS.length).toBe(5);
     const ids = STARTER_PLAYBOOKS.map((p) => p.id);
