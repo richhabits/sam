@@ -50,7 +50,7 @@
     "electron:sqlite": "node scripts/electron-sqlite.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "better-sqlite3": "^13.0.3",
     "bonjour-service": "^1.4.4",
     "cors": "^2.8.5",
