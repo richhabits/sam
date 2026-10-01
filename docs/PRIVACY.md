@@ -1,9 +1,10 @@
 # SAM Privacy
 
 Short version: **SAM stores everything on your machine and phones home to nobody.** No account, no
-tracking, no analytics. (The phone app's Standalone mode is the one place a message leaves the device
-for a third-party AI service — with your permission first, and spelled out below.) The one thing that does leave — a request you send to a cloud model you
-configured — is spelled out plainly below rather than buried. This document is exact.
+tracking, no analytics, no ads. (A message can leave your devices for a third-party AI service only if
+you or your Mac are set up to use one — and the phone apps ask your permission first, naming the
+service. Apple Intelligence on the device and a local Ollama model send nothing at all.) That is spelled
+out plainly below rather than buried. This document is exact.
 
 ## What SAM stores, and where
 
@@ -35,7 +36,58 @@ no request, no content, nothing on the wire. That is the mode to use for anythin
 third party, and it is the mode this claim is measured against.
 
 
-## The iPhone and iPad app
+## The native Apple apps (iPhone, iPad, Mac, Apple Watch)
+
+These apps have no accounts, no analytics, no tracking and no ads. They contain no third-party
+analytics or advertising SDK, and they do not use an advertising identifier. Here is exactly where a
+message can go.
+
+**1. On-device Apple Intelligence — nothing leaves the device.** When you use Apple's on-device model,
+your message is processed on the device by Apple Intelligence. SAM does not send it anywhere.
+
+**2. Your own Mac running SAM ("the brain").** When the app is paired with a Mac of yours, your chat
+messages go from the app to SAM on *your* Mac, over your own network. That Mac is yours, not ours. We
+run no server that sees them.
+
+**3. Cloud AI providers your Mac may then use.** Your Mac decides how to answer. Depending on the API
+keys **you** configured on it, and on the free keyless lanes SAM can fall back to, it may send the
+conversation on to a third-party AI service such as Groq, Google Gemini, Cerebras, Mistral, OpenRouter,
+NVIDIA, Anthropic, OpenAI or Pollinations. To answer, SAM may first read a file, a web page or other
+content on your Mac, and the result becomes part of what is sent. **The app asks for your permission
+before the first message that could go to one of them, and names the services.** It gets that list
+from your Mac (`GET /api/ai/providers`), which reports only providers that could actually receive a
+message under your current keys and settings, not key values or how many keys you have. You can
+withdraw permission at any time, and the app will ask again. If your Mac is set to local-only (an
+Ollama model on the Mac), no cloud service is involved. Each provider handles your message under its
+own terms and privacy policy; the app links to them. Anything a provider has already received has to
+be deleted with that provider, because we hold no copy.
+
+**4. Chat history stays on the device.** Your conversations are stored on the device in the app's own
+database (SwiftData). If you turn it on, they can also be added to Spotlight's on-device index so you
+can search them; that index stays on the device. Deleting a chat, or deleting the app, removes them.
+
+**5. The session is kept in the Keychain.** The credential that pairs the app with your Mac is stored
+in the iOS/macOS Keychain. "Forget this device" or deleting the app removes it.
+
+**6. Siri and Shortcuts.** Questions you ask through Siri or a Shortcut are handled like a typed chat
+message: they go to Apple Intelligence on the device, or to your own Mac, and follow the same
+permission rules as items 1 to 3. SAM does not send them anywhere else.
+
+**7. Share and Safari extensions.** When you share a page or use the Safari extension, the text of that
+page goes to your Mac as **untrusted content**: SAM will not run tools or take actions because of what
+a page says, and the content is not remembered and not logged. It follows the same rules as items 2
+and 3 for where it can go next.
+
+**8. Widgets and the Apple Watch app.** Widgets show information the app already holds on the device.
+The Apple Watch app talks to your iPhone, which talks to your Mac as above; the Watch does not contact
+SAM or any provider on its own.
+
+What the native apps never send: your contacts, photos you have not chosen to share, location, health
+data, or anything else on the device that you did not put into a message.
+
+## The earlier iPhone and iPad app (React Native)
+
+This section covers the earlier React Native phone app, not the native Apple apps above.
 
 The phone app works in one of two modes, and what leaves the phone depends on which.
 
