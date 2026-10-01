@@ -3393,7 +3393,7 @@ export async function benchmarkBrains(
   const competitors = chosen.map((b) => ({ id: b.id, label: b.label }));
   const prompts = (opts.prompts?.length ? opts.prompts.map(String) : [opts.prompt ? String(opts.prompt) : ARENA_DEFAULT_PROMPT]).slice(0, MAX_PROMPTS);
   const answer = async (id: string, p: string) => (await runBrain(id, "", p)) || "(no answer)";
-  const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("premium", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
+  const judge = async (p: string, a: string, b: string) => parseVerdict((await runModel("free", JUDGE_SYSTEM, judgePrompt(p, a, b))).text);
   const result = await runArena(competitors, prompts, answer, judge);
   // Only re-crown on real evidence. The arena used to persist leaderboard[0] by raw Elo, so a
   // gap well inside the noise could flip the champion night to night and churn routing for

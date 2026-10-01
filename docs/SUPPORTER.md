@@ -17,7 +17,7 @@ the operator's decision whether to ever turn it on.
 
 - **Higher hosted-gateway limits** — the optional pooled free-tier brain (off by default) has per-device
   and global caps. A supporter could get a higher cap. Anyone can still add their own free key for
-  unlimited use at zero cost, so this paywalls nothing.
+  use within each provider's own free limits, so this paywalls nothing.
 - **Priority pack curation** — faster review of your submissions to the community index.
 
 Both are *conveniences the operator pays to run*, not locks on features.

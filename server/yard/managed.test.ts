@@ -31,7 +31,7 @@ afterEach(() => {
 describe("naming a project", () => {
   it("builds a safe slug from whatever it is given", () => {
     expect(slugify("Hello World")).toBe("hello-world");
-    expect(slugify("Romeo's Café!! 2026")).toBe("romeo-s-caf-2026");
+    expect(slugify("Alex's Café!! 2026")).toBe("alex-s-caf-2026");
     expect(slugify("   ")).toBe("project");
   });
 

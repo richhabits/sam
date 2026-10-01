@@ -4,7 +4,7 @@ Everything a skeptical reader clicks before starring.
 
 - **[Quickstart](../README.md#quick-start)** — one-paste install, or run from source (~60s to a working assistant, no keys).
 - **[Packs gallery](PACKS.md)** — ready-made bundles of skills, prompts and (safety-gated) tools. Import, review, done.
-- **[Benchmarks](BENCHMARKS.md)** — reproducible v1.3→v1.5 numbers: ~86% cheaper, ~46% faster, 100% free-or-local. Run `npm run bench` yourself.
+- **[Benchmarks](BENCHMARKS.md)** — reproducible v1.3→v1.5 numbers: ~86% cheaper, ~46% faster, 100% free-or-local in the offline mock benchmark. Run `npm run bench` yourself.
 - **[Security](../SECURITY.md)** — the trust model: local-first, ask-first dangerous tools, injection fencing, the forge sandbox, opt-in encryption, scoped remote tokens.
 - **[Gateway](GATEWAY.md)** — the optional capped free-tier (your infra); exactly what it can and can't see.
 - **[Signing](SIGNING.md)** — why builds are unsigned for now, and how to verify checksums.

@@ -1,7 +1,7 @@
 # SAM Privacy
 
-Short version: **SAM stores everything on your machine and phones home to nobody.** No account, no
-tracking, no analytics, no ads. (A message can leave your devices for a third-party AI service only if
+Short version: **SAM stores everything on your machine and phones home to nobody by default.** No account, no
+tracking, no ads, and no analytics unless you opt in to anonymous usage counts. (A message can leave your devices for a third-party AI service only if
 you or your Mac are set up to use one — and the phone apps ask your permission first, naming the
 service. Apple Intelligence on the device and a local Ollama model send nothing at all.) That is spelled
 out plainly below rather than buried. This document is exact.

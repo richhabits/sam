@@ -126,9 +126,9 @@ describe("openDb", () => {
     expect(v1).toBe(2);
 
     // Verify columns exist
-    db.prepare("INSERT INTO users (id, name, email) VALUES ('u1', 'Romeo', 'romeo@hectic.com')").run();
+    db.prepare("INSERT INTO users (id, name, email) VALUES ('u1', 'Alex', 'alex@example.com')").run();
     const user = db.prepare("SELECT * FROM users WHERE id = 'u1'").get() as any;
-    expect(user.email).toBe("romeo@hectic.com");
+    expect(user.email).toBe("alex@example.com");
 
     // Re-running applied migrations should be idempotent
     const v2 = runMigrations(db, migrations);

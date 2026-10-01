@@ -37,8 +37,8 @@ describe('findMention — when the picker is allowed to open', () => {
   // every keystroke of an ordinary sentence, and a task list over the keyboard while you are
   // typing an address is the fastest way to make somebody turn a feature off.
   it('NEVER opens inside an email address', () => {
-    expect(findMention('mail romeo@example.com')).toBeNull();
-    expect(findMention('romeo@')).toBeNull();
+    expect(findMention('mail alex@example.com')).toBeNull();
+    expect(findMention('alex@')).toBeNull();
   });
 
   it('NEVER opens mid-word', () => {

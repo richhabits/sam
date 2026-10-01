@@ -52,7 +52,7 @@ const TIPS = [
   "Hit Voice to go hands-free — talk and listen.",
   "Guardian mode watches your camera and flags strangers.",
   "⌘⇧T opens Team, ⌘⇧N opens Ninjas — power user moves.",
-  "Type /private to go fully local — nothing leaves your Mac.",
+  "Type /private to run on your computer only — your message is not sent to a cloud AI.",
   "Type /share to copy your SAM pitch + link.",
   "Turn on Autopilot in settings — SAM handles routine stuff silently.",
 ];

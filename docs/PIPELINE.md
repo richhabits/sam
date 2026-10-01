@@ -1,6 +1,6 @@
 # The pipeline — how SAM's CI/CD works
 
-Everything runs on GitHub's free tier (public repo = unlimited Actions incl. macOS) + GitHub Pages + one self-hosted Mac for the GUI/signing jobs. £0, forever.
+Everything runs on GitHub's free tier (public repo = unlimited Actions incl. macOS) + GitHub Pages + one self-hosted Mac for the GUI/signing jobs. £0 at today's free-tier limits.
 
 ## Workflows
 

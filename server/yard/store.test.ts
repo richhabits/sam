@@ -499,7 +499,7 @@ describe("isPackagedPath — asked of the module, not of the normalised root", (
   });
 
   it("is false for a checkout", () => {
-    expect(isPackagedPath("/Volumes/ROMEO HQ/SAM/server/yard/store.ts")).toBe(false);
+    expect(isPackagedPath("/Volumes/Work Drive/SAM/server/yard/store.ts")).toBe(false);
     expect(isPackagedPath("/Users/someone/sam/dist/server.mjs")).toBe(false);
   });
 
@@ -532,7 +532,7 @@ describe("guessRoot — the same normalise-eats-a-level bug, for a checkout inst
   // join() even on its own still normalises separators — needed so root, used verbatim as a
   // `cwd` return value below, already matches the native separator every join()-derived
   // candidate comes back with (a raw literal wouldn't, and cwd is returned as-is on a fallback).
-  const root = join("/Volumes/ROMEO HQ/SAM");
+  const root = join("/Volumes/Work Drive/SAM");
   const marker = (dir: string) => join(dir, "server", "yard", "store.ts");
   const exists = (real: Set<string>) => (p: string) => real.has(p);
 

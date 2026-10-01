@@ -218,7 +218,7 @@ describe("guessLabel — C2, naming a native client", () => {
   });
 
   it("a client cannot write its own row — unknown hints fall back to UA, never echo", () => {
-    const evil = "Romeo's Mac · trusted";
+    const evil = "Alex's Mac · trusted";
     expect(P.guessLabel("Mozilla/5.0 (iPhone) Safari/604", evil)).toBe("iPhone · Safari");
     expect(P.guessLabel(undefined, evil)).not.toContain("trusted");
   });
