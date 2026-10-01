@@ -19,7 +19,7 @@ export default function FlipItGate() {
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>FLIP IT is its own app now</div>
         <div style={{ fontSize: 13.5, color: "var(--muted, #9CA3AF)" }}>
           Connect it as an add-on and SAM can read your rig (status, ledger, candidates) without ever trading.
-          In SAM, open Settings, then Connected Apps, then Add-ons.
+          In SAM, open API keys & providers, then Connected Apps, then Integrations, and choose FLIP IT (add-on).
         </div>
         <button type="button" onClick={() => { location.href = location.pathname; }} style={{ marginTop: 12, background: "transparent", color: "inherit", border: "1px solid #232730", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer" }}>
           Open SAM

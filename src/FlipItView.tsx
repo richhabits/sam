@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
 import { getFlipit } from "./lib/api";
+import { useEscape } from "./lib/useOverlay";
 
 // 💷 FLIP IT — Pro Quant Trading Rig & Arbitrage Desk
 // Bloomberg Terminal meets Apple Pro / Linear. Live equity curves, real-time spread scanner,
@@ -46,6 +47,7 @@ export default function FlipItView() {
   const [activeNav, setActiveNav] = useState<string>("dashboard");
   const [paymentMethod, setPaymentMethod] = useState<"apple" | "visa" | "wire">("visa");
   const [depositOpen, setDepositOpen] = useState(false);
+  useEscape(() => setDepositOpen(false), depositOpen);
   const [depositAmount, setDepositAmount] = useState("500");
   const [hedgingRegime, setHedgingRegime] = useState<"aggressive" | "neutral" | "defensive">("neutral");
   const [algoVal1, setAlgoVal1] = useState(100);
@@ -764,7 +766,7 @@ export default function FlipItView() {
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Add Funds / Deposit</div>
-              <button type="button" onClick={() => setDepositOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><Icon name="close" size={18} /></button>
+              <button type="button" onClick={() => setDepositOpen(false)} aria-label="Close" title="Close" style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><Icon name="close" size={18} /></button>
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
               Inject capital into the FLIP IT trading rig & arbitrage balance.
@@ -880,6 +882,7 @@ export default function FlipItView() {
         <button
           type="button"
           onClick={() => triggerToast("Help & Docs: Automated Kelly Arbitrage v3.4")}
+          aria-label="Help and docs" title="Help and docs"
           style={{ width: 40, height: 40, borderRadius: 10, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon name="search" size={18} />
         </button>
