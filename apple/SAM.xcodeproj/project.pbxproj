@@ -1,0 +1,1276 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1059293D4084F15DD8B9B802 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		119273D5244ECC36F79BFACB /* SAMWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */; };
+		1221B8EED9A1CDDA9996B1E7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		14895C398BA2F2072FDE401C /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = E3B4EF9733BF0D61C4DB9C6F /* SAMKit */; };
+		14F17DE10CA086F9AFE0D232 /* SAMShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = 371805853F7EFD9F7F6B9EC5 /* SAMShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		154CDCFC92DFEE9FF9AC19D0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		19E8C849698EE0F36DFE3087 /* VaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7914A84C535CAF75E82F072C /* VaultView.swift */; };
+		1C321D149233D980EA9B6DC2 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 99533B2BBC570EF62DF7D14F /* SAMKit */; };
+		1C338E4DB303C5CBEB26D6B0 /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B25B585C11D4BE0CC1846E /* ShareView.swift */; };
+		2B15DB77A795B9EDF2389523 /* SharedContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E760BFAC36AFC3716A3558 /* SharedContent.swift */; };
+		329A805AE30323ED5EE46536 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785954E4995D5CC8A3C69827 /* PairView.swift */; };
+		337D28621FA2EADCDBF08759 /* OnDeviceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */; };
+		33CC1DE862BA2A2B4B90A216 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71CA02072E30C4967CC9F0F2 /* Assets.xcassets */; };
+		35D292A0A1D6E41871DA4936 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D0185F19D3306F1F34210 /* RootView.swift */; };
+		41017A9866125095C54247CB /* SAMSafari.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = 692DBB7FF1B37A32B788D35B /* SAMSafari.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		435688C9BF7D7AF25F56F5D5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		46410BF7BF29141B09EE1B0E /* SAMWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FCED66C9C4AEC1C2269767 /* SAMWatchApp.swift */; };
+		52F2C303A39C4EA058BA5382 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 0246E1B0408DDAC9DB911C4F /* manifest.json */; };
+		535E737353D3AB5C1C7673CB /* SAMWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 13BEA0D720CADC6F034B5C3A /* SAMWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2E33377DE427835DADBFCC /* Store.swift */; };
+		5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */; };
+		62D94DA316C069C60002B927 /* YardNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E00F499E33663AFA5C50A0B /* YardNotifier.swift */; };
+		64592DE4229360923640608E /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A59E44743ADE614224C31E /* PhoneLink.swift */; };
+		67016402A32D61C856496D1D /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 844E0708B0A3ECEE060768D2 /* popup.html */; };
+		70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7CC66F16936554007CC272D4 /* StudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44FC91B4244B95FE71EFFF26 /* StudioView.swift */; };
+		8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFD5A501959C0C4D179972C /* DeviceServices.swift */; };
+		8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7807835C805EC4E3F2ED5449 /* MacSupport.swift */; };
+		88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */; };
+		94A038132C43C3483848085D /* CatalogueViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */; };
+		A11B17A35B7CD7C5A86FD053 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23E406A895F814DFE67064F3 /* SAMKit */; };
+		A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */; };
+		A7885A358E746BA5E729644C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6044DCFCD57844D33C594D00 /* Theme.swift */; };
+		AD1080F6244F056F32FF8B57 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9E8E5651EA3EC12445EFD9 /* SAMKit */; };
+		AFA350E0006CDFB6D38083F0 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = B38E24F4B4F5072B4A3F368B /* SAMKit */; };
+		B15930723F29E520F8293605 /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = FF5A661B3A21D45B36E77345 /* _locales */; };
+		B901372E8B871941215355B7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */; };
+		BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C919BA9D5651C50A2E4587 /* Discovery.swift */; };
+		BC3C1D389DFDF23B4577D0D1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7161CA230E0B8F11E7A4243B /* AppModel.swift */; };
+		CA428F29A5FB68A3230D563B /* YardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B96425CF191D4879506DC71 /* YardView.swift */; };
+		D0A8223A043C14DC15865E2E /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = 69150E615E30D86FE0B4D91C /* popup.css */; };
+		D5E73DAB1081C4D756B60D67 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 493F14D0ABEC951786C2E721 /* SAMKit */; };
+		E1DB3CF6CDFA730FB7DC8585 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */; };
+		E2E92E09E54F62CF9EA3943F /* SAMWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B80EEDE20B163FA03C364B2 /* SAMWatchWidgets.swift */; };
+		E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 5B152F9948B52309BCC78CD7 /* popup.js */; };
+		E63667C4B7B13B0E1416E7A7 /* QuickPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7D3087889EBC8E808B0164 /* QuickPanel.swift */; };
+		EF4B115BB765E2A1485B03BA /* SAMWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; platformFilters = (ios, ); fileRef = 7B3B965B6F1E89A197AD2DB5 /* SAMWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F15CF9E5D25C426E2091CF74 /* images in Resources */ = {isa = PBXBuildFile; fileRef = 6D063B5E7F377FE745C743EB /* images */; };
+		F372D7980EFCF37C3246BE49 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */; };
+		FC105793B2EA89D3C3E649EA /* AddOnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007351A230D66E6BCF4AD603 /* AddOnsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		042BD8CA7FC741E325496EAB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F8DD8480C119C352C15B4C8F;
+			remoteInfo = SAMWatchWidgets;
+		};
+		544027A8F4380D77CB1DECCC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 53FBB4E929E455B79969B23F;
+			remoteInfo = SAMShare;
+		};
+		C859A005C98BF84C3010637C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12C70BC78AD76BA16C05DEDB;
+			remoteInfo = SAMSafari;
+		};
+		E99EA437E975326184B49FD1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B5A6BB767B1AFE99DA67B7EF;
+			remoteInfo = SAMWatch;
+		};
+		FADDD255B08348CE6E43237D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 46D3E39D1B87E75244A3F672;
+			remoteInfo = SAMWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		36D30860727428B3E4CC8A4F /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				EF4B115BB765E2A1485B03BA /* SAMWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A5223B94D59C829903834B7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */,
+				41017A9866125095C54247CB /* SAMSafari.appex in Embed Foundation Extensions */,
+				14F17DE10CA086F9AFE0D232 /* SAMShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC945AB2F0E699B9CB2F33DE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				535E737353D3AB5C1C7673CB /* SAMWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		007351A230D66E6BCF4AD603 /* AddOnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddOnsView.swift; sourceTree = "<group>"; };
+		00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		0246E1B0408DDAC9DB911C4F /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
+		0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0B96425CF191D4879506DC71 /* YardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardView.swift; sourceTree = "<group>"; };
+		0CFD5A501959C0C4D179972C /* DeviceServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceServices.swift; sourceTree = "<group>"; };
+		11CF85EA5CFEEC96C5D1DD24 /* SAMSafari-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMSafari-macOS.entitlements"; sourceTree = "<group>"; };
+		13BEA0D720CADC6F034B5C3A /* SAMWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SAMWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A84CEFAE1F0B54C88A8DA83 /* SAMWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWatchWidgets.entitlements; sourceTree = "<group>"; };
+		34DDFF825EA767398ECDB352 /* SAMWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWatch.entitlements; sourceTree = "<group>"; };
+		371805853F7EFD9F7F6B9EC5 /* SAMShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		44FC91B4244B95FE71EFFF26 /* StudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioView.swift; sourceTree = "<group>"; };
+		4EBAE17E1B2D49D8FB8FB34E /* SAM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAM.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B152F9948B52309BCC78CD7 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popup.js; sourceTree = "<group>"; };
+		5E00F499E33663AFA5C50A0B /* YardNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardNotifier.swift; sourceTree = "<group>"; };
+		6044DCFCD57844D33C594D00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		66B651E39B3585D742708CF4 /* SAMShare-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMShare-macOS.entitlements"; sourceTree = "<group>"; };
+		66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViews.swift; sourceTree = "<group>"; };
+		69150E615E30D86FE0B4D91C /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = popup.css; sourceTree = "<group>"; };
+		691D0185F19D3306F1F34210 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		692DBB7FF1B37A32B788D35B /* SAMSafari.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMSafari.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6D063B5E7F377FE745C743EB /* images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = images; path = Safari/WebExtension/images; sourceTree = SOURCE_ROOT; };
+		6DE71E726F72635AC5639E8E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		6E5F63C6D54E83B5EA0C33B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7161CA230E0B8F11E7A4243B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		71CA02072E30C4967CC9F0F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		75A59E44743ADE614224C31E /* PhoneLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLink.swift; sourceTree = "<group>"; };
+		7807835C805EC4E3F2ED5449 /* MacSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSupport.swift; sourceTree = "<group>"; };
+		785954E4995D5CC8A3C69827 /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
+		7914A84C535CAF75E82F072C /* VaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultView.swift; sourceTree = "<group>"; };
+		7B3B965B6F1E89A197AD2DB5 /* SAMWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SAMWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F87B19D46F6AA399BABC257 /* SAMKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SAMKit; path = Packages/SAMKit; sourceTree = SOURCE_ROOT; };
+		80C919BA9D5651C50A2E4587 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
+		844E0708B0A3ECEE060768D2 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = popup.html; sourceTree = "<group>"; };
+		8B80EEDE20B163FA03C364B2 /* SAMWatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMWatchWidgets.swift; sourceTree = "<group>"; };
+		91AD79C4384B964E3D5F25A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AE6647FD353F11912A853B47 /* SAM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAM.entitlements; sourceTree = "<group>"; };
+		B0511289FF7F09640120E52F /* SAM-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAM-macOS.entitlements"; sourceTree = "<group>"; };
+		B1FCED66C9C4AEC1C2269767 /* SAMWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMWatchApp.swift; sourceTree = "<group>"; };
+		B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		B9B25B585C11D4BE0CC1846E /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
+		BB2E33377DE427835DADBFCC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		BCCE3D267570C147F67372A8 /* SAMWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWidgets.entitlements; sourceTree = "<group>"; };
+		C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMApp.swift; sourceTree = "<group>"; };
+		CA24454C8EA9C6A71BA5807E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		CA7D3087889EBC8E808B0164 /* QuickPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPanel.swift; sourceTree = "<group>"; };
+		E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMIntents.swift; sourceTree = "<group>"; };
+		EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMWidgets.swift; sourceTree = "<group>"; };
+		EB2D3DB6EE0E4CEC451F4CF5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ED116A2728852BA6D08CE351 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceBrain.swift; sourceTree = "<group>"; };
+		F2D511A9B19B578337586514 /* SAMWidgets-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SAMWidgets-macOS.entitlements"; sourceTree = "<group>"; };
+		F6E760BFAC36AFC3716A3558 /* SharedContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedContent.swift; sourceTree = "<group>"; };
+		FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMSafari.entitlements; sourceTree = "<group>"; };
+		FD30FBACCB9D1CCE627571FD /* SAMShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMShare.entitlements; sourceTree = "<group>"; };
+		FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FF5A661B3A21D45B36E77345 /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _locales; path = Safari/WebExtension/_locales; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		56F5FCD15565D9330C7B9BFA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AFA350E0006CDFB6D38083F0 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6377E9E813BD580C15ADC0B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C321D149233D980EA9B6DC2 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A91027CAE73A55D756C8124 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D5E73DAB1081C4D756B60D67 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94A1392D70BDB5A32086ACCA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AD1080F6244F056F32FF8B57 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC072D696114F155F9B3A915 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14895C398BA2F2072FDE401C /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DB4A7749C1D4E8519341A559 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A11B17A35B7CD7C5A86FD053 /* SAMKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2264C89D53BD68CD851E4EB1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7161CA230E0B8F11E7A4243B /* AppModel.swift */,
+				0CFD5A501959C0C4D179972C /* DeviceServices.swift */,
+				80C919BA9D5651C50A2E4587 /* Discovery.swift */,
+				EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */,
+				75A59E44743ADE614224C31E /* PhoneLink.swift */,
+				BB2E33377DE427835DADBFCC /* Store.swift */,
+				5E00F499E33663AFA5C50A0B /* YardNotifier.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		2285B20E406CCF793E2044D9 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				007351A230D66E6BCF4AD603 /* AddOnsView.swift */,
+				66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */,
+				B3E7D80394CDE09A0AEB4F21 /* ChatView.swift */,
+				785954E4995D5CC8A3C69827 /* PairView.swift */,
+				691D0185F19D3306F1F34210 /* RootView.swift */,
+				44FC91B4244B95FE71EFFF26 /* StudioView.swift */,
+				6044DCFCD57844D33C594D00 /* Theme.swift */,
+				7914A84C535CAF75E82F072C /* VaultView.swift */,
+				0B96425CF191D4879506DC71 /* YardView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		32A65A59ABFC605FF62AF399 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		44D8041427C38E0203775519 = {
+			isa = PBXGroup;
+			children = (
+				B76120D0CDADB46E91001654 /* App */,
+				E9F0155F7C1C74EC077FCDA7 /* Packages */,
+				903D80366CDB4F3051FC1EFE /* Privacy */,
+				DF50B2E7FFF705F1E9140C04 /* Safari */,
+				60D846AD2A7BD7B16351A48A /* Share */,
+				6AABA930E7CFE58FAF809F8B /* Watch */,
+				529A9B465B288B5DBD6C3A25 /* WatchWidgets */,
+				ECB18C021B0AD7BAD30D633E /* Widgets */,
+				D0C79DDC2409FD289A17984E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		529A9B465B288B5DBD6C3A25 /* WatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				91AD79C4384B964E3D5F25A2 /* Info.plist */,
+				2A84CEFAE1F0B54C88A8DA83 /* SAMWatchWidgets.entitlements */,
+				8B80EEDE20B163FA03C364B2 /* SAMWatchWidgets.swift */,
+			);
+			path = WatchWidgets;
+			sourceTree = "<group>";
+		};
+		60D846AD2A7BD7B16351A48A /* Share */ = {
+			isa = PBXGroup;
+			children = (
+				6DE71E726F72635AC5639E8E /* Info.plist */,
+				66B651E39B3585D742708CF4 /* SAMShare-macOS.entitlements */,
+				FD30FBACCB9D1CCE627571FD /* SAMShare.entitlements */,
+				F6E760BFAC36AFC3716A3558 /* SharedContent.swift */,
+				B9B25B585C11D4BE0CC1846E /* ShareView.swift */,
+			);
+			path = Share;
+			sourceTree = "<group>";
+		};
+		6AABA930E7CFE58FAF809F8B /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				71CA02072E30C4967CC9F0F2 /* Assets.xcassets */,
+				CA24454C8EA9C6A71BA5807E /* Info.plist */,
+				34DDFF825EA767398ECDB352 /* SAMWatch.entitlements */,
+				B1FCED66C9C4AEC1C2269767 /* SAMWatchApp.swift */,
+			);
+			path = Watch;
+			sourceTree = "<group>";
+		};
+		903D80366CDB4F3051FC1EFE /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				0479C5B93A1DBCDDE65A7816 /* PrivacyInfo.xcprivacy */,
+			);
+			path = Privacy;
+			sourceTree = "<group>";
+		};
+		B76120D0CDADB46E91001654 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */,
+				EB2D3DB6EE0E4CEC451F4CF5 /* Info.plist */,
+				B0511289FF7F09640120E52F /* SAM-macOS.entitlements */,
+				AE6647FD353F11912A853B47 /* SAM.entitlements */,
+				C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */,
+				32A65A59ABFC605FF62AF399 /* Intents */,
+				B8846708F0C8D10E28169F7F /* Mac */,
+				2264C89D53BD68CD851E4EB1 /* Services */,
+				2285B20E406CCF793E2044D9 /* Views */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		B8846708F0C8D10E28169F7F /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				7807835C805EC4E3F2ED5449 /* MacSupport.swift */,
+				CA7D3087889EBC8E808B0164 /* QuickPanel.swift */,
+			);
+			path = Mac;
+			sourceTree = "<group>";
+		};
+		D0C79DDC2409FD289A17984E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4EBAE17E1B2D49D8FB8FB34E /* SAM.app */,
+				692DBB7FF1B37A32B788D35B /* SAMSafari.appex */,
+				371805853F7EFD9F7F6B9EC5 /* SAMShare.appex */,
+				7B3B965B6F1E89A197AD2DB5 /* SAMWatch.app */,
+				13BEA0D720CADC6F034B5C3A /* SAMWatchWidgets.appex */,
+				FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DD00C411E1A72DC32F56175C /* WebExtension */ = {
+			isa = PBXGroup;
+			children = (
+				FF5A661B3A21D45B36E77345 /* _locales */,
+				6D063B5E7F377FE745C743EB /* images */,
+				0246E1B0408DDAC9DB911C4F /* manifest.json */,
+				69150E615E30D86FE0B4D91C /* popup.css */,
+				844E0708B0A3ECEE060768D2 /* popup.html */,
+				5B152F9948B52309BCC78CD7 /* popup.js */,
+			);
+			path = WebExtension;
+			sourceTree = "<group>";
+		};
+		DF50B2E7FFF705F1E9140C04 /* Safari */ = {
+			isa = PBXGroup;
+			children = (
+				ED116A2728852BA6D08CE351 /* Info.plist */,
+				00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */,
+				11CF85EA5CFEEC96C5D1DD24 /* SAMSafari-macOS.entitlements */,
+				FCAF99819C28D85E063B6338 /* SAMSafari.entitlements */,
+				DD00C411E1A72DC32F56175C /* WebExtension */,
+			);
+			path = Safari;
+			sourceTree = "<group>";
+		};
+		E9F0155F7C1C74EC077FCDA7 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				7F87B19D46F6AA399BABC257 /* SAMKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		ECB18C021B0AD7BAD30D633E /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				6E5F63C6D54E83B5EA0C33B1 /* Info.plist */,
+				F2D511A9B19B578337586514 /* SAMWidgets-macOS.entitlements */,
+				BCCE3D267570C147F67372A8 /* SAMWidgets.entitlements */,
+				EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		12C70BC78AD76BA16C05DEDB /* SAMSafari */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C82D18DE9B3B23DEBA662875 /* Build configuration list for PBXNativeTarget "SAMSafari" */;
+			buildPhases = (
+				BF30202E8B6081CDF43B9E2F /* Sources */,
+				300FE22A687B2A61F955FB16 /* Resources */,
+				6377E9E813BD580C15ADC0B9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAMSafari;
+			packageProductDependencies = (
+				99533B2BBC570EF62DF7D14F /* SAMKit */,
+			);
+			productName = SAMSafari;
+			productReference = 692DBB7FF1B37A32B788D35B /* SAMSafari.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		46D3E39D1B87E75244A3F672 /* SAMWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 121CC48916142FDCA665A886 /* Build configuration list for PBXNativeTarget "SAMWidgets" */;
+			buildPhases = (
+				40BF750DAD4F78C93C144AB2 /* Sources */,
+				30F3F5AC4D507D39091CA03A /* Resources */,
+				8A91027CAE73A55D756C8124 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAMWidgets;
+			packageProductDependencies = (
+				493F14D0ABEC951786C2E721 /* SAMKit */,
+			);
+			productName = SAMWidgets;
+			productReference = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		53FBB4E929E455B79969B23F /* SAMShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8791B3A2C7467672807CDF8D /* Build configuration list for PBXNativeTarget "SAMShare" */;
+			buildPhases = (
+				81B214DEB16A75F1D2C91428 /* Sources */,
+				7702A25BA3FDDF5AF567DFD6 /* Resources */,
+				AC072D696114F155F9B3A915 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAMShare;
+			packageProductDependencies = (
+				E3B4EF9733BF0D61C4DB9C6F /* SAMKit */,
+			);
+			productName = SAMShare;
+			productReference = 371805853F7EFD9F7F6B9EC5 /* SAMShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		97155B1100C9891712317760 /* SAM */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14C2078867D46CFA3D33EC90 /* Build configuration list for PBXNativeTarget "SAM" */;
+			buildPhases = (
+				D937921DC6EE6141458970B1 /* Sources */,
+				175F92B19B69A0CEE65ACABE /* Resources */,
+				94A1392D70BDB5A32086ACCA /* Frameworks */,
+				7A5223B94D59C829903834B7 /* Embed Foundation Extensions */,
+				36D30860727428B3E4CC8A4F /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3CF490F8E326E55BA8D0756A /* PBXTargetDependency */,
+				63AC6E1B4E198FF902A0BBE6 /* PBXTargetDependency */,
+				B7C8E18499376040578AE3D0 /* PBXTargetDependency */,
+				C28E607A7B28A75B1BEE6BE6 /* PBXTargetDependency */,
+			);
+			name = SAM;
+			packageProductDependencies = (
+				0E9E8E5651EA3EC12445EFD9 /* SAMKit */,
+			);
+			productName = SAM;
+			productReference = 4EBAE17E1B2D49D8FB8FB34E /* SAM.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B5A6BB767B1AFE99DA67B7EF /* SAMWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 808B4BE9DAF8092F2B9F136F /* Build configuration list for PBXNativeTarget "SAMWatch" */;
+			buildPhases = (
+				6A3864E89B18D2F25C4275EE /* Sources */,
+				66A700B4B8DF198E7174082A /* Resources */,
+				56F5FCD15565D9330C7B9BFA /* Frameworks */,
+				FC945AB2F0E699B9CB2F33DE /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E55C16A9E59EE6773B989FD7 /* PBXTargetDependency */,
+			);
+			name = SAMWatch;
+			packageProductDependencies = (
+				B38E24F4B4F5072B4A3F368B /* SAMKit */,
+			);
+			productName = SAMWatch;
+			productReference = 7B3B965B6F1E89A197AD2DB5 /* SAMWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F8DD8480C119C352C15B4C8F /* SAMWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 652D94AA6D55B2DBDAD8F0CC /* Build configuration list for PBXNativeTarget "SAMWatchWidgets" */;
+			buildPhases = (
+				9817826AFE3022B5D1D51FE0 /* Sources */,
+				B1D199571B8569AA0A0BD60C /* Resources */,
+				DB4A7749C1D4E8519341A559 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAMWatchWidgets;
+			packageProductDependencies = (
+				23E406A895F814DFE67064F3 /* SAMKit */,
+			);
+			productName = SAMWatchWidgets;
+			productReference = 13BEA0D720CADC6F034B5C3A /* SAMWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		010DBD225C3DBFE0A5FDC544 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					12C70BC78AD76BA16C05DEDB = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+					46D3E39D1B87E75244A3F672 = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+					53FBB4E929E455B79969B23F = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+					97155B1100C9891712317760 = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+					B5A6BB767B1AFE99DA67B7EF = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+					F8DD8480C119C352C15B4C8F = {
+						DevelopmentTeam = CC9Q9BH5NT;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = C7F2609D1230EF1711BAADF4 /* Build configuration list for PBXProject "SAM" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 44D8041427C38E0203775519;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8AD2BB9D48B000FA7193D64F /* XCLocalSwiftPackageReference "Packages/SAMKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D0C79DDC2409FD289A17984E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				97155B1100C9891712317760 /* SAM */,
+				46D3E39D1B87E75244A3F672 /* SAMWidgets */,
+				12C70BC78AD76BA16C05DEDB /* SAMSafari */,
+				53FBB4E929E455B79969B23F /* SAMShare */,
+				B5A6BB767B1AFE99DA67B7EF /* SAMWatch */,
+				F8DD8480C119C352C15B4C8F /* SAMWatchWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		175F92B19B69A0CEE65ACABE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1DB3CF6CDFA730FB7DC8585 /* Assets.xcassets in Resources */,
+				1221B8EED9A1CDDA9996B1E7 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		300FE22A687B2A61F955FB16 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				435688C9BF7D7AF25F56F5D5 /* PrivacyInfo.xcprivacy in Resources */,
+				B15930723F29E520F8293605 /* _locales in Resources */,
+				F15CF9E5D25C426E2091CF74 /* images in Resources */,
+				52F2C303A39C4EA058BA5382 /* manifest.json in Resources */,
+				D0A8223A043C14DC15865E2E /* popup.css in Resources */,
+				67016402A32D61C856496D1D /* popup.html in Resources */,
+				E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		30F3F5AC4D507D39091CA03A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				154CDCFC92DFEE9FF9AC19D0 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		66A700B4B8DF198E7174082A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				33CC1DE862BA2A2B4B90A216 /* Assets.xcassets in Resources */,
+				BC3C1D389DFDF23B4577D0D1 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7702A25BA3FDDF5AF567DFD6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F372D7980EFCF37C3246BE49 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1D199571B8569AA0A0BD60C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1059293D4084F15DD8B9B802 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		40BF750DAD4F78C93C144AB2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				119273D5244ECC36F79BFACB /* SAMWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6A3864E89B18D2F25C4275EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				46410BF7BF29141B09EE1B0E /* SAMWatchApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		81B214DEB16A75F1D2C91428 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C338E4DB303C5CBEB26D6B0 /* ShareView.swift in Sources */,
+				2B15DB77A795B9EDF2389523 /* SharedContent.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9817826AFE3022B5D1D51FE0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2E92E09E54F62CF9EA3943F /* SAMWatchWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF30202E8B6081CDF43B9E2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D937921DC6EE6141458970B1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC105793B2EA89D3C3E649EA /* AddOnsView.swift in Sources */,
+				C45F4C0F1775834925A387E9 /* AppModel.swift in Sources */,
+				94A038132C43C3483848085D /* CatalogueViews.swift in Sources */,
+				B901372E8B871941215355B7 /* ChatView.swift in Sources */,
+				8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */,
+				BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */,
+				8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */,
+				337D28621FA2EADCDBF08759 /* OnDeviceBrain.swift in Sources */,
+				329A805AE30323ED5EE46536 /* PairView.swift in Sources */,
+				64592DE4229360923640608E /* PhoneLink.swift in Sources */,
+				E63667C4B7B13B0E1416E7A7 /* QuickPanel.swift in Sources */,
+				35D292A0A1D6E41871DA4936 /* RootView.swift in Sources */,
+				88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */,
+				5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */,
+				55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */,
+				7CC66F16936554007CC272D4 /* StudioView.swift in Sources */,
+				A7885A358E746BA5E729644C /* Theme.swift in Sources */,
+				19E8C849698EE0F36DFE3087 /* VaultView.swift in Sources */,
+				62D94DA316C069C60002B927 /* YardNotifier.swift in Sources */,
+				CA428F29A5FB68A3230D563B /* YardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3CF490F8E326E55BA8D0756A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, macos, );
+			target = 46D3E39D1B87E75244A3F672 /* SAMWidgets */;
+			targetProxy = FADDD255B08348CE6E43237D /* PBXContainerItemProxy */;
+		};
+		63AC6E1B4E198FF902A0BBE6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, );
+			target = B5A6BB767B1AFE99DA67B7EF /* SAMWatch */;
+			targetProxy = E99EA437E975326184B49FD1 /* PBXContainerItemProxy */;
+		};
+		B7C8E18499376040578AE3D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, macos, );
+			target = 12C70BC78AD76BA16C05DEDB /* SAMSafari */;
+			targetProxy = C859A005C98BF84C3010637C /* PBXContainerItemProxy */;
+		};
+		C28E607A7B28A75B1BEE6BE6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, macos, );
+			target = 53FBB4E929E455B79969B23F /* SAMShare */;
+			targetProxy = 544027A8F4380D77CB1DECCC /* PBXContainerItemProxy */;
+		};
+		E55C16A9E59EE6773B989FD7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F8DD8480C119C352C15B4C8F /* SAMWatchWidgets */;
+			targetProxy = 042BD8CA7FC741E325496EAB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		04B7249538865857789D688D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 111;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = CC9Q9BH5NT;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		0725372DA4EB2A1F954CC820 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Share/SAMShare.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Share/SAMShare-macOS.entitlements";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Share/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.share;
+				PRODUCT_NAME = SAMShare;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		127BDCDD1C581C234DB083AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Watch/SAMWatch.entitlements;
+				INFOPLIST_FILE = Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.watchkitapp;
+				PRODUCT_NAME = SAM;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		15A3946A96F4A91FDC1BF691 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]" = VisionAppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xrsimulator*]" = VisionAppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/SAM.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/SAM-macOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile;
+				PRODUCT_NAME = SAM;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+			};
+			name = Debug;
+		};
+		34CEEA3A6A9864DE4B304264 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Safari/SAMSafari-macOS.entitlements";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Safari/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.safari;
+				PRODUCT_NAME = SAMSafari;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		45BC2C5F362A06A3DE2D1981 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/SAMWidgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Widgets/SAMWidgets-macOS.entitlements";
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
+				PRODUCT_NAME = SAMWidgets;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		616D89D8BC9F9552A51C1EA6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 111;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = CC9Q9BH5NT;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		6AD32A5CD2E760C63A0FB2BC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Safari/SAMSafari.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Safari/SAMSafari-macOS.entitlements";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Safari/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.safari;
+				PRODUCT_NAME = SAMSafari;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		826BD34ED4A7A652CD855B9C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WatchWidgets/SAMWatchWidgets.entitlements;
+				INFOPLIST_FILE = WatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.watchkitapp.widgets;
+				PRODUCT_NAME = SAMWatchWidgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		8AEEB0D24FDC8ECECFC982D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Watch/SAMWatch.entitlements;
+				INFOPLIST_FILE = Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.watchkitapp;
+				PRODUCT_NAME = SAM;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		C5D85309698E2CE98DDDD509 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/SAMWidgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Widgets/SAMWidgets-macOS.entitlements";
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.widget;
+				PRODUCT_NAME = SAMWidgets;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D53FD0D6319454A7C39143DC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WatchWidgets/SAMWatchWidgets.entitlements;
+				INFOPLIST_FILE = WatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.watchkitapp.widgets;
+				PRODUCT_NAME = SAMWatchWidgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		E1A0A9908A0F317911A4EEA2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]" = VisionAppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xrsimulator*]" = VisionAppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/SAM.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/SAM-macOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile;
+				PRODUCT_NAME = SAM;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+			};
+			name = Release;
+		};
+		F63DD8C764D7A24DA6AB3716 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Share/SAMShare.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Share/SAMShare-macOS.entitlements";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Share/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hectic.sam.mobile.share;
+				PRODUCT_NAME = SAMShare;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		121CC48916142FDCA665A886 /* Build configuration list for PBXNativeTarget "SAMWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45BC2C5F362A06A3DE2D1981 /* Debug */,
+				C5D85309698E2CE98DDDD509 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		14C2078867D46CFA3D33EC90 /* Build configuration list for PBXNativeTarget "SAM" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				15A3946A96F4A91FDC1BF691 /* Debug */,
+				E1A0A9908A0F317911A4EEA2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		652D94AA6D55B2DBDAD8F0CC /* Build configuration list for PBXNativeTarget "SAMWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				826BD34ED4A7A652CD855B9C /* Debug */,
+				D53FD0D6319454A7C39143DC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		808B4BE9DAF8092F2B9F136F /* Build configuration list for PBXNativeTarget "SAMWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8AEEB0D24FDC8ECECFC982D9 /* Debug */,
+				127BDCDD1C581C234DB083AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8791B3A2C7467672807CDF8D /* Build configuration list for PBXNativeTarget "SAMShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F63DD8C764D7A24DA6AB3716 /* Debug */,
+				0725372DA4EB2A1F954CC820 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C7F2609D1230EF1711BAADF4 /* Build configuration list for PBXProject "SAM" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				616D89D8BC9F9552A51C1EA6 /* Debug */,
+				04B7249538865857789D688D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C82D18DE9B3B23DEBA662875 /* Build configuration list for PBXNativeTarget "SAMSafari" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6AD32A5CD2E760C63A0FB2BC /* Debug */,
+				34CEEA3A6A9864DE4B304264 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		8AD2BB9D48B000FA7193D64F /* XCLocalSwiftPackageReference "Packages/SAMKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SAMKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0E9E8E5651EA3EC12445EFD9 /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		23E406A895F814DFE67064F3 /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		493F14D0ABEC951786C2E721 /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		99533B2BBC570EF62DF7D14F /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		B38E24F4B4F5072B4A3F368B /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+		E3B4EF9733BF0D61C4DB9C6F /* SAMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SAMKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 010DBD225C3DBFE0A5FDC544 /* Project object */;
+}

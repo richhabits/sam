@@ -1,0 +1,72 @@
+import Foundation
+
+/// Where this device's pairing lives, shared by the app and its extensions
+/// (Safari, widgets, share sheet):
+/// - host in the app group's defaults (not secret),
+/// - token in the Keychain, in the shared access group when the target has one.
+public enum Session {
+    static let hostKey = "sam.host"
+    static let tokenAccount = "token"
+    static let fingerprintKey = "sam.fp"
+
+    static var defaults: UserDefaults { UserDefaults(suiteName: SharedSnapshot.appGroup) ?? .standard }
+
+    public static var host: String? {
+        // Older builds kept the host in standard defaults; carry it over once.
+        if let h = defaults.string(forKey: hostKey) { return h }
+        if let old = UserDefaults.standard.string(forKey: hostKey) {
+            defaults.set(old, forKey: hostKey)
+            return old
+        }
+        return nil
+    }
+
+    public static var token: String? { Keychain.get(tokenAccount) }
+
+    /// The pinned certificate fingerprint for an https brain (not secret, so it lives in defaults).
+    public static var fingerprint: String? { defaults.string(forKey: fingerprintKey) }
+
+    /// "Explore the demo": every surface (app, widgets, Share/Safari extensions, Siri) talks to
+    /// the in-app DemoBrain instead of a Mac. Shared through the app group so extensions follow.
+    public static var isDemo: Bool {
+        get { defaults.bool(forKey: "sam.demo") }
+        set { defaults.set(newValue, forKey: "sam.demo") }
+    }
+
+    /// Nil when this device isn't paired (and isn't in the demo).
+    public static var brain: BrainClient? {
+        if isDemo {
+            DemoBrain.register()
+            return BrainClient(host: DemoBrain.host, token: DemoBrain.token)
+        }
+        guard let host, let token else { return nil }
+        return BrainClient(host: host, token: token, fingerprint: fingerprint)
+    }
+
+    /// Returns false if the Keychain refused the token.
+    @discardableResult
+    public static func save(host: String?, token: String?, fingerprint: String? = nil) -> Bool {
+        defaults.set(host, forKey: hostKey)
+        defaults.set(fingerprint, forKey: fingerprintKey)
+        UserDefaults.standard.removeObject(forKey: hostKey)
+        return Keychain.set(token, for: tokenAccount)
+    }
+
+    /// Streams one question and returns the whole answer. For extensions and intents that
+    /// can't show tokens as they arrive.
+    public static func ask(_ question: String, brain: BrainClient, untrusted: Bool = false) async throws -> (text: String, provider: String?, needsApproval: String?) {
+        var text = ""
+        var provider: String?
+        for try await event in brain.stream(message: question, history: [], untrusted: untrusted) {
+            switch event {
+            case .token(let t): text += t
+            case .done(let final, let p):
+                if let final, !final.isEmpty { text = final }
+                provider = p
+            case .pending(_, let tool, _, _): return (text, provider, tool)
+            default: break
+            }
+        }
+        return (text, provider, nil)
+    }
+}

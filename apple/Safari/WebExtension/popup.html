@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+<link rel="stylesheet" href="popup.css">
+<title>SAM</title>
+</head>
+<body>
+  <header>
+    <img src="images/icon-96.png" alt="" width="28" height="28">
+    <h1>SAM</h1>
+    <span id="status" class="status">…</span>
+  </header>
+  <div class="actions">
+    <button data-mode="summarise">Summarise</button>
+    <button data-mode="keyPoints">Key points</button>
+    <button data-mode="explain">Explain</button>
+  </div>
+  <form id="ask">
+    <input id="question" type="text" placeholder="Ask about this page" autocomplete="off">
+    <button type="submit" aria-label="Ask">↑</button>
+  </form>
+  <section id="answer" aria-live="polite"></section>
+  <footer>Pages are read as data only. SAM won't run tools or remember a page.</footer>
+  <script src="popup.js"></script>
+</body>
+</html>
