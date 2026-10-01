@@ -19,9 +19,11 @@
 
 import { capture } from "./issues.ts";
 import { getKey, poolSize, reportFailure, reportSuccess } from "./keys.ts";
+import { estTokens } from "./metrics.ts";
 import { assertNever, err, type Outcome, ok } from "./outcome.ts";
 import { count } from "./pulse.ts";
 import { record as recordHealth } from "./speed.ts";
+import { nearQuota, recordLaneCall, slotId } from "./usage-ledger.ts";
 
 // ── The Breaker ──────────────────────────────────────────────
 const BREAKER_TRIP = 3;             // consecutive brain-level failures before it opens
@@ -112,14 +114,21 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
   // THE BREAKER — skip a brain that keeps failing rather than pay its timeout again.
   if (!canAttempt(b.id, now)) return err({ kind: "breaker-open", brain: b.id });
 
+  // THE LEDGER (usage-ledger.ts) — every attempt is accounted against its key slot, so the pool can
+  // step aside at 90% of a documented free window instead of waiting for the provider's 429.
+  const tokensIn = estTokens(system) + estTokens(prompt);
   if (b.noKey) {
+    // Keyless lanes have no pool to rotate — the quota gate is applied here instead.
+    if (nearQuota(b.id, "nokey")) return err({ kind: "no-key", brain: b.id });
     for (let i = 0; i < 2; i++) {
       const t0 = Date.now();
       try {
         const text = await b.run(system, prompt, "");
-        if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); onSuccess(b.id); return ok(text); }
+        if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); recordLaneCall(b.id, "nokey", { ok: true, tokensIn, tokensOut: estTokens(text) }); onSuccess(b.id); return ok(text); }
         recordHealth(b.id, { ms: Date.now() - t0, ok: false });
+        recordLaneCall(b.id, "nokey", { ok: false, tokensIn });
       } catch (e) {
+        recordLaneCall(b.id, "nokey", { ok: false, status: (e as { status?: number })?.status });
         // The status is what separates "busy" from "gone" — a no-key brain that starts answering
         // 402 has stopped being free, and the health memory needs to know that, not just that it
         // failed. (Pollinations did exactly this; see server/speed.ts.)
@@ -141,14 +150,17 @@ export async function relayBrain(b: Brain, system: string, prompt: string, polic
     const t0 = Date.now();
     try {
       const text = await b.run(system, prompt, key);
-      if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); reportSuccess(b.id, key); onSuccess(b.id); return ok(text); }
+      if (text) { recordHealth(b.id, { ms: Date.now() - t0, ok: true }); recordLaneCall(b.id, slotId(key), { ok: true, tokensIn, tokensOut: estTokens(text) }); reportSuccess(b.id, key); onSuccess(b.id); return ok(text); }
       recordHealth(b.id, { ms: Date.now() - t0, ok: false });
+      recordLaneCall(b.id, slotId(key), { ok: false, tokensIn });
     } catch (e) {
       const status = (e as { status?: number })?.status;
+      recordLaneCall(b.id, slotId(key), { ok: false, status });
       // 404 here is a RETIRED MODEL SLUG, not a blip — it is what made cerebras lead the fast
       // lane while answering nothing at all. The health memory sinks those; 429/5xx it doesn't.
       recordHealth(b.id, { ms: Date.now() - t0, ok: false, status });
-      reportFailure(b.id, key, status);
+      // A 429 carries the provider's own "retry after" (model-providers.ts httpError) → exact cooldown.
+      reportFailure(b.id, key, status, (e as { retryAfterMs?: number })?.retryAfterMs);
       capture(e, { brain: b.id, boundary: b.boundary, status });
       // A 4xx that isn't rate-limit means a bad key/request — stop hammering this brain.
       if (status && status !== 429 && status < 500) break;
