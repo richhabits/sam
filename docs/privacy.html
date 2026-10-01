@@ -61,8 +61,8 @@
 <p>All of it, locally, always:</p>
 <ul>
 <li><strong>Your content</strong> — prompts, messages, files, the life index, memory, vault — is stored only on this device. SAM never uploads it, backs it up, syncs it, or sends it anywhere of its own accord.</li>
-<li><strong>What SAM learns about you</strong> — preferences, patterns — is stored locally, inspectable and deletable in "What SAM has learned about you". It is never sent to any AI provider or gateway, and never used as training data. (Enforced by a test that locks the module off the wire.)</li>
-<li><strong>Your usage stats</strong> — the "Your SAM" dashboard (tasks run, tools used, retention days, hours saved) is computed and stored <strong>locally</strong>. It's a feature for you, not surveillance of you.</li>
+<li><strong>What SAM learns about you</strong> — preferences, patterns — is stored locally, inspectable and deletable in &quot;What SAM has learned about you&quot;. It is never sent to any AI provider or gateway, and never used as training data. (Enforced by a test that locks the module off the wire.)</li>
+<li><strong>Your usage stats</strong> — the &quot;Your SAM&quot; dashboard (tasks run, tools used, retention days, hours saved) is computed and stored <strong>locally</strong>. It&#39;s a feature for you, not surveillance of you.</li>
 </ul>
 <h2>What leaves, when you ask a cloud model</h2>
 <p>Be clear-eyed about this one, because it is the only routine exception and a vague promise here would be worse than none.</p>
@@ -71,11 +71,11 @@
 <p><strong>Offline mode sends nothing at all.</strong> Point SAM at a local Ollama model and there is no exception left — no request, no content, nothing on the wire. That is the mode to use for anything you would not hand to a third party, and it is the mode this claim is measured against.</p>
 <h2>The native Apple apps (iPhone, iPad, Mac, Apple Watch)</h2>
 <p>These apps have no accounts, no analytics, no tracking and no ads. They contain no third-party analytics or advertising SDK, and they do not use an advertising identifier. Here is exactly where a message can go.</p>
-<p><strong>1. On-device Apple Intelligence — nothing leaves the device.</strong> When you use Apple's on-device model, your message is processed on the device by Apple Intelligence. SAM does not send it anywhere.</p>
-<p><strong>2. Your own Mac running SAM ("the brain").</strong> When the app is paired with a Mac of yours, your chat messages go from the app to SAM on <em>your</em> Mac, over your own network. That Mac is yours, not ours. We run no server that sees them.</p>
+<p><strong>1. On-device Apple Intelligence — nothing leaves the device.</strong> When you use Apple&#39;s on-device model, your message is processed on the device by Apple Intelligence. SAM does not send it anywhere.</p>
+<p><strong>2. Your own Mac running SAM (&quot;the brain&quot;).</strong> When the app is paired with a Mac of yours, your chat messages go from the app to SAM on <em>your</em> Mac, over your own network. That Mac is yours, not ours. We run no server that sees them.</p>
 <p><strong>3. Cloud AI providers your Mac may then use.</strong> Your Mac decides how to answer. Depending on the API keys <strong>you</strong> configured on it, and on the free keyless lanes SAM can fall back to, it may send the conversation on to a third-party AI service such as Groq, Google Gemini, Cerebras, Mistral, OpenRouter, NVIDIA, Anthropic, OpenAI or Pollinations. To answer, SAM may first read a file, a web page or other content on your Mac, and the result becomes part of what is sent. <strong>The app asks for your permission before the first message that could go to one of them, and names the services.</strong> It gets that list from your Mac (<code>GET /api/ai/providers</code>), which reports only providers that could actually receive a message under your current keys and settings, not key values or how many keys you have. You can withdraw permission at any time, and the app will ask again. If your Mac is set to local-only (an Ollama model on the Mac), no cloud service is involved. Each provider handles your message under its own terms and privacy policy; the app links to them. Anything a provider has already received has to be deleted with that provider, because we hold no copy.</p>
-<p><strong>4. Chat history stays on the device.</strong> Your conversations are stored on the device in the app's own database (SwiftData). If you turn it on, they can also be added to Spotlight's on-device index so you can search them; that index stays on the device. Deleting a chat, or deleting the app, removes them.</p>
-<p><strong>5. The session is kept in the Keychain.</strong> The credential that pairs the app with your Mac is stored in the iOS/macOS Keychain. "Forget this device" or deleting the app removes it.</p>
+<p><strong>4. Chat history stays on the device.</strong> Your conversations are stored on the device in the app&#39;s own database (SwiftData). If you turn it on, they can also be added to Spotlight&#39;s on-device index so you can search them; that index stays on the device. Deleting a chat, or deleting the app, removes them.</p>
+<p><strong>5. The session is kept in the Keychain.</strong> The credential that pairs the app with your Mac is stored in the iOS/macOS Keychain. &quot;Forget this device&quot; or deleting the app removes it.</p>
 <p><strong>6. Siri and Shortcuts.</strong> Questions you ask through Siri or a Shortcut are handled like a typed chat message: they go to Apple Intelligence on the device, or to your own Mac, and follow the same permission rules as items 1 to 3. SAM does not send them anywhere else.</p>
 <p><strong>7. Share and Safari extensions.</strong> When you share a page or use the Safari extension, the text of that page goes to your Mac as <strong>untrusted content</strong>: SAM will not run tools or take actions because of what a page says, and the content is not remembered and not logged. It follows the same rules as items 2 and 3 for where it can go next.</p>
 <p><strong>8. Widgets and the Apple Watch app.</strong> Widgets show information the app already holds on the device. The Apple Watch app talks to your iPhone, which talks to your Mac as above; the Watch does not contact SAM or any provider on its own.</p>
@@ -88,15 +88,15 @@
 <ul>
 <li><strong>Out of the box</strong> the recipients are the free, keyless services Pollinations and OpenRouter.</li>
 <li><strong>If you add your own API keys</strong> (Settings → Cloud AI Engine) it can also be Groq, Cerebras, Mistral, Google Gemini, Anthropic, DeepSeek, Together AI, SambaNova, Novita, SiliconFlow, Zhipu, Alibaba (Qwen), Fireworks, Nebius and the other providers listed in that screen. Some of these operate outside the UK and EU.</li>
-<li><strong>Each provider handles your message under its own terms and privacy policy.</strong> We do not control how long they keep it or whether they use it, and we can't promise the same protection they offer. Read theirs before you turn one on.</li>
+<li><strong>Each provider handles your message under its own terms and privacy policy.</strong> We do not control how long they keep it or whether they use it, and we can&#39;t promise the same protection they offer. Read theirs before you turn one on.</li>
 <li><strong>We receive none of it.</strong> SAM has no servers for your messages. There is no account, no analytics and no advertising identifier in the phone app.</li>
 </ul>
-<p>You can withdraw permission at any time in Settings → Privacy → Stop sharing with cloud AI; the app then asks again before the next message. The <strong>demo</strong> ("Explore the demo") makes no network requests and sends nothing anywhere.</p>
+<p>You can withdraw permission at any time in Settings → Privacy → Stop sharing with cloud AI; the app then asks again before the next message. The <strong>demo</strong> (&quot;Explore the demo&quot;) makes no network requests and sends nothing anywhere.</p>
 <p><strong>On the phone itself:</strong> your API keys and your recent conversation are kept in the iOS Keychain. Deleting the app, or Settings → Disconnect / Forget this device, removes them. Anything a third-party provider has already received has to be deleted with that provider — we have no copy to delete.</p>
 <h2>The one optional thing: anonymous telemetry (OFF by default)</h2>
-<p>To know whether people actually use and keep SAM, there's an <strong>opt-in</strong> anonymous ping. It is:</p>
+<p>To know whether people actually use and keep SAM, there&#39;s an <strong>opt-in</strong> anonymous ping. It is:</p>
 <ul>
-<li><strong>Off by default.</strong> You're asked once, with a neutral choice — "no" is a real answer, and SAM won't nag.</li>
+<li><strong>Off by default.</strong> You&#39;re asked once, with a neutral choice — &quot;no&quot; is a real answer, and SAM won&#39;t nag.</li>
 <li><strong>Anonymous.</strong> A random per-install id, minted only if you opt in and discarded if you opt out. No account, no name, no email, no IP-based identity.</li>
 <li><strong>Aggregate + whitelisted.</strong> Only a fixed, closed set of fields can ever be sent. You can see the exact payload before deciding (Settings → the preview).</li>
 </ul>
@@ -107,7 +107,7 @@
 <tr><td><code>version</code></td><td><code>3.1.1</code></td><td>which release is in use</td></tr>
 <tr><td><code>os</code></td><td><code>darwin</code></td><td>platform mix</td></tr>
 <tr><td><code>dau</code></td><td><code>true</code></td><td>were you active today (retention curve)</td></tr>
-<tr><td><code>retentionBucket</code></td><td><code>d7</code></td><td>how long you've kept SAM (d1/d7/d30/d30+)</td></tr>
+<tr><td><code>retentionBucket</code></td><td><code>d7</code></td><td>how long you&#39;ve kept SAM (d1/d7/d30/d30+)</td></tr>
 <tr><td><code>activated</code></td><td><code>true</code></td><td>did you complete a first successful task</td></tr>
 <tr><td><code>crashFree</code></td><td><code>true</code></td><td>stability</td></tr>
 <tr><td><code>features</code></td><td><code>{tasks: 12, toolUses: 34, workflowRuns: 2, cacheHits: 4}</code></td><td>which capabilities get used — <strong>counts only</strong></td></tr>
@@ -115,7 +115,7 @@
 <h3>Exactly what is NEVER sent — even if you opt in</h3>
 <p>Prompts · messages · file names or paths · tool inputs · workflow contents · learned preferences · your name/email · location · IP-derived identity · <strong>any free text you or the model produced.</strong> The telemetry payload is built from a whitelist of aggregate numbers; content cannot appear in it. There is a test (<code>telemetry.test.ts</code>) that feeds a <em>poisoned</em> stats object full of fake secrets and asserts none of it reaches the wire, and a <code>isSendable()</code> tripwire that refuses any payload with a non-whitelisted key.</p>
 <h2>Where telemetry goes</h2>
-<p>If enabled, the anonymous payload posts to SAM's own aggregate endpoint (the same anonymous-device-id gateway pattern used for the optional free brain — no third-party analytics SDK, no ad networks).</p>
+<p>If enabled, the anonymous payload posts to SAM&#39;s own aggregate endpoint (the same anonymous-device-id gateway pattern used for the optional free brain — no third-party analytics SDK, no ad networks).</p>
 <h2>Your controls</h2>
 <ul>
 <li><strong>Opt in / out any time</strong> — Settings → Telemetry (defaults to off).</li>
@@ -123,7 +123,7 @@
 <li><strong>Reset your local stats</strong> any time.</li>
 <li><strong>Reset what SAM has learned</strong> any time.</li>
 </ul>
-<p>If a feature can't be built without transmitting your content, SAM doesn't build it. That's the rule.</p>
+<p>If a feature can&#39;t be built without transmitting your content, SAM doesn&#39;t build it. That&#39;s the rule.</p>
 </div>
 </body>
 </html>

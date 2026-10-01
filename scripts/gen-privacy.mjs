@@ -22,7 +22,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const md = readFileSync(join(ROOT, "docs/PRIVACY.md"), "utf8");
 
 // Escape FIRST, then add markup, so nothing in the source can inject tags.
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Escapes for text AND attribute values (the title goes into content="…"), so quotes too.
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 // Inline: code before bold/links, so `**` inside backticks stays literal.
 const inline = (s) =>
   esc(s)
