@@ -56,6 +56,27 @@
 	<string>SAM finds and connects to the Mac running SAM on your network.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SAM listens when you tap the microphone so you can talk instead of type.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Ask SAM</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>askSAM</string>
+			<key>NSPortName</key>
+			<string>SAM</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>SAM turns what you say into text, on this device when it can.</string>
 	<key>NSUserActivityTypes</key>

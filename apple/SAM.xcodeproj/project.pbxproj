@@ -20,9 +20,11 @@
 		52F2C303A39C4EA058BA5382 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 0246E1B0408DDAC9DB911C4F /* manifest.json */; };
 		55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2E33377DE427835DADBFCC /* Store.swift */; };
 		5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */; };
+		62D94DA316C069C60002B927 /* YardNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E00F499E33663AFA5C50A0B /* YardNotifier.swift */; };
 		67016402A32D61C856496D1D /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 844E0708B0A3ECEE060768D2 /* popup.html */; };
 		70DF3F82CD714C4F339382FD /* SAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; platformFilters = (ios, macos, ); fileRef = FD83CBF7D0926A918D3700F7 /* SAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFD5A501959C0C4D179972C /* DeviceServices.swift */; };
+		8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7807835C805EC4E3F2ED5449 /* MacSupport.swift */; };
 		88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */; };
 		94A038132C43C3483848085D /* CatalogueViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */; };
 		A7408088C0E2BF64D0AB5064 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DF95B223FC963578CAC393 /* SafariWebExtensionHandler.swift */; };
@@ -37,6 +39,7 @@
 		D5E73DAB1081C4D756B60D67 /* SAMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 493F14D0ABEC951786C2E721 /* SAMKit */; };
 		E1DB3CF6CDFA730FB7DC8585 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */; };
 		E5D5FD65EE25A7C6D912E043 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 5B152F9948B52309BCC78CD7 /* popup.js */; };
+		E63667C4B7B13B0E1416E7A7 /* QuickPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7D3087889EBC8E808B0164 /* QuickPanel.swift */; };
 		F15CF9E5D25C426E2091CF74 /* images in Resources */ = {isa = PBXBuildFile; fileRef = 6D063B5E7F377FE745C743EB /* images */; };
 		FC105793B2EA89D3C3E649EA /* AddOnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007351A230D66E6BCF4AD603 /* AddOnsView.swift */; };
 /* End PBXBuildFile section */
@@ -90,6 +93,7 @@
 		371805853F7EFD9F7F6B9EC5 /* SAMShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SAMShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EBAE17E1B2D49D8FB8FB34E /* SAM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B152F9948B52309BCC78CD7 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popup.js; sourceTree = "<group>"; };
+		5E00F499E33663AFA5C50A0B /* YardNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YardNotifier.swift; sourceTree = "<group>"; };
 		6044DCFCD57844D33C594D00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		66CB212D17A2BCDFB191FDD7 /* CatalogueViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViews.swift; sourceTree = "<group>"; };
 		69150E615E30D86FE0B4D91C /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = popup.css; sourceTree = "<group>"; };
@@ -99,6 +103,7 @@
 		6DE71E726F72635AC5639E8E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6E5F63C6D54E83B5EA0C33B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7161CA230E0B8F11E7A4243B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		7807835C805EC4E3F2ED5449 /* MacSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSupport.swift; sourceTree = "<group>"; };
 		785954E4995D5CC8A3C69827 /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		7F87B19D46F6AA399BABC257 /* SAMKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SAMKit; path = Packages/SAMKit; sourceTree = SOURCE_ROOT; };
 		80C919BA9D5651C50A2E4587 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
@@ -109,6 +114,7 @@
 		BB2E33377DE427835DADBFCC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		BCCE3D267570C147F67372A8 /* SAMWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAMWidgets.entitlements; sourceTree = "<group>"; };
 		C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMApp.swift; sourceTree = "<group>"; };
+		CA7D3087889EBC8E808B0164 /* QuickPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPanel.swift; sourceTree = "<group>"; };
 		E4DEFB742D7C9CE871DEC0ED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EA5CCBBC8D91110066D094F6 /* SAMIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMIntents.swift; sourceTree = "<group>"; };
 		EAD9A6105B14EDB61BB6F759 /* SAMWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAMWidgets.swift; sourceTree = "<group>"; };
@@ -166,6 +172,7 @@
 				80C919BA9D5651C50A2E4587 /* Discovery.swift */,
 				EF6A7A3A7B89988DC3D70C58 /* OnDeviceBrain.swift */,
 				BB2E33377DE427835DADBFCC /* Store.swift */,
+				5E00F499E33663AFA5C50A0B /* YardNotifier.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -223,10 +230,20 @@
 				AE6647FD353F11912A853B47 /* SAM.entitlements */,
 				C4EAC6A3FC6654F70F1B0FAB /* SAMApp.swift */,
 				32A65A59ABFC605FF62AF399 /* Intents */,
+				B8846708F0C8D10E28169F7F /* Mac */,
 				2264C89D53BD68CD851E4EB1 /* Services */,
 				2285B20E406CCF793E2044D9 /* Views */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		B8846708F0C8D10E28169F7F /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				7807835C805EC4E3F2ED5449 /* MacSupport.swift */,
+				CA7D3087889EBC8E808B0164 /* QuickPanel.swift */,
+			);
+			path = Mac;
 			sourceTree = "<group>";
 		};
 		D0C79DDC2409FD289A17984E /* Products */ = {
@@ -479,13 +496,16 @@
 				B901372E8B871941215355B7 /* ChatView.swift in Sources */,
 				8281EAB3A745D766795F5159 /* DeviceServices.swift in Sources */,
 				BC1AE8FF9E0E6C11C40A9F61 /* Discovery.swift in Sources */,
+				8714FFDBBEA99840FE51810E /* MacSupport.swift in Sources */,
 				337D28621FA2EADCDBF08759 /* OnDeviceBrain.swift in Sources */,
 				329A805AE30323ED5EE46536 /* PairView.swift in Sources */,
+				E63667C4B7B13B0E1416E7A7 /* QuickPanel.swift in Sources */,
 				35D292A0A1D6E41871DA4936 /* RootView.swift in Sources */,
 				88821495FB3BA2BFC3E05B4A /* SAMApp.swift in Sources */,
 				5B8B34EB6D54763780460B8F /* SAMIntents.swift in Sources */,
 				55F8B86D2FC1CEBE96BE1B14 /* Store.swift in Sources */,
 				A7885A358E746BA5E729644C /* Theme.swift in Sources */,
+				62D94DA316C069C60002B927 /* YardNotifier.swift in Sources */,
 				CA428F29A5FB68A3230D563B /* YardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -58,6 +58,12 @@ targets:
           NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSUserActivityTypes: [com.hectic.sam.chat]
+        NSServices:
+          - NSMenuItem: { default: Ask SAM }
+            NSMessage: askSAM
+            NSPortName: SAM
+            NSSendTypes: [public.utf8-plain-text, NSStringPboardType]
+            NSRequiredContext: {}
         CFBundleURLTypes:
           - CFBundleURLName: com.hectic.sam
             CFBundleURLSchemes: [sam]

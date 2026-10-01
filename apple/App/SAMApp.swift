@@ -2,21 +2,27 @@ import SAMKit
 import SwiftData
 import SwiftUI
 
-@main
-struct SAMApp: App {
-    @State private var model = AppModel.shared
-    let container: ModelContainer
-
-    init() {
+/// One SwiftData store for every scene (main window, menu bar, the Mac quick panel).
+enum SAMStore {
+    static let container: ModelContainer = {
         do {
-            container = try ModelContainer(for: Conversation.self, Message.self)
+            return try ModelContainer(for: Conversation.self, Message.self)
         } catch {
             // A damaged store must not brick the app: fall back to memory and say so in the log.
             print("SAM: SwiftData store failed (\(error)); using in-memory history this launch")
-            container = try! ModelContainer(for: Conversation.self, Message.self,
-                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            return try! ModelContainer(for: Conversation.self, Message.self,
+                                       configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         }
-    }
+    }()
+}
+
+@main
+struct SAMApp: App {
+    @State private var model = AppModel.shared
+    let container = SAMStore.container
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var macDelegate
+    #endif
 
     var body: some Scene {
         WindowGroup {

@@ -103,8 +103,10 @@ struct PendingApproval: Identifiable, Equatable {
     func refresh() async {
         guard let brain else { reachable = false; publishSnapshot(); return }
         do {
-            yard = try await brain.yard()
+            let latest = try await brain.yard()
+            yard = latest
             reachable = true
+            await YardNotifier.shared.observe(latest)
             lastError = nil
         } catch let e as BrainError where e.status == 401 || e.status == 403 {
             // The Mac forgot this device (revoked, or its sessions were reset).
@@ -137,14 +139,16 @@ struct PendingApproval: Identifiable, Equatable {
 
     // MARK: Chat
 
-    func send(_ text: String, in conversation: Conversation, context: ModelContext) {
+    /// `untrusted` marks outside content (selected text, a shared file): the brain answers with
+    /// no tools, memory or log. `display` is what the bubble shows instead of the fenced prompt.
+    func send(_ text: String, in conversation: Conversation, context: ModelContext, untrusted: Bool = false, display: String? = nil) {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !busy else { return }
         let history = conversation.sorted.map { Turn(role: $0.isUser ? .user : .assistant, content: $0.text) }
-        let user = Message(role: "user", text: prompt)
+        let user = Message(role: "user", text: display ?? prompt)
         user.conversation = conversation
         context.insert(user)
-        if conversation.title == "New chat" { conversation.title = String(prompt.prefix(48)) }
+        if conversation.title == "New chat" { conversation.title = String((display ?? prompt).prefix(48)) }
         let reply = Message(role: "assistant", text: "")
         reply.conversation = conversation
         context.insert(reply)
@@ -159,7 +163,7 @@ struct PendingApproval: Identifiable, Equatable {
                 conversation.updated = .now
                 try? context.save()
             }
-            if let brain, await streamFromMac(brain, prompt: prompt, history: history, into: reply) { return }
+            if let brain, await streamFromMac(brain, prompt: prompt, history: untrusted ? [] : history, untrusted: untrusted, into: reply) { return }
             await streamOnDevice(prompt: prompt, history: history, into: reply)
         }
     }
@@ -170,10 +174,10 @@ struct PendingApproval: Identifiable, Equatable {
     }
 
     /// True when the Mac handled it (answered or paused for approval).
-    private func streamFromMac(_ brain: BrainClient, prompt: String, history: [Turn], into reply: Message) async -> Bool {
+    private func streamFromMac(_ brain: BrainClient, prompt: String, history: [Turn], untrusted: Bool = false, into reply: Message) async -> Bool {
         var text = ""
         do {
-            for try await event in brain.stream(message: prompt, history: history) {
+            for try await event in brain.stream(message: prompt, history: history, untrusted: untrusted) {
                 switch event {
                 case .token(let t):
                     text += t
