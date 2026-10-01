@@ -235,6 +235,7 @@ button, a, .pop-opt, .icon-btn, .dl-btn, select, input, textarea, .chip, [role="
 button:active:not(:disabled), .pop-opt:active, .icon-btn:active, .dl-btn:active, .chip:active, [role="button"]:active {
   transform: scale(0.97);
 }
+button, a, [role="button"], summary, label { -webkit-tap-highlight-color: transparent; }
 /* Accessibility + respect: kill ALL motion when the OS asks for it (was only scoped to a few overlays). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
@@ -330,6 +331,9 @@ button { font-family: inherit; cursor: pointer; }
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   backdrop-filter: saturate(1.6) blur(20px); -webkit-backdrop-filter: saturate(1.6) blur(20px);
   position: relative; z-index: 20;
+  /* Safari standalone / notch: keep the bar clear of the status bar and side cutouts (all 0 in a normal tab). */
+  padding-top: calc(15px + env(safe-area-inset-top));
+  padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right));
 }
 .brandmark { display: flex; align-items: baseline; gap: 10px; }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -576,6 +580,8 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Composer ───────────────────────────────── */
 .composer {
   padding: 0 24px 16px; display: flex; flex-direction: column; align-items: center;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));  /* home indicator */
+  padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right));
 }
 .composer-inner {
   width: 100%; max-width: 760px; pointer-events: auto;
