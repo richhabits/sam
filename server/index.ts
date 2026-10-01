@@ -49,6 +49,7 @@ import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { reloadPools } from "./keys.ts";
+import { createLanGuard, lanInfo, pairNewLanFields, startLanListener } from "./lan-tls.ts";
 import { addFolder, lifeIndexStats, listFolders, reindexAll, removeFolder, setWatching, startWatching } from "./lifeindex.ts";
 import { mailerConfigured, ownerEmail, sendMail, } from "./mailer.ts";
 import { quotes as marketQuotes } from "./markets.ts";
@@ -187,6 +188,11 @@ process.on("unhandledRejection", (reason) => { try { console.error("[SAM] unhand
 process.on("uncaughtException", (err) => { try { console.error("[SAM] uncaughtException:", err?.message || err); } catch { /* logging must never itself throw */ } });
 
 const app = express();
+// PHONE ACCESS (SAM_LAN=1, off by default) — the pinned-TLS LAN listener serves this same app, and
+// every request that arrives on it hits this guard BEFORE anything else: unpaired devices reach
+// only GET /api/health and POST /api/pair/claim, everything else needs a paired session, and
+// nothing outside /api is served. A no-op for loopback requests. See server/lan-tls.ts.
+app.use(createLanGuard());
 // SECURITY: only allow same-origin + localhost (dev HUD on :5273). This stops a
 // random website you visit from reaching SAM's powerful local API (CSRF-style abuse).
 // Any blocked origin gets logged so SAM can call it out.
@@ -323,6 +329,9 @@ app.post("/api/pair/new", (req, res) => {
     expiresInSec: 900,
     pin: bundle.pin,
     pinExpiresInSec: 120, // the PIN is far lower-entropy than the hex code — much shorter window, see pairing.ts
+    // Phone access (SAM_LAN=1): the pinned-TLS address + fingerprint, and the sam:// link the
+    // native app scans. Absent when phone access is off. See server/lan-tls.ts.
+    ...pairNewLanFields(bundle.code, lanInfo()),
   });
 });
 // Restart SAM (to apply add-on changes). See server/restart.ts for who may, and why.
@@ -2916,6 +2925,9 @@ function startListening(isRebind: boolean) {
 }
 
 startListening(false);
+// Phone access — a second, HTTPS-only listener on the LAN address for paired devices. Does
+// nothing unless SAM_LAN=1; never touches the loopback listener above. See server/lan-tls.ts.
+void startLanListener(app, { ip: lanIP() });
 
 // Lets the phone-enable/disable/mesh routes flip SAM_REMOTE/SAM_MESH and take effect on THIS
 // running process — close the current listener (force-draining any lingering keep-alive/SSE
