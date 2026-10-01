@@ -6,10 +6,10 @@
     "expo": "~57.0.21",
     "expo-application": "~57.0.2",
     "expo-build-properties": "~57.0.17",
-    "expo-camera": "~57.0.4",
+    "expo-camera": "~58.0.4",
     "expo-clipboard": "~57.0.1",
     "expo-device": "~57.0.1",
-    "expo-document-picker": "~57.0.1",
+    "expo-document-picker": "~58.0.2",
     "expo-haptics": "~57.0.2",
     "expo-image-picker": "~57.0.16",
     "expo-linking": "~57.0.9",
@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "scripts": {
     "start": "expo start",
