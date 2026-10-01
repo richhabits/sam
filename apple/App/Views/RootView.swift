@@ -10,7 +10,8 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
     @State private var lock = AppLock.shared
-    @State private var section: AppSection = .chat
+    // DEBUG/screenshots: -samTab chat|vault|studio|yard|more|crew|tools|addOns|settings picks the first screen.
+    @State private var section: AppSection = AppSection(rawValue: UserDefaults.standard.string(forKey: "samTab") ?? "") ?? .chat
     @State private var skippedPairing = UserDefaults.standard.bool(forKey: "sam.skippedPairing")
     @State private var incomingLink: PairLink?
 
@@ -28,9 +29,7 @@ struct RootView: View {
             if lock.locked {
                 LockView().transition(.opacity)
             }
-            if model.isDemo && !lock.locked {
-                DemoBanner().frame(maxHeight: .infinity, alignment: .top).allowsHitTesting(false)
-            }
+
         }
         .animation(.smooth, value: model.isPaired)
         .animation(.smooth, value: lock.locked)
@@ -94,6 +93,15 @@ struct RootView: View {
                 .defaultVisibility(.hidden, for: .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
+        #if os(iOS)
+        // The demo label lives in the tab bar's accessory (the strip Music uses for Now Playing),
+        // so it never covers a title or a button.
+        .modifier(DemoAccessory(on: model.isDemo))
+        #else
+        .overlay(alignment: .top) {
+            if model.isDemo { DemoBanner().allowsHitTesting(false) }
+        }
+        #endif
     }
 
     private func handle(_ url: URL) {
@@ -168,15 +176,33 @@ enum ChatActivity {
 #endif
 
 /// Always visible while exploring, so sample data is never mistaken for real.
+#if os(iOS)
+/// iOS 26.1 can switch the accessory off; on 26.0 it's only attached while the demo is on.
+private struct DemoAccessory: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: on) { DemoBanner(inAccessory: true) }
+        } else if on {
+            content.tabViewBottomAccessory { DemoBanner(inAccessory: true) }
+        } else {
+            content
+        }
+    }
+}
+#endif
+
 struct DemoBanner: View {
+    var inAccessory = false
     var body: some View {
-        Label("Demo · sample data", systemImage: "sparkles")
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .samGlass(in: .capsule)
-            .padding(.top, 2)
+        let label = Label("Demo · sample data, not your Mac", systemImage: "sparkles")
+            .font(.footnote.weight(.semibold))
             .accessibilityLabel("Demo mode: sample data, not connected to a Mac")
+        if inAccessory {
+            label.foregroundStyle(.secondary).frame(maxWidth: .infinity)    // the accessory already is glass
+        } else {
+            label.padding(.horizontal, 12).padding(.vertical, 5).samGlass(in: .capsule).padding(.top, 2)
+        }
     }
 }
 
