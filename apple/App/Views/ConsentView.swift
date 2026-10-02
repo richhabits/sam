@@ -38,7 +38,7 @@ struct ConsentSheet: View {
                     }
                 }
                 Section {
-                    Text("You can change this any time in Settings → Privacy. Pages and files you share are sent as data only: SAM won't run tools on them or remember them.")
+                    Text("You can change this any time in Settings → AI and your data. Pages and files you share are sent as data only: SAM won't run tools on them or remember them.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -110,5 +110,27 @@ struct AIConsentSettings: View {
         .task(id: model.isPaired) {
             providers = try? await model.brain?.aiProviders()
         }
+    }
+}
+
+/// Compact consent for the Mac's ⌥Space panel and menu bar, where a sheet has no window to sit on.
+struct ConsentInline: View {
+    @Environment(AppModel.self) private var model
+    let providers: AIProviders
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Before SAM answers from your Mac", systemImage: "hand.raised.fill")
+                .font(.headline).foregroundStyle(Color.sam)
+            Text("Your Mac sends what you type to: \(providers.thirdParties.map(\.name).joined(separator: ", ")). Each handles it under its own privacy policy.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button("Not now") { model.answerConsent(false) }
+                Spacer()
+                Button("Allow") { model.answerConsent(true) }.samProminent()
+            }
+        }
+        .padding(14)
     }
 }

@@ -268,7 +268,6 @@ import Testing
         #expect(AIConsent.state(for: p, defaults: d) == .undecided)
         AIConsent.allow(p, defaults: d)
         #expect(AIConsent.state(for: p, defaults: d) == .allowed)
-        #expect(AIConsent.hasAllowedAnything(defaults: d))
     }
 
     @Test func aNewProviderAsksAgain() {
@@ -281,7 +280,6 @@ import Testing
         let d = store(); let p = AIProviders(onDevice: false, cloud: [groq], keyless: [])
         AIConsent.decline(defaults: d)
         #expect(AIConsent.state(for: p, defaults: d) == .declined)
-        #expect(!AIConsent.hasAllowedAnything(defaults: d))
         AIConsent.reset(defaults: d)
         #expect(AIConsent.state(for: p, defaults: d) == .undecided)
     }

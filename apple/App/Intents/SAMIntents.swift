@@ -18,12 +18,19 @@ struct AskSAMIntent: AppIntent {
         return .result(value: answer, dialog: IntentDialog(stringLiteral: answer))
     }
 
-    static func ask(_ question: String) async throws -> String {
-        // Siri/Watch can't show the consent sheet: only use the Mac once the person said yes in the app.
-        if let brain = Session.brain, Session.isDemo || AIConsent.hasAllowedAnything(),
-           let answer = try? await Session.ask(question, brain: brain) {
-            if let tool = answer.needsApproval { return "SAM needs your approval to use \(tool). Open SAM to allow it." }
-            if !answer.text.isEmpty { return answer.text }
+    /// `untrusted`: the Watch path passes true when the app lock is on, because it arrives without
+    /// Face ID; SAM then can't run tools or write memory because of it.
+    static func ask(_ question: String, untrusted: Bool = false) async throws -> String {
+        // Siri/Watch can't show the consent sheet: only use the Mac once the person approved the
+        // providers it uses now (a new provider means "open SAM to approve" first).
+        if let brain = Session.brain {
+            if !Session.isDemo, await AIConsent.allowsCurrentProviders(brain) == false {
+                return "Open SAM on your iPhone to approve the AI services your Mac uses, then ask again."
+            }
+            if let answer = try? await Session.ask(question, brain: brain, untrusted: untrusted) {
+                if let tool = answer.needsApproval { return "SAM needs your approval to use \(tool). Open SAM to allow it." }
+                if !answer.text.isEmpty { return answer.text }
+            }
         }
         guard OnDeviceBrain.isAvailable else {
             throw BrainError(0, OnDeviceBrain.unavailableReason ?? "SAM can't answer right now.")

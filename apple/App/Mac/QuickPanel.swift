@@ -142,6 +142,11 @@ private struct QuickPanelView: View {
                 .padding(.bottom, 10)
             }
 
+            if let providers = model.consentRequest {
+                Divider()
+                ConsentInline(providers: providers)
+            }
+
             if !convo.sorted.isEmpty {
                 Divider()
                 ScrollView {
