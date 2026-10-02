@@ -30,7 +30,8 @@ final class PhoneLink: NSObject, WCSessionDelegate, @unchecked Sendable {
         }
         Task {
             do {
-                let text = try await AskSAMIntent.ask(question)
+                // The Watch skips Face ID; with the app lock on, its question goes as untrusted.
+                let text = try await AskSAMIntent.ask(question, untrusted: UserDefaults.standard.bool(forKey: "sam.lock"))
                 var snap = SharedSnapshot.load()
                 snap.lastReply = String(text.prefix(280))
                 snap.updated = .now

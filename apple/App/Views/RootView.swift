@@ -11,7 +11,13 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
     @State private var lock = AppLock.shared
     // DEBUG/screenshots: -samTab chat|vault|studio|yard|more|crew|tools|addOns|settings picks the first screen.
-    @State private var section: AppSection = AppSection(rawValue: UserDefaults.standard.string(forKey: "samTab") ?? "") ?? .chat
+    @State private var section: AppSection = {
+        #if DEBUG
+        AppSection(rawValue: UserDefaults.standard.string(forKey: "samTab") ?? "") ?? .chat
+        #else
+        .chat
+        #endif
+    }()
     @State private var skippedPairing = UserDefaults.standard.bool(forKey: "sam.skippedPairing")
     @State private var incomingLink: PairLink?
 

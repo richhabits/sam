@@ -94,8 +94,8 @@ struct ShareView: View {
             error = "Open the SAM app and pair it with your Mac first."
             return
         }
-        guard Session.isDemo || AIConsent.hasAllowedAnything() else {
-            error = "Open the SAM app first and choose whether your Mac's AI services may be used."
+        if !Session.isDemo, await AIConsent.allowsCurrentProviders(brain) == false {
+            error = "Open SAM to approve the AI services your Mac uses, then try again."
             return
         }
         working = true

@@ -98,6 +98,10 @@ struct QuickAskView: View {
                 ConnectionBadge(paired: model.isPaired, reachable: model.reachable)
             }
             .padding(12)
+            if let providers = model.consentRequest {
+                ConsentInline(providers: providers)
+                Divider()
+            }
             ScrollView {
                 LazyVStack(spacing: 10) { ForEach(convo.sorted) { MessageRow(message: $0) } }.padding(12)
             }

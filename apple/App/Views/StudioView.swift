@@ -170,6 +170,10 @@ struct StudioView: View {
         promptFocused = false
         generating = Task {
             defer { generating = nil; startedAt = nil }
+            guard await model.macAllowed() else {
+                failure = "Studio needs your OK to use your Mac's AI services. Change it in Settings → AI and your data."
+                return
+            }
             do {
                 let url = try await brain.generateImage(prompt: full, aspect: shape)
                 try Task.checkCancellation()
@@ -190,6 +194,10 @@ struct StudioView: View {
         guard let brain = model.brain else { return }
         enhancing = true
         defer { enhancing = false }
+        guard await model.macAllowed() else {
+            failure = "Enhancing needs your OK to use your Mac's AI services. Change it in Settings → AI and your data."
+            return
+        }
         do {
             let better = try await brain.enhancePrompt(prompt, style: style?.label)
             withAnimation(.smooth) { prompt = better }

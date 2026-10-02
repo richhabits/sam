@@ -140,7 +140,12 @@ struct PendingApproval: Identifiable, Equatable {
 
     /// On the Mac SAM runs on, pair silently over loopback. Anywhere else, wait for a code.
     func connect() async {
-        if ProcessInfo.processInfo.arguments.contains("-samDemo") || isDemo {
+        #if DEBUG
+        let forceDemo = ProcessInfo.processInfo.arguments.contains("-samDemo")
+        #else
+        let forceDemo = false
+        #endif
+        if forceDemo || isDemo {
             await enterDemo()
             return
         }
@@ -198,9 +203,8 @@ struct PendingApproval: Identifiable, Equatable {
 
     static func plainHTTPAllowed(_ base: String) -> Bool {
         guard let host = URL(string: base)?.host() else { return false }
-        if host == "127.0.0.1" || host == "localhost" || host == "::1" { return true }
-        let parts = host.split(separator: ".").compactMap { Int($0) }
-        return parts.count == 4 && parts[0] == 100 && (64...127).contains(parts[1])
+        // 100.64/10 is carrier-grade NAT, not only Tailscale, so it no longer counts as private.
+        return host == "127.0.0.1" || host == "localhost" || host == "::1"
     }
 
     static var clientName: String {

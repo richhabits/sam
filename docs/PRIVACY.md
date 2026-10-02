@@ -1,5 +1,7 @@
 # SAM Privacy
 
+_Last updated 2 October 2026._
+
 Short version: **SAM stores everything on your machine and phones home to nobody by default.** No account, no
 tracking, no ads, and no analytics unless you opt in to anonymous usage counts. (A message can leave your devices for a third-party AI service only if
 you or your Mac are set up to use one — and the phone apps ask your permission first, naming the
@@ -56,8 +58,12 @@ NVIDIA, Anthropic, OpenAI or Pollinations. To answer, SAM may first read a file,
 content on your Mac, and the result becomes part of what is sent. **The app asks for your permission
 before the first message that could go to one of them, and names the services.** It gets that list
 from your Mac (`GET /api/ai/providers`), which reports only providers that could actually receive a
-message under your current keys and settings, not key values or how many keys you have. You can
-withdraw permission at any time, and the app will ask again. If your Mac is set to local-only (an
+message under your current keys and settings, not key values or how many keys you have. If your
+Mac starts using a service you haven't approved, the app asks again before sending anything. You can
+withdraw permission at any time in Settings → AI and your data → "Stop sharing with these services":
+the app then answers with Apple Intelligence on the device until you choose "Ask me again". Siri,
+Shortcuts, the Apple Watch and the Share and Safari extensions never use your Mac until you have
+approved its current services in the app. Studio (pictures) follows the same rule. If your Mac is set to local-only (an
 Ollama model on the Mac), no cloud service is involved. Each provider handles your message under its
 own terms and privacy policy; the app links to them. Anything a provider has already received has to
 be deleted with that provider, because we hold no copy.

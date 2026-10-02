@@ -70,9 +70,11 @@ public enum AIConsent {
         defaults.removeObject(forKey: declinedKey)
     }
 
-    /// For surfaces that can't show a sheet (extensions, Siri): true only when the person said yes.
-    /// No answer yet counts as no.
-    public static func hasAllowedAnything(defaults: UserDefaults = defaults) -> Bool {
-        !(defaults.stringArray(forKey: allowedKey) ?? []).isEmpty && !defaults.bool(forKey: declinedKey)
+    /// For surfaces that can't show a sheet (Siri, the Watch, Share, Safari): true only when the
+    /// person approved every provider the Mac uses *now*. A new provider, no answer yet, or a Mac
+    /// that can't list its providers all count as no, so the app asks first.
+    public static func allowsCurrentProviders(_ brain: BrainClient, defaults: UserDefaults = defaults) async -> Bool {
+        guard let providers = try? await brain.aiProviders() else { return false }
+        return state(for: providers, defaults: defaults) == .allowed
     }
 }
