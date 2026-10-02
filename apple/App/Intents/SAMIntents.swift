@@ -6,7 +6,7 @@ struct AskSAMIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask SAM"
     /// SAM can act on your Mac, so Siri never runs it from a locked device.
     static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
-    static let description = IntentDescription("Ask SAM a question and hear the answer. Uses your Mac when it's reachable, Apple Intelligence on this device when it isn't.")
+    static let description = IntentDescription("Ask SAM a question and hear the answer. Answers on this device when your computer isn't reachable.")
 
     @Parameter(title: "Question", requestValueDialog: "What would you like to ask SAM?")
     var question: String
@@ -45,7 +45,7 @@ struct AskSAMIntent: AppIntent {
 struct YardStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Check SAM's Yard"
     static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
-    static let description = IntentDescription("Hear what SAM is building on your Mac.")
+    static let description = IntentDescription("Hear what SAM is building for you right now.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let brain = Session.brain else {
