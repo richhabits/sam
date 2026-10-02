@@ -4,7 +4,7 @@
 set -euo pipefail
 U=${1:?simulator UDID}
 OUT=${2:-$(dirname $0)/../Screenshots/raw/$(xcrun simctl list devices | grep -m1 "$U" | sed -E 's/^ *([^(]+) \(.*/\1/' | tr ' ' '-')}
-APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/SAM-*/Build/Products/Debug-iphonesimulator/SAM.app 2>/dev/null | head -1)
+APP=$(print -l ~/Library/Developer/Xcode/DerivedData/SAM-*/Build/Products/Debug-iphonesimulator/SAM.app(N) | head -1)
 APP=${SAM_APP:-$APP}
 [[ -d $APP ]] || { echo "build the SAM scheme for the simulator first (or set SAM_APP)"; exit 1; }
 mkdir -p "$OUT"
