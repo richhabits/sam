@@ -29,6 +29,16 @@ struct SAMWatchApp: App {
 
     override init() {
         super.init()
+        #if DEBUG
+        // Store screenshots: the same fictional demo data as the phone's "Explore the demo".
+        if ProcessInfo.processInfo.arguments.contains("-samDemo") {
+            snapshot = SharedSnapshot(paired: true, reachable: true, queued: 1, running: 1, failed: 0,
+                                      latestJob: "Project build · lemon-and-ivy", latestState: "running")
+            answer = "Done. The newsletter is queued for Thursday 9:00, and I'll remind you about the photos tomorrow at 10."
+            phoneReachable = true
+            return
+        }
+        #endif
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
