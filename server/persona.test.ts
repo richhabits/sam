@@ -113,6 +113,13 @@ describe("personas", () => {
     expect(d).toMatch(/ground it in an actual reference|look it up/);
   });
 
+  it("the standard is look it up, hand over the thing, and keep other people's words theirs", () => {
+    const d = operatingDoctrine("Alex").toLowerCase();
+    expect(d).toContain("if it can go stale, look");
+    expect(d).toContain("the thing is the reply");
+    expect(d).toMatch(/other people's words stay theirs/);
+  });
+
   it("the operating doctrine starts the work immediately on the free providers", () => {
     const d = operatingDoctrine("Alex").toLowerCase();
     expect(d).toContain("start now");
