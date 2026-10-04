@@ -154,3 +154,6 @@ design-reference/
 !mobile/android/app/debug.keystore
 dist-*/
 dist*.zip
+
+# Pages SAM builds locally. They are the result, not source.
+vault/sites/
