@@ -11,7 +11,7 @@
   <img alt="cost" src="https://img.shields.io/badge/cost-%C2%A30%2Fmo-16a34a">
   <img alt="agents" src="https://img.shields.io/badge/AI%20agents-a%20whole%20team-29C6F6">
   <img alt="brains" src="https://img.shields.io/badge/free%20AI%20brains-40+-blue">
-  <img alt="tools" src="https://img.shields.io/badge/tools-248%20integrated-purple">
+  <img alt="tools" src="https://img.shields.io/badge/tools-249%20integrated-purple">
   <img alt="platforms" src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-cross--platform-6E56CF">
   <img alt="by" src="https://img.shields.io/badge/by-HECTIC-000000">
 </p>
@@ -45,7 +45,7 @@ graph TD
     end
     
     subgraph Core ["💻 SAM Desktop & Server (Mac / Win / Linux)"]
-        Agent[Agentic Doer Loop · 248 Tools & 34 Skills]
+        Agent[Agentic Doer Loop · 249 Tools & 34 Skills]
         Cascade[Cascade Router & 40+ Free Brains]
         Memory[Obsidian-Style Vault & Semantic Cache]
         Overlay[Global ⌥Space Everywhere Overlay]
@@ -69,7 +69,7 @@ graph TD
 * **No cost by default**: it uses free models first, and if one hits its limit it switches to the next free one. Paid models (Anthropic, OpenAI) are used only if you add your own key and choose them.
 * **Answer cache**: repeated questions are answered from local memory — instantly, and with no AI call to pay for.
 
-### 🛠️ 2. The Doer (248 Real Computer Tools & 34 Skills)
+### 🛠️ 2. The Doer (249 Real Computer Tools & 34 Skills)
 * Not just text generation. SAM executes terminal commands, edits code with syntax validation, commits to Git, inspects browsers, manages scheduled cron tasks, and orchestrates multi-agent parallel swarms.
 * **Universal Cross-Platform**: 230 tools that work the same on macOS, Windows, and Linux, plus 18 macOS-only tools that tell you politely when they are unavailable elsewhere.
 
@@ -144,7 +144,7 @@ _A general comparison, as of 2026. Their products change often — check their c
 | **Monthly Cost** | **£0 for SAM** (paid AI models are optional, your own key) | paid plans from about $20/mo | paid plans from about $20/mo |
 | **Mobile Standalone + Desktop Sync** | **✅ Full Hybrid** | Separate apps | Separate apps |
 | **Multi-Agent Swarms** | **✅ Parallel Crew** | Varies by plan | Varies by plan |
-| **Local Tools & Yard Workers** | **✅ 248 Real Tools** | Different approach | Different approach |
+| **Local Tools & Yard Workers** | **✅ 249 Real Tools** | Different approach | Different approach |
 | **Offline Brain Support** | **✅ Ollama / Local** | ❌ Cloud only | ❌ Cloud only |
 | **Data Privacy** | **Files and memory stay on your machine** (chat text goes to the AI model you pick; fully local with Ollama) | Cloud-hosted | Cloud-hosted |
 | **Creative Studio & FlipIt** | **✅ Built-in** | ❌ | ❌ |
