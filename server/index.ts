@@ -49,7 +49,8 @@ import { checkPasskey, handshakeEnforced } from "./handshake.ts";
 import { getHardwareProfile, getOllamaStatus } from "./hardware.ts";
 import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal, isYardReadTrusted, isYardTrusted, originAllowed, passkeyRequiredForMutation } from "./http-guards.ts";
 import { aiProvidersReport } from "./ai-disclosure.ts";
-import { lanesStatus } from "./free-lanes.ts";
+import { laneWallet, lanesStatus } from "./free-lanes.ts";
+import { gatewayModelList, handleChatCompletion, openAIError } from "./openai-gateway.ts";
 import { discoveryEnabled, startModelDiscovery } from "./model-discovery.ts";
 import { flushLedger } from "./usage-ledger.ts";
 import { reloadPools } from "./keys.ts";
@@ -2849,6 +2850,47 @@ app.get("/api/ai/providers", (req, res) => {
 app.get("/api/lanes/status", (req, res) => {
   if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json({ lanes: lanesStatus(), discovery: discoveryEnabled() });
+});
+app.get("/api/lanes/wallet", (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  res.json(laneWallet(lanesStatus()));
+});
+// One OpenAI-shaped front for the free lanes. GET is the catalogue (no secrets). POST spends a
+// free request, so it takes the same passkey or paired session as the other private routes.
+// Authorization: Bearer is accepted because that is what an OpenAI client sends.
+app.get("/v1/models", async (_req, res) => {
+  try { res.json(await gatewayModelList()); }
+  catch { res.status(502).json(openAIError("the free model list could not be built", "api_error", "list_failed")); }
+});
+app.post("/v1/chat/completions", async (req, res) => {
+  const bearer = typeof req.headers.authorization === "string" && /^bearer\s+/i.test(req.headers.authorization)
+    ? req.headers.authorization.replace(/^bearer\s+/i, "").trim() : "";
+  const allowed = canReadPrivate(req) || (!!bearer && checkPasskey({ headers: { "x-sam-token": bearer } }));
+  if (!allowed) {
+    res.status(401).json(openAIError("this device isn't paired with SAM — chat completions need the app passkey or a paired device", "invalid_request_error", "unauthorized"));
+    return;
+  }
+  try {
+    const out = await handleChatCompletion(req.body ?? {});
+    if (out.kind === "json") { res.status(out.status).json(out.body); return; }
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    const id = `chatcmpl-${Date.now().toString(36)}`;
+    const created = Math.floor(Date.now() / 1000);
+    let first = true;
+    await out.run((delta) => {
+      const chunk = { id, object: "chat.completion.chunk", created, model: out.model, choices: [{ index: 0, delta: first ? { role: "assistant", content: delta } : { content: delta }, finish_reason: null }] };
+      first = false;
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    });
+    res.write(`data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: out.model, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch {
+    if (res.headersSent) { try { res.end(); } catch { /* already closed */ } return; }
+    res.status(502).json(openAIError("the free lane did not answer", "api_error", "upstream_error"));
+  }
 });
 app.get("/api/capacity",(_req, res) => res.json({ ...capacityReport(), nudge: capacityNudge() }));
 // MT5 — read-only account/positions/journal + risk metrics from the FlipItReporter file. REAL DATA ONLY:

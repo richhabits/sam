@@ -94,3 +94,67 @@ export function lanesStatus(providers: Provider[] = PROVIDERS, now = Date.now())
       };
     });
 }
+
+// One wallet across the free lanes, split by the job they are actually for.
+// A lane can sit in more than one category. The combined total counts each lane once.
+export type JobKind = "build" | "pictures" | "video" | "audio" | "research" | "personal";
+
+const BUILD = new Set(["cerebras", "groq", "codestral", "deepseek", "github", "sambanova", "fireworks", "nvidia", "mistral", "huggingface"]);
+const RESEARCH = new Set(["perplexity", "cohere", "gemini", "openrouter", "ai21"]);
+const PERSONAL = new Set(["hermes"]);
+
+export function jobsFor(id: string, note = ""): JobKind[] {
+  const jobs: JobKind[] = [];
+  const n = note.toLowerCase();
+  if (BUILD.has(id) || /\bcode\b/.test(n)) jobs.push("build");
+  // "reads images" is vision (Gemini), not a picture generator. Generators are marked 🎨 or FLUX.
+  if (id.startsWith("pollinations") || /🎨|flux/i.test(note)) jobs.push("pictures");
+  if (/video|🎬/.test(note)) jobs.push("video");
+  if (/audio|voice|speech/.test(n)) jobs.push("audio");
+  if (RESEARCH.has(id)) jobs.push("research");
+  if (PERSONAL.has(id) || id === "ollama") jobs.push("personal");
+  if (!jobs.length) jobs.push("build");
+  return jobs;
+}
+
+const JOB_LABEL: Record<JobKind, string> = {
+  build: "Sites and code",
+  pictures: "Pictures",
+  video: "Video",
+  audio: "Audio",
+  research: "Research",
+  personal: "On this computer",
+};
+
+export function laneWallet(lanes: LaneStatus[], noteOf: (id: string) => string = (id) => PROVIDER_REGISTRY.find((r) => r.id === id)?.note ?? "") {
+  const buckets = new Map<JobKind, LaneStatus[]>();
+  for (const lane of lanes) {
+    for (const job of jobsFor(lane.id, noteOf(lane.id))) {
+      const list = buckets.get(job) ?? [];
+      list.push(lane);
+      buckets.set(job, list);
+    }
+  }
+  const remaining = (lane: LaneStatus) => lane.limitPerDay == null ? null : Math.max(0, lane.limitPerDay - lane.usedToday);
+  const tally = (list: LaneStatus[]) => {
+    let remainingToday = 0;
+    let known = false;
+    let unlimited = 0;
+    for (const lane of list) {
+      if (!lane.healthy) continue;
+      const left = remaining(lane);
+      if (left == null) unlimited += 1;
+      else { remainingToday += left; known = true; }
+    }
+    return { healthy: list.filter((l) => l.healthy).length, remainingToday: known ? remainingToday : null, unlimited };
+  };
+  const order: JobKind[] = ["build", "pictures", "video", "audio", "research", "personal"];
+  return {
+    note: "Remaining free requests today, from the providers' own published limits. Not money. Research is not legal advice.",
+    combined: tally(lanes),
+    categories: order.filter((id) => buckets.has(id)).map((id) => {
+      const list = buckets.get(id)!;
+      return { id, label: JOB_LABEL[id], ...tally(list), lanes: list.map((l) => l.name) };
+    }),
+  };
+}

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { laneGrade, type LaneSignals, lanesStatus, quotaOrder } from "./free-lanes.ts";
+import { jobsFor, laneGrade, laneWallet, type LaneSignals, type LaneStatus, lanesStatus, quotaOrder } from "./free-lanes.ts";
 import { FREE_QUOTAS } from "./free-quotas.ts";
 import { getKey, laneAvailability, reloadPools, reportFailure, setPool } from "./keys.ts";
 import { _resetDiscovery, applyCachedOverrides, catalogueFile, discoverModels, pickReplacement } from "./model-discovery.ts";
@@ -371,5 +371,45 @@ describe("GET /api/lanes/status payload", () => {
     const at = src.indexOf('app.get("/api/lanes/status"');
     expect(at).toBeGreaterThan(-1);
     expect(src.slice(at, at + 200)).toContain("canReadPrivate(req)");
+  });
+});
+
+
+describe("one wallet across the free lanes", () => {
+  const lane = (over: Partial<LaneStatus>): LaneStatus => ({
+    id: "groq", name: "Groq", healthy: true, coolingUntil: 0, usedToday: 0, limitPerDay: null, model: "m", discoveredAt: null, ...over,
+  });
+  const notes: Record<string, string> = {
+    groq: "fast chat — quick replies",
+    fal: "🎬 #1 VIDEO model — HappyHorse w/ native audio (free credits)",
+    gemini: "👁 photos & vision — reads images; solid all-rounder",
+    together: "🧠 reasoning + 🎨 FREE images (FLUX)",
+  };
+
+  it("splits lanes by the job the registry note actually names, and does not invent a legal bucket", () => {
+    expect(jobsFor("groq", notes.groq)).toEqual(["build"]);
+    expect(jobsFor("gemini", notes.gemini)).toEqual(["research"]);
+    expect(jobsFor("fal", notes.fal).sort()).toEqual(["audio", "video"]);
+    expect(jobsFor("together", notes.together)).toEqual(["pictures"]);
+    expect(jobsFor("gemini", notes.gemini).join(" ")).not.toMatch(/legal/);
+  });
+
+  it("counts each lane once in the combined total, in requests not money", () => {
+    const lanes = [
+      lane({ id: "groq", name: "Groq", usedToday: 10, limitPerDay: 1000 }),
+      lane({ id: "fal", name: "fal", limitPerDay: null }),
+      lane({ id: "gemini", name: "Google Gemini", healthy: false, usedToday: 5, limitPerDay: 20 }),
+    ];
+    const w = laneWallet(lanes, (id) => notes[id] ?? "");
+    expect(w.note).toMatch(/Not money/);
+    expect(w.note).toMatch(/not legal advice/);
+    expect(w.combined).toEqual({ healthy: 2, remainingToday: 990, unlimited: 1 });
+    const ids = w.categories.map((c) => c.id);
+    expect(ids).not.toContain("legal");
+    expect(ids).toEqual(expect.arrayContaining(["build", "video", "audio", "research"]));
+    expect(w.categories.find((c) => c.id === "video")?.lanes).toEqual(["fal"]);
+    expect(w.categories.find((c) => c.id === "audio")?.lanes).toEqual(["fal"]);
+    // Unhealthy research lane stays visible but adds nothing to today's remaining requests.
+    expect(w.categories.find((c) => c.id === "research")).toMatchObject({ healthy: 0, remainingToday: null, unlimited: 0 });
   });
 });

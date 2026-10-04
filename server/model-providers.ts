@@ -119,7 +119,8 @@ export async function httpError(prefix: string, r: Response): Promise<Error & { 
 
 // ── Shared OpenAI-compatible caller (Groq, OpenRouter, OpenAI) ─
 export async function callOpenAICompat(
-  base: string, model: string, system: string, prompt: string, key: string
+  base: string, model: string, system: string, prompt: string, key: string,
+  messages?: { role: string; content: string }[],
 ): Promise<string> {
   const r = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -128,10 +129,12 @@ export async function callOpenAICompat(
     body: JSON.stringify({
       model,
       max_tokens: 1500,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
+      messages: messages?.length
+        ? messages
+        : [
+            { role: "system", content: system },
+            { role: "user", content: prompt },
+          ],
     }),
   });
   if (!r.ok) throw await httpError("http", r);
@@ -452,8 +455,8 @@ export async function streamOpenAICompat(base: string, model: string, system: st
   return full;
 }
 
-export async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void): Promise<string> {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(laneModel("gemini"))}:streamGenerateContent?alt=sse&key=${key}`, {
+export async function streamGemini(system: string, prompt: string, key: string, onChunk: (t: string) => void, model = laneModel("gemini")): Promise<string> {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${key}`, {
     signal: AbortSignal.timeout(30000),   // bound inter-chunk stalls so a hung stream can't wedge the SSE
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 6000, thinkingConfig: { thinkingBudget: 0 } } }),
@@ -471,6 +474,84 @@ export async function streamGemini(system: string, prompt: string, key: string, 
     }
   }
   return full;
+}
+
+
+// Bases for the free OpenAI-compatible lanes. Premium hosts (api.openai.com, anthropic) are
+// intentionally absent — the gateway must not grow a paid path by adding a model id.
+export const CHAT_BASE: Record<string, string> = {
+  cerebras: "https://api.cerebras.ai/v1",
+  groq: "https://api.groq.com/openai/v1",
+  sambanova: "https://api.sambanova.ai/v1",
+  together: "https://api.together.xyz/v1",
+  deepseek: "https://api.deepseek.com",
+  fireworks: "https://api.fireworks.ai/inference/v1",
+  nvidia: "https://integrate.api.nvidia.com/v1",
+  siliconflow: "https://api.siliconflow.cn/v1",
+  xai: "https://api.x.ai/v1",
+  huggingface: "https://router.huggingface.co/v1",
+  hyperbolic: "https://api.hyperbolic.xyz/v1",
+  novita: "https://api.novita.ai/v3/openai",
+  nebius: "https://api.studio.nebius.ai/v1",
+  alibaba: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  volcengine: "https://ark.cn-beijing.volces.com/api/v3",
+  zhipu: "https://open.bigmodel.cn/api/paas/v4",
+  minimax: "https://api.minimax.chat/v1",
+  stepfun: "https://api.stepfun.com/v1",
+  baidu: "https://qianfan.baidubce.com/v2",
+  tencent: "https://api.lkeap.cloud.tencent.com/v1",
+  ai21: "https://api.ai21.com/studio/v1",
+  upstage: "https://api.upstage.ai/v1/solar",
+  cohere: "https://api.cohere.com/v1",
+  perplexity: "https://api.perplexity.ai",
+  mistral: "https://api.mistral.ai/v1",
+  github: "https://models.github.ai/inference",
+  openrouter: "https://openrouter.ai/api/v1",
+  deepinfra: "https://api.deepinfra.com/v1/openai",
+  scaleway: "https://api.scaleway.ai/v1",
+  chutes: "https://llm.chutes.ai/v1",
+  friendli: "https://api.friendli.ai/serverless/v1",
+  codestral: "https://codestral.mistral.ai/v1",
+  inference: "https://api.inference.net/v1",
+  gmi: "https://api.gmi-serving.com/v1",
+  vercel: "https://ai-gateway.vercel.sh/v1",
+  ovh: "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+  hermes: "https://inference-api.nousresearch.com/v1",
+};
+
+/** Call one free lane's existing chat client with a specific model id. No paid host is reachable. */
+export async function callFreeChat(
+  id: string, model: string, system: string, prompt: string, key: string,
+  messages?: { role: string; content: string }[],
+): Promise<string> {
+  if (id === "gemini") return callGemini(system, prompt, key, model);
+  if (id === "pollinations" || id === "pollinations-fast") return callPollinationsAnon(model, system, prompt);
+  const base = CHAT_BASE[id];
+  if (!base) {
+    const e = new Error(`no free chat path for ${id}`) as Error & { status?: number };
+    e.status = 404;
+    throw e;
+  }
+  return callOpenAICompat(base, model, system, prompt, key, messages);
+}
+
+/** Stream one free lane. Pollinations has no stream, so its answer is one chunk. */
+export async function streamFreeChat(
+  id: string, model: string, system: string, prompt: string, key: string, onChunk: (t: string) => void,
+): Promise<string> {
+  if (id === "gemini") return streamGemini(system, prompt, key, onChunk, model);
+  if (id === "pollinations" || id === "pollinations-fast") {
+    const text = await callPollinationsAnon(model, system, prompt);
+    if (text) onChunk(text);
+    return text;
+  }
+  const base = CHAT_BASE[id];
+  if (!base) {
+    const e = new Error(`no free chat path for ${id}`) as Error & { status?: number };
+    e.status = 404;
+    throw e;
+  }
+  return streamOpenAICompat(base, model, system, prompt, key, onChunk);
 }
 
 // Stream a completion. Tries a fast free streaming provider; if none stream,
