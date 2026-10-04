@@ -135,6 +135,7 @@ import { parseCsv, profileTable, readTable, renderReport, CAPS as SHEET_CAPS, Sh
 import { executeSimdToolBatch } from "./simd-tools.ts";
 import { loadSkills } from "./skills.ts";
 import { buildDeck, fallbackSections, outlineMarkdown, parseSections, type Section, saveDeck, sectionCount } from "./slides.ts";
+import { saveSite } from "./sites.ts";
 import { buildSimpleFlipItSummary, executeSmartAction, generateSmartStudioPreset } from "./smart-actions.ts";
 import { auditSpaceConsumption, compactSpaceAndMemory } from "./space-compactor.ts";
 import { resolveOptimalRoute } from "./speculative-router.ts";
@@ -3962,6 +3963,26 @@ export const TOOLS: Tool[] = [
         const deck = buildDeck({ topic, sections, audience });
         return outlineMarkdown(deck, saveDeck(deck));
       } catch (e: any) { return `Couldn't build that deck: ${e?.message || e}`; }
+    } },
+
+  { name: "make_site", safe: true,
+    description: "Build a one-page website from a name and a line, and save it as a single HTML file on this computer. Does not publish, deploy, take payment, or invent quotes. input: {name, line, points?}.",
+    params: "{name, line, points?}",
+    args: {
+      name: { type: "string", required: true, desc: "the name on the page" },
+      line: { type: "string", required: true, desc: "the one sentence under the name" },
+      points: { type: "array", desc: "up to three short lines" },
+    },
+    activity: (i) => `Building a site for “${String(i?.name ?? "").slice(0, 40)}”`,
+    run: async (i) => {
+      const name = String(i?.name ?? "").trim();
+      const line = String(i?.line ?? "").trim();
+      if (!name || !line) return "Give me a name and one line, and I'll build the page.";
+      const points = Array.isArray(i?.points) ? i.points.map(String) : undefined;
+      try {
+        const file = saveSite({ name, line, points });
+        return `Site for **${name}** is ready.\n\nSaved to \`${file}\`\n\nOpen that file. It is not published, there is no checkout, and nothing in it is a made-up quote. Tell me what to change and I'll rebuild it.`;
+      } catch (e: any) { return `Couldn't build that site: ${e?.message || e}`; }
     } },
 
   // ── 📓 NOTEBOOKS (NotebookLM, but yours & free) + 🔎 deep research + 🛰️ 24/7 agent ──
