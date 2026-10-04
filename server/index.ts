@@ -51,6 +51,7 @@ import { hostAllowed, isLoopback, isMeshAddress, isPairedSession, isTrustedLocal
 import { aiProvidersReport } from "./ai-disclosure.ts";
 import { laneWallet, lanesStatus } from "./free-lanes.ts";
 import { gatewayModelList, handleChatCompletion, openAIError } from "./openai-gateway.ts";
+import { fetchPublishedPrices, renderWhatYouGetHtml } from "./what-you-get.ts";
 import { discoveryEnabled, startModelDiscovery } from "./model-discovery.ts";
 import { flushLedger } from "./usage-ledger.ts";
 import { reloadPools } from "./keys.ts";
@@ -2854,6 +2855,22 @@ app.get("/api/lanes/status", (req, res) => {
 app.get("/api/lanes/wallet", (req, res) => {
   if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
   res.json(laneWallet(lanesStatus()));
+});
+// Local comparison. Same read as the wallet: loopback is trusted only when the Handshake
+// is opted out (SAM_REQUIRE_CONTROL_TOKEN=0), otherwise the passkey or a paired session.
+// Counts are the live gateway list and lane wallet. Prices are fetched again or omitted.
+app.get("/what-you-get", async (req, res) => {
+  if (!canReadPrivate(req)) { res.status(403).json({ error: "loopback or a paired device only" }); return; }
+  try {
+    const list = await gatewayModelList();
+    const wallet = laneWallet(lanesStatus());
+    const prices = await fetchPublishedPrices();
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(renderWhatYouGetHtml({ models: list.data, wallet, prices }));
+  } catch {
+    res.status(502).type("text/plain").send("the comparison could not be built from the live model list");
+  }
 });
 // One OpenAI-shaped front for the free lanes. GET is the catalogue (no secrets). POST spends a
 // free request, so it takes the same passkey or paired session as the other private routes.
