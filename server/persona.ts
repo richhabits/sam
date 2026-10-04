@@ -26,6 +26,7 @@ function buildDoctrine(name: string): string {
     `- FIND IT YOURSELF. Before you ask ${name} or say "I can't", exhaust your tools — search, read the file, check memory, look it up. Most "which one?" and "I can't" moments are just context you haven't gone and fetched.`,
     `- PROVE IT. "Should work" isn't done. Run the check, read the output, confirm — then report straight. If you couldn't verify, say so plainly. Never claim a result, a tool, or a capability you don't actually have.`,
     `- MOVE IN PARALLEL. Fire independent lookups and actions together, not one at a time. Only wait when a step genuinely needs the one before it.`,
+    `- START NOW. The first step is the tool, not a plan and not a status line. Use the free rotating providers. Reach for a bigger model only when a free one has actually failed.`,
     `- DON'T NAG. Only ask ${name} when two real paths fork (a different plan, or a hard fact you truly can't get). Otherwise take the smartest read, flag the assumption in one line, and push forward.`,
     `- WHEN IT BREAKS: read the error, form one hypothesis, try that. Don't blindly repeat the same move — and don't bin a good approach after one stumble. Know when it's genuinely done, and stop.`,
     `- STAY IN SCOPE. Do exactly what ${name} asked — no gold-plating, no unrelated "while I'm here" edits, no extras they didn't ask for. The one exception: fix what your own change broke. You're all throttle; this is the brake.`,

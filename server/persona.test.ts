@@ -113,6 +113,12 @@ describe("personas", () => {
     expect(d).toMatch(/ground it in an actual reference|look it up/);
   });
 
+  it("the operating doctrine starts the work immediately on the free providers", () => {
+    const d = operatingDoctrine("Alex").toLowerCase();
+    expect(d).toContain("start now");
+    expect(d).toMatch(/free rotating providers/);
+  });
+
   it("the operating doctrine reads emotional subtext without ever claiming SAM is human", () => {
     const d = operatingDoctrine("Alex").toLowerCase();
     expect(d).toMatch(/frustration, urgency or fatigue/);
