@@ -60,6 +60,9 @@ struct RootView: View {
         }
         .onOpenURL { url in handle(url) }
         .onContinueUserActivity(ChatActivity.type) { _ in section = .chat }
+        .onReceive(NotificationCenter.default.publisher(for: .samOpenSection)) { note in
+            if let raw = note.object as? String, let next = AppSection(rawValue: raw) { section = next }
+        }
         .sheet(item: Binding(get: { model.consentRequest.map(ConsentItem.init) }, set: { if $0 == nil && model.consentRequest != nil { model.answerConsent(false) } })) { item in
             ConsentSheet(providers: item.providers).environment(model)
         }
@@ -81,10 +84,14 @@ struct RootView: View {
         // sidebar. "More" only exists in the tab bar; the four it holds only exist in the sidebar.
         TabView(selection: $section) {
             Tab("Chat", systemImage: "bubble.left.and.text.bubble.right", value: .chat) { ChatView() }
-            Tab("Vault", systemImage: "books.vertical", value: .vault) { VaultView() }
+            // The mind is the app. These are things it can do, so they stay out of the phone tab bar.
             Tab("Studio", systemImage: "paintpalette", value: .studio) { StudioView() }
+                .defaultVisibility(.hidden, for: .tabBar)
             Tab("Yard", systemImage: "hammer", value: .yard) { YardView() }
                 .badge(model.yard.map { $0.running + $0.queued } ?? 0)
+                .defaultVisibility(.hidden, for: .tabBar)
+            Tab("Vault", systemImage: "books.vertical", value: .vault) { VaultView() }
+                .defaultVisibility(.hidden, for: .tabBar)
             #if !os(macOS)
             Tab("More", systemImage: "ellipsis.circle", value: .more) { MoreView(section: $section) }
                 .defaultVisibility(.hidden, for: .sidebar)
@@ -141,6 +148,11 @@ struct LockView: View {
 /// Handoff: pick the conversation up on another device.
 enum ChatActivity {
     static let type = "com.hectic.sam.chat"
+}
+
+extension Notification.Name {
+    /// Empty chat and deep links ask the root to show a section. Object is an AppSection raw value.
+    static let samOpenSection = Notification.Name("sam.openSection")
 }
 
 #if DEBUG
@@ -218,10 +230,17 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink { CrewView(section: $section) } label: { Label("Crew", systemImage: "person.3") }
-                NavigationLink { ToolsView() } label: { Label("Tools", systemImage: "wrench.and.screwdriver") }
-                NavigationLink { AddOnsView() } label: { Label("Add-ons", systemImage: "puzzlepiece.extension") }
-                NavigationLink { SettingsView() } label: { Label("Settings", systemImage: "gearshape") }
+                Section("Ask SAM") {
+                    Button { section = .studio } label: { Label("Make a picture", systemImage: "paintpalette") }
+                    Button { section = .yard } label: { Label("Jobs in the yard", systemImage: "hammer") }
+                    Button { section = .addOns } label: { Label("Flip It and add-ons", systemImage: "puzzlepiece.extension") }
+                    Button { section = .vault } label: { Label("Notes", systemImage: "books.vertical") }
+                }
+                Section {
+                    NavigationLink { CrewView(section: $section) } label: { Label("Crew", systemImage: "person.3") }
+                    NavigationLink { ToolsView() } label: { Label("Tools", systemImage: "wrench.and.screwdriver") }
+                    NavigationLink { SettingsView() } label: { Label("Settings", systemImage: "gearshape") }
+                }
             }
             .navigationTitle("More")
         }

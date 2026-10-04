@@ -303,11 +303,12 @@ struct TypingDots: View {
 
 struct EmptyChat: View {
     var pick: (String) -> Void
-    private let ideas = [
-        ("sparkles", "What can you do for me today?"),
-        ("hammer", "What's running in the yard?"),
-        ("doc.text.magnifyingglass", "Summarise my notes from this week"),
-        ("globe", "Research the best free AI models right now"),
+    /// One mind. These are jobs it can start, not other apps.
+    private let ideas: [(String, String, String?, String?)] = [
+        ("paintpalette", "Make a picture", nil, "studio"),
+        ("globe", "Build a website", "Build me a simple website. Ask what it is for before you write anything.", nil),
+        ("chart.line.uptrend.xyaxis", "Make money with Flip It", nil, "addOns"),
+        ("hammer", "What's running in the yard?", nil, "yard"),
     ]
     var body: some View {
         VStack(spacing: 28) {
@@ -316,9 +317,15 @@ struct EmptyChat: View {
                 Text("How can I help?").font(.largeTitle.bold())
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: Spacing.item)], spacing: Spacing.item) {
-                ForEach(ideas, id: \.1) { icon, text in
-                    Button { pick(text) } label: {
-                        Label(text, systemImage: icon)
+                ForEach(Array(ideas.enumerated()), id: \.offset) { _, idea in
+                    let (icon, title, prompt, section) = idea
+                    Button {
+                        if let section {
+                            NotificationCenter.default.post(name: .samOpenSection, object: section)
+                        }
+                        if let prompt { pick(prompt) }
+                    } label: {
+                        Label(title, systemImage: icon)
                             .font(.body.weight(.medium))
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .padding(.horizontal, 18)
