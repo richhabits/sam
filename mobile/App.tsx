@@ -62,9 +62,8 @@ export default function App() {
   const column = useMemo(() => contentColumn(layout), [layout]);
 
   const [_paired, setPaired] = useState<boolean>(false);
-  // Home. New screen, becomes the launch tab (design_handoff_sam_clients/README.md, "Build
-  // order" step 4) — everything else here used to open straight into Agent.
-  const [surface, setSurface] = useState<Surface>('home');
+  // Chat is the app. Home stays a tab; pairing is optional and never a first-run wall.
+  const [surface, setSurface] = useState<Surface>('agent');
   const [prompt, setPrompt] = useState<string | null>(null);
   const [host, setHostInput] = useState('http://127.0.0.1:8787');
   const [code, setCode] = useState('');

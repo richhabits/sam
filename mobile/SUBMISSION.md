@@ -1,9 +1,16 @@
-# The Pocket — App Store submission
+# The Pocket — TestFlight (not App Store submit)
 
-Everything that can be settled in code is settled and verified below. What remains is the part
-that only exists inside App Store Connect: metadata, screenshots, and pressing Submit.
+Pocket (`com.hectic.sam.mobile`) is **on TestFlight**: public link
+https://testflight.apple.com/join/htr4htvY. There is an App Store Connect record for metadata.
+**Do not upload a new binary, spend EAS/Apple minutes, or Submit for Review** unless a local
+Xcode archive already exists and the owner asks. Chat is the app; pairing is optional.
 
-**Build to submit: 1.0.0 (110).** Build 107 was rejected on 2026-08-28 under 2.1(a) because the reviewers could not find "Explore the demo" (it sat at the bottom of the pairing sheet). From 109 the demo is the first card on the Home screen for any unpaired user, on iPhone and iPad, and is also in the ••• menu.
+Paste §1 into **App Review Information → Notes** if you ever submit. Until then it is the
+TestFlight testers' truth.
+
+**Last local iOS build noted here: 1.0.0 (110).** Build 107 was rejected on 2026-08-28 under 2.1(a)
+because reviewers could not find "Explore the demo". Demo remains in the ••• menu (and on Home).
+First paint is **chat**, not a pairing wall.
 
 **Build 110 also closes three things found in our own compliance audit (none were cited by Apple):**
 1. **Guideline 5.1.2(i)** — in Standalone mode the app now names the third-party AI providers and asks permission *before the first message leaves the phone* ("Allow and send"); revocable in Settings → Privacy. Enforced in the chat transport (`lib/chat.ts`), covered by `lib/chat.gate.test.ts`.
@@ -12,32 +19,35 @@ that only exists inside App Store Connect: metadata, screenshots, and pressing S
 
 ---
 
-## 1. The review note that decides this submission
+## 1. The review note
 
-SAM functions both as a direct AI assistant and as a companion for SAM running on a user's own Mac/PC.
+SAM is a direct AI assistant. Pairing with a Mac/PC is optional.
 
-Because Apple App Store reviewers test in isolated network environments and will not have a running desktop node or custom API keys, **Demo Mode** is the primary, deterministic path provided specifically for App Review. From the first card on the Home screen (**"Explore the demo"**), every screen runs from a fixed local script with zero network dependencies.
+Apple reviewers will not have a desktop node. **Chat works unpaired.** Demo Mode (••• menu) is the
+zero-network path: every screen runs from a fixed local script.
 
 Paste into **App Review Information → Notes**:
 
 ```
-SAM is an AI assistant with optional local desktop pairing (free, open source: https://github.com/richhabits/sam).
+SAM is an AI assistant. Chat works on the phone with no Mac and no account (source-available: https://github.com/richhabits/sam — not MIT, not a paid SAM tier). Pairing with a Mac/PC is optional.
 
 You do not need a Mac or an API key to review this app.
 
-To review the full app deterministically:
-1. Launch the app. The first card on the Home screen is a large orange button, "Explore the demo" — tap it. (It is also in the top-right menu (•••) and at the bottom of Connect to Mac / PC.)
-2. Every screen (Agent chat, Tasks list, Attachments, and Settings) runs from a fixed local script. A banner marks it as a demo throughout and you can exit at any time. No network requests are made in this mode.
+To review:
+1. Launch the app. First screen is chat. Type a message, or skip.
+2. Optional demo (zero network): top-right ••• → "Explore the demo". A banner marks it throughout. You can leave at any time.
+3. Optional pairing: ••• → Connect to Mac / PC, or scan the QR SAM prints on the computer.
 
 Direct AI & Custom Keys:
-• The app also supports direct cloud brains and 30+ custom provider keys (Groq, Cerebras, Mistral, Gemini, Anthropic, etc.) in Settings → Cloud AI Engine.
+• Standalone chat uses free public lanes unless the tester adds their own key (Groq, Cerebras, Mistral, Gemini, Anthropic, etc.) in Settings → Cloud AI Engine. Anthropic and OpenAI are paid services and are used only with the tester's own key. SAM has no paid tier of its own.
 
-No sign-in or account is required. No telemetry or user prompts pass through any intermediate proxy server we operate.
+No sign-in or account is required. We operate no session server that receives chats. Standalone messages go to the AI provider the user picked (named before the first send).
 
 Permissions:
-• Camera / Photos — only when attaching an image or scanning a local pairing QR code.
+• Camera / Photos — only when attaching an image or scanning a local pairing QR code. Attached photos go to the model in use (on-device, the paired Mac, or a cloud model).
 • Local network — only when pairing with a local desktop node.
 Neither is requested during the demo.
+Microphone is not used in this TestFlight (Pocket) binary — native Swift in apple/ does use dictation.
 ```
 
 **Sign-in required: No.** Say so in App Review Information — do not leave a demo account blank without answering the question.
@@ -68,7 +78,7 @@ Captured under `mobile/screenshots/` from a **Debug** sim (Metro), standalone, *
 
 | Set | Size | Ready | Missing / wrong size |
 |---|---|---|---|
-| `iphone-6.9/` | **1320 × 2868** required | All seven files are 1320×2868 | `02`–`06` were upscaled from 1206×2622 to pass Connect size checks — prefer a native recapture on **SAM Test Max** for crisp App Store art. Prefer `01-home.png` over `01-agent.png` in the first slot. |
+| `iphone-6.9/` | **1320 × 2868** required | All seven files are 1320×2868 | Prefer `01-agent.png` in the first slot (chat is first paint). |
 | `ipad-13/` | **2064 × 2752** | **Complete:** home, pairing, agent, tasks, settings, vault. All dark terracotta. | — |
 
 Clock is live, not 9:41. Apple does not require a fake clock.
@@ -79,29 +89,29 @@ Clock is live, not 9:41. Apple does not require a fake clock.
 
 **Promotional text (170):**
 ```
-Direct AI chat in your pocket, powered by free AI lanes and 30+ providers — with seamless local pairing to your Mac/PC for computer control and background tasks. No sign-in required.
+Direct AI chat in your pocket on free lanes you choose — optional pairing to your Mac/PC for files and yard tasks. No SAM account. TestFlight today; not on the App Store.
 ```
 
 **Description:**
 ```
 SAM is a private AI assistant in your hand.
 
-Use SAM standalone on 5G or Wi-Fi with direct cloud intelligence, or pair with your Mac/PC to unlock local files, automation, and background yard tasks.
+Chat works on its own on 5G or Wi-Fi. Pair with your Mac/PC when you want local files, automation, and background yard tasks.
 
-• Works on its own: chat straight away using free public AI lanes, or add your own key for any of 30+ providers (Groq, Cerebras, Mistral, Gemini, DeepSeek, and more). Anthropic and OpenAI are paid services and are used only with your own key
-• Zero-config out-of-the-box experience — no account and no sign-in required
-• 1-Tap Desktop Link: Monitor background builds, automated playbooks, and yard workers on your own computer
-• Native Haptics: Full tactile feedback with Apple Taptic Engine
-• 1-Tap Code Inspector: Copy clean formatted code snippets and view language syntax
-• Multimodal: Attach photos from camera or library straight into conversation
-• Complete Privacy: No tracking, no middleman proxy servers, encrypted Keychain storage
+• Works on its own: chat using free public AI lanes, or add your own key for providers (Groq, Cerebras, Mistral, Gemini, DeepSeek, and more). Anthropic and OpenAI are paid services and are used only with your own key. SAM has no paid plan.
+• No SAM account and no sign-in
+• Optional desktop link: monitor background builds and yard workers on your own computer
+• Native haptics on supported iPhones
+• Attach photos from camera or library into the conversation (they go to the model you picked)
+• No tracking. We operate no middleman session server. Cloud providers see a prompt only when you send one to them.
 
-SAM is free and open source: github.com/richhabits/sam
+Source-available (not MIT): github.com/richhabits/sam
+This build is TestFlight — it is not an App Store listing.
 ```
 
 **Keywords (100 char, comma-separated, no spaces):**
 ```
-assistant,ai,private,chat,llm,groq,claude,gemini,local,remote,tasks,productivity,open-source,offline
+assistant,ai,private,chat,llm,groq,gemini,local,remote,tasks,productivity,testflight
 ```
 
 ## 6. Decisions only you can make
@@ -114,15 +124,18 @@ assistant,ai,private,chat,llm,groq,claude,gemini,local,remote,tasks,productivity
 - **Price.** Free.
 - **Availability.** All territories unless you want otherwise.
 
-## 7. The click-path
+## 7. The click-path (only if submitting — default is TestFlight)
 
-1. App Store Connect → SAM → iOS App → the **1.0.0** version page
+Do **not** Submit for Review from this repo. Pocket stays TestFlight. If the owner later submits
+from a **local** Xcode archive:
+
+1. App Store Connect → SAM → iOS App → the version page
 2. Fill: description, keywords, subtitle, promotional text, support and privacy URLs (§3, §5)
-3. Upload screenshots (§4)
-4. **Build** → select **1.0.0 (7)**
+3. Upload screenshots (§4) if they drifted
+4. **Build** → select the local archive's build — never EAS cloud
 5. App Review Information → paste the notes from §1, set "Sign-in required" to **No**
 6. Age rating questionnaire (§6)
-7. **Add for Review** → Submit
+7. **Add for Review** → Submit — owner only
 
 ---
 

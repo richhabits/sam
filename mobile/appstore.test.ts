@@ -76,6 +76,12 @@ describe("submission metadata", () => {
     expect(plist.ITSAppUsesNonExemptEncryption).toBe(false);
   });
 
+  it("opens on chat, not a home or pairing wall", () => {
+    const appTsx = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "App.tsx"), "utf8");
+    expect(appTsx).toMatch(/useState<Surface>\('agent'\)/);
+    expect(appTsx).not.toMatch(/useState<Surface>\('home'\)/);
+  });
+
   it("has a bundle id, a scheme and a build number", () => {
     expect(app.ios.bundleIdentifier).toBe("com.hectic.sam.mobile");
     // The pairing QR is a sam:// link — without the scheme registered, the Camera app has

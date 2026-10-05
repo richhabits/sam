@@ -53,16 +53,18 @@ targets:
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         LSApplicationCategoryType: public.app-category.productivity
         ITSAppUsesNonExemptEncryption: false
-        NSMicrophoneUsageDescription: SAM listens when you tap the microphone so you can talk instead of type.
+        NSMicrophoneUsageDescription: SAM listens when you tap the microphone so you can talk instead of type. Speech stays on this device when Apple can do it on-device.
         NSSpeechRecognitionUsageDescription: SAM turns what you say into text, on this device when it can.
         NSCameraUsageDescription: SAM uses the camera to scan the pairing code your Mac shows.
         NSPhotoLibraryAddUsageDescription: SAM saves pictures you make in Studio to your library. It can add photos, never read them.
         NSFaceIDUsageDescription: SAM can require Face ID before it opens, because it can act on your Mac.
-        NSLocalNetworkUsageDescription: SAM finds and connects to the Mac running SAM on your network.
+        NSLocalNetworkUsageDescription: SAM finds and connects to the Mac running SAM on your network when you pair. Pairing is optional — you can chat on this device without a Mac.
         NSBonjourServices: [_sam._tcp]
-        # Paired Macs are reached by IP (LAN, or Tailscale 100.x). NSAllowsLocalNetworking covers IP
-        # addresses and .local names; NSAllowsArbitraryLoads is ignored once it's present.
+        # Paired Macs are reached by IP (LAN, or Tailscale 100.x). NSAllowsLocalNetworking
+        # covers .local and RFC1918 only — Tailscale's 100.64/10 is CGNAT, so keep the broad
+        # exemption (same reason as Pocket). Review justification: docs/APP-REVIEW.md.
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSUserActivityTypes: [com.hectic.sam.chat]
         NSServices:
@@ -169,6 +171,7 @@ targets:
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
@@ -207,6 +210,7 @@ targets:
         CFBundleDisplayName: SAM
         SAMKeychainGroup: $(AppIdentifierPrefix)com.hectic.sam.shared
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
@@ -246,6 +250,9 @@ targets:
         CFBundleDisplayName: SAM
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.hectic.sam.mobile
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: SAM uses the microphone when you dictate a question on your wrist.
+        NSSpeechRecognitionUsageDescription: SAM turns what you dictate into a question. Dictation stays on this Apple Watch or your iPhone; the text is sent to SAM on your iPhone.
     entitlements:
       path: Watch/SAMWatch.entitlements
       properties:

@@ -68,7 +68,7 @@ const STARTERS = [
   'Summarise my day',
   'Build me a one-page site',
   'What did you run today?',
-  'Find a file on my Mac',
+  'Write a short briefing',
 ];
 
 // WHICH BRAIN ANSWERS. The words 'free' and 'turbo' are meaningless on their own — they only

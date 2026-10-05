@@ -26,7 +26,7 @@ export function markOnboarded(storage: StorageSet = localStorage): void {
   }
 }
 
-/** Named first-run gets a greeting. Skip lands on chips so the first tap is the demo. */
+/** Named hello is optional — chat is first paint. */
 export function seedWelcomeOnFinish(name: string): boolean {
   return name.trim().length > 0;
 }

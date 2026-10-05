@@ -18,7 +18,7 @@ struct RootView: View {
         .chat
         #endif
     }()
-    @State private var skippedPairing = UserDefaults.standard.bool(forKey: "sam.skippedPairing")
+    @State private var skippedPairing = UserDefaults.standard.object(forKey: "sam.skippedPairing") as? Bool ?? true
     @State private var incomingLink: PairLink?
 
     var body: some View {

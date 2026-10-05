@@ -27,6 +27,11 @@ describe("loadOnboarded", () => {
     const s = mem({ [ONBOARDED_KEY]: "1" });
     expect(loadOnboarded(s)).toBe(true);
   });
+
+  it("never treats a missing name as a reason to block chat", () => {
+    expect(seedWelcomeOnFinish("")).toBe(false);
+    expect(loadOnboarded(mem())).toBe(false);
+  });
 });
 
 describe("markOnboarded", () => {

@@ -80,7 +80,7 @@ struct ChatView: View {
                     if let conversation, !(conversation.messages ?? []).isEmpty {
                         ForEach(conversation.sorted) { MessageRow(message: $0) }
                     } else {
-                        EmptyChat { draft = $0; focused = true }
+                        EmptyChat(send: { send($0) })
                             .padding(.top, 48)
                     }
                     Color.clear.frame(height: 1).id("bottom")
@@ -184,9 +184,10 @@ struct ChatView: View {
 
     // MARK: Actions
 
-    private func send() {
+    private func send(_ preset: String? = nil) {
         dictation.stop()
-        let text = draft
+        let text = (preset ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
         draft = ""
         let convo = conversation ?? {
             let c = Conversation()
@@ -297,12 +298,12 @@ struct TypingDots: View {
             .font(.title3)
             .symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating, isActive: !reduceMotion)
             .foregroundStyle(.secondary)
-            .accessibilityLabel("SAM is thinking")
+            .accessibilityLabel("Starting on a free lane")
     }
 }
 
 struct EmptyChat: View {
-    var pick: (String) -> Void
+    var send: (String) -> Void
     /// One mind. These are jobs it can start, not other apps.
     private let ideas: [(String, String, String?, String?)] = [
         ("paintpalette", "Make a picture", nil, "studio"),
@@ -323,7 +324,7 @@ struct EmptyChat: View {
                         if let section {
                             NotificationCenter.default.post(name: .samOpenSection, object: section)
                         }
-                        if let prompt { pick(prompt) }
+                        if let prompt { send(prompt) }
                     } label: {
                         Label(title, systemImage: icon)
                             .font(.body.weight(.medium))

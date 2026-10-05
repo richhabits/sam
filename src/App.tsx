@@ -19,7 +19,7 @@ const Admin = lazy(() => import("./Admin"));
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import { HANDOFF_BLURB, HANDOFF_PROMPT } from "./lib/handoffPrompt";
 import { appendToolTrace, seedLiveTrace, STARTING_STEP } from "./lib/liveTrace";
-import { loadOnboarded, markOnboarded, seedWelcomeOnFinish, welcomeText } from "./lib/onboarding";
+import { markOnboarded, seedWelcomeOnFinish, welcomeText } from "./lib/onboarding";
 import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import PersonaPicker from "./PersonaPicker";
 
@@ -45,7 +45,6 @@ interface Profile { name: string; about?: string; language?: string }
 // by name). Saved locally so you switch instantly without re-onboarding.
 function loadProfiles(): Profile[] { try { return JSON.parse(localStorage.getItem("sam.profiles") || "[]"); } catch { return []; } }
 function saveProfiles(list: Profile[]) { try { localStorage.setItem("sam.profiles", JSON.stringify(list.slice(0, 12))); } catch { /* storage full, disabled or corrupt — fall back to the in-memory default */ } }
-const LANGUAGES = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "العربية", "हिन्दी", "中文", "日本語", "한국어", "Русский"];
 function loadProfile(): Profile { try { return JSON.parse(localStorage.getItem("sam.profile") || "{}"); } catch { return { name: "" }; } }
 const TIPS = [
   "Try /team <big request> — SAM assembles a crew of specialists.",
@@ -406,8 +405,8 @@ export default function App() {
   // Hands-free is ON by default now — SAM listens for a clap/whistle from the moment it opens
   // (private, on-device Web Audio, every browser). Set localStorage "sam.wake"="0" to opt out.
   const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") !== "0"; } catch { return true; } });
+  useEffect(() => { markOnboarded(); }, []);
   const [profile, setProfile] = useState<Profile>(loadProfile);
-  const [onboarded, setOnboarded] = useState(loadOnboarded);
   const [profiles, setProfiles] = useState<Profile[]>(loadProfiles);
   // Add/refresh a profile in the saved list (upsert by name).
   function upsertProfile(p: Profile) {
@@ -415,8 +414,6 @@ export default function App() {
   }
   function switchTo(p: Profile) { setProfile(p); setUser({ ...p, mode, persona }); newChat(); sysNote(`👋 Switched to ${p.name} — this is ${p.name}'s SAM (own memory & chats).`); }
   const [onboardName, setOnboardName] = useState("");
-  const [onboardAbout, setOnboardAbout] = useState("");
-  const [onboardLang, setOnboardLang] = useState("English");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -713,11 +710,9 @@ export default function App() {
   function finishOnboarding() {
     const name = onboardName.trim();
     markOnboarded();
-    setOnboarded(true);
-    const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
+    const p = { name, language: "English" };
     setProfile(p); setUser({ ...p, mode, persona });
     if (name) upsertProfile(p);
-    // Named hello seeds a greeting. Skip leaves the chips so the first tap *is* the demo.
     if (seedWelcomeOnFinish(name)) {
       setMessages([{ role: "sam", text: welcomeText(name), how: "welcome", at: now() }]);
     }
@@ -1278,30 +1273,6 @@ export default function App() {
 
   const started = messages.length > 0 || !!pending || loading;
 
-  // First-run is a skippable hello — never a setup wall. Skip lands on chat chips.
-  if (!onboarded) {
-    return (
-      <div className="app onboarding">
-        <div className="onboard-card">
-          <div className="onboard-emoji">👋</div>
-          <div className="onboard-title">Hi, I'm SAM.</div>
-          <div className="onboard-by">by <b>HECTIC</b></div>
-          <div className="onboard-sub">Chat is the app. I start on a free lane — no key, no setup. What should I call you? Skip if you'd rather just talk.</div>
-          <div className="onboard-pills"><span><Icon name="lock" size={13} /> Private</span><span><Icon name="gift" size={13} /> Free</span><span><Icon name="hand" size={13} /> Takes action</span><span><Icon name="sparkle" size={13} /> Yours</span></div>
-          <input className="onboard-input" autoFocus value={onboardName} onChange={(e) => setOnboardName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") finishOnboarding(); }} placeholder="Your name (optional)" />
-          <input className="onboard-input" value={onboardAbout} onChange={(e) => setOnboardAbout(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") finishOnboarding(); }} placeholder="What do you do? (optional)" />
-          <select className="onboard-input" value={onboardLang} onChange={(e) => setOnboardLang(e.target.value)} aria-label="Language">
-            {LANGUAGES.map((l) => <option key={l} value={l}>{l === "English" ? "Language: English" : l}</option>)}
-          </select>
-          <button type="button" className="onboard-go" onClick={finishOnboarding}>Start chatting →</button>
-          <div className="onboard-note">Tap a chip on the next screen — you'll watch SAM work on a free lane. Keys stay in Settings. Never required.</div>
-        </div>
-      </div>
-    );
-  }
-
   sendRef.current = send;   // keep the ref current so old (memoized) message rows never fire a stale send
   const activeBrand = projects.find((p) => p.id === brand);
   const customAccent = mode === "business" && activeBrand?.themeColor ? activeBrand.themeColor : undefined;
@@ -1531,7 +1502,7 @@ export default function App() {
             {profiles.filter((p) => p.name && p.name.toLowerCase() !== profile.name.toLowerCase()).slice(0, 6).map((p) => (
               <button type="button" key={p.name} className="pop-opt" onClick={() => { switchTo(p); setSettingsOpen(false); }}><span className="pop-opt-name">Switch to {p.name}</span><span className="pop-opt-sub">Their own memory &amp; chats</span></button>
             ))}
-            <button type="button" className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setOnboardAbout(""); setSettingsOpen(false); }}><span className="pop-opt-name">＋ Add someone</span><span className="pop-opt-sub">A new person — fresh, private memory</span></button>
+            <button type="button" className="pop-opt" onClick={() => { setProfile({ name: "" }); setOnboardName(""); setSettingsOpen(false); }}><span className="pop-opt-name">＋ Add someone</span><span className="pop-opt-sub">A new person — fresh, private memory</span></button>
             {(() => { const n = (status?.models?.providers || []).filter((p: any) => p.tier === "free" && p.keys > 0).length; return n ? <div className="pop-lanes">✓ {n} free {n === 1 ? "brain" : "brains"} ready — SAM rotates so you never hit a limit</div> : null; })()}
             <div className="pop-note">SAM can act for you — reading &amp; searching happen automatically; anything risky asks first.</div>
             </>)}
@@ -1737,6 +1708,12 @@ export default function App() {
           <div className="welcome">
             <div className="hello">{greeting(profile.name)}</div>
             <div className="hello-sub">Chat is the app. I start on a free lane — no key, no setup. Tap a chip and watch me work, or type anything.</div>
+            {!profile.name && (
+              <form className="welcome-name" onSubmit={(e) => { e.preventDefault(); finishOnboarding(); }}>
+                <input className="onboard-input" value={onboardName} onChange={(e) => setOnboardName(e.target.value)} placeholder="What should I call you? (optional)" aria-label="Your name, optional" />
+                <button type="submit" className="chip">Save</button>
+              </form>
+            )}
             <div className="chips">
               {SUGGESTIONS.map((s) => (
                 <button type="button" key={s} className="chip" onClick={() => send(s)}>{s}</button>

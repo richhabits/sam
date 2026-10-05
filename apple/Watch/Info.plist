@@ -20,6 +20,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SAM uses the microphone when you dictate a question on your wrist.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SAM turns what you dictate into a question. Dictation stays on this Apple Watch or your iPhone; the text is sent to SAM on your iPhone.</string>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

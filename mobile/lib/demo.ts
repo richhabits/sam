@@ -1,12 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 
-// THE DEMO — SAM with nobody home.
+// THE DEMO — sample screens with nobody paired.
 //
-// The Pocket is a client for a SAM running on your own Mac. That is the whole product, and it
-// is also a problem the moment somebody opens the app without one: a reviewer, or anyone
-// deciding whether this is worth installing, gets a pairing form and no way to see what they
-// would be pairing WITH. An app that cannot be used until you install a second app on a
-// different machine is indistinguishable, from the outside, from an app that does not work.
+// Pocket chats standalone. Pairing with a Mac is optional (desktop files, yard, computer
+// control). App Review still needs a zero-network path, and a first-time visitor may want to
+// tap through every surface without sending a real prompt. The demo is that path.
 //
 // So the pairing screen offers a demo. It answers the same four transports the real app uses,
 // with fixed data, and it is labelled as a demo on every screen it touches — a banner that
@@ -26,16 +24,14 @@ export function isDemo(): boolean {
   return demo;
 }
 
-/** Whether to put "Explore the demo" front and centre. App Review (2026-08-28, build 107) could
- *  not FIND the demo when it lived only at the bottom of the pairing sheet, so it is now offered
- *  on the first screen an unpaired visitor sees. Hidden once paired or already inside the demo,
- *  where it would be noise (and inside the demo the banner's "Leave" is the way out). */
+/** Whether to offer "Explore the demo". App Review (2026-08-28, build 107) could not FIND the
+ *  demo when it lived only at the bottom of the pairing sheet, so it stays in the ••• menu and
+ *  on Home. Chat is first paint; the demo is skippable. Hidden once paired or already inside. */
 export function showDemoEntry(paired: boolean, inDemo: boolean): boolean {
   return !paired && !inDemo;
 }
 
-/** Restore the flag at boot, beside the token read. A failed read means "not in demo", which
- *  is the truthful answer and lands on the pairing screen — the same rule the token uses. */
+/** Restore the flag at boot, beside the token read. A failed read means "not in demo". */
 export async function loadDemo(): Promise<boolean> {
   try {
     demo = (await SecureStore.getItemAsync(DEMO_KEY)) === '1';

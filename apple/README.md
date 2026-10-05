@@ -1,11 +1,16 @@
 # SAM for Apple platforms
 
-Native SwiftUI SAM for iPhone, iPad, Mac and Apple Vision Pro. It is the face of the SAM
-brain (the TypeScript server in `server/`, port 8787). The brain keeps doing the heavy work
-(260 tools, model router, memory, the yard); this app does everything a device is best at.
+Native SwiftUI SAM for iPhone, iPad, Mac, Apple Watch and Apple Vision Pro. It is the face of
+the SAM brain (the TypeScript server in `server/`, port 8787). The brain keeps doing the heavy
+work (tools, model router, memory, the yard); this app does everything a device is best at.
 
-The brain stays cross-platform. Android keeps the React Native app in `mobile/`, Windows and
-Linux keep the Electron app, and every client speaks the same contract:
+Pocket on TestFlight today is the React Native app in `mobile/` (bundle `com.hectic.sam.mobile`).
+This native tree uses the same bundle id so it can ship as an update later — it has not been
+App Store submitted. Do not treat TestFlight as this Swift binary until a local archive of
+*this* project is uploaded. There is no tvOS target.
+
+The brain stays cross-platform. Android keeps `mobile/`, Windows and Linux keep the Electron
+app, and every client speaks the same contract:
 [`docs/CLIENT-PROTOCOL.md`](../docs/CLIENT-PROTOCOL.md).
 
 ## Build
@@ -20,8 +25,9 @@ SAM_LIVE=1 swift test --package-path Packages/SAMKit      # + live test against 
 swift Tools/make-icons.swift         # regenerate icons from mobile/assets/icon.png
 ```
 
-Team `CC9Q9BH5NT`, bundle `com.hectic.sam.mobile` (the App Store app's id, so this ships as
-an update to it), app group `group.com.hectic.sam.mobile`.
+Team `CC9Q9BH5NT`, bundle `com.hectic.sam.mobile` (same as Pocket / TestFlight), app group
+`group.com.hectic.sam.mobile`. Export compliance: `ITSAppUsesNonExemptEncryption` is `false`
+(OS TLS and Keychain only — no custom crypto).
 
 Headless self-test on a simulator (no taps; DEBUG builds only):
 
@@ -81,5 +87,7 @@ Mint the code on the Mac with `curl -X POST localhost:8787/api/pair/new`.
 **Phone access (needs a decision)**: remote/LAN mode is off (2026-09-30), so iPhone and iPad reach SAM only through a future secure transport (Bonjour + pinned TLS, Phase 3) or the Tailscale mesh mode. Until then they answer on-device with Apple Intelligence.
 
 **Release**
-- Replace the React Native iOS build with this app (same bundle id); keep `mobile/` for Android.
-- Mac App Store build of the client; the brain keeps shipping as the signed daemon/Electron build.
+- Pocket stays TestFlight until a local archive of this native app exists and the owner submits.
+  Do not App Store submit from EAS or a cloud agent.
+- Mac desktop brain keeps shipping as the signed + notarized Developer ID Electron build
+  (arm64 3.7.0). Not a Mac App Store client. Local notarize only — no paid cloud notarize.

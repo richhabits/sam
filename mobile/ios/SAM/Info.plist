@@ -46,11 +46,11 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>SAM uses the camera to attach a photo to a message, or to scan the QR code that pairs this phone with your Mac/PC — nothing leaves your own SAM.</string>
+	<string>SAM uses the camera to attach a photo or scan a pairing QR. A photo you attach goes to the AI model you pick — on-device, your Mac, or a cloud model if you choose one.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>SAM talks to the SAM running on your own computer, usually over your home network. Nothing is sent anywhere else.</string>
+	<string>SAM talks to SAM on your own computer when you pair, usually on your home network. Pairing is optional. Standalone chat uses the AI model you pick and is not limited to your Mac.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SAM reads a photo only when you pick one to attach — it goes to your own SAM on your machine, nowhere else.</string>
+	<string>SAM reads a photo only when you pick one to attach. It goes to the AI model you pick — on-device, your Mac, or a cloud provider if you use one.</string>
 	<key>RCTMetroPort</key>
 	<string>$(RCT_METRO_PORT)</string>
 	<key>UILaunchStoryboardName</key>
