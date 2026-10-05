@@ -89,7 +89,7 @@ Clock is live, not 9:41. Apple does not require a fake clock.
 
 **Promotional text (170):**
 ```
-Direct AI chat in your pocket on free lanes you choose — optional pairing to your Mac/PC for files and yard tasks. No SAM account. TestFlight today; not on the App Store.
+Direct AI chat in your pocket on free lanes you choose — optional pairing to your Mac/PC for files and yard tasks. No SAM account. Native 2.0.0 is on the App Store; this React Native Pocket file is the old 1.0.0 train.
 ```
 
 **Description:**
@@ -106,7 +106,7 @@ Chat works on its own on 5G or Wi-Fi. Pair with your Mac/PC when you want local 
 • No tracking. We operate no middleman session server. Cloud providers see a prompt only when you send one to them.
 
 Source-available (not MIT): github.com/richhabits/sam
-This build is TestFlight — it is not an App Store listing.
+Native 2.0.0 is the App Store listing. This React Native Pocket draft is the old 1.0.0 train.
 ```
 
 **Keywords (100 char, comma-separated, no spaces):**
@@ -124,10 +124,10 @@ assistant,ai,private,chat,llm,groq,gemini,local,remote,tasks,productivity,testfl
 - **Price.** Free.
 - **Availability.** All territories unless you want otherwise.
 
-## 7. The click-path (only if submitting — default is TestFlight)
+## 7. The click-path (owner only — native `apple/`, not this RN app)
 
-Do **not** Submit for Review from this repo. Pocket stays TestFlight. If the owner later submits
-from a **local** Xcode archive:
+Do **not** Submit for Review from this React Native tree. The live store binary is native 2.0.0
+from `apple/`. If the owner later submits a **local** native archive:
 
 1. App Store Connect → SAM → iOS App → the version page
 2. Fill: description, keywords, subtitle, promotional text, support and privacy URLs (§3, §5)

@@ -43,7 +43,7 @@ irm https://raw.githubusercontent.com/richhabits/sam/main/docs/install.ps1 | iex
 graph TD
     User([You: Phone, Laptop, or PC])
     
-    subgraph Mobile ["📱 SAM Mobile (iOS) — Live on TestFlight · not on the App Store yet"]
+    subgraph Mobile ["📱 SAM Mobile (iOS) — App Store 2.0.0"]
         MobileAI[Standalone Direct AI · 30+ Cloud Providers, Zero Setup]
         MobilePair[Optional Desktop Pairing · QR / Local Network]
         MobileYard[Remote Task, Feed & Yard Monitor]
@@ -87,8 +87,9 @@ graph TD
 * **Position-sizing calculator (Kelly criterion)**: works out how much to stake, plus a live read on market risk. It is a calculator, not financial advice and not a promise of profit (`POST /api/flipit/shield`).
 * **Watchdogs**: keeps an eye on scheduled jobs and market data. Trading carries real risk of loss.
 
-### 📱 5. Mobile (iOS) — *Live on TestFlight, not on the App Store yet*
-* **Works on its own, no setup**: chat straight after install — no pairing, no account. It uses free public AI lanes, or any of 30+ providers (Groq, Cerebras, Mistral, Gemini, DeepSeek and more) with your own free key in Settings. Anthropic and OpenAI are paid, and used only with your own key.
+### 📱 5. Mobile (iOS) — *App Store 2.0.0 (iOS 26)*
+* **On the App Store**: [SAM: Smart Artificial Mind](https://apps.apple.com/gb/app/sam-smart-artificial-mind/id6798908400). Native Swift. TestFlight is the same train for betas.
+* **Works on its own, no setup**: chat without a Mac or an account. It uses free public AI lanes, or any of 30+ providers (Groq, Cerebras, Mistral, Gemini, DeepSeek and more) with your own free key in Settings. Anthropic and OpenAI are paid, and used only with your own key.
 * **Optional Desktop Link**: Pair with your Mac/PC over local network to unlock local files, automation, and yard workers — never required, only unlocked when you want it.
 * **Native Feel**: Haptics throughout, 1-tap code copy/share, live connection status, and an honest fallback if every AI lane genuinely fails — SAM never fabricates a response.
 

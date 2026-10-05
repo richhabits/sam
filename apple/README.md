@@ -4,10 +4,9 @@ Native SwiftUI SAM for iPhone, iPad, Mac, Apple Watch and Apple Vision Pro. It i
 the SAM brain (the TypeScript server in `server/`, port 8787). The brain keeps doing the heavy
 work (tools, model router, memory, the yard); this app does everything a device is best at.
 
-Pocket on TestFlight today is the React Native app in `mobile/` (bundle `com.hectic.sam.mobile`).
-This native tree uses the same bundle id so it can ship as an update later — it has not been
-App Store submitted. Do not treat TestFlight as this Swift binary until a local archive of
-*this* project is uploaded. There is no tvOS target.
+App Store and TestFlight today are this native Swift app (bundle `com.hectic.sam.mobile`,
+2.0.0 build 113 as of 5 Oct 2026, iOS 26). The older React Native Pocket in `mobile/` is
+the 1.0.0 train. Do not App Store submit a new binary unless the owner asks. There is no tvOS target.
 
 The brain stays cross-platform. Android keeps `mobile/`, Windows and Linux keep the Electron
 app, and every client speaks the same contract:
@@ -87,7 +86,7 @@ Mint the code on the Mac with `curl -X POST localhost:8787/api/pair/new`.
 **Phone access (needs a decision)**: remote/LAN mode is off (2026-09-30), so iPhone and iPad reach SAM only through a future secure transport (Bonjour + pinned TLS, Phase 3) or the Tailscale mesh mode. Until then they answer on-device with Apple Intelligence.
 
 **Release**
-- Pocket stays TestFlight until a local archive of this native app exists and the owner submits.
-  Do not App Store submit from EAS or a cloud agent.
+- iPhone is on the App Store as 2.0.0 (113). Further binaries: local Xcode archive → TestFlight.
+  Do not App Store submit from EAS or a cloud agent unless the owner asks.
 - Mac desktop brain keeps shipping as the signed + notarized Developer ID Electron build
   (arm64 3.7.0). Not a Mac App Store client. Local notarize only — no paid cloud notarize.
