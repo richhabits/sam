@@ -22,7 +22,7 @@ const routes = readFileSync(join(here, "routes.studio.ts"), "utf8");
 
 /** ids from the STYLES array literal only — MOTIONS/RATIOS live further down the same file. */
 function styleIds(): string[] {
-  const block = studioView.match(/const STYLES = \[([\s\S]*?)\n\];/);
+  const block = studioView.match(/const STYLES(?:: Style\[\])? = \[([\s\S]*?)\n\];/);
   if (!block) throw new Error("could not find STYLES in src/StudioView.tsx — update this test");
   return [...block[1].matchAll(/\bid:\s*"([^"]+)"/g)].map((m) => m[1]);
 }

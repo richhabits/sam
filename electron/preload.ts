@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("samDesktop", {
   isNative: true,
   openStudio: () => ipcRenderer.send("open-studio"),
   openFlipit: () => ipcRenderer.send("open-flipit"),
+  openYard: () => ipcRenderer.send("open-yard"),
   // The per-launch control token (the Handshake). Only the real renderer gets it — a local process
   // can't read this context. The frontend attaches it to /api calls; see src/lib/authFetch.ts.
   controlToken: process.env.SAM_CONTROL_TOKEN || "",

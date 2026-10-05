@@ -519,7 +519,7 @@ export default function App() {
   }
   function openYard() {
     const sd = (window as any).samDesktop;
-    if (sd?.openYard) sd.openYard();                                  // dedicated Electron window (when wired)
+    if (sd?.openYard) sd.openYard();                                  // dedicated Electron window
     else window.open(location.pathname + "?app=yard", "_blank");     // its own full view — like Studio/FlipIt
   }
   // Open a server-served local view (the Console / the Scope). On file:// (packaged Electron) the
@@ -1542,7 +1542,7 @@ export default function App() {
       <div className="shell">
       {surface === "tasks" ? (
         <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-          <Suspense fallback={null}><TasksView openNewOnMount={taskIntent === "new"} onOpenedNew={() => setTaskIntent(null)} /></Suspense>
+          <Suspense fallback={null}><TasksView openNewOnMount={taskIntent === "new"} onOpenedNew={() => setTaskIntent(null)} onBack={() => setSurface("agent")} /></Suspense>
         </div>
       ) : (
       <>
@@ -1595,7 +1595,7 @@ export default function App() {
           <button type="button" onClick={openYard} title="The Yard — what SAM has built" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             The Yard
           </button>
-          <button type="button" onClick={openStudio} title="Studio — AI video director & timeline editor" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={openStudio} title="Studio — image, video, motion, speak and canvas" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Studio
           </button>
           <button type="button" onClick={openFlipit} title={status?.flipitBuiltin === false ? "FLIP IT — now an add-on; connect it in Settings" : "FlipIt — arbitrage desk & Kelly risk shield"} style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -1904,8 +1904,8 @@ export default function App() {
                   <Icon name="team" size={20} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Multi-Agent Swarm</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Multi-agent swarm, converting information</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Team</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Assemble specialists on a big job — /team</div>
                 </div>
               </button>
 
@@ -1914,8 +1914,8 @@ export default function App() {
                   <Icon name="eye" size={20} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Vision Lab</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Live vision and visual reasoning</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Look</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>See through the camera and describe it</div>
                 </div>
               </button>
 
@@ -1925,7 +1925,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Studio</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>AI video director &amp; timeline editor</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Image, video, motion, speak and canvas</div>
                 </div>
               </button>
 
@@ -1934,7 +1934,7 @@ export default function App() {
                   <Icon name="markets" size={20} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Quant Desk</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT</div>
                   <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "FLIP IT is an add-on now — connect it" : "Arbitrage desk & Kelly risk shield"}</div>
                 </div>
               </button>
@@ -2027,8 +2027,8 @@ export default function App() {
                   <Icon name="studio" size={18} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>SAM Studio Director</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Higgsfield 3D &amp; storyboard timeline</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>Studio</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>Image, video, motion, speak and canvas</div>
                 </div>
               </button>
 
@@ -2037,7 +2037,7 @@ export default function App() {
                   <Icon name="markets" size={18} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT Quant Desk</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT</div>
                   <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "Now an add-on — connect it in Settings" : "Multi-exchange arbitrage & Kelly risk"}</div>
                 </div>
               </button>
@@ -2221,7 +2221,7 @@ export default function App() {
               const KINDS: [string, string][] = [["fact", "Facts"], ["plan", "Plans"], ["decision", "Decisions"], ["task", "Open loops"]];
               // A delete that fails must not look like it worked — the row would silently return.
               const del = (id: string) => forgetMemory(id).then(loadMemory).catch(() => showToast("Couldn't forget that — it's still stored."));
-              if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.</div>;
+              if (mem && mem.count === 0) return <div className="drawer-empty">Nothing learned yet. As you chat, SAM saves durable facts, plans and decisions here — all on your machine, and you can delete any of them any time.<div style={{ marginTop: 12 }}><button type="button" className="icon-btn" onClick={() => { setMemoryOpen(false); inputRef.current?.focus(); }}>Start a chat</button></div></div>;
               const q = memQuery.trim().toLowerCase();
               const match = (items: { id: string; text: string; ts: number }[]) => q ? items.filter((it) => it.text.toLowerCase().includes(q)) : items;
               const anyMatch = KINDS.some(([kind]) => match(mem?.groups?.[kind] || []).length);
@@ -2348,7 +2348,7 @@ export default function App() {
           { icon: "team", label: "Assemble the Team", hint: "big jobs", run: () => setInput("/team ") },
           { icon: "people", label: "Meet the team (browse specialists)", run: () => setRosterOpen(true) },
           { icon: "download", label: "Import my ChatGPT/Claude history", run: () => setImportOpen(true) },
-          { icon: "studio", label: "Open SAM Studio (image/video)", run: () => openStudio() },
+          { icon: "studio", label: "Open Studio (image, video, motion, speak)", run: () => openStudio() },
           { icon: "ninja", label: "Deploy the Ninjas", hint: "fix a problem", run: () => setInput("/ninjas ") },
           { icon: "voice", label: "Voice mode", run: () => setVoiceMode(true) },
           { icon: "eye", label: "Look through the camera", run: () => lookThroughCamera() },

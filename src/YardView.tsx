@@ -234,10 +234,13 @@ export default function YardView() {
         ) : !projects.length ? (
           <div style={{ ...card, textAlign: "center", padding: 44 }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Nothing built yet</div>
-            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.6 }}>
+            <div style={{ color: "var(--ash)", fontSize: 13.5, lineHeight: 1.6, marginBottom: 14 }}>
               Ask SAM in chat — <i>“build me a one-page site for…”</i> — and it will appear here.
               {" "}Projects live in <code>~/SAMYard/projects</code>.
             </div>
+            <button type="button" onClick={back} style={{ background: "var(--accent)", color: "#0E0F12", border: "none", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+              Open chat and build one
+            </button>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: split ? "minmax(300px, 380px) 1fr" : "1fr", alignItems: "start" }}>

@@ -361,6 +361,10 @@ app.whenReady().then(() => {
   // nowhere, and the window.open fallback never runs — so the FLIP IT button does nothing (#94).
   ipcMain.on("open-flipit", () => openAppWindow("flipit"));
 
+  // The Yard — same dedicated window as Studio. Without this, Electron took a truthy openYard
+  // and dropped the IPC, so the tab that says "The Yard" opened nothing.
+  ipcMain.on("open-yard", () => openAppWindow("yard"));
+
   // ── Overlay wiring (Phase 4) ──
   createOverlay();   // pre-create so summon is instant (E2E hook installed earlier, at whenReady start)
   // AUDIT FIX (finding 7): these handlers were global — ANY renderer (the main or studio window,

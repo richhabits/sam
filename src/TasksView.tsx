@@ -84,7 +84,7 @@ function cost(j: Job): string {
 const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" };
 const btn: React.CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "var(--radius-sm)", padding: "6px 11px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
 
-export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMount?: boolean; onOpenedNew?: () => void } = {}) {
+export default function TasksView({ openNewOnMount, onOpenedNew, onBack }: { openNewOnMount?: boolean; onOpenedNew?: () => void; onBack?: () => void } = {}) {
   const [on, setOn] = useState<boolean | null>(null);
   const [refused, setRefused] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -195,6 +195,11 @@ export default function TasksView({ openNewOnMount, onOpenedNew }: { openNewOnMo
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+        {onBack && (
+          <button type="button" style={btn} onClick={onBack} aria-label="Back to chat">
+            ← Chat
+          </button>
+        )}
         <div style={{ position: "relative", flex: "0 0 240px" }}>
           <input
             value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tasks…"
