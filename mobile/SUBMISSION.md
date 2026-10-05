@@ -69,7 +69,7 @@ Microphone is not used in this TestFlight (Pocket) binary — native Swift in ap
 ## 3. URLs
 
 - **Privacy policy** (required): `https://richhabits.github.io/sam/privacy.html` — live, returns 200
-- **Support URL** (required): `https://github.com/richhabits/sam/issues`
+- **Support URL** (required): `https://richhabits.github.io/sam/support.html` — human page; issues link is on it
 - **Marketing URL** (optional): `https://richhabits.github.io/sam/`
 
 ## 4. Screenshots

@@ -1,9 +1,7 @@
 name: Health Watchdog
-# Runs the full health suite on main every day and OPENS A LABELED ISSUE if anything's wrong — so the
-# repo tells the maintainer it's rotting instead of rotting silently. Free (one ubuntu run/day).
+# Full health suite. Dispatch-only — a daily cron was chewing Actions minutes.
 on:
-  schedule:
-    - cron: "0 8 * * *"   # daily 08:00 UTC
+  # schedule removed — saves Actions minutes; run by hand when you want a canary
   workflow_dispatch:
 permissions:
   contents: read

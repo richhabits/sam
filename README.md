@@ -132,10 +132,10 @@ Open **http://localhost:8787** — free, local, and ready immediately. Opening t
 
 ### 📱 Mobile App (iOS)
 
-> **Status: Live on TestFlight · App Store not live yet (review notes are in `mobile/SUBMISSION.md`; this session did not press Submit)**
+> **Status: Native 2.0.0 is on the [App Store](https://apps.apple.com/gb/app/sam-smart-artificial-mind/id6798908400) · Pocket (React Native) stays TestFlight · this session did not submit a new binary**
 
-* **Try it now**: [Join the TestFlight beta](https://testflight.apple.com/join/htr4htvY) — works immediately, standalone, no desktop required.
-* **App Store**: Not on the store yet. TestFlight is the shipping iOS binary. Widget reads App Group `group.com.hectic.sam.mobile` (pairing / yard snapshot from the app) — needs a new native build to land on devices.
+* **On the App Store**: [SAM: Smart Artificial Mind](https://apps.apple.com/gb/app/sam-smart-artificial-mind/id6798908400) — native Swift 2.0.0 (iOS 26). Chat first. Pairing is optional.
+* **TestFlight (Pocket / newer native builds)**: [Join the TestFlight beta](https://testflight.apple.com/join/htr4htvY). The older React Native Pocket in `mobile/` is the 1.0.0 train — not what the store ships.
 * **Android**: Same Expo app as iOS (`com.hectic.sam.mobile`). **Not on Play Store.** Debug APK builds: `cd mobile/android && ./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk` (proved this session, 156MB, minSdk 24). Sideload; demo mode works with no desktop. The platforms badge does not claim Play Store.
 * **Optional desktop pairing**: In the app, tap **Connect to Mac / PC** (or in SAM Desktop, **Dashboard → Devices → Pair a phone**) to unlock local files and automation — entirely optional.
 

@@ -268,14 +268,7 @@ export function registerStudioRoutes(app: Express) {
     if (buf) return res.type("jpeg").send(buf);
     res.status(503).end();
   });
-  // Pre-warm the previews in the background at boot (once) so the Studio is snappy.
-  if (process.env.NODE_ENV !== "test" && !process.env.VITEST && process.env.SAM_BENCH_MOCK !== "1") {
-    const timer = setTimeout(async () => {
-      const missing = Object.keys(STUDIO_PREVIEWS).filter((id) => !existsSync(join(PREVIEW_DIR, `${id}.jpg`)));
-      await Promise.allSettled(missing.map((id) => genPreview(id)));
-    }, 4000);
-    if (typeof timer.unref === "function") timer.unref();
-  }
+  // Style cards generate on first view — no boot-time Pollinations grind.
 
   const CAMERA_PRESETS = [
     { id: "dolly_in", label: "Dolly In", desc: "Smooth cinematic push in towards the subject" },

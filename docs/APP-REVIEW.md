@@ -64,6 +64,8 @@ policy. We have no analytics, no crash reporting, no SAM account, and no session
 
 **https://richhabits.github.io/sam/privacy.html**
 
+Support URL: **https://richhabits.github.io/sam/support.html**
+
 App Store Connect will not take a submission without one. Until now the site served only the raw
 markdown (`/sam/PRIVACY.md` — a 200, but unstyled plain text). That page is generated from
 `docs/PRIVACY.md` on every Pages deploy, so it cannot drift from the policy in the repo, and it's

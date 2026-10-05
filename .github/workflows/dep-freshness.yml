@@ -3,8 +3,7 @@ name: Dependency Freshness
 # an issue so it's known BEFORE a user hits it. Doesn't commit anything — it's a canary, not an updater
 # (Dependabot does the actual, reviewed bumps).
 on:
-  schedule:
-    - cron: "0 9 * * 1"   # Mondays 09:00 UTC
+  # schedule removed — saves Actions minutes; run by hand when you want a canary
   workflow_dispatch:
 permissions:
   contents: read

@@ -81,7 +81,7 @@ targets:
           UIApplicationSupportsMultipleScenes: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
-        NSHumanReadableCopyright: © 2026 Romeo Valentine
+        NSHumanReadableCopyright: © 2026 Hectic Radio Ltd
     entitlements:
       path: App/SAM.entitlements
       properties:
