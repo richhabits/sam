@@ -18,7 +18,7 @@ const Admin = lazy(() => import("./Admin"));
 
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import { HANDOFF_BLURB, HANDOFF_PROMPT } from "./lib/handoffPrompt";
-import { appendToolTrace, seedLiveTrace, STARTING_STEP } from "./lib/liveTrace";
+import { appendToolTrace, persistToolTrace, STARTING_STEP, seedLiveTrace } from "./lib/liveTrace";
 import { markOnboarded, seedWelcomeOnFinish, welcomeText } from "./lib/onboarding";
 import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import PersonaPicker from "./PersonaPicker";
@@ -39,6 +39,7 @@ const CameraPane = lazy(() => import("./CameraPane"));
 const DoctorPane = lazy(() => import("./DoctorPane"));
 const ConnectorsPane = lazy(() => import("./ConnectorsPane"));
 const TasksView = lazy(() => import("./TasksView"));
+const YardView = lazy(() => import("./YardView"));
 
 interface Profile { name: string; about?: string; language?: string }
 // Multiple people can share one SAM — each profile has its OWN memory (server namespaces
@@ -173,7 +174,12 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
             </span>
           </div>
 
-          {m.trace && m.trace.length > 0 && <TraceStrip steps={m.trace} />}
+          {m.trace && m.trace.length > 0 && (
+            <div className="tool-trace" role="status">
+              <div className="tool-trace-label">Tools</div>
+              <TraceStrip steps={m.trace} />
+            </div>
+          )}
 
           {m.text && (
             <div className="sam-card-body" style={{ color: '#E2E5EB', fontSize: 14.5, lineHeight: 1.6 }}>
@@ -271,7 +277,7 @@ export default function App() {
   const [mode, setMode] = useState<"business" | "personal">(() => { try { return (localStorage.getItem("sam.mode") as any) || "business"; } catch { return "business"; } });
   // THE FACE — Agent (this persistent chat, unchanged) vs Tasks (every yard job as a durable
   // thread). A toggle, not a route: one SAM, the header stays, only the body underneath swaps.
-  const [surface, setSurface] = useState<"agent" | "tasks">(() => { try { return (localStorage.getItem("sam.surface") as any) || "agent"; } catch { return "agent"; } });
+  const [surface, setSurface] = useState<"agent" | "tasks" | "yard">(() => { try { const s = localStorage.getItem("sam.surface"); return s === "tasks" || s === "yard" ? s : "agent"; } catch { return "agent"; } });
   useEffect(() => { try { localStorage.setItem("sam.surface", surface); } catch { /* private mode — the toggle just won't stick */ } }, [surface]);
   // Set by a capability entry ("New task") that needs to both switch surface AND open a sheet
   // once Tasks has mounted. TasksView consumes it once, then reports back to clear it.
@@ -378,6 +384,8 @@ export default function App() {
     return () => window.removeEventListener("sam:open-plus", onOpenPlus);
   }, []);
   const [live, setLive] = useState<{ text: string; trace: string[] } | null>(null);
+  const liveTraceRef = useRef<string[]>([]);
+
   const [copied, setCopied] = useState<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [scrollPct, setScrollPct] = useState(0);
@@ -508,9 +516,12 @@ export default function App() {
     else window.open(location.pathname + "?app=flipit", "_blank");   // its own full view — like Studio
   }
   function openYard() {
+    setSurface("yard");
+  }
+  function popOutYard() {
     const sd = (window as any).samDesktop;
-    if (sd?.openYard) sd.openYard();                                  // dedicated Electron window
-    else window.open(location.pathname + "?app=yard", "_blank");     // its own full view — like Studio/FlipIt
+    if (sd?.openYard) sd.openYard();
+    else window.open(location.pathname + "?app=yard", "_blank");
   }
   // Open a server-served local view (the Console / the Scope). On file:// (packaged Electron) the
   // page lives on the local server's origin, not the app bundle, so point at it explicitly.
@@ -759,7 +770,7 @@ export default function App() {
 
   function handleResult(r: AgentResult) {
     if (r.kind === "pending") { setPending(r); return; }
-    setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now(), noBrain: r.provider === "none" }]);
+    setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: persistToolTrace(r.trace, undefined), at: now(), noBrain: r.provider === "none" }]);
     if (speakReplies && r.text) speakText(r.text);
     refreshLog();
   }
@@ -1144,15 +1155,22 @@ export default function App() {
 
     // Normal message → STREAM tokens live. Seed a visible free-lane step immediately —
     // a blank thinking bubble while the provider warms is the opposite of "the result is the reply".
-    setLive({ text: "", trace: seedLiveTrace() });
+    liveTraceRef.current = seedLiveTrace();
+    setLive({ text: "", trace: liveTraceRef.current });
     let produced = false, acc = "";
     const onEvent = (e: any) => {
       if (e.type === "token") { produced = true; acc += e.t; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace?.length ? l.trace : seedLiveTrace() })); }
-      else if (e.type === "tool") { produced = true; setLive((l) => ({ text: l?.text || "", trace: appendToolTrace(l?.trace, e.activity) })); }
+      else if (e.type === "tool") {
+        produced = true;
+        const activity = String(e.activity || e.tool || "").trim();
+        if (activity) liveTraceRef.current = appendToolTrace(liveTraceRef.current, activity);
+        setLive((l) => ({ text: l?.text || "", trace: liveTraceRef.current }));
+      }
       else if (e.type === "pending") { produced = true; setLive(null); setPending({ ...e, message: value, projectId: brand || "", tier: QUALITY_TIER[quality] } as AgentResult); }
       else if (e.type === "done") {
         produced = true; setLive(null);
-        setMessages((m) => [...m, { role: "sam", text: e.text || "", trace: e.trace, how: howAnswered(e.provider), at: now(), noBrain: e.provider === "none" }]);
+        const tools = persistToolTrace(e.trace, liveTraceRef.current);
+        setMessages((m) => [...m, { role: "sam", text: e.text || "", trace: tools, how: howAnswered(e.provider), at: now(), noBrain: e.provider === "none" }]);
         if (speakReplies && e.text) speakText(e.text);
         refreshLog();
       }
@@ -1184,7 +1202,7 @@ export default function App() {
     try {
       const r = await command(q, brand || undefined, QUALITY_TIER[quality]);
       if (r.kind === "pending") { setPending(r); return "I need your OK for that one — I've put it on the screen for you."; }
-      setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: r.trace, at: now(), noBrain: r.provider === "none" }]);
+      setMessages((m) => [...m, { role: "sam", text: r.text || "", how: howAnswered(r.provider), trace: persistToolTrace(r.trace, undefined), at: now(), noBrain: r.provider === "none" }]);
       refreshLog();
       return r.text || "";
     } catch { return "I couldn't reach my brain just then."; }
@@ -1586,10 +1604,10 @@ export default function App() {
 
         {/* Center: Agent / Yard / Studio / FlipIt segmented control */}
         <div className="header-tabs" style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: 3, justifySelf: "center" }}>
-          <button type="button" title="Agent — chat with SAM" aria-current="page" onClick={() => { setSurface("agent"); setTimeout(() => inputRef.current?.focus(), 0); }} style={{ background: "var(--accent-soft)", color: "var(--accent-text)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          <button type="button" title="Agent — chat with SAM" aria-current={surface === "agent" ? "page" : undefined} onClick={() => { setSurface("agent"); setTimeout(() => inputRef.current?.focus(), 0); }} style={{ background: surface === "agent" ? "var(--accent-soft)" : "transparent", color: surface === "agent" ? "var(--accent-text)" : "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: surface === "agent" ? 700 : 600, cursor: "pointer" }}>
             Agent
           </button>
-          <button type="button" onClick={openYard} title="The Yard — what SAM has built" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={openYard} title="The Yard — files and running jobs" aria-current={surface === "yard" ? "page" : undefined} style={{ background: surface === "yard" ? "var(--accent-soft)" : "transparent", color: surface === "yard" ? "var(--accent-text)" : "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: surface === "yard" ? 700 : 600, cursor: "pointer" }}>
             The Yard
           </button>
           <button type="button" onClick={openStudio} title="Studio — image, video, motion, speak and canvas" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -1639,6 +1657,11 @@ export default function App() {
           </button>
         </div>
       </header>
+      {surface === "yard" ? (
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <Suspense fallback={null}><YardView embedded onBack={() => setSurface("agent")} onPopOut={popOutYard} /></Suspense>
+        </div>
+      ) : (<>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: event delegation for .code-copy buttons, which are real buttons with keyboard access */}
       <main className="chat" ref={chatRef} onScroll={onScroll} onClick={(e) => {
         const btn = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
@@ -1891,8 +1914,9 @@ export default function App() {
           SAM is private &amp; runs free on your computer · it asks before doing anything risky
         </div>
       </footer>
+      </>)}
       </div>
-      <aside className="ctx" style={{ width: 300, minWidth: 300, background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+      {surface !== "yard" && <aside className="ctx" style={{ width: 300, minWidth: 300, background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
         {rightTab === "context" ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
@@ -2090,7 +2114,7 @@ export default function App() {
         )}
 
 
-      </aside>
+      </aside>}
       {ctxOpen && (
         // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop; keyboard close on Escape below
         // biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop; keyboard close on Escape below

@@ -69,7 +69,7 @@ const EXAMPLES: Record<Mode, string[]> = {
 
 const HISTORY_KEY = "sam.studio.history";
 const GOLD = "#D9A05B";
-const VIDEO_KEY_ERROR = "Video needs a fal, Novita, or SiliconFlow key in Settings. Image still works free — tap Make a still.";
+const VIDEO_KEY_ERROR = "Could not encode a clip. Image still works free — tap Make a still.";
 
 function loadHistory(): Generation[] {
   try {
@@ -92,6 +92,8 @@ function isNativeDesktop(): boolean {
 }
 
 function isImageUrl(url: string): boolean {
+  if (/\.(mp4|webm|mov)(\?|$)/i.test(url)) return false;
+  if (/\/api\/studio\/media\/[^?]+\.mp4(\?|$)/i.test(url)) return false;
   return /\.(jpe?g|png|webp)(\?|$)/i.test(url) || url.startsWith("/api/studio/media/");
 }
 
@@ -123,6 +125,7 @@ export default function StudioView() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [stillOffer, setStillOffer] = useState<string | null>(null);
+  const [deskQueue, setDeskQueue] = useState<{ id: string; concept: string; status: string }[]>([]);
 
   const aspect = ASPECTS.find((a) => a.id === aspectId) ?? ASPECTS.find((a) => a.id === "16:9") ?? {
     id: "16:9", label: "16:9", css: "16 / 9", w: 1280, h: 720,
@@ -265,15 +268,26 @@ export default function StudioView() {
     };
   };
 
-  const generateVideo = async (compiled: string): Promise<{ url?: string; error?: string }> => {
+  const generateVideo = async (compiled: string, extra?: { stillUrl?: string; duration?: number; preferFree?: boolean }): Promise<{ url?: string; still?: string; error?: string }> => {
     const res = await fetch("/api/studio/video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: compiled }),
+      body: JSON.stringify({
+        prompt: compiled,
+        width: aspect.w,
+        height: aspect.h,
+        motion,
+        intensity: intensity / 50,
+        audioText: mode === "speak" ? transcript.trim() : undefined,
+        preferFree: extra?.preferFree ?? true,
+        stillUrl: extra?.stillUrl,
+        duration: extra?.duration,
+      }),
     });
     const data = await readJson(res);
     return {
       url: typeof data.url === "string" ? data.url : undefined,
+      still: typeof data.still === "string" ? data.still : undefined,
       error: typeof data.error === "string" ? data.error : undefined,
     };
   };
@@ -302,33 +316,36 @@ export default function StudioView() {
     try {
       const compiled = await compilePrompt();
       const wantsVideo = mode === "video" || mode === "motion" || mode === "speak";
-      const result = wantsVideo ? await generateVideo(compiled) : await generateStill(compiled);
-      const kind: Kind = wantsVideo ? "video" : "image";
 
-      if (!result.url) {
-        if (wantsVideo) {
-          setError(VIDEO_KEY_ERROR);
-          setStillOffer(compiled);
-        } else {
-          setError(result.error || "Could not make that still. Try again in a moment.");
+      if (!wantsVideo) {
+        const still = await generateStill(compiled);
+        if (!still.url) {
+          setError(still.error || "Could not make that still. Try again in a moment.");
+          return;
         }
+        remember({ id: `gen-${Date.now()}`, url: still.url, kind: "image", prompt: compiled, mode, style, at: Date.now() });
+        setProgress(100);
         return;
       }
 
-      const gen: Generation = {
-        id: `gen-${Date.now()}`,
-        url: result.url,
-        kind,
-        prompt: compiled,
-        mode,
-        style,
-        at: Date.now(),
-      };
-      remember(gen);
+      // First paint: the still lands while the clip encodes — Antigravity, not a blank canvas.
+      const still = await generateStill(compiled);
+      if (still.url) {
+        remember({ id: `gen-${Date.now()}`, url: still.url, kind: "image", prompt: compiled, mode, style, at: Date.now() });
+        setProgress(48);
+      }
+      const clip = await generateVideo(compiled, { stillUrl: still.url, preferFree: true });
+      if (!clip.url) {
+        setError(clip.error || VIDEO_KEY_ERROR);
+        setStillOffer(compiled);
+        return;
+      }
+      remember({ id: `gen-${Date.now()}`, url: clip.url, kind: "video", prompt: compiled, mode, style, at: Date.now() });
       queueStudioJob(prompt.trim(), style, false).catch(() => {
-        /* queue is a yard record, not the picture — the still already landed */
+        /* queue is a desk record — the clip already landed */
       });
       setProgress(100);
+      flash(mode === "speak" ? "Clip ready — press play." : "Clip ready.");
     } catch {
       setError("Could not reach SAM Studio. Is the app still running?");
     } finally {
@@ -386,9 +403,62 @@ export default function StudioView() {
     }
   };
 
+  const queueActive = async () => {
+    const concept = prompt.trim() || active?.prompt || "";
+    if (!concept || busy) return;
+    try {
+      const r = await queueStudioJob(concept, style, false);
+      setDeskQueue((q) => [{ id: r.id, concept: r.concept, status: r.status }, ...q].slice(0, 8));
+      flash("Queued — generating now.");
+      await handleGenerate();
+    } catch {
+      setError("Could not queue that shot.");
+    }
+  };
+
+  const varyActive = async () => {
+    if (busy) return;
+    const compiled = (active?.prompt || prompt).trim();
+    if (!compiled) return;
+    setBusy(true); setError(null); setProgress(18);
+    try {
+      const res = await fetch("/api/studio/vary", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: compiled, width: aspect.w, height: aspect.h, motion, intensity: intensity / 50 }),
+      });
+      const data = await readJson(res);
+      if (typeof data.url !== "string") { setError(typeof data.error === "string" ? data.error : "Variation missed."); return; }
+      remember({ id: `gen-${Date.now()}`, url: data.url, kind: "video", prompt: compiled, mode: mode === "image" ? "video" : mode, style, at: Date.now() });
+      flash("Variation ready.");
+    } catch { setError("Could not reach SAM Studio."); }
+    finally { setBusy(false); setProgress(100); }
+  };
+
+  const extendActive = async () => {
+    if (busy || !active) return;
+    setBusy(true); setError(null); setProgress(18);
+    try {
+      const res = await fetch("/api/studio/extend", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: active.prompt,
+          stillUrl: active.kind === "image" ? active.url : undefined,
+          width: aspect.w, height: aspect.h, motion, intensity: intensity / 50,
+          duration: 8,
+          audioText: mode === "speak" ? transcript.trim() : undefined,
+        }),
+      });
+      const data = await readJson(res);
+      if (typeof data.url !== "string") { setError(typeof data.error === "string" ? data.error : "Extend missed."); return; }
+      remember({ id: `gen-${Date.now()}`, url: data.url, kind: "video", prompt: active.prompt, mode: active.mode === "image" ? "video" : active.mode, style, at: Date.now() });
+      flash("Extended clip ready.");
+    } catch { setError("Could not reach SAM Studio."); }
+    finally { setBusy(false); setProgress(100); }
+  };
+
   const lane = mode === "image" || mode === "canvas"
     ? "Stills · Pollinations free, then your keyed lanes"
-    : "Shots · HappyHorse on fal, or Novita / SiliconFlow credits";
+    : "Clips · free camera-move lane, then your credit keys";
 
   const canGo = Boolean(prompt.trim()) && !busy && (mode !== "speak" || Boolean(transcript.trim())) && (mode !== "canvas" || Boolean(active));
 
@@ -570,7 +640,7 @@ export default function StudioView() {
                     {modeMeta.label} — {modeMeta.blurb}
                   </div>
                   <div style={{ fontSize: 13.5, color: "#9CA3AF", maxWidth: 440, lineHeight: 1.5 }}>
-                    Pick a job, write it, generate. Image is free with no key. Video, motion and speak use SAM’s free-credit video lanes when you have one.
+                    Pick a job, write it, generate. Image is free. Video, motion and speak encode a playable clip on the free camera-move lane — press play when it lands.
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                     {EXAMPLES[mode].map((ex) => (
@@ -586,6 +656,8 @@ export default function StudioView() {
                 <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 6 }}>
                   <button type="button" onClick={reuseActive} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Reuse</button>
                   <button type="button" onClick={refineActive} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Refine</button>
+                  <button type="button" onClick={() => void varyActive()} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Vary</button>
+                  <button type="button" onClick={() => void extendActive()} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Extend</button>
                 </div>
               )}
 
@@ -601,6 +673,15 @@ export default function StudioView() {
           </div>
 
           <div style={{ padding: "0 18px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {deskQueue.length > 0 && (
+              <div style={{ fontSize: 11.5, color: "#9CA3AF", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {deskQueue.map((j) => (
+                  <span key={j.id} style={{ border: "1px solid #2A2A2E", borderRadius: 999, padding: "2px 8px" }}>
+                    {j.status} · {j.concept.slice(0, 28)}
+                  </span>
+                ))}
+              </div>
+            )}
             {(error || note) && (
               <div style={{
                 fontSize: 12.5, padding: "8px 12px", borderRadius: 8,
@@ -637,6 +718,7 @@ export default function StudioView() {
                   color: "#F3F4F6", fontSize: 14.5, resize: "none", lineHeight: 1.45, minHeight: 52,
                 }}
               />
+              <button type="button" onClick={() => void queueActive()} disabled={!prompt.trim() || busy} style={ghostBtn}>Queue</button>
               <button type="button" onClick={() => void enhance()} disabled={!prompt.trim() || busy} style={ghostBtn}>
                 <Icon name="sparkle" size={13} /> Enhance
               </button>

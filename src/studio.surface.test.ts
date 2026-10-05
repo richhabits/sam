@@ -29,6 +29,12 @@ describe("Studio is a Higgsfield-class create surface", () => {
     expect(studio).toContain("/api/studio/motion/control");
     expect(studio).toContain("/api/studio/lipsync");
     expect(studio).toContain("/api/studio/enhance");
+    expect(studio).toContain("/api/studio/vary");
+    expect(studio).toContain("/api/studio/extend");
+    expect(studio).toContain("preferFree");
+    expect(studio).toContain(">Queue<");
+    expect(studio).toContain(">Vary<");
+    expect(studio).toContain(">Extend<");
   });
 
   it("does not advertise engines SAM does not run", () => {
@@ -81,10 +87,14 @@ describe("header tabs open the job they name", () => {
     expect(app).toContain("setInput(`/team");
   });
 
-  it("The Yard has a dedicated Electron window, same as Studio", () => {
+  it("The Yard is an in-HUD workspace, and can still pop out", () => {
     expect(preload).toContain("openYard");
     expect(main).toContain("open-yard");
-    expect(app).toContain("openYard");
+    expect(app).toContain('surface === "yard"');
+    expect(app).toContain("popOutYard");
+    expect(app).toContain("YardView");
+    expect(app).toContain("persistToolTrace");
+    expect(app).toContain("tool-trace");
   });
 
   it("FLIP IT is an add-on unless the server says the desk is built in", () => {

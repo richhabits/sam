@@ -18,7 +18,8 @@ import {
   HIGGSFIELD_LENSES,
   HIGGSFIELD_PHYSICS,
 } from "./studio-higgsfield.ts";
-import { enqueueStudioJob } from "./studio-queue.ts";
+import { enqueueStudioJob, listStudioJobs } from "./studio-queue.ts";
+import { renderStillShot } from "./studio-shot.ts";
 import { TOOLS } from "./tools.ts";
 import { safeFetch } from "./url-guard.ts";
 
@@ -87,6 +88,43 @@ export function registerStudioRoutes(app: Express) {
     } catch (e: any) { console.error("[studio] cacheStudioMedia failed:", e?.message || e); return null; }
   }
 
+  async function cacheStudioBytes(buf: Buffer, ext: string): Promise<string | null> {
+    if (!buf.length) return null;
+    const name = createHash("sha1").update(buf).digest("hex").slice(0, 16) + "." + ext;
+    await mkdir(GEN_DIR, { recursive: true });
+    await writeFile(join(GEN_DIR, name), buf);
+    return name;
+  }
+
+  async function loadStudioStill(ref: string | undefined, prompt: string, w: number, h: number): Promise<{ buf: Buffer; stillUrl?: string } | null> {
+    if (ref) {
+      const id = ref.replace(/^.*\/api\/studio\/media\//, "").replace(/[^a-zA-Z0-9._-]/g, "");
+      if (id && existsSync(join(GEN_DIR, id))) {
+        try { return { buf: await readFile(join(GEN_DIR, id)), stillUrl: `/api/studio/media/${id}` }; } catch { /* fall through */ }
+      }
+    }
+    try {
+      const seed = randomBytes(4).readUInt32BE(0);
+      const purl = `https://image.pollinations.ai/prompt/${encodeURIComponent(String(prompt).slice(0, 900))}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
+      const name = await cacheStudioMedia(purl);
+      if (name) return { buf: await readFile(join(GEN_DIR, name)), stillUrl: `/api/studio/media/${name}` };
+    } catch { /* keyed / empty */ }
+    return null;
+  }
+
+  async function encodeFreeShot(opts: { prompt: string; stillUrl?: string; width?: number; height?: number; motion?: string; intensity?: number; duration?: number; audioText?: string }) {
+    const w = Math.min(Number(opts.width) || 1280, 1440);
+    const h = Math.min(Number(opts.height) || 720, 1440);
+    const still = await loadStudioStill(opts.stillUrl, opts.prompt, w, h);
+    if (!still) return { error: "Could not make a still for the free clip lane." };
+    const clip = await renderStillShot(still.buf, {
+      rig: opts.motion, intensity: opts.intensity, durationSec: opts.duration, width: w, height: h,
+    }, opts.audioText);
+    const name = await cacheStudioBytes(clip, "mp4");
+    if (!name) return { error: "Could not cache the clip." };
+    return { url: `/api/studio/media/${name}`, still: still.stillUrl, lane: "free-motion" as const };
+  }
+
   app.post("/api/studio/queue", (req, res) => {
     const { concept, style, localOnly } = req.body;
     if (!concept || typeof concept !== "string") {
@@ -94,6 +132,10 @@ export function registerStudioRoutes(app: Express) {
     }
     const id = enqueueStudioJob(concept, style || "", !!localOnly);
     return res.json({ id, concept, status: "queued" });
+  });
+  app.get("/api/studio/queue", (_req, res) => {
+    try { res.json({ jobs: listStudioJobs(20) }); }
+    catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
   });
 
   app.get("/api/studio/media/:id", mediaLimit, async (req, res) => {
@@ -103,7 +145,8 @@ export function registerStudioRoutes(app: Express) {
     const ext = id.split(".").pop();
     try {
       const data = await readFile(file);
-      res.type(ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg").send(data);
+      const type = ext === "mp4" ? "mp4" : ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg";
+      res.type(type).send(data);
     } catch {
       res.status(404).end();
     }
@@ -133,12 +176,50 @@ export function registerStudioRoutes(app: Express) {
     res.status(500).json({ error: "image tool missing" });
   });
   app.post("/api/studio/video", async (req, res) => {
-    const { prompt } = req.body || {};
+    const { prompt, width, height, motion, intensity, duration, stillUrl, audioText, preferFree } = req.body || {};
     if (!prompt) return res.status(400).json({ error: "no prompt" });
-    const t = TOOLS.find((x) => x.name === "generate_video");
-    if (!t) return res.status(500).json({ error: "video tool missing" });
-    try { const out = await t.run({ prompt }); const url = urlFromMarkdown(out); res.json(url ? { url } : { error: out }); }
-    catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+    // Keyed lanes first when a credit key exists — unless the client asked for the free clip.
+    if (!preferFree) {
+      const t = TOOLS.find((x) => x.name === "generate_video");
+      if (t) {
+        try {
+          const out = await t.run({ prompt });
+          const url = urlFromMarkdown(out);
+          if (url) {
+            const name = await cacheStudioMedia(url);
+            return res.json({ url: name ? `/api/studio/media/${name}` : url, lane: "keyed" });
+          }
+        } catch { /* free Ken Burns still plays */ }
+      }
+    }
+    try {
+      const shot = await encodeFreeShot({ prompt, stillUrl, width, height, motion, intensity, duration, audioText });
+      if (shot.url) return res.json(shot);
+      return res.json({ error: shot.error || "Video lane missed." });
+    } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+  });
+  app.post("/api/studio/vary", async (req, res) => {
+    const { prompt, width, height, motion, intensity } = req.body || {};
+    if (!prompt) return res.status(400).json({ error: "no prompt" });
+    try {
+      const shot = await encodeFreeShot({ prompt, width, height, motion, intensity });
+      if (shot.url) return res.json({ ...shot, kind: "variation" });
+      return res.json({ error: shot.error || "Variation missed." });
+    } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+  });
+  app.post("/api/studio/extend", async (req, res) => {
+    const { prompt, stillUrl, width, height, motion, intensity, duration, audioText } = req.body || {};
+    if (!prompt && !stillUrl) return res.status(400).json({ error: "prompt or still required" });
+    try {
+      const shot = await encodeFreeShot({
+        prompt: String(prompt || "continue the shot"),
+        stillUrl, width, height, motion, intensity,
+        duration: Number(duration) || 8,
+        audioText,
+      });
+      if (shot.url) return res.json({ ...shot, kind: "extend" });
+      return res.json({ error: shot.error || "Extend missed." });
+    } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
   });
   // Style-card preview thumbnails — generated ONCE via Pollinations, cached to the vault, served
   // locally (instant after first boot). Same-origin so no CSP/SW issues, and one per style, generated once.

@@ -21,7 +21,7 @@ function chromePath(): string {
   return "/usr/bin/google-chrome";
 }
 
-function ffmpegPath(): string | null {
+export function ffmpegPath(): string | null {
   // Prefer the bundled static binary (ships with SAM → works on any machine, no install).
   try {
     const bundled = require("ffmpeg-static");

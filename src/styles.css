@@ -2811,3 +2811,21 @@ body:has(.flipit-view) { background: #000000; }
 .composer textarea:focus-visible { outline: none !important; } /* ring is drawn on .composer-inner:focus-within */
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible,
 .dl-btn:focus-visible, .pop-opt:focus-visible, [role="button"]:focus-visible { box-shadow: none; }
+
+
+/* Real tool traces on a finished Agent turn — only rendered when tools actually ran. */
+.tool-trace {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(124, 158, 255, 0.08);
+  border: 1px solid rgba(124, 158, 255, 0.18);
+}
+.tool-trace-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent, #7C9EFF);
+  margin-bottom: 6px;
+}

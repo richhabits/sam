@@ -47,7 +47,9 @@ type FileDiff = {
 const DEVICE_WIDTH: Record<Device, number | string> = { phone: 390, tablet: 834, desktop: "100%" };
 const DEVICE_HEIGHT: Record<Device, number> = { phone: 700, tablet: 900, desktop: 620 };
 
-export default function YardView() {
+type YardProps = { embedded?: boolean; onBack?: () => void; onPopOut?: () => void };
+
+export default function YardView({ embedded, onBack, onPopOut }: YardProps) {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [refused, setRefused] = useState(false);
   const [slug, setSlug] = useState<string>("");
@@ -68,8 +70,22 @@ export default function YardView() {
   const [said, setSaid] = useState<{ who: "you" | "sam"; text: string }[]>([]);
   const [asking, setAsking] = useState("");
   const [busy, setBusy] = useState(false);
+  const [jobs, setJobs] = useState<{ running: number; queued: number; recent: { id: string; kind?: string; state?: string; project?: string }[] } | null>(null);
 
   useEffect(() => { document.title = "The Yard · SAM"; }, []);
+
+  useEffect(() => {
+    const pull = () => getYard().then((y: any) => {
+      setJobs({
+        running: Number(y?.running || 0),
+        queued: Number(y?.queued || y?.depth || 0),
+        recent: Array.isArray(y?.recent) ? y.recent.slice(0, 8) : [],
+      });
+    }).catch(() => setJobs(null));
+    pull();
+    const iv = setInterval(pull, 4000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     getYardProjects()
@@ -172,13 +188,14 @@ export default function YardView() {
   }, [busy, slug]);
 
   const back = () => {
-    const sd = (globalThis as any).samDesktop;
+    if (onBack) { onBack(); return; }
+    const sd = (globalThis as { samDesktop?: { close?: () => void } }).samDesktop;
     if (sd?.close) sd.close(); else window.close();
     if (!window.closed) location.href = location.pathname;
   };
 
   const wrap: React.CSSProperties = {
-    ...palette, minHeight: "100vh",
+    ...palette, minHeight: embedded ? "100%" : "100vh", height: embedded ? "100%" : undefined,
     background: "radial-gradient(900px 460px at 50% -12%, rgba(124,158,255,.10), transparent 62%), var(--ink)",
     color: "var(--paper)", fontFamily: "var(--display)",
     WebkitFontSmoothing: "antialiased",
@@ -214,9 +231,29 @@ export default function YardView() {
               style={{ background: split ? "var(--accent-soft)" : "var(--surface)", border: `1px solid ${split ? "var(--accent)" : "var(--line)"}`, color: split ? "var(--accent)" : "var(--ash)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
               {split ? "Builder" : "Builder off"}
             </button>
-            <button type="button" onClick={back} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>← SAM</button>
+            {onPopOut && (
+              <button type="button" onClick={onPopOut} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Pop out</button>
+            )}
+            <button type="button" onClick={back} style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--paper)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>← Chat</button>
           </div>
         </div>
+
+        {jobs && (jobs.running > 0 || jobs.queued > 0 || jobs.recent.length > 0) && (
+          <div style={{ ...card, marginBottom: 14, display: "grid", gap: 8 }}>
+            <div style={lbl}>Running jobs</div>
+            <div style={{ fontSize: 13, color: "var(--ash)" }}>
+              {jobs.running} running · {jobs.queued} queued
+            </div>
+            <div style={{ display: "grid", gap: 4 }}>
+              {jobs.recent.slice(0, 6).map((j) => (
+                <div key={j.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
+                  <span>{j.kind || "job"}{j.project ? ` · ${j.project}` : ""}</span>
+                  <span style={{ color: j.state === "running" ? "var(--live)" : "var(--ash)" }}>{j.state || "—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {projects === null ? (
           <div style={{ ...card, textAlign: "center", padding: 40, color: "var(--ash)" }}>Looking…</div>

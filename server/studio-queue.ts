@@ -58,6 +58,12 @@ export function getStudioJob(id: string) {
   return getDb().prepare("SELECT * FROM studio_jobs WHERE id = ?").get(id);
 }
 
+export function listStudioJobs(limit = 20) {
+  return getDb().prepare(
+    "SELECT id, status, concept, style, created_at, updated_at FROM studio_jobs ORDER BY created_at DESC LIMIT ?"
+  ).all(Math.min(40, Math.max(1, limit)));
+}
+
 export async function processNextStudioJob() {
   const db = getDb();
 

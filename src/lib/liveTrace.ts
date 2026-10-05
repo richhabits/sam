@@ -10,3 +10,15 @@ export function appendToolTrace(trace: string[] | undefined, activity: string): 
   const prev = (trace || []).filter((s) => s !== STARTING_STEP);
   return [...prev, activity];
 }
+
+/** Keep only real tool steps on a finished turn — never the warm-up placeholder. */
+export function persistToolTrace(server: string[] | undefined, live: string[] | undefined): string[] | undefined {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const step of [...(server || []), ...(live || [])]) {
+    if (!step || step === STARTING_STEP || seen.has(step)) continue;
+    seen.add(step);
+    out.push(step);
+  }
+  return out.length ? out : undefined;
+}
