@@ -3,8 +3,8 @@
 Everything App Review is likely to ask about the iOS app, with the answer already written.
 Paste the quoted blocks straight into App Store Connect.
 
-The Pocket is a client for a server the user runs themselves. That single fact answers most of
-what follows, and it is the thing to lead with rather than defend later.
+The Pocket chats standalone. Pairing with a Mac is optional. That fact answers most of
+what follows — lead with chat, not a companion-only story.
 
 ---
 
@@ -16,19 +16,21 @@ and the RFC1918 ranges only, and a great many users reach their own machine over
 `100.64.0.0/10` is CGNAT and **not** in those ranges. Narrowing it would break real installs and
 would not remove the question.
 
-> SAM is a client for a server the user runs on their own computer. The app talks to no
-> service we operate — there is no backend, no account, and no telemetry. The user types the
-> address of their own machine (typically a private LAN address such as `192.168.1.x`, or a
-> private VPN address such as `100.x.y.z`), and the app connects to that and nothing else.
+> SAM talks to no service we operate — there is no SAM account, and no telemetry. Pairing uses
+> the address of the user's own machine (typically a private LAN address such as `192.168.1.x`,
+> or a Tailscale address such as `100.x.y.z`).
 >
-> Those endpoints are private IP addresses on hardware the user controls. They cannot be issued
-> a publicly trusted TLS certificate, because no certificate authority will sign a name the user
-> owns privately. Requiring ATS would therefore make the app unable to reach any self-hosted
-> server at all, which is its entire function.
+> Standalone chat is different: after the user allows it, the message goes to the AI provider
+> they picked (named on the consent card). That is HTTPS to those providers, not our server.
 >
-> Traffic is authenticated and confined to the user's own network: the app holds a session token
-> issued by an explicit on-device pairing step, stored in the iOS keychain, and sends it on every
-> request. No request is made to any third-party host.
+> Those paired endpoints are private IP addresses on hardware the user controls. They cannot be
+> issued a publicly trusted TLS certificate, because no certificate authority will sign a name
+> the user owns privately. Requiring ATS for pairing would make the app unable to reach any
+> self-hosted server at all.
+>
+> Pairing traffic is authenticated: the app holds a session token issued by an explicit
+> on-device pairing step, stored in the iOS keychain, and sends it on every request to that
+> machine. We operate no session server.
 
 **If review pushes back**, the fallback that keeps the app working is a scoped exception per
 address — but the address is user-supplied at runtime and cannot be enumerated in `Info.plist`,
@@ -41,8 +43,7 @@ without it the system prompt appears with no reason on it and the connection can
 
 Current string:
 
-> SAM talks to the SAM running on your own computer, usually over your home network. Nothing is
-> sent anywhere else.
+> SAM talks to SAM on your own computer when you pair, usually on your home network. Pairing is optional. Standalone chat uses the AI model you pick and is not limited to your Mac.
 
 ## 3. Privacy — nutrition label and manifest
 
@@ -55,8 +56,9 @@ only in the generated `ios/` directory, which is gitignored and regenerated).
 | `NSPrivacyCollectedDataTypes` | *(empty)* |
 | Accessed APIs | FileTimestamp `C617.1`, UserDefaults `CA92.1`, SystemBootTime `35F9.1` |
 
-App Store Connect nutrition label: **Data Not Collected**. This is literally true — the app has no
-analytics, no crash reporting, no account, and no server of ours to send anything to.
+App Store Connect nutrition label: **Data Not Collected** by *us*. Standalone chat still sends
+the prompt to the AI provider the user picked — that is disclosed in-app and in the privacy
+policy. We have no analytics, no crash reporting, no SAM account, and no session server of ours.
 
 ## 4. Privacy policy URL — required field
 
@@ -77,16 +79,14 @@ iOS keychain via `expo-secure-store`. It ships no encryption of its own.
 
 ## 6. "What does it do / how do we test it?"
 
-Reviewers cannot test the app without a server, and an app that shows a connection screen and
-nothing else reads as broken. Give them one in the review notes, or expect a rejection for
-"incomplete functionality":
+Reviewers do **not** need a Mac. Chat is first paint and works unpaired (free lanes, consent
+before the first cloud send). Demo Mode (••• → Explore the demo) is the zero-network path.
 
-> SAM requires a companion server the user runs on their own computer (free, open source:
-> https://github.com/richhabits/sam). Without it the app can only show its pairing screen.
-> For review we can supply a temporary hosted instance and a pairing code — please request one
-> and we will provide credentials valid for the review period.
+> SAM is source-available (not MIT): https://github.com/richhabits/sam. There is no SAM account.
+> Chat works without a companion server. Pairing is optional for desktop files and yard tasks.
+> For a deterministic offline walkthrough: ••• → Explore the demo.
 
-Have that instance actually running before submitting.
+Do not promise a hosted review instance we do not run.
 
 ## 7. The app icon — a judgement call, left to you
 
@@ -108,8 +108,9 @@ unasked: an app icon is identity, not a defect.
 
 ## 8. Camera and photo library
 
-Both described in `Info.plist`, both used only when the user attaches an image to a message, and
-the image goes to the user's own server. No upload to us — because there is no us.
+Both described in `Info.plist`. Camera is for attaching a photo or scanning a pairing QR.
+A photo the user attaches goes to the AI model they picked — on-device, their Mac, or a cloud
+provider — not to a server we operate. We operate no such server.
 
 ---
 
