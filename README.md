@@ -100,7 +100,7 @@ graph TD
 
 #### Option A: One-Paste Terminal Install (Recommended)
 
-* **macOS (Apple Silicon; Intel uses source until an Intel `.dmg` ships) & Linux:**
+* **macOS (Apple Silicon; Intel Homebrew is 3.5.0 — last Intel DMG — or run 3.7.0 from source) & Linux:**
   ```bash
   curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash
   ```
@@ -114,7 +114,7 @@ graph TD
 Download the latest binaries directly from the [GitHub Releases](https://github.com/richhabits/sam/releases/latest) page:
 * **macOS**: `SAM-x.x.x-arm64.dmg` (Apple Silicon). **Intel `.dmg` is not in the current release** — `install.sh` refuses to install the arm64 image on Intel; use Option C (from source) until that asset exists.
 * **Signed vs unsigned:** a notarized Developer ID build opens with Gatekeeper `accepted` (this Mac's 3.6.0 is `source=Notarized Developer ID`). If Gatekeeper cannot verify, the installer says so and clears quarantine — that is the honest unsigned path, not a silent skip. Overlay (⌥Space) and the Dock icon come from **SAM.app**, not from the browser HUD.
-* **Windows**: `SAM-Setup-x.x.x.exe` (v3.6.0: `SAM-Setup-3.6.0.exe`). One-paste: `docs/install.ps1`. From source: `setup.ps1` + `START-SAM.bat` (no `.sh`). The packaged app starts the yard worker; SmartScreen “More info → Run anyway” is the unsigned path.
+* **Windows**: `SAM-Setup-x.x.x.exe` (v3.7.0: `SAM-Setup-3.7.0.exe`). One-paste: `docs/install.ps1`. From source: `setup.ps1` + `START-SAM.bat` (no `.sh`). The packaged app starts the yard worker; SmartScreen “More info → Run anyway” is the unsigned path.
 * **Linux (x64)**: `SAM-x.x.x.AppImage` (default one-paste → `~/.local/bin/SAM.AppImage`) or `sam_x.x.x_amd64.deb` (`SAM_PKG=deb`). No arm64 Linux build in the current release — `install.sh` says so instead of handing you the amd64 image. Needs `libfuse2` on some Ubuntu 22+ boxes.
 
 #### Option C: Run from Source (Developers)

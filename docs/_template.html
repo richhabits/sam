@@ -448,23 +448,15 @@
     <section>
       <div class="kicker">On Apple devices</div>
       <h2>Made for the Apple ecosystem.</h2>
-      <p class="section-lede">SAM already runs on your Mac. A native app for the rest of your Apple devices is on the way — everything below is <b>coming</b> unless it says otherwise, and none of it is in a public release yet.</p>
+      <p class="section-lede">SAM already runs on your Mac. Pocket for iPhone, iPad and Apple Watch is <b>live on TestFlight</b> — not on the App Store yet. No App Store button, because there is no listing.</p>
       <div class="why">
         <div class="card">
           <h3>Native app</h3>
-          <p>A SwiftUI app for iPhone, iPad, Mac and Vision Pro. Coming — it is still in App Review.</p>
+          <p>A SwiftUI app for iPhone, iPad and Apple Watch. <a href="https://testflight.apple.com/join/htr4htvY">Join the TestFlight beta</a> — works standalone, no Mac required. App Store is not live.</p>
         </div>
         <div class="card">
-          <h3>Safari extension</h3>
-          <p>Summarise, key points or ask about any page; the page goes to SAM on your own Mac. Coming.</p>
-        </div>
-        <div class="card">
-          <h3>Share extension</h3>
-          <p>Send a link, text or file to SAM from any app's share sheet. Coming.</p>
-        </div>
-        <div class="card">
-          <h3>Siri, Shortcuts &amp; widgets</h3>
-          <p>Ask by voice, run SAM from Shortcuts, and keep it on your Home Screen. Coming.</p>
+          <h3>Safari, Share, Siri &amp; widgets</h3>
+          <p>In that TestFlight build: summarise a page, share into SAM, ask Siri, and use the widget. Pair with your Mac when you want desktop tools.</p>
         </div>
       </div>
       <p class="sub-note">Safari on Mac can already add the in-browser SAM to your Dock (File → Add to Dock), and Safari on iPhone and iPad to your Home Screen.</p>
@@ -472,12 +464,12 @@
 
     <!-- HOW -->
     <section>
-      <div class="kicker">Up and running in 3 minutes</div>
-      <h2>Clone it. Key it. Go.</h2>
+      <div class="kicker">Up and running</div>
+      <h2>Download it. Chat. That's the app.</h2>
       <div class="steps">
-        <div class="step"><div class="num"></div><h4>Grab it</h4><p>Paste one line into Terminal — <code>./setup.sh</code> installs everything and starts it.</p></div>
-        <div class="step"><div class="num"></div><h4>Give it a brain</h4><p>Drop in one free key (Groq takes 30 seconds). SAM rotates across all {{BRAINS}}.</p></div>
-        <div class="step"><div class="num"></div><h4>Talk to it</h4><p>Open <code>localhost:8787</code>, tell it your name, and start getting things done.</p></div>
+        <div class="step"><div class="num"></div><h4>Grab it</h4><p>Use a Download button, or paste the one-liner. Homebrew on Apple Silicon is 3.7.0; Intel Homebrew is the last Intel DMG (3.5.0).</p></div>
+        <div class="step"><div class="num"></div><h4>Talk</h4><p>Chat is the app. It starts on a <b>free lane</b> — no key, no account. Your name is optional. Skip and type.</p></div>
+        <div class="step"><div class="num"></div><h4>Faster, if you want</h4><p>A free Groq key in Settings is optional extra speed. Never required. Paid models only if you add your own key and choose them.</p></div>
       </div>
     </section>
 
@@ -500,7 +492,7 @@
 
   <div class="shell">
     <footer>
-      <span class="mono">© 2026 HECTIC · Smart Artificial Mind · proprietary</span>
+      <span class="mono">© 2026 HECTIC · Smart Artificial Mind · source-available</span>
       <!-- These were NESTED anchors — an <a> inside an <a>, which is invalid and which browsers
            silently repair by closing the outer one early, so the trailing link landed wherever the
            parser decided. Flattened. "privacy" is first because App Store Connect requires a
