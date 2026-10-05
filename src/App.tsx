@@ -193,16 +193,6 @@ const MemoizedMessageRow = memo(function MemoizedMessageRow({
             </div>
           )}
 
-          {/* Tool execution badge row */}
-          <div className="sam-tool-badges" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60A5FA', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
-              <Icon name="globe" size={13} /> Used Web Search
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', color: '#FACC15', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
-              <Icon name="terminal" size={13} /> Used Python Tool
-            </span>
-          </div>
-
           {m.noBrain && (
             <div className="nobrain-cta" style={{ marginTop: '12px' }}>
               <Icon name="sparkle" />
@@ -575,6 +565,13 @@ export default function App() {
     checkUpdate().then((u) => u.behind && setUpdate(u)).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
     refreshLog();
     inputRef.current?.focus();
+    try {
+      const open = new URLSearchParams(location.search).get("open");
+      if (open === "connectors") {
+        setConnectorsOpen(true);
+        history.replaceState({}, "", location.pathname);
+      }
+    } catch { /* query parse is best-effort — chat still paints */ }
     // SAM reaching out first — morning brief / due nudges appear as messages.
     const showProactive = () => getProactive().then((p) => {
       if (p.items?.length) {
@@ -1589,7 +1586,7 @@ export default function App() {
 
         {/* Center: Agent / Yard / Studio / FlipIt segmented control */}
         <div className="header-tabs" style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: 3, justifySelf: "center" }}>
-          <button type="button" title="Agent — chat with SAM" aria-current="page" style={{ background: "var(--accent-soft)", color: "var(--accent-text)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "default" }}>
+          <button type="button" title="Agent — chat with SAM" aria-current="page" onClick={() => { setSurface("agent"); setTimeout(() => inputRef.current?.focus(), 0); }} style={{ background: "var(--accent-soft)", color: "var(--accent-text)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             Agent
           </button>
           <button type="button" onClick={openYard} title="The Yard — what SAM has built" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -1598,7 +1595,7 @@ export default function App() {
           <button type="button" onClick={openStudio} title="Studio — image, video, motion, speak and canvas" style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Studio
           </button>
-          <button type="button" onClick={openFlipit} title={status?.flipitBuiltin === false ? "FLIP IT — now an add-on; connect it in Settings" : "FlipIt — arbitrage desk & Kelly risk shield"} style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={openFlipit} title={status?.flipitBuiltin === true ? "FLIP IT — your paper rig" : "FLIP IT — add-on; connect it in Settings"} style={{ background: "transparent", color: "var(--muted)", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             FLIP IT
           </button>
         </div>
@@ -1607,6 +1604,13 @@ export default function App() {
         <div className="bar-right" style={{ display: "flex", alignItems: "center", gap: "8px", justifySelf: "end" }}>
           <button type="button" className="icon-btn ghost" onClick={() => setHistoryOpen(!historyOpen)} title="Toggle Sidebar (⌘K for new)" aria-label="Toggle Sidebar" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
             <Icon name="grid" size={15} />
+          </button>
+
+          <button type="button" className="icon-btn ghost" onClick={() => setMemoryOpen(true)} title="Memory — what SAM remembers" aria-label="Memory" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
+            <Icon name="brain" size={15} />
+          </button>
+          <button type="button" className="icon-btn ghost" onClick={lookThroughCamera} title="Look through the camera" aria-label="Look" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--muted)", cursor: 'pointer' }}>
+            <Icon name="eye" size={15} />
           </button>
 
           {/* Phone Pairing QR Button */}
@@ -1935,7 +1939,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "FLIP IT is an add-on now — connect it" : "Arbitrage desk & Kelly risk shield"}</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === true ? "Your paper rig on this Mac" : "Add-on — connect it to see the rig"}</div>
                 </div>
               </button>
             </div>
@@ -2038,7 +2042,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F3F4F6' }}>FLIP IT</div>
-                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === false ? "Now an add-on — connect it in Settings" : "Multi-exchange arbitrage & Kelly risk"}</div>
+                  <div style={{ fontSize: 11, color: '#8A909D', lineHeight: 1.3 }}>{status?.flipitBuiltin === true ? "Your paper rig on this Mac" : "Add-on — connect it in Settings"}</div>
                 </div>
               </button>
 
@@ -2265,16 +2269,16 @@ export default function App() {
             <input className="roster-search" value={rosterSearch} onChange={(e) => setRosterSearch(e.target.value)} placeholder="Search the roster — name, discipline, skill…" autoFocus />
             <div className="roster-grid">
               {roster.filter((a) => { const q = rosterSearch.trim().toLowerCase(); return !q || `${a.name} ${a.modeledOn} ${a.brief}`.toLowerCase().includes(q); }).map((a) => (
-                <div key={a.id} className="roster-card">
+                <button type="button" key={a.id} className="roster-card" onClick={() => { setRosterOpen(false); setSurface("agent"); setInput(`/team ${a.name} — `); setTimeout(() => inputRef.current?.focus(), 0); }} title={`Start a team job with ${a.name}`}>
                   <div className="rc-emoji">{a.emoji}</div>
                   <div className="rc-body">
                     <div className="rc-name">{a.name}</div>
                     <div className="rc-modeled">{a.modeledOn}</div>
                     <div className="rc-brief">{a.brief}</div>
                   </div>
-                </div>
+                </button>
               ))}
-              {roster.length === 0 && <div className="roster-empty">Loading the roster…</div>}
+              {roster.length === 0 && <div className="roster-empty">Looking up the team… or type <b>/team</b> in chat.<div style={{ marginTop: 12 }}><button type="button" className="icon-btn" onClick={() => { setRosterOpen(false); setInput("/team "); setTimeout(() => inputRef.current?.focus(), 0); }}>Start a team job</button></div></div>}
             </div>
           </div>
         </div>
@@ -2362,10 +2366,10 @@ export default function App() {
           { icon: "brain", label: "Memory", run: () => setMemoryOpen(true) },
           { icon: "key", label: "API keys & providers", run: () => setAdminOpen(true) },
           { icon: "lock", label: "The Safe (encrypted secrets)", run: () => setSafeOpen(true) },
-          { icon: "markets", label: status?.flipitBuiltin === false ? "FLIP IT (add-on — how to connect)" : "FLIP IT (your £5 trading rig)", run: () => openFlipit() },
+          { icon: "markets", label: status?.flipitBuiltin === true ? "FLIP IT (your paper rig)" : "FLIP IT (add-on — connect it)", run: () => openFlipit() },
           { icon: "book", label: "Notebooks (grounded research)", run: () => setNotebookOpen(true) },
           { icon: "chart", label: "Live usage", run: () => setUsageOpen(true) },
-          ...(status?.flipitBuiltin === false ? [] : [{ icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) }]),
+          ...(status?.flipitBuiltin === true ? [{ icon: "markets", label: "MetaTrader 5 (read-only)", run: () => setMt5Open(true) }] : []),
           { icon: "sparkle", label: "Power up SAM (free key wizard)", run: () => setWizardOpen(true) },
           { icon: "settings", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "search", label: "Find in conversation", hint: "⌘F", run: () => { setFindOpen(true); setTimeout(() => findRef.current?.focus(), 40); } },

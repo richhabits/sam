@@ -151,7 +151,7 @@ export default function FlipItView() {
       });
   }, [totalEquity, peakEquity, spreads]);
 
-  const [d, setD] = useState<{ refused?: boolean } | null>(null);
+  const [d, setD] = useState<{ refused?: boolean; present?: boolean } | null>(null);
 
   useEffect(() => {
     // Note: getFlipit() reads a separate, unrelated paper-trading rig's state — its `equity`
@@ -162,6 +162,7 @@ export default function FlipItView() {
       })
       .catch((e: any) => {
         if (e?.locked || e?.status === 401 || e?.status === 403) setD({ refused: true });
+        else setD({ present: false });
       });
   }, []);
 
@@ -729,6 +730,39 @@ export default function FlipItView() {
       </div>
     </div>
   );
+
+  if (d === null) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#080C13", color: "var(--muted)", fontFamily: "var(--sans)" }}>
+        Looking for your rig…
+      </div>
+    );
+  }
+  if (d.refused) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#080C13", color: "var(--text)", fontFamily: "var(--sans)", padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: "center", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 17, fontWeight: 750, marginBottom: 8 }}>This window isn&apos;t allowed to read the rig</div>
+          <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 14 }}>FLIP IT status is loopback-only. Open it from the desktop app, or pair this browser.</div>
+          <button type="button" onClick={() => { location.href = location.pathname; }} style={{ background: "var(--accent)", color: "#0E0F12", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>Back to chat</button>
+        </div>
+      </div>
+    );
+  }
+  if (d.present === false) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#080C13", color: "var(--text)", fontFamily: "var(--sans)", padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: "center", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 17, fontWeight: 750, marginBottom: 8 }}>No paper rig on this Mac</div>
+          <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 14 }}>SAM does not invent a balance. Connect the FLIP IT add-on, or open the FLIP IT app if you already run one.</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button type="button" onClick={() => { location.href = `${location.pathname}?open=connectors`; }} style={{ background: "var(--accent)", color: "#0E0F12", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>Connect add-on</button>
+            <button type="button" onClick={() => { location.href = location.pathname; }} style={{ background: "transparent", color: "inherit", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", fontWeight: 700, cursor: "pointer" }}>Back to chat</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

@@ -1378,7 +1378,7 @@ pre.code[data-lang]::before { content: attr(data-lang); position: absolute; top:
 .roster-search { margin: 0 20px 14px; font: inherit; font-size: 15px; color: var(--text); background: transparent; border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 14px; }
 .roster-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .roster-grid { overflow-y: auto; padding: 0 20px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-.roster-card { display: flex; gap: 12px; background: transparent; border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; transition: border-color .12s, transform .05s; }
+.roster-card { display: flex; gap: 12px; background: transparent; border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; transition: border-color .12s, transform .05s; cursor: pointer; text-align: left; color: inherit; font: inherit; width: 100%; }
 .roster-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .rc-emoji { font-size: 24px; line-height: 1; flex: none; }
 .rc-name { font-size: 15px; font-weight: 700; color: var(--text); }

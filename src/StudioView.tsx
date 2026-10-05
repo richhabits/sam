@@ -69,6 +69,7 @@ const EXAMPLES: Record<Mode, string[]> = {
 
 const HISTORY_KEY = "sam.studio.history";
 const GOLD = "#D9A05B";
+const VIDEO_KEY_ERROR = "Video needs a fal, Novita, or SiliconFlow key in Settings. Image still works free — tap Make a still.";
 
 function loadHistory(): Generation[] {
   try {
@@ -121,6 +122,7 @@ export default function StudioView() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [stillOffer, setStillOffer] = useState<string | null>(null);
 
   const aspect = ASPECTS.find((a) => a.id === aspectId) ?? ASPECTS.find((a) => a.id === "16:9") ?? {
     id: "16:9", label: "16:9", css: "16 / 9", w: 1280, h: 720,
@@ -183,8 +185,30 @@ export default function StudioView() {
   };
 
   const remember = (gen: Generation) => {
-    setHistory((prev) => [gen, ...prev.filter((g) => g.url !== gen.url)].slice(0, 40));
+    setHistory((prev) => {
+      const next = [gen, ...prev.filter((g) => g.url !== gen.url)].slice(0, 40);
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* private mode — strip still shows this session */ }
+      return next;
+    });
     setActiveId(gen.id);
+  };
+
+  const reuseActive = () => {
+    if (!active) return;
+    setPrompt(active.prompt);
+    setMode(active.mode);
+    setStyle(active.style);
+    setError(null);
+    setStillOffer(null);
+  };
+
+  const refineActive = () => {
+    if (!active) return;
+    setMode("canvas");
+    setPrompt("");
+    setActiveId(active.id);
+    setError(null);
+    setStillOffer(null);
   };
 
   const compilePrompt = useCallback(async (): Promise<string> => {
@@ -271,28 +295,23 @@ export default function StudioView() {
 
     setBusy(true);
     setError(null);
+    setStillOffer(null);
     setProgress(12);
     const tick = window.setInterval(() => setProgress((p) => (p < 88 ? p + 6 : p)), 500);
 
     try {
       const compiled = await compilePrompt();
       const wantsVideo = mode === "video" || mode === "motion" || mode === "speak";
-      let result = wantsVideo ? await generateVideo(compiled) : await generateStill(compiled);
-      let kind: Kind = wantsVideo ? "video" : "image";
-
-      if (wantsVideo && !result.url) {
-        const still = await generateStill(compiled);
-        if (still.url) {
-          result = still;
-          kind = "image";
-          flash("Video lane needs a free-credit key — made a still instead.");
-        }
-      }
+      const result = wantsVideo ? await generateVideo(compiled) : await generateStill(compiled);
+      const kind: Kind = wantsVideo ? "video" : "image";
 
       if (!result.url) {
-        setError(result.error || (wantsVideo
-          ? "Video needs a fal, Novita, or SiliconFlow key in Settings. Image still works free."
-          : "Could not make that still. Try again in a moment."));
+        if (wantsVideo) {
+          setError(VIDEO_KEY_ERROR);
+          setStillOffer(compiled);
+        } else {
+          setError(result.error || "Could not make that still. Try again in a moment.");
+        }
         return;
       }
 
@@ -314,6 +333,37 @@ export default function StudioView() {
       setError("Could not reach SAM Studio. Is the app still running?");
     } finally {
       window.clearInterval(tick);
+      setBusy(false);
+    }
+  };
+
+  const makeStillInstead = async () => {
+    if (!stillOffer || busy) return;
+    setBusy(true);
+    setError(null);
+    setProgress(12);
+    try {
+      const still = await generateStill(stillOffer);
+      if (!still.url) {
+        setError(still.error || "Could not make that still. Try again in a moment.");
+        return;
+      }
+      remember({
+        id: `gen-${Date.now()}`,
+        url: still.url,
+        kind: "image",
+        prompt: stillOffer,
+        mode: "image",
+        style,
+        at: Date.now(),
+      });
+      setMode("image");
+      setStillOffer(null);
+      setProgress(100);
+      flash("Still ready.");
+    } catch {
+      setError("Could not reach SAM Studio. Is the app still running?");
+    } finally {
       setBusy(false);
     }
   };
@@ -532,6 +582,13 @@ export default function StudioView() {
                 </div>
               )}
 
+              {active && !busy && (
+                <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 6 }}>
+                  <button type="button" onClick={reuseActive} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Reuse</button>
+                  <button type="button" onClick={refineActive} style={{ ...ghostBtn, background: "rgba(10,10,12,0.85)" }}>Refine</button>
+                </div>
+              )}
+
               {busy && (
                 <div style={{
                   position: "absolute", left: 16, right: 16, bottom: 16, height: 4,
@@ -551,6 +608,13 @@ export default function StudioView() {
                 color: error ? "#F0A0A0" : GOLD, border: `1px solid ${error ? "#5A2222" : "#4A3A20"}`,
               }}>
                 {error || note}
+                {stillOffer && (
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" onClick={() => void makeStillInstead()} disabled={busy} style={ghostBtn}>
+                      Make a still
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <div style={{
@@ -606,7 +670,14 @@ export default function StudioView() {
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => setActiveId(g.id)}
+                  onClick={() => {
+                    setActiveId(g.id);
+                    setPrompt(g.prompt);
+                    setMode(g.mode);
+                    setStyle(g.style);
+                    setError(null);
+                    setStillOffer(null);
+                  }}
                   title={g.prompt}
                   style={{
                     width: 120, flexShrink: 0, borderRadius: 8, overflow: "hidden", cursor: "pointer",

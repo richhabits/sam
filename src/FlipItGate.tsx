@@ -1,30 +1,60 @@
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import FlipItView from "./FlipItView";
 import { getStatus } from "./lib/api";
 
-// FLIP IT is its own app now (docs/decisions/0001-flipit-is-an-add-on.md). The built-in desk only
-// renders when the server says SAM_FLIPIT_BUILTIN=1; otherwise this card points at the add-on.
-// Wiring only — FlipItView itself is untouched.
+// FLIP IT is its own app (docs/decisions/0001-flipit-is-an-add-on.md). The built-in desk
+// only renders when the server says SAM_FLIPIT_BUILTIN=1. Anything else — missing flag,
+// old server, unreachable — is the add-on card, not a fake £10k terminal.
+
 export default function FlipItGate() {
   const [builtin, setBuiltin] = useState<boolean | null>(null);
   useEffect(() => {
-    // An old server with no flag keeps today's behaviour; an unreachable one shows the card's pointer too.
-    getStatus().then((s) => setBuiltin(s?.flipitBuiltin !== false)).catch(() => setBuiltin(false));
+    getStatus()
+      .then((s) => setBuiltin(s?.flipitBuiltin === true))
+      .catch(() => setBuiltin(false));
   }, []);
-  if (builtin === null) return null;
+
+  const backToChat = () => { location.href = location.pathname; };
+  const connectAddon = () => { location.href = `${location.pathname}?open=connectors`; };
+
+  if (builtin === null) {
+    return (
+      <div style={shell}>
+        <div style={{ color: "var(--muted, #9CA3AF)", fontSize: 14 }}>Looking for FLIP IT…</div>
+      </div>
+    );
+  }
   if (builtin) return <FlipItView />;
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--bg, #000)", color: "var(--text, #F3F4F6)", fontFamily: "var(--sans, system-ui)", padding: 16 }}>
-      <div style={{ maxWidth: 420, background: "#16181D", border: "1px solid #232730", borderRadius: 12, padding: "18px 20px", lineHeight: 1.5 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>FLIP IT is its own app now</div>
-        <div style={{ fontSize: 13.5, color: "var(--muted, #9CA3AF)" }}>
-          Connect it as an add-on and SAM can read your rig (status, ledger, candidates) without ever trading.
-          In SAM, open API keys & providers, then Connected Apps, then Integrations, and choose FLIP IT (add-on).
+    <div style={shell}>
+      <div style={{ maxWidth: 440, background: "#16181D", border: "1px solid #232730", borderRadius: 14, padding: "22px 24px", lineHeight: 1.5 }}>
+        <div style={{ fontSize: 16, fontWeight: 750, marginBottom: 8 }}>FLIP IT is an add-on</div>
+        <div style={{ fontSize: 13.5, color: "var(--muted, #9CA3AF)", marginBottom: 16 }}>
+          SAM does not trade. Connect FLIP IT as a read-only add-on and it can show your rig — status, ledger, candidates — without placing an order.
         </div>
-        <button type="button" onClick={() => { location.href = location.pathname; }} style={{ marginTop: 12, background: "transparent", color: "inherit", border: "1px solid #232730", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer" }}>
-          Open SAM
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={connectAddon} style={primary}>
+            Connect add-on
+          </button>
+          <button type="button" onClick={backToChat} style={ghost}>
+            Back to chat
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+const shell: CSSProperties = {
+  minHeight: "100vh", display: "grid", placeItems: "center",
+  background: "var(--bg, #000)", color: "var(--text, #F3F4F6)",
+  fontFamily: "var(--sans, system-ui)", padding: 16,
+};
+const primary: CSSProperties = {
+  background: "var(--accent, #7C9EFF)", color: "#0E0F12", border: "none",
+  borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer",
+};
+const ghost: CSSProperties = {
+  background: "transparent", color: "inherit", border: "1px solid #232730",
+  borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+};
