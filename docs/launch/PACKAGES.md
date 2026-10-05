@@ -1,6 +1,10 @@
 # Package-manager submissions (winget · Flathub)
 
-SAM already ships via **Homebrew cask** (`brew install --cask richhabits/tap/sam`, auto-bumped each release). These are the prepped submissions for the other two big managers. Manifest templates live in `packaging/`; `scripts/bump-packages.mjs` fills them from a release's assets into `packaging/out/`.
+SAM already ships via **Homebrew cask** (`brew install --cask richhabits/tap/sam`).
+**Apple Silicon is 3.7.0.** **Intel stays on 3.5.0** (3.7.0 did not publish `SAM-3.7.0.dmg`).
+The tap is not auto-bumped on every release — the old hourly job required both Mac hashes and
+failed while the cask sat stale. Edit `richhabits/homebrew-tap` by hand when a new Intel DMG exists.
+These are the prepped submissions for the other two big managers. Manifest templates live in `packaging/`; `scripts/bump-packages.mjs` fills them from a release's assets into `packaging/out/`.
 
 ## Release-workflow hook (auto-bump)
 After the installers + `SHA256SUMS.txt` are attached to a release, run:

@@ -17,6 +17,11 @@
 </p>
 
 ```bash
+# macOS Homebrew (Apple Silicon = 3.7.0; Intel = last DMG 3.5.0)
+brew install --cask richhabits/tap/sam
+```
+
+```bash
 # macOS & Linux One-Liner
 curl -fsSL https://raw.githubusercontent.com/richhabits/sam/main/docs/install.sh | bash
 ```
