@@ -1,7 +1,7 @@
 # Show HN draft (v1.6.0)
 
 **Title** (recommended):
-> Show HN: SAM – a private, local-first AI assistant that does the work (MIT)
+> Show HN: SAM – a private, local-first AI assistant that does the work
 
 *Alternates to A/B:*
 > - Show HN: SAM – a local-first AI agent that writes its own tools, free on your own machine
@@ -17,7 +17,7 @@ in the title. Post Tue–Thu ~8–10am US Eastern.)*
 **First comment (post immediately after submitting):**
 
 Hi HN — solo maker here (under HECTIC). SAM is a private AI assistant that runs on your own machine and
-actually *does* things — web, files, terminal, email, GitHub — instead of just chatting. MIT-licensed,
+actually *does* things — web, files, terminal, email, GitHub — instead of just chatting. Source-available,
 free to run, and it works offline against a local Ollama model. A few things I think are worth your time:
 
 **1. Free-first cascade router.** A fast, model-free classifier scores each request and sends it to the
@@ -42,7 +42,7 @@ isn't a security mechanism — worth repeating, because a lot of "sandboxes" out
 
 **3. Knows your stuff, acts everywhere.** A semantic cache returns repeat questions in ~2ms/0 tokens; an
 on-device index embeds folders you pick and cites the source file; a system-wide ⌥Space / Alt+Space
-overlay acts on your current selection in any app. 173 tools, a team-of-agents mode for big jobs.
+overlay acts on your current selection in any app. 249 tools, a team-of-agents mode for big jobs.
 
 **Safety model** (since it runs shell/email/fs through an LLM): dangerous actions (shell/send/delete/push)
 *always* ask first — no bypass by autopilot or a background swarm. All untrusted content it reads (web,

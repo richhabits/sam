@@ -10,7 +10,7 @@
 A free, private team of AI agents that lives on your computer, remembers everything, and actually does
 the work — web, files, terminal, email, calls, GitHub. Local-first and cross-platform (macOS · Windows ·
 Linux). It routes to **free cloud tiers and your local Ollama model first**, so most tasks cost nothing,
-and it **asks before anything dangerous**. MIT.
+and it **asks before anything dangerous**. Source-available (see `LICENSE`).
 
 **The −86% number (reproducible — `npm run bench`):** across a fixed 20-task suite, the free-first router
 took the cost from **$0.031951 → $0.004423 (−86%)** and the average latency from **239ms → 129ms**, with

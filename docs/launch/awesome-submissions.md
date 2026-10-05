@@ -4,11 +4,12 @@
 likely to trip you. File these **after** the demo GIF is live and the v1.6.0 release is published —
 maintainers click straight through to the repo, so the front page must be whole first.
 
-> **Counts are truth-checked** against `docs/stats.json` (CI enforces no drift): **173 tools · 78 agents
-> · 25 skills · 40 free brains.** Update these numbers if `npm run stats` changes them before you file.
+> **Counts** from `docs/stats.json`: **249 tools · 78 agents · 34 skills · 40 free brains.**
+> Re-run `npm run stats` before filing.
 >
-> **Licensing: clear.** SAM is **MIT** — all five lists (incl. OSS-only awesome-selfhosted / awesome-electron)
-> accept it. Every list forbids marketing adjectives in the description; the entries below are already neutral.
+> **Licensing: SAM is source-available, not MIT** (see `LICENSE`). You may run an official build;
+> copying or redistributing the source needs written permission. Do **not** file on MIT/FOSS-only
+> lists (awesome-selfhosted, awesome-electron “Open source”) until the licence actually matches.
 
 Before each PR: **read that list's CONTRIBUTING**, place the entry **alphabetically** in the right section,
 one clean commit, link the **repo** (not the landing page).
@@ -19,14 +20,14 @@ one clean commit, link the **repo** (not the landing page).
 
 **Entry** (place alphabetically in the open-source agents section):
 ```md
-- [SAM](https://github.com/richhabits/sam) - Local-first personal AI assistant with a team-of-agents mode and 173 tools; routes to your local Ollama model or rotating free cloud tiers, and asks before any dangerous action.
+- [SAM](https://github.com/richhabits/sam) - Local-first personal AI assistant with a team-of-agents mode and 249 tools; routes to your local Ollama model or rotating free cloud tiers, and asks before any dangerous action.
 ```
 **PR title:** `Add SAM`
 **PR body:**
-> Adds SAM — a local-first, MIT-licensed personal AI assistant. It runs a team of specialist agents,
-> ships 173 tools (web, files, shell, email, GitHub…), routes each task to the cheapest brain that fits
+> Adds SAM — a local-first, source-available personal AI assistant. It runs a team of specialist agents,
+> ships 249 tools (web, files, shell, email, GitHub…), routes each task to the cheapest brain that fits
 > (local Ollama → free cloud tiers), and gates every dangerous action behind an explicit ask-first prompt.
-> Repo: https://github.com/richhabits/sam · MIT · actively maintained.
+> Repo: https://github.com/richhabits/sam · source-available · actively maintained.
 
 **Watch:** alphabetical order within the section; one-line description only.
 
@@ -37,12 +38,12 @@ one clean commit, link the **repo** (not the landing page).
 This list uses **tables** per category. SAM fits the **assistants / desktop** category. Match the existing
 column layout — commonly `| Name | Description | Links |`:
 ```md
-| [SAM](https://github.com/richhabits/sam) | Personal AI assistant that defaults to your local Ollama model when no cloud key is set — private and fully offline — with 173 tools and a team-of-agents mode. | [GitHub](https://github.com/richhabits/sam) |
+| [SAM](https://github.com/richhabits/sam) | Personal AI assistant that defaults to your local Ollama model when no cloud key is set — private and fully offline — with 249 tools and a team-of-agents mode. | [GitHub](https://github.com/richhabits/sam) |
 ```
 **PR title:** `Add SAM`
 **PR body:**
 > SAM runs entirely on your machine and defaults to your local Ollama model when you have no cloud keys —
-> private and offline-capable. 173 tools, a team-of-agents mode, MIT-licensed. https://github.com/richhabits/sam
+> private and offline-capable. 249 tools, a team-of-agents mode, source-available. https://github.com/richhabits/sam
 
 **Watch:** copy the **exact column structure** of the section you add to (tables differ per section); lead
 with the *local/offline* capability — that's what this list is about.
@@ -56,7 +57,7 @@ Check the current CONTRIBUTING — you may add a YAML/structured entry rather th
 content to submit:
 - **Name:** SAM
 - **URL:** https://github.com/richhabits/sam
-- **Description:** Personal AI assistant that runs on your own machine; keys, memory and data stay local, nothing leaves in offline mode, zero telemetry. MIT.
+- **Description:** Personal AI assistant that runs on your own machine; keys, memory and data stay local, nothing leaves in offline mode, zero telemetry. Source-available.
 - **Tags/section:** AI assistants / self-hosted
 
 **Markdown fallback** (if a section still takes list entries):
@@ -66,25 +67,27 @@ content to submit:
 **PR title:** `Add SAM (private, local-first AI assistant)`
 **PR body:**
 > SAM is a personal AI assistant that runs locally. Keys, memory and files stay on-device; in offline mode
-> (local Ollama) nothing leaves the machine; zero telemetry, no phone-home. MIT-licensed. Fits the AI/assistants
+> (local Ollama) nothing leaves the machine; zero telemetry, no phone-home. source-available. Fits the AI/assistants
 > section. https://github.com/richhabits/sam
 
 **Watch:** state the **privacy property** concretely (local data, offline, no telemetry) — that's the bar here.
 
 ---
 
-## 4. awesome-selfhosted — `awesome-selfhosted/awesome-selfhosted`  ⚠️ eligible, but the trickiest fit
+## 4. awesome-selfhosted — `awesome-selfhosted/awesome-selfhosted`  ❌ do not file
+
+That list is FOSS/MIT-shaped. SAM's licence is source-available, not MIT. Do not submit until LICENSE matches.
 
 Strict format, **alphabetical**, must be maintained + reasonably mature. **Do NOT use "free" or "open-source"
 in the description** (the whole list is FOSS — they reject those adjectives). Needs `License` + `Language`.
 ```md
-- [SAM](https://github.com/richhabits/sam) - Personal AI assistant that runs on your own machine with 173 tools and a team-of-agents mode; routes to a local Ollama model or your own cloud API keys, with an ask-first safety gate on dangerous actions. ([Source Code](https://github.com/richhabits/sam)) `MIT` `Nodejs`
+- [SAM](https://github.com/richhabits/sam) - Personal AI assistant that runs on your own machine with 249 tools and a team-of-agents mode; routes to a local Ollama model or your own cloud API keys, with an ask-first safety gate on dangerous actions. ([Source Code](https://github.com/richhabits/sam)) `Source-available` `Nodejs`
 ```
 **PR title:** `Add SAM`
 **PR body:**
 > Adds SAM under the AI/assistant area. It runs on the user's own machine (desktop app / local server on
 > 127.0.0.1), stores keys + memory locally, and can run fully offline against a local Ollama model.
-> MIT, Node.js/TypeScript, actively maintained. https://github.com/richhabits/sam
+> Source-available, Node.js/TypeScript, actively maintained. https://github.com/richhabits/sam
 
 **Watch (read this before filing):** awesome-selfhosted leans toward **server software you self-host**, and
 SAM is primarily a **local desktop app** — a maintainer may question the fit. Lead with the fact that the
@@ -95,7 +98,9 @@ to get pushback — file it last, and be ready to make the self-hosting case.**
 
 ---
 
-## 5. awesome-electron — `sindresorhus/awesome-electron`  ✅ eligible (high bar)
+## 5. awesome-electron — `sindresorhus/awesome-electron`  ❌ do not file under Open source
+
+The **Apps → Open source** section expects an OSI licence. SAM is source-available, not MIT.
 
 Under **Apps → Open source**, **alphabetical**. sindresorhus rules: description must **not** start with
 "A/An/The", no marketing words, end with a period.
@@ -104,7 +109,7 @@ Under **Apps → Open source**, **alphabetical**. sindresorhus rules: descriptio
 ```
 **PR title:** `Add SAM`
 **PR body:**
-> SAM is an MIT-licensed Electron desktop app (macOS/Windows/Linux): a private, local-first personal AI
+> SAM is a source-available Electron desktop app (macOS/Windows/Linux): a private, local-first personal AI
 > assistant with a global ⌥Space / Alt+Space overlay. Signed builds, actively maintained.
 > https://github.com/richhabits/sam
 

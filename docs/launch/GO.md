@@ -37,7 +37,7 @@ File the easy ones first; hold awesome-selfhosted.
 ## The predictable hostile questions — pre-written answers
 
 **"How is it free? What's the catch?"**
-> No catch on the core — it's MIT and runs on your machine, so it costs *me* nothing when you use your own
+> No catch on the core — you can run an official build for free, on your machine, so it costs *me* nothing when you use your own
 > Ollama or free-tier keys. There's an optional hosted "SAM Cloud" for people who don't want to set up keys
 > (that costs me inference, so it's paid) — but it's off, and it never gates anything the free version does.
 
@@ -47,7 +47,7 @@ File the easy ones first; hold awesome-selfhosted.
 > off-by-default, anonymous, whitelist-only (content *cannot* be in a payload). It's all in `docs/PRIVACY.md`.
 
 **"How is this different from Ollama + Open WebUI / Jan?"**
-> Those give you a private local *chat*. SAM is a private local *doer* — 170+ tools, it acts on files/email/
+> Those give you a private local *chat*. SAM is a private local *doer* — 249 tools, it acts on files/email/
 > shell/GitHub, has an ⌥Space overlay anywhere, an on-device index that cites your files, and it learns your
 > preferences locally. Closest on privacy; the difference is it does things, not just talks.
 
@@ -63,8 +63,8 @@ File the easy ones first; hold awesome-selfhosted.
 
 **"Solo dev / will this be maintained?"**
 > Solo today, yes. But the repo maintains itself — automated releases, a daily health watchdog, dependency
-> autopilot, and self-service diagnostics — so my time goes to users, not babysitting. And it's MIT, so it
-> can't be taken away.
+> autopilot, and self-service diagnostics — so my time goes to users, not babysitting. The current licence
+> is source-available (not MIT): you can run the official build; redistributing source needs permission.
 
 ## Rules for replying
 - **Fast, honest, non-defensive.** Concede real weaknesses (model quality on hardest tasks, it's young).

@@ -11,7 +11,7 @@ Space the posts hours apart, tailor each to the sub. Post the demo GIF once it's
 **Title:** SAM: a local-first AI assistant that routes trivial requests to your Ollama model, and runs forged tools in a real process sandbox (86% cheaper than its last version)
 
 **Body:**
-Maker here (solo, MIT-licensed). Sharing SAM — a private AI assistant that runs on your own machine.
+Maker here (solo, source-available). Sharing SAM — a private AI assistant that runs on your own machine.
 
 What this sub will care about: a **cascade router** classifies each request and sends trivial ones
 (greetings, quick maths, short rewrites) to your **local model** (llama3.2:3b out of the box) — *never* a
@@ -28,7 +28,7 @@ static scan). Node's docs literally say vm isn't a security boundary. It now run
 globals — found and fixed before launch, with regression tests. Write-up in `docs/SECURITY-AUDIT.md`.
 
 Also: semantic cache (repeat Qs in ~2ms/0 tokens), on-device file index that cites the source, ⌥Space
-overlay, 173 tools. Keys/memory/files stay local; nothing leaves in offline mode; no telemetry. Repo +
+overlay, 249 tools. Keys/memory/files stay local; nothing leaves in offline mode; no telemetry. Repo +
 one-liner in comments — keen on feedback about the routing and which small model you'd pick as the
 tool-use default.
 
@@ -36,11 +36,11 @@ tool-use default.
 
 ## r/selfhosted — post a few hours later
 
-**Title:** SAM — self-hosted, private AI assistant that takes actions (MIT, ~free per task, one-paste install)
+**Title:** SAM — self-hosted, private AI assistant that takes actions (~free per task, one-paste install)
 
 **Body:**
 Maker here. SAM runs entirely on your own machine — keys, memory, vault and a local file index never
-leave it (nothing at all leaves in offline/Ollama mode). It's a doer: **173 tools** across
+leave it (nothing at all leaves in offline/Ollama mode). It's a doer: **249 tools** across
 web/files/terminal/email/GitHub, a ⌥Space overlay, and it writes its own (sandboxed) tools when it lacks
 one. A cascade router keeps ~100% of a representative workload on free/local brains, so most tasks cost
 nothing.
@@ -57,12 +57,12 @@ feedback welcome.
 
 ## r/privacy — optional third post (privacy angle)
 
-**Title:** SAM: an AI assistant that runs on your machine — keys, memory and files stay local, nothing leaves in offline mode (MIT, no telemetry)
+**Title:** SAM: an AI assistant that runs on your machine — keys, memory and files stay local, nothing leaves in offline mode (no telemetry)
 
 **Body:**
 Maker here. SAM is a personal AI assistant built local-first: your API keys, memory, indexed files and
 vault all stay on your device. In offline mode (a local Ollama model) **nothing leaves the machine at
-all**. No telemetry, no phone-home, MIT-licensed and auditable.
+all**. No telemetry, no phone-home, source-available and auditable.
 
 Because it runs shell/email/files through an LLM, the safety model matters: dangerous actions
 (shell/send/delete/push) *always* ask first — no bypass by any automation mode — and every piece of
@@ -73,5 +73,5 @@ prompt-injection buried in a page can't make it act. Optional at-rest vault encr
 hard questions about the threat model.
 
 ---
-*Consistency check before posting: 173 tools · ~86% cheaper / ~46% faster · signed builds · MIT · zero
+*Consistency check before posting: 249 tools · 78 agents · 34 skills · 40 brains · ~86% cheaper / ~46% faster · source-available · zero
 telemetry. Update counts if `npm run stats` changed them.*

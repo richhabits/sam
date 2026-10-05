@@ -64,6 +64,6 @@ revenue (even 1% at $5) on top, which is ~pure margin.
 
 ## What a buyer is actually buying
 
-Not the code (it's MIT). A buyer is buying: a **retained user base**, a **privacy-differentiated brand**
+Not the code (it's source-available — see `LICENSE`). A buyer is buying: a **retained user base**, a **privacy-differentiated brand**
 in a crowded AI market, a **near-zero-marginal-cost** distribution, and an **ecosystem** (packs) that
 compounds. All of which require the one thing this branch cannot create: **launching and keeping users.**

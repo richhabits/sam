@@ -96,9 +96,12 @@ describe("route contract", () => {
     // "/*splat" is the SPA catch-all — Express 5 requires wildcards to be named and to be a path,
     // so the bare "*" this used to allow is now unparseable (it throws at boot, it does not 404).
     // "/pair" is the browser-facing pairing page (a user opens it to earn a session cookie — a page,
-    // not an API endpoint, like the SPA). Everything else stays under /api.
+    // not an API endpoint, like the SPA).
+    // "/v1/models" and "/v1/chat/completions" are the OpenAI-compatible gateway (clients send the
+    // same paths they would send to api.openai.com). "/what-you-get" lists live free lanes.
     const SPA = new Set(["/*splat", "*"]);
-    const stray = routes.filter((r) => !r.path.startsWith("/api/") && !SPA.has(r.path) && r.path !== "/pair").map((r) => `${r.method} ${r.path}`);
+    const PUBLIC = new Set(["/pair", "/what-you-get", "/v1/models", "/v1/chat/completions"]);
+    const stray = routes.filter((r) => !r.path.startsWith("/api/") && !SPA.has(r.path) && !PUBLIC.has(r.path)).map((r) => `${r.method} ${r.path}`);
     expect(stray).toEqual([]);
   });
 

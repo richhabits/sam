@@ -50,9 +50,8 @@ have both been true while the actual feature did nothing. The bar is:
 
 ## Open items worth picking up
 
-- **Firecrawl MCP `E404`.** `@mendable/firecrawl-mcp-server` fails npm
-  registry lookup on boot (`npm error 404`). This is yours — Claude saw it in
-  a server log but has no access to fix MCP config.
+- **Firecrawl MCP** — closed. Preset uses `npx -y firecrawl-mcp` (npm `firecrawl-mcp@3.27.3`).
+  `@mendable/firecrawl-mcp-server` 404s and must not be used.
 - **ghostdetail Vercel admin-credential rotation** — flagged weeks ago as
   outstanding (a published admin token needed rotating on Vercel). If that's
   done, close it out; if not, it's overdue.

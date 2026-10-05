@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import ChatList from "./ChatList";
 import { ProgressTracker, TraceStrip } from "./components/Trace";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { type AgentResult, type Attachment, addSchedule, approveSwarmAgent, checkUpdate, clearArena, clearMemory, command, confirm as confirmAction, deepResearch, exportMemory, forgetMemory, getArena, getAutopilot, getLog, getMemory, getPreferences, getProactive, getProjects, getQuotes, getRoster, getStatus, getSwarms, getTools, importContext, learnPreference, queueStudioJob, runArena, runUpdate, type Swarm, saveKeys, setAutopilotMode, setElonMode, setUser, startSwarm, streamCommand, streamTeam, yardPairPending } from "./lib/api";
+import { type AgentResult, type Attachment, addSchedule, approveSwarmAgent, checkUpdate, clearArena, clearMemory, command, confirm as confirmAction, deepResearch, exportMemory, forgetMemory, getArena, getAutopilot, getLog, getMemory, getPreferences, getProactive, getProjects, getQuotes, getRoster, getStatus, getSwarms, getTools, importContext, learnPreference, queueStudioJob, runArena, runUpdate, type Swarm, setAutopilotMode, setElonMode, setUser, startSwarm, streamCommand, streamTeam, yardPairPending } from "./lib/api";
 import { renderMarkdown } from "./lib/md";
 import { isStopCommand } from "./lib/stopIntent";
 import { stopSpeaking, speak as ttsSpeak } from "./lib/tts";
@@ -18,6 +18,8 @@ const Admin = lazy(() => import("./Admin"));
 
 import Icon, { ICON_NAMES, type IconName } from "./Icon";
 import { HANDOFF_BLURB, HANDOFF_PROMPT } from "./lib/handoffPrompt";
+import { appendToolTrace, seedLiveTrace, STARTING_STEP } from "./lib/liveTrace";
+import { loadOnboarded, markOnboarded, seedWelcomeOnFinish, welcomeText } from "./lib/onboarding";
 import PairPrompt, { useNeedsPairing } from "./PairPrompt";
 import PersonaPicker from "./PersonaPicker";
 
@@ -405,6 +407,7 @@ export default function App() {
   // (private, on-device Web Audio, every browser). Set localStorage "sam.wake"="0" to opt out.
   const [wakeOn, setWakeOn] = useState(() => { try { return localStorage.getItem("sam.wake") !== "0"; } catch { return true; } });
   const [profile, setProfile] = useState<Profile>(loadProfile);
+  const [onboarded, setOnboarded] = useState(loadOnboarded);
   const [profiles, setProfiles] = useState<Profile[]>(loadProfiles);
   // Add/refresh a profile in the saved list (upsert by name).
   function upsertProfile(p: Profile) {
@@ -414,7 +417,6 @@ export default function App() {
   const [onboardName, setOnboardName] = useState("");
   const [onboardAbout, setOnboardAbout] = useState("");
   const [onboardLang, setOnboardLang] = useState("English");
-  const [onboardKey, setOnboardKey] = useState("");   // OPTIONAL free Groq key — never required
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -710,27 +712,15 @@ export default function App() {
 
   function finishOnboarding() {
     const name = onboardName.trim();
-    if (!name) return;
+    markOnboarded();
+    setOnboarded(true);
     const p = { name, about: onboardAbout.trim() || undefined, language: onboardLang || "English" };
-    setProfile(p); setUser({ ...p, mode, persona }); upsertProfile(p);
-    // Optional free Groq key — if pasted, save it silently (SAM still works fine without it).
-    // A key pasted during onboarding that silently fails to save is the worst version of this
-    // bug: the user believes SAM is set up and it is not. Say so, and keep them moving.
-    // saveKeys(), not a raw fetch. This was the one call in the file that went around api.ts, so it
-    // caught a NETWORK error and nothing else: a 401/403/500 resolved happily and the toast never
-    // fired. The comment directly above says a key that silently fails to save is the worst version
-    // of this bug — and that is exactly what the refused case did.
-    if (onboardKey.trim()) saveKeys("groq", onboardKey.trim()).catch(() => showToast("Couldn't save that key — add it later in Settings."));
-    // ZERO-SETUP: SAM already works on a free no-key brain (+ local Ollama if present) — no keys,
-    // no config. So instead of shoving the keys panel in a brand-new user's face, we greet them and
-    // drop them straight into a working chat. Keys are an OPTIONAL speed/ability boost (the 🔑 button
-    // up top), never a gate. This is the "it just works" first run.
-    setMessages([{
-      role: "sam",
-      text: `Hey ${name} 👋 I'm **SAM** — your private AI, running **free, right on your computer**. Nothing to set up. Ask me anything, or just tell me what you're working on.\n\n_Want me faster, or photos & voice? Tap **🔑 Add free keys** up top — 2 minutes, still free. But you're good to go right now._`,
-      how: "welcome",
-      at: now(),
-    }]);
+    setProfile(p); setUser({ ...p, mode, persona });
+    if (name) upsertProfile(p);
+    // Named hello seeds a greeting. Skip leaves the chips so the first tap *is* the demo.
+    if (seedWelcomeOnFinish(name)) {
+      setMessages([{ role: "sam", text: welcomeText(name), how: "welcome", at: now() }]);
+    }
   }
 
   const refreshLog = () => getLog().then(setLog).catch(() => {/* background refresh — the next poll retries; a toast here would nag */});
@@ -1160,12 +1150,13 @@ export default function App() {
       setLoading(false); abortRef.current = null; return;
     }
 
-    // Normal message → STREAM tokens live.
-    setLive({ text: "", trace: [] });
+    // Normal message → STREAM tokens live. Seed a visible free-lane step immediately —
+    // a blank thinking bubble while the provider warms is the opposite of "the result is the reply".
+    setLive({ text: "", trace: seedLiveTrace() });
     let produced = false, acc = "";
     const onEvent = (e: any) => {
-      if (e.type === "token") { produced = true; acc += e.t; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace || [] })); }
-      else if (e.type === "tool") { produced = true; setLive((l) => ({ text: l?.text || "", trace: [...(l?.trace || []), e.activity] })); }
+      if (e.type === "token") { produced = true; acc += e.t; setLive((l) => ({ text: (l?.text || "") + e.t, trace: l?.trace?.length ? l.trace : seedLiveTrace() })); }
+      else if (e.type === "tool") { produced = true; setLive((l) => ({ text: l?.text || "", trace: appendToolTrace(l?.trace, e.activity) })); }
       else if (e.type === "pending") { produced = true; setLive(null); setPending({ ...e, message: value, projectId: brand || "", tier: QUALITY_TIER[quality] } as AgentResult); }
       else if (e.type === "done") {
         produced = true; setLive(null);
@@ -1179,7 +1170,7 @@ export default function App() {
       try { await streamCommand(value, brand || undefined, QUALITY_TIER[quality], onEvent, abortRef.current.signal, history); break; }
       catch (err: any) {
         if (err?.name === "AbortError") { setLive(null); break; }
-        if (!produced && attempt === 0) { await new Promise((r) => setTimeout(r, 900)); setLive({ text: "", trace: [] }); continue; }
+        if (!produced && attempt === 0) { await new Promise((r) => setTimeout(r, 900)); setLive({ text: "", trace: seedLiveTrace() }); continue; }
         setLive(null);
         // If a partial answer already streamed, KEEP it rather than throwing it away.
         setMessages((m) => [...m, acc.trim()
@@ -1287,30 +1278,25 @@ export default function App() {
 
   const started = messages.length > 0 || !!pending || loading;
 
-  // First-run onboarding — greets a brand-new user and learns their name,
-  // so SAM addresses THEM (great for sharing with a mate).
-  if (!profile.name) {
+  // First-run is a skippable hello — never a setup wall. Skip lands on chat chips.
+  if (!onboarded) {
     return (
       <div className="app onboarding">
         <div className="onboard-card">
           <div className="onboard-emoji">👋</div>
           <div className="onboard-title">Hi, I'm SAM.</div>
           <div className="onboard-by">by <b>HECTIC</b></div>
-          <div className="onboard-sub">Your own AI assistant — I answer, draft, search the web, and take action on your computer. First up, what should I call you?</div>
+          <div className="onboard-sub">Chat is the app. I start on a free lane — no key, no setup. What should I call you? Skip if you'd rather just talk.</div>
           <div className="onboard-pills"><span><Icon name="lock" size={13} /> Private</span><span><Icon name="gift" size={13} /> Free</span><span><Icon name="hand" size={13} /> Takes action</span><span><Icon name="sparkle" size={13} /> Yours</span></div>
           <input className="onboard-input" autoFocus value={onboardName} onChange={(e) => setOnboardName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="Your name" />
+            onKeyDown={(e) => { if (e.key === "Enter") finishOnboarding(); }} placeholder="Your name (optional)" />
           <input className="onboard-input" value={onboardAbout} onChange={(e) => setOnboardAbout(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }} placeholder="What do you do? (optional — helps me help you)" />
+            onKeyDown={(e) => { if (e.key === "Enter") finishOnboarding(); }} placeholder="What do you do? (optional)" />
           <select className="onboard-input" value={onboardLang} onChange={(e) => setOnboardLang(e.target.value)} aria-label="Language">
             {LANGUAGES.map((l) => <option key={l} value={l}>{l === "English" ? "Language: English" : l}</option>)}
           </select>
-          <input className="onboard-input" value={onboardKey} onChange={(e) => setOnboardKey(e.target.value)} type="password"
-            onKeyDown={(e) => { if (e.key === "Enter" && onboardName.trim()) finishOnboarding(); }}
-            placeholder="Optional: Groq API key for extra speed (or skip — SAM's free)" />
-          <div className="onboard-hint">No key? Skip it — SAM works free out of the box. Want it snappy? <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Grab a free Groq key</a> (~30 sec) and paste it above.</div>
-          <button type="button" className="onboard-go" onClick={finishOnboarding} disabled={!onboardName.trim()}>Let's go →</button>
-          <div className="onboard-note">Then try: <b>"what's the weather and directions to the nearest coffee?"</b> — you'll watch SAM use a real tool. Private &amp; free — runs on your computer.</div>
+          <button type="button" className="onboard-go" onClick={finishOnboarding}>Start chatting →</button>
+          <div className="onboard-note">Tap a chip on the next screen — you'll watch SAM work on a free lane. Keys stay in Settings. Never required.</div>
         </div>
       </div>
     );
@@ -1750,10 +1736,10 @@ export default function App() {
         {!started ? (
           <div className="welcome">
             <div className="hello">{greeting(profile.name)}</div>
-            <div className="hello-sub">I can answer, draft, search the web, call people, and take action on your computer. Ask me anything, or try one of these:</div>
+            <div className="hello-sub">Chat is the app. I start on a free lane — no key, no setup. Tap a chip and watch me work, or type anything.</div>
             <div className="chips">
               {SUGGESTIONS.map((s) => (
-                <button type="button" key={s} className="chip" onClick={() => { setInput(s); inputRef.current?.focus(); }}>{s}</button>
+                <button type="button" key={s} className="chip" onClick={() => send(s)}>{s}</button>
               ))}
             </div>
             <div className="tip">{randomTip()}</div>
@@ -1813,14 +1799,12 @@ export default function App() {
             {live && (
               <div className="row sam">
                 <div className="who">SAM</div>
-                {live.trace.length > 0 && <ProgressTracker steps={live.trace} answering={!!live.text} />}
-                {live.text
-                  ? <WidgetRenderer text={live.text} />
-                  : live.trace.length === 0 && <div className="bubble thinking"><span></span><span></span><span></span></div>}
+                <ProgressTracker steps={live.trace.length ? live.trace : [STARTING_STEP]} answering={!!live.text} />
+                {live.text ? <WidgetRenderer text={live.text} /> : null}
               </div>
             )}
             {loading && !live && !pending && (
-              <div className="row sam"><div className="who">SAM</div><div className="bubble thinking"><span></span><span></span><span></span></div></div>
+              <div className="row sam"><div className="who">SAM</div><ProgressTracker steps={[STARTING_STEP]} answering={false} /></div>
             )}
             {pending && !loading && (
               <div className="row sam">

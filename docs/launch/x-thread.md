@@ -4,7 +4,7 @@
 
 1/ What Cursor did for coding, I built for the whole computer.
 
-SAM: a free, private, MIT AI assistant that lives on your computer, knows your files, and *does the work* — web, files, terminal, email, GitHub. Runs on free tiers or fully offline on Ollama. 🧵
+SAM: a free, private, source-available AI assistant that lives on your computer, knows your files, and *does the work* — web, files, terminal, email, GitHub. Runs on free tiers or fully offline on Ollama. 🧵
 
 2/ The trick is a cascade router. Every request is classified in ~0ms: "hi" and quick rewrites go to your LOCAL model (never a paid API), normal stuff to free cloud tiers, hard stuff to the strong free lane. Premium only if you opt in.
 
@@ -18,7 +18,7 @@ It's in the repo and runs against a deterministic mock — reproduce it yourself
 
 6/ ⌥Space (or Alt+Space) over ANY app → highlight text → rewrite / reply / summarize / translate / fix it in place. AI inside whatever you're doing, not in a separate tab.
 
-7/ When SAM lacks a tool, it writes one — drafts a JS function, static-scans it, runs it, saves it DISABLED for you to review. 173 tools ship in the box; forged ones extend it.
+7/ When SAM lacks a tool, it writes one — drafts a JS function, static-scans it, runs it, saves it DISABLED for you to review. 249 tools ship in the box; forged ones extend it.
 
 8/ Security story I'm not hiding: the forge originally ran tools in a `node:vm` sandbox. A pre-launch audit proved that's escapable — `constructor.constructor` reaches the host, → `process` → RCE. Node's own docs say vm isn't a security boundary.
 
@@ -26,7 +26,7 @@ It's in the repo and runs against a deterministic mock — reproduce it yourself
 
 10/ Private by design: keys, memory, files stay local; nothing leaves in offline mode; zero telemetry. Dangerous actions (shell/send/delete/push) always ask first. Signed + notarized desktop builds.
 
-11/ Free, forever, MIT, by @HECTIC. Star it, break it, tell me what's missing 👇
+11/ Free, forever, source-available, by @HECTIC. Star it, break it, tell me what's missing 👇
 https://github.com/richhabits/sam
 
 ---

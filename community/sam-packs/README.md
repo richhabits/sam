@@ -23,4 +23,4 @@ In SAM → **Settings → Packs → Browse community**, or import a `.sampack` f
 node validate.mjs        # validates every packs/*.sampack
 ```
 
-MIT-licensed, like SAM.
+Source-available, like SAM (see the root `LICENSE`).

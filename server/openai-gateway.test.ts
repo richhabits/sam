@@ -116,7 +116,6 @@ describe("chat routing", () => {
     object: "model",
     created: 0,
     owned_by: over.id.split("/")[0],
-    sam: { provider: over.id.split("/")[0], upstream: over.id.slice(over.id.indexOf("/") + 1), strengths: ["text"], callable: true },
     ...over,
     sam: {
       provider: over.id.split("/")[0],
